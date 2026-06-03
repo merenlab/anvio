@@ -53,9 +53,8 @@ from anvio.tables.geneclusters import TableForGeneClusters
 from anvio.tables.genefunctions import TableForGeneFunctions
 from anvio.tables.pangraphdata import TableForNodes, TableForEdges, TableForRegions, TableForGenomeDistances
 
-from anvio.directedforce import DirectedForce
+from anvio import panaai
 from anvio.topologicallayout import TopologicalLayout
-from anvio.syntenygenecluster import SyntenyGeneCluster
 from anvio.pangenomegraphmaster import PangenomeGraphManager
 
 
@@ -1566,45 +1565,45 @@ class PangenomeGraph():
 
         self.output_dir = os.path.dirname(self.pan_graph_db_path) or '.'
 
-        self.output_hybrid_genome = A('output_hybrid_genome')
-        self.circularize = A('circularize')
         self.just_do_it = A('just_do_it')
 
         # ANVI'O FLAGS
-        self.start_node = []
-        self.start_gene = A('start_gene')
-        self.start_column = A('start_column')
         self.min_contig_chain = A('min_contig_chain')
-
-        self.n = A('n')
-        self.alpha = A('alpha')
-        self.beta = A('beta')
-        self.gamma = A('gamma')
-        self.delta = A('delta')
-        self.min_k = A('min_k')
-        self.inversion_aware = A('inversion_aware')
-        self.skip_remerge = A('skip_remerge')
-        self.max_num_multi_copy_genes = A('max_num_multi_copy_genes')
-        self.max_num_multi_copy_genes_per_genome = A('max_num_multi_copy_genes_per_genome')
-
         self.max_edge_length_filter = A('max_edge_length_filter')
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
         self.groupcompress = A('grouping_compression')
-        self.priority_genome = A('priority_genome')
+        self.component = A('component') if A('component') is not None else 0
         self.load_state = A('load_state')
         self.import_values = A('import_values').split(',') if A('import_values') else []
+
+        # NEMESIS / AAI ENGINE PARAMETERS
+        self.locality_window = A('locality_window')
+        self.min_line_pair_hits = A('min_line_pair_hits')
+        self.orientation_tie_threshold = A('orientation_tie_threshold')
+        self.min_orientation_score = A('min_orientation_score')
+        self.orientation_demotion_strategy = A('orientation_demotion_strategy')
+        self.ranking_components = A('ranking_components')
+        self.ranking_mean = A('ranking_mean')
+        self.minbit_floor = A('minbit_floor')
+        self.fusion_top_bucket_k = A('fusion_top_bucket_k')
+        self.fusion_seed = A('fusion_seed')
 
         # STANDARD CLASS VARIABLES
         self.version = anvio.__pangraph__version__
         self.functional_annotation_sources_available = DBInfo(self.genomes_storage, expecting='genomestorage').get_functional_annotation_sources() if self.genomes_storage else []
         self.seed = None
         self.pangenome_graph = PangenomeGraphManager()
-        self.pangenome_data_df = pd.DataFrame()
 
         self.newick = ''
         self.meta = {}
         self.bins = {}
         self.states = {}
+
+        # Populated by create_pangenome_graph (engine bookkeeping for downstream consumers).
+        self.lines = None
+        self.line_names = None
+        self.line_to_genome = None
+        self.in_g_flip = None
         self.layers_data = {}
 
 
@@ -1679,80 +1678,21 @@ class PangenomeGraph():
 
     def print_settings(self):
         self.run.warning(None, header="SETTINGS", lc="green")
-        self.run.info("Circularize genomes", self.circularize)
-        self.run.info("Graph starting gene", self.start_gene if self.start_gene else 'Auto (min avg. gene caller id)')
-        self.run.info("Functional annotation source for starting gene", self.start_column)
-        self.run.info("Minimum number of synteny clusters in contig", self.min_contig_chain)
-        self.run.info("Global context comparison window size", self.n)
-        self.run.info("Global context comparison treshold value alpha", self.alpha)
-        self.run.info("Local context comparison gap to gene value beta", self.beta)
-        self.run.info("Local context comparison gap to gap value gamma", self.gamma)
-        self.run.info("General context comparison max treshold dela", self.delta)
-        self.run.info("Synteny gene cluster min k", self.min_k)
-        self.run.info("Higher inversion awareness", self.inversion_aware)
-        self.run.info("Maximum number of multi-copy genes", self.max_num_multi_copy_genes)
-        self.run.info("Maximum number of multi-copy genes per genome", self.max_num_multi_copy_genes_per_genome)
-        self.run.info("Priority genome", self.priority_genome)
-
-
-    def get_pangenome_graph_from_scratch(self):
-        """Populates `self.pangenome_graph` from a pan-db (or a YAML file)"""
-
-        SynGC = SyntenyGeneCluster(self.args)
-
-        if self.pan_graph_yaml:
-            self.pangenome_data_df = SynGC.get_data_from_YAML()
-        else:
-            self.pangenome_data_df = SynGC.get_data_from_pan_db()
-
-        # Determine the first node of the graph
-        self.run.warning(None, header="FIRST NODE DETERMINATION", lc="green")
-        if self.start_gene and self.start_column:
-            # If a start gene is specified, try to work with that.
-            if self.start_column in self.pangenome_data_df.columns:
-                start_syn_cluster = self.pangenome_data_df[self.pangenome_data_df[self.start_column].str.contains(self.start_gene)]['syn_cluster'].to_list()
-                start_syn_type = self.pangenome_data_df[self.pangenome_data_df[self.start_column].str.contains(self.start_gene)]['syn_cluster_type'].to_list()
-                self.start_node += set(start_syn_cluster)
-
-                if len(set(start_syn_cluster)) > 1:
-                    self.run.info_single("There is more than one occurance of your start gene of preference, "
-                                         "we are assuming here that you know what you are doing.", level=0)
-
-                if len(start_syn_cluster) != len(self.genome_names):
-                    self.run.info_single("The number of genomes in the dataset does not equal the number of "
-                                         "occurances of the start gene. Weird.", level=0)
-
-                if any(node != 'core' for node in start_syn_type):
-                    self.run.info_single("At least one occurence of a start gene is not a core synteny cluster.", level=0)
-            else:
-                self.run.info_single("The column were we should search for your start gene does not exist...", level=0)
-        else:
-            # If no start gene specified, use the synteny cluster with the smallest average gene_caller_id
-            # while appearing in the most genomes. This works well for reoriented genomes where
-            # gene 0 is at the aligned position, avoiding singleton SynGCs with gene_caller_id=0
-            if 'gene_caller_id' in self.pangenome_data_df.columns:
-                # Calculate metrics for each synteny cluster
-                syn_cluster_stats = self.pangenome_data_df.groupby('syn_cluster').agg({'gene_caller_id': ['mean', 'min'], 'genome': 'nunique'})
-                syn_cluster_stats.columns = ['avg_gene_caller_id', 'min_gene_caller_id', 'num_genomes']
-
-                # Find the maximum number of genomes any SynGC appears in
-                max_genome_count = syn_cluster_stats['num_genomes'].max()
-
-                # Among SynGCs that appear in the most genomes, pick the one with smallest average gene_caller_id
-                most_core_syn_clusters = syn_cluster_stats[syn_cluster_stats['num_genomes'] == max_genome_count]
-                start_syn_cluster = most_core_syn_clusters['avg_gene_caller_id'].idxmin()
-
-                avg_gene_id = most_core_syn_clusters.loc[start_syn_cluster, 'avg_gene_caller_id']
-                num_genomes = most_core_syn_clusters.loc[start_syn_cluster, 'num_genomes']
-
-                self.run.info_single(f"No start gene was specified, so anvi'o automatically chose SynGC '{start_syn_cluster}' "
-                                     f"which is present in {int(num_genomes)} of {len(self.genome_names)} genome(s) and has "
-                                     f"an average gene caller ID of {avg_gene_id:.1f}, as the starting node for the graph", level=0)
-
-                self.start_node += [start_syn_cluster]
-            else:
-                self.run.info_single("No start gene specified and the `gene_caller_id` column is somehow not available "
-                                     "in the data frame. DirectedForce will choose a start node automatically.", level=0)
+        self.run.info("Minimum number of genes per contig", self.min_contig_chain)
+        self.run.info("Component to layout", self.component)
+        self.run.info("Locality window", self.locality_window)
+        self.run.info("Min line-pair hits", self.min_line_pair_hits)
+        self.run.info("Orientation tie threshold", self.orientation_tie_threshold)
+        self.run.info("Min orientation score", self.min_orientation_score)
+        self.run.info("Orientation demotion strategy", self.orientation_demotion_strategy)
+        self.run.info("Ranking components", self.ranking_components)
+        self.run.info("Ranking mean", self.ranking_mean)
+        self.run.info("Minbit floor", self.minbit_floor)
+        self.run.info("Fusion top-bucket k", self.fusion_top_bucket_k)
+        self.run.info("Fusion seed", self.fusion_seed)
+        self.run.info("Max edge length filter", self.max_edge_length_filter)
+        self.run.info("Gene-cluster grouping threshold", self.gene_cluster_grouping_threshold)
+        self.run.info("Grouping compression", self.groupcompress)
 
 
     def process(self):
@@ -1772,14 +1712,9 @@ class PangenomeGraph():
         # display some settings if applicable
         self.print_settings()
 
-        # figure out if we will get the pangenome graph from
-        # a user-provided JSON file, or from sctratch
-        self.get_pangenome_graph_from_scratch()
-
+        # delegate the graph build to the AAI engine and mirror the result
+        # into self.pangenome_graph (a PangenomeGraphManager).
         self.create_pangenome_graph()
-
-        if not self.skip_remerge:
-            self.remerge_nodes()
 
         self.add_layers()
 
@@ -1790,17 +1725,11 @@ class PangenomeGraph():
         # calculate the display
         # self.layout_pangenome_graph()
 
-        # if the user has not provided a tree file calculate one from the graph properties
-        # whuile at it, take the distance matrix is captured here and get ready to store
-        # it into the pan_graph_genome_distances table
+        # compute the graph-based pairwise genome distance matrix; the newick
+        # tree may end up empty if all distances are zero (identical genomes).
         self.distance_matrix = pd.DataFrame()
-        self.distance_genome_names = []
         if not self.newick:
-            self.newick, self.distance_matrix, self.distance_genome_names = self.pangenome_graph.calculate_graph_distance()
-
-        # FIXME: not currently engaged
-        if self.output_hybrid_genome:
-            self.pangenome_graph.generate_hybrid_genome(self.output_dir)
+            self.newick, self.distance_matrix, _ = self.pangenome_graph.calculate_graph_distance()
 
         # generate pan-graph-db and populate it with information
         self.generate_pan_graph_db()
@@ -1964,27 +1893,23 @@ class PangenomeGraph():
             'num_genomes': len(self.genome_names),
             'gene_alignments_computed': self.gene_alignments_computed,
             'gene_function_sources': ','.join(self.functional_annotation_sources_available),
-            # graph-building algorithm parameters
-            'alpha': self.alpha,
-            'beta': self.beta,
-            'gamma': self.gamma,
-            'delta': self.delta,
-            'min_k': self.min_k,
-            'n': self.n,
-            'circularize': self.circularize,
+            # AAI engine parameters
             'min_contig_chain': self.min_contig_chain,
-            'inversion_aware': self.inversion_aware,
-            'skip_remerge': self.skip_remerge,
-            # multi-copy gene removal parameters
-            'max_num_multi_copy_genes': self.max_num_multi_copy_genes,
-            'max_num_multi_copy_genes_per_genome': self.max_num_multi_copy_genes_per_genome,
+            'locality_window': self.locality_window,
+            'min_line_pair_hits': self.min_line_pair_hits,
+            'orientation_tie_threshold': self.orientation_tie_threshold,
+            'min_orientation_score': self.min_orientation_score,
+            'orientation_demotion_strategy': self.orientation_demotion_strategy,
+            'ranking_components': self.ranking_components,
+            'ranking_mean': self.ranking_mean,
+            'minbit_floor': self.minbit_floor,
+            'fusion_top_bucket_k': self.fusion_top_bucket_k,
+            'fusion_seed': self.fusion_seed,
             # layout & simplification parameters
             'max_edge_length_filter': self.max_edge_length_filter,
             'gene_cluster_grouping_threshold': self.gene_cluster_grouping_threshold,
             'grouping_compression': self.groupcompress,
-            # anchoring
-            'priority_genome': self.priority_genome,
-            'start_gene': self.start_gene,
+            'component': self.component,
         }
 
         dbops.PanGraphDatabase(self.pan_graph_db_path, run=self.run, progress=self.progress, quiet=False).create(meta_values)
@@ -2148,303 +2073,186 @@ class PangenomeGraph():
 
 
     def create_pangenome_graph(self):
-        """
-        Here the pangenome graph is created. The initial graph is a cyclic graph holding the
-        synteny information of the genes present in the genomes. The pangenome graph is a
-        non-cyclic graph featured with (x,y) positions and grouped nodes for a layout
-        representation.
+        """Build the pangenome graph by delegating to ``PangenomeAAIEngine``
+        (see :mod:`anvio.panaai`) and mirror the result into
+        ``self.pangenome_graph`` (a :class:`PangenomeGraphManager`).
 
-        Parameters
-        ==========
-        None
-
-        Returns
-        =======
-        self.pangenome_graph: PangenomeGraphManager Object
+        In panmode the parent gene-cluster map is pulled from the pan-db and
+        passed to the engine; in non-panmode the engine still runs but only
+        ``core`` / ``accessory`` / ``singleton`` node types are produced and
+        alignments are unavailable downstream.
         """
 
-        # 2. step: Fill self.pangenome_graph with nodes and edges based on the synteny data
-        self.run.warning("The algorithm will now build a directed graph where nodes represent synteny gene clusters "
-                         "(SynGCs) and edges connect consecutive SynGCs so they follow the genomic context. Edge weights "
-                         "are computed to prioritize paths through core genes and the specified priority genome if provided. "
-                         "For circular genomes (when --circularize is used), wrap-around edges will connect the last "
-                         "gene back to the first gene to maintain circularity.",
-                         header="BUILDING PANGENOME GRAPH", lc="green")
-        factor = 0.00000001 / 2
-        decisison_making = {}
-
-        # TODO I guess it would be better to only use this on sigle edges not in general, like find nodes with equal edges and then give a smallest numpy number bonus.
-        # Unfortunately this part here is very arbitiary but necessary. Find better way later!
-        # INCLUDE CORE AND NOT CORE INFORMATION HERE!
-        for genome in self.genome_names:
-            decisison_making[genome] = factor
-            factor /= 2
-
-        import_values_found = []
-        if self.import_values:
-            for value in self.import_values:
-                if value in self.pangenome_data_df.columns and self.pangenome_data_df.dtypes[value] in ['int64', 'float64']:
-                    import_values_found += [value]
-                    self.run.info_single(f"Column {value} found and saved.")
-                else:
-                    self.run.info_single(f"Column {value} not found in the pangenome.")
-
-        self.import_values = import_values_found
-
-        number_gene_calls = {}
-        for genome, genome_group in self.pangenome_data_df.groupby(["genome"]):
-            extra_connections = []
-
-            for contig, group in genome_group.groupby(["contig"]):
-                group.reset_index(drop=False, inplace=True)
-                group.sort_values(["position"], axis=0, ascending=True, inplace=True)
-
-                syn_cluster_tuples = list(map(tuple, group[['index', 'syn_cluster', 'syn_cluster_type', 'gene_cluster', 'gene_caller_id', 'position']].values.tolist()))
-
-                group.set_index('index', inplace=True)
-
-                # TODO just multiplying by 100 is a bit arbitrary as well...
-                if genome == self.priority_genome:
-                    add_weight = 1.0 * 100
-                else:
-                    add_weight = 0
-
-                if len(syn_cluster_tuples) >= self.min_contig_chain:
-
-                    extra_connections += [syn_cluster_tuples[0], syn_cluster_tuples[-1]]
-                    add_weight += decisison_making[genome]
-
-                    if len(syn_cluster_tuples) > 1:
-                        syn_cluster_tuple_pairs = map(tuple, zip(syn_cluster_tuples, syn_cluster_tuples[1:]))
-                        for syn_cluster_tuple_pair in syn_cluster_tuple_pairs:
-                            index_i, syn_cluster_i, syn_cluster_type_i, gene_cluster_i, gene_caller_id_i, synteny_i = syn_cluster_tuple_pair[0]
-                            index_j, syn_cluster_j, syn_cluster_type_j, gene_cluster_j, gene_caller_id_j, synteny_j = syn_cluster_tuple_pair[1]
-
-                            node_attributes_i = {
-                                'gene_cluster': gene_cluster_i,
-                                'gene_calls': {genome: gene_caller_id_i},
-                                'synteny': {genome: synteny_i},
-                                'type': syn_cluster_type_i,
-                                # 'layer': group[self.import_values].loc[index_i].to_dict() if self.import_values else {}
-                            }
-
-                            layer_group_i = group[self.import_values].loc[index_i].to_dict()
-
-                            if 'start' in layer_group_i and 'stop' in layer_group_i:
-                                layer_group_i['length'] = abs(layer_group_i['stop'] - layer_group_i['start'])
-
-                            for layer, value in layer_group_i.items():
-                                if syn_cluster_i not in self.layers_data:
-                                    self.layers_data[syn_cluster_i] = {layer: [value]}
-                                else:
-                                    if layer not in self.layers_data[syn_cluster_i]:
-                                        self.layers_data[syn_cluster_i][layer] = [value]
-                                    else:
-                                        self.layers_data[syn_cluster_i][layer] += [value]
-
-                            node_attributes_j = {
-                                'gene_cluster': gene_cluster_j,
-                                'gene_calls': {genome: gene_caller_id_j},
-                                'synteny': {genome: synteny_j},
-                                'type': syn_cluster_type_j,
-                                # 'layer': group[self.import_values].loc[index_j].to_dict() if self.import_values else {}
-                            }
-
-                            layer_group_j = group[self.import_values].loc[index_i].to_dict()
-
-                            if 'start' in layer_group_j and 'stop' in layer_group_j:
-                                layer_group_j['length'] = abs(layer_group_j['stop'] - layer_group_j['start'])
-
-                            for layer, value in layer_group_j.items():
-                                if syn_cluster_j not in self.layers_data:
-                                    self.layers_data[syn_cluster_j] = {layer: [value]}
-                                else:
-                                    if layer not in self.layers_data[syn_cluster_j]:
-                                        self.layers_data[syn_cluster_j][layer] = [value]
-                                    else:
-                                        self.layers_data[syn_cluster_j][layer] += [value]
-
-                            edge_attributes = {
-                                'weight': 1.0 + add_weight,
-                                'directions': {genome: 'R'}
-                            }
-
-                            self.pangenome_graph.add_node_to_graph(syn_cluster_i, node_attributes_i)
-                            self.pangenome_graph.add_node_to_graph(syn_cluster_j, node_attributes_j)
-                            self.pangenome_graph.add_edge_to_graph(syn_cluster_i, syn_cluster_j, edge_attributes)
-
-                    else:
-                        index_i, syn_cluster_i, syn_cluster_type_i, gene_cluster_i, gene_caller_id_i, synteny_i = syn_cluster_tuples[0]
-
-                        node_attributes_i = {
-                            'gene_cluster': gene_cluster_i,
-                            'gene_calls': {genome: gene_caller_id_i},
-                            'synteny': {genome: synteny_i},
-                            'type': syn_cluster_type_i,
-                            # 'layer': group[self.import_values].loc[index_i].to_dict() if self.import_values else {}
-                        }
-
-                        layer_group_i = group[self.import_values].loc[index_i].to_dict()
-
-                        if 'start' in layer_group_i and 'stop' in layer_group_i:
-                                layer_group_i['length'] = abs(layer_group_i['stop'] - layer_group_i['start'])
-
-                        for layer, value in layer_group_i.items():
-                            if syn_cluster_i not in self.layers_data:
-                                self.layers_data[syn_cluster_i] = {layer: [value]}
-                            else:
-                                if layer not in self.layers_data[syn_cluster_i]:
-                                    self.layers_data[syn_cluster_i][layer] = [value]
-                                else:
-                                    self.layers_data[syn_cluster_i][layer] += [value]
-
-                        self.pangenome_graph.add_node_to_graph(syn_cluster_i, node_attributes_i)
-
-                    if genome not in number_gene_calls:
-                        number_gene_calls[genome] = len(syn_cluster_tuples)
-                    else:
-                        number_gene_calls[genome] += len(syn_cluster_tuples)
-                else:
-                    self.run.info_single(f"Skipped {contig} due to small contig size.")
-
-            if self.circularize:
-
-                extra_connections = extra_connections[1:] + [extra_connections[0]]
-                num = 0
-                while num < len(extra_connections):
-
-                    index_i, extra_connections_syn_i, extra_connections_type_i, extra_connections_gc_i, extra_connections_id_i, extra_connections_synteny_i = extra_connections[num]
-                    index_j, extra_connections_syn_j, extra_connections_type_j, extra_connections_gc_j, extra_connections_id_j, extra_connections_synteny_j = extra_connections[num+1]
-
-                    num += 2
-
-                    edge_attributes = {
-                        'weight': 1.0 + add_weight,
-                        'directions': {genome: 'R'}
-                    }
-
-                    if extra_connections_syn_i != extra_connections_syn_j:
-                        self.pangenome_graph.add_edge_to_graph(extra_connections_syn_i, extra_connections_syn_j, edge_attributes)
-
-        total_genes_added = sum(number_gene_calls.values())
-        self.run.info('Total genes added to graph', total_genes_added, nl_before=1)
-
-        if self.genome_names and len(self.genome_names) <= 10:
-            # Only show per-genome details if there are 10 or fewer genomes
-            for genome in number_gene_calls:
-                self.run.info(f' - {genome}', number_gene_calls[genome], lc='cyan', nl_before=0, nl_after=0)
-
-        edge_id = 0
-        for edge_i, edge_j, data in self.pangenome_graph.graph.edges(data=True):
-            data['name'] = 'E_' + str(edge_id).zfill(8)
-            edge_id += 1
-
-        num_syn_cluster = len(self.pangenome_data_df['syn_cluster'].unique())
-        num_graph_nodes = len(self.pangenome_graph.graph.nodes())
-        num_graph_edges = len(self.pangenome_graph.graph.edges())
-
-        self.run.info('Graph nodes (SynGCs)', num_graph_nodes, mc='green')
-        self.run.info('Graph edges', num_graph_edges)
-
-        if num_syn_cluster != num_graph_nodes:
-            nodes_not_added = abs(num_syn_cluster - num_graph_nodes)
-            self.run.info('SynGCs not added to graph', nodes_not_added, mc='red')
-            self.run.warning(f"{nodes_not_added} synteny cluster(s) were not added to the graph, likely due to "
-                             f"--min-contig-chain filtering. This is expected behavior if you set a minimum contig size.")
-
-        # 3. step: Check connectivity of the graph
-        self.pangenome_graph.run_connectivity_check()
-
-        # 4. step: Find edges to reverse to create maxmimum directed force
-        self.run.warning("The algorithm will now determine which edges need to be reversed to create a 'directed acyclic "
-                         "graph' that flows from the specified start node all the way to the end.. This process finds "
-                         "the optimal set of edge reversals to minimize conflicts while maintaining the maximum weighted "
-                         "path through core genes. Edge reversals are necessary to resolve cycles, and establish a "
-                         "consistent directional flow for anvi'o to be able to give you a biologically meaningful "
-                         "visualization of the pangenome.", header="OPTIMIZING GRAPH DIRECTIONALITY", lc="green")
-
-        selfloops = list(nx.selfloop_edges(self.pangenome_graph.graph))
-        if selfloops:
-            self.run.info('Self-loop edges found', len(selfloops), mc='red')
-            self.pangenome_graph.graph.remove_edges_from(selfloops)
+        # In panmode, get the (genome, gene_caller_id) -> gene_cluster map.
+        gene_clusters = None
+        if self.pan_super is not None:
+            gene_clusters = {}
+            for genome, gid_map in self.pan_super.gene_callers_id_to_gene_cluster.items():
+                for gid, gc_name in gid_map.items():
+                    gene_clusters[(genome, gid)] = gc_name
+            self.run.info('Gene clusters loaded from pan-db', len(gene_clusters))
         else:
-            self.run.info('Self-loop edges found', 0, mc='green')
+            self.run.info_single('No pan-db given — alignments will be unavailable in the output '
+                                 'and node types collapse to core/accessory/singleton.',
+                                 mc='yellow')
 
-        # changed_edges, removed_nodes, removed_edges = DirectedForce().return_optimum_complexity()
-        changed_edges = DirectedForce().return_optimum_complexity(
-            self.pangenome_graph.graph,
-            max_iterations=1,
-            start_node=self.start_node
-        )
+        # Drive the AAI engine.
+        engine = panaai.PangenomeAAIEngine(self.args, r=self.run, p=self.progress)
+        G, lines, line_names, line_to_genome, in_g_flip = engine.process(
+            gene_clusters=gene_clusters)
 
-        self.pangenome_graph.reverse_edges(changed_edges)
-        # self.pangenome_graph.graph.remove_edges_from(removed_edges)
-        # self.pangenome_graph.graph.remove_nodes_from(removed_nodes)
+        # Stash bookkeeping for downstream consumers (add_layers, summarize,
+        # calculate_graph_distance).
+        self.lines = lines
+        self.line_names = line_names
+        self.line_to_genome = line_to_genome
+        self.in_g_flip = in_g_flip
 
-        # self.pangenome_data_df.drop(self.pangenome_data_df.loc[self.pangenome_data_df['syn_cluster'].isin(removed_nodes)].index, inplace=True)
-        # self.run.info_single(f"The pangenome graph is now a connected non-cyclic graph.")
-        if len(changed_edges) == 0:
-            self.run.info('Edges reversed', 0, mc='green')
-            self.run.warning("No edges needed to be reversed. This is unusual but can happen with perfectly linear "
-                             "or well-structured datasets where the initial graph already flows in the correct direction.")
+        # Per-edge genome sets, derived by walking committed lines.
+        edge_genomes = self._compute_edge_genome_sets(
+            G, lines, line_names, line_to_genome, in_g_flip)
+
+        # Per-gene synteny position (= position in its line, 0-indexed).
+        gene_to_synteny_pos = {}
+        for i, tokens in enumerate(lines):
+            name = line_names[i]
+            for pos, tok in enumerate(tokens):
+                gene_to_synteny_pos[f"{name}:{tok}"] = pos
+
+        # Initialize layers_data so add_layers can populate it later.
+        self.layers_data = {}
+
+        # Mirror G into self.pangenome_graph.
+        self.pangenome_graph = PangenomeGraphManager(run=self.run, progress=self.progress)
+
+        for node, attrs in G.nodes(data=True):
+            gene_calls = {}
+            synteny = {}
+            for endpoint in attrs.get('genes', ()):
+                line_name, _, gid_str = endpoint.rpartition(':')
+                if not gid_str.isdigit():
+                    continue
+                genome = line_to_genome.get(line_name)
+                if genome is None:
+                    continue
+                gene_calls[genome] = int(gid_str)
+                pos = gene_to_synteny_pos.get(endpoint)
+                if pos is not None:
+                    synteny[genome] = pos
+
+            parent_gc = node.rsplit('_', 1)[0] if gene_clusters is not None else ''
+
+            self.pangenome_graph.add_node_to_graph(node, {
+                'gene_cluster': parent_gc,
+                'gene_calls': gene_calls,
+                'synteny': synteny,
+                'type': attrs.get('type', ''),
+                'component_id': int(attrs.get('component_id', 0)),
+            })
+
+        for u, v in G.edges():
+            genomes = sorted(edge_genomes.get((u, v), set()))
+            self.pangenome_graph.add_edge_to_graph(u, v, {
+                'weight': float(len(genomes)),
+                'genomes': genomes,
+            })
+
+        # Assign edge names in iteration order.
+        for edge_id, (u, v) in enumerate(self.pangenome_graph.graph.edges()):
+            self.pangenome_graph.graph[u][v]['name'] = 'E_' + str(edge_id).zfill(8)
+
+        # We keep ALL components per design decision §4.8; the layout/summarize
+        # passes filter by component_id when needed. No connectivity check.
+        self.run.info('Graph nodes', self.pangenome_graph.graph.number_of_nodes(), mc='green')
+        self.run.info('Graph edges', self.pangenome_graph.graph.number_of_edges())
+
+
+    def _compute_edge_genome_sets(self, G, lines, line_names, line_to_genome, in_g_flip):
+        """Walk each committed line in its placement orientation and
+        accumulate ``(super_node_u, super_node_v) -> {genomes}`` for every
+        consecutive pair on the line.
+
+        Lines that did not get committed are skipped (they contributed no
+        edges to G).
+        """
+        gene_to_super = {}
+        for n, attrs in G.nodes(data=True):
+            for endpoint in attrs.get('genes', ()):
+                gene_to_super[endpoint] = n
+
+        edge_genomes = {}
+        for line_idx, flip in in_g_flip.items():
+            name = line_names[line_idx]
+            genome = line_to_genome.get(name)
+            if genome is None:
+                continue
+            tokens = lines[line_idx]
+            seq = list(reversed(tokens)) if flip else list(tokens)
+            prev = None
+            for tok in seq:
+                super_node = gene_to_super.get(f"{name}:{tok}")
+                if super_node is None:
+                    continue
+                if prev is not None and prev != super_node:
+                    edge_genomes.setdefault((prev, super_node), set()).add(genome)
+                prev = super_node
+
+        return edge_genomes
 
 
     def add_layers(self):
+        """Populate the ``alignment`` attribute on every super-node.
 
-        self.run.warning("The Algorithm will now add layers to the synteny gene clusters for downstream analysis.",
+        In panmode, per-genome alignments are pulled from
+        ``self.pan_super.gene_clusters_gene_alignments`` (the existing pan-db
+        alignment machinery), padded to a common length, and re-summarized.
+        In non-panmode the pan-db is unavailable, so we emit empty alignment
+        strings and move on; functional-annotation / per-contig layers from
+        CONTIGS.dbs are out of scope here and added by a follow-up task.
+        """
+        self.run.warning("Adding per-node alignments.",
                          header="ADDING LAYERS", lc="green")
 
-        layer_set = set()
-        for syn_cluster in self.pangenome_graph.graph.nodes():
-            layer_data = self.layers_data[syn_cluster]
-            for layer, value_list in layer_data.items():
-                layer_set.add(layer)
-                self.pangenome_graph.graph.nodes[syn_cluster]['layer'] = self.pangenome_graph.graph.nodes[syn_cluster]['layer'] | {layer: sum(value_list) / len(value_list)}
+        if not self.gene_alignments_computed or self.pan_super is None:
+            self.run.info_single("No pan-db (or no alignments computed) — alignment summaries "
+                                 "will be empty.")
+            for _node, data in self.pangenome_graph.graph.nodes(data=True):
+                data['alignment'] = {g: '' for g in data['gene_calls']}
+            return
 
-        for layer in layer_set:
-            self.run.info_single(f"Successfully added {layer} as a layer to the pangenome graph.")
-
-        # variable to track nodes with differing alignment lengths
+        # Nodes with alignments of differing lengths (we pad and warn).
         diff_len_nodes = []
-        # variable to track nodes with no alignments at all (which may happen as a function of
-        # how the original pangenome was computed)
+        # Nodes where no alignments could be recovered for >1 genome.
         no_alignment_nodes = []
 
         for node, data in self.pangenome_graph.graph.nodes(data=True):
-            node_alignment_summaries = {}
-            node_alignment_lengths = []
             node_alignments = {}
+            node_alignment_lengths = []
+
             for genome_name, gene_caller_id in data['gene_calls'].items():
-                if self.gene_alignments_computed:
-                    genome_alignments = self.pan_super.gene_clusters_gene_alignments[genome_name]
-                    if gene_caller_id in genome_alignments:
-                        alignment_summary = genome_alignments[gene_caller_id]
-                        node_alignment_summaries[genome_name] = alignment_summary
+                genome_alignments = self.pan_super.gene_clusters_gene_alignments.get(genome_name, {})
+                if gene_caller_id in genome_alignments:
+                    alignment_summary = genome_alignments[gene_caller_id]
+                    parts = alignment_summary.split('|')
+                    start = parts[0]
+                    summary_code = list(map(int, parts[1:]))
 
-                        alignment_summary_list = alignment_summary.split('|')
-                        start = alignment_summary_list[0]
-                        summary_code = list(map(int, alignment_summary_list[1:]))
-
-                        if start == '-':
-                            sequence = sum(summary_code[1::2]) * 'N'
-                        else:
-                            sequence = sum(summary_code[0::2]) * 'N'
-
-                        alignment = utils.restore_alignment(sequence, alignment_summary)
-                        node_alignment_lengths += [len(alignment)]
+                    if start == '-':
+                        sequence = sum(summary_code[1::2]) * 'N'
                     else:
-                        alignment_summary = ''
-                        node_alignment_summaries[genome_name] = alignment_summary
+                        sequence = sum(summary_code[0::2]) * 'N'
 
-                        sequence = ''
-                        alignment = ''
-                        node_alignment_lengths += [0]
+                    alignment = utils.restore_alignment(sequence, alignment_summary)
+                    node_alignment_lengths.append(len(alignment))
+                else:
+                    alignment = ''
+                    node_alignment_lengths.append(0)
 
-                    node_alignments[genome_name] = alignment
+                node_alignments[genome_name] = alignment
 
             valid_alignment_lengths = {l for l in node_alignment_lengths if l > 0}
             if not valid_alignment_lengths:
-                data['alignment'] = {genome_name: '' for genome_name in node_alignments.keys()}
+                data['alignment'] = {g: '' for g in node_alignments}
                 if len(node_alignments) > 1:
                     no_alignment_nodes.append(node)
                 continue
@@ -2453,120 +2261,36 @@ class PangenomeGraph():
             if len(valid_alignment_lengths) != 1:
                 diff_len_nodes.append(node)
 
-            # poor man's resolution to alignment issues: pad shorter alignments with gaps so all strings have the same length :(
-            padded_alignments = {genome_name: alignment.ljust(alignment_length, '-') for genome_name, alignment in node_alignments.items()}
-            cleaned_alignments = {genome_name: '' for genome_name in padded_alignments.keys()}
-
+            # poor man's fix-up: pad shorter alignments with gaps so every
+            # string is the same length, then drop columns that are all-gap.
+            padded = {g: a.ljust(alignment_length, '-') for g, a in node_alignments.items()}
+            cleaned = {g: '' for g in padded}
             for i in range(alignment_length):
-                summary_code_list = [alignment[i] for alignment in padded_alignments.values()]
-                if not all(a == '-' for a in summary_code_list):
-                    for genome_name, alignment in padded_alignments.items():
-                        cleaned_alignments[genome_name] += alignment[i]
+                column = [padded[g][i] for g in padded]
+                if not all(c == '-' for c in column):
+                    for g in padded:
+                        cleaned[g] += padded[g][i]
 
-            data['alignment'] = {genome_name: utils.summarize_alignment(alignment) if alignment else '' for genome_name, alignment in cleaned_alignments.items()}
+            data['alignment'] = {g: utils.summarize_alignment(a) if a else ''
+                                 for g, a in cleaned.items()}
 
-        # keep the user posted
         if diff_len_nodes:
             examples = ", ".join(diff_len_nodes[:10])
             more = "" if len(diff_len_nodes) <= 10 else ", ..."
-            self.run.warning(f"Alignments have differing lengths for {len(diff_len_nodes)} SynGCs(s) (e.g., {examples}{more}). "
-                             f"This can happen for some gene clusters if the alignment step failed for them during the generation "
-                             f"of the input pangenome due to excessive number of genes or un-alignable sequences coming together "
-                             f"in gene clusters (such as due to user-defined GCs, or predicted protein structure-infrmed GC "
-                             f"formations where sequences could be so far from one another). The pangenome graph code simpply "
-                             f"padded the shorter sequences in such unfortunate SynGCs for you with gap characters to continue "
-                             f"the downstream processing of your data. This should not affect anything apart from the fact that "
-                             f"the padding strategy may lead to some undesireable (or even misleading) visualization of SynGC "
-                             f"sequence content in later stages of your analysis.")
+            self.run.warning(f"Alignments have differing lengths for {len(diff_len_nodes)} node(s) "
+                             f"(e.g., {examples}{more}). This can happen when the upstream alignment "
+                             f"step failed for individual gene clusters. The shorter sequences were "
+                             f"padded with gap characters so downstream processing can continue, but "
+                             f"the padding may lead to undesirable (or misleading) visualization of "
+                             f"the node's sequence content.")
 
         if no_alignment_nodes:
             examples = ", ".join(no_alignment_nodes[:10])
             more = "" if len(no_alignment_nodes) <= 10 else ", ..."
-            self.run.warning(f"No alignments found for {len(no_alignment_nodes)} multi-gene syn cluster(s) (e.g., {examples}{more}). "
-                             f"Storing empty alignments and continuing.")
+            self.run.warning(f"No alignments found for {len(no_alignment_nodes)} multi-gene node(s) "
+                             f"(e.g., {examples}{more}). Storing empty alignments and continuing.")
         else:
             self.run.info_single("Alignments were found for all nodes and successfully added.")
-
-
-    def remerge_nodes(self):
-
-        self.run.warning("Remerging nodes. This is extremely useful in case of highly sensitive graph creation settings. "
-                         "The algorithm will attempt to find e.g. false rearrangement nodes and join them together as a "
-                         "single synteny gene cluster. Use --skip-remerge to disable this step if you experience "
-                         "unexpected results.",
-                         header="REMERGING SENSITIVE NODES", lc="green")
-
-        gene_cluster_to_synteny_gene_cluster = {}
-        original_num_nodes = len(self.pangenome_graph.graph.nodes())
-        new_core_num = 0
-        new_accessory_num = 0
-
-        for synteny_gene_cluster, data in self.pangenome_graph.graph.nodes(data=True):
-            gene_cluster = data['gene_cluster']
-            if gene_cluster not in gene_cluster_to_synteny_gene_cluster:
-                gene_cluster_to_synteny_gene_cluster[gene_cluster] = [synteny_gene_cluster]
-            else:
-                gene_cluster_to_synteny_gene_cluster[gene_cluster] += [synteny_gene_cluster]
-
-        for gene_cluster, synteny_gene_clusters in gene_cluster_to_synteny_gene_cluster.items():
-            if len(synteny_gene_clusters) != 1:
-                for syn_cluster_a, syn_cluster_b in combinations(synteny_gene_clusters, 2):
-                    if syn_cluster_a in self.pangenome_graph.graph.nodes() and syn_cluster_b in self.pangenome_graph.graph.nodes():
-
-                        pass_node = True
-                        syn_cluster_list = [syn_cluster_a, syn_cluster_b]
-
-                        common_ancestor = nx.lowest_common_ancestor(self.pangenome_graph.graph, *syn_cluster_list)
-                        if common_ancestor in syn_cluster_list:
-                            pass_node = False
-
-                        node_a = self.pangenome_graph.graph.nodes[syn_cluster_a]
-                        node_b = self.pangenome_graph.graph.nodes[syn_cluster_b]
-
-                        if not set(node_a['gene_calls'].keys()).isdisjoint(node_b['gene_calls'].keys()):
-                            pass_node = False
-
-                        if not set(node_a['synteny'].keys()).isdisjoint(node_b['synteny'].keys()):
-                            pass_node = False
-
-                        if pass_node:
-                            syn_cluster_list_sorted = sorted(syn_cluster_list, key=lambda x: int(x.rsplit('_', 1)[1]))
-                            syn_cluster_x = syn_cluster_list_sorted[0]
-                            node_x = self.pangenome_graph.graph.nodes[syn_cluster_x]
-
-                            for syn_cluster_y in syn_cluster_list_sorted[1:]:
-                                node_y = self.pangenome_graph.graph.nodes[syn_cluster_y]
-
-                                node_x['gene_calls'] |= node_y['gene_calls']
-                                node_x['synteny'] |= node_y['synteny']
-                                self.pangenome_graph.graph = nx.contracted_nodes(self.pangenome_graph.graph, syn_cluster_x, syn_cluster_y, self_loops=False, copy=False)
-                                self.pangenome_data_df.loc[self.pangenome_data_df['syn_cluster'] == syn_cluster_y, 'syn_cluster'] = syn_cluster_x
-
-                                for k, v in self.layers_data[syn_cluster_y].items():
-                                    self.layers_data[syn_cluster_x].setdefault(k, []).extend(v)
-
-                                del self.layers_data[syn_cluster_y]
-
-                                max_num_genomes = len(self.genome_names)
-                                cluster_num_genomes = len(self.pangenome_data_df.query('gene_cluster == @gene_cluster'))
-
-                                if len(node_x['gene_calls']) == max_num_genomes and node_x['type'] == 'rearrangement':
-                                    node_x['type'] = 'core'
-                                    self.pangenome_data_df.loc[self.pangenome_data_df['syn_cluster'] == syn_cluster_x, 'syn_cluster_type'] = 'core'
-                                    new_core_num += 1
-
-                                elif len(node_x['gene_calls']) == cluster_num_genomes and node_x['type'] == 'rearrangement':
-                                    node_x['type'] = 'accessory'
-                                    self.pangenome_data_df.loc[self.pangenome_data_df['syn_cluster'] == syn_cluster_x, 'syn_cluster_type'] = 'accessory'
-                                    new_accessory_num += 1
-
-        self.run.info_single("Successfully remerged nodes.")
-        self.run.info_single(f"{original_num_nodes - len(self.pangenome_graph.graph.nodes())} nodes were removed in the process.")
-        self.run.info_single(f"{new_core_num} nodes changed from type 'rearrangement' to 'core'.")
-        self.run.info_single(f"{new_accessory_num} nodes changed from type 'rearrangement' to 'accessory'.")
-
-        if not nx.is_directed_acyclic_graph(self.pangenome_graph.graph):
-            raise ConfigError("Cyclic graphs, are not implemented.")
 
 
 class FragmentedGeneAnnotator():
