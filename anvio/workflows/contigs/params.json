@@ -65,7 +65,7 @@
             "threads":              {"type": "int",  "default": 5},
             "run":                  {"type": "bool", "default": true},
             "--cog-data-dir":       {"type": "str",  "default": null},
-            "--temporary-dir-path": {"type": "str",  "default": null},
+            "--temporary-dir-path": {"type": "str",  "default": ""},
             "--search-with":        {"type": "str",  "default": null}
         },
         "annotate_contigs_database": {
