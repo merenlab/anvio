@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Compute a graph representation of a pangenome"""
 
+import argparse
 import sys
 
 import anvio
@@ -63,6 +64,20 @@ def get_args():
 
     groupC.add_argument('--min-contig-chain', default=5, type=int, help = "Skip contigs with fewer than this many genes "
                     "(filters very short/fragmented contigs).")
+    groupC.add_argument('--no-remerge', default=False, action='store_true',
+                    help = "Skip the post-engine remerge pass. By default (no flag), anvi'o walks every parent "
+                    "gene cluster that produced multiple synteny clusters and merges pairs that look like "
+                    "engine over-splits: same weakly connected component, not in-series in the DAG, and "
+                    "disjoint genome coverage. Pass this flag to disable that pass and keep the engine's "
+                    "original splits intact.")
+    groupC.add_argument('--no-include-non-coding-genes', default=False, action='store_true',
+                    help = "Drop non-coding gene calls (rRNA, tRNA, etc.) from the graph. By default (no flag), "
+                    "non-coding gene calls are kept as singleton super-nodes typed `rna`. Non-coding genes are "
+                    "detected via each genome's CONTIGS.db `call_type` column (anything that is not CODING). "
+                    "They have no DIAMOND hits (DIAMOND runs on translated proteins) and therefore never merge "
+                    "across genomes -- each non-coding gene becomes its own node. Pass this flag to drop them "
+                    "before component-id and layout computation; flanking gene-order edges are re-stitched so "
+                    "line continuity is preserved.")
 
     groupD = parser.add_argument_group('AAI ENGINE PARAMETERS', "Parameters controlling the AAI-based gene-endpoint fusion engine. "
                     "These rarely need tuning; defaults work well for most datasets.")

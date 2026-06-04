@@ -1560,6 +1560,8 @@ class PangenomeGraph():
 
         # ANVI'O FLAGS
         self.min_contig_chain = A('min_contig_chain')
+        self.no_include_non_coding_genes = bool(A('no_include_non_coding_genes'))
+        self.no_remerge = bool(A('no_remerge'))
         self.max_edge_length_filter = A('max_edge_length_filter')
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
         self.groupcompress = A('grouping_compression')
@@ -1685,6 +1687,8 @@ class PangenomeGraph():
     def print_settings(self):
         self.run.warning(None, header="SETTINGS", lc="green")
         self.run.info("Minimum number of genes per contig", self.min_contig_chain)
+        self.run.info("Remove non-coding genes", self.no_include_non_coding_genes)
+        self.run.info("Skip remerge step", self.no_remerge)
         self.run.info("Component to layout", self.component)
         self.run.info("Locality window", self.locality_window)
         self.run.info("Min window completeness", self.min_window_completeness)
@@ -1726,6 +1730,10 @@ class PangenomeGraph():
         # delegate the graph build to the AAI engine and mirror the result
         # into self.pangenome_graph (a PangenomeGraphManager).
         self.create_pangenome_graph()
+
+        # collapse engine over-splits before per-node alignments are
+        # built, so add_layers walks the unified gene_calls on survivors.
+        self.remerge_nodes()
 
         self.add_layers()
 
@@ -1907,6 +1915,8 @@ class PangenomeGraph():
             'gene_function_sources': ','.join(self.functional_annotation_sources_available),
             # AAI engine parameters
             'min_contig_chain': self.min_contig_chain,
+            'no_include_non_coding_genes': self.no_include_non_coding_genes,
+            'no_remerge': self.no_remerge,
             'locality_window': self.locality_window,
             'min_window_completeness': self.min_window_completeness,
             'min_line_pair_hits': self.min_line_pair_hits,
@@ -2328,6 +2338,174 @@ class PangenomeGraph():
             self.run.info_single("Alignments were found for all nodes and successfully added.")
 
         self._import_layer_values()
+
+
+    def remerge_nodes(self):
+        """Collapse same-parent-GC super-nodes that look like an engine over-split.
+
+        For every parent gene cluster that produced >= 2 super-nodes, walk
+        pairs and merge them when **all four** guards pass:
+
+        1. Same ``component_id`` -- this pass NEVER bridges weakly connected
+           components; cross-component homologs are left alone (use the
+           engine's tuning knobs if you want them pulled in).
+        2. ``nx.lowest_common_ancestor`` is not one of the two nodes -- if
+           it is, the pair is in-series along the same path (real
+           duplication-like topology) and must not be collapsed.  ``None``
+           (no common ancestor) is acceptable: the pair is parallel.
+        3. Disjoint ``gene_calls`` genomes -- merging requires the engine's
+           same-genome-conflict invariant (<=1 gene per genome per node).
+        4. Disjoint ``synteny`` genomes -- redundant with (3) in the
+           current flow but kept as defense in depth.
+
+        When a pair merges, the lower-numbered survivor X absorbs Y:
+        ``gene_calls`` / ``synteny`` / ``layers_data`` are unioned, edges
+        are rewired *manually* (predecessor/successor edges of Y are added
+        onto X, with the ``genomes`` list unioned and ``weight`` refreshed
+        to ``float(len(genomes))``), and Y is removed.  This avoids
+        ``nx.contracted_nodes`` which would silently truncate parallel
+        edge attributes.
+
+        After merging, survivors that started as ``rearrangement`` get
+        retyped to ``core`` (if every genome is now represented) or
+        ``accessory`` (if the merged genome set matches the parent GC's
+        full genome coverage in the pan-db).  ``rna`` / ``duplication`` /
+        ``singleton`` survivors keep their type.
+
+        Component IDs are NOT recomputed -- guard (1) keeps every merge
+        intra-component, so the engine's ``component_id`` attribute stays
+        valid.
+        """
+        if self.no_remerge:
+            self.run.info_single('Remerge step skipped (`--no-remerge`).')
+            return
+
+        self.run.warning("Remerging nodes. This is extremely useful in case of highly sensitive graph creation "
+                         "settings. The algorithm will attempt to find e.g. false rearrangement nodes and join "
+                         "them together as a single synteny gene cluster. Use `--no-remerge` to disable this "
+                         "step if you experience unexpected results. Merges are blocked across weakly "
+                         "connected components and across in-series (ancestor/descendant) pairs.",
+                         header="REMERGING SENSITIVE NODES", lc="green")
+
+        graph = self.pangenome_graph.graph
+
+        # Bucket nodes by parent gene cluster.
+        gc_to_syns = {}
+        for syn, data in graph.nodes(data=True):
+            gc_to_syns.setdefault(data.get('gene_cluster', ''), []).append(syn)
+
+        # Precompute parent_gc -> {unique genomes covered} (pan-mode only;
+        # in non-panmode every node is its own parent_gc so the outer
+        # bucketing loop never finds a pair anyway).
+        parent_gc_genomes = {}
+        if self.pan_super is not None:
+            for genome, gid_map in self.pan_super.gene_callers_id_to_gene_cluster.items():
+                for _gid, gc_name in gid_map.items():
+                    parent_gc_genomes.setdefault(gc_name, set()).add(genome)
+
+        n_genomes_total = len(self.genome_names)
+        original_num_nodes = graph.number_of_nodes()
+        merged_pairs = 0
+        new_core_num = 0
+        new_accessory_num = 0
+
+        for gc, syns in gc_to_syns.items():
+            if len(syns) < 2:
+                continue
+            for syn_a, syn_b in combinations(syns, 2):
+                # Either side may have been absorbed by a prior merge.
+                if syn_a not in graph or syn_b not in graph:
+                    continue
+
+                node_a = graph.nodes[syn_a]
+                node_b = graph.nodes[syn_b]
+
+                # Guard 1: components must match (cheapest check first).
+                if node_a.get('component_id', 0) != node_b.get('component_id', 0):
+                    continue
+
+                # Guard 2: LCA must not be either of the two (in-series).
+                lca = nx.lowest_common_ancestor(graph, syn_a, syn_b)
+                if lca == syn_a or lca == syn_b:
+                    continue
+
+                # Guard 3 / 4: disjoint genome membership.
+                if not set(node_a['gene_calls']).isdisjoint(node_b['gene_calls']):
+                    continue
+                if not set(node_a['synteny']).isdisjoint(node_b['synteny']):
+                    continue
+
+                # Pick survivor X = lower numeric suffix.
+                a_idx = int(syn_a.rsplit('_', 1)[1])
+                b_idx = int(syn_b.rsplit('_', 1)[1])
+                if a_idx <= b_idx:
+                    syn_x, syn_y = syn_a, syn_b
+                else:
+                    syn_x, syn_y = syn_b, syn_a
+                node_x = graph.nodes[syn_x]
+                node_y = graph.nodes[syn_y]
+
+                # Union node-level dicts.
+                node_x['gene_calls'] = {**node_x['gene_calls'], **node_y['gene_calls']}
+                node_x['synteny'] = {**node_x['synteny'], **node_y['synteny']}
+
+                # Layers data (only present when `--import-values` was used).
+                if syn_y in self.layers_data:
+                    sink = self.layers_data.setdefault(syn_x, {})
+                    for k, v in self.layers_data[syn_y].items():
+                        bucket = sink.setdefault(k, [])
+                        bucket.extend(v if isinstance(v, list) else [v])
+                    del self.layers_data[syn_y]
+
+                # Edge rewire: predecessors of Y -> X.
+                for pred in list(graph.predecessors(syn_y)):
+                    if pred == syn_x:
+                        continue
+                    y_edge = graph[pred][syn_y]
+                    y_genomes = set(y_edge.get('genomes', []))
+                    if graph.has_edge(pred, syn_x):
+                        x_edge = graph[pred][syn_x]
+                        merged_g = sorted(set(x_edge.get('genomes', [])) | y_genomes)
+                        x_edge['genomes'] = merged_g
+                        x_edge['weight'] = float(len(merged_g))
+                    else:
+                        graph.add_edge(pred, syn_x, **dict(y_edge))
+
+                # Edge rewire: successors of Y -> X.
+                for succ in list(graph.successors(syn_y)):
+                    if succ == syn_x:
+                        continue
+                    y_edge = graph[syn_y][succ]
+                    y_genomes = set(y_edge.get('genomes', []))
+                    if graph.has_edge(syn_x, succ):
+                        x_edge = graph[syn_x][succ]
+                        merged_g = sorted(set(x_edge.get('genomes', [])) | y_genomes)
+                        x_edge['genomes'] = merged_g
+                        x_edge['weight'] = float(len(merged_g))
+                    else:
+                        graph.add_edge(syn_x, succ, **dict(y_edge))
+
+                graph.remove_node(syn_y)
+                merged_pairs += 1
+
+                # Retype only if survivor began as `rearrangement`.
+                if node_x.get('type') == 'rearrangement':
+                    n_calls = len(node_x['gene_calls'])
+                    if n_calls == n_genomes_total:
+                        node_x['type'] = 'core'
+                        new_core_num += 1
+                    elif gc in parent_gc_genomes and n_calls == len(parent_gc_genomes[gc]):
+                        node_x['type'] = 'accessory'
+                        new_accessory_num += 1
+
+        self.run.info_single(f"{merged_pairs} pair(s) merged; "
+                             f"{original_num_nodes - graph.number_of_nodes()} node(s) removed.")
+        self.run.info_single(f"{new_core_num} node(s) retyped 'rearrangement' -> 'core'.")
+        self.run.info_single(f"{new_accessory_num} node(s) retyped 'rearrangement' -> 'accessory'.")
+
+        if not nx.is_directed_acyclic_graph(graph):
+            raise ConfigError("Cyclic graphs are not implemented. Remerge produced a cycle, which means "
+                              "one of the guards above failed -- please report this with the dataset.")
 
 
     def _import_layer_values(self):

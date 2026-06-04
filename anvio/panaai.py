@@ -23,6 +23,7 @@ import networkx as nx
 import anvio
 import anvio.dbops as dbops
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.genomestorage as genomestorage
 
 from anvio.errors import ConfigError
@@ -511,9 +512,11 @@ def compute_node_types(G, line_to_genome, gene_clusters=None):
       * NOT splits, >1 genome covered       -> ``accessory``
       * NOT splits, exactly 1 genome        -> ``singleton``
 
-    ``rna`` is a valid value in the schema but never assigned here.  In
-    non-panmode (``gene_clusters=None``) every super-node is its own
-    parent GC; only ``core``/``accessory``/``singleton`` are produced.
+    ``rna`` is not assigned here -- the override happens later in
+    :py:func:`compute_rna_overrides`, which consults ``call_type`` from
+    each genome's CONTIGS.db.  In non-panmode (``gene_clusters=None``)
+    every super-node is its own parent GC; only ``core``/``accessory``/
+    ``singleton`` are produced at this stage.
     """
     all_genomes = set(line_to_genome.values())
 
@@ -551,6 +554,87 @@ def compute_node_types(G, line_to_genome, gene_clusters=None):
                 else:
                     G.nodes[n]["type"] = "singleton"
     return G
+
+
+def compute_rna_overrides(G, genome_calls, line_to_genome):
+    """Re-type super-nodes whose gene calls are *all* non-coding as ``rna``.
+
+    Uses anvi'o's ``gene_call_types`` enum (CODING=1, NONCODING=2,
+    UNKNOWN=3) from ``constants``; any call_type other than CODING is
+    treated as non-coding.  A super-node is re-typed only if every gene
+    endpoint inside it resolves to a non-CODING call.  Nodes whose call
+    type can't be resolved (unknown genome, gid not in genome_calls, or
+    missing call_type) are left untouched -- the override is conservative.
+
+    In practice non-coding gene calls have no DIAMOND hits (DIAMOND runs
+    on translated proteins), so they survive as singleton super-nodes and
+    only one endpoint needs checking.  The all-endpoints rule is here so
+    that any future fusion involving a non-coding gid would not silently
+    mistype a mixed super-node.
+
+    Mutates G in place and returns it.
+    """
+    CODING = constants.gene_call_types['CODING']
+
+    call_type_lookup = {}
+    for genome, calls in (genome_calls or {}).items():
+        for c in calls:
+            call_type_lookup[(genome, c['gene_callers_id'])] = c.get('call_type')
+
+    n_overridden = 0
+    for node, attrs in G.nodes(data=True):
+        endpoints = attrs.get('genes', ())
+        if not endpoints:
+            continue
+        all_non_coding = True
+        any_resolved = False
+        for endpoint in endpoints:
+            line_name, sep, gid_str = endpoint.rpartition(':')
+            if not sep or not gid_str.isdigit():
+                all_non_coding = False
+                break
+            genome = line_to_genome.get(line_name)
+            if genome is None:
+                all_non_coding = False
+                break
+            ct = call_type_lookup.get((genome, int(gid_str)))
+            if ct is None:
+                all_non_coding = False
+                break
+            any_resolved = True
+            if ct == CODING:
+                all_non_coding = False
+                break
+        if any_resolved and all_non_coding:
+            G.nodes[node]['type'] = 'rna'
+            n_overridden += 1
+    return G, n_overridden
+
+
+def _drop_non_coding_nodes(G):
+    """Remove every node typed ``rna`` from G, re-stitching gene-order
+    edges so line continuity is preserved.
+
+    For each dropped node, every predecessor is connected to every
+    successor with a ``kind='gene_order'`` edge (no duplicate edges are
+    added).  Processing order is irrelevant: bridges added during earlier
+    iterations are simply visible to later ones, and after the final
+    ``remove_nodes_from`` only the bridges between non-RNA nodes remain.
+
+    Returns the number of nodes dropped.
+    """
+    rna_nodes = [n for n, d in G.nodes(data=True) if d.get('type') == 'rna']
+    if not rna_nodes:
+        return 0
+    for r in rna_nodes:
+        for p in list(G.predecessors(r)):
+            for s in list(G.successors(r)):
+                if p == s:
+                    continue
+                if not G.has_edge(p, s):
+                    G.add_edge(p, s, kind="gene_order")
+    G.remove_nodes_from(rna_nodes)
+    return len(rna_nodes)
 
 
 def compute_component_ids(G):
@@ -675,6 +759,12 @@ class PangenomeAAIEngine():
 
         # Filtering.
         self.min_contig_chain = A('min_contig_chain')
+        # Include non-coding (RNA, etc.) gene calls in the graph as
+        # singleton super-nodes.  Default-on so behavior matches the
+        # historical graph (where these tokens already appeared as
+        # GC_UNKNOWN_N / GC_XXXXXXXX_N singletons); flip off via the CLI
+        # to drop them before component-id / layout passes.
+        self.no_include_non_coding_genes = bool(A('no_include_non_coding_genes'))
 
         # Optional debug output.
         self.tables_dir = A('tables_dir')
@@ -1345,6 +1435,7 @@ class PangenomeAAIEngine():
                                  mc='yellow')
         else:
             self.run.info('Gene-cluster assignments', pp(len(gene_clusters)))
+        self.run.info('Include non-coding genes', self.no_include_non_coding_genes)
 
         # 1. Read GENOMES.db.
         hash_to_genome = self._load_genome_hash_map()
@@ -1419,10 +1510,24 @@ class PangenomeAAIEngine():
         self.run.info('Fuses rejected',
                       f"{len(rejected_edges)} ({dict(reasons) if reasons else '{}'})")
 
-        # 10. Post-processing: rename, type, component id.
+        # 10. Post-processing: rename, type, RNA override, drop, component id.
         G = rename_pangenome_nodes(
             G, gene_clusters=gene_clusters, line_to_genome=line_to_genome)
         G = compute_node_types(G, line_to_genome, gene_clusters=gene_clusters)
+
+        # Re-type non-coding singletons to 'rna' based on CONTIGS.db call_type
+        # (this corrects pan-mode's pre-override mistyping of stacked
+        # GC_UNKNOWN_N nodes as 'rearrangement').
+        G, n_rna_typed = compute_rna_overrides(G, genome_calls, line_to_genome)
+        self.run.info('Non-coding nodes re-typed as `rna`', pp(n_rna_typed))
+
+        # Optionally drop them (default-off: --no-include-non-coding-genes).
+        if self.no_include_non_coding_genes:
+            n_dropped = _drop_non_coding_nodes(G)
+            self.run.info('Non-coding nodes dropped', pp(n_dropped), mc='yellow')
+        else:
+            self.run.info_single('Non-coding nodes kept as singletons.')
+
         G = compute_component_ids(G)
 
         type_counts = Counter(d.get("type", "") for _, d in G.nodes(data=True))
