@@ -309,8 +309,6 @@ class PangenomeGraphManager():
         be empty DataFrames if the requested component is empty or contains
         no nodes whose x-position falls inside any region span.
         """
-        self.false_annotation_details = []
-
         nodes_in_component = [n for n, d in self.graph.nodes(data=True)
                               if d.get('component_id', 0) == component_id]
         if not nodes_in_component:
@@ -327,14 +325,9 @@ class PangenomeGraphManager():
         num_genomes = len(genome_names)
 
         all_positions = sorted({d['position'][0] for _, d in G.nodes(data=True)})
-        edge_pos_dict = self._collect_edge_positions(G)
-        core_positions = self._filter_false_cores(G, edge_pos_dict, num_genomes)
-
-        case_counts = Counter((r['current_type'], r['suggested_type'])
-                              for r in self.false_annotation_details)
-        for (current, suggested), n in sorted(case_counts.items()):
-            self.run.info_single(
-                f"{n} position{'s' if n != 1 else ''} potentially {suggested} instead of {current}")
+        core_positions = sorted({d['position'][0]
+                                 for _, d in G.nodes(data=True)
+                                 if len(d['gene_calls'].keys()) == num_genomes})
 
         regions_dict = self._assign_region_ids(core_positions, all_positions, component_id)
 
@@ -355,46 +348,6 @@ class PangenomeGraphManager():
         gene_calls_df = self._build_gene_calls_df(G)
 
         return region_sides_df, nodes_df, gene_calls_df
-
-
-    def _collect_edge_positions(self, G):
-        """For each x column, accumulate the set of y rows touched by any
-        edge endpoint or route cell. Used to detect core x-columns whose
-        node stacks are wider than the typical core stack."""
-        edge_pos_dict = {}
-        for edge_i, edge_j, data in G.edges(data=True):
-            cells = [G.nodes[edge_i]['position'], G.nodes[edge_j]['position']]
-            cells.extend(data.get('route', []))
-            for x, y in cells:
-                edge_pos_dict.setdefault(x, set()).add(y)
-        return edge_pos_dict
-
-
-    def _filter_false_cores(self, G, edge_pos_dict, num_genomes):
-        """Find core x-positions (where a node touches every genome) and
-        drop those whose stack is taller than the modal core stack — those
-        are likely rearrangement clusters that just happen to span all
-        genomes."""
-        core_positions = sorted({d['position'][0]
-                                 for _, d in G.nodes(data=True)
-                                 if len(d['gene_calls'].keys()) == num_genomes})
-
-        core_pos_num_y = {p: len(edge_pos_dict.get(p, ())) for p in core_positions}
-        values = list(core_pos_num_y.values())
-        mode_position = max(set(values), key=values.count) if values else 0
-
-        for core_position, num_y in list(core_pos_num_y.items()):
-            if num_y > mode_position and core_position in core_positions:
-                core_positions.remove(core_position)
-                self.false_annotation_details.append({
-                    'position': core_position,
-                    'current_type': 'core',
-                    'suggested_type': 'rearrangement',
-                    'stack_height': num_y,
-                    'modal_stack_height': mode_position,
-                })
-
-        return core_positions
 
 
     def _assign_region_ids(self, core_positions, all_positions, component_id):
