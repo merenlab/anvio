@@ -18,7 +18,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ahenoch', 'meren']
 __requires__ = ['pan-graph-db']
-__provides__ = ['interactive', 'svg']
+__provides__ = ['interactive']
+__can_provide__ = ['svg']
 __description__ = "Start an anvi'o interactive interface to view pan graphs."
 
 
@@ -28,6 +29,7 @@ def main():
     progress = terminal.Progress()
 
     try:
+        utils.is_all_npm_packages_installed()
         d = interactive.PangraphInteractive(args, run=run, progress=progress)
 
         if args.dry_run:

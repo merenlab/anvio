@@ -208,6 +208,7 @@ class BottleApplication(Bottle):
         self.route('/pangraph/get_pangraph_synteny_gene_cluster_search_result',   callback=self.get_pangraph_synteny_gene_cluster_search_result, method="POST")
         self.route('/pangraph/get_pangraph_synteny_gc_functions_and_metabolism',  callback=self.get_pangraph_synteny_gc_functions_and_metabolism, method="POST")
         self.route('/pangraph/session_id',                                        callback=self.get_pangraph_session_id)
+        self.route('/pangraph/store_description',                                 callback=self.store_pangraph_description, method='POST')
 
 
     def run_application(self, ip, port):
@@ -1030,14 +1031,14 @@ class BottleApplication(Bottle):
 
     def store_description(self):
         if self.read_only:
-            return
+            return json.dumps({'status': 1, 'message': 'Server is in read-only mode.'})
 
         description = request.forms.get('description')
 
         db_path = self.interactive.pan_db_path or self.interactive.profile_db_path
         dbops.update_description_in_db(db_path, description)
         self.interactive.p_meta['description'] = description
-        return json.dumps("")
+        return json.dumps({'status': 0})
 
 
     def get_sequence_for_split(self, split_name):
@@ -1641,34 +1642,32 @@ class BottleApplication(Bottle):
 
 
     def save_pangraph_state(self):
+        if self.read_only:
+            return json.dumps({'status_code': '0'})
+
         try:
             payload = request.json
             state_name = payload['state_name']
             state_dict = payload['state_values']
             self.interactive.save_state(state_dict, state_name)
-            return(json.dumps({'status': 0}))
-        except:
-            return(json.dumps({'status': 1}))
+            return json.dumps({'status_code': '1'})
+        except Exception as e:
+            return json.dumps({'status_code': '0', 'error': str(e)})
 
     def load_pangraph_state(self):
-
         try:
             payload = request.json
             state_name = payload['state_name']
             self.interactive.load_state(state=state_name, order='default')
-
             data = self.interactive.get_json()
-            return(json.dumps({'status': 0, 'data': data}))
-        except:
-            return(json.dumps({'status': 1, 'data': ''}))
-
+            return json.dumps({'status': 0, 'data': data})
+        except Exception as e:
+            return json.dumps({'status': 1, 'message': str(e)})
 
     def get_pangraph_states(self):
-        try:
-            data = self.interactive.get_states()
-            return(json.dumps({'status': 0, 'data': data}))
-        except:
-            return(json.dumps({'status': 1, 'data': ''}))
+        states_info = {name: {'last_modified': info['last_modified']}
+                       for name, info in self.interactive.states.items()}
+        return json.dumps(states_info)
 
 
     def get_pangraph_json_data(self):
@@ -1681,6 +1680,16 @@ class BottleApplication(Bottle):
 
     def get_pangraph_session_id(self):
         return json.dumps(self.session_id)
+
+
+    def store_pangraph_description(self):
+        if self.read_only:
+            return json.dumps({'status': 1, 'message': 'Server is in read-only mode.'})
+
+        description = request.forms.get('description')
+        dbops.update_description_in_db(self.interactive.pan_graph_db_path, description)
+        self.interactive.p_meta['description'] = description
+        return json.dumps({'status': 0})
 
 
     def initial_pangraph_json_data(self):

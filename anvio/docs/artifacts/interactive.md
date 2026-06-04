@@ -147,6 +147,7 @@ Anvi'o allows you to create selections of items shown in the display (whether th
   - __Load / Store bins collection__: when you are satisfied with your collection of bins, you can save them. You can have as many collections of bins as you want and you can load them later.
   - __Generate a static summary page__: runs %(anvi-summarize)s in the background with the collection of your choice. For more information check %(anvi-summarize)s.
   - __Recalculate / Show Taxonomy for Bins__: (only visible when using %(anvi-interactive)s) related to the top most checkbox "Realtime taxonomy estimation for bins". If you ran %(anvi-run-scg-taxonomy)s, then anvi'o will be able to display realtime taxonomy estimation of your bin based on the consensus taxonomy of annotated Ribosomal Proteins included in the bins. Not available if you did not run %(anvi-run-scg-taxonomy)s and if there are no compatible Ribosomal Proteins. When clicking on the Show Taxonomy for Bins, you can get a detailed view of individual Ribosomal Proteins gene per bins, and their individual taxonomy estimation as well as the bin's consensus taxonomy estimation. It is a great complement to the completion/redundancy estimation when assessing bin's completeness and potential contamination.
+  - __Select contigs rather than splits__: (only visible when using %(anvi-interactive)s) when this checkbox is enabled, selecting any split in the display will automatically select all other splits that belong to the same parent contig. This is useful when you want to bin at the contig level rather than the split level, ensuring that no contig is ever split across multiple bins.
 
 ### Data tab
 
@@ -191,7 +192,7 @@ At the very bottom of the Search tab are a few buttons to view and explore the r
 ![search view](../../images/interactive_interface/search_view.png){:.center-img .width-70}
 
   - __List Results__: there you can choose to display the detail of the searched items. By clicking on that button, a table will appear with the details of the items matching your search.
-  - __Highlight the search__: you can highlight the items matching the search by clicking, change the color of the highlight and remove any existing highlight.
+  - __Highlight the search__: you can highlight the items matching the search by clicking, change the color of the highlight and remove any existing highlight. When the highlight comes from a __Search functions__ query, opening one of those splits in the inspect page (%(anvi-inspect)s) will also highlight the gene(s) that matched, so you can spot them at a glance instead of clicking through every gene.
   - __Append/Remove items from selected bin__: you can choose to add the items matching your search to the current bin, or to remove them from your current bin.
 
 ### News tab

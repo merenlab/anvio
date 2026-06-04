@@ -18,8 +18,10 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['functions', 'genomes-storage-db', 'internal-genomes', 'external-genomes', 'groups-txt']
-__provides__ = ['functional-enrichment-txt', 'functions-across-genomes-txt']
+__requires__ = ['functions', 'external-genomes']
+__can_use__ = ['internal-genomes', 'genomes-storage-db', 'groups-txt']
+__provides__ = ['functions-across-genomes-txt']
+__can_provide__ = ['functional-enrichment-txt']
 __description__ = "A program to generate reports for the distribution of functions across genomes"
 
 

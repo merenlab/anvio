@@ -1,3 +1,14 @@
+const description_panel = new DescriptionPanel('/pangraph/store_description');
+
+function showFetchOverlay(message) {
+    $('#fetch-overlay-message').text(message || 'Loading...');
+    $('#fetch-overlay').css('display', 'flex');
+}
+
+function hideFetchOverlay() {
+    $('#fetch-overlay').hide();
+}
+
 class PangenomeGraphUserInterface {
     constructor() {
         this.bin_dict = {'bin_1': []};
@@ -70,6 +81,8 @@ class PangenomeGraphUserInterface {
         this.flextree_change = this.flextree_change.bind(this);
         this.save_bin = this.save_bin.bind(this);
         this.load_bin = this.load_bin.bind(this);
+        this.show_save_state_modal = this.show_save_state_modal.bind(this);
+        this.show_load_state_modal = this.show_load_state_modal.bind(this);
         this.save_state = this.save_state.bind(this);
         this.load_state = this.load_state.bind(this);
         this.set_UI_settings = this.set_UI_settings.bind(this);
@@ -124,7 +137,6 @@ class PangenomeGraphUserInterface {
         var node_size = parseFloat($('#size')[0].value);
         var node_thickness = parseFloat($('#circ')[0].value);
         var edge_thickness = parseFloat($('#edge')[0].value);
-        var line_thickness = parseFloat($('#line')[0].value);
         var track_line_width = parseFloat($('#track_line_width')[0].value);
         var node_distance_x = parseFloat($('#distx')[0].value);
         var node_distance_y = parseFloat($('#disty')[0].value);
@@ -435,9 +447,9 @@ class PangenomeGraphUserInterface {
                     var dir_set = Object.values(edge['directions'])
     
                     if (dir_set.includes('L') && dir_set.includes('R')) {
-                        var stroke = ' stroke-dasharray="' + line_thickness * 4 + ' ' + line_thickness + '" '
+                        var stroke = ' stroke-dasharray="' + edge_thickness * 4 + ' ' + edge_thickness + '" '
                     } else if (dir_set.includes('L')) {
-                        var stroke = ' stroke-dasharray="' + line_thickness + '" '
+                        var stroke = ' stroke-dasharray="' + edge_thickness + '" '
                     } else {
                         var stroke = ''
                     }
@@ -1437,7 +1449,7 @@ class PangenomeGraphUserInterface {
         return(result)
     }
     
-    start_draw() {
+    start_draw(on_complete) {
         var new_settings_dict = {};
         
         new_settings_dict['condtr'] = parseInt($('#condtr')[0].value);
@@ -1462,6 +1474,11 @@ class PangenomeGraphUserInterface {
                 this.settings_dict = JSON.parse(JSON.stringify(new_settings_dict));
                 this.main_draw();
                 $('#svgbox').css('opacity', '');
+                if (on_complete) requestAnimationFrame(() => requestAnimationFrame(on_complete));
+                if (!this._description_panel_shown && description_panel.description) {
+                    this._description_panel_shown = true;
+                    description_panel.show();
+                }
             },
             error: (err) => {
                 $('#svgbox').css('opacity', '');
@@ -2342,6 +2359,8 @@ class PangenomeGraphUserInterface {
                 this.initialize_variables();
                 this.initialize_user_interface();
                 this.set_UI_settings();
+                description_panel.setup(this.data['meta']['description']);
+                this.start_draw(toggleLeftPanel);
             },
             error: (err) => {
                 toastr.error('Could not reach the server during initialization.', 'Initialization error', { 'timeOut': '0', 'extendedTimeOut': '0' });
@@ -2669,55 +2688,140 @@ class PangenomeGraphUserInterface {
     }
 
     set_UI_settings() {
+        const state = this.data['states'];
 
-        var genome_order = []
-
-        for (var [setting, value] of Object.entries(this.data['states'])) {
-            const el = $('#' + setting);
-            if (el.hasClass('pangraph-colorpicker')) {
-                // colpick element: set background and color attribute
-                const hex = value.replace('#', '');
-                el.css('background-color', value).attr('color', value);
-                el.colpickSetColor(hex);
-            } else if (typeof value === 'number') {
-                el[0].value = value;
-            } else if (value == true || value == false) {
-                el.prop('checked', value);
-            } else {
-                el[0].value = value;
-            }
-
-            if (this.genomes.includes(setting)) {
-                genome_order.push(setting)
-            }
-        }
-
-        var container = document.getElementById('genomecolors');
-
-        genome_order.forEach(id => {
-            var element = document.getElementById(id + '_row');
-            if (element) {
-                container.appendChild(element);
-            }
-        });
-
-        // If max edge length filter was never set (legacy -1 default), apply the new default.
-        if (parseInt($('#maxlength')[0].value) === -1) {
-            $('#maxlength')[0].value = 1000;
-            $('#flexmaxlength').prop('checked', true);
-        }
-
-        for(var [layer, max_value] of Object.entries(this.layers_max)) {
-            $('#' + layer + '_max')[0].value = max_value;
-        }
-
-        for(var [layer, min_value] of Object.entries(this.layers_min)) {
-            $('#' + layer + '_min')[0].value = min_value;
-        }
-
-        const isLinear = $('#flexlinear').prop('checked');
+        // drawing
+        const isLinear = state['drawing']['type'] === 'linear';
+        $('#flexlinear').prop('checked', isLinear);
         $('#drawing_type_select').val(isLinear ? 'linear' : 'circular');
         $('#radius_row').toggle(!isLinear);
+        $('#inner')[0].value = state['drawing']['inner_radius'];
+        $('#start_angle')[0].value = state['drawing']['start_angle'];
+        $('#end_angle')[0].value = state['drawing']['end_angle'];
+        $('#distx')[0].value = state['drawing']['node_x_spacing'];
+        $('#disty')[0].value = state['drawing']['node_y_spacing'];
+
+        // nodes
+        $('#size')[0].value = state['nodes']['radius'];
+        $('#circ')[0].value = state['nodes']['outline_width'];
+        $('#flexsaturation').prop('checked', state['nodes']['fade_by_prevalence']);
+        const tc = state['nodes']['type_colors'];
+        for (const [id, color] of Object.entries({
+            'core_color': tc['core'],
+            'rearranged_color': tc['rearrangement'],
+            'accessory_color': tc['accessory'],
+            'paralog_color': tc['multi_copy'],
+            'singleton_color': tc['singleton'],
+            'trna_color': tc['trna']
+        })) {
+            $('#' + id).css('background-color', color).attr('color', color);
+            $('#' + id).colpickSetColor(color.replace('#', ''));
+        }
+
+        // edges
+        $('#edge')[0].value = state['edges']['width'];
+
+        // graph_layout
+        const gl = state['graph_layout'];
+        $('#flexcondtr').prop('checked', gl['grouping_enabled']);
+        $('#condtr')[0].value = gl['grouping_threshold'];
+        $('#flexmaxlength').prop('checked', gl['max_edge_length_enabled']);
+        $('#maxlength')[0].value = gl['max_edge_length'];
+        $('#flexgroupcompress').prop('checked', gl['group_compression_enabled']);
+        $('#groupcompress')[0].value = gl['group_compression'];
+
+        // layers
+        const lyr = state['layers'];
+        $('#flexglobalbackbone').prop('checked', lyr['backbone']['visible']);
+        $('#globalbackbone')[0].value = lyr['backbone']['height'];
+        for (const [id, color] of Object.entries({
+            'back_color': lyr['backbone']['backbone_color'],
+            'non_back_color': lyr['backbone']['variable_region_color']
+        })) {
+            $('#' + id).css('background-color', color).attr('color', color);
+            $('#' + id).colpickSetColor(color.replace('#', ''));
+        }
+        $('#flexarrow').prop('checked', lyr['orientation_arrow']['visible']);
+        $('#arrow')[0].value = lyr['orientation_arrow']['height'];
+        $('#search_hit')[0].value = lyr['search']['hit_height'];
+
+        // layers_tree
+        const lt = state['layers_tree'];
+        $('#flextree').prop('checked', lt['visible']);
+        $('#tree_length')[0].value = lt['height'];
+        $('#tree_offset')[0].value = lt['offset'];
+        $('#tree_thickness')[0].value = lt['line_width'];
+
+        // genome_tracks
+        const gt = state['genome_tracks'];
+        $('#track_line_width')[0].value = gt['line_width'];
+        const bgColor = gt['background_color'];
+        $('#layer_color').css('background-color', bgColor).attr('color', bgColor);
+        $('#layer_color').colpickSetColor(bgColor.replace('#', ''));
+
+        const genome_order = [];
+        for (const [genome, gdata] of Object.entries(gt['genomes'])) {
+            $('#flex' + genome).prop('checked', gdata['show']);
+            const gc = gdata['color'];
+            $('#' + genome).css('background-color', gc).attr('color', gc);
+            $('#' + genome).colpickSetColor(gc.replace('#', ''));
+            $('#flex' + genome + 'layer').prop('checked', gdata['show_track']);
+            $('#' + genome + 'layer')[0].value = gdata['track_height'];
+            genome_order.push(genome);
+        }
+
+        // imported_layers
+        const il = state['imported_layers'] || {};
+        for (const [layer, ldata] of Object.entries(il)) {
+            $('#flex' + layer).prop('checked', ldata['visible']);
+            const lel = $('#' + layer);
+            if (lel.length) lel[0].value = ldata['height'];
+        }
+
+        // labels
+        const lbl = state['labels'];
+        $('#label')[0].value = lbl['font_size'];
+        $('#label_offset')[0].value = lbl['offset'];
+        $('#num_position')[0].value = lbl['position_tick_count'];
+
+        // margins
+        $('#inner_margin')[0].value = state['margins']['inner'];
+        $('#outer_margin')[0].value = state['margins']['outer'];
+
+        // region_labels
+        const rl = state['region_labels'];
+        $('#region_label_size')[0].value = rl['font_size'];
+        $('#region_label_min_width')[0].value = rl['min_width_px'];
+        $('#region_label_distance')[0].value = rl['distance'];
+
+        // bins
+        const bins = state['bins'];
+        $('#flexbinlabels').prop('checked', bins['show_labels']);
+        $('#bin_label_orientation')[0].value = bins['label_orientation'];
+        $('#bin_label_size')[0].value = bins['label_font_size'];
+        $('#bin_ring_height')[0].value = bins['ring_height'];
+        $('#bin_ring_opacity')[0].value = bins['ring_opacity'];
+        $('#flexbinedges').prop('checked', bins['show_edges']);
+        $('#bin_edge_thickness')[0].value = bins['edge_thickness'];
+        const beColor = bins['edge_color'];
+        $('#bin_edge_color').css('background-color', beColor).attr('color', beColor);
+        $('#bin_edge_color').colpickSetColor(beColor.replace('#', ''));
+        $('#bin_edge_opacity')[0].value = bins['edge_opacity'];
+
+        // restore genome row order in the genomecolors container
+        const container = document.getElementById('genomecolors');
+        genome_order.forEach(id => {
+            const element = document.getElementById(id + '_row');
+            if (element) container.appendChild(element);
+        });
+
+        // imported layer data min/max values
+        for (const [layer, max_value] of Object.entries(this.layers_max)) {
+            $('#' + layer + '_max')[0].value = max_value;
+        }
+        for (const [layer, min_value] of Object.entries(this.layers_min)) {
+            $('#' + layer + '_min')[0].value = min_value;
+        }
     }
 
     initialize_user_interface() {
@@ -3162,8 +3266,8 @@ class PangenomeGraphUserInterface {
         $('#AlignmentDownload').on("click", this.alignment_download);
         $('#InfoDownload').on("click", this.info_download);
 
-        $('#stateload').on("click", () => this.state_modal('load'));
-        $('#statesave').on("click", () => this.state_modal('save'));
+        $('#stateload').on("click", this.show_load_state_modal);
+        $('#statesave').on("click", this.show_save_state_modal);
         $('#binload').on("click", this.load_bin);
         $('#binsave').on("click", this.save_bin);
 
@@ -3175,9 +3279,9 @@ class PangenomeGraphUserInterface {
             handle: '.user-handle',
             items: 'div'
         });
-        this.settings_dict['condtr'] = JSON.parse(JSON.stringify(this.data['states']['condtr']))
-        this.settings_dict['maxlength'] = JSON.parse(JSON.stringify(this.data['states']['maxlength']))
-        this.settings_dict['groupcompress'] = JSON.parse(JSON.stringify(this.data['states']['groupcompress']))
+        this.settings_dict['condtr'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['grouping_threshold']))
+        this.settings_dict['maxlength'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['max_edge_length']))
+        this.settings_dict['groupcompress'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['group_compression']))
         this.settings_dict['state'] = JSON.parse(JSON.stringify(this.data['meta']['state']))
 
         // Delegated handlers for amino acid conservation checkboxes in the alignment modal
@@ -3257,16 +3361,16 @@ class PangenomeGraphUserInterface {
             toastr.error('The server is no longer accessible.', 'Request failed');
             return;
         }
-        waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
+        showFetchOverlay('Fetching functions and metabolism data...');
         let all_info;
         try {
             all_info = await this.get_gene_cluster_display_tables(gcid, gene_cluster_context, 1, true);
         } catch(err) {
-            waitingDialog.hide();
             toastr.error('Could not load data.', "Request failed");
             return;
+        } finally {
+            hideFetchOverlay();
         }
-        waitingDialog.hide();
 
         const title = `Synteny gene cluster: ${gcid}`;
         showPangraphFunctionsSummaryTableDialog(title, all_info);
@@ -3583,18 +3687,17 @@ class PangenomeGraphUserInterface {
             toastr.error('The server is no longer accessible.', 'Request failed');
             return;
         }
-        waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
+        showFetchOverlay('Fetching functions and metabolism data...');
 
         let response;
         try {
             response = await this.fetch_functions_and_metabolism(sgc_ids);
         } catch(err) {
-            waitingDialog.hide();
             toastr.error('Could not reach the functions endpoint.', "Request failed");
             return;
+        } finally {
+            hideFetchOverlay();
         }
-
-        waitingDialog.hide();
 
         if (!response || response.status !== 0) {
             toastr.error((response && response.message) || 'Could not load functional annotations.', "Server error");
@@ -3687,18 +3790,17 @@ class PangenomeGraphUserInterface {
             toastr.error('The server is no longer accessible.', 'Request failed');
             return;
         }
-        waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
+        showFetchOverlay('Fetching functions and metabolism data...');
 
         let response;
         try {
             response = await this.fetch_functions_and_metabolism(sgc_ids);
         } catch(err) {
-            waitingDialog.hide();
             toastr.error('Could not reach the functions endpoint.', "Request failed");
             return;
+        } finally {
+            hideFetchOverlay();
         }
-
-        waitingDialog.hide();
 
         if (!response || response.status !== 0) {
             toastr.error((response && response.message) || 'Could not load functional annotations.', "Server error");
@@ -4070,114 +4172,217 @@ class PangenomeGraphUserInterface {
         new LoadCollectionDialog(importFn).Show();
     }
 
-    load_state () {
-        if ($('#loadstatename')[0].value != "") {
-            this.state = $('#loadstatename')[0].value
-
-            var state = {}
-            state['state_name'] = this.state
-    
-            $.ajax({
-                url: "/pangraph/load_pangraph_state",
-                type: "POST",
-                cache: false,
-                contentType: "application/json",
-                dataType: "json",
-                data: JSON.stringify(state),
-                success: (data) => {
-                    this.data = data['data'];
-                    this.initialize_variables();
-                    this.set_UI_settings();
-                    this.main_draw();
-                    toastr.success(`State "${this.state}" has been loaded.`, 'State loaded');
-                },
-                error: (err) => {
-                    toastr.error('Failed to load state.', 'Error');
-                }
-            })
-            
-            $('#loadstatemodal').modal('hide');
-        }
-    }
-    
-    save_state () {
-        var new_state = {}
-        
-        for (var [setting, value] of Object.entries(this.data['states'])) {
-            const el = $('#' + setting);
-            if (el.hasClass('pangraph-colorpicker')) {
-                new_state[setting] = el.attr('color');
-            } else if (typeof value === 'number') {
-                new_state[setting] = Number(el[0].value);
-            } else if (value == true || value == false) {
-                new_state[setting] = el.prop('checked');
-            } else {
-                new_state[setting] = el[0].value;
-            }
-        }
-
-        var genome_order = [...document.getElementById("genomecolors").children]
-            .filter(element => element.classList.contains("col-12"))
-            .map(element => element.id.replace('_row', ''));
-
-        genome_order.forEach(key => {
-            if (key in new_state) {
-              const value = new_state[key];
-              delete new_state[key];
-              new_state[key] = value;
-            }
-        });
-         
-        var result = {}
-        result['state_name'] = $('#savestatename')[0].value
-        result['state_values'] = new_state
-
-        $.ajax({
-            url: "/pangraph/save_pangraph_state",
-            type: "POST",
-            data: JSON.stringify(result),
-            contentType: "application/json",
-            dataType: "json",
-            error: function(){
-                toastr.error('Failed to save state.', 'Error');
-            },
-            success: function(){
-                toastr.success(`State "${result['state_name']}" has been saved.`, 'State saved');
-            }
-        })
-        
-        $('#savestatemodal').modal('hide');
-    }
-    
-    state_modal (save_load) {
-
+    show_save_state_modal () {
         $.ajax({
             type: 'GET',
             cache: false,
             url: '/pangraph/get_pangraph_states',
-            success: function(data) {
-
-                $('#' + save_load + 'statelisttab').empty()
-                $('#' + save_load + 'statename')[0].value = ""
-                
-                for (var state_name of data['data']) {
-                    $('#' + save_load + 'statelisttab').append(
-                        $('<a class="list-group-item list-group-item-action" id="list-profile-list" data-toggle="list" href="#list-profile" role="tab" aria-controls="profile">').append(
-                            state_name
-                        )
-                    )
+            success: (state_list) => {
+                $('#savestatelist').empty();
+                for (let state_name in state_list) {
+                    const selected = (state_name === this.state) ? ' selected="selected"' : '';
+                    $('#savestatelist').append(`<option${selected}>${state_name}</option>`);
                 }
-    
-                $('#' + save_load + 'statelisttab a').on('click', function (e) {
-                    e.preventDefault()
-                    $(this).tab('show')
-                    $('#' + save_load + 'statename')[0].value = $(this)[0].innerText
-                })
-    
-                $('#' + save_load + 'statemodal').modal('show');
+                if ($('#savestatelist').val() === null) {
+                    $('#savestatename').val('default');
+                } else {
+                    $('#savestatelist').trigger('change');
+                }
+                $('#savestatemodal').modal('show');
             }
         });
     }
+
+    show_load_state_modal () {
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/pangraph/get_pangraph_states',
+            success: (state_list) => {
+                $('#loadstatename').empty();
+                for (let state_name in state_list) {
+                    $('#loadstatename').append(`<option lastmodified="${state_list[state_name]['last_modified']}">${state_name}</option>`);
+                }
+                $('#loadstate_lastmodified').html('Last modified: n/a');
+                $('#loadstatemodal').modal('show');
+            }
+        });
+    }
+
+    load_state () {
+        const state_name = $('#loadstatename').val();
+        if (!state_name) return;
+
+        $('#loadstatemodal').modal('hide');
+
+        $.ajax({
+            url: "/pangraph/load_pangraph_state",
+            type: "POST",
+            cache: false,
+            contentType: "application/json",
+            dataType: "json",
+            data: JSON.stringify({state_name: state_name}),
+            success: (response) => {
+                if (response['status'] != 0) {
+                    toastr.error('Failed to load state: ' + (response['message'] || 'unknown error'), 'Error');
+                    return;
+                }
+                this.state = state_name;
+                this.data = response['data'];
+                this.initialize_variables();
+                this.set_UI_settings();
+                this.main_draw();
+                toastr.success(`State "${this.state}" has been loaded.`, 'State loaded');
+            },
+            error: () => {
+                toastr.error('Failed to load state.', 'Error');
+            }
+        });
+    }
+
+    save_state () {
+        const name = $('#savestatename').val();
+        if (!name || name.length === 0) {
+            $('#savestatename').focus();
+            return;
+        }
+
+        const state_exists = Array.from($('#savestatelist option')).some(o => o.value === name);
+        if (state_exists && !confirm(`"${name}" already exists, do you want to overwrite it?`)) {
+            return;
+        }
+
+        const genome_order = [...document.getElementById("genomecolors").children]
+            .filter(el => el.classList.contains("col-12"))
+            .map(el => el.id.replace('_row', ''));
+
+        const genomes_state = {};
+        for (const genome of genome_order) {
+            genomes_state[genome] = {
+                color: $('#' + genome).attr('color'),
+                show: $('#flex' + genome).prop('checked'),
+                track_height: Number($('#' + genome + 'layer')[0].value),
+                show_track: $('#flex' + genome + 'layer').prop('checked')
+            };
+        }
+
+        const imported_layers_state = {};
+        for (const layer of this.layers) {
+            imported_layers_state[layer] = {
+                visible: $('#flex' + layer).prop('checked'),
+                height: Number($('#' + layer)[0].value)
+            };
+        }
+
+        const new_state = {
+            drawing: {
+                type: $('#drawing_type_select').val(),
+                inner_radius: Number($('#inner')[0].value),
+                start_angle: Number($('#start_angle')[0].value),
+                end_angle: Number($('#end_angle')[0].value),
+                node_x_spacing: Number($('#distx')[0].value),
+                node_y_spacing: Number($('#disty')[0].value)
+            },
+            nodes: {
+                radius: Number($('#size')[0].value),
+                outline_width: Number($('#circ')[0].value),
+                fade_by_prevalence: $('#flexsaturation').prop('checked'),
+                type_colors: {
+                    core: $('#core_color').attr('color'),
+                    rearrangement: $('#rearranged_color').attr('color'),
+                    accessory: $('#accessory_color').attr('color'),
+                    multi_copy: $('#paralog_color').attr('color'),
+                    singleton: $('#singleton_color').attr('color'),
+                    trna: $('#trna_color').attr('color')
+                }
+            },
+            edges: {
+                width: Number($('#edge')[0].value)
+            },
+            graph_layout: {
+                grouping_enabled: $('#flexcondtr').prop('checked'),
+                grouping_threshold: Number($('#condtr')[0].value),
+                max_edge_length_enabled: $('#flexmaxlength').prop('checked'),
+                max_edge_length: Number($('#maxlength')[0].value),
+                group_compression_enabled: $('#flexgroupcompress').prop('checked'),
+                group_compression: Number($('#groupcompress')[0].value)
+            },
+            layers: {
+                backbone: {
+                    visible: $('#flexglobalbackbone').prop('checked'),
+                    height: Number($('#globalbackbone')[0].value),
+                    backbone_color: $('#back_color').attr('color'),
+                    variable_region_color: $('#non_back_color').attr('color')
+                },
+                orientation_arrow: {
+                    visible: $('#flexarrow').prop('checked'),
+                    height: Number($('#arrow')[0].value)
+                },
+                search: {
+                    hit_height: Number($('#search_hit')[0].value)
+                }
+            },
+            layers_tree: {
+                visible: $('#flextree').prop('checked'),
+                height: Number($('#tree_length')[0].value),
+                offset: Number($('#tree_offset')[0].value),
+                line_width: Number($('#tree_thickness')[0].value)
+            },
+            genome_tracks: {
+                line_width: Number($('#track_line_width')[0].value),
+                background_color: $('#layer_color').attr('color'),
+                genomes: genomes_state
+            },
+            imported_layers: imported_layers_state,
+            labels: {
+                font_size: Number($('#label')[0].value),
+                offset: Number($('#label_offset')[0].value),
+                position_tick_count: Number($('#num_position')[0].value)
+            },
+            margins: {
+                inner: Number($('#inner_margin')[0].value),
+                outer: Number($('#outer_margin')[0].value)
+            },
+            region_labels: {
+                font_size: Number($('#region_label_size')[0].value),
+                min_width_px: Number($('#region_label_min_width')[0].value),
+                distance: Number($('#region_label_distance')[0].value)
+            },
+            bins: {
+                show_labels: $('#flexbinlabels').prop('checked'),
+                label_orientation: $('#bin_label_orientation')[0].value,
+                label_font_size: Number($('#bin_label_size')[0].value),
+                ring_height: Number($('#bin_ring_height')[0].value),
+                ring_opacity: Number($('#bin_ring_opacity')[0].value),
+                show_edges: $('#flexbinedges').prop('checked'),
+                edge_thickness: Number($('#bin_edge_thickness')[0].value),
+                edge_color: $('#bin_edge_color').attr('color'),
+                edge_opacity: Number($('#bin_edge_opacity')[0].value)
+            }
+        };
+
+        $.ajax({
+            url: "/pangraph/save_pangraph_state",
+            type: "POST",
+            data: JSON.stringify({state_name: name, state_values: new_state}),
+            contentType: "application/json",
+            dataType: "json",
+            success: (response) => {
+                if (response['status_code'] == '1') {
+                    this.state = name;
+                    toastr.success(`State "${name}" has been saved.`, 'State saved');
+                    $('#savestatemodal').modal('hide');
+                } else {
+                    toastr.error('Failed to save state: ' + (response['error'] || 'server is in read-only mode'), 'Error');
+                }
+            },
+            error: () => {
+                toastr.error('Failed to save state.', 'Error');
+            }
+        });
+    }
+
+
 }
 
 $(document).ready(function () {

@@ -62,6 +62,7 @@ dependencies = [
     "illumina-utils",
     "tabulate",
     "rich-argparse",
+    "numba",
     "paste",
     "pyani",
     "psutil",
@@ -154,6 +155,7 @@ Contact = "https://anvio.org/people"
 "anvi-gen-gene-level-stats-databases"               = "anvio.cli.gen_gene_level_stats_databases:main"
 "anvi-gen-genomes-storage"                          = "anvio.cli.gen_genomes_storage:main"
 "anvi-gen-network"                                  = "anvio.cli.gen_network:main"
+"anvi-gen-pan-representative"                       = "anvio.cli.gen_pan_representative:main"
 "anvi-gen-phylogenomic-tree"                        = "anvio.cli.gen_phylogenomic_tree:main"
 "anvi-gen-structure-database"                       = "anvio.cli.gen_structure_database:main"
 "anvi-gen-variability-network"                      = "anvio.cli.gen_variability_network:main"
@@ -212,6 +214,7 @@ Contact = "https://anvio.org/people"
 "anvi-run-hmms"                                     = "anvio.cli.run_hmms:main"
 "anvi-run-interacdome"                              = "anvio.cli.run_interacdome:main"
 "anvi-run-kegg-kofams"                              = "anvio.cli.run_kegg_kofams:main"
+"anvi-run-globdb-functions"                         = "anvio.cli.run_globdb_functions:main"
 "anvi-run-ncbi-cogs"                                = "anvio.cli.run_ncbi_cogs:main"
 "anvi-run-pfams"                                    = "anvio.cli.run_pfams:main"
 "anvi-run-scg-taxonomy"                             = "anvio.cli.run_scg_taxonomy:main"
@@ -227,6 +230,7 @@ Contact = "https://anvio.org/people"
 "anvi-setup-interacdome"                            = "anvio.cli.setup_interacdome:main"
 "anvi-setup-kegg-data"                              = "anvio.cli.setup_kegg_data:main"
 "anvi-setup-modelseed-database"                     = "anvio.cli.setup_modelseed_database:main"
+"anvi-setup-globdb-functions"                       = "anvio.cli.setup_globdb_functions:main"
 "anvi-setup-ncbi-cogs"                              = "anvio.cli.setup_ncbi_cogs:main"
 "anvi-setup-pdb-database"                           = "anvio.cli.setup_pdb_database:main"
 "anvi-setup-pfams"                                  = "anvio.cli.setup_pfams:main"
@@ -274,6 +278,7 @@ Contact = "https://anvio.org/people"
 "anvi-script-get-coverage-from-bam"                      = "anvio.cli.get_coverage_from_bam:main"
 "anvi-script-get-hmm-hits-per-gene-call"                 = "anvio.cli.get_hmm_hits_per_gene_call:main"
 "anvi-script-hmm-to-hmm-directory"                       = "anvio.cli.hmm_to_hmm_directory:main"
+"anvi-script-kofam-accessions-to-hmms-directory"         = "anvio.cli.kofam_accessions_to_hmms_directory:main"
 "anvi-script-merge-collections"                          = "anvio.cli.merge_collections:main"
 "anvi-script-pfam-accessions-to-hmms-directory"          = "anvio.cli.pfam_accessions_to_hmms_directory:main"
 "anvi-script-predict-CPR-genomes"                        = "anvio.cli.predict_CPR_genomes:main"

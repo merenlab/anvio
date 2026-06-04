@@ -15,7 +15,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ekiefl']
-__requires__ = ["contigs-db", "structure-db", "genes-of-interest-txt"]
+__requires__ = ["contigs-db", "structure-db"]
+__can_use__ = ["genes-of-interest-txt"]
 __description__ = ("Add or re-run genes from an already existing structure database. All settings used "
                    "to generate your database will be used in this program")
 

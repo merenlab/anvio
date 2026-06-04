@@ -36,14 +36,15 @@
     <script type="text/javascript" src="./node_modules/svg-pan-zoom/dist/svg-pan-zoom.min.js" onerror='alertDependencyError("svg-pan-zoom")'></script>
     <script type="text/javascript" src="./node_modules/sortable-tablesort/sortable.min.js" onerror='alertDependencyError("table-sorter")'></script>
     <script type="text/javascript" src="js/color-coding.js"></script>
-    <script type="text/javascript" src='js/pangenome-graph.js' type="module"></script>
     <script type="text/javascript" src="js/animations.js"></script>
     <script type="text/javascript" src="js/context-menu.js"></script>
     <script type="text/javascript" src="js/tree.js"></script>
     <script type="text/javascript" src="./node_modules/toastr/build/toastr.min.js" onerror='alertDependencyError("toastr")'></script>
     <script type="text/javascript" src="./node_modules/bootstrap-waitingfor/build/bootstrap-waitingfor.js" onerror='alertDependencyError("bootstrap-waitingfor")'></script>
     <script type="text/javascript" src="lib/colpick/colpick.js" onerror='alertDependencyError("colpick")'></script>
+    <script type="text/javascript" src="./node_modules/marked/marked.min.js" onerror='alertDependencyError("marked")'></script>
     <script type="text/javascript" src="js/utils.js"></script>
+    <script type="text/javascript" src='js/pangenome-graph.js'></script>
     <script type="text/javascript" src="js/constants.js"></script>
     <script type="text/javascript" src="js/dialogs/store-collection.js"></script>
     <script type="text/javascript" src="js/dialogs/load-collection.js"></script>
@@ -105,6 +106,11 @@
                               <i class="nav-icon fs-2x bi bi-search"></i><i class="nav-icon-fill fs-2x bi bi-search"></i><span class="d-block">Search</span>
                           </a>
                       </li>
+                      <li id="description_panel_tab" role="presentation" class="nav-item">
+                          <a href="#" class="nav-link navbar-btn d-block" id="description_toggle_btn" onclick="description_panel.toggle(); return false;">
+                              <i class="nav-icon fs-2x bi bi-file-richtext"></i><i class="nav-icon-fill fs-2x bi bi-file-richtext-fill"></i><span class="d-block">Notes</span>
+                          </a>
+                      </li>
                       <li id="detail_tab" role="presentation" class="nav-item">
                           <a href="#anvio_detail_tab" aria-controls="anvio_detail_tab" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block">
                               <i class="nav-icon fs-2x bi bi-question-octagon"></i><i class="nav-icon-fill fs-2x bi bi-question-octagon-fill"></i><span class="d-block">Anvi'o</span>
@@ -113,7 +119,9 @@
                       <div id="nav-bottom">
                           <li class="nav-bottom-alignment">
                               <a href="" class="navbar-btn d-block glow-on-hover disabled" id="redraw" data-help="draw-button" onclick="return false;">
-                                  <i class="icon-unlock bi-pencil fs-2x"></i><span class="d-block"><u>D</u>raw</span>
+                                  <i class="bi bi-arrow-repeat fs-2x redraw-spinner"></i>
+                                  <i class="bi bi-pencil fs-2x redraw-icon"></i>
+                                  <span class="d-block"><u>D</u>raw</span>
                               </a>
                           </li>
                           <hr class="nav-bottom-alignment border-color">
@@ -571,16 +579,6 @@
 
                     <div class="row align-items-center mb-3">
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-1">
-                        </div>
-                        <div class="col-9 d-flex align-items-center">
-                          Line graph thickness
-                        </div>
-                        <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="line" name="line" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
-                        </div>
-                      </div>
-                      <div class="col-12 d-flex mb-1">
                         <div class="col-1 d-flex align-items-center">
                         </div>
                         <div class="col-9 d-flex align-items-center">
@@ -934,77 +932,47 @@
       </div>
     </div>
 
-    <div class="modal fade" id="savestatemodal" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal">
-            <div class="modal-content modal-content-small">
+    <div class="modal fade" id="savestatemodal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title border-bottom-0 settings-header" style="font-size: x-large;">Store state</h5>
+                    <h4 class="modal-title">Save state</h4>
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row d-flex grid overflow-auto m-0">
-                        <div class="col-12">
-                            <div class="list-group" id="savestatelisttab" role="tablist" id="list-group">
-                            </div>
-                        </div>
+                    <select class="form-control" id="savestatelist" size="10" onchange="$('#savestatename').val(this.value);"></select>
+                    <br />
+                    <div class="form-group">
+                        <label for="savestatename">Name:</label>
+                        <input type="text" id="savestatename" class="form-control" />
                     </div>
                 </div>
-                <div class="modal-body">
-                    <div class="row d-flex grid overflow-auto m-0">
-                        <div class="col-12">
-                            <input id="savestatename" class="input-search form-control" value="" data-help="search-value" placeholder="Enter new state name or overwrite an existing one.">
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer d-flex justify-content-center">
-                    <div class="d-flex btn-group">
-                        <button class="btn btn-outline-success" id="savestatebutton">
-                            <i class="bi bi-download"> Save</i>
-                        </button>
-                        <button class="btn btn-outline-danger" data-dismiss="modal" aria-label="Close" aria-hidden="true">
-                            <i class="bi bi-x-lg">Close</i>
-                        </button>
-                    </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="savestatebutton">Save</button>
+                    <button class="btn btn-outline-secondary" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="loadstatemodal" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered modal">
-        <div class="modal-content modal-content-small">
-          <div class="modal-header">
-            <h5 class="modal-title border-bottom-0 settings-header" style="font-size: x-large;">Load state</h5>
-            <!-- <button type="button" class="close d-flex" data-dismiss="modal" aria-label="Close" aria-hidden="true">
-              <i class="bi bi-x-lg"></i>
-            </button> -->
-          </div>
-          <div class="modal-body">
-                    <div class="row d-flex grid overflow-auto m-0">
-                        <div class="col-12">
-                            <div class="list-group" id="loadstatelisttab" role="tablist" id="list-group">
-                            </div>
-                        </div>
-                    </div>
+    <div class="modal fade" id="loadstatemodal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Load state</h4>
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                 </div>
-            <div class="modal-body">
-                    <div class="row d-flex grid overflow-auto m-0">
-                        <div class="col-12">
-                            <input id="loadstatename" class="input-search form-control" value="" data-help="search-value" placeholder="Choose existing state." disabled>
-                        </div>
-                    </div>
+                <div class="modal-body">
+                    <select class="form-control" size="10" id="loadstatename" onchange="$('#loadstate_lastmodified').html('Last modified: ' + $('#loadstatename option:selected').attr('lastmodified'));"></select>
+                    <br />
+                    <div id="loadstate_lastmodified">Last modified: n/a</div>
                 </div>
-          <div class="modal-footer d-flex justify-content-center">
-            <div class="d-flex btn-group">
-              <button class="btn btn-outline-success" id="loadstatebutton">
-                <i class="bi bi-download"> Load</i>
-              </button>
-              <button class="btn btn-outline-danger" data-dismiss="modal" aria-label="Close" aria-hidden="true">
-                  <i class="bi bi-x-lg">Close</i>
-                </button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="loadstatebutton">Load</button>
+                    <button class="btn btn-outline-secondary" data-dismiss="modal" type="button">Close</button>
+                </div>
             </div>
-          </div>
         </div>
-      </div>
     </div>
 
 
@@ -1036,6 +1004,40 @@
       </div>
     </div>
 
+    <!-- LIGHTWEIGHT FETCH OVERLAY (avoids Bootstrap modal backdrop issues) -->
+    <div id="fetch-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.35); z-index:2000; align-items:center; justify-content:center;">
+      <div style="background:#fff; padding:18px 28px; border-radius:8px; box-shadow:0 4px 24px rgba(0,0,0,0.22); display:flex; align-items:center; gap:14px;">
+        <div class="spinner-border text-secondary" role="status" style="width:1.4rem; height:1.4rem; flex-shrink:0;"></div>
+        <span id="fetch-overlay-message" style="font-size:14px; color:#333;"></span>
+      </div>
+    </div>
+
+    <!-- FLOATING DESCRIPTION PANEL -->
+    <div id="description-panel">
+      <div class="description-panel-header">
+        <span class="description-panel-title">
+          <i class="bi bi-file-richtext me-2"></i> Notes
+        </span>
+        <div class="description-panel-actions">
+          <button id="description-edit-btn" class="description-action-btn" title="Edit" onclick="description_panel.edit()">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button id="description-save-btn" class="description-action-btn description-save-hidden" title="Save" onclick="description_panel.save()">
+            <i class="bi bi-floppy"></i>
+          </button>
+          <button id="description-cancel-btn" class="description-action-btn description-save-hidden" title="Cancel edit" onclick="description_panel.cancel_edit()">
+            <i class="bi bi-x-circle"></i>
+          </button>
+          <button class="description-action-btn description-close-btn" title="Close" onclick="description_panel.hide()">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      </div>
+      <div class="description-panel-body">
+        <div id="description-view-content" class="description-markdown-content"></div>
+        <textarea id="description-edit-content" class="description-textarea description-save-hidden" placeholder="Write notes in Markdown format..."></textarea>
+      </div>
+    </div>
 
   </body>
 </html>

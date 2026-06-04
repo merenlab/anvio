@@ -24,7 +24,7 @@ try:
     import webbrowser
     import subprocess
     import tracemalloc
-    import urllib.request, urllib.error, urllib.parse
+    import urllib.request
 
     import numpy as np
     import pandas as pd
@@ -55,7 +55,7 @@ except ModuleNotFoundError as e:
           f"properly initialized since Python complains that it cannot\n"
           f"import '{module_name}'. Are you sure you have initialized\n"
           f"the anvi'o environment properly?\n\n")
-    sys.exit()
+    sys.exit(1)
 
 # psutil is causing lots of problems for lots of people :/
 with SuppressAllOutput():
@@ -1972,20 +1972,6 @@ def get_time_to_date(local_time, fmt='%Y-%m-%d %H:%M:%S'):
         raise ConfigError("utils::get_time_to_date is called with bad local_time.")
 
     return time.strftime(fmt, time.localtime(local_time))
-
-
-def parse_epoch_time(epoch_time):
-    """Convert the epoch time (returned by `time.time()`) into pretty strings."""
-    try:
-        epoch_time = float(epoch_time)
-    except ValueError:
-        raise ConfigError("utils::parse_epoch_time was called with a bad epoch_time.")
-
-    ti = time.gmtime(epoch_time)
-    hour_min_sec = f'{"%02d" % ti.tm_hour}:{"%02d" % ti.tm_min}:{"%02d" % ti.tm_sec}'
-    month_day_year = f'{calendar.month_name[ti.tm_mon]} {ti.tm_mday}, {ti.tm_year}'
-
-    return hour_min_sec, month_day_year
 
 
 def compare_times(calls, as_matrix=False, iterations_per_call=1):

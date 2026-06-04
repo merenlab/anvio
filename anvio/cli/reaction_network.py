@@ -15,7 +15,8 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = VERSION
 __authors__ = ["semiller10"]
-__requires__ = ["contigs-db", "kegg-functions", "reaction-ref-data", "kegg-data"]
+__requires__ = ["contigs-db", "kegg-functions"]
+__can_use__ = ["reaction-ref-data", "kegg-data"]
 __provides__ = ["reaction-network"]
 __description__ = DESCRIPTION
 

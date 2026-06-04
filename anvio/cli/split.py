@@ -16,8 +16,9 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['profile-db', 'contigs-db', 'genomes-storage-db', 'pan-db', 'collection',]
-__provides__ = ['split-bins',]
+__requires__ = ['profile-db', 'collection']
+__can_use__ = ['contigs-db', 'genomes-storage-db', 'pan-db']
+__provides__ = ['split-bins']
 __resources__ = [("Anvi-split in action in the pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/#splitting-the-pangenome")]
 __description__ = ("Split an anvi'o pan or profile database into smaller, self-contained projects. Black magic.")
 

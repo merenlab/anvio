@@ -87,7 +87,7 @@ if '--tmp-dir' in sys.argv:
         os.environ['TMPDIR'] = TMP_DIR
     except Exception as e:
         print("OSError: ", e)
-        sys.exit()
+        sys.exit(1)
 
 def P(d, dont_exit=False):
     """Poor man's debug output printer during debugging."""
@@ -1019,6 +1019,14 @@ D = {
                      "or 'COG14' (the 2014 release of the database). You can have multiple databases on your "
                      "computer, and you can run multiple of them on a single contigs-db file. Cool and confusing. "
                      "The anvi'o way."}
+                ),
+    'globdb-data-dir': (
+            ['--globdb-data-dir'],
+            {'default': None,
+             'type': str,
+             'help': "The directory path for your GlobDB database setup. Anvi'o will try to use the "
+                     "default path if you do not specify anything. Alternatively you can set the "
+                     "environment variable ANVIO_GLOBDB_DATA_DIR to point to a custom location."}
                 ),
     'pfam-data-dir': (
             ['--pfam-data-dir'],
@@ -1982,9 +1990,11 @@ D = {
              'default': 1,
              'type': int,
              'help': "Maximum number of threads to use for multithreading whenever possible. Very conservatively, the default "
-                     "is 1. It is a good idea to not exceed the number of CPUs / cores on your system. Plus, please "
-                     "be careful with this option if you are running your commands on a SGE --if you are clusterizing your runs, "
-                     "and asking for multiple threads to use, you may deplete your resources very fast."}
+                     "is 1, unless the environmental variable `ANVIO_THREADS` sets another positive integer. If you "
+                     "use this parameter, it will override `ANVIO_THREADS`. It is a good idea to not exceed the number "
+                     "of CPUs / cores on your system. Plus, please be careful with this option if you are running your "
+                     "commands on a SGE -- if you are clusterizing your runs, and asking for multiple threads to use, "
+                     "you may deplete your resources very fast."}
                 ),
     'num-parallel-processes': (
             ['-P', '--num-parallel-processes'],
@@ -3521,6 +3531,22 @@ D = {
                      "metabolite to help rank the output by likelihood of the interaction. This parameter allows "
                      "you to choose how many gaps there can be in the chain on either side of the metabolite in "
                      "the network. Very conservatively set to 0, as in no gaps allowed."}
+                ),
+    'max-reactions-for-pathway-map-walk': (
+            ['--max-reactions-for-pathway-map-walk'],
+            {'default': None,
+             'type': int,
+             'metavar': 'INT',
+             'required': False,
+             'help': "Truncate pathway map walks at this number of reactions. By default there is no limit, "
+                     "but with certain inputs some pathway maps yield very long walks (sometimes even to "
+                     "the point of causing memory issues). Note that setting this parameter bounds the walk length "
+                     "for all pathway maps, so it may be a good idea to first identify problematic maps using the "
+                     "`--debug` flag, run the program once while excluding those problematic maps with `--exclude-pathway-maps`, "
+                     "and THEN run the program again using this flag to bound the pathway map walk only for those maps "
+                     "with `--include-pathway-maps`. It's likely that if you need this flag, something is wrong (like an infinite "
+                     "cycle in the walk), so check the Pathway Map walk evidence carefully to make sure results are biologically "
+                     "meaningful."}
                 ),
     'add-reactions-to-output': (
             ['--add-reactions-to-output'],

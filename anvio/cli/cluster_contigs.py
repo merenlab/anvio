@@ -16,6 +16,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.drivers import driver_modules
 from anvio.ttycolors import color_text as c
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.argparse import ArgumentParser
 from anvio.tables.collections import TablesForCollections
 
 
@@ -26,7 +27,8 @@ __version__ = anvio.__version__
 __authors__ = ['ozcan', 'meren']
 __resources__ = []
 __tags__ = ["profile_db", "clustering", "collections"]
-__requires__ = ['profile-db', 'contigs-db', 'collection']
+__requires__ = ['profile-db', 'contigs-db']
+__can_use__ = ['collection']
 __provides__ = ['collection', 'bin']
 __description__ = "A program to cluster items in a merged anvi'o profile using automatic binning algorithms"
 
@@ -134,7 +136,7 @@ def main():
 
 
 def get_args():
-    parent_parser = argparse.ArgumentParser(description=__description__)
+    parent_parser = ArgumentParser(description=__description__)
     parent_parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parent_parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parent_parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': True}))

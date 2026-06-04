@@ -28,6 +28,15 @@ if not this_workflow_is_inherited_by_another:
     M.init()
     dirs_dict = M.dirs_dict
 
+
+def rule_log(rule_name, log_file_name='log'):
+    """Return a log path under 00_LOGS/<rule_name>/."""
+    if not log_file_name.endswith('.log'):
+        log_file_name = f"{log_file_name}.log"
+
+    return os.path.join(dirs_dict["LOGS_DIR"], rule_name, log_file_name)
+
+
 localrules: annotate_contigs_database
 
 
@@ -42,7 +51,7 @@ rule annotate_contigs_database:
     of this rule, instead of tracking the individual
     '''
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-annotate_contigs_database.log"
+    log: rule_log("annotate_contigs_database", "{group}")
     input: lambda wildcards: M.get_contigs_target_files()
     output: touch(os.path.join(dirs_dict['CONTIGS_DIR'], "{group}-steps", "annotate_contigs_database.done"))
 
@@ -69,7 +78,7 @@ rule anvi_script_reformat_fasta_prefix_only:
         the output of anvi_script_reformat_fasta_prefix_only and the headers would be consistant.
     '''
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_script_reformat_fasta_prefix_only.log"
+    log: rule_log("anvi_script_reformat_fasta_prefix_only", "{group}")
     input:
         contigs = M.get_input_fasta_path
     output:
@@ -101,7 +110,7 @@ rule anvi_script_reformat_fasta:
         See docummentation for anvi_script_reformat_fasta_prefix_only
     '''
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_script_reformat_fasta.log"
+    log: rule_log("anvi_script_reformat_fasta", "{group}")
     input:
         contigs = dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs-prefix-formatted-only.fa"
     output:
@@ -122,7 +131,7 @@ rule anvi_script_reformat_fasta:
 
 rule reformat_external_gene_calls_table:
     version: 1.0
-    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-reformat_external_gene_calls_table.log")
+    log: rule_log("reformat_external_gene_calls_table", "{group}")
     input: unpack(M.get_input_for_reformat_external_gene_calls_table)
     output:
         os.path.join(dirs_dict['FASTA_DIR'], "{group}", "{group}-external-gene-calls.txt")
@@ -174,7 +183,7 @@ rule anvi_gen_contigs_database:
     """ Generates a contigs database using anvi-gen-contigs-database"""
     # Setting the version to the same as that of the contigs__version in anvi'o
     version: anvio.__contigs__version__
-    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_gen_contigs_database.log"
+    log: rule_log("anvi_gen_contigs_database", "{group}")
     # depending on whether human contamination using centrifuge was done
     # or not, the input to this rule will be the raw assembly or the
     # filtered.
@@ -214,7 +223,7 @@ rule anvi_gen_contigs_database:
 rule reformat_external_functions:
     ''' Remove any gene that is not included in the contigs database due to fasta reformt with --min-len'''
     version: 1.0
-    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-reformat_external_functions.log")
+    log: rule_log("reformat_external_functions", "{group}")
     input: unpack(M.get_input_for_reformat_external_functions)
     output: os.path.join(dirs_dict['FASTA_DIR'], "{group}", "{group}" + "-gene-functional-annotation.txt")
     threads: M.T('reformat_external_functions')
@@ -243,7 +252,7 @@ rule reformat_external_functions:
 
 rule import_external_functions:
     version: 1.0
-    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-import_external_functions.log")
+    log: rule_log("import_external_functions", "{group}")
     input: unpack(M.get_input_for_import_external_functions)
     output:
         functions_imported = touch(os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-steps", "external_functions_imported.done")),
@@ -255,7 +264,7 @@ rule import_external_functions:
 rule export_gene_calls_for_centrifuge:
     ''' Export gene calls and use for centrifuge'''
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-export_gene_calls_for_centrifuge.log"
+    log: rule_log("export_gene_calls_for_centrifuge", "{group}")
     # marking the input as ancient in order to ignore timestamps.
     input: ancient(M.get_contigs_db_path())
     # output is temporary. No need to keep this file.
@@ -268,7 +277,7 @@ rule export_gene_calls_for_centrifuge:
 rule centrifuge:
     ''' Run centrifuge on the exported gene calls of the contigs.db'''
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-centrifuge.log"
+    log: rule_log("centrifuge", "{group}")
     input: rules.export_gene_calls_for_centrifuge.output
     output:
         hits = dirs_dict["CONTIGS_DIR"] + "/{group}-centrifuge_hits.tsv",
@@ -287,7 +296,7 @@ rule centrifuge:
 rule anvi_import_taxonomy_for_genes:
     ''' Run anvi-import-taxonomy-for-genes'''
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_taxonomy_for_genes.log"
+    log: rule_log("anvi_import_taxonomy_for_genes", "{group}")
     input:
         hits = rules.centrifuge.output.hits,
         report = rules.centrifuge.output.report,
@@ -308,7 +317,7 @@ rule anvi_import_taxonomy_for_genes:
 rule anvi_run_hmms:
     """ Run anvi-run-hmms"""
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_hmms.log"
+    log: rule_log("anvi_run_hmms", "{group}")
     # marking the input as ancient in order to ignore timestamps.
     input: ancient(M.get_contigs_db_path())
     # using a snakemake flag file as an output since no file is generated
@@ -333,7 +342,7 @@ rule anvi_run_hmms:
 
 rule anvi_run_pfams:
     version: 1.0
-    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_run_pfams.log")
+    log: rule_log("anvi_run_pfams", "{group}")
     input: ancient(M.get_contigs_db_path())
     output: touch(os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_pfams.done"))
     params:
@@ -345,7 +354,7 @@ rule anvi_run_pfams:
 
 rule anvi_run_kegg_kofams:
     version: 1.0
-    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_run_kegg_kofams.log")
+    log: rule_log("anvi_run_kegg_kofams", "{group}")
     input: ancient(M.get_contigs_db_path())
     output: touch(os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_kegg_kofams.done"))
     params:
@@ -361,7 +370,7 @@ rule anvi_run_kegg_kofams:
 
 rule anvi_run_ncbi_cogs:
     version: anvio.__contigs__version__
-    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_ncbi_cogs.log"
+    log: rule_log("anvi_run_ncbi_cogs", "{group}")
     input:
         contigs = ancient(M.get_contigs_db_path())
     output: touch(os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_ncbi_cogs.done"))
@@ -381,7 +390,7 @@ rule anvi_run_ncbi_cogs:
 
 rule anvi_run_scg_taxonomy:
     version: anvio.__contigs__version__
-    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_scg_taxonomy.log"
+    log: rule_log("anvi_run_scg_taxonomy", "{group}")
     input:
         # make sure HMMs were done before running this rule
         hmms_done = ancient(os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_hmms.done")),
@@ -398,7 +407,7 @@ rule anvi_run_scg_taxonomy:
 
 rule anvi_run_trna_scan:
     version: anvio.__contigs__version__
-    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_trna_scan.log"
+    log: rule_log("anvi_run_trna_scan", "{group}")
     input:
         contigs = ancient(M.get_contigs_db_path())
     output: touch(os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_trna_scan.done"))
@@ -417,7 +426,7 @@ rule anvi_run_trna_scan:
 
 rule anvi_get_sequences_for_gene_calls:
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_get_sequences_for_gene_calls.log"
+    log: rule_log("anvi_get_sequences_for_gene_calls", "{group}")
     input: ancient(M.get_contigs_db_path())
     output: temp(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs-aa-sequences.fa")
     threads: M.T('anvi_get_sequences_for_gene_calls')
@@ -427,7 +436,7 @@ rule anvi_get_sequences_for_gene_calls:
 
 rule emapper:
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-emapper.log"
+    log: rule_log("emapper", "{group}")
     input: rules.anvi_get_sequences_for_gene_calls.output
     output: dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.emapper.annotations"
     # TODO: add other emapper params
@@ -447,7 +456,7 @@ rule emapper:
 
 rule anvi_script_run_eggnog_mapper:
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_script_run_eggnog_mapper.log"
+    log: rule_log("anvi_script_run_eggnog_mapper", "{group}")
     input:
         eggnog_output = rules.emapper.output,
         contigs = dirs_dict["CONTIGS_DIR"] + "/{group}.db"
@@ -470,7 +479,7 @@ rule anvi_script_run_eggnog_mapper:
 # this rule is only used when this workflow is inherited (e.g. by pangenomics or phylogenomics workflows)
 rule gen_external_genome_file:
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "" + "/gen_external_genome_file.log"
+    log: rule_log("gen_external_genome_file")
     input:
         annotation_done = expand(os.path.join(dirs_dict['CONTIGS_DIR'], "{sample}-steps", "annotate_contigs_database.done"), sample=M.group_names),
         contigs_db_paths = expand(dirs_dict["CONTIGS_DIR"] + "/{sample}.db", sample=M.group_names)
