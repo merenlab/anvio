@@ -929,7 +929,6 @@ class ContigsOnlySplitter:
                               f"strategy, or (3) manually resolve the conflicts within this class. Please try this program "
                               f"again after you've done one of those things.")
 
-
         missing = requested - available_class_ids
         if missing:
             missing_names = ', '.join(CLASS_NAMES[c] for c in sorted(missing))
