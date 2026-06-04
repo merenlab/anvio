@@ -668,6 +668,7 @@ class PangenomeAAIEngine():
         self.ranking_components = A('ranking_components')
         self.ranking_mean = A('ranking_mean')
         self.minbit_floor = A('minbit_floor')
+        self.min_ranking_score = A('min_ranking_score')
         self.fusion_top_bucket_k = A('fusion_top_bucket_k')
         self.fusion_seed = A('fusion_seed')
 
@@ -1150,7 +1151,7 @@ class PangenomeAAIEngine():
         """
         rng = random.Random(int(self.fusion_seed) if self.fusion_seed is not None else None)
         top_k = max(1, int(self.fusion_top_bucket_k))
-        min_score = 0.0  # honor minbit_floor + ranking pipeline already
+        min_score = float(self.min_ranking_score or 0.0)
 
         G = nx.DiGraph()
         super_of_gene = {}

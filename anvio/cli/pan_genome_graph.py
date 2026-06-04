@@ -84,6 +84,9 @@ def get_args():
                     "combine ranking components into a single score per edge.")
     groupD.add_argument('--minbit-floor', default=0.0, type=float, help = "Edges with AAI minbit below this value are dropped "
                     "before ranking.")
+    groupD.add_argument('--min-ranking-score', default=0.0, type=float, help = "Edges whose combined ranking score (the mean of "
+                    "--ranking-components) is below this value are skipped during fusion. Independent of --minbit-floor, which gates "
+                    "on raw minbit; this gates on the aggregated score.")
     groupD.add_argument('--fusion-top-bucket-k', default=5, type=int, help = "Number of top-ranked edges sampled per fusion step "
                     "(Prim-style frontier growth with stochastic top-K bucketing).")
     groupD.add_argument('--fusion-seed', default=42, type=int, help = "Random seed for the stochastic top-K fusion sampler.")

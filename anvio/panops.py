@@ -1576,6 +1576,7 @@ class PangenomeGraph():
         self.ranking_components = A('ranking_components')
         self.ranking_mean = A('ranking_mean')
         self.minbit_floor = A('minbit_floor')
+        self.min_ranking_score = A('min_ranking_score')
         self.fusion_top_bucket_k = A('fusion_top_bucket_k')
         self.fusion_seed = A('fusion_seed')
 
@@ -1692,6 +1693,7 @@ class PangenomeGraph():
         self.run.info("Ranking components", self.ranking_components)
         self.run.info("Ranking mean", self.ranking_mean)
         self.run.info("Minbit floor", self.minbit_floor)
+        self.run.info("Min ranking score", self.min_ranking_score)
         self.run.info("Fusion top-bucket k", self.fusion_top_bucket_k)
         self.run.info("Fusion seed", self.fusion_seed)
         self.run.info("Max edge length filter", self.max_edge_length_filter)
@@ -1908,6 +1910,7 @@ class PangenomeGraph():
             'ranking_components': self.ranking_components,
             'ranking_mean': self.ranking_mean,
             'minbit_floor': self.minbit_floor,
+            'min_ranking_score': self.min_ranking_score,
             'fusion_top_bucket_k': self.fusion_top_bucket_k,
             'fusion_seed': self.fusion_seed,
             # layout & simplification parameters
