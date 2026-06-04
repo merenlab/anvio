@@ -79,7 +79,7 @@ anvi-split -c %(contigs-db)s \
 
 #### Handling classification conflicts
 
-If your %(contigs-db)s has classification data from multiple sources, the same contig may be assigned different classes by different sources. %(anvi-split)s will raise an error when it encounters such conflicts. For example, the following classification table has data from two sources, `whokaryote` and `alien`. Both agree on `contig1` through `contig3`, but disagree on `contig4` through `contig6` — `whokaryote` assigns them class `1` (eukaryotic) while `alien` assigns them class `2` (virus):
+If your %(contigs-db)s has %(contig-classification)s data from multiple sources, the same contig may be assigned different classes by different sources. %(anvi-split)s will raise an error when it encounters such conflicts. For example, the following classification table has data from two sources, `whokaryote` and `alien`. Both agree on `contig1` through `contig3`, but disagree on `contig4` through `contig6` — `whokaryote` assigns them class `1` (eukaryotic) while `alien` assigns them class `2` (virus):
 
 | contig | class | source | tool_classification | confidence |
 |--------|-------|--------|---------------------|------------|

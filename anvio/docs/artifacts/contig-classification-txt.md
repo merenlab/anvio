@@ -1,6 +1,6 @@
 A tab-delimited file describing the classification of contigs in a %(contigs-db)s. This file is the input to %(anvi-import-contig-classification)s.
 
-You can create this file based on the output from whichever software you used to classify your contigs (or based on your own classification strategy). Different tools produce different output formats and often use different names for domain-level classes; hence, for consistency, it is up to you to wrangle those outputs so that they fit into the standardized set of classes that anvi'o knows about.
+You can create this file based on the output from whichever software you used to classify your contigs (or based on your own classification strategy). Different tools produce different output formats and often use different names for domain-level classes; hence, for consistency, it is up to you to wrangle those outputs so that they fit into the standardized set of classes that anvi'o knows about (as described in %(contig-classification)s).
 
 The file must contain the following columns:
 
@@ -15,9 +15,10 @@ The file must contain the following columns:
 A few important notes:
 - all contig names must match contigs in the target %(contigs-db)s
 - a single file may contain classifications from multiple tools (multiple `source` values)
-- only the `class` column is used downstream (i.e., by %(anvi-split)s), while the `tool_classification` column is just for you to be able to remember the original classification assignment coming from whichever tool(s) you used. It's therefore important for you to make sure the `class` column accurately reflects the original classification (note that anvi'o cannot automatically sanity check this for you, because the classifications from different software can be vastly different in format)
+- only the `class` column is used downstream (i.e., by %(anvi-split)s), while the `tool_classification` column is just for you to be able to remember the original classification assignment coming from whichever tool(s) you used. It's therefore important for you to make sure the `class` column accurately reflects the original classification (_note that anvi'o cannot automatically sanity check this for you_, because the classifications from different software can be vastly different in format)
 
 Here is an example file:
+
 |**`contig`**|**`class`**|**`source`**|**`tool_classification`**|**`confidence`**|
 |:--|:--|:--|:--|:--|
 |Day17a_QCcontig1|0|genomad|Bacteria;Firmicutes|0.95|
