@@ -77,12 +77,17 @@ class AnnotationWorker(multiprocessing.Process):
         Workers close (but do not unlink) the segment — only the main process unlinks.
         """
         from multiprocessing.shared_memory import SharedMemory
-        from multiprocessing import resource_tracker
+        from multiprocessing import resource_tracker, get_start_method
 
         shm = SharedMemory(name=self.shared_data_shm_name, create=False)
-        resource_tracker.unregister('/' + shm.name, 'shared_memory')
+        # With 'fork', all workers share the parent's resource tracker (RT) pipe; we don't unregister here because that
+        # would remove the main process's entry and cause its unlink() to KeyError in the resource tracker.
+        # With 'spawn', each worker has its own RT and must unregister to prevent it from calling
+        # shm_unlink when the worker exits.
+        if get_start_method() != 'fork':
+            resource_tracker.unregister('/' + shm.name, 'shared_memory')
         bundle = pickle.loads(bytes(shm.buf[:self.shared_data_size]))
-        shm._name = None  # shm.close() also calls unregister; nulling _name prevents a KeyError message from the second call to unregister
+        shm._name = None  # prevent close() from calling unregister a second time
         shm.close()
 
         self.ko_dict = bundle['ko_dict']
