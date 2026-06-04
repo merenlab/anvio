@@ -3,16 +3,13 @@
 
 Builds a pangenome graph from the artifacts produced *upstream* of a pan-db:
 the genomes-storage db (genome hash -> name), each genome's CONTIGS.db (gene
-calls), and DIAMOND's raw cross-genome bitscore output.  Replaces the legacy
-SyntenyGeneCluster + DirectedForce pipeline.
+calls), and DIAMOND's raw cross-genome bitscore output.
 
 The engine fuses gene endpoints into super-nodes by AAI minbit, picking
 fusions with a frontier-growth (Prim-style) walk over a stochastic top-K
 bucket of the ranked edges.  Super-nodes are guaranteed to contain at most
 one gene per genome.  The output graph is a DAG by construction; no
 edge-reversal step is needed.
-
-See HANDOFF.md (Task 4) for the migration story behind this module.
 """
 
 import csv
@@ -348,13 +345,6 @@ def compute_line_orientations(lines, line_names, edges,
     return flips, components, inconsistencies, pair_label
 
 
-def apply_line_flips(lines, flips):
-    """Return a new lines list with every line marked ``True`` in
-    ``flips`` reversed (token order)."""
-    return [list(reversed(line)) if flip else list(line)
-            for line, flip in zip(lines, flips)]
-
-
 # ---------------------------------------------------------------------------
 # Pangenome graph construction primitives.
 # ---------------------------------------------------------------------------
@@ -640,7 +630,6 @@ class PangenomeAAIEngine():
     """Build a pangenome DAG from raw DIAMOND results + CONTIGS.dbs via
     AAI minbit fusion.
 
-    Replaces the legacy ``SyntenyGeneCluster`` + ``DirectedForce`` pipeline.
     Call :py:meth:`process` to run the full pipeline; it returns the
     constructed DiGraph plus the line bookkeeping that downstream consumers
     (``PangenomeGraph.add_layers``, ``calculate_graph_distance``, the

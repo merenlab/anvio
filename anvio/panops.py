@@ -1798,9 +1798,9 @@ class PangenomeGraph():
                     'core': '#BCBCBC',
                     'rearrangement': '#8FF0A4',
                     'accessory': '#DC8ADD',
-                    'multi_copy': '#FFA348',
+                    'duplication': '#FFA348',
                     'singleton': '#99C1F1',
-                    'trna': '#F66151'
+                    'rna': '#F66151'
                 }
             },
             'edges': {

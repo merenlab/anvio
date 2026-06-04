@@ -2675,9 +2675,9 @@ class PangenomeGraphUserInterface {
             'core_color': tc['core'],
             'rearranged_color': tc['rearrangement'],
             'accessory_color': tc['accessory'],
-            'paralog_color': tc['multi_copy'],
+            'paralog_color': tc['duplication'],
             'singleton_color': tc['singleton'],
-            'trna_color': tc['trna']
+            'trna_color': tc['rna']
         })) {
             $('#' + id).css('background-color', color).attr('color', color);
             $('#' + id).colpickSetColor(color.replace('#', ''));
@@ -4258,9 +4258,9 @@ class PangenomeGraphUserInterface {
                     core: $('#core_color').attr('color'),
                     rearrangement: $('#rearranged_color').attr('color'),
                     accessory: $('#accessory_color').attr('color'),
-                    multi_copy: $('#paralog_color').attr('color'),
+                    duplication: $('#paralog_color').attr('color'),
                     singleton: $('#singleton_color').attr('color'),
-                    trna: $('#trna_color').attr('color')
+                    rna: $('#trna_color').attr('color')
                 }
             },
             edges: {
