@@ -400,10 +400,11 @@ class PangenomeGraphManager():
     def _assign_region_ids(self, core_positions, all_positions, component_id):
         """Map every x position to a region id (``"<component_id>_N"``).
 
-        Region 0 covers the pre-/post-core overlap. The interior alternates
-        between backbone regions (uninterrupted core chains) and variable
-        regions (gaps between consecutive cores). Faithfully preserves the
-        legacy single-core latent behavior (single core gets no region).
+        Walks the integer x columns from ``all_min`` to ``all_max`` and
+        partitions them into maximal runs of all-core vs all-non-core
+        columns. Each run becomes one region; ids are sequential from 0,
+        so the first run is ``<component_id>_0`` and the last run gets
+        the highest id.
         """
         def key(rid):
             return f"{component_id}_{rid}"
@@ -411,33 +412,21 @@ class PangenomeGraphManager():
         if not all_positions:
             return {}
 
-        if not core_positions:
-            # No cores in this component — treat everything as region 0.
-            return {pos: key(0) for pos in all_positions}
-
         all_min, all_max = min(all_positions), max(all_positions)
-        core_min, core_max = min(core_positions), max(core_positions)
 
+        if not core_positions:
+            return {pos: key(0) for pos in range(all_min, all_max + 1)}
+
+        core_set = set(core_positions)
         regions_dict = {}
-        overlap = list(range(all_min, core_min)) + list(range(core_max + 1, all_max + 1))
-        regions_dict.update({pos: key(0) for pos in overlap})
-
-        regions_id = 1
-        core_chain = []
-        for i, j in zip(core_positions, core_positions[1:]):
-            if i != j - 1:
-                core_chain.append(i)
-                regions_dict.update({m: key(regions_id) for m in core_chain})
-                regions_id += 1
-                regions_dict.update({k: key(regions_id) for k in range(i + 1, j)})
-                regions_id += 1
-                core_chain = [j] if j == core_positions[-1] else []
-            else:
-                core_chain.append(i)
-                if j == core_positions[-1]:
-                    core_chain.append(j)
-
-        regions_dict.update({n: key(regions_id) for n in core_chain})
+        rid = 0
+        current_is_core = (all_min in core_set)
+        for x in range(all_min, all_max + 1):
+            is_core = x in core_set
+            if is_core != current_is_core:
+                rid += 1
+                current_is_core = is_core
+            regions_dict[x] = key(rid)
         return regions_dict
 
 
