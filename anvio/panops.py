@@ -1506,17 +1506,10 @@ class PangenomeGraph():
         self.pan_db_path = A('pan_db')
         self.genomes_storage = A('genomes_storage')
         self.external_genomes_txt = A('external_genomes')
-        self.pan_graph_yaml = A('pan_graph_yaml')
         self.project_name = A('project_name')
 
         # learn the project name from the pan-db if the user did not
         # provide another
-        if self.pan_graph_yaml:
-            with open(self.pan_graph_yaml) as file:
-                self.yaml_file = yaml.safe_load(file)
-        else:
-            self.yaml_file = {}
-
         if A('genome_names'):
             if filesnpaths.is_file_exists(A('genome_names'), dont_raise=True):
                 self.genome_names = utils.get_column_data_from_TAB_delim_file(A('genome_names'), column_indices=[0], expected_number_of_fields=1)[0]
@@ -1525,8 +1518,6 @@ class PangenomeGraph():
         elif self.external_genomes_txt:
             filesnpaths.is_file_tab_delimited(self.external_genomes_txt, expected_number_of_fields=2)
             self.genome_names = pd.read_csv(self.external_genomes_txt, header=0, sep="\t")['name'].to_list()
-        elif self.pan_graph_yaml:
-            self.genome_names = list(self.yaml_file.keys())
         else:
             self.genome_names = []
 
@@ -1590,7 +1581,7 @@ class PangenomeGraph():
 
         # STANDARD CLASS VARIABLES
         self.version = anvio.__pangraph__version__
-        self.functional_annotation_sources_available = DBInfo(self.genomes_storage, expecting='genomestorage').get_functional_annotation_sources() if self.genomes_storage else []
+        self.functional_annotation_sources_available = (DBInfo(self.genomes_storage, expecting='genomestorage').get_functional_annotation_sources() or []) if self.genomes_storage else []
         self.seed = None
         self.pangenome_graph = PangenomeGraphManager()
 
@@ -1610,7 +1601,19 @@ class PangenomeGraph():
     def summarize_pangenome_graph(self):
         self.run.warning(None, header="GENERATING SUMMARY TABLES", lc="green")
 
-        node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(F=self.pangenome_graph.graph)
+        # bounds-check --component against the actual number of weakly connected components
+        n_components = sum(1 for _ in nx.weakly_connected_components(self.pangenome_graph.graph))
+        if self.component >= n_components:
+            raise ConfigError(f"You asked for component {self.component}, but the graph only has "
+                              f"{n_components} component(s) (valid indices are 0 to {n_components - 1}). "
+                              f"Pass a smaller value to --component.")
+
+        node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(
+            F=self.pangenome_graph.graph,
+            gene_cluster_grouping_threshold=self.gene_cluster_grouping_threshold,
+            groupcompress=self.groupcompress,
+            component=self.component,
+        )
 
         self.pangenome_graph.set_node_positions(node_positions)
         self.pangenome_graph.set_edge_positions(edge_positions)
@@ -1790,9 +1793,9 @@ class PangenomeGraph():
                     'core': '#BCBCBC',
                     'rearrangement': '#8FF0A4',
                     'accessory': '#DC8ADD',
-                    'duplication': '#FFA348',
+                    'multi_copy': '#FFA348',
                     'singleton': '#99C1F1',
-                    'rna': '#F66151'
+                    'trna': '#F66151'
                 }
             },
             'edges': {

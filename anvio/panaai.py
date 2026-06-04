@@ -1404,7 +1404,7 @@ class PangenomeAAIEngine():
         G = compute_component_ids(G)
 
         type_counts = Counter(d.get("type", "") for _, d in G.nodes(data=True))
-        self.run.info('Node types', dict(type_counts))
+        self.run.info('Node types', f"{dict(type_counts)}")
         component_counts = Counter(d["component_id"] for _, d in G.nodes(data=True))
         largest = component_counts.most_common(1)[0][1] if component_counts else 0
         self.run.info('Components',
