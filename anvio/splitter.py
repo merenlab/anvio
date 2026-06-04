@@ -933,7 +933,7 @@ class ContigsOnlySplitter:
         if missing:
             missing_names = ', '.join(CLASS_NAMES[c] for c in sorted(missing))
             raise ConfigError(f"The following classes requested via `--classes-to-keep` are not present in "
-                              f"the classification table: {missing_names}.")
+                              f"the classification table (for the source(s) requested): {missing_names}.")
 
         return requested
 
