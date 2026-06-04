@@ -2118,12 +2118,28 @@ class PangenomeGraph():
         edge_genomes = self._compute_edge_genome_sets(
             G, lines, line_names, line_to_genome, in_g_flip)
 
-        # Per-gene synteny position (= position in its line, 0-indexed).
+        # Per-gene synteny position: a global per-genome counter walked in
+        # graph-traversal order (a line is iterated reversed when in_g_flip
+        # is True). Within a contig, consecutive positions follow forward
+        # graph edges so the JS edge_synteny[source][target] lookup hits;
+        # between contigs the lookup naturally misses and the JS flushes
+        # the genome track, which is the correct rendering.
         gene_to_synteny_pos = {}
-        for i, tokens in enumerate(lines):
-            name = line_names[i]
-            for pos, tok in enumerate(tokens):
-                gene_to_synteny_pos[f"{name}:{tok}"] = pos
+        lines_by_genome = {}
+        for li, name in enumerate(line_names):
+            if li not in in_g_flip:
+                continue
+            lines_by_genome.setdefault(line_to_genome[name], []).append(li)
+        for genome, line_indices in lines_by_genome.items():
+            line_indices.sort(key=lambda li: line_names[li])
+            pos = 0
+            for li in line_indices:
+                tokens = lines[li]
+                seq = reversed(tokens) if in_g_flip[li] else tokens
+                name = line_names[li]
+                for tok in seq:
+                    gene_to_synteny_pos[f"{name}:{tok}"] = pos
+                    pos += 1
 
         # Initialize layers_data so add_layers can populate it later.
         self.layers_data = {}
