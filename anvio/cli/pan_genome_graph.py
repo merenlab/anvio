@@ -69,6 +69,10 @@ def get_args():
 
     groupD.add_argument('--locality-window', default=10, type=int, help = "Flanking window size (in genes) on each side of a candidate "
                     "line pair, used to decide whether two contigs are co-oriented or flipped.")
+    groupD.add_argument('--min-window-completeness', default=0, type=int, help = "Minimum number of genes that each of the four flanking "
+                    "windows (left/right of each endpoint) must contain for an AAI edge to be kept. Must be 0..--locality-window. "
+                    "0 disables the filter; --locality-window requires a fully populated window on both sides of both endpoints. "
+                    "Edges whose any flanking window is shorter than this are trashed before orientation scoring and fusion.")
     groupD.add_argument('--min-line-pair-hits', default=100, type=int, help = "Minimum number of DIAMOND hits between two contig lines "
                     "required to consider them for orientation scoring.")
     groupD.add_argument('--orientation-tie-threshold', default=0.2, type=float, help = "Score margin under which a line-pair orientation "

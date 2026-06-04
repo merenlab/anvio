@@ -103,12 +103,17 @@ def _cmp_window_topn(W_a, W_b, sing_minbit):
     return sum(scores[:n]) / n
 
 
-def _aggregate_line_pairs(lines, line_names, edges, K):
+def _aggregate_line_pairs(lines, line_names, edges, K, min_completeness=0):
     """Walk every AAI edge, accumulate (forward, reverse) sums per
     ordered line-pair ``(li_a, li_b)`` with ``li_a < li_b``, and record
     the per-edge ``(forward, reverse)`` signals.
 
-    Returns ``(fwd_sum, fwd_cnt, rev_sum, rev_cnt, total, edge_signals)``.
+    If ``min_completeness`` is > 0, edges whose any flanking window
+    (left/right of either endpoint) has fewer than ``min_completeness``
+    genes are dropped before scoring.
+
+    Returns ``(fwd_sum, fwd_cnt, rev_sum, rev_cnt, total, edge_signals,
+    dropped_contig_end)``.
     """
     line_idx_by_name = {nm: i for i, nm in enumerate(line_names)}
     line_lengths = [len(line) for line in lines]
@@ -147,6 +152,7 @@ def _aggregate_line_pairs(lines, line_names, edges, K):
     rev_cnt = defaultdict(int)
     total = defaultdict(int)
     edge_signals = {}
+    dropped_contig_end = 0
 
     for (u_str, v_str, w) in edges:
         try:
@@ -175,6 +181,10 @@ def _aggregate_line_pairs(lines, line_names, edges, K):
         L_v = [off_v + (pos_v - d) for d in range(1, K + 1) if pos_v - d >= 0]
         R_v = [off_v + (pos_v + d) for d in range(1, K + 1) if pos_v + d < len_v]
 
+        if min_completeness > 0 and min(len(L_u), len(R_u), len(L_v), len(R_v)) < min_completeness:
+            dropped_contig_end += 1
+            continue
+
         LL = _cmp_window_topn(L_u, L_v, sing_minbit)
         RR = _cmp_window_topn(R_u, R_v, sing_minbit)
         LR = _cmp_window_topn(L_u, R_v, sing_minbit)
@@ -196,7 +206,7 @@ def _aggregate_line_pairs(lines, line_names, edges, K):
             rev_sum[key] += reverse
             rev_cnt[key] += 1
 
-    return fwd_sum, fwd_cnt, rev_sum, rev_cnt, total, edge_signals
+    return fwd_sum, fwd_cnt, rev_sum, rev_cnt, total, edge_signals, dropped_contig_end
 
 
 def _tree_path_edges(a, b, parent):
@@ -227,6 +237,7 @@ def compute_line_orientations(lines, line_names, edges,
                               tie_threshold=0.02,
                               min_score=0.0,
                               demotion_strategy="slimmest-margin",
+                              min_completeness=0,
                               precomputed=None):
     """Compute a per-line flip vector from the singleton-locality scan.
 
@@ -240,7 +251,7 @@ def compute_line_orientations(lines, line_names, edges,
     """
     n_lines = len(lines)
     if precomputed is None:
-        agg = _aggregate_line_pairs(lines, line_names, edges, K)
+        agg = _aggregate_line_pairs(lines, line_names, edges, K, min_completeness=min_completeness)
     else:
         agg = precomputed
     fwd_sum, fwd_cnt, rev_sum, rev_cnt, total = agg[:5]
@@ -650,6 +661,7 @@ class PangenomeAAIEngine():
 
         # AAI engine parameters.
         self.locality_window = A('locality_window')
+        self.min_window_completeness = A('min_window_completeness')
         self.min_line_pair_hits = A('min_line_pair_hits')
         self.orientation_tie_threshold = A('orientation_tie_threshold')
         self.min_orientation_score = A('min_orientation_score')
@@ -698,6 +710,11 @@ class PangenomeAAIEngine():
 
         if int(self.locality_window or 0) < 1:
             raise ConfigError("`--locality-window` must be >= 1 :/")
+
+        mwc = int(self.min_window_completeness or 0)
+        if mwc < 0 or mwc > int(self.locality_window):
+            raise ConfigError("`--min-window-completeness` must be in [0, --locality-window] "
+                              f"(got {mwc}, --locality-window is {self.locality_window}) :/")
 
         if self.tables_dir is not None:
             os.makedirs(self.tables_dir, exist_ok=True)
@@ -991,12 +1008,22 @@ class PangenomeAAIEngine():
         needed downstream plus a per-pair diagnostic ``rows`` list (used by
         :py:func:`write_orientation_tsv` when ``tables_dir`` is set)."""
         K = int(self.locality_window)
+        mwc = int(self.min_window_completeness or 0)
         self.run.info_single(f"Running locality scan (K={K}) on "
                              f"{P('line', len(lines))} / "
                              f"{P('edge', len(edges_list))} ...")
 
-        fwd_sum, fwd_cnt, rev_sum, rev_cnt, total, edge_signals = (
-            _aggregate_line_pairs(lines, line_names, edges_list, K))
+        fwd_sum, fwd_cnt, rev_sum, rev_cnt, total, edge_signals, dropped_contig_end = (
+            _aggregate_line_pairs(lines, line_names, edges_list, K, min_completeness=mwc))
+
+        if mwc > 0:
+            self.run.info("AAI edges dropped at contig-end filter",
+                          f"{dropped_contig_end} / {len(edges_list)}")
+            if len(edges_list) and dropped_contig_end / len(edges_list) > 0.5:
+                self.run.warning("More than 50% of AAI edges were dropped by "
+                                 "`--min-window-completeness`. Consider lowering it, or "
+                                 "lowering `--locality-window`, if your genomes are heavily "
+                                 "fragmented.")
 
         flips, components, inconsistencies, pair_label = compute_line_orientations(
             lines, line_names, edges_list,
@@ -1005,6 +1032,7 @@ class PangenomeAAIEngine():
             tie_threshold=float(self.orientation_tie_threshold),
             min_score=float(self.min_orientation_score),
             demotion_strategy=self.orientation_demotion_strategy,
+            min_completeness=mwc,
             precomputed=(fwd_sum, fwd_cnt, rev_sum, rev_cnt, total),
         )
 
