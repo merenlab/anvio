@@ -1,6 +1,12 @@
 Creates individual, self-contained anvi'o projects for one or more %(bin)ss stored in an anvi'o %(collection)s. This program may be useful if you would like to share a subset of an anvi'o project with the community or a collaborator, or focus on a particular aspect of your data without having to initialize very large files. Altogether, %(anvi-split)s promotoes reproducibility, openness, and collaboration.
 
-The program can generate %(split-bins)s from metagenomes or pangenomes, or split a %(contigs-db)s on its own without a %(profile-db)s. To split bins from a metagenome, you can provide the program %(anvi-split)s with a %(contigs-db)s and %(profile-db)s pair. To split gene clusters, you can provide it with a %(genomes-storage-db)s and %(pan-db)s pair. In both cases you will also need a %(collection)s. To split a %(contigs-db)s on its own, you will need either a %(collection-txt)s file mapping contigs to bins, or classification data previously imported with %(anvi-import-contig-classification)s. If you don't provide any %(bin)s names, the program will create individual directories for each bin that is found in your collection. You can also limit the output to a single bin. Each of the resulting directories in your output folder will contain a stand-alone anvi'o project that can be shared without sharing any of the larger dataset.
+The program can generate %(split-bins)s from metagenomes, from pangenomes, or from a %(contigs-db)s on its own (without a %(profile-db)s).
+
+Each of the resulting directories in your output folder will contain a stand-alone anvi'o project that can be used or shared without requiring access to any files of the original (larger) dataset.
+
+## Splitting metagenomes and pangenomes
+
+To split bins from a metagenome, you can provide the program %(anvi-split)s with a %(contigs-db)s and %(profile-db)s pair. To split gene clusters from a pangenome, you can provide it with a %(genomes-storage-db)s and %(pan-db)s pair. In both cases you will also need a %(collection)s. If you don't provide any %(bin)s names, the program will create individual directories for each bin that is found in your collection. You can also limit the output to a single bin.
 
 ### An example run
 
@@ -15,7 +21,9 @@ anvi-split -p %(profile-db)s \
            -o OUTPUT
 {{ codestop }}
 
-Alternatively you can specify a bin name to limit the reported bins:
+You would get 3 new pairs of %(profile-db)s and %(contigs-db)s files, one for each bin, located in `OUTPUT/BIN_1/`, `OUTPUT/BIN_2/`, and `OUTPUT/BIN_3/`.
+
+Alternatively, you can specify a bin name to limit the reported bins:
 
 {{ codestart }}
 anvi-split -p %(profile-db)s \
@@ -36,16 +44,13 @@ For extremely large datasets, splitting bins may be difficult. For metagenomics 
 * Use the flag `--skip-variability-tables` to NOT report single-nucleotide variants or single-amino acid variants in your split bins (which can reach hundreds of millions of lines of information for large and complex metagenomes), and/or,
 * Use the flag `--compress-auxiliary-data` to save space. While this is a great option for data that is meant to be stored long-term and shared with the community, the compressed file would need to be manually decompressed by the end-user prior to using the split bin.
 
-### Splitting a contigs database without a profile database
+## Splitting a contigs database without a profile database
 
-%(anvi-split)s can split a %(contigs-db)s on its own, without any %(profile-db)s. Each resulting
-directory will contain a self-contained %(contigs-db)s for that group of contigs. Two input modes
-are available.
+%(anvi-split)s can split a %(contigs-db)s on its own, without any %(profile-db)s. Each resulting directory will contain a self-contained %(contigs-db)s for that group of contigs. Two input modes are available. You will need either a %(collection-txt)s file mapping contigs to bins, or per-contig domain-level classification data previously imported with %(anvi-import-contig-classification)s.
 
-#### Using an external collection file
+### Using an external collection file
 
-You can provide a two-column, TAB-delimited file with no header, where column 1 is the contig name
-and column 2 is the bin name:
+You can provide a two-column, TAB-delimited file with no header, where column 1 is the contig name and column 2 is the bin name:
 
 {{ codestart }}
 anvi-split -c %(contigs-db)s \
@@ -53,10 +58,9 @@ anvi-split -c %(contigs-db)s \
            -o OUTPUT
 {{ codestop }}
 
-#### Using contig classification data
+### Using contig classification data
 
-If your %(contigs-db)s has classification data imported with %(anvi-import-contig-classification)s,
-you can split it by class:
+If your %(contigs-db)s has classification data imported with %(anvi-import-contig-classification)s, you can split it by contig class:
 
 {{ codestart }}
 anvi-split -c %(contigs-db)s \
@@ -64,8 +68,7 @@ anvi-split -c %(contigs-db)s \
            -o OUTPUT
 {{ codestop }}
 
-Each class (e.g., `virus`, `plasmid`, `non-eukaryotic`) will become a separate output database. You
-can limit the output to specific classes with `--classes-to-keep`:
+Each class (e.g., `virus`, `plasmid`, `non-eukaryotic`) will become a separate output database. You can limit the output to specific classes with `--classes-to-keep`:
 
 {{ codestart }}
 anvi-split -c %(contigs-db)s \
@@ -74,14 +77,9 @@ anvi-split -c %(contigs-db)s \
            -o OUTPUT
 {{ codestop }}
 
-##### Handling classification conflicts
+#### Handling classification conflicts
 
-If your %(contigs-db)s has classification data from multiple sources, the same contig may be
-assigned different classes by different sources. %(anvi-split)s will raise an error when it
-encounters such conflicts. For example, the following classification table has data from two sources,
-`whokaryote` and `alien`. Both agree on `contig1` through `contig3`, but disagree on `contig4`
-through `contig6` — `whokaryote` assigns them class `1` (eukaryotic) while `alien` assigns them
-class `2` (virus):
+If your %(contigs-db)s has classification data from multiple sources, the same contig may be assigned different classes by different sources. %(anvi-split)s will raise an error when it encounters such conflicts. For example, the following classification table has data from two sources, `whokaryote` and `alien`. Both agree on `contig1` through `contig3`, but disagree on `contig4` through `contig6` — `whokaryote` assigns them class `1` (eukaryotic) while `alien` assigns them class `2` (virus):
 
 | contig | class | source | tool_classification | confidence |
 |--------|-------|--------|---------------------|------------|
@@ -100,6 +98,6 @@ class `2` (virus):
 
 %(anvi-split)s will refuse to proceed until you decide how to handle them. You have three options:
 
-* `--only-use-classification-source SOURCE`: only use classifications from one source, ignoring the others entirely.
+* `--only-use-classification-source SOURCE`: only use classifications from one source, ignoring the other sources entirely.
 * `--allow-multiple-classifications`: allow conflicting contigs to appear in all output splits they were assigned to.
 * `--mark-conflicting-contigs-as-ambiguous`: redirect conflicting contigs into a separate `ambiguous` split and write a report file documenting their original classifications.
