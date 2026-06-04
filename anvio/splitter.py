@@ -816,11 +816,6 @@ class ContigsOnlySplitter:
                               "--allow-multiple-classifications, --mark-conflicting-contigs-as-ambiguous) are only "
                               "relevant when --split-by-contig-classification is used.")
 
-        if self.split_by_contig_classification:
-            self._init_bins_from_classification()
-        else:
-            self._init_bins_from_collection_txt()
-
 
     def _init_bins_from_classification(self):
         entries = TablesForContigClassification(self.contigs_db_path, run=self.run, progress=self.progress).get()
@@ -966,6 +961,11 @@ class ContigsOnlySplitter:
     def process(self):
         self.sanity_check()
         filesnpaths.gen_output_directory(self.output_directory)
+
+        if self.split_by_contig_classification:
+            self._init_bins_from_classification()
+        else:
+            self._init_bins_from_collection_txt()
 
         self.run.warning(None, header="ANVI'O CONTIG-ONLY SPLIT MODE", lc='green')
         self.run.info('Contigs database', self.contigs_db_path)
