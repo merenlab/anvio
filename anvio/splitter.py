@@ -775,6 +775,7 @@ class ContigsOnlySplitter:
         self.allow_multiple_classifications = A('allow_multiple_classifications')
         self.mark_conflicting_contigs_as_ambiguous = A('mark_conflicting_contigs_as_ambiguous')
         self.collection_txt = A('collection_txt')
+        self.collection_name = A('collection_name') # this option cannot be used in this mode, but we need the attribute for sanity check errors
 
         self.bins_to_contigs = {}
 
@@ -785,6 +786,15 @@ class ContigsOnlySplitter:
 
         utils.is_contigs_db(self.contigs_db_path)
         self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
+
+        if self.collection_name:
+            raise ConfigError("You seem to have provided the `-C` parameter, but this is only valid if you are "
+                              "splitting with a profile database, not with 'CONTIG-ONLY MODE'. Are you sure you "
+                              "have your parameters straight? Try `--collection-txt` instead.")
+
+        if self.collection_txt and self.split_by_contig_classification:
+            raise ConfigError("You cannot split both on a collection and by contig classifications. Please choose one input option, "
+                              "as in either `--collection-txt` OR `--split-by-contig-classification`.")
 
         if self.classes_to_keep and not self.split_by_contig_classification:
             raise ConfigError("The --classes-to-keep argument is only relevant when --split-by-contig-classification is used.")
