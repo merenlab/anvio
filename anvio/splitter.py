@@ -792,7 +792,7 @@ class ContigsOnlySplitter:
             raise ConfigError("A contigs database is required for contig-only split mode.")
 
         utils.is_contigs_db(self.contigs_db_path)
-        self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
+        self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=False)
 
         if self.collection_name:
             raise ConfigError("You seem to have provided the `-C` parameter, but this is only valid if you are "
