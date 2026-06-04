@@ -392,6 +392,13 @@ class XSplitter(object):
         hmm_hit_ids_to_delete = [hit_id for hit_id in hmm_hits_id_percentage_described_dict if round(hmm_hits_id_percentage_described_dict[hit_id]) < 100]
         where_clause = f"hmm_hit_entry_id IN ({','.join([str(i) for i in hmm_hit_ids_to_delete])})"
         bin_contigs_db.db.remove_some_rows_from_table(t.hmm_hits_splits_table_name, where_clause=where_clause)
+
+        # update contig_classification_sources to reflect only what is actually in the output db,
+        # since copy_paste of the self table carries over all sources from the parent
+        actual_sources = bin_contigs_db.db.get_single_column_from_table(t.contig_classification_table_name, 'source', unique=True)
+        bin_contigs_db.db.update_meta_value('contig_classification_sources',
+                                    ','.join(sorted(actual_sources)) if actual_sources else None)
+
         bin_contigs_db.disconnect()
 
         self.progress.end()
@@ -976,14 +983,6 @@ class ContigsOnlySplitter:
                                        run=self.run,
                                        progress=self.progress)
             b.do_contigs_db()
-
-            # update contig_classification_sources to reflect only what is actually in the output db,
-            # since copy_paste of the self table carries over all sources from the parent
-            output_db = db.DB(b.bin_contigs_db_path, None, ignore_version=True)
-            actual_sources = output_db.get_single_column_from_table(t.contig_classification_table_name, 'source', unique=True)
-            output_db.update_meta_value('contig_classification_sources',
-                                        ','.join(sorted(actual_sources)) if actual_sources else None)
-            output_db.disconnect()
 
         self.run.info('Num bins processed', len(self.bins_to_contigs))
         self.run.info('Output directory', self.output_directory)
