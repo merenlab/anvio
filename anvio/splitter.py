@@ -893,12 +893,12 @@ class ContigsOnlySplitter:
         # apply --classes-to-keep filter (never filters out 'ambiguous' since it is not a CLASS_NAMES entry)
         if self.classes_to_keep:
             non_ambiguous_classes = set(e['class'] for e in entries if e['contig'] not in conflicting_contigs)
-            valid_class_ids = self._parse_classes_to_keep(non_ambiguous_classes)
+            valid_class_ids = self._parse_classes_to_keep(non_ambiguous_classes, all_class_ids_in_table=set(e['class'] for e in entries))
             valid_class_names = set(CLASS_NAMES[c] for c in valid_class_ids)
             self.bins_to_contigs = {k: v for k, v in self.bins_to_contigs.items() if k in valid_class_names or k == 'ambiguous'}
 
 
-    def _parse_classes_to_keep(self, available_class_ids):
+    def _parse_classes_to_keep(self, available_class_ids, all_class_ids_in_table):
         """Parse --classes-to-keep (comma-separated names or integers) into a set of integer class ids."""
 
         requested = set()
@@ -917,10 +917,22 @@ class ContigsOnlySplitter:
                                       f"{', '.join(CLASS_NAMES.values())}.")
                 requested.add(match[0])
 
+        # if a class is in the table but not in the available list, it means all entries from this class in the table are ambiguous
+        missing_because_ambiguous = requested.intersection(all_class_ids_in_table - available_class_ids)
+        if missing_because_ambiguous:
+            ambig_names = ', '.join(CLASS_NAMES[c] for c in sorted(missing_because_ambiguous))
+            raise ConfigError(f"The following classes requested via `--classes-to-keep` have dropped out "
+                              f"because all contigs therein have been marked as 'ambiguous' due to classification "
+                              f"conflicts from different sources: {ambig_names}. Your options are: (1) to remove these "
+                              f"classes from your `--classes-to-keep` list, (2) choose another conflict resolution "
+                              f"strategy, or (3) manually resolve the conflicts within this class. Please try this program "
+                              f"again after you've done one of those things.")
+
+
         missing = requested - available_class_ids
         if missing:
             missing_names = ', '.join(CLASS_NAMES[c] for c in sorted(missing))
-            raise ConfigError(f"The following classes requested via --classes-to-keep are not present in "
+            raise ConfigError(f"The following classes requested via `--classes-to-keep` are not present in "
                               f"the classification table: {missing_names}.")
 
         return requested
