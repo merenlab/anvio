@@ -142,6 +142,7 @@ class ProfileSplitter:
         self.bin_name = A('bin_id')
         self.output_directory = A('output_dir')
         self.skip_variability_tables = A('skip_variability_tables')
+        self.split_by_contig_classification = A('split_by_contig_classification')
 
         self.collections = ccollections.Collections()
         self.collections.populate_collections_dict(self.profile_db_path)
@@ -153,6 +154,11 @@ class ProfileSplitter:
         if self.list_collections:
             self.collections.list_collections()
             sys.exit(0)
+
+        if self.split_by_contig_classification:
+            raise ConfigError("You've provided both a profile database and the `--split-by-contig-classification` flag. "
+                              "Unfortunately, we cannot yet split profile DBs according to contig classifications. Please "
+                              "remove the profile database from your command.")
 
         if not self.collection_name:
             raise ConfigError("You must provide a collection name for this to work. If you want to know about "
