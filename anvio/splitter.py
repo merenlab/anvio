@@ -892,8 +892,8 @@ class ContigsOnlySplitter:
 
         # apply --classes-to-keep filter (never filters out 'ambiguous' since it is not a CLASS_NAMES entry)
         if self.classes_to_keep:
-            non_ambiguous_classes = set(e['class'] for e in entries if e['contig'] not in conflicting_contigs)
-            valid_class_ids = self._parse_classes_to_keep(non_ambiguous_classes, all_class_ids_in_table=set(e['class'] for e in entries))
+            available_class_ids = {cid for cid, cname in CLASS_NAMES.items() if cname in self.bins_to_contigs}
+            valid_class_ids = self._parse_classes_to_keep(available_class_ids, all_class_ids_in_table=set(e['class'] for e in entries))
             valid_class_names = set(CLASS_NAMES[c] for c in valid_class_ids)
             self.bins_to_contigs = {k: v for k, v in self.bins_to_contigs.items() if k in valid_class_names or k == 'ambiguous'}
 
