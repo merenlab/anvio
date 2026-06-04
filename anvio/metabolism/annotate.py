@@ -82,6 +82,7 @@ class AnnotationWorker(multiprocessing.Process):
         shm = SharedMemory(name=self.shared_data_shm_name, create=False)
         resource_tracker.unregister('/' + shm.name, 'shared_memory')
         bundle = pickle.loads(bytes(shm.buf[:self.shared_data_size]))
+        shm._name = None  # shm.close() also calls unregister; nulling _name prevents a KeyError message from the second call to unregister
         shm.close()
 
         self.ko_dict = bundle['ko_dict']
