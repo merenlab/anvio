@@ -229,7 +229,7 @@ class ProfileSplitter:
 
 
 class XSplitter(object):
-    """Some common functions both for profile bin and pan bin splitter classes"""
+    """Some common functions to be inherited by the other splitter classes (i.e.profile, pan, and contigs only splitters)."""
 
     def __init__(self):
         pass
