@@ -763,6 +763,10 @@ class PangenomeAAIEngine():
                     "start": info["start"],
                     "stop": info["stop"],
                     "direction": info["direction"],
+                    "partial": info.get("partial"),
+                    "call_type": info.get("call_type"),
+                    "length": info.get("length"),
+                    "source": info.get("source"),
                 })
             genome_calls[genome] = calls
             total_calls += len(calls)

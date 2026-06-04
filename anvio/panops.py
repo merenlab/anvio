@@ -2119,6 +2119,7 @@ class PangenomeGraph():
         self.line_names = line_names
         self.line_to_genome = line_to_genome
         self.in_g_flip = in_g_flip
+        self.genome_calls = engine.genome_calls
 
         # Per-edge genome sets, derived by walking committed lines.
         edge_genomes = self._compute_edge_genome_sets(
@@ -2229,14 +2230,16 @@ class PangenomeGraph():
 
 
     def add_layers(self):
-        """Populate the ``alignment`` attribute on every super-node.
+        """Populate the ``alignment`` attribute on every super-node and copy
+        user-requested numeric layers from CONTIGS.dbs into ``node['layer']``.
 
         In panmode, per-genome alignments are pulled from
         ``self.pan_super.gene_clusters_gene_alignments`` (the existing pan-db
         alignment machinery), padded to a common length, and re-summarized.
         In non-panmode the pan-db is unavailable, so we emit empty alignment
-        strings and move on; functional-annotation / per-contig layers from
-        CONTIGS.dbs are out of scope here and added by a follow-up task.
+        strings and move on. After alignments, the columns named in
+        ``self.import_values`` are aggregated per super-node by mean across
+        the super-node's genes; non-numeric values are skipped.
         """
         self.run.warning("Adding per-node alignments.",
                          header="ADDING LAYERS", lc="green")
@@ -2246,6 +2249,7 @@ class PangenomeGraph():
                                  "will be empty.")
             for _node, data in self.pangenome_graph.graph.nodes(data=True):
                 data['alignment'] = {g: '' for g in data['gene_calls']}
+            self._import_layer_values()
             return
 
         # Nodes with alignments of differing lengths (we pad and warn).
@@ -2319,6 +2323,57 @@ class PangenomeGraph():
                              f"(e.g., {examples}{more}). Storing empty alignments and continuing.")
         else:
             self.run.info_single("Alignments were found for all nodes and successfully added.")
+
+        self._import_layer_values()
+
+
+    def _import_layer_values(self):
+        """Copy the numeric per-gene columns named in ``self.import_values``
+        (from each genome's ``genes_in_contigs_dict``) onto each super-node's
+        ``layer`` dict, aggregated by mean across the super-node's genes.
+        Values that cannot be coerced to float are skipped; a column with no
+        usable values for a node is omitted from that node's layer.
+        """
+        if not self.import_values:
+            return
+
+        gene_lookup = {}
+        for genome, calls in (self.genome_calls or {}).items():
+            gene_lookup[genome] = {c['gene_callers_id']: c for c in calls}
+
+        missing_columns = set()
+        per_column_seen = {col: False for col in self.import_values}
+
+        for _node, data in self.pangenome_graph.graph.nodes(data=True):
+            if 'layer' not in data or data['layer'] is None:
+                data['layer'] = {}
+            for col in self.import_values:
+                numeric_values = []
+                for genome, gid in data['gene_calls'].items():
+                    gene_info = gene_lookup.get(genome, {}).get(gid)
+                    if gene_info is None or col not in gene_info:
+                        if gene_info is not None and col not in gene_info:
+                            missing_columns.add(col)
+                        continue
+                    raw = gene_info[col]
+                    if raw is None:
+                        continue
+                    try:
+                        numeric_values.append(float(raw))
+                    except (TypeError, ValueError):
+                        continue
+                if numeric_values:
+                    data['layer'][col] = sum(numeric_values) / len(numeric_values)
+                    per_column_seen[col] = True
+
+        skipped = [c for c, seen in per_column_seen.items() if not seen]
+        if skipped:
+            self.run.warning(f"No numeric values found for imported column(s): "
+                             f"{', '.join(sorted(skipped))}. Those layers will be empty.")
+
+        imported = [c for c, seen in per_column_seen.items() if seen]
+        if imported:
+            self.run.info("Imported per-node layers", ', '.join(imported))
 
 
 class FragmentedGeneAnnotator():
