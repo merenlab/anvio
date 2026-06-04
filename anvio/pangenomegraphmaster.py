@@ -309,6 +309,8 @@ class PangenomeGraphManager():
         be empty DataFrames if the requested component is empty or contains
         no nodes whose x-position falls inside any region span.
         """
+        self.false_annotation_details = []
+
         nodes_in_component = [n for n, d in self.graph.nodes(data=True)
                               if d.get('component_id', 0) == component_id]
         if not nodes_in_component:
@@ -327,6 +329,13 @@ class PangenomeGraphManager():
         all_positions = sorted({d['position'][0] for _, d in G.nodes(data=True)})
         edge_pos_dict = self._collect_edge_positions(G)
         core_positions = self._filter_false_cores(G, edge_pos_dict, num_genomes)
+
+        case_counts = Counter((r['current_type'], r['suggested_type'])
+                              for r in self.false_annotation_details)
+        for (current, suggested), n in sorted(case_counts.items()):
+            self.run.info_single(
+                f"{n} position{'s' if n != 1 else ''} potentially {suggested} instead of {current}")
+
         regions_dict = self._assign_region_ids(core_positions, all_positions, component_id)
 
         nodes_df, regions_info_dict = self._attach_node_regions(G, regions_dict)
@@ -377,8 +386,13 @@ class PangenomeGraphManager():
         for core_position, num_y in list(core_pos_num_y.items()):
             if num_y > mode_position and core_position in core_positions:
                 core_positions.remove(core_position)
-                self.run.info_single(f"Position {core_position} is probably falsely annotated "
-                                     f"as core and might be a rearranged synteny gene cluster")
+                self.false_annotation_details.append({
+                    'position': core_position,
+                    'current_type': 'core',
+                    'suggested_type': 'rearrangement',
+                    'stack_height': num_y,
+                    'modal_stack_height': mode_position,
+                })
 
         return core_positions
 
@@ -635,6 +649,9 @@ class PangenomeGraphManager():
         genome_names = list(set(it.chain(*[list(d.keys()) for node, d in self.graph.nodes(data='gene_calls')])))
 
         X = np.zeros([len(genome_names), len(genome_names)])
+        min_pair = max_pair = None
+        min_dist = float('inf')
+        max_dist = float('-inf')
         for genome_i, genome_j in it.combinations(genome_names, 2):
             nodes_similar = 0
             edges_similar = 0
@@ -658,10 +675,19 @@ class PangenomeGraphManager():
             elements_similar = nodes_similar + edges_similar
             elements_unsimilar = nodes_unsimilar + edges_unsimilar
 
-            X[i][j] = elements_unsimilar / (elements_similar + elements_unsimilar)
-            X[j][i] = elements_unsimilar / (elements_similar + elements_unsimilar)
+            d = elements_unsimilar / (elements_similar + elements_unsimilar)
+            X[i][j] = d
+            X[j][i] = d
 
-            self.run.info_single(f"d({genome_i},{genome_j}) = {round(X[i][j], 3)}", cut_after=None)
+            if d < min_dist:
+                min_dist, min_pair = d, (genome_i, genome_j)
+            if d > max_dist:
+                max_dist, max_pair = d, (genome_i, genome_j)
+
+        if min_pair is not None:
+            self.run.info_single(f"Smallest distance: d({min_pair[0]},{min_pair[1]}) = {round(min_dist, 3)}", cut_after=None)
+            self.run.info_single(f"Largest distance:  d({max_pair[0]},{max_pair[1]}) = {round(max_dist, 3)}", cut_after=None)
+            self.run.info_single("(full matrix written to the pan-graph-db)", cut_after=None)
 
         distance_matrix = pd.DataFrame(X, index=genome_names, columns=genome_names)
 
