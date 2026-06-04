@@ -1699,6 +1699,9 @@ class PangenomeGraph():
         self.run.info("Max edge length filter", self.max_edge_length_filter)
         self.run.info("Gene-cluster grouping threshold", self.gene_cluster_grouping_threshold)
         self.run.info("Grouping compression", self.groupcompress)
+        self.run.info("Load state", self.load_state)
+        self.run.info("Import values", ','.join(self.import_values) if self.import_values else '')
+        self.run.info("Just do it", self.just_do_it)
 
 
     def process(self):
