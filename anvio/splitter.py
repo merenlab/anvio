@@ -865,7 +865,8 @@ class ContigsOnlySplitter:
 
         # HANDLE --allow-multiple-classifications: each contig goes into every class it was assigned to
         if self.allow_multiple_classifications:
-            run.warning(f"{len(conflicting_contigs)} contig(s) have multiple classifications across sources and will appear in multiple output databases.")
+            if conflicting_contigs:
+                self.run.warning(f"{len(conflicting_contigs)} contig(s) have multiple classifications across sources and will appear in multiple output databases.")
             for contig, source_class_map in contig_to_source_class.items():
                 for cls in set(source_class_map.values()):
                     class_name = CLASS_NAMES[cls]
