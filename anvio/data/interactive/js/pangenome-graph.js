@@ -3848,7 +3848,21 @@ class PangenomeGraphUserInterface {
 
     async appendalignment(gene_cluster_id) {
         var d = await this.fetchalignment([gene_cluster_id]);
+
+        // Non-coding nodes (tRNA/rRNA) have no amino-acid sequences in
+        // genomes-storage, so the server returns an empty per-genome dict
+        // for each genome in the cluster. The route may also fail outright
+        // (status != 0) -- in either case we just render an empty alignment
+        // table rather than throw.
+        if (!d || d.status !== 0 || !d.data || typeof d.data !== 'object') {
+            return `<p class="bin-modal-header" style="background: #f8bbd078;">Sequence alignments</p>` +
+                   `<p class="text-muted" style="margin:10px 0">No amino-acid sequences available for this node.</p>`;
+        }
         var alignment = d['data'][gene_cluster_id];
+        if (!alignment || typeof alignment !== 'object') {
+            return `<p class="bin-modal-header" style="background: #f8bbd078;">Sequence alignments</p>` +
+                   `<p class="text-muted" style="margin:10px 0">No amino-acid sequences available for this node.</p>`;
+        }
 
         // Collect sequences in display order to build conservation-based per-column colors
         var sequence_entries = [];
@@ -3858,6 +3872,10 @@ class PangenomeGraphUserInterface {
                     sequence_entries.push({genome, gene_call, sequence});
                 }
             }
+        }
+        if (sequence_entries.length === 0) {
+            return `<p class="bin-modal-header" style="background: #f8bbd078;">Sequence alignments</p>` +
+                   `<p class="text-muted" style="margin:10px 0">No amino-acid sequences available for this node.</p>`;
         }
 
         // Build sequences_array[col][seq_idx] as required by determineColor; cache for recolor_alignment()

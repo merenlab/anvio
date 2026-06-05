@@ -2120,7 +2120,13 @@ class PanSuperclass(object):
 
             for genome_name in gene_clusters_dict[gene_cluster_name]:
                 sequences[gene_cluster_name][genome_name] = {}
+                # non-coding gene calls (tRNA/rRNA) live in the pan-graph but
+                # have no entry in genomes-storage; skip them so the rest of
+                # the cluster still returns a usable dict.
+                known_gids = self.genomes_storage.gene_info.get(genome_name, {}) if no_sequence_GCs_are_OK else None
                 for gene_callers_id in gene_clusters_dict[gene_cluster_name][genome_name]:
+                    if known_gids is not None and gene_callers_id not in known_gids:
+                        continue
                     sequence = self.genomes_storage.get_gene_sequence(genome_name, gene_callers_id, report_DNA_sequences=report_DNA_sequences)
 
                     if not skip_alignments and self.gene_clusters_gene_alignments_available:
@@ -2724,12 +2730,21 @@ class PanSuperclass(object):
             return
 
         # FIXME WE HAVE TO STORE AVAILABLE FUNCTIONS IN GENOMES STORAGE ATTRs!!!! THIS IS RIDICULOUS
+        # Non-coding gene calls (tRNAs, rRNAs) live in CONTIGS.db but have no
+        # amino-acid sequence and are therefore absent from genomes-storage.
+        # In the synteny pan-graph workflow these gids do appear in
+        # `self.gene_clusters[...]`, so skip any gid not in `gene_info` rather
+        # than crashing on the lookup. For the classic pan workflow every gid
+        # in `self.gene_clusters` has an AA sequence and the check is a no-op.
         self.gene_clusters_function_sources.clear()
         for gene_cluster_id in self.gene_clusters:
             self.gene_clusters_functions_dict[gene_cluster_id] = {}
             for genome_name in self.genome_names:
                 self.gene_clusters_functions_dict[gene_cluster_id][genome_name] = {}
+                known_gids = self.genomes_storage.gene_info.get(genome_name, {})
                 for gene_callers_id in self.gene_clusters[gene_cluster_id][genome_name]:
+                    if gene_callers_id not in known_gids:
+                        continue
                     functions = self.genomes_storage.get_gene_functions(genome_name, gene_callers_id)
                     self.gene_clusters_functions_dict[gene_cluster_id][genome_name][gene_callers_id] = functions
 
@@ -2744,7 +2759,8 @@ class PanSuperclass(object):
                                  "https://github.com/merenlab/anvio/issues/1196", nl_after=1, mc='green')
             for gene_cluster_id in self.gene_clusters:
                 for genome_name in self.genome_names:
-                    for gene_callers_id in self.gene_clusters[gene_cluster_id][genome_name]:
+                    # only tag gids we actually stored functions for above
+                    for gene_callers_id in self.gene_clusters_functions_dict[gene_cluster_id][genome_name]:
                         self.gene_clusters_functions_dict[gene_cluster_id][genome_name][gene_callers_id]['IDENTITY'] = '%s|||%s' % (gene_cluster_id, gene_cluster_id)
             self.gene_clusters_function_sources.update(['IDENTITY'])
 
