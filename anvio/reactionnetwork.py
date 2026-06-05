@@ -3353,6 +3353,8 @@ class GenomicNetwork(ReactionNetwork):
         super().__init__(run=run, progress=progress, verbose=verbose)
         self.contigs_db_source_path: str = None
         self.profile_db_source_path: str = None
+        self.enzymes_txt_source_path: str = None
+        self.json_source_path: str = None
         self.genes: Dict[int, Gene] = {}
         self.proteins: Dict[int, Protein] = {}
 
@@ -6389,6 +6391,111 @@ class Constructor:
             )
         return network
 
+
+    def load_network_from_json(self, path: str, stats_file: str = None) -> GenomicNetwork:
+        """
+        Load a genomic reaction network from an anvi'o JSON file produced by
+        'anvi-get-metabolic-model-file' or by 'GenomicNetwork.export_json'.
+
+        The network is reconstructed by re-running KEGG and ModelSEED reference database lookups
+        on the gene-KO relationships recorded in the JSON file.
+
+        Parameters
+        ==========
+        path : str
+            Path to an anvi'o reaction network JSON file.
+
+        stats_file : str, None
+            Write network overview statistics to a tab-delimited file at this output path.
+
+        Returns
+        =======
+        GenomicNetwork
+            The network loaded from the JSON file.
+        """
+        filesnpaths.is_file_exists(path)
+
+        if stats_file is not None:
+            filesnpaths.is_output_file_writable(stats_file)
+
+        self.run.info("Reaction network JSON", path)
+
+        with open(path) as f:
+            json_dict = json.load(f)
+
+        required_keys = {'genes', 'reactions', 'metabolites'}
+        missing_keys = required_keys - set(json_dict)
+        if missing_keys:
+            raise ConfigError(
+                f"The JSON file at '{path}' does not appear to be an anvi'o reaction network "
+                f"JSON, as it is missing the following required top-level keys: "
+                f"{', '.join(sorted(missing_keys))}."
+            )
+
+        gene_ko_rows = []
+        for gene_entry in json_dict['genes']:
+            gene_id = gene_entry['id']
+            ko_annotation = gene_entry.get('annotation', {}).get('ko', {})
+            for ko_id, ko_data in ko_annotation.items():
+                try:
+                    e_value = float(ko_data.get('e_value', 0.0))
+                except (TypeError, ValueError):
+                    e_value = 0.0
+                gene_ko_rows.append({
+                    'gene_id': gene_id,
+                    'enzyme_accession': ko_id,
+                    'e_value': e_value
+                })
+
+        if not gene_ko_rows:
+            raise ConfigError(
+                f"No gene-KO annotations were found in the JSON file at '{path}'. "
+                f"The file may not be a valid anvi'o reaction network JSON, or the network "
+                f"may have been built without any KO annotations."
+            )
+
+        gene_ko_df = pd.DataFrame(gene_ko_rows).drop_duplicates()
+
+        self.progress.new("Building reaction network from JSON")
+
+        network = GenomicNetwork(run=self.run, progress=self.progress)
+        network.json_source_path = os.path.abspath(path)
+
+        self.progress.update("Loading KEGG reference database")
+        kegg_db = KEGGData(kegg_dir=self.kegg_dir)
+
+        self.progress.update("Loading ModelSEED Biochemistry reference database")
+        modelseed_db = ModelSEEDDatabase(modelseed_dir=self.modelseed_dir)
+
+        undefined_ko_ids, _ = self._build_genomic_network(gene_ko_df, network, kegg_db, modelseed_db)
+
+        self.progress.end()
+
+        if undefined_ko_ids:
+            self.run.info_single(
+                f"The following KO IDs from the JSON were not found in the KEGG reference "
+                f"database and were excluded from the network: "
+                f"{', '.join(sorted(set(undefined_ko_ids)))}"
+            )
+
+        kegg_dir = kegg_db.kegg_context.kegg_data_dir
+        modelseed_dir = self.modelseed_dir if self.modelseed_dir else ModelSEEDDatabase.default_dir
+        self.run.info("Reference KEGG database directory", kegg_dir, nl_before=1)
+        self.run.info("Reference ModelSEED database directory", modelseed_dir, nl_after=1)
+
+        precomputed_counts = {
+            'total_genes': int(len(json_dict['genes'])),
+            'genes_assigned_kos': int(gene_ko_df['gene_id'].nunique()),
+            'kos_assigned_genes': int(gene_ko_df['enzyme_accession'].nunique())
+        }
+        stats = network.get_overview_statistics(precomputed_counts=precomputed_counts)
+        network.print_overview_statistics(stats=stats)
+        if stats_file:
+            network.write_overview_statistics(stats_file, stats=stats)
+
+        return network
+
+
     def load_contigs_database_network(
         self,
         contigs_db: str,
@@ -7860,6 +7967,264 @@ class Constructor:
             network.write_overview_statistics(stats_file, stats=stats)
 
         return network
+
+
+    def _build_genomic_network(self, gene_ko_df: pd.DataFrame, network: GenomicNetwork, kegg_db: 'KEGGData', modelseed_db: 'ModelSEEDDatabase') -> Tuple[List[str], List[str]]:
+        """
+        Populate a GenomicNetwork from a DataFrame of gene-KO pairs and reference databases.
+
+        This is shared by 'make_enzymes_txt_network' and 'load_network_from_json'.
+
+        Parameters
+        ==========
+        gene_ko_df : pandas.DataFrame
+            DataFrame with columns 'gene_id', 'enzyme_accession', and 'e_value'. Gene IDs may be
+            strings or integers; they are stored as-is in Gene.gcid and as keys in network.genes.
+
+        network : GenomicNetwork
+            Network object to populate in place.
+
+        kegg_db : KEGGData
+            Loaded KEGG reference data.
+
+        modelseed_db : ModelSEEDDatabase
+            Loaded ModelSEED Biochemistry reference data.
+
+        Returns
+        =======
+        Tuple[List[str], List[str]]
+            Lists of (undefined KO IDs, undefined ModelSEED reaction IDs).
+        """
+        kegg_kos_data = kegg_db.ko_data
+        kegg_modules_data = kegg_db.module_data
+        kegg_pathways_data = kegg_db.pathway_data
+        kegg_hierarchies_data = kegg_db.hierarchy_data
+        modelseed_kegg_reactions_table = modelseed_db.kegg_reactions_table
+        modelseed_ec_reactions_table = modelseed_db.ec_reactions_table
+        modelseed_compounds_table = modelseed_db.compounds_table
+
+        undefined_ko_ids: List[str] = []
+        undefined_modelseed_reaction_ids: List[str] = []
+
+        total_ko_matches = len(gene_ko_df)
+        num_ko_matches_parsed = -1
+        for row in gene_ko_df.itertuples(index=False):
+            num_ko_matches_parsed += 1
+            self.progress.update(
+                f"Gene-KO matches parsed: {num_ko_matches_parsed} / {total_ko_matches}"
+            )
+
+            gene_id = row.gene_id
+            ko_id = row.enzyme_accession
+            e_value = float(row.e_value) if row.e_value is not None else 0.0
+
+            if gene_id in network.genes:
+                gene = network.genes[gene_id]
+                is_new_gene = False
+            else:
+                gene = Gene()
+                gene.gcid = gene_id
+                is_new_gene = True
+
+            try:
+                ko = network.kos[ko_id]
+                is_new_ko = False
+            except KeyError:
+                is_new_ko = True
+
+            if not is_new_ko:
+                gene.ko_ids.append(ko_id)
+                gene.e_values[ko_id] = e_value
+                if is_new_gene:
+                    network.genes[gene_id] = gene
+                continue
+
+            try:
+                ko_info = kegg_kos_data[ko_id]
+            except KeyError:
+                undefined_ko_ids.append(ko_id)
+                continue
+
+            ko_kegg_reaction_ids = self._get_ko_kegg_reaction_ids(ko_info)
+            ko_ec_numbers = self._get_ko_ec_numbers(ko_info)
+
+            if not ko_kegg_reaction_ids and not ko_ec_numbers:
+                continue
+
+            old_kegg_reaction_ids, new_kegg_reaction_ids = self._find_kegg_reaction_ids(
+                ko_kegg_reaction_ids, network
+            )
+            old_ec_numbers, new_ec_numbers = self._find_ec_numbers(ko_ec_numbers, network)
+
+            modelseed_kegg_reactions_dict: Dict[int, Dict] = modelseed_kegg_reactions_table[
+                modelseed_kegg_reactions_table['KEGG_REACTION_ID'].isin(new_kegg_reaction_ids)
+            ].to_dict(orient='index')
+
+            modelseed_ec_reactions_dict: Dict[int, Dict] = modelseed_ec_reactions_table[
+                modelseed_ec_reactions_table['EC_number'].isin(new_ec_numbers)
+            ].to_dict(orient='index')
+
+            if not (
+                old_kegg_reaction_ids or
+                old_ec_numbers or
+                modelseed_kegg_reactions_dict or
+                modelseed_ec_reactions_dict
+            ):
+                continue
+
+            undefined_modelseed_reaction_ids += self._remove_undefined_reactions(
+                ko_kegg_reaction_ids,
+                new_kegg_reaction_ids,
+                ko_ec_numbers,
+                new_ec_numbers,
+                modelseed_kegg_reactions_dict,
+                modelseed_ec_reactions_dict
+            )
+
+            if not (
+                old_kegg_reaction_ids or
+                new_kegg_reaction_ids or
+                old_ec_numbers or
+                new_ec_numbers
+            ):
+                continue
+
+            if is_new_gene:
+                network.genes[gene_id] = gene
+
+            ko = KO()
+            ko.id = ko_id
+            ko.name = ko_id
+            network.kos[ko_id] = ko
+            gene.ko_ids.append(ko_id)
+            gene.e_values[ko_id] = e_value
+
+            self._process_added_reactions(
+                old_kegg_reaction_ids,
+                old_ec_numbers,
+                network,
+                ko,
+                ko_kegg_reaction_ids,
+                ko_ec_numbers
+            )
+
+            self._add_reactions(
+                modelseed_kegg_reactions_dict,
+                modelseed_ec_reactions_dict,
+                network,
+                modelseed_compounds_table,
+                ko,
+                old_kegg_reaction_ids,
+                new_kegg_reaction_ids,
+                old_ec_numbers,
+                new_ec_numbers
+            )
+
+            self._add_ko_classification(
+                ko,
+                network,
+                ko_info,
+                kegg_modules_data,
+                kegg_pathways_data,
+                kegg_hierarchies_data
+            )
+
+        self._relate_modules_pathways(network, kegg_modules_data)
+
+        return undefined_ko_ids, undefined_modelseed_reaction_ids
+
+
+    def make_enzymes_txt_network(self, enzymes_txt: str, stats_file: str = None) -> GenomicNetwork:
+        """
+        Make a metabolic reaction network from KOfam annotations in an enzymes file.
+
+        This bypasses the need for a contigs database and allows reaction networks to be built
+        from custom enzyme lists, e.g., from transcriptomic or proteomic data.
+
+        Parameters
+        ==========
+        enzymes_txt : str
+            Path to a tab-delimited enzymes file with required columns 'gene_id',
+            'enzyme_accession', and 'source'. Only rows where 'source' is 'KOfam' are used.
+
+        stats_file : str, None
+            Write network overview statistics to a tab-delimited file at this output path.
+
+        Returns
+        =======
+        GenomicNetwork
+            The network derived from the enzymes file.
+        """
+        if stats_file is not None:
+            filesnpaths.is_output_file_writable(stats_file)
+
+        filesnpaths.is_file_tab_delimited(enzymes_txt)
+
+        self.run.info("Enzymes file", enzymes_txt)
+
+        enzymes_df = pd.read_csv(enzymes_txt, sep='\t')
+        required_columns = {'gene_id', 'enzyme_accession', 'source'}
+        missing_columns = required_columns - set(enzymes_df.columns)
+        if missing_columns:
+            raise ConfigError(
+                f"The enzymes file, '{enzymes_txt}', is missing required columns: "
+                f"{', '.join(sorted(missing_columns))}. The file must contain at least "
+                f"'gene_id', 'enzyme_accession', and 'source' columns."
+            )
+
+        kofam_df = enzymes_df[enzymes_df['source'] == 'KOfam'][
+            ['gene_id', 'enzyme_accession']
+        ].drop_duplicates()
+
+        if len(kofam_df) == 0:
+            present_sources = ', '.join(f"'{s}'" for s in sorted(enzymes_df['source'].unique()))
+            raise ConfigError(
+                f"No KOfam annotations were found in '{enzymes_txt}' (source column value "
+                f"must be 'KOfam'). Reaction networks require KO annotations. Sources present "
+                f"in the file: {present_sources}."
+            )
+
+        kofam_df = kofam_df.assign(e_value=0.0)
+
+        self.progress.new("Building reaction network")
+
+        network = GenomicNetwork(run=self.run, progress=self.progress)
+        network.enzymes_txt_source_path = os.path.abspath(enzymes_txt)
+
+        self.progress.update("Loading KEGG reference database")
+        kegg_db = KEGGData(kegg_dir=self.kegg_dir)
+
+        self.progress.update("Loading ModelSEED Biochemistry reference database")
+        modelseed_db = ModelSEEDDatabase(modelseed_dir=self.modelseed_dir)
+
+        undefined_ko_ids, _ = self._build_genomic_network(kofam_df, network, kegg_db, modelseed_db)
+
+        self.progress.end()
+
+        if undefined_ko_ids:
+            self.run.info_single(
+                f"The following KO IDs from the enzymes file were not found in the KEGG "
+                f"reference database and were excluded from the network: "
+                f"{', '.join(sorted(set(undefined_ko_ids)))}"
+            )
+
+        kegg_dir = kegg_db.kegg_context.kegg_data_dir
+        modelseed_dir = self.modelseed_dir if self.modelseed_dir else ModelSEEDDatabase.default_dir
+        self.run.info("Reference KEGG database directory", kegg_dir, nl_before=1)
+        self.run.info("Reference ModelSEED database directory", modelseed_dir, nl_after=1)
+
+        precomputed_counts = {
+            'total_genes': int(enzymes_df['gene_id'].nunique()),
+            'genes_assigned_kos': int(kofam_df['gene_id'].nunique()),
+            'kos_assigned_genes': int(kofam_df['enzyme_accession'].nunique())
+        }
+        stats = network.get_overview_statistics(precomputed_counts=precomputed_counts)
+        network.print_overview_statistics(stats=stats)
+        if stats_file:
+            network.write_overview_statistics(stats_file, stats=stats)
+
+        return network
+
 
     def make_pangenomic_network(
         self,
