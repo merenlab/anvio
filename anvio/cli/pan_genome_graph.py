@@ -47,11 +47,10 @@ def get_args():
 
     groupA = parser.add_argument_group('INPUT', "Anvi'o artifacts for the pan graph to be computed.")
     groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
-    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
-    groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {'required': False}))
+    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': True}))
+    groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {'required': True}))
     groupA.add_argument(*anvio.A('genomes-names'), **anvio.K('genomes-names', {'required': False}))
-    groupA.add_argument(*anvio.A('pan-graph-yaml'), **anvio.K('pan-graph-yaml', {'required': False}))
-    groupA.add_argument(*anvio.A('diamond-search-results'), **anvio.K('diamond-search-results', {'required': False}))
+    groupA.add_argument(*anvio.A('diamond-search-results'), **anvio.K('diamond-search-results', {'required': True}))
 
     groupB = parser.add_argument_group('OUTPUT', "Where the resulting pan-graph-db should be written. If you don't specify a path, "
                                 "anvi'o will write the database into the current working directory using the project name as the "
@@ -134,7 +133,7 @@ def get_args():
     groupF = parser.add_argument_group('METADATA & LAYERS', "Display and metadata options for the resulting pan-graph.")
 
     groupF.add_argument(*anvio.A('description'), **anvio.K('description'))
-    groupF.add_argument('--project-name', default=None, help = "Optional name stored in the pan-graph-db metadata (for display/export).")
+    groupF.add_argument(*anvio.A('project-name'), **anvio.K('project-name'))
     groupF.add_argument('--load-state', default='default', type=str, help="Initial display state name to store/use in the pan-graph-db.")
     groupF.add_argument('--import-values', default='start,stop,partial,call_type', type=str, help = "Comma-separated "
                     "numeric columns from the pangenome table to copy as node layers (e.g., start, stop, partial); "

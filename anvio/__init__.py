@@ -2245,12 +2245,6 @@ D = {
              'type': str,
              'help': "Directory path for output files"}
                 ),
-    'pan-graph-yaml': (
-            ['--pan-graph-yaml'],
-            {'metavar': 'YAML',
-             'type': str,
-             'help': "A yaml file containing raw gene cluster order for testing the anvi'o pan graph."}
-                ),
     'pan-graph-db': (
             ['-p', '--pan-graph-db'],
             {'metavar': "PAN_GRAPH_DB",
