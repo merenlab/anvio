@@ -256,10 +256,6 @@ When adding code that consumes an artifact, search the codebase for existing usa
 grep 'GenomeDescriptions(' * -nr --exclude-dir data
 ```
 
-### `multiprocess` instead of `multiprocessing`
-
-The codebase uses `import multiprocess as multiprocessing` (a fork using `dill` serializer) because Python 3.10 cannot pickle local lambdas with stdlib `multiprocessing`.
-
 ### Table Schemas
 
 `anvio/tables/__init__.py` defines every database table as a triplet:

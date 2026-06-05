@@ -18,13 +18,7 @@ import itertools
 import scipy.signal
 import pandas as pd
 
-# multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
-# using the multiprocessing module directly results in a pickling error in Python 3.10 which
-# goes like this:
-#
-#   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
-#
-import multiprocess as multiprocessing
+import multiprocessing
 
 from io import StringIO
 from functools import wraps

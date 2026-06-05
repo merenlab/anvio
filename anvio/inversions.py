@@ -7,15 +7,7 @@ import numpy as np
 import xml.etree.ElementTree as ET
 from collections import OrderedDict, Counter
 
-# multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
-# using the multiprocessing module directly results in a pickling error in Python 3.10 which
-# goes like this:
-#
-#   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
-#
-import multiprocess as multiprocessing
-
-
+import multiprocessing
 
 import anvio
 import anvio.tables as t
