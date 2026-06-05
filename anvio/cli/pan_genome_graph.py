@@ -70,7 +70,7 @@ def get_args():
                     "engine over-splits: same weakly connected component, not in-series in the DAG, and "
                     "disjoint genome coverage. Pass this flag to disable that pass and keep the engine's "
                     "original splits intact.")
-    groupC.add_argument('--remerge-max-length', default=-1, type=int,
+    groupC.add_argument('--remerge-max-length', default=10, type=int,
                     help = "Asymmetry cap (in DAG edges) for remerge candidates. For each candidate pair, "
                     "the remerge pass measures shortest-path distances from BOTH the lowest common ancestor "
                     "(LCA) and the lowest common descendant (LCD), where they exist, to each of the two "
@@ -112,7 +112,7 @@ def get_args():
                     "combine ranking components into a single score per edge.")
     groupD.add_argument('--minbit-floor', default=0.0, type=float, help = "Edges with AAI minbit below this value are dropped "
                     "before ranking.")
-    groupD.add_argument('--min-ranking-score', default=0.0, type=float, help = "Edges whose combined ranking score (the mean of "
+    groupD.add_argument('--min-ranking-score', default=0.05, type=float, help = "Edges whose combined ranking score (the mean of "
                     "--ranking-components) is below this value are skipped during fusion. Independent of --minbit-floor, which gates "
                     "on raw minbit; this gates on the aggregated score.")
     groupD.add_argument('--fusion-top-bucket-k', default=5, type=int, help = "Number of top-ranked edges sampled per fusion step "
