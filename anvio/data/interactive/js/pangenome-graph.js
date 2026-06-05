@@ -1423,11 +1423,12 @@ class PangenomeGraphUserInterface {
     
     start_draw() {
         var new_settings_dict = {};
-        
+
         new_settings_dict['condtr'] = parseInt($('#condtr')[0].value);
         new_settings_dict['maxlength'] = parseInt($('#maxlength')[0].value);
         new_settings_dict['groupcompress'] = parseFloat($('#groupcompress')[0].value);
-        
+        new_settings_dict['component'] = parseInt($('#component_select').val());
+
         if (JSON.stringify(this.settings_dict) !== JSON.stringify(new_settings_dict)) {
             this.rerun_JSON(new_settings_dict);
         }
@@ -2789,8 +2790,36 @@ class PangenomeGraphUserInterface {
         }
     }
 
+    // Build the Component dropdown from the loaded nodes. Each node has a
+    // component_id; we bucket node counts by id, sort by id ascending, and
+    // label each option "Component N (M nodes)". The currently active
+    // component (settings_dict['component'], defaulting to 0) is preselected.
+    populate_component_select() {
+        const counts = {};
+        for (const n in this.nodes) {
+            const cid = this.nodes[n]['component_id'];
+            if (cid === undefined) continue;
+            counts[cid] = (counts[cid] || 0) + 1;
+        }
+        const ids = Object.keys(counts)
+                          .map(k => parseInt(k))
+                          .sort((a, b) => a - b);
+        const current = (this.settings_dict && this.settings_dict['component'] !== undefined)
+                        ? this.settings_dict['component'] : 0;
+
+        const $sel = $('#component_select');
+        $sel.empty();
+        for (const cid of ids) {
+            const opt = $('<option>').attr('value', cid).text(`Component ${cid} (${counts[cid]} nodes)`);
+            if (cid === current) opt.attr('selected', 'selected');
+            $sel.append(opt);
+        }
+    }
+
     initialize_user_interface() {
-        
+
+        this.populate_component_select();
+
         $('#RightOffcanvasBodyTop').append(
             $('<tr>').append(
                 $('<td class="col-4">').append(
@@ -3247,6 +3276,7 @@ class PangenomeGraphUserInterface {
         this.settings_dict['condtr'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['grouping_threshold']))
         this.settings_dict['maxlength'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['max_edge_length']))
         this.settings_dict['groupcompress'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['group_compression']))
+        this.settings_dict['component'] = parseInt($('#component_select').val()) || 0
         this.settings_dict['state'] = JSON.parse(JSON.stringify(this.data['meta']['state']))
 
         // Delegated handlers for amino acid conservation checkboxes in the alignment modal
