@@ -24,13 +24,27 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = VERSION
 __requires__ = ['kegg-data']
-__can_use__ = ['contigs-db', 'external-genomes', 'pan-db', 'genomes-storage-db']
+__can_use__ = ['contigs-db', 'external-genomes', 'pan-db', 'genomes-storage-db', 'reaction-network']
 __provides__ = ['kegg-pathway-map']
 __description__ = DESCRIPTION
 
 
 def get_args() -> Namespace:
     parser = ArgumentParser(description=DESCRIPTION)
+
+    groupJSON = parser.add_argument_group(
+        "REACTION NETWORK JSON",
+        "Display KO data from a reaction network JSON file produced by 'anvi-reaction-network "
+        "--enzymes-txt' or 'anvi-get-metabolic-model-file'. This bypasses the need for a contigs "
+        "database and allows pathway maps to be drawn from any custom enzyme list."
+    )
+    groupJSON.add_argument(
+        '--reaction-network-json', type=str, metavar='FILE', help=
+        "Path to a reaction network JSON file (produced by 'anvi-reaction-network --enzymes-txt' "
+        "or 'anvi-get-metabolic-model-file'). KO IDs are extracted from the gene annotations in "
+        "the JSON and used to highlight reactions in pathway maps. Use '--ko' to activate KO "
+        "drawing when using this option."
+    )
 
     groupCONTIGS = parser.add_argument_group(
         "CONTIGS DATABASE",
@@ -318,6 +332,24 @@ def consolidate_contigs_dbs(args: Namespace) -> None:
     assert external_genomes_table.columns.tolist() == ['name', 'contigs_db_path']
     args.contigs_dbs += external_genomes_table['contigs_db_path'].tolist()
 
+def map_json_network_ko_data(args: Namespace, mapper: Mapper) -> None:
+    """Draw KO data from a reaction network JSON file."""
+    map_reaction_network_json_kos = mapper.map_reaction_network_json_kos
+
+    if args.set_color is None or args.set_color is True:
+        pass
+    else:
+        map_reaction_network_json_kos = functools.partial(
+            map_reaction_network_json_kos, color_hexcode=args.set_color
+        )
+
+    map_reaction_network_json_kos(
+        args.reaction_network_json,
+        args.output_dir,
+        pathway_numbers=args.pathway_numbers,
+        draw_maps_lacking_kos=args.draw_bare_maps
+    )
+
 def map_single_contigs_db_ko_data(args: Namespace, mapper: Mapper) -> None:
     """Draw KO data from a single contigs database source in the absence of a colormap."""
     map_contigs_database_kos = mapper.map_contigs_database_kos
@@ -563,6 +595,10 @@ def main() -> None:
                         categorize_files=args.categorize_files)
         performed = False
 
+        if args.reaction_network_json is not None and args.ko is True:
+            map_json_network_ko_data(args, mapper)
+            performed = True
+
         if (
             args.contigs_dbs is not None and
             len(args.contigs_dbs) == 1 and
@@ -588,8 +624,9 @@ def main() -> None:
 
         if not performed:
             raise ConfigError(
-                "No task was performed! The minimum requirements are a database source, such as "
-                "`--contigs-dbs`, and a data type to draw, such as `--ko`."
+                "No task was performed! The minimum requirements are a data source (such as "
+                "`--reaction-network-json`, `--contigs-dbs`, or `--pan-db`) and a data type to "
+                "draw, such as `--ko`."
             )
 
     except ConfigError as e:
