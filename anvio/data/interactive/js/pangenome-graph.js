@@ -3331,11 +3331,11 @@ class PangenomeGraphUserInterface {
         try {
             all_info = await this.get_gene_cluster_display_tables(gcid, gene_cluster_context, 1, true);
         } catch(err) {
-            waitingDialog.hide();
+            hideWaitingDialogSafely();
             toastr.error('Could not load data.', "Request failed");
             return;
         }
-        waitingDialog.hide();
+        hideWaitingDialogSafely();
 
         const title = `Synteny gene cluster: ${gcid}`;
         showPangraphFunctionsSummaryTableDialog(title, all_info);
@@ -3658,12 +3658,12 @@ class PangenomeGraphUserInterface {
         try {
             response = await this.fetch_functions_and_metabolism(sgc_ids);
         } catch(err) {
-            waitingDialog.hide();
+            hideWaitingDialogSafely();
             toastr.error('Could not reach the functions endpoint.', "Request failed");
             return;
         }
 
-        waitingDialog.hide();
+        hideWaitingDialogSafely();
 
         if (!response || response.status !== 0) {
             toastr.error((response && response.message) || 'Could not load functional annotations.', "Server error");
@@ -3762,12 +3762,12 @@ class PangenomeGraphUserInterface {
         try {
             response = await this.fetch_functions_and_metabolism(sgc_ids);
         } catch(err) {
-            waitingDialog.hide();
+            hideWaitingDialogSafely();
             toastr.error('Could not reach the functions endpoint.', "Request failed");
             return;
         }
 
-        waitingDialog.hide();
+        hideWaitingDialogSafely();
 
         if (!response || response.status !== 0) {
             toastr.error((response && response.message) || 'Could not load functional annotations.', "Server error");
