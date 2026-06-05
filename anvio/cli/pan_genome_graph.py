@@ -70,6 +70,15 @@ def get_args():
                     "engine over-splits: same weakly connected component, not in-series in the DAG, and "
                     "disjoint genome coverage. Pass this flag to disable that pass and keep the engine's "
                     "original splits intact.")
+    groupC.add_argument('--remerge-max-length', default=-1, type=int,
+                    help = "Asymmetry cap (in DAG edges) for remerge candidates. For each candidate pair, "
+                    "the remerge pass measures shortest-path distances from BOTH the lowest common ancestor "
+                    "(LCA) and the lowest common descendant (LCD), where they exist, to each of the two "
+                    "nodes. If either |dist_a - dist_b| exceeds this value the merge is rejected. This "
+                    "blocks topologically lopsided merges where one candidate sits much deeper/shallower "
+                    "than the other relative to the shared ancestor or descendant. Default -1 disables the "
+                    "check. When only one of LCA or LCD exists, only that side's check applies; pairs with "
+                    "neither (extremely rare on a connected DAG) are not rejected by this guard.")
     groupC.add_argument('--no-include-non-coding-genes', default=False, action='store_true',
                     help = "Drop non-coding gene calls (rRNA, tRNA, etc.) from the graph. By default (no flag), "
                     "non-coding gene calls are kept as singleton super-nodes typed `rna`. Non-coding genes are "

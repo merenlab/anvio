@@ -1562,6 +1562,7 @@ class PangenomeGraph():
         self.min_contig_chain = A('min_contig_chain')
         self.no_include_non_coding_genes = bool(A('no_include_non_coding_genes'))
         self.no_remerge = bool(A('no_remerge'))
+        self.remerge_max_length = A('remerge_max_length') if A('remerge_max_length') is not None else -1
         self.max_edge_length_filter = A('max_edge_length_filter')
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
         self.groupcompress = A('grouping_compression')
@@ -1689,6 +1690,8 @@ class PangenomeGraph():
         self.run.info("Minimum number of genes per contig", self.min_contig_chain)
         self.run.info("Remove non-coding genes", self.no_include_non_coding_genes)
         self.run.info("Skip remerge step", self.no_remerge)
+        self.run.info("Remerge LCA/LCD-asymmetry cap",
+                      'disabled' if self.remerge_max_length < 0 else self.remerge_max_length)
         self.run.info("Component to layout", self.component)
         self.run.info("Locality window", self.locality_window)
         self.run.info("Min window completeness", self.min_window_completeness)
@@ -1917,6 +1920,7 @@ class PangenomeGraph():
             'min_contig_chain': self.min_contig_chain,
             'no_include_non_coding_genes': self.no_include_non_coding_genes,
             'no_remerge': self.no_remerge,
+            'remerge_max_length': self.remerge_max_length,
             'locality_window': self.locality_window,
             'min_window_completeness': self.min_window_completeness,
             'min_line_pair_hits': self.min_line_pair_hits,
@@ -2408,6 +2412,11 @@ class PangenomeGraph():
         merged_pairs = 0
         new_core_num = 0
         new_accessory_num = 0
+        n_rejected_asymmetry = 0
+
+        # O(1) reverse view used to compute the lowest common descendant:
+        # LCD(a, b) in `graph` == LCA(a, b) in the reverse direction.
+        reverse_view = graph.reverse(copy=False) if self.remerge_max_length >= 0 else None
 
         for gc, syns in gc_to_syns.items():
             if len(syns) < 2:
@@ -2428,6 +2437,39 @@ class PangenomeGraph():
                 lca = nx.lowest_common_ancestor(graph, syn_a, syn_b)
                 if lca == syn_a or lca == syn_b:
                     continue
+
+                # Guard 2b: LCA/LCD-asymmetry cap. Reject pairs whose
+                # shortest-path distances from the LCA (or to the LCD) differ
+                # by more than `remerge_max_length` edges. Each check is
+                # applied independently when its anchor exists; whichever
+                # exist must ALL pass. The cap is skipped only when it is
+                # disabled (< 0) or when NEITHER anchor exists.
+                if self.remerge_max_length >= 0:
+                    lcd = nx.lowest_common_ancestor(reverse_view, syn_a, syn_b)
+                    reject = False
+
+                    if lca is not None:
+                        try:
+                            dist_a = nx.shortest_path_length(graph, lca, syn_a)
+                            dist_b = nx.shortest_path_length(graph, lca, syn_b)
+                            if abs(dist_a - dist_b) > self.remerge_max_length:
+                                reject = True
+                        except nx.NetworkXNoPath:
+                            # Real LCA in a DAG always has a path; defensive.
+                            reject = True
+
+                    if not reject and lcd is not None:
+                        try:
+                            dist_a = nx.shortest_path_length(graph, syn_a, lcd)
+                            dist_b = nx.shortest_path_length(graph, syn_b, lcd)
+                            if abs(dist_a - dist_b) > self.remerge_max_length:
+                                reject = True
+                        except nx.NetworkXNoPath:
+                            reject = True
+
+                    if reject:
+                        n_rejected_asymmetry += 1
+                        continue
 
                 # Guard 3 / 4: disjoint genome membership.
                 if not set(node_a['gene_calls']).isdisjoint(node_b['gene_calls']):
@@ -2502,6 +2544,9 @@ class PangenomeGraph():
                              f"{original_num_nodes - graph.number_of_nodes()} node(s) removed.")
         self.run.info_single(f"{new_core_num} node(s) retyped 'rearrangement' -> 'core'.")
         self.run.info_single(f"{new_accessory_num} node(s) retyped 'rearrangement' -> 'accessory'.")
+        if self.remerge_max_length >= 0:
+            self.run.info_single(f"{n_rejected_asymmetry} pair(s) rejected "
+                                 f"(LCA/LCD-asymmetry > {self.remerge_max_length}).")
 
         if not nx.is_directed_acyclic_graph(graph):
             raise ConfigError("Cyclic graphs are not implemented. Remerge produced a cycle, which means "
