@@ -1,6 +1,18 @@
 @import url('variable.css');
 @import url('main.css');
 
+@keyframes redraw-spin {
+    to { transform: rotate(360deg); }
+}
+
+#redraw .redraw-spinner {
+    animation: redraw-spin 1s linear infinite;
+    display: inline-block;
+}
+
+#redraw:not(.disabled) .redraw-spinner { display: none; }
+#redraw.disabled .redraw-icon { display: none; }
+
 .gene-sequence{
   font-family: monospace !important;
 }
@@ -144,11 +156,33 @@
 
   #panel-left {
     z-index: 2;
-    will-change: auto;
+    transition: left 0.3s ease-out;
+  }
+
+  #panel-left.panel-closed {
+    left: -490px;
+  }
+
+  /* Override main.css fixed positioning so #sidebar moves with the panel during animation */
+  #sidebar {
+    position: relative !important;
+    min-width: unset !important;
+    width: 490px !important;
+    height: 100vh !important;
+  }
+
+  /* Keep nav icons visible while settings content scrolls, without fixing to viewport */
+  .tab-elements {
+    position: sticky !important;
+    top: 0;
   }
 
   #toggle-panel-left{
     z-index: 10 !important;
+  }
+
+  .toggle-panel-left-pos {
+    left: 490px;
   }
 
   #toggle-panel-top{
@@ -270,3 +304,4 @@
 .bin-count-btn:hover {
     background-color: #d0d7df;
 }
+

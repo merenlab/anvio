@@ -29,6 +29,7 @@ def main():
     progress = terminal.Progress()
 
     try:
+        utils.is_all_npm_packages_installed()
         d = interactive.PangraphInteractive(args, run=run, progress=progress)
 
         if args.dry_run:

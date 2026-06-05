@@ -1,3 +1,14 @@
+const description_panel = new DescriptionPanel('/pangraph/store_description');
+
+function showFetchOverlay(message) {
+    $('#fetch-overlay-message').text(message || 'Loading...');
+    $('#fetch-overlay').css('display', 'flex');
+}
+
+function hideFetchOverlay() {
+    $('#fetch-overlay').hide();
+}
+
 class PangenomeGraphUserInterface {
     constructor() {
         this.bin_dict = {'bin_1': []};
@@ -1421,7 +1432,7 @@ class PangenomeGraphUserInterface {
         return(result)
     }
     
-    start_draw() {
+    start_draw(on_complete) {
         var new_settings_dict = {};
 
         new_settings_dict['condtr'] = parseInt($('#condtr')[0].value);
@@ -1447,6 +1458,11 @@ class PangenomeGraphUserInterface {
                 this.settings_dict = JSON.parse(JSON.stringify(new_settings_dict));
                 this.main_draw();
                 $('#svgbox').css('opacity', '');
+                if (on_complete) requestAnimationFrame(() => requestAnimationFrame(on_complete));
+                if (!this._description_panel_shown && description_panel.description) {
+                    this._description_panel_shown = true;
+                    description_panel.show();
+                }
             },
             error: (err) => {
                 $('#svgbox').css('opacity', '');
@@ -2327,6 +2343,8 @@ class PangenomeGraphUserInterface {
                 this.initialize_variables();
                 this.initialize_user_interface();
                 this.set_UI_settings();
+                description_panel.setup(this.data['meta']['description']);
+                this.start_draw(toggleLeftPanel);
             },
             error: (err) => {
                 toastr.error('Could not reach the server during initialization.', 'Initialization error', { 'timeOut': '0', 'extendedTimeOut': '0' });
@@ -3356,16 +3374,16 @@ class PangenomeGraphUserInterface {
             toastr.error('The server is no longer accessible.', 'Request failed');
             return;
         }
-        waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
+        showFetchOverlay('Fetching functions and metabolism data...');
         let all_info;
         try {
             all_info = await this.get_gene_cluster_display_tables(gcid, gene_cluster_context, 1, true);
         } catch(err) {
-            hideWaitingDialogSafely();
             toastr.error('Could not load data.', "Request failed");
             return;
+        } finally {
+            hideFetchOverlay();
         }
-        hideWaitingDialogSafely();
 
         const title = `Synteny gene cluster: ${gcid}`;
         showPangraphFunctionsSummaryTableDialog(title, all_info);
@@ -3682,18 +3700,17 @@ class PangenomeGraphUserInterface {
             toastr.error('The server is no longer accessible.', 'Request failed');
             return;
         }
-        waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
+        showFetchOverlay('Fetching functions and metabolism data...');
 
         let response;
         try {
             response = await this.fetch_functions_and_metabolism(sgc_ids);
         } catch(err) {
-            hideWaitingDialogSafely();
             toastr.error('Could not reach the functions endpoint.', "Request failed");
             return;
+        } finally {
+            hideFetchOverlay();
         }
-
-        hideWaitingDialogSafely();
 
         if (!response || response.status !== 0) {
             toastr.error((response && response.message) || 'Could not load functional annotations.', "Server error");
@@ -3786,18 +3803,17 @@ class PangenomeGraphUserInterface {
             toastr.error('The server is no longer accessible.', 'Request failed');
             return;
         }
-        waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
+        showFetchOverlay('Fetching functions and metabolism data...');
 
         let response;
         try {
             response = await this.fetch_functions_and_metabolism(sgc_ids);
         } catch(err) {
-            hideWaitingDialogSafely();
             toastr.error('Could not reach the functions endpoint.', "Request failed");
             return;
+        } finally {
+            hideFetchOverlay();
         }
-
-        hideWaitingDialogSafely();
 
         if (!response || response.status !== 0) {
             toastr.error((response && response.message) || 'Could not load functional annotations.', "Server error");
@@ -4396,6 +4412,8 @@ class PangenomeGraphUserInterface {
             }
         });
     }
+
+
 }
 
 $(document).ready(function () {
