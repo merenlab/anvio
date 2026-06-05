@@ -271,6 +271,91 @@ class Mapper:
 
         return drawn
 
+
+    def map_reaction_network_json_kos(
+        self,
+        json_path: str,
+        output_dir: str,
+        pathway_numbers: Iterable[str] = None,
+        color_hexcode: str = '#2ca02c',
+        draw_maps_lacking_kos: bool = False
+    ) -> Dict[str, bool]:
+        """
+        Draw pathway maps highlighting KOs present in a reaction network JSON file.
+
+        The JSON file must be in the format produced by 'anvi-get-metabolic-model-file' or by
+        'anvi-reaction-network --enzymes-txt ... --output-json ...'. KO IDs are extracted
+        directly from the gene annotations in the JSON, so no reference databases are required.
+
+        Parameters
+        ==========
+        json_path : str
+            Path to an anvi'o reaction network JSON file.
+
+        output_dir : str
+            Path to the output directory in which pathway map PDF files are drawn.
+
+        pathway_numbers : Iterable[str], None
+            Regex patterns to match the ID numbers of the drawn pathway maps. The default of None
+            draws all available pathway maps in the KEGG data directory.
+
+        color_hexcode : str, '#2ca02c'
+            Color for reactions containing KOs from the JSON network. Can also be 'original'.
+
+        draw_maps_lacking_kos : bool, False
+            If False, only draw maps containing any of the KOs in the network.
+
+        Returns
+        =======
+        Dict[str, bool]
+            Keys are pathway numbers. Values are True if the map was drawn, False if not.
+        """
+        filesnpaths.is_file_exists(json_path)
+
+        self.progress.new("Loading KO data from the reaction network JSON")
+        self.progress.update("...")
+
+        with open(json_path) as f:
+            json_dict = json.load(f)
+
+        required_keys = {'genes', 'reactions', 'metabolites'}
+        missing_keys = required_keys - set(json_dict)
+        if missing_keys:
+            self.progress.end()
+            raise ConfigError(
+                f"The file at '{json_path}' does not appear to be an anvi'o reaction network "
+                f"JSON: it is missing the required top-level keys: "
+                f"{', '.join(sorted(missing_keys))}."
+            )
+
+        ko_ids = set()
+        for gene_entry in json_dict.get('genes', []):
+            for ko_id in gene_entry.get('annotation', {}).get('ko', {}).keys():
+                ko_ids.add(ko_id)
+
+        self.progress.end()
+
+        if not ko_ids:
+            raise ConfigError(
+                f"No KO annotations were found in the reaction network JSON at '{json_path}'. "
+                f"There is nothing to draw."
+            )
+
+        self.run.info("KOs found in network JSON", len(ko_ids))
+
+        drawn = self._map_kos_fixed_colors(
+            ko_ids,
+            output_dir,
+            pathway_numbers=pathway_numbers,
+            color_hexcode=color_hexcode,
+            draw_maps_lacking_kos=draw_maps_lacking_kos
+        )
+        count = sum(drawn.values()) if drawn else 0
+        self.run.info("Number of maps drawn", count)
+
+        return drawn
+
+
     def map_genomes_storage_genome_kos(
         self,
         genomes_storage_db: str,
