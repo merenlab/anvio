@@ -6069,30 +6069,34 @@ class ModelSEEDDatabase:
                 raise ConfigError(f"There is no such directory, '{modelseed_dir}'.")
         else:
             modelseed_dir = self.default_dir
-        sha_path = os.path.join(modelseed_dir, 'sha.txt')
-        if not os.path.isfile(sha_path):
-            raise ConfigError(
-                "No required file named 'sha.txt' was found in the ModelSEED directory, "
-                f"'{modelseed_dir}'."
-            )
-        reactions_path = os.path.join(modelseed_dir, 'reactions.tsv')
-        if not os.path.isfile(reactions_path):
-            raise ConfigError(
-                "No required file named 'reactions.tsv' was found in the ModelSEED directory, "
-                f"'{modelseed_dir}'."
-            )
-        compounds_path = os.path.join(modelseed_dir, 'compounds.tsv')
-        if not os.path.isfile(compounds_path):
-            raise ConfigError(
-                "No required file named 'compounds.tsv' was found in the ModelSEED directory, "
-                f"'{modelseed_dir}'."
-            )
 
-        with open(sha_path) as f:
+        # Files that are required to load the ModelSEED database and construct reaction networks
+        required_files = ['sha.txt', 'reactions.tsv', 'compounds.tsv']
+
+        # Set the paths for subsequent access
+        paths = {f: os.path.join(modelseed_dir, f) for f in required_files}
+
+        # See if all is well with the paths
+        missing = [f for f, p in paths.items() if not os.path.isfile(p)]
+        if missing:
+            if len(missing) == len(required_files):
+                missing_msg = "None of the key files exist in your ModelSEED directory."
+            else:
+                missing_msg = f"Your ModelSEED directory is missing at least one key file ('{', '.join(missing)}')."
+
+            raise ConfigError(f"{missing_msg} If you set up your ModelSEED directory at a specific location, please "
+                              f"use the `--modelseed-dir` flag to point anvi'o to it. If you have never set up "
+                              f"your ModelSEED data, run the program `anvi-setup-modelseed-database` to set it up "
+                              f"for the first time.")
+
+        # Read the files
+        with open(paths['sha.txt']) as f:
             self.sha = f.read().strip()
-        reactions_table = pd.read_csv(reactions_path, sep='\t', header=0, low_memory=False)
+
+        reactions_table = pd.read_csv(paths['reactions.tsv'], sep='\t', header=0, low_memory=False)
+
         self.compounds_table: pd.DataFrame = pd.read_csv(
-            compounds_path,
+            paths['compounds.tsv'],
             sep='\t',
             header=0,
             index_col='id',
