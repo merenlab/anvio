@@ -5350,6 +5350,7 @@ class ContigsDatabase:
         self.db.create_table(t.trna_taxonomy_table_name, t.trna_taxonomy_table_structure, t.trna_taxonomy_table_types)
         self.db.create_table(t.nucleotide_additional_data_table_name, t.nucleotide_additional_data_table_structure, t.nucleotide_additional_data_table_types)
         self.db.create_table(t.amino_acid_additional_data_table_name, t.amino_acid_additional_data_table_structure, t.amino_acid_additional_data_table_types)
+        self.db.create_table(t.contig_classification_table_name, t.contig_classification_table_structure, t.contig_classification_table_types)
 
         if db_variant == 'trnaseq':
             self.db.create_table(t.trna_seed_feature_table_name, t.trna_seed_feature_table_structure, t.trna_seed_feature_table_types)
@@ -5781,6 +5782,7 @@ class ContigsDatabase:
         self.db.set_meta_value('reaction_network_modelseed_database_sha', None)
         self.db.set_meta_value('reaction_network_consensus_threshold', None)
         self.db.set_meta_value('reaction_network_discard_ties', None)
+        self.db.set_meta_value('contig_classification_sources', None)
         self.db.set_meta_value('creation_date', self.get_date())
         self.disconnect()
 
