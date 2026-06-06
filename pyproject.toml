@@ -39,10 +39,10 @@ classifiers = [
     "Operating System :: MacOS",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Topic :: Scientific/Engineering :: Bio-Informatics"
 ]
-requires-python = "==3.10.*"
+requires-python = "==3.11.*"
 dynamic = ["version"]
 
 dependencies = [
@@ -66,7 +66,7 @@ dependencies = [
     "paste",
     "pyani",
     "psutil",
-    "pandas==1.4.4",
+    "pandas==1.5.2",
     "snakemake",
     "multiprocess",
     "plotext",

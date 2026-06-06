@@ -16,6 +16,10 @@ import datetime
 #
 #   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
 #
+# TODO:
+#   Update the comment above. Using multiprocess doesn't cause a pickling error with Python 3.10 anymore,
+#   but it somehow causes a GZip error with Python 3.11.
+#
 import multiprocess as multiprocessing
 
 from Bio.PDB import DSSP, PDBParser

@@ -9,7 +9,7 @@ Anvi'o is an analysis and visualization platform for 'omics data (genomics, meta
 Here is some information where things are currently:
 
 - Version: `9-dev`, codename `eunice`
-- Python requirement: **exactly 3.10.x** (enforced at import time in `anvio/__init__.py`)
+- Python requirement: **exactly 3.11.x** (enforced at import time in `anvio/__init__.py`)
 - License: GPL 3.0
 - Help: https://anvio.org
 - Repository: https://github.com/merenlab/anvio
@@ -800,7 +800,7 @@ Stale docs that no longer match the code are actively harmful because they are w
 These may change over time:
 
 - `numpy==1.24.1` — pinned; many array operations throughout
-- `pandas==1.4.4` — pinned; used for tabular data
+- `pandas==1.5.2` — pinned; used for tabular data
 - `scikit-learn==1.2.2` — pinned; clustering, ordination
 - `matplotlib==3.5.1` — pinned; static figure generation
 - `bottle` — lightweight web framework for the interactive interface
@@ -812,4 +812,4 @@ These may change over time:
 - `networkx==3.1` — graph operations (reaction networks, programs network)
 - `ete3` — phylogenetic tree handling
 
-Python requirement is strict: `==3.10.*` (checked at import, enforced in `pyproject.toml`).
+Python requirement is strict: `==3.11.*` (checked at import, enforced in `pyproject.toml`).
