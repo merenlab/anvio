@@ -67,7 +67,7 @@ def get_args():
     groupB.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
     groupB.add_argument(*anvio.A('export-svg'), **anvio.K('export-svg'))
 
-    return parser.get_args(parser)
+    return parser.get_args(parser, auto_fill_anvio_dbs=True)
 
 
 if __name__ == '__main__':
