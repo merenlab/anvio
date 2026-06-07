@@ -85,6 +85,11 @@ class PangenomeGraphSubGraph:
         >>> subgraph = PangenomeGraphSubGraph(args)
         >>> subgraph.export()
 
+    Alternatively, a region ID can be provided instead of graph nodes, in which case the two boundary
+    nodes of the region (min/max x position) are resolved automatically:
+
+        >>> args = argparse.Namespace(pan_graph_db="PATH/TO/PAN-GRAPH.db", region_id=3, output_dir="OUTPUT_DIR")
+
     A client of this class is the program `anvi-export-pan-subgraph`
     """
 
@@ -96,6 +101,7 @@ class PangenomeGraphSubGraph:
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.pan_graph_db_path = A('pan_graph_db')
         self.graph_nodes = A('graph_nodes').split(',') if A('graph_nodes') else None
+        self.region_id = A('region_id')
         self.output_dir = A('output_dir')
         self.external_genomes_file_path = A('external_genomes')
 
@@ -196,6 +202,9 @@ class PangenomeGraphSubGraph:
         # get an instance of PanGraphSuperclass
         pangraph = dbops.PanGraphSuperclass(self.args)
         pangraph.init_synteny_gene_clusters()
+
+        if self.region_id is not None:
+            self.graph_nodes = self.resolve_graph_nodes_from_region_id(pangraph)
 
         missing_nodes = [node for node in self.graph_nodes if node not in pangraph.synteny_gene_cluster_names]
         if len(missing_nodes) == 2:
