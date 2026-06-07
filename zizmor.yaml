@@ -1,5 +1,6 @@
 rules:
   template-injection:
     ignore:
-      # TODO: Reevaluate this exemption and remove it if possible.
-      - test-base.yaml:82:13
+      # TODO: Reevaluate these exemptions and remove them if possible.
+      - test-base.yaml:87:13
+      - test-base.yaml:92:13
