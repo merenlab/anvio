@@ -207,6 +207,7 @@ class BottleApplication(Bottle):
         self.route('/pangraph/get_pangraph_synteny_gene_cluster_region',          callback=self.get_pangraph_synteny_gene_cluster_region, method="POST")
         self.route('/pangraph/get_pangraph_synteny_gene_cluster_search_result',   callback=self.get_pangraph_synteny_gene_cluster_search_result, method="POST")
         self.route('/pangraph/get_pangraph_synteny_gc_functions_and_metabolism',  callback=self.get_pangraph_synteny_gc_functions_and_metabolism, method="POST")
+        self.route('/pangraph/get_pangraph_bin_sequences_fasta',                  callback=self.get_pangraph_bin_sequences_fasta, method="POST")
         self.route('/pangraph/session_id',                                        callback=self.get_pangraph_session_id)
         self.route('/pangraph/store_description',                                 callback=self.store_pangraph_description, method='POST')
 
@@ -1780,6 +1781,27 @@ class BottleApplication(Bottle):
                        'sources': list(self.interactive.gene_clusters_function_sources)}
 
             return json.dumps(payload, default=utils.to_jsonable)
+        except Exception as e:
+            return json.dumps({'status': 1, 'message': str(e)})
+
+
+    def get_pangraph_bin_sequences_fasta(self):
+        try:
+            payload = request.json
+            synteny_gene_clusters = payload['synteny_gene_clusters']
+            report_dna = payload.get('report_dna', False)
+
+            sequences = self.interactive.get_sequences_for_synteny_gene_clusters(
+                gene_cluster_names=set(synteny_gene_clusters),
+                report_DNA_sequences=report_dna
+            )
+
+            metadata = {}
+            for sgc in synteny_gene_clusters:
+                info = self.interactive.synteny_gene_cluster_summary_info.get(sgc, {})
+                metadata[sgc] = {'x': info.get('x', None), 'region': info.get('region', None)}
+
+            return json.dumps({'status': 0, 'sequences': sequences, 'metadata': metadata})
         except Exception as e:
             return json.dumps({'status': 1, 'message': str(e)})
 
