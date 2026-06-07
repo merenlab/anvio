@@ -522,6 +522,7 @@ function _createModalDialog(options) {
         content,
         modalClass = 'genericDialog',
         dialogClass = 'modal-dialog',
+        dialogStyle = 'pointer-events: all; max-width: 90vw; width: 90vw;',
         noteHTML = null
     } = options;
 
@@ -534,7 +535,7 @@ function _createModalDialog(options) {
     const template = `
         <div class="modal fade ${modalClass}" id="modal${randomID}" role="dialog">
             <div class="${dialogClass} modal-dialog modal-dialog-centered"
-                 style="pointer-events: all; max-width: 90vw; width: 90vw;">
+                 style="${dialogStyle}">
                 <div class="modal-content" style="max-height: 80vh; display: flex; flex-direction: column;">
                     <div class="modal-header" style="flex-shrink: 0;">
                         <h4 class="modal-title">${title}</h4>
@@ -668,6 +669,15 @@ function showPangraphFunctionsSummaryTableDialog(title, content) {
     });
 }
 
+function showFastaOptionsDialog(title, content) {
+    _createModalDialog({
+        title,
+        content,
+        modalClass: 'fastaOptionsDialog',
+        dialogClass: 'fasta-options-modal-dialog',
+        dialogStyle: 'pointer-events: all; max-width: 480px; width: auto;'
+    });
+}
 /**
  * Show gene functions in splits summary table dialog
  * @param {string} title - Dialog title
@@ -1259,10 +1269,50 @@ function buildFunctionsContent(response, config) {
     if (config.dialogFunction === 'showGeneFunctionsInSplitsSummaryTableDialog') {
         content += buildContigAndSplitNamesTable(response, config);
     }
+    if (config.dialogFunction === 'showPangraphFunctionsSummaryTableDialog') {
+        content += buildFastaDownloadSection(response, config.binName);
+        content += '<hr style="margin: 30px !important;">';
+    }
     content += buildMetabolismTable(response, config, fmtPct);
     content += '<hr style="margin: 30px !important;">';
     content += buildFunctionsTable(response, config);
     return content;
+}
+
+function buildFastaOptionsHTML(response) {
+    const has_functions = response.functions && Object.keys(response.functions).some(sgc => Object.keys(response.functions[sgc] || {}).length > 0);
+    return `
+<div style="margin: 0 10px 35px 10px;">
+    <div style="margin-bottom: 10px;">
+        <label style="margin-right: 15px; font-weight: 600;">Sequence type:</label>
+        <label style="margin-right: 12px;"><input type="radio" name="fasta_seq_type" value="aa" checked> Amino acids</label>
+        <label><input type="radio" name="fasta_seq_type" value="dna"> DNA</label>
+    </div>
+    <div style="margin-bottom: 15px;">
+        <label style="font-weight: 600; display: block; margin-bottom: 6px;">Include in defline:</label>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px 20px;">
+            <label><input type="checkbox" class="fasta-defline-opt" value="gene_cluster"> SynGC ID</label>
+            <label><input type="checkbox" class="fasta-defline-opt" value="position"> Graph position</label>
+            <label><input type="checkbox" class="fasta-defline-opt" value="region"> Region type (BR/VR)</label>
+            ${has_functions ? `<label><input type="checkbox" class="fasta-defline-opt" value="function"> Consensus function</label>` : ''}
+        </div>
+    </div>
+    <div style="margin-bottom: 15px;">
+        <label><input type="checkbox" id="fasta_wrap_sequences"> Wrap sequences in the output</label>
+    </div>
+    <button class="btn btn-sm btn-outline-dark" onclick="pgui.download_bin_fasta()">Download FASTA</button>
+</div>`;
+}
+
+function buildFastaDownloadSection(response, binName) {
+    const sgc_ids = Object.keys(response.gene_clusters || {});
+    if (!sgc_ids.length) return '';
+
+    const header_label = binName ? `Download sequences in "${binName}" as FASTA` : 'Download sequences as FASTA';
+
+    return `
+<p class="bin-modal-header" style="background: #e8f5e978;">${header_label}</p>
+${buildFastaOptionsHTML(response)}`;
 }
 
 function buildContigAndSplitNamesTable(response, config) {
