@@ -17,8 +17,4 @@ jobs:
         anvi-self-test --suite metagenomics-full --no-interactive
         anvi-self-test --suite pangenomics --no-interactive
         anvi-self-test --suite inversions --no-interactive
-
-# the following step cause our actions to fail on GitHub runners
-# due to space limitations :/ please do not uncomment this until we
-# have a solution for this :/
-    #   anvi-self-test --suite metabolism --no-interactive
+        anvi-self-test --suite metabolism --no-interactive
