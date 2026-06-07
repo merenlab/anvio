@@ -114,6 +114,82 @@ class PangenomeGraphSubGraph:
         filesnpaths.check_output_directory(self.output_dir)
 
 
+    def resolve_graph_nodes_from_region_id(self, pangraph):
+        """Given a region ID, resolve and return the two boundary graph nodes to export between.
+
+        For backbone regions, returns the leftmost and rightmost nodes of the region. For variable
+        regions, returns the closest eligible (non-RNA) backbone nodes flanking the region on each
+        side, since variable region nodes are not necessarily present in all genomes.
+        """
+
+        if self.region_id not in pangraph.regions:
+            raise ConfigError(f"Region ID {self.region_id} was not found in the pangenome graph database. "
+                              f"Available region IDs: {', '.join(str(r) for r in sorted(pangraph.regions))}.")
+
+        region_info = pangraph.regions[self.region_id]
+        region_type = region_info['region_type']
+
+        if region_type == 'backbone':
+            region_nodes = sorted(
+                [(node_id, data['node_x']) for node_id, data in pangraph.nodes.items()
+                 if data['region_id'] == self.region_id],
+                key=lambda x: x[1]
+            )
+
+            if len(region_nodes) < 2:
+                raise ConfigError(f"Region ID {self.region_id} (backbone) has fewer than 2 nodes, "
+                                  f"so there is nothing to export between its boundaries :/")
+
+            self.run.info("Region ID", f"{self.region_id} (backbone)")
+            return [region_nodes[0][0], region_nodes[-1][0]]
+
+        elif region_type == 'variable':
+            x_min = region_info['x_min']
+            x_max = region_info['x_max']
+
+            def is_eligible_backbone_node(data):
+                r = pangraph.regions.get(data['region_id'])
+                return r is not None and r['region_type'] == 'backbone' and data['node_type'] != 'rna'
+
+            left_candidates = [(node_id, data['node_x']) for node_id, data in pangraph.nodes.items()
+                               if is_eligible_backbone_node(data) and data['node_x'] < x_min]
+            right_candidates = [(node_id, data['node_x']) for node_id, data in pangraph.nodes.items()
+                                if is_eligible_backbone_node(data) and data['node_x'] > x_max]
+
+            if not left_candidates:
+                raise ConfigError(f"Region ID {self.region_id} is a variable region, but anvi'o could not "
+                                  f"find any eligible flanking backbone node to its left. This is likely "
+                                  f"because the variable region sits at the very beginning of the graph "
+                                  f"with no backbone region preceding it, which this tool cannot currently "
+                                  f"handle :/")
+
+            if not right_candidates:
+                raise ConfigError(f"Region ID {self.region_id} is a variable region, but anvi'o could not "
+                                  f"find any eligible flanking backbone node to its right. This is likely "
+                                  f"because the variable region sits at the very end of the graph with no "
+                                  f"backbone region following it, which this tool cannot currently "
+                                  f"handle :/")
+
+            left_node = max(left_candidates, key=lambda x: x[1])[0]
+            right_node = min(right_candidates, key=lambda x: x[1])[0]
+
+            self.run.warning(f"The region ID {self.region_id} corresponds to a variable region. Variable "
+                             f"region nodes are not necessarily present in all genomes, so anvi'o will "
+                             f"instead use the closest flanking backbone nodes: '{left_node}' on the left "
+                             f"and '{right_node}' on the right. The exported loci will include the "
+                             f"variable region content plus at least two extra genes from the flanking "
+                             f"backbone regions (one on each side). In cases where the closest backbone "
+                             f"node adjacent to the variable region is a non-coding gene (such as a tRNA "
+                             f"or rRNA), anvi'o steps past it to the next coding backbone node; which "
+                             f"means that non-coding gene also ends up inside the exported locus, giving "
+                             f"you more than two extra genes. If you end up analyzing the conservancy of "
+                             f"genes in variable regions you MUST consider this to avoid "
+                             f"misinterpretations.")
+
+            self.run.info("Region ID", f"{self.region_id} (variable)")
+            return [left_node, right_node]
+
+
     def export(self):
         """Export the genomic loci between self.node_names from every genome involved in pangenome graph"""
 
