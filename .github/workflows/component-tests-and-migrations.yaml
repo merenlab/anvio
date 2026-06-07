@@ -76,8 +76,26 @@ jobs:
         anvi-self-test --suite pangenomics --no-interactive
         anvi-self-test --suite inversions --no-interactive
 
+    - name: "Set up KEGG data for metabolism tests"
+      shell: bash -l {0}
+      env:
+        KEGG_ARCHIVE: ${{ runner.temp }}/KEGG_build_2024-09-08_5a9644d40061.tar.gz
+        KEGG_ARCHIVE_URL: https://cloud.uol.de/public.php/dav/files/KRA5koHkaF7dBtC
+        kegg_data_dir: ${{ runner.temp }}/anvio-kegg/KEGG
+      run: |
+        mkdir -p "$(dirname "$kegg_data_dir")"
+        cd "${{ runner.temp }}"
+        curl --fail --location --retry 5 --retry-all-errors --connect-timeout 30 --ipv4 \
+          --output "$KEGG_ARCHIVE" \
+          "$KEGG_ARCHIVE_URL"
+        anvi-setup-kegg-data --kegg-archive "$KEGG_ARCHIVE" --kegg-data-dir "$kegg_data_dir"
+        test -s "$kegg_data_dir/MODULES.db"
+        test -s "$kegg_data_dir/orphan_data/estimated_thresholds_for_stray_kos.txt"
+
     - name: "Run component tests for metabolism framework"
       shell: bash -l {0}
+      env:
+        kegg_data_dir: ${{ runner.temp }}/anvio-kegg/KEGG
       run: |
         anvi-self-test --suite metabolism --no-interactive
 
