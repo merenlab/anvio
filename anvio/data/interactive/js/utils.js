@@ -678,6 +678,7 @@ function showFastaOptionsDialog(title, content) {
         dialogStyle: 'pointer-events: all; max-width: 480px; width: auto;'
     });
 }
+
 /**
  * Show gene functions in splits summary table dialog
  * @param {string} title - Dialog title
