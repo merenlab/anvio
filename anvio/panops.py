@@ -105,13 +105,16 @@ class PangenomeGraphSubGraph:
         self.output_dir = A('output_dir')
         self.external_genomes_file_path = A('external_genomes')
 
-        if not self.graph_nodes:
-            raise ConfigError("This program is useless without the `--graph-nodes` parameter :/")
+        if not self.graph_nodes and self.region_id is None:
+            raise ConfigError("This program is useless without either `--graph-nodes` or `--region-id` :/")
+
+        if self.graph_nodes and self.region_id is not None:
+            raise ConfigError("Please provide either `--graph-nodes` or `--region-id`, not both.")
 
         if not self.pan_graph_db_path:
             raise ConfigError("Please send a pangenome graph database")
 
-        if len(self.graph_nodes) != 2:
+        if self.graph_nodes and len(self.graph_nodes) != 2:
             raise ConfigError(f"The `--graph-nodes` parameter must be set to two node names that are separated by a comma :/ "
                               f"Your parameter, '{A('graph_nodes')}', does not really comply with that.")
 
