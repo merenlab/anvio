@@ -1021,9 +1021,6 @@ class PangenomeGraphUserInterface {
                 var x_max = rinfo['x_max'];
                 var x_span = x_max - x_min;
 
-                // Skip single-position (backbone-only) regions
-                if (x_span === 0) continue;
-
                 // Find the tallest node in this region so the label clears it.
                 var region_max_y = 0;
                 for (var [nid, ndata] of Object.entries(this.nodes)) {
@@ -1036,7 +1033,9 @@ class PangenomeGraphUserInterface {
                 var outer_content_r = base_outer_r + region_max_y * node_distance_y;
 
                 var x_mid = (x_min + x_max) / 2;
-                var svg_region_width = x_span * node_distance_x;
+                // Single-position regions have x_span === 0; use one node-width so the
+                // zoom threshold has a non-zero value to work against.
+                var svg_region_width = Math.max(x_span, 1) * node_distance_x;
 
                 // Store geometry as data attributes; position and font-size are set
                 // dynamically by the zoom handler so the label always clears the graph.
