@@ -77,6 +77,8 @@ class PangenomeGraphUserInterface {
         this.recolor_alignment = this.recolor_alignment.bind(this);
         this.alignment_download = this.alignment_download.bind(this);
         this.info_download = this.info_download.bind(this);
+        this.download_bin_fasta = this.download_bin_fasta.bind(this);
+        this.show_region_fasta_download = this.show_region_fasta_download.bind(this);
         this.add_info_to_bin = this.add_info_to_bin.bind(this);
         this.flextree_change = this.flextree_change.bind(this);
         this.save_bin = this.save_bin.bind(this);
@@ -3705,8 +3707,11 @@ class PangenomeGraphUserInterface {
         }
 
         this._last_gene_clusters = response['gene_clusters'] || {};
+        this._last_bin_sgc_ids = sgc_ids;
+        this._last_bin_functions = response['functions'] || {};
+        this._last_bin_name = raw_name;
         const title = `A summary of functions for ${sgc_ids.length} synteny gene clusters in "${bin_name}"`;
-        showPangraphFunctionsSummaryTableDialog(title, buildFunctionsContent(response, this.get_pangraph_gc_config()));
+        showPangraphFunctionsSummaryTableDialog(title, buildFunctionsContent(response, {...this.get_pangraph_gc_config(), binName: bin_name}));
         setTimeout(() => setupItemTableFiltering(this._last_gene_clusters), 100);
     }
 
@@ -3745,6 +3750,7 @@ class PangenomeGraphUserInterface {
 
         const items = [
             { title: 'Show summary of functions in region', action: () => this.show_region_functions(rid) },
+            { title: 'Download gene sequences in this region', action: () => this.show_region_fasta_download(rid) },
             { title: 'Add SynGCs in region as a new bin',   action: () => this.add_region_as_new_bin(rid) },
             { title: 'Append SynGCs in region into the active bin', action: () => this.append_region_to_active_bin(rid) },
         ];
@@ -3771,11 +3777,11 @@ class PangenomeGraphUserInterface {
         document.addEventListener('click', () => menu.remove(), { once: true });
     }
 
-    async show_region_functions(rid) {
+    _get_region_sgc_ids(rid) {
         const svg_ids = this.get_region_svg_node_ids(rid);
         if (!svg_ids.length) {
-            toastr.warning('There are no synteny gene clusters in this region.', "Nothing to show");
-            return;
+            toastr.warning('There are no synteny gene clusters in this region.', 'Nothing to show');
+            return null;
         }
 
         const sgc_ids = [];
@@ -3786,9 +3792,16 @@ class PangenomeGraphUserInterface {
             }
         }
 
+        return sgc_ids;
+    }
+
+    async _fetch_region_data(rid) {
+        const sgc_ids = this._get_region_sgc_ids(rid);
+        if (!sgc_ids) return null;
+
         if (this.server_offline) {
             toastr.error('The server is no longer accessible.', 'Request failed');
-            return;
+            return null;
         }
         showFetchOverlay('Fetching functions and metabolism data...');
 
@@ -3796,21 +3809,47 @@ class PangenomeGraphUserInterface {
         try {
             response = await this.fetch_functions_and_metabolism(sgc_ids);
         } catch(err) {
-            toastr.error('Could not reach the functions endpoint.', "Request failed");
-            return;
+            toastr.error('Could not reach the functions endpoint.', 'Request failed');
+            return null;
         } finally {
             hideFetchOverlay();
         }
 
         if (!response || response.status !== 0) {
-            toastr.error((response && response.message) || 'Could not load functional annotations.', "Server error");
-            return;
+            toastr.error((response && response.message) || 'Could not load functional annotations.', 'Server error');
+            return null;
         }
 
+        return { sgc_ids, response };
+    }
+
+    async show_region_functions(rid) {
+        const result = await this._fetch_region_data(rid);
+        if (!result) return;
+        const { sgc_ids, response } = result;
+
         this._last_gene_clusters = response['gene_clusters'] || {};
+        this._last_bin_sgc_ids = sgc_ids;
+        this._last_bin_functions = response['functions'] || {};
+        this._last_bin_name = `region_${rid}`;
+
         const title = `A summary of functions for ${sgc_ids.length} synteny gene clusters in region #${rid}`;
-        showPangraphFunctionsSummaryTableDialog(title, buildFunctionsContent(response, this.get_pangraph_gc_config()));
+        showPangraphFunctionsSummaryTableDialog(title, buildFunctionsContent(response, {...this.get_pangraph_gc_config(), binName: `Region #${rid}`}));
         setTimeout(() => setupItemTableFiltering(this._last_gene_clusters), 100);
+    }
+
+    show_region_fasta_download(rid) {
+        const sgc_ids = this._get_region_sgc_ids(rid);
+        if (!sgc_ids) return;
+
+        this._last_bin_sgc_ids = sgc_ids;
+        this._last_bin_functions = {};
+        this._last_bin_name = `region_${rid}`;
+
+        showFastaOptionsDialog(
+            `Download sequences from region #${rid} as FASTA`,
+            buildFastaOptionsHTML({})
+        );
     }
 
     add_region_as_new_bin(rid) {
@@ -4107,6 +4146,90 @@ class PangenomeGraphUserInterface {
         }
         var blob = new Blob([csv_data]);
         this.download_blob(blob, title + ".fa");
+    }
+
+    async download_bin_fasta() {
+        const sgc_ids = this._last_bin_sgc_ids || [];
+        if (!sgc_ids.length) {
+            toastr.warning('No gene clusters to export.', 'Nothing to download');
+            return;
+        }
+
+        const report_dna = document.querySelector('input[name="fasta_seq_type"]:checked')?.value === 'dna';
+        const wrap_sequences = document.getElementById('fasta_wrap_sequences')?.checked ?? false;
+        const active_tokens = [...document.querySelectorAll('.fasta-defline-opt:checked')].map(el => el.value);
+        const functions = this._last_bin_functions || {};
+
+        showFetchOverlay('Fetching sequences...');
+
+        let response;
+        try {
+            response = await $.ajax({
+                url: '/pangraph/get_pangraph_bin_sequences_fasta',
+                type: 'POST',
+                data: JSON.stringify({ synteny_gene_clusters: sgc_ids, report_dna }),
+                contentType: 'application/json',
+                dataType: 'json',
+                timeout: 30000,
+            });
+        } catch(err) {
+            toastr.error('Could not reach the sequences endpoint.', 'Request failed');
+            return;
+        } finally {
+            hideFetchOverlay();
+        }
+
+        if (!response || response.status !== 0) {
+            toastr.error((response && response.message) || 'Could not fetch sequences.', 'Server error');
+            return;
+        }
+
+        const sequences = response.sequences || {};
+        const metadata = response.metadata || {};
+
+        let fasta = '';
+        const sorted_clusters = Object.entries(sequences).sort(([a], [b]) => {
+            const xa = metadata[a]?.x ?? Infinity;
+            const xb = metadata[b]?.x ?? Infinity;
+            return xa !== xb ? xa - xb : a.localeCompare(b);
+        });
+
+        for (const [sgc_id, genomes] of sorted_clusters) {
+            const meta = metadata[sgc_id] || {};
+
+            // Build per-cluster tokens (same for every gene in this cluster)
+            const cluster_parts = [];
+            if (active_tokens.includes('gene_cluster')) cluster_parts.push(`SynGC:${sgc_id}`);
+            if (active_tokens.includes('position') && meta.x != null) cluster_parts.push(`pos:${meta.x}`);
+            if (active_tokens.includes('region') && meta.region) cluster_parts.push(`region:${meta.region}`);
+            if (active_tokens.includes('function')) {
+                const sgc_funcs = functions[sgc_id] || {};
+                const first_source = Object.keys(sgc_funcs)[0];
+                if (first_source) {
+                    const fn = sgc_funcs[first_source]?.function;
+                    if (fn && fn !== 'N/A' && fn !== '-') cluster_parts.push(`function:${fn}`);
+                }
+            }
+
+            for (const [genome, gene_calls] of Object.entries(genomes).sort(([a], [b]) => a.localeCompare(b))) {
+                for (const [gene_callers_id, sequence] of Object.entries(gene_calls)) {
+                    if (!sequence || !sequence.length) continue;
+                    const defline_suffix = cluster_parts.length ? ' ' + cluster_parts.join('|') : '';
+                    fasta += `>${genome}_${gene_callers_id}${defline_suffix}\n`;
+                    fasta += (wrap_sequences ? sequence.match(/.{1,120}/g).join('\n') : sequence) + '\n';
+                }
+            }
+        }
+
+        if (!fasta.length) {
+            toastr.warning('No sequences were available for this bin.', 'Nothing to download');
+            return;
+        }
+
+        const project = (this.data['meta']['project_name'] || 'project').replace(/\s+/g, '_');
+        const bin = (this._last_bin_name || 'bin').replace(/\s+/g, '_');
+        const seq_type = report_dna ? 'DNA' : 'AA';
+        this.download_blob(new Blob([fasta]), `${project}_${bin}_GENES_${seq_type}.fa`);
     }
 
     save_bin() {
