@@ -3,6 +3,8 @@ DESCRIPTION = """This program generates a metabolic reaction network in an anvi'
 
 import sys
 
+import anvio.filesnpaths as filesnpaths
+
 from argparse import Namespace
 
 from anvio.argparse import ArgumentParser
@@ -15,8 +17,8 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = VERSION
 __authors__ = ["semiller10"]
-__requires__ = ["contigs-db", "kegg-functions"]
-__can_use__ = ["reaction-ref-data", "kegg-data"]
+__requires__ = ["kegg-functions"]
+__can_use__ = ["contigs-db", "enzymes-txt", "reaction-ref-data", "kegg-data"]
 __provides__ = ["reaction-network"]
 __description__ = DESCRIPTION
 
@@ -27,7 +29,22 @@ def main() -> None:
     try:
         constructor = Constructor(kegg_dir=args.kegg_dir, modelseed_dir=args.modelseed_dir)
 
-        if args.contigs_db:
+        if args.enzymes_txt:
+            if not args.output_json:
+                raise ConfigError(
+                    "When using `--enzymes-txt`, you must also provide `--output-json` to specify "
+                    "where the resulting reaction network JSON file should be written."
+                )
+            filesnpaths.is_output_file_writable(args.output_json)
+            network = constructor.make_enzymes_txt_network(
+                enzymes_txt=args.enzymes_txt,
+                stats_file=args.stats_file
+            )
+            network.export_json(
+                args.output_json,
+                overwrite=args.overwrite_existing_network
+            )
+        elif args.contigs_db:
             constructor.make_network(
                 contigs_db=args.contigs_db,
                 overwrite_existing_network=args.overwrite_existing_network,
@@ -44,9 +61,9 @@ def main() -> None:
             )
         else:
             raise ConfigError(
-                "Either a contigs database (`--contigs-db`) OR a pan database (`--pan-db`) and genomes "
-                "storage database (`--genomes-storage`) must be provided to make a (meta)genomic or "
-                "pangenomic reaction network, respectively."
+                "A data source is required. Provide an enzymes file (`--enzymes-txt`), a contigs "
+                "database (`--contigs-db`), or a pan database (`--pan-db`) with a genomes storage "
+                "database (`--genomes-storage`)."
             )
     except ConfigError as e:
         print(e)
@@ -60,19 +77,41 @@ def get_args() -> Namespace:
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group(
+        "ENZYMES FILE INPUT",
+        "Generate a reaction network from a tab-delimited enzymes file, bypassing the need for a "
+        "contigs database. This enables reaction networks from custom enzyme lists such as "
+        "transcriptomic/proteomic data or LCA gene content predictions. The file must have columns "
+        "'gene_id', 'enzyme_accession', and 'source'; only rows with source 'KOfam' are used. "
+        "See 'anvi-estimate-metabolism' for the full enzymes-txt format specification."
+    )
+    groupA.add_argument(
+        '--enzymes-txt', type=str, metavar='FILE', help=
+        "Path to a tab-delimited enzymes file with required columns 'gene_id', "
+        "'enzyme_accession', and 'source'. Rows where 'source' is 'KOfam' are used to build "
+        "the reaction network. Use '--output-json' to specify where the resulting network file "
+        "is written."
+    )
+    groupA.add_argument(
+        '--output-json', type=str, metavar='FILE', help=
+        "Path for the output reaction network JSON file. Required when using '--enzymes-txt'. "
+        "The file can be loaded by 'anvi-draw-kegg-pathways' via its '--reaction-network-json' "
+        "option."
+    )
+
+    groupB = parser.add_argument_group(
         "SINGLE GENOME OR METAGENOME INPUT",
         "Generate a reaction network from a contigs database and store the network in the database."
     )
-    groupA.add_argument(*A('contigs-db'), **K('contigs-db', {'required': False}))
+    groupB.add_argument(*A('contigs-db'), **K('contigs-db', {'required': False}))
 
-    groupB = parser.add_argument_group(
+    groupC = parser.add_argument_group(
         "PANGENOME INPUT",
         "Generate a reaction network from a pan database and associated genomes storage database, "
         "and store the network in the pan database."
     )
-    groupB.add_argument(*A('pan-db'), **K('pan-db', {'required': False}))
-    groupB.add_argument(*A('genomes-storage'), **K('genomes-storage', {'required': False}))
-    groupB.add_argument(
+    groupC.add_argument(*A('pan-db'), **K('pan-db', {'required': False}))
+    groupC.add_argument(*A('genomes-storage'), **K('genomes-storage', {'required': False}))
+    groupC.add_argument(
         '--consensus-threshold', default=None, type=float, metavar='FLOAT', help=
         "If this argument is provided, then a protein annotation must be assigned to this minimum "
         "proportion of genes in a cluster to be imputed to the cluster as a whole. By default, "
@@ -80,7 +119,7 @@ def get_args() -> Namespace:
         "of the cluster (also see --discard-ties). The consensus threshold must be a number from 0 "
         "to 1."
     )
-    groupB.add_argument(
+    groupC.add_argument(
         '--discard-ties', default=False, action='store_true', help=
         "By default, a gene cluster is assigned a protein annotation by finding the protein "
         "ortholog that occurs in the greatest number of genes in the cluster (see "
@@ -88,27 +127,28 @@ def get_args() -> Namespace:
         "flag, a tie instead results in an ortholog annotation not being assigned to the cluster."
     )
 
-    groupC = parser.add_argument_group(
+    groupD = parser.add_argument_group(
         "DATABASE", "KEGG and ModelSEED reference database information"
     )
-    groupC.add_argument(
+    groupD.add_argument(
         '--kegg-dir', type=str, metavar='PATH', help=
         "Path to KEGG database directory. If this option is not used, the program expects a "
         "database set up in the default location used by 'anvi-setup-kegg-data'."
     )
-    groupC.add_argument(
+    groupD.add_argument(
         '--modelseed-dir', type=str, metavar='PATH', help=
         "Path to ModelSEED Biochemistry database directory. If this option is not used, the "
         "program expects a database set up in the default location used by "
         "'anvi-setup-modelseed-database'."
     )
 
-    groupD = parser.add_argument_group("OTHER OPTIONS")
-    groupD.add_argument(
+    groupE = parser.add_argument_group("OTHER OPTIONS")
+    groupE.add_argument(
         '--overwrite-existing-network', default=False, action='store_true', help=
-        "Overwrite an existing reaction network in the database with the newly computed network."
+        "Overwrite an existing reaction network in the database (for contigs/pan DB modes) or "
+        "overwrite the output JSON file (for enzymes-txt mode) if it already exists."
     )
-    groupD.add_argument(
+    groupE.add_argument(
         '--stats-file', type=str, metavar='PATH', help=
         "Write a tab-delimited file of network overview statistics (statistics also printed to the "
         "terminal) to the output path."
