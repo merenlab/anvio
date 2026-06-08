@@ -1806,7 +1806,7 @@ class PangenomeGraph():
 
         inner_margin = int(tracks_layer / 2)
         backbone = int(tracks_layer / 2)
-        arrow = int(tracks_layer / 2)
+        arrow = tracks_layer
         search = int(tracks_layer / 2)
 
         label = int(arrow * 0.25)
@@ -1830,7 +1830,7 @@ class PangenomeGraph():
                     'accessory': '#DC8ADD',
                     'duplication': '#FFA348',
                     'singleton': '#99C1F1',
-                    'rna': '#F66151'
+                    'rna': '#ECFA28'
                 }
             },
             'edges': {
@@ -1849,8 +1849,8 @@ class PangenomeGraph():
                 'backbone': {
                     'visible': True,
                     'height': backbone,
-                    'backbone_color': '#3D70A0',
-                    'variable_region_color': '#F8E45C'
+                    'backbone_color': '#C4C4C4',
+                    'variable_region_color': '#CC5252'
                 },
                 'orientation_arrow': {
                     'visible': True,

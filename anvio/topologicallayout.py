@@ -100,6 +100,12 @@ def _inject_bracket_edges(L, spine, gc_size, total_genomes):
         following[i] = next_core
 
     spine_set = set(spine)
+    # spine includes START/STOP, but for the "is this neighbour on the spine?"
+    # test we want only the real spine. Without this, dangling-start nodes (whose
+    # only L-predecessor is START) would have pred_on_spine=[0], flipping
+    # is_second_source to False and skipping the bracket they were meant to get.
+    # Symmetric problem for dangling-end nodes via STOP.
+    spine_inner = spine_set - {START_NODE, STOP_NODE}
     non_spine = {n for n in L.nodes()
                  if n not in spine_set and n not in (START_NODE, STOP_NODE)}
     sub = nx.Graph()
@@ -123,10 +129,10 @@ def _inject_bracket_edges(L, spine, gc_size, total_genomes):
             if not any(s in comp_set for s in succs):
                 local_sinks.append(n)
             for p in preds:
-                if p in spine_set:
+                if p in spine_inner:
                     pred_on_spine.append(spine_pos[p])
             for s in succs:
-                if s in spine_set:
+                if s in spine_inner:
                     succ_on_spine.append(spine_pos[s])
 
         is_second_source = not pred_on_spine
@@ -192,7 +198,17 @@ def _contract_x_with_ghosts(L, positions, global_x):
     for x in range(global_x - 1, 0, -1):
         for node in list(by_x[x]):
             node_x = positions[node]
-            change = []
+            # Brackets (weight=0) need asymmetric treatment in this pass:
+            #   * They must *cap* the rightward pull -- otherwise the anchor
+            #     core of a dangling-start would overshoot past its dangling
+            #     sibling and collide at the same x.
+            #   * They must NOT themselves *induce* a pull -- otherwise a
+            #     dangling-end whose only successor is its closing bracket
+            #     would be dragged to next-core.x - 1 instead of staying one
+            #     column after its real predecessor.
+            # And ghost chains only ever materialise from real edges.
+            change_real = []
+            change_all = []
             for nb in succ_cache[node]:
                 if nb == STOP_NODE:
                     continue
@@ -201,11 +217,13 @@ def _contract_x_with_ghosts(L, positions, global_x):
                     raise ConfigError(
                         f"Topological violation: {node} (x={node_x}) -> "
                         f"{nb} (x={nb_x}). This shouldn't happen on a DAG.")
-                change.append((nb_x, nb))
-            if not change:
+                change_all.append(nb_x)
+                if L.edges[node, nb].get("weight") != 0:
+                    change_real.append((nb_x, nb))
+            if not change_real:
                 continue
 
-            min_next_x = min(c[0] for c in change)
+            min_next_x = min(change_all)
             if min_next_x > 1:
                 new_x = min_next_x - 1
                 if new_x != node_x:
@@ -214,13 +232,9 @@ def _contract_x_with_ghosts(L, positions, global_x):
                     by_x[new_x].add(node)
                     node_x = new_x
 
-            for nb_x, succ in change:
+            for nb_x, succ in change_real:
                 gap = nb_x - node_x
                 if gap == 1:
-                    continue
-                # Bracket edges (weight=0) exist only as topological
-                # constraints; they must not materialise as ghost chains.
-                if L.edges[node, succ].get("weight") == 0:
                     continue
                 path = [node]
                 for i in range(1, gap):
@@ -320,8 +334,17 @@ def _assign_y(L, spine, branches, positions_x):
         used_ys[positions_x[n]].add(0)
 
     pending = list(branches)
-    branch_pred = [set(L.predecessors(b.nodes[0])) for b in branches]
-    branch_succ = [set(L.successors(b.nodes[-1])) for b in branches]
+    # Drop weight=0 brackets from the per-branch adjacency. Brackets only
+    # exist to constrain topological generations; if we let them through
+    # here, a dangling-end whose bracket successor lands on the spine would
+    # be eligible immediately with adj_ys=[spine_y], landing one row above
+    # the spine instead of staying with its real predecessor chain.
+    def _real_preds(n):
+        return {p for p in L.predecessors(n) if L.edges[p, n].get("weight") != 0}
+    def _real_succs(n):
+        return {s for s in L.successors(n) if L.edges[n, s].get("weight") != 0}
+    branch_pred = [_real_preds(b.nodes[0]) for b in branches]
+    branch_succ = [_real_succs(b.nodes[-1]) for b in branches]
 
     stack = [spine]
     global_y = 0

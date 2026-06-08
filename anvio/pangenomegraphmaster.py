@@ -391,8 +391,14 @@ class PangenomeGraphManager():
         if not nx.is_directed_acyclic_graph(G):
             raise ConfigError("Cyclic graphs are not implemented.")
 
+        # num_genomes is the *global* pangenome genome count, not the
+        # per-component one -- otherwise a component that only contains
+        # one genome's contig would see num_genomes=1, line 502's
+        # `len(genomes_involved) == num_genomes` would trivially hold,
+        # and the BR check below would classify the whole component as
+        # backbone even though it's covered by a single genome.
         genome_names = set(it.chain(*[list(d.keys())
-                                      for _, d in G.nodes(data='gene_calls')]))
+                                      for _, d in self.graph.nodes(data='gene_calls')]))
         num_genomes = len(genome_names)
 
         all_positions = sorted({d['position'][0] for _, d in G.nodes(data=True)})
