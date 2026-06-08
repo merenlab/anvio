@@ -8,9 +8,11 @@ import numpy as np
 import pandas as pd
 
 from itertools import combinations, product
+from collections import defaultdict
 from scipy.stats import pearsonr, spearmanr, linregress
 
 import anvio
+import anvio.db as db
 import anvio.utils as utils
 import anvio.hmmops as hmmops
 import anvio.tables as tables
@@ -2800,3 +2802,459 @@ class Affinitizer:
             usecols=['sample_name'])['sample_name'].unique().tolist()
 
         return available_sample_names
+
+
+class GenomeSpecificModificationExporter:
+    """Export tRNA-seq modification profiles linked to known modification enzymes and the genomes
+    that encode them."""
+
+    MIN_COVERAGE_FOR_DETECTION_DEFAULT = 20
+
+    OUTPUT_COLUMNS = [
+        'modifying_enzyme_name', 'modification', 'function_name', 'function_accession',
+        'gene_callers_id', 'contig_name', 'anticodon', 'aa',
+        'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species', 'taxon_percent_id',
+        'genome_name',
+        'mean_coverage', 'relative_mean_coverage', 'relative_discriminator_coverage',
+        'coverage_at_position',
+        'seed_position', 'ordinal_name', 'ordinal_position', 'canonical_position',
+        'reference_abundant_nucleotide', 'reference_genome',
+        'sample_name', 'detection_status', 'A', 'C', 'G', 'T',
+        'modified.fraction.reference_genome',
+        'modified.fraction.reference_abundant_nucleotide',
+    ]
+
+
+    def __init__(self, args):
+        self.args = args
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+
+        self.trnaseq_contigs_db_path = A('trnaseq_contigs_db')
+        self.modifications_txt_path = A('modifications_txt')
+        self.seeds_specific_txt_path = A('seeds_specific_txt')
+        self.enzyme_list_path = A('modification_enzyme_list')
+        self.output_file_path = A('output_file')
+        self.enzyme_distribution_output_path = A('enzyme_distribution_output')
+        self.overwrite = A('overwrite_output_destinations') or False
+        self.min_coverage = A('min_coverage_for_detection') or self.MIN_COVERAGE_FOR_DETECTION_DEFAULT
+
+        filesnpaths.is_output_file_writable(self.output_file_path, ok_if_exists=self.overwrite)
+        if self.enzyme_distribution_output_path:
+            filesnpaths.is_output_file_writable(
+                self.enzyme_distribution_output_path, ok_if_exists=self.overwrite)
+
+
+    def process(self):
+        run.info_single("Loading enzyme list", nl_before=1)
+        enzyme_df = self._load_enzyme_list()
+
+        run.info_single("Loading tRNA-seq contigs database")
+        hits_df, unmod_nts_map, seed_contig_name_map, seed_taxonomy_map, seed_aa_map = \
+            self._load_trnaseq_db_data()
+
+        run.info_single("Loading external genomes")
+        genome_infos = self._load_genome_infos()
+
+        run.info_single("Loading modifications table")
+        mods_index = self._load_modifications_txt()
+
+        run.info_single("Loading seeds table")
+        seeds_index, seeds_by_contig, canonical_pos_to_colname = self._load_seeds_specific_txt()
+
+        run.info_single("Building output")
+        rows = self._build_output(
+            enzyme_df, hits_df, unmod_nts_map, seed_contig_name_map,
+            seed_taxonomy_map, seed_aa_map, genome_infos, mods_index,
+            seeds_index, seeds_by_contig, canonical_pos_to_colname
+        )
+
+        output_df = pd.DataFrame(rows, columns=self.OUTPUT_COLUMNS)
+        output_df.to_csv(self.output_file_path, sep='\t', index=False)
+        run.info('Output', f"{self.output_file_path} ({len(output_df)} rows)", nl_before=1)
+
+        if self.enzyme_distribution_output_path:
+            self._write_enzyme_distribution(enzyme_df, genome_infos)
+
+
+    def _load_enzyme_list(self):
+        filesnpaths.is_file_exists(self.enzyme_list_path)
+        df = pd.read_csv(self.enzyme_list_path, sep='\t')
+        required = [
+            'modifying_enzyme_name', 'modification', 'canonical_position', 'expected_reference',
+            'isoacceptor_specificity', 'aa', 'anticodon', 'function_name', 'function_accession',
+            'function_source',
+        ]
+        missing = [c for c in required if c not in df.columns]
+        if missing:
+            raise ConfigError(f"Enzyme list is missing required columns: {', '.join(missing)}")
+        df['canonical_position'] = df['canonical_position'].astype(int)
+        return df
+
+
+    def _load_trnaseq_db_data(self):
+        filesnpaths.is_file_exists(self.trnaseq_contigs_db_path)
+        cdb = db.DB(self.trnaseq_contigs_db_path, None, ignore_version=True)
+
+        hits_df = cdb.get_table_as_dataframe(tables.trna_gene_hits_table_name, error_if_no_data=False)
+        if hits_df.empty:
+            raise ConfigError(
+                f"No tRNA gene hits found in '{self.trnaseq_contigs_db_path}'. Has "
+                f"`anvi-integrate-trnaseq` been run?")
+
+        taxonomy_df = cdb.get_table_as_dataframe(
+            tables.trna_taxonomy_table_name, error_if_no_data=False)
+        cdb.disconnect()
+
+        unmod_nts_map = {}
+        seed_contig_name_map = {}
+        for _, row in hits_df.iterrows():
+            key = (int(row['seed_gene_callers_id']), str(row['gene_contigs_db_hash']),
+                   int(row['gene_gene_callers_id']))
+            unmod_nts_map[key] = self._parse_unmodified_nts(row.get('unmodified_nucleotides', ''))
+            seed_contig_name_map[int(row['seed_gene_callers_id'])] = row['seed_contig_name']
+
+        seed_taxonomy_map = {}
+        if not taxonomy_df.empty:
+            for _, row in taxonomy_df.iterrows():
+                seed_taxonomy_map[int(row['gene_callers_id'])] = {
+                    'domain': row.get('t_domain') or '',
+                    'phylum': row.get('t_phylum') or '',
+                    'class': row.get('t_class') or '',
+                    'order': row.get('t_order') or '',
+                    'family': row.get('t_family') or '',
+                    'genus': row.get('t_genus') or '',
+                    'species': row.get('t_species') or '',
+                    'taxon_percent_id': row.get('percent_identity') or '',
+                }
+
+        seed_aa_map = {}
+        for _, row in hits_df.drop_duplicates('seed_gene_callers_id').iterrows():
+            seed_aa_map[int(row['seed_gene_callers_id'])] = {
+                'aa': row.get('decoded_amino_acid') or '',
+                'anticodon': row.get('anticodon') or '',
+            }
+
+        return hits_df, unmod_nts_map, seed_contig_name_map, seed_taxonomy_map, seed_aa_map
+
+
+    def _load_genome_infos(self):
+        descriptions = GenomeDescriptions(self.args, run=run_quiet, progress=progress)
+        descriptions.load_genomes_descriptions(init=False)
+
+        genome_infos = {}
+        for genome_name, genome_dict in descriptions.external_genomes_dict.items():
+            contigs_db_path = genome_dict['contigs_db_path']
+            genome_hash = DBInfo(contigs_db_path, expecting='contigs').hash
+
+            cdb = db.DB(contigs_db_path, None, ignore_version=True)
+            gfunc_df = cdb.get_table_as_dataframe(
+                tables.gene_function_calls_table_name,
+                columns_of_interest=['gene_callers_id', 'source', 'accession', 'function'],
+                error_if_no_data=False,
+            )
+            cdb.disconnect()
+
+            genome_infos[genome_name] = {'hash': genome_hash, 'gene_functions': gfunc_df}
+
+        if not genome_infos:
+            raise ConfigError("No external genomes were loaded.")
+
+        return genome_infos
+
+
+    def _load_modifications_txt(self):
+        filesnpaths.is_file_exists(self.modifications_txt_path)
+        mods_df = pd.read_csv(self.modifications_txt_path, sep='\t', low_memory=False)
+        if 'canonical_position' not in mods_df.columns:
+            raise ConfigError(
+                "MODIFICATIONS.txt is missing the 'canonical_position' column. Please re-run "
+                "`anvi-tabulate-trnaseq` to regenerate this file.")
+        mods_df['canonical_position'] = pd.to_numeric(
+            mods_df['canonical_position'], errors='coerce')
+
+        mods_index = defaultdict(list)
+        for _, row in mods_df.iterrows():
+            try:
+                seed_id = int(row['gene_callers_id'])
+                canonical_pos = int(row['canonical_position'])
+            except (ValueError, TypeError):
+                continue
+            mods_index[(seed_id, canonical_pos)].append(row.to_dict())
+
+        return dict(mods_index)
+
+
+    def _load_seeds_specific_txt(self):
+        filesnpaths.is_file_exists(self.seeds_specific_txt_path)
+
+        # Row 0 = column names (structural ordinal names like "anticodon_loop_3")
+        # Row 1 = ordinal position numbers (1, 2, 3, ...) — not needed here
+        # Row 2 = canonical position numbers (e.g., 34, 37, 57) — this is what we need
+        header_rows = pd.read_csv(self.seeds_specific_txt_path, sep='\t', nrows=3, header=None)
+        col_names = header_rows.iloc[0].tolist()
+        canonical_nums = header_rows.iloc[2].tolist()
+        canonical_pos_to_colname = {}
+        for col_name, pos_num in zip(col_names, canonical_nums):
+            if pd.notna(pos_num):
+                try:
+                    canonical_pos_to_colname[int(float(pos_num))] = col_name
+                except (ValueError, TypeError):
+                    pass
+
+        seeds_df = pd.read_csv(
+            self.seeds_specific_txt_path, sep='\t', header=0, skiprows=[1, 2])
+
+        seeds_index = {}
+        seeds_by_contig = defaultdict(set)
+        for _, row in seeds_df.iterrows():
+            contig_name = row['contig_name']
+            sample_name = row['sample_name']
+            seeds_index[(contig_name, sample_name)] = row.to_dict()
+            seeds_by_contig[contig_name].add(sample_name)
+
+        return seeds_index, dict(seeds_by_contig), canonical_pos_to_colname
+
+
+    def _parse_unmodified_nts(self, s):
+        result = {}
+        if s and pd.notna(s):
+            for item in str(s).split(','):
+                item = item.strip()
+                if item:
+                    try:
+                        result[int(item[:-1])] = item[-1]
+                    except (ValueError, IndexError):
+                        pass
+        return result
+
+
+    def _write_enzyme_distribution(self, enzyme_df, genome_infos):
+        enzyme_cols = ['modifying_enzyme_name', 'modification', 'function_name',
+                       'function_accession', 'function_source']
+        unique_enzymes = enzyme_df[enzyme_cols].drop_duplicates()
+
+        dist_rows = []
+        for _, enz in unique_enzymes.iterrows():
+            for genome_name, ginfo in genome_infos.items():
+                gfunc_df = ginfo['gene_functions']
+                if not gfunc_df.empty:
+                    mask = ((gfunc_df['source'] == enz['function_source']) &
+                            (gfunc_df['accession'] == enz['function_accession']))
+                    matching = gfunc_df.loc[mask, 'gene_callers_id']
+                else:
+                    matching = pd.Series(dtype=int)
+                gene_count = len(matching)
+                gene_callers_ids = ','.join(str(g) for g in sorted(matching)) if gene_count else ''
+                dist_rows.append([
+                    enz['modifying_enzyme_name'], enz['modification'],
+                    enz['function_name'], enz['function_accession'],
+                    genome_name, gene_count, gene_callers_ids,
+                ])
+
+        dist_df = pd.DataFrame(dist_rows, columns=[
+            'modifying_enzyme_name', 'modification', 'function_name', 'function_accession',
+            'genome_name', 'gene_count', 'gene_callers_ids',
+        ])
+        dist_df.to_csv(self.enzyme_distribution_output_path, sep='\t', index=False)
+        run.info('Enzyme distribution', f"{self.enzyme_distribution_output_path} ({len(dist_df)} rows)")
+
+
+    def _build_output(self, enzyme_df, hits_df, unmod_nts_map, seed_contig_name_map,
+                      seed_taxonomy_map, seed_aa_map, genome_infos, mods_index,
+                      seeds_index, seeds_by_contig, canonical_pos_to_colname):
+        rows = []
+        NA = 'NA'
+
+        def _safe_int(val):
+            try:
+                v = float(val)
+                return 0 if np.isnan(v) else int(v)
+            except (TypeError, ValueError):
+                return 0
+
+        for _, enzyme_row in enzyme_df.iterrows():
+            enzyme_name = enzyme_row['modifying_enzyme_name']
+            modification = enzyme_row['modification']
+            canonical_pos = int(enzyme_row['canonical_position'])
+            expected_ref = enzyme_row['expected_reference']
+            func_accession = enzyme_row['function_accession']
+            func_source = enzyme_row['function_source']
+            func_name = enzyme_row['function_name']
+            is_specific = str(enzyme_row['isoacceptor_specificity']).strip() == 'Specific'
+            target_aa = str(enzyme_row['aa']).strip() if is_specific else None
+            target_anticodon = str(enzyme_row['anticodon']).strip() if is_specific else None
+
+            for genome_name, ginfo in genome_infos.items():
+                genome_hash = ginfo['hash']
+                gfunc_df = ginfo['gene_functions']
+
+                if gfunc_df.empty:
+                    continue
+
+                mask = (gfunc_df['source'] == func_source) & (gfunc_df['accession'] == func_accession)
+                if not mask.any():
+                    continue
+
+                relevant_hits = hits_df[hits_df['gene_contigs_db_hash'] == genome_hash]
+
+                for _, hit in relevant_hits.iterrows():
+                    seed_id = int(hit['seed_gene_callers_id'])
+                    genomic_gene_id = int(hit['gene_gene_callers_id'])
+
+                    if is_specific:
+                        sinfo = seed_aa_map.get(seed_id, {})
+                        if sinfo.get('aa') != target_aa or sinfo.get('anticodon') != target_anticodon:
+                            continue
+
+                    hit_key = (seed_id, str(genome_hash), genomic_gene_id)
+                    unmod_nts = unmod_nts_map.get(hit_key, {})
+                    ref_genome = unmod_nts.get(canonical_pos)
+                    if ref_genome is None or ref_genome != expected_ref:
+                        continue
+
+                    seed_contig_name = seed_contig_name_map.get(seed_id, NA)
+                    contig_name = hit.get('gene_contig_name', NA)
+                    taxonomy = seed_taxonomy_map.get(seed_id, {})
+                    sinfo = seed_aa_map.get(seed_id, {})
+
+                    # MODIFICATIONS.txt contains a row for every (seed, sample) at each
+                    # tabulated position. Rows where A/C/G/T are NaN had no SNV detected;
+                    # rows with counts had a substitution called at that position.
+                    mods_rows = mods_index.get((seed_id, canonical_pos), [])
+                    mods_samples = {r['sample_name'] for r in mods_rows}
+
+                    # Structural position info — take from first row that has it
+                    default_seed_pos = default_ord_name = default_ord_pos = NA
+                    for r in mods_rows:
+                        sp = r.get('seed_position')
+                        if sp is not None and not (isinstance(sp, float) and np.isnan(sp)):
+                            default_seed_pos = sp
+                            default_ord_name = r.get('ordinal_name', NA)
+                            default_ord_pos = r.get('ordinal_position', NA)
+                            break
+
+                    base = [
+                        enzyme_name, modification, func_name, func_accession,
+                        seed_id, seed_contig_name,
+                        sinfo.get('anticodon', NA), sinfo.get('aa', NA),
+                        taxonomy.get('domain', NA), taxonomy.get('phylum', NA),
+                        taxonomy.get('class', NA), taxonomy.get('order', NA),
+                        taxonomy.get('family', NA), taxonomy.get('genus', NA),
+                        taxonomy.get('species', NA), taxonomy.get('taxon_percent_id', NA),
+                        genome_name,
+                    ]
+
+                    pos_col = canonical_pos_to_colname.get(canonical_pos)
+
+                    for mods_row in mods_rows:
+                        sample_name = mods_row['sample_name']
+                        cov = seeds_index.get((seed_contig_name, sample_name), {})
+                        has_counts = not pd.isna(mods_row.get('A'))
+
+                        if has_counts:
+                            A = _safe_int(mods_row.get('A'))
+                            C = _safe_int(mods_row.get('C'))
+                            G = _safe_int(mods_row.get('G'))
+                            T = _safe_int(mods_row.get('T'))
+                            total = A + C + G + T
+                            nt_d = {'A': A, 'C': C, 'G': G, 'T': T}
+                            ref_abundant_nt = max(nt_d, key=nt_d.get) if total > 0 else NA
+
+                            if total < self.min_coverage:
+                                frac_genome = frac_abundant = NA
+                                detection_status = 'insufficient_coverage'
+                            else:
+                                frac_genome = (total - nt_d.get(ref_genome, 0)) / total
+                                frac_abundant = (
+                                    (total - nt_d.get(ref_abundant_nt, 0)) / total
+                                    if ref_abundant_nt != NA else NA
+                                )
+                                detection_status = 'detected'
+
+                            rows.append(base + [
+                                cov.get('mean_coverage', NA),
+                                cov.get('relative_mean_coverage', NA),
+                                cov.get('relative_discriminator_coverage', NA),
+                                total if total > 0 else NA,
+                                mods_row.get('seed_position', NA),
+                                mods_row.get('ordinal_name', NA),
+                                mods_row.get('ordinal_position', NA),
+                                canonical_pos,
+                                ref_abundant_nt, ref_genome,
+                                sample_name, detection_status, A, C, G, T,
+                                frac_genome, frac_abundant,
+                            ])
+                        else:
+                            # NaN counts: no SNV detected at this position. Use position-specific
+                            # coverage from SEEDS_SPECIFIC and assign all reads to ref_genome.
+                            pos_cov = cov.get(pos_col, np.nan) if pos_col else np.nan
+                            try:
+                                pos_cov_float = float(pos_cov)
+                                cov_at_pos = NA if np.isnan(pos_cov_float) else pos_cov
+                                if not np.isnan(pos_cov_float) and pos_cov_float >= self.min_coverage:
+                                    pos_cov_int = int(pos_cov_float)
+                                    nt_out = {'A': 0, 'C': 0, 'G': 0, 'T': 0}
+                                    nt_out[ref_genome] = pos_cov_int
+                                    frac_genome = frac_abundant = 0.0
+                                    detection_status = 'not_detected'
+                                else:
+                                    nt_out = {'A': NA, 'C': NA, 'G': NA, 'T': NA}
+                                    frac_genome = frac_abundant = NA
+                                    detection_status = 'insufficient_coverage'
+                            except (TypeError, ValueError):
+                                cov_at_pos = NA
+                                nt_out = {'A': NA, 'C': NA, 'G': NA, 'T': NA}
+                                frac_genome = frac_abundant = NA
+                                detection_status = 'insufficient_coverage'
+
+                            rows.append(base + [
+                                cov.get('mean_coverage', NA),
+                                cov.get('relative_mean_coverage', NA),
+                                cov.get('relative_discriminator_coverage', NA),
+                                cov_at_pos,
+                                default_seed_pos, default_ord_name, default_ord_pos,
+                                canonical_pos,
+                                ref_genome, ref_genome,
+                                sample_name, detection_status,
+                                nt_out['A'], nt_out['C'], nt_out['G'], nt_out['T'],
+                                frac_genome, frac_abundant,
+                            ])
+
+                    # Handle samples present in SEEDS_SPECIFIC but absent from MODIFICATIONS.txt
+                    all_samples = seeds_by_contig.get(seed_contig_name, set())
+                    for sample_name in all_samples - mods_samples:
+                        cov = seeds_index.get((seed_contig_name, sample_name), {})
+                        pos_cov = cov.get(pos_col, np.nan) if pos_col else np.nan
+                        try:
+                            pos_cov_float = float(pos_cov)
+                            cov_at_pos = NA if np.isnan(pos_cov_float) else pos_cov
+                            if not np.isnan(pos_cov_float) and pos_cov_float >= self.min_coverage:
+                                pos_cov_int = int(pos_cov_float)
+                                nt_out = {'A': 0, 'C': 0, 'G': 0, 'T': 0}
+                                nt_out[ref_genome] = pos_cov_int
+                                frac_genome = frac_abundant = 0.0
+                                detection_status = 'not_detected'
+                            else:
+                                nt_out = {'A': NA, 'C': NA, 'G': NA, 'T': NA}
+                                frac_genome = frac_abundant = NA
+                                detection_status = 'insufficient_coverage'
+                        except (TypeError, ValueError):
+                            cov_at_pos = NA
+                            nt_out = {'A': NA, 'C': NA, 'G': NA, 'T': NA}
+                            frac_genome = frac_abundant = NA
+                            detection_status = 'insufficient_coverage'
+
+                        rows.append(base + [
+                            cov.get('mean_coverage', NA),
+                            cov.get('relative_mean_coverage', NA),
+                            cov.get('relative_discriminator_coverage', NA),
+                            cov_at_pos,
+                            default_seed_pos, default_ord_name, default_ord_pos,
+                            canonical_pos,
+                            ref_genome, ref_genome,
+                            sample_name, detection_status,
+                            nt_out['A'], nt_out['C'], nt_out['G'], nt_out['T'],
+                            frac_genome, frac_abundant,
+                        ])
+
+        return rows
