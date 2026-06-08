@@ -297,13 +297,84 @@ class PangenomeGraphManager():
         return(merged_dict)
 
 
+    def layout_all_components(self, gene_cluster_grouping_threshold, groupcompress):
+        """Run TopologicalLayout on every weakly-connected component and
+        apply the merged positions/edges/groups across the full graph.
+
+        Each component is laid out in its own local coordinate frame so the
+        viewer can render any one component cleanly. Cross-component
+        positions overlap on purpose -- only one component is shown at a
+        time (see dbops.get_json's component filter).
+
+        Returns the number of components laid out.
+        """
+        from anvio.topologicallayout import TopologicalLayout
+
+        n_components = sum(1 for _ in nx.weakly_connected_components(self.graph))
+
+        merged_positions = {}
+        merged_edges = {}
+        merged_groups = {}
+        for cid in range(n_components):
+            pos, epos, grps = TopologicalLayout().run_synteny_layout_algorithm(
+                F=self.graph,
+                gene_cluster_grouping_threshold=gene_cluster_grouping_threshold,
+                groupcompress=groupcompress,
+                component=cid,
+            )
+            merged_positions.update(pos)
+            merged_edges.update(epos)
+            merged_groups.update(grps)
+
+        self.set_node_positions(merged_positions)
+        self.set_edge_positions(merged_edges)
+        self.set_node_groups(merged_groups)
+        return n_components
+
+
+    def summarize_all_components(self):
+        """Run summarize() for every weakly-connected component and return
+        the concatenated ``region_sides_df`` plus a ``{node -> backbone}``
+        mapping (1 if the node sits in a BR region, 0 if VR).
+
+        ``region_id`` values are plain ``"0"``, ``"1"``, ... per component
+        (see ``_assign_region_ids``); the concatenated frame may carry
+        duplicate ``region_id`` index values across components. Each row
+        carries a ``component_id`` column so consumers (the pan_graph_regions
+        DB table, ``self.regions``, ``self.region_sides_info``) can key by
+        ``(component_id, region_id)``.
+        """
+        n_components = sum(1 for _ in nx.weakly_connected_components(self.graph))
+
+        region_dfs = []
+        backbone_by_node = {}
+        for cid in range(n_components):
+            region_sides_df, nodes_df, _ = self.summarize(component_id=cid)
+            if region_sides_df.empty:
+                continue
+            region_dfs.append(region_sides_df)
+            merged = pd.merge(
+                region_sides_df.reset_index(),
+                nodes_df.reset_index(),
+                how="left", on="region_id",
+            ).set_index('syn_cluster')
+            for syn, row in merged.iterrows():
+                backbone_by_node[syn] = 1 if row['region'] == 'BR' else 0
+
+        all_region_sides_df = (pd.concat(region_dfs) if region_dfs
+                               else pd.DataFrame())
+        return all_region_sides_df, backbone_by_node
+
+
     def summarize(self, component_id=0):
         """Compute region-level summaries for one weakly connected component.
 
         The component is selected by the ``component_id`` attribute set on
         every node (see Task 3 in HANDOFF.md): ``component_id=0`` is the
-        largest. ``region_id`` is prefixed with the component for
-        cross-component uniqueness, so it is a string ``"<component_id>_N"``.
+        largest. ``region_id`` is plain ``"0"``, ``"1"``, ... per component;
+        cross-component uniqueness is provided by the ``component_id``
+        column attached to ``region_sides_df`` and stored alongside on each
+        region row in the DB.
 
         Returns ``(region_sides_df, nodes_df, gene_calls_df)``. All three may
         be empty DataFrames if the requested component is empty or contains
@@ -344,6 +415,10 @@ class PangenomeGraphManager():
         if not region_sides_df.empty:
             cvs_cols = composite_variability_score(region_sides_df)
             region_sides_df = pd.concat([region_sides_df, cvs_cols], axis=1)
+            # Tag every row with the component it belongs to so callers that
+            # concatenate across components can disambiguate the (now plain)
+            # per-component region_ids.
+            region_sides_df['component_id'] = component_id
 
         gene_calls_df = self._build_gene_calls_df(G)
 
@@ -351,24 +426,22 @@ class PangenomeGraphManager():
 
 
     def _assign_region_ids(self, core_positions, all_positions, component_id):
-        """Map every x position to a region id (``"<component_id>_N"``).
+        """Map every x position to a plain per-component region id (``"0"``,
+        ``"1"``, ...).
 
         Walks the integer x columns from ``all_min`` to ``all_max`` and
         partitions them into maximal runs of all-core vs all-non-core
-        columns. Each run becomes one region; ids are sequential from 0,
-        so the first run is ``<component_id>_0`` and the last run gets
-        the highest id.
+        columns. Each run becomes one region; ids are sequential from 0
+        within the component. Cross-component uniqueness is provided by
+        the ``component_id`` column carried separately by callers.
         """
-        def key(rid):
-            return f"{component_id}_{rid}"
-
         if not all_positions:
             return {}
 
         all_min, all_max = min(all_positions), max(all_positions)
 
         if not core_positions:
-            return {pos: key(0) for pos in range(all_min, all_max + 1)}
+            return {pos: "0" for pos in range(all_min, all_max + 1)}
 
         core_set = set(core_positions)
         regions_dict = {}
@@ -379,7 +452,7 @@ class PangenomeGraphManager():
             if is_core != current_is_core:
                 rid += 1
                 current_is_core = is_core
-            regions_dict[x] = key(rid)
+            regions_dict[x] = str(rid)
         return regions_dict
 
 
@@ -544,8 +617,13 @@ class PangenomeGraphManager():
 
 
     def set_node_positions(self, node_positions):
+        # Normal callers go through layout_all_components and produce a
+        # position for every node. The membership check is defensive --
+        # if a caller ever lays out only a subset, nodes outside that
+        # subset keep their default (0, 0) from node_standard_attributes.
         for node in self.graph.nodes():
-            self.graph.nodes()[node]['position'] = node_positions[node]
+            if node in node_positions:
+                self.graph.nodes()[node]['position'] = node_positions[node]
 
 
     def set_node_groups(self, node_groups):
@@ -557,7 +635,12 @@ class PangenomeGraphManager():
 
 
     def set_edge_positions(self, edge_positions):
+        # Defensive: normal callers cover every edge via
+        # layout_all_components. Edges that ever slip through stay at
+        # the default route=[], length=0 from edge_standard_attributes.
         for edge_i, edge_j in self.graph.edges():
+            if (edge_i, edge_j) not in edge_positions:
+                continue
             route = edge_positions[(edge_i, edge_j)]
             self.graph[edge_i][edge_j]['route'] = route
             if route:

@@ -2809,27 +2809,31 @@ class PangenomeGraphUserInterface {
         }
     }
 
-    // Build the Component dropdown from the loaded nodes. Each node has a
-    // component_id; we bucket node counts by id, sort by id ascending, and
-    // label each option "Component N (M nodes)". The currently active
-    // component (settings_dict['component'], defaulting to 0) is preselected.
+    // Build the Component dropdown from meta.components_summary, which the
+    // server fills with {cid: node_count} for the WHOLE graph (not just the
+    // active component, which is the only one in this.nodes). The currently
+    // active component (settings_dict['component'], defaulting to 0) is
+    // preselected; meta.component (set by load_state / rerun_state) wins
+    // if settings_dict hasn't been seeded yet.
     populate_component_select() {
-        const counts = {};
-        for (const n in this.nodes) {
-            const cid = this.nodes[n]['component_id'];
-            if (cid === undefined) continue;
-            counts[cid] = (counts[cid] || 0) + 1;
-        }
-        const ids = Object.keys(counts)
+        const summary = (this.data && this.data['meta'] && this.data['meta']['components_summary']) || {};
+        const ids = Object.keys(summary)
                           .map(k => parseInt(k))
                           .sort((a, b) => a - b);
-        const current = (this.settings_dict && this.settings_dict['component'] !== undefined)
-                        ? this.settings_dict['component'] : 0;
+
+        let current;
+        if (this.settings_dict && this.settings_dict['component'] !== undefined) {
+            current = this.settings_dict['component'];
+        } else if (this.data && this.data['meta'] && this.data['meta']['component'] !== undefined) {
+            current = parseInt(this.data['meta']['component']);
+        } else {
+            current = 0;
+        }
 
         const $sel = $('#component_select');
         $sel.empty();
         for (const cid of ids) {
-            const opt = $('<option>').attr('value', cid).text(`Component ${cid} (${counts[cid]} nodes)`);
+            const opt = $('<option>').attr('value', cid).text(`Component ${cid} (${summary[cid]} nodes)`);
             if (cid === current) opt.attr('selected', 'selected');
             $sel.append(opt);
         }
@@ -3257,6 +3261,12 @@ class PangenomeGraphUserInterface {
         $('#binadd').on("click", this.add_bin);
         $('#binremove').on("click", this.delete_all_bins);
         $('#redraw').on("click", this.start_draw);
+        // Switching components doesn't need an explicit "Redraw" click.
+        // (start_draw still triggers a rerun_state on the server -- the
+        // layout is deterministic so it's a re-derivation, not new work
+        // semantically -- and then re-fetches the JSON for the newly
+        // active component.)
+        $('#component_select').on("change", this.start_draw);
         $('#fit').on('click', this.fit_aspect);
         $('#svgDownload').on('click', this.svg_download);
         $('#genome_tracks_select_all').on('click', () => {

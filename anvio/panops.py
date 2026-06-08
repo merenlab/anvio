@@ -1528,6 +1528,18 @@ class PangenomeGraph():
 
                 self.pan_super = dbops.PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
                 self.pan_super.init_gene_clusters()
+
+                # --genome-names must be a subset of the pan-db's genome list:
+                # the pan-graph is computed downstream of the pan, so the focus
+                # set can only narrow what the pan already knows about.
+                if A('genome_names'):
+                    pan_genomes = set(self.pan_super.genome_names)
+                    absent = sorted(set(self.genome_names) - pan_genomes)
+                    if absent:
+                        head = ', '.join(absent[:3]) + ('...' if len(absent) > 3 else '')
+                        raise ConfigError(f"{len(absent)} name(s) in `--genome-names` are not "
+                                          f"in the pan-db's genome list (the pan-graph must be "
+                                          f"a subset of the pan's genomes): {head} :/")
         else:
             self.pan_db = None
             self.pan_super = None
@@ -1621,29 +1633,26 @@ class PangenomeGraph():
                               f"{n_components} component(s) (valid indices are 0 to {n_components - 1}). "
                               f"Pass a smaller value to --component.")
 
-        node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(
-            F=self.pangenome_graph.graph,
-            gene_cluster_grouping_threshold=self.gene_cluster_grouping_threshold,
-            groupcompress=self.groupcompress,
-            component=self.component,
-        )
+        # Lay out and summarize EVERY component. self.component is the
+        # default *display* component; it no longer gates analysis. Every
+        # node gets real positions and a real backbone classification.
+        self.pangenome_graph.layout_all_components(
+            self.gene_cluster_grouping_threshold, self.groupcompress)
 
-        self.pangenome_graph.set_node_positions(node_positions)
-        self.pangenome_graph.set_edge_positions(edge_positions)
+        region_sides_df, backbone_by_node = self.pangenome_graph.summarize_all_components()
 
-        region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize(component_id=self.component)
-
-        additional_info = pd.merge(region_sides_df.reset_index(drop=False), nodes_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster')
-
-        for index, line in additional_info.iterrows():
-            is_backbone = 1 if line["region"] == "BR" else 0
-            self.pangenome_graph.graph.nodes[index]['layer'] = self.pangenome_graph.graph.nodes[index]['layer'] | {'backbone': is_backbone}
+        # Default backbone to None as a safety net (the per-component
+        # summarize pass should cover every node; None only persists for
+        # the rare case where it doesn't, which is more honest than 0).
+        for _node, data in self.pangenome_graph.graph.nodes(data=True):
+            data['layer'] = data['layer'] | {'backbone': backbone_by_node.get(_node, None)}
 
         # stash the region-level summary for `generate_pan_graph_db` to persist into
         # the pan_graph_regions table (translating BR/VR -> backbone/variable on the way in)
         self.region_sides_df = region_sides_df
 
-        self.run.info_single(f"{len(region_sides_df)} region(s) summarized; backbone/variable labels and region IDs attached to nodes.")
+        self.run.info_single(f"{len(region_sides_df)} region(s) summarized across {n_components} component(s); "
+                             f"backbone/variable labels and region IDs attached to nodes.")
 
     def layout_pangenome_graph(self):
         self.run.warning(None, header="Running maximum force layout algorithm", lc="green")

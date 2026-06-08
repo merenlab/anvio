@@ -887,7 +887,12 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
             for node_id in sorted(self.nodes.keys()):
                 node = self.nodes[node_id]
                 region_id = node.get('region_id')
-                region_row = self.regions.get(region_id) if region_id is not None else None
+                component_id = node.get('component_id')
+                # region_id is plain per-component since v7 -- look up by
+                # the (component_id, region_id) composite key.
+                region_row = (self.regions.get((int(component_id), str(region_id)))
+                              if region_id is not None and component_id is not None
+                              else None)
                 region_type = region_row['region_type'] if region_row else ''
 
                 genomes_present = sorted([g for g, gcs in self.synteny_gene_clusters.get(node_id, {}).items() if gcs])
@@ -951,7 +956,10 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
                 node = self.nodes[node_id]
                 gene_cluster_id = node.get('gene_cluster_id', '')
                 region_id = node.get('region_id')
-                region_row = self.regions.get(region_id) if region_id is not None else None
+                component_id = node.get('component_id')
+                region_row = (self.regions.get((int(component_id), str(region_id)))
+                              if region_id is not None and component_id is not None
+                              else None)
                 region_type = region_row['region_type'] if region_row else ''
                 bin_name = node_to_bin.get(node_id, '')
 
@@ -996,9 +1004,11 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
             self.run.info_single("No regions in the pan-graph-db; skipping REGIONS.txt")
             return
 
-        df = pd.DataFrame.from_dict(self.regions, orient='index')
-        df.index.name = 'region_id'
-        df.to_csv(path, sep='\t')
+        # self.regions is keyed by (component_id, region_id) since v7. Both
+        # are already columns on each row dict, so a straight construction
+        # gives us a flat frame -- no need to lift the tuple key.
+        df = pd.DataFrame(list(self.regions.values()))
+        df.to_csv(path, sep='\t', index=False)
 
         self.summary['files']['REGIONS'] = os.path.basename(path)
         self.run.info('Regions file', path)

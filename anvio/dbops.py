@@ -3584,7 +3584,12 @@ class PanGraphSuperclass(PanSuperclass):
 
         self.nodes = pan_graph_db.db.get_table_as_dict(t.pan_graph_nodes_table_name)
         self.edges = pan_graph_db.db.get_table_as_dict(t.pan_graph_edges_table_name)
-        self.regions = pan_graph_db.db.get_table_as_dict(t.pan_graph_regions_table_name)
+        # region_id is plain "0"/"1"/... per component since pangraph_db v7;
+        # uniqueness comes from the (component_id, region_id) pair, so we
+        # avoid get_table_as_dict (which would collide on the first column).
+        regions_df = pan_graph_db.db.get_table_as_dataframe(t.pan_graph_regions_table_name, error_if_no_data=False)
+        self.regions = {(int(row['component_id']), str(row['region_id'])): row.to_dict()
+                        for _, row in regions_df.iterrows()}
         self.genome_distances = pan_graph_db.db.get_table_as_dict(t.pan_graph_genome_distances_table_name)
         self.states = pan_graph_db.db.get_table_as_dict(t.states_table_name)
 
@@ -3661,21 +3666,13 @@ class PanGraphSuperclass(PanSuperclass):
         groupcompress = state_dict['graph_layout']['group_compression']
         component = state_dict['graph_layout'].get('component', 0)
 
-        node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(
-            F=self.pangenome_graph.graph,
-            gene_cluster_grouping_threshold=gene_cluster_grouping_threshold,
-            groupcompress=groupcompress,
-            component=component,
-        )
-
-        self.pangenome_graph.set_edge_positions(edge_positions)
-        self.pangenome_graph.set_node_positions(node_positions)
-        self.pangenome_graph.set_node_groups(node_groups)
+        self.pangenome_graph.layout_all_components(
+            gene_cluster_grouping_threshold, groupcompress)
         self.pangenome_graph.cut_edges(max_edge_length_filter)
 
-        region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize(component_id=component)
-        self.synteny_gene_cluster_summary_info = pd.merge(nodes_df.reset_index(drop=False), region_sides_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster').to_dict(orient='index')
-        self.region_sides_info = region_sides_df.reset_index()[['region_id', 'x_min', 'x_max', 'num_synteny_gene_clusters', 'region']].set_index('region_id').to_dict(orient='index')
+        region_sides_df, _ = self.pangenome_graph.summarize_all_components()
+        self._refresh_region_caches(region_sides_df)
+        self.p_meta['component'] = int(component)
 
 
     def rerun_state(self, gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter, component=0):
@@ -3695,31 +3692,104 @@ class PanGraphSuperclass(PanSuperclass):
             # No layer order exists - keep current newick (likely empty)
             pass
 
-        node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(
-            F=self.pangenome_graph.graph,
-            gene_cluster_grouping_threshold=gene_cluster_grouping_threshold,
-            groupcompress=groupcompress,
-            component=component,
-        )
-
-        self.pangenome_graph.set_edge_positions(edge_positions)
-        self.pangenome_graph.set_node_positions(node_positions)
-        self.pangenome_graph.set_node_groups(node_groups)
+        self.pangenome_graph.layout_all_components(
+            gene_cluster_grouping_threshold, groupcompress)
         self.pangenome_graph.cut_edges(max_edge_length_filter)
 
-        region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize(component_id=component)
-        self.synteny_gene_cluster_summary_info = pd.merge(nodes_df.reset_index(drop=False), region_sides_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster').to_dict(orient='index')
-        self.region_sides_info = region_sides_df.reset_index()[['region_id', 'x_min', 'x_max', 'num_synteny_gene_clusters', 'region']].set_index('region_id').to_dict(orient='index')
+        region_sides_df, _ = self.pangenome_graph.summarize_all_components()
+        self._refresh_region_caches(region_sides_df)
+        self.p_meta['component'] = int(component)
+
+
+    def _refresh_region_caches(self, region_sides_df):
+        """Rebuild ``synteny_gene_cluster_summary_info`` and
+        ``region_sides_info`` from a freshly-computed all-components
+        ``region_sides_df``. Keyed by ``(component_id, region_id)`` so the
+        plain per-component region_ids don't collide across components.
+        """
+        if region_sides_df is None or region_sides_df.empty:
+            self.synteny_gene_cluster_summary_info = {}
+            self.region_sides_info = {}
+            return
+
+        nodes_rows = []
+        for node, data in self.pangenome_graph.graph.nodes(data=True):
+            rid = data.get('region_id')
+            if rid is None or rid == '':
+                continue
+            x, y = data.get('position', (0, 0))
+            nodes_rows.append({
+                'syn_cluster': node,
+                'component_id': int(data.get('component_id', 0)),
+                'region_id': str(rid),
+                'x': x,
+                'y': y,
+            })
+
+        if nodes_rows:
+            nodes_df = pd.DataFrame(nodes_rows)
+            merged = pd.merge(
+                nodes_df,
+                region_sides_df.reset_index(),
+                how="left",
+                on=["component_id", "region_id"],
+            ).set_index('syn_cluster')
+            self.synteny_gene_cluster_summary_info = merged.to_dict(orient='index')
+        else:
+            self.synteny_gene_cluster_summary_info = {}
+
+        region_view = region_sides_df.reset_index()[
+            ['component_id', 'region_id', 'x_min', 'x_max', 'num_synteny_gene_clusters', 'region']
+        ]
+        self.region_sides_info = {
+            (int(row['component_id']), str(row['region_id'])): {
+                'x_min': row['x_min'],
+                'x_max': row['x_max'],
+                'num_synteny_gene_clusters': row['num_synteny_gene_clusters'],
+                'region': row['region'],
+            }
+            for _, row in region_view.iterrows()
+        }
 
     def get_json(self):
 
         state_dict = json.loads(self.states[self.p_meta['state']]['content'])
+        G = self.pangenome_graph.graph
+
+        active_component = int(self.p_meta.get('component', 0))
+
+        # Only the active component is shipped to the JS. All components
+        # were laid out and summarized server-side; the dropdown can still
+        # offer the others via meta.components_summary below, and switching
+        # triggers another rerun_state that updates self.p_meta['component'].
+        nodes = {n: d for n, d in G.nodes(data=True)
+                 if int(d.get('component_id', 0)) == active_component}
+        edges = {data['name']: {'source': u, 'target': v, **data}
+                 for u, v, data in G.edges(data=True)
+                 if u in nodes and v in nodes}
+
+        # Per-component region_ids are plain since v7; strip the
+        # (component_id, region_id) tuple key down to just the region_id
+        # for the JS, which never sees a second component at the same time.
+        regions = {rid: info
+                   for (cid, rid), info in self.region_sides_info.items()
+                   if cid == active_component}
+
+        components_summary = {}
+        for _n, d in G.nodes(data=True):
+            cid = int(d.get('component_id', 0))
+            components_summary[cid] = components_summary.get(cid, 0) + 1
+        components_summary = dict(sorted(components_summary.items()))
+
+        meta = dict(self.p_meta)
+        meta['components_summary'] = components_summary
+
         export_dict = {
-            'meta': self.p_meta,
+            'meta': meta,
             'states': state_dict,
-            'nodes': dict(self.pangenome_graph.graph.nodes(data=True)),
-            'edges': {data['name']: {'source': edge_i, 'target': edge_j, **data} for edge_i, edge_j, data in self.pangenome_graph.graph.edges(data=True)},
-            'regions': self.region_sides_info
+            'nodes': nodes,
+            'edges': edges,
+            'regions': regions,
         }
 
         return export_dict

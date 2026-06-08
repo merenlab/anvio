@@ -22,8 +22,10 @@ import networkx as nx
 
 import anvio
 import anvio.dbops as dbops
+import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
+import anvio.filesnpaths as filesnpaths
 import anvio.genomestorage as genomestorage
 
 from anvio.errors import ConfigError
@@ -757,6 +759,20 @@ class PangenomeAAIEngine():
         self.fusion_top_bucket_k = A('fusion_top_bucket_k')
         self.fusion_seed = A('fusion_seed')
 
+        # --genome-names focus list (parsed like panops.PangenomeGraph). When
+        # set, the engine subsets genome_paths AND hash_to_genome to these
+        # names so lines, DIAMOND hits, edges, and node payloads only carry
+        # the focused genomes. None means "use everything in external-genomes".
+        gn = A('genome_names')
+        if gn:
+            if filesnpaths.is_file_exists(gn, dont_raise=True):
+                self.genome_names_to_focus = utils.get_column_data_from_TAB_delim_file(
+                    gn, column_indices=[0], expected_number_of_fields=1)[0]
+            else:
+                self.genome_names_to_focus = [g.strip() for g in gn.split(',') if g.strip()]
+        else:
+            self.genome_names_to_focus = None
+
         # Filtering.
         self.min_contig_chain = A('min_contig_chain')
         # Include non-coding (RNA, etc.) gene calls in the graph as
@@ -1258,7 +1274,17 @@ class PangenomeAAIEngine():
         * Both lines off-graph -> seed two new lines in the natural
           orientation (Line_X) and flipped if labeled flip (Line_Y).
 
-        Returns ``(G, rejected_edges, uncommitted_lines, in_g_flip)``.
+        After the AAI-driven loop, any line that never appeared in a
+        qualifying ranked edge is added as a forward-oriented singleton
+        chain. Each such ``orphan_line`` becomes its own weakly-connected
+        component via ``compute_component_ids`` downstream; the absolute
+        orientation is inherited from the CONTIGS.db gene order (no AAI
+        evidence is available to verify it).
+
+        Returns ``(G, rejected_edges, orphan_lines, in_g_flip)``. After
+        this pass ``in_g_flip`` covers every line in ``lines``; the
+        ``orphan_lines`` list is informational so callers can report how
+        many contigs were committed without homology evidence.
         """
         rng = random.Random(int(self.fusion_seed) if self.fusion_seed is not None else None)
         top_k = max(1, int(self.fusion_top_bucket_k))
@@ -1381,13 +1407,25 @@ class PangenomeAAIEngine():
 
         self.progress.end()
 
-        uncommitted_lines = sorted(li for li in range(len(lines))
-                                   if li not in in_g_lines)
-        for li in uncommitted_lines:
+        # Any line that never made it into G via the AAI loop is committed
+        # here as a forward-oriented singleton chain (its own weakly-
+        # connected component). Orientation is inherited from CONTIGS.db
+        # order -- without AAI evidence we have no basis to flip.
+        orphan_lines = sorted(li for li in range(len(lines))
+                              if li not in in_g_lines)
+        for li in orphan_lines:
+            _add_line_to_graph(G, li, lines, line_names, flip=False,
+                               super_of_gene=super_of_gene,
+                               uf_parent=uf_parent,
+                               in_g_lines=in_g_lines,
+                               in_g_flip=in_g_flip)
+            # The merges that would have anchored this line never fired;
+            # record them so the rejection summary stays honest, but tag
+            # them as orphan rather than insufficient-anchors.
             for (u, v, w, score, mean, label) in pending_merges.get(li, []):
-                rejected_edges.append((u, v, mean, "insufficient-anchors"))
+                rejected_edges.append((u, v, mean, "orphan-singleton"))
 
-        return G, rejected_edges, uncommitted_lines, in_g_flip
+        return G, rejected_edges, orphan_lines, in_g_flip
 
 
     # -----------------------------------------------------------------------
@@ -1451,6 +1489,21 @@ class PangenomeAAIEngine():
                              f"genomes-storage db and their DIAMOND hits will be ignored: {head}",
                              lc='yellow')
 
+        # 2b. --genome-names: restrict the engine to the focused subset.
+        # Filtering hash_to_genome too means DIAMOND rows touching dropped
+        # genomes fall through _parse_diamond_minbit's existing
+        # n_unknown_hash skip, so no spurious edges/nodes survive.
+        if self.genome_names_to_focus:
+            focus = set(self.genome_names_to_focus)
+            absent = sorted(focus - set(genome_paths))
+            if absent:
+                head = ', '.join(absent[:3]) + ('...' if len(absent) > 3 else '')
+                raise ConfigError(f"{len(absent)} name(s) in `--genome-names` are not present "
+                                  f"in the external-genomes file and cannot be focused on: {head} :/")
+            genome_paths = {g: p for g, p in genome_paths.items() if g in focus}
+            hash_to_genome = {h: g for h, g in hash_to_genome.items() if g in focus}
+            self.run.info('Focused genomes (--genome-names)', len(focus), mc='green')
+
         # 3. Read CONTIGS.dbs.
         genome_calls = self._load_genome_calls(genome_paths)
         gene_to_contig = build_gene_to_contig(genome_calls)
@@ -1498,15 +1551,15 @@ class PangenomeAAIEngine():
         self.run.info_single(
             f"Building pangenome graph (top-bucket-k={self.fusion_top_bucket_k}, "
             f"seed={self.fusion_seed}) ...")
-        G, rejected_edges, uncommitted_lines, in_g_flip = self._build_pangenome_graph(
+        G, rejected_edges, orphan_lines, in_g_flip = self._build_pangenome_graph(
             lines, line_names, line_to_genome, pair_label, ranking)
 
         reasons = Counter(reason for (_u, _v, _m, reason) in rejected_edges)
         self.run.info('Graph nodes', pp(G.number_of_nodes()), mc='green')
         self.run.info('Graph edges', pp(G.number_of_edges()))
-        self.run.info('Lines committed',
-                      f"{len(in_g_flip)} / {len(lines)} "
-                      f"({len(uncommitted_lines)} uncommitted)")
+        n_fused = len(lines) - len(orphan_lines)
+        self.run.info('Lines fused via AAI', f"{n_fused} / {len(lines)}")
+        self.run.info('Lines added as orphan chains', len(orphan_lines))
         self.run.info('Fuses rejected',
                       f"{len(rejected_edges)} ({dict(reasons) if reasons else '{}'})")
 
