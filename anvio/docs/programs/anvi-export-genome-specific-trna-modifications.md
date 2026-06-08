@@ -19,7 +19,7 @@ The %(trnaseq-contigs-db)s must have been processed by %(anvi-integrate-trnaseq)
 
 ## Coverage threshold
 
-The `--min-coverage-for-detection` parameter (default: 20) sets the minimum per-position coverage required to report modification fractions. For SNV rows, coverage is the sum of A+C+G+T reads at the modification position. For no-SNV rows, mean seed coverage is used as a proxy. Rows with coverage below the threshold have modification fractions reported as `NA`.
+The `--min-coverage-for-detection` parameter (default: 20) sets the minimum per-position coverage required to report modification fractions. For SNV rows, coverage is the sum of A+C+G+T reads at the modification position. For no-SNV rows, the position-specific coverage from %(seeds-specific-txt)s is used. Rows with coverage below the threshold have modification fractions reported as `NA`.
 
 ## Enzyme distribution
 
