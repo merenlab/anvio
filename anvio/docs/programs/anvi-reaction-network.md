@@ -44,6 +44,27 @@ anvi-setup-modelseed-database --dir path/to/other/directory
 
 ## Usage
 
+### From an enzymes file (no contigs database needed)
+
+%(anvi-reaction-network)s can build a reaction network directly from a tab-delimited enzymes file — no contigs database required. This is useful when working with custom enzyme lists from transcriptomic/proteomic data, ancestral gene content predictions, or any other source outside of anvi'o's standard annotation workflow.
+
+The enzymes file must have three columns: `gene_id`, `enzyme_accession`, and `source`. Only rows where `source` is `KOfam` are used. This is the same format used by %(anvi-estimate-metabolism)s.
+
+{{ codestart }}
+anvi-reaction-network --enzymes-txt /path/to/enzymes.txt \
+                      --output-json /path/to/network.json
+{{ codestop }}
+
+The resulting JSON file can be directly used by %(anvi-draw-kegg-pathways)s via its `--reaction-network-json` option:
+
+{{ codestart }}
+anvi-draw-kegg-pathways --reaction-network-json /path/to/network.json \
+                        --ko \
+                        -o output_maps/
+{{ codestop }}
+
+### From a contigs database
+
 %(anvi-reaction-network)s takes a either a %(contigs-db)s OR a %(pan-db)s and %(genomes-storage-db)s as required input. Genes stored within the %(contigs-db)s or %(genomes-storage-db)s must have KO protein annotations, which can be assigned by %(anvi-run-kegg-kofams)s.
 
 {{ codestart }}

@@ -460,6 +460,23 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
             return self.__args_failed('pan_db', 'None around :/')
 
 
+    def fill_in_pan_graph_db(self):
+        if 'pan_graph_db' not in self.args:
+            return
+
+        FindAnvioDBs.__init__(self, run=self.run, progress=self.progress) if not self.anvio_dbs_found else None
+        if 'pan-graph' not in self.anvio_dbs:
+            return self.__args_failed.append(('pan_graph_db', 'No pan-graph databases around :/'))
+
+        pan_graph_dbs = self.anvio_dbs['pan-graph']
+
+        if len(pan_graph_dbs):
+            self.set_arg('pan_graph_db', pan_graph_dbs[0].path)
+            self.fill_in_genomes_storage_db(db_hash=pan_graph_dbs[0].hash)
+        else:
+            return self.__args_failed('pan_graph_db', 'None around :/')
+
+
     def get_updated_args(self):
         if anvio.DEBUG_AUTO_FILL_ANVIO_DBS:
             self.run.warning(None, header="ANVI'O DBs FOUND", lc="yellow")
@@ -474,6 +491,8 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
             self.fill_in_profile_db()
         elif 'pan_db' in self.args and not self.args.pan_db:
             self.fill_in_pan_db()
+        elif 'pan_graph_db' in self.args and not self.args.pan_graph_db:
+            self.fill_in_pan_graph_db()
 
         if len(self.__args_set):
             self.run.warning(None, header=f"ANVI'O FILLED IN THE {len(self.__args_set)} {P('ARG', len(self.__args_set), alt='ARGS')} BELOW AUTOMATICALLY", lc='yellow')

@@ -522,6 +522,7 @@ function _createModalDialog(options) {
         content,
         modalClass = 'genericDialog',
         dialogClass = 'modal-dialog',
+        dialogStyle = 'pointer-events: all; max-width: 90vw; width: 90vw;',
         noteHTML = null
     } = options;
 
@@ -534,7 +535,7 @@ function _createModalDialog(options) {
     const template = `
         <div class="modal fade ${modalClass}" id="modal${randomID}" role="dialog">
             <div class="${dialogClass} modal-dialog modal-dialog-centered"
-                 style="pointer-events: all; max-width: 90vw; width: 90vw;">
+                 style="${dialogStyle}">
                 <div class="modal-content" style="max-height: 80vh; display: flex; flex-direction: column;">
                     <div class="modal-header" style="flex-shrink: 0;">
                         <h4 class="modal-title">${title}</h4>
@@ -665,6 +666,16 @@ function showPangraphFunctionsSummaryTableDialog(title, content) {
         modalClass: 'geneClusterFunctionsSummaryDialog',
         dialogClass: 'gene-cluster-functions-modal-dialog',
         noteHTML
+    });
+}
+
+function showFastaOptionsDialog(title, content) {
+    _createModalDialog({
+        title,
+        content,
+        modalClass: 'fastaOptionsDialog',
+        dialogClass: 'fasta-options-modal-dialog',
+        dialogStyle: 'pointer-events: all; max-width: 480px; width: auto;'
     });
 }
 
@@ -1259,10 +1270,50 @@ function buildFunctionsContent(response, config) {
     if (config.dialogFunction === 'showGeneFunctionsInSplitsSummaryTableDialog') {
         content += buildContigAndSplitNamesTable(response, config);
     }
+    if (config.dialogFunction === 'showPangraphFunctionsSummaryTableDialog') {
+        content += buildFastaDownloadSection(response, config.binName);
+        content += '<hr style="margin: 30px !important;">';
+    }
     content += buildMetabolismTable(response, config, fmtPct);
     content += '<hr style="margin: 30px !important;">';
     content += buildFunctionsTable(response, config);
     return content;
+}
+
+function buildFastaOptionsHTML(response) {
+    const has_functions = response.functions && Object.keys(response.functions).some(sgc => Object.keys(response.functions[sgc] || {}).length > 0);
+    return `
+<div style="margin: 0 10px 35px 10px;">
+    <div style="margin-bottom: 10px;">
+        <label style="margin-right: 15px; font-weight: 600;">Sequence type:</label>
+        <label style="margin-right: 12px;"><input type="radio" name="fasta_seq_type" value="aa" checked> Amino acids</label>
+        <label><input type="radio" name="fasta_seq_type" value="dna"> DNA</label>
+    </div>
+    <div style="margin-bottom: 15px;">
+        <label style="font-weight: 600; display: block; margin-bottom: 6px;">Include in defline:</label>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px 20px;">
+            <label><input type="checkbox" class="fasta-defline-opt" value="gene_cluster"> SynGC ID</label>
+            <label><input type="checkbox" class="fasta-defline-opt" value="position"> Graph position</label>
+            <label><input type="checkbox" class="fasta-defline-opt" value="region"> Region type (BR/VR)</label>
+            ${has_functions ? `<label><input type="checkbox" class="fasta-defline-opt" value="function"> Consensus function</label>` : ''}
+        </div>
+    </div>
+    <div style="margin-bottom: 15px;">
+        <label><input type="checkbox" id="fasta_wrap_sequences"> Wrap sequences in the output</label>
+    </div>
+    <button class="btn btn-sm btn-outline-dark" onclick="pgui.download_bin_fasta()">Download FASTA</button>
+</div>`;
+}
+
+function buildFastaDownloadSection(response, binName) {
+    const sgc_ids = Object.keys(response.gene_clusters || {});
+    if (!sgc_ids.length) return '';
+
+    const header_label = binName ? `Download sequences in "${binName}" as FASTA` : 'Download sequences as FASTA';
+
+    return `
+<p class="bin-modal-header" style="background: #e8f5e978;">${header_label}</p>
+${buildFastaOptionsHTML(response)}`;
 }
 
 function buildContigAndSplitNamesTable(response, config) {
@@ -1581,4 +1632,187 @@ function setupItemTableFiltering(gene_clusters) {
     }
 
     applyFilters();
+}
+
+
+// ============================================================================
+// Description Panel
+// ============================================================================
+
+class DescriptionPanel {
+    constructor(store_url) {
+        this.store_url = store_url;
+        this.description = '';
+    }
+
+    setup(description) {
+        this.description = (description || '').trim();
+        this._render();
+        this._make_draggable();
+        this._make_resizable();
+    }
+
+    _render() {
+        $('#description-view-content').html(
+            this.description
+                ? renderMarkdown(this.description)
+                : '<em style="color:#999;">No notes for this database yet. Click the pencil icon to add some.</em>'
+        );
+        $('#description-edit-content').val(this.description);
+    }
+
+    show() {
+        $('#description-panel').addClass('description-panel-visible');
+    }
+
+    hide() {
+        $('#description-panel').removeClass('description-panel-visible');
+        this.cancel_edit();
+    }
+
+    toggle() {
+        if ($('#description-panel').hasClass('description-panel-visible')) {
+            this.hide();
+        } else {
+            this.show();
+        }
+    }
+
+    edit() {
+        $('#description-view-content').addClass('description-save-hidden');
+        $('#description-edit-content').removeClass('description-save-hidden').focus();
+        $('#description-edit-btn').addClass('description-save-hidden');
+        $('#description-save-btn, #description-cancel-btn').removeClass('description-save-hidden');
+    }
+
+    cancel_edit() {
+        $('#description-edit-content').val(this.description).addClass('description-save-hidden');
+        $('#description-view-content').removeClass('description-save-hidden');
+        $('#description-save-btn, #description-cancel-btn').addClass('description-save-hidden');
+        $('#description-edit-btn').removeClass('description-save-hidden');
+    }
+
+    save() {
+        const new_description = $('#description-edit-content').val();
+        $.ajax({
+            type: 'POST',
+            url: this.store_url,
+            data: { description: new_description },
+            success: (response) => {
+                const result = typeof response === 'string' ? JSON.parse(response) : response;
+                if (result['status'] === 0) {
+                    this.description = new_description;
+                    this._render();
+                    $('#description-edit-content').addClass('description-save-hidden');
+                    $('#description-view-content').removeClass('description-save-hidden');
+                    $('#description-save-btn, #description-cancel-btn').addClass('description-save-hidden');
+                    $('#description-edit-btn').removeClass('description-save-hidden');
+                    toastr.success('Notes saved to database.', 'Saved');
+                } else {
+                    toastr.error(result['message'] || 'Failed to save notes.', 'Error');
+                }
+            },
+            error: () => {
+                toastr.error('Could not reach the server.', 'Error');
+            }
+        });
+    }
+
+    _make_draggable() {
+        const panel = document.getElementById('description-panel');
+        const header = panel.querySelector('.description-panel-header');
+        let startX, startY, startRight, startTop;
+
+        header.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.description-action-btn')) return;
+            const rect = panel.getBoundingClientRect();
+            startX = e.clientX;
+            startY = e.clientY;
+            startRight = window.innerWidth - rect.right;
+            startTop = rect.top;
+            panel.style.transition = 'none';
+
+            const onMove = (e) => {
+                const dx = startX - e.clientX;
+                const dy = e.clientY - startY;
+                panel.style.right = Math.max(0, startRight + dx) + 'px';
+                panel.style.top = Math.max(0, startTop + dy) + 'px';
+            };
+
+            const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+    }
+
+    _make_resizable() {
+        const panel = document.getElementById('description-panel');
+        const MIN_W = 280, MIN_H = 160;
+
+        const handles = [
+            { dirs: ['n'],     style: 'top:0;left:6px;right:6px;height:6px;cursor:ns-resize;'    },
+            { dirs: ['s'],     style: 'bottom:0;left:6px;right:6px;height:6px;cursor:ns-resize;'  },
+            { dirs: ['e'],     style: 'top:6px;right:0;bottom:6px;width:6px;cursor:ew-resize;'    },
+            { dirs: ['w'],     style: 'top:6px;left:0;bottom:6px;width:6px;cursor:ew-resize;'     },
+            { dirs: ['n','e'], style: 'top:0;right:0;width:10px;height:10px;cursor:ne-resize;'    },
+            { dirs: ['n','w'], style: 'top:0;left:0;width:10px;height:10px;cursor:nw-resize;'     },
+            { dirs: ['s','e'], style: 'bottom:0;right:0;width:10px;height:10px;cursor:se-resize;' },
+            { dirs: ['s','w'], style: 'bottom:0;left:0;width:10px;height:10px;cursor:sw-resize;'  },
+        ];
+
+        handles.forEach(({ dirs, style }) => {
+            const el = document.createElement('div');
+            el.className = 'description-resize-handle';
+            el.style.cssText = 'position:absolute;z-index:10;' + style;
+
+            el.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const rect       = panel.getBoundingClientRect();
+                const startX     = e.clientX;
+                const startY     = e.clientY;
+                const startW     = rect.width;
+                const startH     = rect.height;
+                const startTop   = rect.top;
+                const startRight = window.innerWidth - rect.right;
+
+                const onMove = (ev) => {
+                    const dx = ev.clientX - startX;
+                    const dy = ev.clientY - startY;
+
+                    if (dirs.includes('e')) {
+                        const newW = Math.max(MIN_W, startW + dx);
+                        panel.style.width = newW + 'px';
+                        panel.style.right = (startRight + startW - newW) + 'px';
+                    }
+                    if (dirs.includes('w')) {
+                        panel.style.width = Math.max(MIN_W, startW - dx) + 'px';
+                    }
+                    if (dirs.includes('s')) {
+                        panel.style.height = Math.max(MIN_H, startH + dy) + 'px';
+                    }
+                    if (dirs.includes('n')) {
+                        const newH = Math.max(MIN_H, startH - dy);
+                        panel.style.height = newH + 'px';
+                        panel.style.top = (startTop + startH - newH) + 'px';
+                    }
+                };
+
+                const onUp = () => {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                };
+
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            });
+
+            panel.appendChild(el);
+        });
+    }
 }
