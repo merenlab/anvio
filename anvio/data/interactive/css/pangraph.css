@@ -154,7 +154,12 @@
     font-size: 14px;
   }
 
+  /* Pin the panel to the viewport so it (and the sidebar nav inside it) stays
+   * put when the page scrolls. main.css has position:absolute which would
+   * scroll with the document. The `left` transition for open/close still
+   * works under position:fixed. */
   #panel-left {
+    position: fixed !important;
     z-index: 2;
     transition: left 0.3s ease-out;
   }
@@ -169,12 +174,6 @@
     min-width: unset !important;
     width: 490px !important;
     height: 100vh !important;
-  }
-
-  /* Keep nav icons visible while settings content scrolls, without fixing to viewport */
-  .tab-elements {
-    position: sticky !important;
-    top: 0;
   }
 
   #toggle-panel-left{

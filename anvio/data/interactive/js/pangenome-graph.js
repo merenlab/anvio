@@ -305,8 +305,19 @@ class PangenomeGraphUserInterface {
         
             var [arrow_size, arrow_start, arrow_stop] = middle_layers['arrow']
             var pointer_height = arrow_stop - arrow_start
-            var pointer_length = pointer_height / 20
             var arrow_thickness = pointer_height / 4
+            if (linear == 0) {
+                // Circular layout: pointer_length is used as an x-axis (node-index)
+                // offset, but x maps to *angle* here. Derive it from the desired
+                // arc length at the tip's middle radius so the arrowhead's on-screen
+                // width is proportional to its radial height. Without this the tip
+                // wraps around the ring on small components (large theta).
+                var middle_r = arrow_start + arrow_thickness * 2
+                var theta_rad = theta * Math.PI / 180
+                var pointer_length = (pointer_height / 2) / (middle_r * theta_rad)
+            } else {
+                var pointer_length = pointer_height / 20
+            }
             var steps = Math.round(this.global_x / (num_position + 1))
             
             if (steps < 1) {
@@ -322,7 +333,13 @@ class PangenomeGraphUserInterface {
                 var [circle_g_x, circle_g_y] = this.circle_transform(this.global_x + 0.5, arrow_start + arrow_thickness * 2, theta, start_angle)
                 var [circle_e_x, circle_e_y] = this.circle_transform(this.global_x + 0.5 - pointer_length, arrow_start, theta, start_angle)
                     
-                if ((this.global_x) * theta > 180) {
+                // Arc spans (this.global_x + 1) * theta degrees -- the
+                // path goes from x=-0.5 to x=this.global_x+0.5, i.e. the
+                // full ring extent. Using this.global_x alone is off by
+                // one theta and flips the large-arc flag on small
+                // components (orphans), drawing the arrow the wrong way
+                // around (outside the ring).
+                if ((this.global_x + 1) * theta > 180) {
                     var arc_flag = 1
                 } else {
                     var arc_flag = 0
@@ -539,12 +556,14 @@ class PangenomeGraphUserInterface {
                     var [circle_c_x, circle_c_y] = this.circle_transform(this.global_x + 0.5, layer_start, theta, start_angle)
                     var [circle_d_x, circle_d_y] = this.circle_transform(this.global_x + 0.5, layer_stop, theta, start_angle)
                     
-                    if ((this.global_x) * theta > 180) {
+                    // Arc spans (this.global_x + 1) * theta degrees -- see
+                    // the matching note on the orientation-arrow arc above.
+                    if ((this.global_x + 1) * theta > 180) {
                         var arc_flag = 1
                     } else {
                         var arc_flag = 0
                     }
-            
+
                     svg_genome_tracks[genome].push(
                         $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
                         ' A ' + layer_start + ' ' + layer_start + ' 0 ' + arc_flag + ' 1 ' + circle_a_x + ' ' + circle_a_y +
@@ -577,6 +596,12 @@ class PangenomeGraphUserInterface {
                     var draw = edgecoloring[genome][1]
                     var thickness = track_line_width
                     var stroke = ''
+
+                    // Linear orphans have every node at y=0, so this.global_y stays 0
+                    // and layer_width/this.global_y blows up to Infinity, producing NaN
+                    // path coordinates. Collapse the scale to 0 in that case so the
+                    // backbone sits flat at layer_start.
+                    var y_scale = this.global_y > 0 ? (layer_width / this.global_y) : 0
 
                     var edge_chain = []
                     for(var i of sorted_keys){
@@ -612,7 +637,7 @@ class PangenomeGraphUserInterface {
                             for (var p=0; p < edge_chain.length - 1; p++){
                                 var p_x = edge_chain[p][0]
                                 var p_y = edge_chain[p][1]
-                                var p_y_size = layer_start + p_y * (layer_width / this.global_y)
+                                var p_y_size = layer_start + p_y * y_scale
 
                                 if (linear == 0){
                                     var [circle_p_x, circle_p_y] = this.circle_transform(p_x, p_y_size, theta, start_angle);
@@ -626,7 +651,7 @@ class PangenomeGraphUserInterface {
                                 
                                 var q_x = edge_chain[p+1][0]
                                 var q_y = edge_chain[p+1][1]
-                                var q_y_size = layer_start + q_y * (layer_width / this.global_y)
+                                var q_y_size = layer_start + q_y * y_scale
 
                                 if (linear == 0){
                                     var [circle_q_x, circle_q_y] = this.circle_transform(q_x, q_y_size, theta, start_angle);
@@ -878,7 +903,12 @@ class PangenomeGraphUserInterface {
                     var color = group_color
                 }
         
-                if ((l_x - m_x) * theta >= 180) {
+                // Group spans from l_x (left) to m_x (right); the arc
+                // covers (m_x - l_x) * theta degrees. The previous
+                // (l_x - m_x) expression was negative and never crossed
+                // the threshold, so arc_flag was always 0 -- fine for
+                // narrow groups, wrong for groups spanning > 180 deg.
+                if ((m_x - l_x) * theta >= 180) {
                     var arc_flag = 1
                 } else {
                     var arc_flag = 0
@@ -1459,7 +1489,10 @@ class PangenomeGraphUserInterface {
                 this.settings_dict = JSON.parse(JSON.stringify(new_settings_dict));
                 this.main_draw();
                 $('#svgbox').css('opacity', '');
-                if (on_complete) requestAnimationFrame(() => requestAnimationFrame(on_complete));
+                // start_draw is also bound directly as a jQuery event handler
+                // (#redraw click, #component_select change), so on_complete may
+                // arrive as an Event object -- guard against non-functions.
+                if (typeof on_complete === 'function') requestAnimationFrame(() => requestAnimationFrame(on_complete));
                 if (!this._description_panel_shown && description_panel.description) {
                     this._description_panel_shown = true;
                     description_panel.show();
