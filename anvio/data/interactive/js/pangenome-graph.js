@@ -1598,7 +1598,13 @@ class PangenomeGraphUserInterface {
             type_display += ', ' + copies_in_graph + ' cop' + (copies_in_graph === 1 ? 'y' : 'ies') + ' in graph';
         }
 
-        instance.setContent('<strong>' + gene_cluster + '</strong><br />' + type_display);
+        // For a grouped node (rectangle), label by the group id (GCG_...) rather
+        // than the first member's gene cluster -- otherwise hovering a group
+        // looks like hovering a single node.
+        var display_name = instance.reference.id.startsWith('GCG_')
+            ? instance.reference.id
+            : gene_cluster;
+        instance.setContent('<strong>' + display_name + '</strong><br />' + type_display);
         $('#number_type')[0].innerText = type_display;
     }
 
@@ -3400,7 +3406,10 @@ class PangenomeGraphUserInterface {
         const { gene_cluster_id: gcid, gene_cluster_context } = this._resolve_node_ids(e, gene_cluster_id);
 
         const all_info = await this.get_gene_cluster_display_tables(gcid, gene_cluster_context, 1, false);
-        const title = `Synteny gene cluster: ${gcid}`;
+        // gene_cluster_context is the GCG_ id when this is a group; prefer it
+        // so the title reflects the group identity rather than its first member.
+        const display_id = gene_cluster_context || gcid;
+        const title = `Synteny gene cluster: ${display_id}`;
         showPangraphFunctionsSummaryTableDialog(title, all_info);
 
         setTimeout(() => {
@@ -3429,7 +3438,8 @@ class PangenomeGraphUserInterface {
             hideFetchOverlay();
         }
 
-        const title = `Synteny gene cluster: ${gcid}`;
+        const display_id = gene_cluster_context || gcid;
+        const title = `Synteny gene cluster: ${display_id}`;
         showPangraphFunctionsSummaryTableDialog(title, all_info);
 
         setTimeout(() => {
