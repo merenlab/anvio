@@ -1510,6 +1510,7 @@ class PangenomeGraph():
 
         # learn the project name from the pan-db if the user did not
         # provide another
+        self.genome_names_user_focused = bool(A('genome_names'))
         if A('genome_names'):
             if filesnpaths.is_file_exists(A('genome_names'), dont_raise=True):
                 self.genome_names = utils.get_column_data_from_TAB_delim_file(A('genome_names'), column_indices=[0], expected_number_of_fields=1)[0]
@@ -1592,6 +1593,8 @@ class PangenomeGraph():
         self.ranking_components = A('ranking_components')
         self.ranking_mean = A('ranking_mean')
         self.minbit_floor = A('minbit_floor')
+        self.decision_floor = A('decision_floor')
+        self.support_floor = A('support_floor')
         self.min_ranking_score = A('min_ranking_score')
         self.fusion_top_bucket_k = A('fusion_top_bucket_k')
         self.fusion_seed = A('fusion_seed')
@@ -1704,6 +1707,12 @@ class PangenomeGraph():
 
     def print_settings(self):
         self.run.warning(None, header="SETTINGS", lc="green")
+        if self.genome_names_user_focused:
+            n = len(self.genome_names)
+            preview = ', '.join(self.genome_names[:3]) + ('...' if n > 3 else '')
+            self.run.info("Focused genomes (--genome-names)", f"{n} ({preview})")
+        else:
+            self.run.info("Focused genomes (--genome-names)", 'all (no focus)')
         self.run.info("Minimum number of genes per contig", self.min_contig_chain)
         self.run.info("Remove non-coding genes", self.no_include_non_coding_genes)
         self.run.info("Skip remerge step", self.no_remerge)
@@ -1719,6 +1728,8 @@ class PangenomeGraph():
         self.run.info("Ranking components", self.ranking_components)
         self.run.info("Ranking mean", self.ranking_mean)
         self.run.info("Minbit floor", self.minbit_floor)
+        self.run.info("Decision floor", self.decision_floor)
+        self.run.info("Support floor", self.support_floor)
         self.run.info("Min ranking score", self.min_ranking_score)
         self.run.info("Fusion top-bucket k", self.fusion_top_bucket_k)
         self.run.info("Fusion seed", self.fusion_seed)
