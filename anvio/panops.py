@@ -1587,6 +1587,7 @@ class PangenomeGraph():
         # NEMESIS / AAI ENGINE PARAMETERS
         self.locality_window = A('locality_window')
         self.min_window_completeness = A('min_window_completeness')
+        self.fusion_min_window_completeness = A('fusion_min_window_completeness')
         self.min_line_pair_hits = A('min_line_pair_hits')
         self.orientation_tie_threshold = A('orientation_tie_threshold')
         self.min_orientation_score = A('min_orientation_score')
@@ -1724,7 +1725,8 @@ class PangenomeGraph():
         self.run.info("Component to layout", self.component)
         self.run.info("Region scope (BR/VR denominator)", self.region_scope)
         self.run.info("Locality window", self.locality_window)
-        self.run.info("Min window completeness", self.min_window_completeness)
+        self.run.info("Min window completeness (orientation)", self.min_window_completeness)
+        self.run.info("Min window completeness (fusion hard cutoff)", self.fusion_min_window_completeness)
         self.run.info("Min line-pair hits", self.min_line_pair_hits)
         self.run.info("Orientation tie threshold", self.orientation_tie_threshold)
         self.run.info("Min orientation score", self.min_orientation_score)
