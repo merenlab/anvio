@@ -834,6 +834,11 @@ class PangenomeAAIEngine():
             raise ConfigError("`--min-window-completeness` must be in [0, --locality-window] "
                               f"(got {mwc}, --locality-window is {self.locality_window}) :/")
 
+        fmwc = int(self.fusion_min_window_completeness or 0)
+        if fmwc < 0 or fmwc > int(self.locality_window):
+            raise ConfigError("`--fusion-min-window-completeness` must be in [0, --locality-window] "
+                              f"(got {fmwc}, --locality-window is {self.locality_window}) :/")
+
         if self.tables_dir is not None:
             os.makedirs(self.tables_dir, exist_ok=True)
 
@@ -1124,7 +1129,14 @@ class PangenomeAAIEngine():
     def _compute_orientations(self, lines, line_names, line_to_genome, edges_list):
         """Run the locality scan + odd-cycle demotion, returning the data
         needed downstream plus a per-pair diagnostic ``rows`` list (used by
-        :py:func:`write_orientation_tsv` when ``tables_dir`` is set)."""
+        :py:func:`write_orientation_tsv` when ``tables_dir`` is set).
+
+        Returns ``(fwd_sum, fwd_cnt, rev_sum, rev_cnt, total, edge_signals,
+        pair_label, rows, edge_completeness)``. ``edge_completeness`` is the
+        per-edge minimum flanking-window size recorded by
+        :py:func:`_aggregate_line_pairs` *before* the orientation drop, so
+        the downstream fusion-side filter (``--fusion-min-window-completeness``)
+        can consult it without re-deriving window sizes."""
         K = int(self.locality_window)
         mwc = int(self.min_window_completeness or 0)
         self.run.info_single(f"Running locality scan (K={K}) on "
@@ -1196,10 +1208,17 @@ class PangenomeAAIEngine():
     def _compute_ranking(self, lines, line_names, edges_list,
                          total, edge_signals, pair_label,
                          edge_completeness):
-        """Attach per-edge decision_score + per-pair support, combine the
+        """Attach per-edge decision_score + per-pair support, apply the
+        hard cutoffs (``--min-line-pair-hits``, ``--fusion-min-window-completeness``,
+        ``--decision-floor``, ``--support-floor``), combine the surviving
         ranking components, and sort.
 
-        Returns ``ranking`` (list of 6-tuples)."""
+        ``edge_completeness`` carries per-edge min-flanking-window size from
+        :py:func:`_aggregate_line_pairs`, used by the
+        ``--fusion-min-window-completeness`` hard cutoff.
+
+        Returns ``ranking`` (list of 6-tuples ``(u, v, w, decision, support, mean)``
+        sorted by ``mean`` descending)."""
         components = [c.strip() for c in (self.ranking_components or "").split(",") if c.strip()]
         valid = ("minbit", "decision", "support")
         if not components:
@@ -1237,6 +1256,12 @@ class PangenomeAAIEngine():
             li_v = line_idx_by_name.get(v_line)
             if li_u is None or li_v is None:
                 scored.append((u, v, w, 0.0, 0.0))
+                continue
+            if li_u == li_v:
+                # Same-line edges are dropped at _build_pangenome_graph
+                # anyway and have no entry in edge_completeness; skip
+                # silently so the fusion-mwc counter only reports true
+                # window-completeness drops.
                 continue
             pair_key = (li_u, li_v) if li_u < li_v else (li_v, li_u)
             if pair_key in under_hit_pairs:
@@ -1557,7 +1582,6 @@ class PangenomeAAIEngine():
                                   f"in the external-genomes file and cannot be focused on: {head} :/")
             genome_paths = {g: p for g, p in genome_paths.items() if g in focus}
             hash_to_genome = {h: g for h, g in hash_to_genome.items() if g in focus}
-            self.run.info('Focused genomes (--genome-names)', len(focus), mc='green')
 
         # 3. Read CONTIGS.dbs.
         genome_calls = self._load_genome_calls(genome_paths)

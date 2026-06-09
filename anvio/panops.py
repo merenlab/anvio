@@ -1960,6 +1960,7 @@ class PangenomeGraph():
             'remerge_max_length': self.remerge_max_length,
             'locality_window': self.locality_window,
             'min_window_completeness': self.min_window_completeness,
+            'fusion_min_window_completeness': self.fusion_min_window_completeness,
             'min_line_pair_hits': self.min_line_pair_hits,
             'orientation_tie_threshold': self.orientation_tie_threshold,
             'min_orientation_score': self.min_orientation_score,
@@ -1967,6 +1968,10 @@ class PangenomeGraph():
             'ranking_components': self.ranking_components,
             'ranking_mean': self.ranking_mean,
             'minbit_floor': self.minbit_floor,
+            'decision_floor': self.decision_floor,
+            'support_floor': self.support_floor,
+            'decision_tie_score': self.decision_tie_score,
+            'decision_boundary_score': self.decision_boundary_score,
             'min_ranking_score': self.min_ranking_score,
             'fusion_top_bucket_k': self.fusion_top_bucket_k,
             'fusion_seed': self.fusion_seed,
@@ -1975,6 +1980,7 @@ class PangenomeGraph():
             'gene_cluster_grouping_threshold': self.gene_cluster_grouping_threshold,
             'grouping_compression': self.groupcompress,
             'component': self.component,
+            'region_scope': self.region_scope,
         }
 
         dbops.PanGraphDatabase(self.pan_graph_db_path, run=self.run, progress=self.progress, quiet=False).create(meta_values)
