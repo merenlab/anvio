@@ -105,28 +105,41 @@ def get_args():
                     "--min-window-completeness, which only gates orientation labeling: set this above 0 if you want contig-end / "
                     "fragmented edges to be excluded from fusion regardless of how the ranking otherwise scores them. 0 disables the "
                     "cutoff (default).")
-    groupD.add_argument('--min-line-pair-hits', default=100, type=int, help = "Minimum number of DIAMOND hits between two contig lines "
+    groupD.add_argument('--min-line-pair-hits', default=50, type=int, help = "Minimum number of DIAMOND hits between two contig lines "
                     "required to consider them for orientation scoring AND fusion. Hard cutoff: line pairs with fewer than this many "
                     "AAI edges are NEVER fused (alongside the existing same-genome-conflict and transitive-cycle guards).")
-    groupD.add_argument('--orientation-tie-threshold', default=0.2, type=float, help = "Score margin under which a line-pair orientation "
+    groupD.add_argument('--orientation-tie-threshold', default=0.25, type=float, help = "Score margin under which a line-pair orientation "
                     "call is considered a tie and demoted (see --orientation-demotion-strategy).")
-    groupD.add_argument('--min-orientation-score', default=0.7, type=float, help = "Minimum orientation score for a line pair to be "
+    groupD.add_argument('--min-orientation-score', default=0.75, type=float, help = "Minimum orientation score for a line pair to be "
                     "accepted; pairs below this are dropped.")
     groupD.add_argument('--orientation-demotion-strategy', default='slimmest-margin',
                     choices=['slimmest-margin', 'fewest-edges'], help = "How to break ties when committing line-pair "
                     "orientations during the spanning-tree walk.")
-    groupD.add_argument('--ranking-components', default='minbit,decision,support', type=str, help = "Comma-separated list "
-                    "of components used to rank AAI edges before fusion (any subset of minbit, decision, support).")
+    groupD.add_argument('--ranking-components', default='minbit,decision,support,uniqueness', type=str, help = "Comma-separated list "
+                    "of components used to rank AAI edges before fusion (any subset of minbit, decision, support, uniqueness). "
+                    "'uniqueness' (opt-in; not in the default) is min(uniqueness(u), uniqueness(v)) where uniqueness(g) = "
+                    "partner_genomes(g) / hit_count(g) -- the number of distinct genomes among g's cross-genome DIAMOND partners "
+                    "divided by the total partner count (gated by GC in panmode). Any single-copy gene scores 1.0 regardless of "
+                    "how core it is; multi-copy GCs score below 1.0; capped at 1.0 by construction.")
     groupD.add_argument('--ranking-mean', default='geometric', choices=['geometric', 'arithmetic'], help = "Mean used to "
                     "combine ranking components into a single score per edge.")
     groupD.add_argument('--minbit-floor', default=0.0, type=float, help = "Edges with AAI minbit below this value are dropped "
                     "before ranking.")
     groupD.add_argument('--decision-floor', default=0.0, type=float, help = "Edges whose per-edge decision_score (the locality-window "
                     "top-n mean selected by the line-pair orientation label) is below this value are dropped before fusion. Applied "
-                    "at ranking time, as soon as the decision score is available; analogous to --minbit-floor for raw minbit.")
+                    "at ranking time, as soon as the decision score is available; analogous to --minbit-floor for raw minbit. "
+                    "Must be in [0.0, 1.0]; all ranking-component scores are clamped to that range in the engine.")
     groupD.add_argument('--support-floor', default=0.0, type=float, help = "Edges whose line-pair support (n_edges between the two "
                     "lines divided by min(len(line_a), len(line_b))) is below this value are dropped before fusion. Applied at "
-                    "ranking time; analogous to --minbit-floor for raw minbit.")
+                    "ranking time; analogous to --minbit-floor for raw minbit. Must be in [0.0, 1.0]; all ranking-component scores "
+                    "are clamped to that range in the engine, so a line pair with more edges than the shorter line has genes "
+                    "saturates at support=1.0.")
+    groupD.add_argument('--uniqueness-floor', default=0.0, type=float, help = "Edges whose per-edge uniqueness "
+                    "(min(uniqueness(u), uniqueness(v)) where uniqueness(g) = partner_genomes(g) / hit_count(g); gated by GC in "
+                    "panmode) is below this value are dropped before fusion. Applied at ranking time; analogous to --minbit-floor "
+                    "for raw minbit. Any single-copy gene edge scores 1.0, so a floor of e.g. 0.5 keeps edges only when both "
+                    "endpoints have at most ~2 partners per genome. Use this to exclude edges anchored on promiscuous genes "
+                    "(transposases, mobile elements, etc.) regardless of how uniqueness is weighted in --ranking-components.")
     groupD.add_argument('--decision-tie-score', default=0.0, type=float, help = "Decision score assigned to AAI edges whose "
                     "line pair has no orientation label (tie, weak, or demoted by the odd-cycle resolver; also under-hits when "
                     "--min-line-pair-hits=0). Pair-level failure: no fwd-vs-rev preference exists at the pair level, so this "
@@ -136,10 +149,10 @@ def get_args():
                     "typically because one or both endpoint genes sit at contig boundaries (empty flanking window) or because "
                     "--min-window-completeness dropped the edge upstream. Per-edge failure on an otherwise good pair: setting "
                     "this above 0.0 keeps contig-end edges in well-oriented pairs from being zeroed out in the ranking.")
-    groupD.add_argument('--min-ranking-score', default=0.05, type=float, help = "Edges whose combined ranking score (the mean of "
+    groupD.add_argument('--min-ranking-score', default=0.1, type=float, help = "Edges whose combined ranking score (the mean of "
                     "--ranking-components) is below this value are skipped during fusion. Independent of --minbit-floor, which gates "
                     "on raw minbit; this gates on the aggregated score.")
-    groupD.add_argument('--fusion-top-bucket-k', default=5, type=int, help = "Number of top-ranked edges sampled per fusion step "
+    groupD.add_argument('--fusion-top-bucket-k', default=1, type=int, help = "Number of top-ranked edges sampled per fusion step "
                     "(Prim-style frontier growth with stochastic top-K bucketing).")
     groupD.add_argument('--fusion-seed', default=42, type=int, help = "Random seed for the stochastic top-K fusion sampler.")
 
@@ -148,7 +161,7 @@ def get_args():
     groupE.add_argument('--component', default=0, type=int, help = "Which weakly connected component to lay out and summarize. "
                     "Components are indexed largest-first; the default (0) selects the largest. All components are still persisted "
                     "in the pan-graph-db.")
-    groupE.add_argument('--region-scope', default='global', choices=['global', 'component'], help = "Scope of the genome-count "
+    groupE.add_argument('--region-scope', default='component', choices=['global', 'component'], help = "Scope of the genome-count "
                     "denominator used during region classification (backbone vs. variable) and the normalized region metrics. "
                     "'global' (default) counts genomes across the entire pangenome -- a region is BR only if every genome in "
                     "the pangenome reaches it. 'component' counts only the genomes present in the current weakly-connected "

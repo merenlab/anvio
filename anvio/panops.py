@@ -1597,6 +1597,7 @@ class PangenomeGraph():
         self.minbit_floor = A('minbit_floor')
         self.decision_floor = A('decision_floor')
         self.support_floor = A('support_floor')
+        self.uniqueness_floor = A('uniqueness_floor')
         self.decision_tie_score = A('decision_tie_score')
         self.decision_boundary_score = A('decision_boundary_score')
         self.min_ranking_score = A('min_ranking_score')
@@ -1736,6 +1737,7 @@ class PangenomeGraph():
         self.run.info("Minbit floor", self.minbit_floor)
         self.run.info("Decision floor", self.decision_floor)
         self.run.info("Support floor", self.support_floor)
+        self.run.info("Uniqueness floor", self.uniqueness_floor)
         self.run.info("Decision tie/unlabeled score", self.decision_tie_score)
         self.run.info("Decision boundary score", self.decision_boundary_score)
         self.run.info("Min ranking score", self.min_ranking_score)
@@ -1970,6 +1972,7 @@ class PangenomeGraph():
             'minbit_floor': self.minbit_floor,
             'decision_floor': self.decision_floor,
             'support_floor': self.support_floor,
+            'uniqueness_floor': self.uniqueness_floor,
             'decision_tie_score': self.decision_tie_score,
             'decision_boundary_score': self.decision_boundary_score,
             'min_ranking_score': self.min_ranking_score,

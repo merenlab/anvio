@@ -714,14 +714,18 @@ def write_orientation_tsv(rows, savepath):
                     f"\t{diff:+.4f}\t{orient}\n")
 
 
-def write_ranking_tsv(ranking, ranking_mean, savepath):
-    """TSV of the final scored edge ranking."""
+def write_ranking_tsv(ranking, ranking_mean, gene_uniqueness, savepath):
+    """TSV of the final scored edge ranking. Per-edge ``uniqueness`` is
+    re-derived from ``gene_uniqueness`` (the same map :py:meth:`_compute_ranking`
+    consumes) as ``min(gene_uniqueness[u], gene_uniqueness[v])`` so the TSV
+    shows each ranking component individually alongside the combined mean."""
     with open(savepath, "w") as f:
-        f.write(f"rank\tu\tv\tminbit\tdecision_score\tsupport"
+        f.write(f"rank\tu\tv\tminbit\tdecision_score\tsupport\tuniqueness"
                 f"\tmean_{ranking_mean}\n")
         for rank, (u, v, w, score, support, mean) in enumerate(ranking, 1):
+            un = min(gene_uniqueness.get(u, 0.0), gene_uniqueness.get(v, 0.0))
             f.write(f"{rank}\t{u}\t{v}\t{w:.6f}\t{score:.6f}"
-                    f"\t{support:.6f}\t{mean:.6f}\n")
+                    f"\t{support:.6f}\t{un:.6f}\t{mean:.6f}\n")
 
 
 # ---------------------------------------------------------------------------
@@ -765,6 +769,7 @@ class PangenomeAAIEngine():
         self.minbit_floor = A('minbit_floor')
         self.decision_floor = A('decision_floor')
         self.support_floor = A('support_floor')
+        self.uniqueness_floor = A('uniqueness_floor')
         self.decision_tie_score = A('decision_tie_score')
         self.decision_boundary_score = A('decision_boundary_score')
         self.min_ranking_score = A('min_ranking_score')
@@ -838,6 +843,26 @@ class PangenomeAAIEngine():
         if fmwc < 0 or fmwc > int(self.locality_window):
             raise ConfigError("`--fusion-min-window-completeness` must be in [0, --locality-window] "
                               f"(got {fmwc}, --locality-window is {self.locality_window}) :/")
+
+        minbit_floor = float(self.minbit_floor or 0.0)
+        if minbit_floor < 0.0 or minbit_floor > 1.0:
+            raise ConfigError(f"`--minbit-floor` must be in [0.0, 1.0] (got {minbit_floor}). "
+                              f"minbit is bit_score / min(self_bit_u, self_bit_v), normalized to [0, 1] :/")
+
+        decision_floor = float(self.decision_floor or 0.0)
+        if decision_floor < 0.0 or decision_floor > 1.0:
+            raise ConfigError(f"`--decision-floor` must be in [0.0, 1.0] (got {decision_floor}). "
+                              f"All ranking-component scores are clamped to [0, 1] in `_compute_ranking` :/")
+
+        support_floor = float(self.support_floor or 0.0)
+        if support_floor < 0.0 or support_floor > 1.0:
+            raise ConfigError(f"`--support-floor` must be in [0.0, 1.0] (got {support_floor}). "
+                              f"All ranking-component scores are clamped to [0, 1] in `_compute_ranking` :/")
+
+        uniqueness_floor = float(self.uniqueness_floor or 0.0)
+        if uniqueness_floor < 0.0 or uniqueness_floor > 1.0:
+            raise ConfigError(f"`--uniqueness-floor` must be in [0.0, 1.0] (got {uniqueness_floor}). "
+                              f"uniqueness is partner_genomes / hit_count, capped at 1.0 by construction :/")
 
         if self.tables_dir is not None:
             os.makedirs(self.tables_dir, exist_ok=True)
@@ -1207,20 +1232,28 @@ class PangenomeAAIEngine():
 
     def _compute_ranking(self, lines, line_names, edges_list,
                          total, edge_signals, pair_label,
-                         edge_completeness):
-        """Attach per-edge decision_score + per-pair support, apply the
-        hard cutoffs (``--min-line-pair-hits``, ``--fusion-min-window-completeness``,
-        ``--decision-floor``, ``--support-floor``), combine the surviving
+                         edge_completeness, gene_uniqueness):
+        """Attach per-edge decision_score + per-pair support + per-edge
+        uniqueness, apply the hard cutoffs (``--min-line-pair-hits``,
+        ``--fusion-min-window-completeness``, ``--decision-floor``,
+        ``--support-floor``, ``--uniqueness-floor``), combine the surviving
         ranking components, and sort.
 
         ``edge_completeness`` carries per-edge min-flanking-window size from
         :py:func:`_aggregate_line_pairs`, used by the
         ``--fusion-min-window-completeness`` hard cutoff.
 
+        ``gene_uniqueness`` is a ``{endpoint -> uniqueness}`` map computed
+        in :py:meth:`process` as ``partner_genomes(g) / hit_count(g)``
+        (gated by GC in panmode, post ``--minbit-floor``). Per-edge
+        uniqueness is ``min(gene_uniqueness[u], gene_uniqueness[v])`` --
+        the less-unique endpoint dominates. Any single-copy gene
+        (core or accessory) scores 1.0; multi-copy GCs score below 1.0.
+
         Returns ``ranking`` (list of 6-tuples ``(u, v, w, decision, support, mean)``
         sorted by ``mean`` descending)."""
         components = [c.strip() for c in (self.ranking_components or "").split(",") if c.strip()]
-        valid = ("minbit", "decision", "support")
+        valid = ("minbit", "decision", "support", "uniqueness")
         if not components:
             raise ConfigError(f"`--ranking-components` must list at least one of {valid} :/")
         bad = [c for c in components if c not in valid]
@@ -1236,6 +1269,7 @@ class PangenomeAAIEngine():
         min_hits = int(self.min_line_pair_hits or 0)
         decision_floor = float(self.decision_floor or 0.0)
         support_floor = float(self.support_floor or 0.0)
+        uniqueness_floor = float(self.uniqueness_floor or 0.0)
         tie_score = float(self.decision_tie_score or 0.0)
         boundary_score = float(self.decision_boundary_score or 0.0)
         fusion_mwc = int(self.fusion_min_window_completeness or 0)
@@ -1245,17 +1279,29 @@ class PangenomeAAIEngine():
         n_under_hit = 0
         n_below_decision = 0
         n_below_support = 0
+        n_below_uniqueness = 0
         n_below_fusion_mwc = 0
+
+        # All ranking-component scores get clamped to [0, 1] before the
+        # floor checks and the geometric/arithmetic mean. Keeps the
+        # ranking on a single comparable scale: minbit can exceed 1
+        # for short genes where cross-genome bitscore > min(self), the
+        # decision/support window means inherit that, and uniqueness is
+        # already in [0, 1] by construction. Clamping here also means
+        # the floors in [0, 1] (enforced by sanity_check) have a
+        # well-defined meaning across all four components.
+        clamp = lambda x: max(0.0, min(1.0, x))
 
         line_idx_by_name = {nm: i for i, nm in enumerate(line_names)}
         scored = []
         for (u, v, w) in edges_list:
+            w = clamp(w)
             u_line = u.rsplit(":", 1)[0] if ":" in u else u
             v_line = v.rsplit(":", 1)[0] if ":" in v else v
             li_u = line_idx_by_name.get(u_line)
             li_v = line_idx_by_name.get(v_line)
             if li_u is None or li_v is None:
-                scored.append((u, v, w, 0.0, 0.0))
+                scored.append((u, v, w, 0.0, 0.0, 0.0))
                 continue
             if li_u == li_v:
                 # Same-line edges are dropped at _build_pangenome_graph
@@ -1280,14 +1326,21 @@ class PangenomeAAIEngine():
                 score = rev if rev is not None else boundary_score
             else:
                 score = tie_score
+            score = clamp(score)
             if score < decision_floor:
                 n_below_decision += 1
                 continue
-            support = support_by_pair.get(pair_key, 0.0)
+            support = clamp(support_by_pair.get(pair_key, 0.0))
             if support < support_floor:
                 n_below_support += 1
                 continue
-            scored.append((u, v, w, score, support))
+            un_u = gene_uniqueness.get(u, 0.0)
+            un_v = gene_uniqueness.get(v, 0.0)
+            uniqueness = clamp(min(un_u, un_v))
+            if uniqueness < uniqueness_floor:
+                n_below_uniqueness += 1
+                continue
+            scored.append((u, v, w, score, support, uniqueness))
 
         if min_hits > 0:
             self.run.info('Edges dropped (line-pair hits < min)',
@@ -1301,32 +1354,36 @@ class PangenomeAAIEngine():
         if support_floor > 0:
             self.run.info('Edges dropped (support < floor)',
                           f"{pp(n_below_support)} (--support-floor={support_floor})")
+        if uniqueness_floor > 0:
+            self.run.info('Edges dropped (uniqueness < floor)',
+                          f"{pp(n_below_uniqueness)} (--uniqueness-floor={uniqueness_floor})")
 
         pickers = {
-            "minbit":   lambda w, sc, sp: w,
-            "decision": lambda w, sc, sp: sc,
-            "support":  lambda w, sc, sp: sp,
+            "minbit":     lambda w, sc, sp, un: w,
+            "decision":   lambda w, sc, sp, un: sc,
+            "support":    lambda w, sc, sp, un: sp,
+            "uniqueness": lambda w, sc, sp, un: un,
         }
         sel = [pickers[c] for c in components]
         if self.ranking_mean == "geometric":
-            def mean_fn(w, sc, sp):
+            def mean_fn(w, sc, sp, un):
                 prod = 1.0
                 for p_fn in sel:
-                    v = p_fn(w, sc, sp)
+                    v = p_fn(w, sc, sp, un)
                     if v <= 0:
                         return 0.0
                     prod *= v
                 return prod ** (1.0 / len(sel))
         elif self.ranking_mean == "arithmetic":
-            def mean_fn(w, sc, sp):
-                return sum(p_fn(w, sc, sp) for p_fn in sel) / len(sel)
+            def mean_fn(w, sc, sp, un):
+                return sum(p_fn(w, sc, sp, un) for p_fn in sel) / len(sel)
         else:
             raise ConfigError(f"Unknown `--ranking-mean`: {self.ranking_mean!r}; "
                               f"expected 'geometric' or 'arithmetic' :/")
 
         ranking = sorted(
-            ((u, v, w, score, support, mean_fn(w, score, support))
-             for (u, v, w, score, support) in scored),
+            ((u, v, w, score, support, mean_fn(w, score, support, uniqueness))
+             for (u, v, w, score, support, uniqueness) in scored),
             key=lambda r: r[5],
             reverse=True,
         )
@@ -1593,6 +1650,42 @@ class PangenomeAAIEngine():
             hash_to_genome, gene_to_contig, self_bs,
             gene_clusters=gene_clusters)
 
+        # Per-gene uniqueness, derived from the final edges_dict so the
+        # GC gate (in panmode) and --minbit-floor are already applied.
+        # For each gene endpoint we track:
+        #   * hit_count          : total cross-genome partners
+        #   * partner_genomes    : unique genomes those partners belong to
+        # uniqueness(g) = partner_genomes(g) / hit_count(g)
+        # Equals 1.0 for ANY single-copy gene (every partner sits in a
+        # different genome -- whether the gene is core or accessory).
+        # Drops below 1.0 only when the gene has multiple partners in
+        # the same genome (i.e., multi-copy GCs). Capped at 1.0 by
+        # construction. Singletons have no cross-genome edges and
+        # therefore never reach this scoring stage.
+        endpoint_to_genome = {}
+        for genome, calls in genome_calls.items():
+            for c in calls:
+                endpoint = f"{genome}_{c['contig']}:{c['gene_callers_id']}"
+                endpoint_to_genome[endpoint] = genome
+
+        gene_hit_count = Counter()
+        gene_partner_genomes = defaultdict(set)
+        for pair in edges_dict:
+            u, v = tuple(pair)
+            gene_hit_count[u] += 1
+            gene_hit_count[v] += 1
+            gv = endpoint_to_genome.get(v)
+            gu = endpoint_to_genome.get(u)
+            if gv is not None:
+                gene_partner_genomes[u].add(gv)
+            if gu is not None:
+                gene_partner_genomes[v].add(gu)
+
+        gene_uniqueness = {}
+        for gene, hits in gene_hit_count.items():
+            pg = len(gene_partner_genomes.get(gene, ()))
+            gene_uniqueness[gene] = pg / hits if hits > 0 else 0.0
+
         # Dump tables if requested.
         if self.tables_dir:
             self._dump_tables_input_stage(genome_calls, edges_dict)
@@ -1620,11 +1713,11 @@ class PangenomeAAIEngine():
         # 8. Edge ranking.
         ranking = self._compute_ranking(
             lines, line_names, edges_list, total, edge_signals, pair_label,
-            edge_completeness)
+            edge_completeness, gene_uniqueness)
 
         if self.tables_dir:
             write_ranking_tsv(
-                ranking, self.ranking_mean,
+                ranking, self.ranking_mean, gene_uniqueness,
                 os.path.join(self.tables_dir, "ranking.tsv"))
 
         # 9. Build the pangenome graph.
