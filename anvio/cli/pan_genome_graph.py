@@ -97,7 +97,8 @@ def get_args():
                     "0 disables the filter; --locality-window requires a fully populated window on both sides of both endpoints. "
                     "Edges whose any flanking window is shorter than this are trashed before orientation scoring and fusion.")
     groupD.add_argument('--min-line-pair-hits', default=100, type=int, help = "Minimum number of DIAMOND hits between two contig lines "
-                    "required to consider them for orientation scoring.")
+                    "required to consider them for orientation scoring AND fusion. Hard cutoff: line pairs with fewer than this many "
+                    "AAI edges are NEVER fused (alongside the existing same-genome-conflict and transitive-cycle guards).")
     groupD.add_argument('--orientation-tie-threshold', default=0.2, type=float, help = "Score margin under which a line-pair orientation "
                     "call is considered a tie and demoted (see --orientation-demotion-strategy).")
     groupD.add_argument('--min-orientation-score', default=0.7, type=float, help = "Minimum orientation score for a line pair to be "
@@ -111,6 +112,12 @@ def get_args():
                     "combine ranking components into a single score per edge.")
     groupD.add_argument('--minbit-floor', default=0.0, type=float, help = "Edges with AAI minbit below this value are dropped "
                     "before ranking.")
+    groupD.add_argument('--decision-floor', default=0.0, type=float, help = "Edges whose per-edge decision_score (the locality-window "
+                    "top-n mean selected by the line-pair orientation label) is below this value are dropped before fusion. Applied "
+                    "at ranking time, as soon as the decision score is available; analogous to --minbit-floor for raw minbit.")
+    groupD.add_argument('--support-floor', default=0.0, type=float, help = "Edges whose line-pair support (n_edges between the two "
+                    "lines divided by min(len(line_a), len(line_b))) is below this value are dropped before fusion. Applied at "
+                    "ranking time; analogous to --minbit-floor for raw minbit.")
     groupD.add_argument('--min-ranking-score', default=0.05, type=float, help = "Edges whose combined ranking score (the mean of "
                     "--ranking-components) is below this value are skipped during fusion. Independent of --minbit-floor, which gates "
                     "on raw minbit; this gates on the aggregated score.")

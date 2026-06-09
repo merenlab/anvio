@@ -755,6 +755,8 @@ class PangenomeAAIEngine():
         self.ranking_components = A('ranking_components')
         self.ranking_mean = A('ranking_mean')
         self.minbit_floor = A('minbit_floor')
+        self.decision_floor = A('decision_floor')
+        self.support_floor = A('support_floor')
         self.min_ranking_score = A('min_ranking_score')
         self.fusion_top_bucket_k = A('fusion_top_bucket_k')
         self.fusion_seed = A('fusion_seed')
@@ -1200,6 +1202,16 @@ class PangenomeAAIEngine():
             denom = min(len(lines[li_a]), len(lines[li_b]))
             support_by_pair[(li_a, li_b)] = (n / denom) if denom > 0 else 0.0
 
+        min_hits = int(self.min_line_pair_hits or 0)
+        decision_floor = float(self.decision_floor or 0.0)
+        support_floor = float(self.support_floor or 0.0)
+        under_hit_pairs = ({pk for pk, n in total.items() if n < min_hits}
+                           if min_hits > 0 else set())
+
+        n_under_hit = 0
+        n_below_decision = 0
+        n_below_support = 0
+
         line_idx_by_name = {nm: i for i, nm in enumerate(line_names)}
         scored = []
         for (u, v, w) in edges_list:
@@ -1211,6 +1223,9 @@ class PangenomeAAIEngine():
                 scored.append((u, v, w, 0.0, 0.0))
                 continue
             pair_key = (li_u, li_v) if li_u < li_v else (li_v, li_u)
+            if pair_key in under_hit_pairs:
+                n_under_hit += 1
+                continue
             label = pair_label.get(pair_key)
             fwd, rev = edge_signals.get((u, v), (None, None))
             if label == "same":
@@ -1219,8 +1234,24 @@ class PangenomeAAIEngine():
                 score = rev if rev is not None else 0.0
             else:
                 score = 0.0
+            if score < decision_floor:
+                n_below_decision += 1
+                continue
             support = support_by_pair.get(pair_key, 0.0)
+            if support < support_floor:
+                n_below_support += 1
+                continue
             scored.append((u, v, w, score, support))
+
+        if min_hits > 0:
+            self.run.info('Edges dropped (line-pair hits < min)',
+                          f"{pp(n_under_hit)} (--min-line-pair-hits={min_hits})")
+        if decision_floor > 0:
+            self.run.info('Edges dropped (decision < floor)',
+                          f"{pp(n_below_decision)} (--decision-floor={decision_floor})")
+        if support_floor > 0:
+            self.run.info('Edges dropped (support < floor)',
+                          f"{pp(n_below_support)} (--support-floor={support_floor})")
 
         pickers = {
             "minbit":   lambda w, sc, sp: w,
