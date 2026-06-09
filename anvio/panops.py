@@ -1580,6 +1580,7 @@ class PangenomeGraph():
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
         self.groupcompress = A('grouping_compression')
         self.component = A('component') if A('component') is not None else 0
+        self.region_scope = A('region_scope') or 'global'
         self.load_state = A('load_state')
         self.import_values = A('import_values').split(',') if A('import_values') else []
 
@@ -1595,6 +1596,8 @@ class PangenomeGraph():
         self.minbit_floor = A('minbit_floor')
         self.decision_floor = A('decision_floor')
         self.support_floor = A('support_floor')
+        self.decision_tie_score = A('decision_tie_score')
+        self.decision_boundary_score = A('decision_boundary_score')
         self.min_ranking_score = A('min_ranking_score')
         self.fusion_top_bucket_k = A('fusion_top_bucket_k')
         self.fusion_seed = A('fusion_seed')
@@ -1642,7 +1645,7 @@ class PangenomeGraph():
         self.pangenome_graph.layout_all_components(
             self.gene_cluster_grouping_threshold, self.groupcompress)
 
-        region_sides_df, backbone_by_node = self.pangenome_graph.summarize_all_components()
+        region_sides_df, backbone_by_node = self.pangenome_graph.summarize_all_components(scope=self.region_scope)
 
         # Default backbone to None as a safety net (the per-component
         # summarize pass should cover every node; None only persists for
@@ -1719,6 +1722,7 @@ class PangenomeGraph():
         self.run.info("Remerge LCA/LCD-asymmetry cap",
                       'disabled' if self.remerge_max_length < 0 else self.remerge_max_length)
         self.run.info("Component to layout", self.component)
+        self.run.info("Region scope (BR/VR denominator)", self.region_scope)
         self.run.info("Locality window", self.locality_window)
         self.run.info("Min window completeness", self.min_window_completeness)
         self.run.info("Min line-pair hits", self.min_line_pair_hits)
@@ -1730,6 +1734,8 @@ class PangenomeGraph():
         self.run.info("Minbit floor", self.minbit_floor)
         self.run.info("Decision floor", self.decision_floor)
         self.run.info("Support floor", self.support_floor)
+        self.run.info("Decision tie/unlabeled score", self.decision_tie_score)
+        self.run.info("Decision boundary score", self.decision_boundary_score)
         self.run.info("Min ranking score", self.min_ranking_score)
         self.run.info("Fusion top-bucket k", self.fusion_top_bucket_k)
         self.run.info("Fusion seed", self.fusion_seed)

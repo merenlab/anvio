@@ -332,7 +332,7 @@ class PangenomeGraphManager():
         return n_components
 
 
-    def summarize_all_components(self):
+    def summarize_all_components(self, scope='global'):
         """Run summarize() for every weakly-connected component and return
         the concatenated ``region_sides_df`` plus a ``{node -> backbone}``
         mapping (1 if the node sits in a BR region, 0 if VR).
@@ -343,13 +343,18 @@ class PangenomeGraphManager():
         carries a ``component_id`` column so consumers (the pan_graph_regions
         DB table, ``self.regions``, ``self.region_sides_info``) can key by
         ``(component_id, region_id)``.
+
+        ``scope`` is forwarded to ``summarize`` and controls whether the
+        genome-count denominator (used for BR/VR classification and the
+        normalized metrics) spans the whole graph (``'global'``) or only
+        the current weakly-connected component (``'component'``).
         """
         n_components = sum(1 for _ in nx.weakly_connected_components(self.graph))
 
         region_dfs = []
         backbone_by_node = {}
         for cid in range(n_components):
-            region_sides_df, nodes_df, _ = self.summarize(component_id=cid)
+            region_sides_df, nodes_df, _ = self.summarize(component_id=cid, scope=scope)
             if region_sides_df.empty:
                 continue
             region_dfs.append(region_sides_df)
@@ -366,7 +371,7 @@ class PangenomeGraphManager():
         return all_region_sides_df, backbone_by_node
 
 
-    def summarize(self, component_id=0):
+    def summarize(self, component_id=0, scope='global'):
         """Compute region-level summaries for one weakly connected component.
 
         The component is selected by the ``component_id`` attribute set on
@@ -391,14 +396,25 @@ class PangenomeGraphManager():
         if not nx.is_directed_acyclic_graph(G):
             raise ConfigError("Cyclic graphs are not implemented.")
 
-        # num_genomes is the *global* pangenome genome count, not the
-        # per-component one -- otherwise a component that only contains
-        # one genome's contig would see num_genomes=1, line 502's
-        # `len(genomes_involved) == num_genomes` would trivially hold,
-        # and the BR check below would classify the whole component as
-        # backbone even though it's covered by a single genome.
-        genome_names = set(it.chain(*[list(d.keys())
-                                      for _, d in self.graph.nodes(data='gene_calls')]))
+        # The genome-count denominator drives both BR/VR classification
+        # (`len(genomes_involved) == num_genomes`) and the normalized
+        # metrics. ``scope='global'`` counts genomes across the whole
+        # pangenome (default; previously hardcoded). ``scope='component'``
+        # counts only the genomes present in this WCC -- a region is BR
+        # only relative to the genomes that actually reach this
+        # component, which makes sense when each component is treated as
+        # an independent sub-pangenome rather than a slice of the global
+        # one. The original hardcoded global behavior was introduced to
+        # avoid trivially classifying a 1-genome component as backbone
+        # by virtue of its denominator collapsing to 1.
+        if scope == 'component':
+            genome_names = set(it.chain(*[list(d.keys())
+                                          for _, d in G.nodes(data='gene_calls')]))
+        elif scope == 'global':
+            genome_names = set(it.chain(*[list(d.keys())
+                                          for _, d in self.graph.nodes(data='gene_calls')]))
+        else:
+            raise ConfigError(f"Unknown region scope {scope!r}; expected 'global' or 'component' :/")
         num_genomes = len(genome_names)
 
         all_positions = sorted({d['position'][0] for _, d in G.nodes(data=True)})

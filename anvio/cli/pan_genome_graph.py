@@ -118,6 +118,15 @@ def get_args():
     groupD.add_argument('--support-floor', default=0.0, type=float, help = "Edges whose line-pair support (n_edges between the two "
                     "lines divided by min(len(line_a), len(line_b))) is below this value are dropped before fusion. Applied at "
                     "ranking time; analogous to --minbit-floor for raw minbit.")
+    groupD.add_argument('--decision-tie-score', default=0.0, type=float, help = "Decision score assigned to AAI edges whose "
+                    "line pair has no orientation label (tie, weak, or demoted by the odd-cycle resolver; also under-hits when "
+                    "--min-line-pair-hits=0). Pair-level failure: no fwd-vs-rev preference exists at the pair level, so this "
+                    "score replaces the missing decision component in the ranking.")
+    groupD.add_argument('--decision-boundary-score', default=0.0, type=float, help = "Decision score assigned to AAI edges in "
+                    "confidently labeled pairs (same/flip) whose specific edge couldn't be scored by the locality scan -- "
+                    "typically because one or both endpoint genes sit at contig boundaries (empty flanking window) or because "
+                    "--min-window-completeness dropped the edge upstream. Per-edge failure on an otherwise good pair: setting "
+                    "this above 0.0 keeps contig-end edges in well-oriented pairs from being zeroed out in the ranking.")
     groupD.add_argument('--min-ranking-score', default=0.05, type=float, help = "Edges whose combined ranking score (the mean of "
                     "--ranking-components) is below this value are skipped during fusion. Independent of --minbit-floor, which gates "
                     "on raw minbit; this gates on the aggregated score.")
@@ -130,6 +139,13 @@ def get_args():
     groupE.add_argument('--component', default=0, type=int, help = "Which weakly connected component to lay out and summarize. "
                     "Components are indexed largest-first; the default (0) selects the largest. All components are still persisted "
                     "in the pan-graph-db.")
+    groupE.add_argument('--region-scope', default='global', choices=['global', 'component'], help = "Scope of the genome-count "
+                    "denominator used during region classification (backbone vs. variable) and the normalized region metrics. "
+                    "'global' (default) counts genomes across the entire pangenome -- a region is BR only if every genome in "
+                    "the pangenome reaches it. 'component' counts only the genomes present in the current weakly-connected "
+                    "component -- a region is BR relative to the genomes that actually appear in its component, which treats "
+                    "each component as an independent sub-pangenome. With 'component' a 1-genome component is trivially classified "
+                    "as backbone; pick 'global' if that's not the intent.")
     groupE.add_argument('--gene-cluster-grouping-threshold', default=-1, type=int, help = "Compress linear chains of nodes of "
                     "this length or longer into groups (-1 disables grouping; useful to simplify long conserved runs).")
     groupE.add_argument('--grouping-compression', default=1.0, type=float, help = "Compression factor for grouped chains "
