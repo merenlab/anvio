@@ -2430,6 +2430,11 @@ class PangenomeGraph():
             self.run.info_single('Remerge step skipped (`--no-remerge`).')
             return
 
+        if self.pan_super is None:
+            self.run.info_single('Remerge step skipped (non-pan-mode: every node is its own parent '
+                                 'gene cluster, so there is nothing to remerge against).')
+            return
+
         self.run.warning("Remerging nodes. This is extremely useful in case of highly sensitive graph creation "
                          "settings. The algorithm will attempt to find e.g. false rearrangement nodes and join "
                          "them together as a single synteny gene cluster. Use `--no-remerge` to disable this "
