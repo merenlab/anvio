@@ -2436,10 +2436,20 @@ class PangenomeGraph():
         # LCD(a, b) in `graph` == LCA(a, b) in the reverse direction.
         reverse_view = graph.reverse(copy=False) if self.remerge_max_length >= 0 else None
 
+        # Count pairs (the real unit of work) rather than GCs -- most GCs are
+        # singletons and skip instantly, while a handful of fat GCs spend all
+        # the time in nx.lowest_common_ancestor inside `combinations`.
+        total_pairs = sum(len(syns) * (len(syns) - 1) // 2
+                          for syns in gc_to_syns.values() if len(syns) >= 2)
+        self.progress.new('Remerging nodes', progress_total_items=total_pairs)
+        self.progress.update('...')
+
         for gc, syns in gc_to_syns.items():
             if len(syns) < 2:
                 continue
             for syn_a, syn_b in combinations(syns, 2):
+                self.progress.increment()
+                self.progress.update(f"{merged_pairs} pair(s) merged so far")
                 # Either side may have been absorbed by a prior merge.
                 if syn_a not in graph or syn_b not in graph:
                     continue
@@ -2557,6 +2567,8 @@ class PangenomeGraph():
                     elif gc in parent_gc_genomes and n_calls == len(parent_gc_genomes[gc]):
                         node_x['type'] = 'accessory'
                         new_accessory_num += 1
+
+        self.progress.end()
 
         self.run.info_single(f"{merged_pairs} pair(s) merged; "
                              f"{original_num_nodes - graph.number_of_nodes()} node(s) removed.")
