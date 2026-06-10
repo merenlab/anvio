@@ -92,22 +92,20 @@ def get_args():
 
     groupD.add_argument('--locality-window', default=10, type=int, help = "Flanking window size (in genes) on each side of a candidate "
                     "line pair, used to decide whether two contigs are co-oriented or flipped.")
-    groupD.add_argument('--min-window-completeness', default=0, type=int, help = "Orientation-side filter. Minimum number of genes "
-                    "that each of the four flanking windows (left/right of each endpoint) must contain for an AAI edge to contribute "
-                    "to orientation labeling. Must be 0..--locality-window. 0 disables the filter; --locality-window requires a fully "
-                    "populated window on both sides of both endpoints. Edges whose any flanking window is shorter than this are "
-                    "excluded from orientation aggregates and have no per-edge fwd/rev signal computed (so they get scored as "
-                    "boundary edges in the ranking). For a hard cutoff that ALSO removes such edges from fusion entirely, see "
-                    "--fusion-min-window-completeness.")
-    groupD.add_argument('--fusion-min-window-completeness', default=0, type=int, help = "Fusion-side hard cutoff. Edges whose minimum "
-                    "flanking-window size is below this value are dropped from the ranking pool entirely and can never be fused "
-                    "(alongside the existing same-genome-conflict, transitive-cycle, and --min-line-pair-hits guards). Independent of "
-                    "--min-window-completeness, which only gates orientation labeling: set this above 0 if you want contig-end / "
-                    "fragmented edges to be excluded from fusion regardless of how the ranking otherwise scores them. 0 disables the "
-                    "cutoff (default).")
-    groupD.add_argument('--min-line-pair-hits', default=50, type=int, help = "Minimum number of DIAMOND hits between two contig lines "
-                    "required to consider them for orientation scoring AND fusion. Hard cutoff: line pairs with fewer than this many "
-                    "AAI edges are NEVER fused (alongside the existing same-genome-conflict and transitive-cycle guards).")
+    groupD.add_argument('--min-window-completeness', default=0, type=int, help = "Minimum number of genes that each of the four flanking "
+                    "windows (left/right of each endpoint) must contain for an AAI edge to be kept. Must be 0..--locality-window. "
+                    "0 disables the filter; --locality-window requires a fully populated window on both sides of both endpoints. "
+                    "Edges whose any flanking window is shorter than this are trashed before orientation scoring and fusion.")
+    groupD.add_argument('--min-line-pair-hits', default=50, type=int, help = "Orientation-side gate. Minimum number of DIAMOND hits "
+                    "between two contig lines required to consider them for orientation scoring. Line pairs with fewer hits do not "
+                    "contribute to the orientation labeling (no same/flip decision is made). Has NO direct effect on fusion -- for a "
+                    "fusion-side hard cutoff that prevents under-supported line pairs from being fused at all, see "
+                    "--fusion-min-line-pair-hits.")
+    groupD.add_argument('--fusion-min-line-pair-hits', default=0, type=int, help = "Fusion-side hard cutoff. Line pairs with fewer than "
+                    "this many AAI edges are dropped from the ranking pool entirely and NEVER fused (alongside the existing "
+                    "same-genome-conflict and transitive-cycle guards). Independent of --min-line-pair-hits, which only gates "
+                    "orientation labeling: set this above 0 if you want under-supported line pairs to be excluded from fusion "
+                    "regardless of how the ranking otherwise scores them. 0 disables the cutoff (default).")
     groupD.add_argument('--orientation-tie-threshold', default=0.25, type=float, help = "Score margin under which a line-pair orientation "
                     "call is considered a tie and demoted (see --orientation-demotion-strategy).")
     groupD.add_argument('--min-orientation-score', default=0.75, type=float, help = "Minimum orientation score for a line pair to be "

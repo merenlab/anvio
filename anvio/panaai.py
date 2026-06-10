@@ -113,14 +113,10 @@ def _aggregate_line_pairs(lines, line_names, edges, K, min_completeness=0):
 
     If ``min_completeness`` is > 0, edges whose any flanking window
     (left/right of either endpoint) has fewer than ``min_completeness``
-    genes are dropped from orientation aggregates and per-edge signals
-    BEFORE scoring (preserves the historical behavior). Per-edge
-    completeness is still recorded for every reachable edge so that
-    downstream code (e.g. a separate fusion-only hard cutoff) can
-    consult it without re-deriving window sizes.
+    genes are dropped before scoring.
 
     Returns ``(fwd_sum, fwd_cnt, rev_sum, rev_cnt, total, edge_signals,
-    dropped_contig_end, edge_completeness)``.
+    dropped_contig_end)``.
     """
     line_idx_by_name = {nm: i for i, nm in enumerate(line_names)}
     line_lengths = [len(line) for line in lines]
@@ -159,7 +155,6 @@ def _aggregate_line_pairs(lines, line_names, edges, K, min_completeness=0):
     rev_cnt = defaultdict(int)
     total = defaultdict(int)
     edge_signals = {}
-    edge_completeness = {}
     dropped_contig_end = 0
 
     for (u_str, v_str, w) in edges:
@@ -189,8 +184,6 @@ def _aggregate_line_pairs(lines, line_names, edges, K, min_completeness=0):
         L_v = [off_v + (pos_v - d) for d in range(1, K + 1) if pos_v - d >= 0]
         R_v = [off_v + (pos_v + d) for d in range(1, K + 1) if pos_v + d < len_v]
 
-        edge_completeness[(u_str, v_str)] = min(len(L_u), len(R_u), len(L_v), len(R_v))
-
         if min_completeness > 0 and min(len(L_u), len(R_u), len(L_v), len(R_v)) < min_completeness:
             dropped_contig_end += 1
             continue
@@ -216,7 +209,7 @@ def _aggregate_line_pairs(lines, line_names, edges, K, min_completeness=0):
             rev_sum[key] += reverse
             rev_cnt[key] += 1
 
-    return fwd_sum, fwd_cnt, rev_sum, rev_cnt, total, edge_signals, dropped_contig_end, edge_completeness
+    return fwd_sum, fwd_cnt, rev_sum, rev_cnt, total, edge_signals, dropped_contig_end
 
 
 def _tree_path_edges(a, b, parent):
@@ -759,8 +752,8 @@ class PangenomeAAIEngine():
         # AAI engine parameters.
         self.locality_window = A('locality_window')
         self.min_window_completeness = A('min_window_completeness')
-        self.fusion_min_window_completeness = A('fusion_min_window_completeness')
         self.min_line_pair_hits = A('min_line_pair_hits')
+        self.fusion_min_line_pair_hits = A('fusion_min_line_pair_hits')
         self.orientation_tie_threshold = A('orientation_tie_threshold')
         self.min_orientation_score = A('min_orientation_score')
         self.orientation_demotion_strategy = A('orientation_demotion_strategy')
@@ -838,11 +831,6 @@ class PangenomeAAIEngine():
         if mwc < 0 or mwc > int(self.locality_window):
             raise ConfigError("`--min-window-completeness` must be in [0, --locality-window] "
                               f"(got {mwc}, --locality-window is {self.locality_window}) :/")
-
-        fmwc = int(self.fusion_min_window_completeness or 0)
-        if fmwc < 0 or fmwc > int(self.locality_window):
-            raise ConfigError("`--fusion-min-window-completeness` must be in [0, --locality-window] "
-                              f"(got {fmwc}, --locality-window is {self.locality_window}) :/")
 
         minbit_floor = float(self.minbit_floor or 0.0)
         if minbit_floor < 0.0 or minbit_floor > 1.0:
@@ -1154,22 +1142,14 @@ class PangenomeAAIEngine():
     def _compute_orientations(self, lines, line_names, line_to_genome, edges_list):
         """Run the locality scan + odd-cycle demotion, returning the data
         needed downstream plus a per-pair diagnostic ``rows`` list (used by
-        :py:func:`write_orientation_tsv` when ``tables_dir`` is set).
-
-        Returns ``(fwd_sum, fwd_cnt, rev_sum, rev_cnt, total, edge_signals,
-        pair_label, rows, edge_completeness)``. ``edge_completeness`` is the
-        per-edge minimum flanking-window size recorded by
-        :py:func:`_aggregate_line_pairs` *before* the orientation drop, so
-        the downstream fusion-side filter (``--fusion-min-window-completeness``)
-        can consult it without re-deriving window sizes."""
+        :py:func:`write_orientation_tsv` when ``tables_dir`` is set)."""
         K = int(self.locality_window)
         mwc = int(self.min_window_completeness or 0)
         self.run.info_single(f"Running locality scan (K={K}) on "
                              f"{P('line', len(lines))} / "
                              f"{P('edge', len(edges_list))} ...")
 
-        (fwd_sum, fwd_cnt, rev_sum, rev_cnt, total, edge_signals,
-         dropped_contig_end, edge_completeness) = (
+        fwd_sum, fwd_cnt, rev_sum, rev_cnt, total, edge_signals, dropped_contig_end = (
             _aggregate_line_pairs(lines, line_names, edges_list, K, min_completeness=mwc))
 
         if mwc > 0:
@@ -1227,21 +1207,16 @@ class PangenomeAAIEngine():
                          n_edges, n_fwd, avg_fwd, n_rev, avg_rev, diff, orient))
 
         return (fwd_sum, fwd_cnt, rev_sum, rev_cnt, total, edge_signals,
-                pair_label, rows, edge_completeness)
+                pair_label, rows)
 
 
     def _compute_ranking(self, lines, line_names, edges_list,
                          total, edge_signals, pair_label,
-                         edge_completeness, gene_uniqueness):
+                         gene_uniqueness):
         """Attach per-edge decision_score + per-pair support + per-edge
-        uniqueness, apply the hard cutoffs (``--min-line-pair-hits``,
-        ``--fusion-min-window-completeness``, ``--decision-floor``,
-        ``--support-floor``, ``--uniqueness-floor``), combine the surviving
-        ranking components, and sort.
-
-        ``edge_completeness`` carries per-edge min-flanking-window size from
-        :py:func:`_aggregate_line_pairs`, used by the
-        ``--fusion-min-window-completeness`` hard cutoff.
+        uniqueness, apply the hard cutoffs (``--fusion-min-line-pair-hits``,
+        ``--decision-floor``, ``--support-floor``, ``--uniqueness-floor``),
+        combine the surviving ranking components, and sort.
 
         ``gene_uniqueness`` is a ``{endpoint -> uniqueness}`` map computed
         in :py:meth:`process` as ``partner_genomes(g) / hit_count(g)``
@@ -1266,21 +1241,19 @@ class PangenomeAAIEngine():
             denom = min(len(lines[li_a]), len(lines[li_b]))
             support_by_pair[(li_a, li_b)] = (n / denom) if denom > 0 else 0.0
 
-        min_hits = int(self.min_line_pair_hits or 0)
+        fusion_min_hits = int(self.fusion_min_line_pair_hits or 0)
         decision_floor = float(self.decision_floor or 0.0)
         support_floor = float(self.support_floor or 0.0)
         uniqueness_floor = float(self.uniqueness_floor or 0.0)
         tie_score = float(self.decision_tie_score or 0.0)
         boundary_score = float(self.decision_boundary_score or 0.0)
-        fusion_mwc = int(self.fusion_min_window_completeness or 0)
-        under_hit_pairs = ({pk for pk, n in total.items() if n < min_hits}
-                           if min_hits > 0 else set())
+        under_hit_pairs = ({pk for pk, n in total.items() if n < fusion_min_hits}
+                           if fusion_min_hits > 0 else set())
 
         n_under_hit = 0
         n_below_decision = 0
         n_below_support = 0
         n_below_uniqueness = 0
-        n_below_fusion_mwc = 0
 
         # All ranking-component scores get clamped to [0, 1] before the
         # floor checks and the geometric/arithmetic mean. Keeps the
@@ -1305,19 +1278,13 @@ class PangenomeAAIEngine():
                 continue
             if li_u == li_v:
                 # Same-line edges are dropped at _build_pangenome_graph
-                # anyway and have no entry in edge_completeness; skip
-                # silently so the fusion-mwc counter only reports true
-                # window-completeness drops.
+                # anyway; skip silently so the downstream filters only
+                # count drops they're actually responsible for.
                 continue
             pair_key = (li_u, li_v) if li_u < li_v else (li_v, li_u)
             if pair_key in under_hit_pairs:
                 n_under_hit += 1
                 continue
-            if fusion_mwc > 0:
-                completeness = edge_completeness.get((u, v))
-                if completeness is None or completeness < fusion_mwc:
-                    n_below_fusion_mwc += 1
-                    continue
             label = pair_label.get(pair_key)
             fwd, rev = edge_signals.get((u, v), (None, None))
             if label == "same":
@@ -1342,12 +1309,9 @@ class PangenomeAAIEngine():
                 continue
             scored.append((u, v, w, score, support, uniqueness))
 
-        if min_hits > 0:
+        if fusion_min_hits > 0:
             self.run.info('Edges dropped (line-pair hits < min)',
-                          f"{pp(n_under_hit)} (--min-line-pair-hits={min_hits})")
-        if fusion_mwc > 0:
-            self.run.info('Edges dropped (window completeness < fusion threshold)',
-                          f"{pp(n_below_fusion_mwc)} (--fusion-min-window-completeness={fusion_mwc})")
+                          f"{pp(n_under_hit)} (--fusion-min-line-pair-hits={fusion_min_hits})")
         if decision_floor > 0:
             self.run.info('Edges dropped (decision < floor)',
                           f"{pp(n_below_decision)} (--decision-floor={decision_floor})")
@@ -1702,7 +1666,7 @@ class PangenomeAAIEngine():
 
         # 7. Orientation scan + per-pair labeling.
         (fwd_sum, fwd_cnt, rev_sum, rev_cnt, total, edge_signals,
-         pair_label, orientation_rows, edge_completeness) = self._compute_orientations(
+         pair_label, orientation_rows) = self._compute_orientations(
             lines, line_names, line_to_genome, edges_list)
 
         if self.tables_dir:
@@ -1713,7 +1677,7 @@ class PangenomeAAIEngine():
         # 8. Edge ranking.
         ranking = self._compute_ranking(
             lines, line_names, edges_list, total, edge_signals, pair_label,
-            edge_completeness, gene_uniqueness)
+            gene_uniqueness)
 
         if self.tables_dir:
             write_ranking_tsv(
