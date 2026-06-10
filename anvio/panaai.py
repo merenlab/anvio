@@ -372,9 +372,14 @@ def _uf_find(parent, x):
 
 
 def _add_line_to_graph(G, line_idx, lines, line_names, flip,
-                       super_of_gene, uf_parent,
+                       super_of_gene, uf_parent, wcc_uf_parent,
                        in_g_lines, in_g_flip):
-    """Add a line's gene-order chain to G in the chosen orientation."""
+    """Add a line's gene-order chain to G in the chosen orientation. The
+    newly added line is its own weakly-connected component on entry; the
+    per-line WCC union-find (``wcc_uf_parent``) gets a fresh root entry so
+    later fuses can track which lines belong to the same WCC and the
+    different-components guard can short-circuit cross-WCC contractions
+    between established components."""
     tokens = lines[line_idx]
     name = line_names[line_idx]
     seq = list(reversed(tokens)) if flip else list(tokens)
@@ -387,17 +392,21 @@ def _add_line_to_graph(G, line_idx, lines, line_names, flip,
         G.add_edge(a, b, kind="gene_order")
     in_g_lines.add(line_idx)
     in_g_flip[line_idx] = flip
+    wcc_uf_parent[line_idx] = line_idx
 
 
 def _fuse_genes(G, u, v, w, score, mean, label,
-                super_of_gene, uf_parent, rejected_edges,
-                line_to_genome):
+                super_of_gene, uf_parent, wcc_uf_parent, line_idx_by_name,
+                rejected_edges, line_to_genome):
     """Try to contract the super-nodes containing ``u`` and ``v``.
 
     Records ``transitive-cycle`` in ``rejected_edges`` if the contraction
     would break the DAG, or ``same-genome-conflict`` if it would pull two
     genes from the same genome into one super-node.  No-op when the two
-    genes are already in the same super-node.
+    genes are already in the same super-node. On a successful contraction
+    the two endpoints' lines are unioned in ``wcc_uf_parent`` so the
+    different-components guard in :py:meth:`_build_pangenome_graph` sees
+    them as the same WCC for subsequent fuses.
     """
     A = _uf_find(uf_parent, super_of_gene[u])
     B = _uf_find(uf_parent, super_of_gene[v])
@@ -425,9 +434,20 @@ def _fuse_genes(G, u, v, w, score, mean, label,
     G.nodes[A]["fuses"] = fuse_log
     uf_parent[B] = A
 
+    # WCC union: the contraction connected the two endpoints' lines, so
+    # they (and anything previously in their WCCs) now share one WCC.
+    li_u = line_idx_by_name.get(u.rsplit(":", 1)[0]) if ":" in u else None
+    li_v = line_idx_by_name.get(v.rsplit(":", 1)[0]) if ":" in v else None
+    if li_u is not None and li_v is not None:
+        root_u = _uf_find(wcc_uf_parent, li_u)
+        root_v = _uf_find(wcc_uf_parent, li_v)
+        if root_u != root_v:
+            wcc_uf_parent[root_v] = root_u
+
 
 def _try_commit_tie_line(li, lines, line_names, anchors, pending_merges, G,
-                         super_of_gene, uf_parent,
+                         super_of_gene, uf_parent, wcc_uf_parent,
+                         line_idx_by_name,
                          in_g_lines, in_g_flip, rejected_edges,
                          line_to_genome):
     """Commit a tie-only line if it has >=2 anchors with distinct
@@ -451,11 +471,12 @@ def _try_commit_tie_line(li, lines, line_names, anchors, pending_merges, G,
             graph_order = 1 if t1 > t2 else -1
             flip = (line_order != graph_order)
             _add_line_to_graph(G, li, lines, line_names, flip,
-                               super_of_gene, uf_parent,
+                               super_of_gene, uf_parent, wcc_uf_parent,
                                in_g_lines, in_g_flip)
             for (u, v, w, score, mean, label) in pending_merges[li]:
                 _fuse_genes(G, u, v, w, score, mean, label,
-                            super_of_gene, uf_parent, rejected_edges,
+                            super_of_gene, uf_parent, wcc_uf_parent,
+                            line_idx_by_name, rejected_edges,
                             line_to_genome)
             return True
     return False
@@ -1394,6 +1415,14 @@ class PangenomeAAIEngine():
         G = nx.DiGraph()
         super_of_gene = {}
         uf_parent = {}
+        # Per-line union-find tracking weakly-connected-component membership.
+        # Each line gets a fresh root when added via _add_line_to_graph and the
+        # roots are unioned on every successful _fuse_genes contraction. The
+        # different-components gate in the both-in-graph branch consults this
+        # to short-circuit cross-WCC fuses between two already-established
+        # components (seed and single-in-graph fuses still merge across WCCs
+        # because that's how new lines join the graph).
+        wcc_uf_parent = {}
         in_g_lines = set()
         in_g_flip = {}
         anchors = defaultdict(list)
@@ -1456,8 +1485,19 @@ class PangenomeAAIEngine():
             v_in_g = li_v in in_g_lines
 
             if u_in_g and v_in_g:
+                # Gate: both lines are already established in the graph.
+                # If they sit in different WCCs, contracting their super-
+                # nodes would merge two established components -- forbidden
+                # by design. Cross-WCC fuses are only legitimate when one
+                # (or both) of the lines is being added in this iteration
+                # (the seed and single-in-graph branches below), which is
+                # how new lines join the graph.
+                if _uf_find(wcc_uf_parent, li_u) != _uf_find(wcc_uf_parent, li_v):
+                    rejected_edges.append((u, v, mean, "different-components"))
+                    continue
                 _fuse_genes(G, u, v, w, score, mean, label,
-                            super_of_gene, uf_parent, rejected_edges,
+                            super_of_gene, uf_parent, wcc_uf_parent,
+                            line_idx_by_name, rejected_edges,
                             line_to_genome)
             elif u_in_g or v_in_g:
                 if u_in_g:
@@ -1468,10 +1508,11 @@ class PangenomeAAIEngine():
                 if label in ("same", "flip"):
                     off_flip = in_g_flip[in_li] ^ (label == "flip")
                     _add_line_to_graph(G, off_li, lines, line_names, off_flip,
-                                       super_of_gene, uf_parent,
+                                       super_of_gene, uf_parent, wcc_uf_parent,
                                        in_g_lines, in_g_flip)
                     _fuse_genes(G, u, v, w, score, mean, label,
-                                super_of_gene, uf_parent, rejected_edges,
+                                super_of_gene, uf_parent, wcc_uf_parent,
+                                line_idx_by_name, rejected_edges,
                                 line_to_genome)
                 else:
                     off_tok = off_gene.rsplit(":", 1)[1]
@@ -1489,6 +1530,7 @@ class PangenomeAAIEngine():
                     if _try_commit_tie_line(off_li, lines, line_names,
                                             anchors, pending_merges, G,
                                             super_of_gene, uf_parent,
+                                            wcc_uf_parent, line_idx_by_name,
                                             in_g_lines, in_g_flip,
                                             rejected_edges,
                                             line_to_genome):
@@ -1498,13 +1540,14 @@ class PangenomeAAIEngine():
                 fu = False
                 fv = True if label == "flip" else False
                 _add_line_to_graph(G, li_u, lines, line_names, fu,
-                                   super_of_gene, uf_parent,
+                                   super_of_gene, uf_parent, wcc_uf_parent,
                                    in_g_lines, in_g_flip)
                 _add_line_to_graph(G, li_v, lines, line_names, fv,
-                                   super_of_gene, uf_parent,
+                                   super_of_gene, uf_parent, wcc_uf_parent,
                                    in_g_lines, in_g_flip)
                 _fuse_genes(G, u, v, w, score, mean, label,
-                            super_of_gene, uf_parent, rejected_edges,
+                            super_of_gene, uf_parent, wcc_uf_parent,
+                            line_idx_by_name, rejected_edges,
                             line_to_genome)
 
         self.progress.end()
@@ -1519,6 +1562,7 @@ class PangenomeAAIEngine():
             _add_line_to_graph(G, li, lines, line_names, flip=False,
                                super_of_gene=super_of_gene,
                                uf_parent=uf_parent,
+                               wcc_uf_parent=wcc_uf_parent,
                                in_g_lines=in_g_lines,
                                in_g_flip=in_g_flip)
             # The merges that would have anchored this line never fired;
