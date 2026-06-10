@@ -1175,7 +1175,7 @@ class PangenomeAAIEngine():
 
         if mwc > 0:
             self.run.info("AAI edges dropped at contig-end filter",
-                          f"{dropped_contig_end} / {len(edges_list)}")
+                          f"{pp(dropped_contig_end)} / {pp(len(edges_list))}")
             if len(edges_list) and dropped_contig_end / len(edges_list) > 0.5:
                 self.run.warning("More than 50% of AAI edges were dropped by "
                                  "`--min-window-completeness`. Consider lowering it, or "
@@ -1195,9 +1195,9 @@ class PangenomeAAIEngine():
 
         largest = max((len(c) for c in components), default=0)
         self.run.info('Orientation components',
-                      f"{len(components)} (largest covers {largest}/{len(lines)} lines)")
+                      f"{pp(len(components))} (largest covers {pp(largest)}/{pp(len(lines))} lines)")
         self.run.info('Odd-cycle contradictions detected',
-                      f"{len(inconsistencies)} "
+                      f"{pp(len(inconsistencies))} "
                       f"({'globally consistent' if not inconsistencies else 'resolved by demotion'})")
 
         # Build per-pair diagnostic rows for the orientation TSV.
@@ -1374,7 +1374,7 @@ class PangenomeAAIEngine():
         )
 
         self.run.info('Edges ranked',
-                      f"{len(ranking)} (components={','.join(components)}, "
+                      f"{pp(len(ranking))} (components={','.join(components)}, "
                       f"mean={self.ranking_mean})")
         return ranking
 
@@ -1473,10 +1473,10 @@ class PangenomeAAIEngine():
             pool.pop(indices[pick])
             processed += 1
             if processed & 0x3FF == 0:
-                self.progress.update(f"lines {len(in_g_lines)}/{len(lines)}  "
-                                     f"nodes {G.number_of_nodes()}  "
-                                     f"components {nx.number_weakly_connected_components(G)}  "
-                                     f"rejects {len(rejected_edges)}")
+                self.progress.update(f"lines {pp(len(in_g_lines))}/{pp(len(lines))}  "
+                                     f"nodes {pp(G.number_of_nodes())}  "
+                                     f"components {pp(nx.number_weakly_connected_components(G))}  "
+                                     f"rejects {pp(len(rejected_edges))}")
             self.progress.increment()
 
             pair_key = (li_u, li_v) if li_u < li_v else (li_v, li_u)
@@ -1619,7 +1619,6 @@ class PangenomeAAIEngine():
                                  mc='yellow')
         else:
             self.run.info('Gene-cluster assignments', pp(len(gene_clusters)))
-        self.run.info('Include non-coding genes', self.no_include_non_coding_genes)
 
         # 1. Read GENOMES.db.
         hash_to_genome = self._load_genome_hash_map()
@@ -1703,7 +1702,7 @@ class PangenomeAAIEngine():
         lines, line_names, line_to_genome = self._build_lines(genome_calls)
         lines, line_names, line_to_genome = self._filter_short_contigs(
             lines, line_names, line_to_genome)
-        self.run.info('Lines retained', len(lines))
+        self.run.info('Lines retained', pp(len(lines)))
 
         # 6. Convert edges dict to the (u, v, w) list the orientation /
         #    ranking pipeline expects.
@@ -1740,10 +1739,10 @@ class PangenomeAAIEngine():
         self.run.info('Graph nodes', pp(G.number_of_nodes()), mc='green')
         self.run.info('Graph edges', pp(G.number_of_edges()))
         n_fused = len(lines) - len(orphan_lines)
-        self.run.info('Lines fused via AAI', f"{n_fused} / {len(lines)}")
-        self.run.info('Lines added as orphan chains', len(orphan_lines))
+        self.run.info('Lines fused via AAI', f"{pp(n_fused)} / {pp(len(lines))}")
+        self.run.info('Lines added as orphan chains', pp(len(orphan_lines)))
         self.run.info('Fuses rejected',
-                      f"{len(rejected_edges)} ({dict(reasons) if reasons else '{}'})")
+                      f"{pp(len(rejected_edges))} ({dict(reasons) if reasons else '{}'})")
 
         # 10. Post-processing: rename, type, RNA override, drop, component id.
         G = rename_pangenome_nodes(
@@ -1770,7 +1769,7 @@ class PangenomeAAIEngine():
         component_counts = Counter(d["component_id"] for _, d in G.nodes(data=True))
         largest = component_counts.most_common(1)[0][1] if component_counts else 0
         self.run.info('Components',
-                      f"{len(component_counts)} (largest = {largest} nodes)")
+                      f"{pp(len(component_counts))} (largest = {pp(largest)} nodes)")
 
         # Cache for callers that may want to re-inspect.
         self.hash_to_genome = hash_to_genome

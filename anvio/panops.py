@@ -279,7 +279,7 @@ class RarefactionAnalysis:
 
             for i in range(self.iterations):
                 self.progress.increment()
-                self.progress.update(f"Processing {target} gene clusters in {n} genomes of {self.num_genomes} total at teration {i + 1} of {self.iterations}")
+                self.progress.update(f"Processing {target} gene clusters in {n} genomes of {self.num_genomes} total at iteration {i + 1} of {self.iterations}")
                 sampled_genomes = np.random.choice(self.unique_genomes, n, replace=False)
                 sampled_data = self.gene_cluster_data[self.gene_cluster_data["genome_name"].isin(sampled_genomes)]
 
@@ -747,7 +747,7 @@ class Pangenome(object):
         ids_without_self_search = all_ids - set(self_bit_scores.keys())
         if len(ids_without_self_search):
             search_tool = 'BLAST' if self.use_ncbi_blast else 'DIAMOND'
-            self.run.warning("%s did not retun search results for %d of %d the amino acid sequences in your input FASTA file. "
+            self.run.warning("%s did not return search results for %d of %d the amino acid sequences in your input FASTA file. "
                              "Anvi'o will do some heuristic magic to complete the missing data in the search output to recover "
                              "from this. But since you are a scientist, here are the amino acid sequence IDs for which %s "
                              "failed to report self search results: %s."
@@ -1024,7 +1024,7 @@ class Pangenome(object):
 
     def populate_gene_cluster_homogeneity_index(self, gene_clusters_dict, gene_clusters_failed_to_align=set([])):
         if self.skip_alignments:
-            self.run.warning('Skipping homogeneity calculations because gene clusters are not alligned.')
+            self.run.warning('Skipping homogeneity calculations because gene clusters are not aligned.')
             return
 
         if self.skip_homogeneity:
@@ -1054,7 +1054,7 @@ class Pangenome(object):
 
     def populate_layers_additional_data_and_orders(self):
         self.progress.new('Layers additional data and orders')
-        self.progress.update('Copmputing the hierarchical clustering of the (transposed) view data')
+        self.progress.update('Computing the hierarchical clustering of the (transposed) view data')
 
         layer_orders_data_dict = {}
         for clustering_tuple in [('gene_cluster presence absence', self.view_data_presence_absence), ('gene_cluster frequencies', self.view_data)]:
@@ -1381,11 +1381,11 @@ class Pangenome(object):
                               f"genome names that cause this issue: {', '.join(genomes_only_in_gene_clusters_txt)}")
 
         if len(genomes_only_in_genomes_storage):
-            self.run.warning("Anvi'o observed something while processing your gene-clusters-txt file. It seems {len(genomes_only_in_genomes_storage)} of "
-                             "{len(self.genomes)} genomes described in your genome-storage-db does not have any gene clusters described in the "
-                             "gene-clusters-txt file. This may not be the end of the world, but it is a weird situation, and may lead to some "
-                             "downstream issues. Anvi'o will continue working on your data, but if your computer sets itself on fire or something "
-                             "please consider that it may be because of this situation.")
+            self.run.warning(f"Anvi'o observed something while processing your gene-clusters-txt file. It seems {len(genomes_only_in_genomes_storage)} of "
+                             f"{len(self.genomes)} genomes described in your genome-storage-db does not have any gene clusters described in the "
+                             f"gene-clusters-txt file. This may not be the end of the world, but it is a weird situation, and may lead to some "
+                             f"downstream issues. Anvi'o will continue working on your data, but if your computer sets itself on fire or something "
+                             f"please consider that it may be because of this situation.")
 
         return gene_clusters_dict
 
@@ -1659,7 +1659,7 @@ class PangenomeGraph():
         # the pan_graph_regions table (translating BR/VR -> backbone/variable on the way in)
         self.region_sides_df = region_sides_df
 
-        self.run.info_single(f"{len(region_sides_df)} region(s) summarized across {n_components} component(s); "
+        self.run.info_single(f"{pp(len(region_sides_df))} region(s) summarized across {pp(n_components)} component(s); "
                              f"backbone/variable labels and region IDs attached to nodes.")
 
     def layout_pangenome_graph(self):
@@ -1706,7 +1706,7 @@ class PangenomeGraph():
 
         long_edges = self.pangenome_graph.cut_edges(self.max_edge_length_filter)
 
-        self.run.info_single(f"Removed {len(long_edges)} edges due to user defined length cutoff.")
+        self.run.info_single(f"Removed {pp(len(long_edges))} edges due to user defined length cutoff.")
         self.run.info_single("Done.")
 
 
@@ -2255,8 +2255,8 @@ class PangenomeGraph():
 
         # We keep ALL components per design decision §4.8; the layout/summarize
         # passes filter by component_id when needed. No connectivity check.
-        self.run.info('Graph nodes', self.pangenome_graph.graph.number_of_nodes(), mc='green')
-        self.run.info('Graph edges', self.pangenome_graph.graph.number_of_edges())
+        self.run.info('Graph nodes', pp(self.pangenome_graph.graph.number_of_nodes()), mc='green')
+        self.run.info('Graph edges', pp(self.pangenome_graph.graph.number_of_edges()))
 
 
     def _compute_edge_genome_sets(self, G, lines, line_names, line_to_genome, in_g_flip):
@@ -2372,7 +2372,7 @@ class PangenomeGraph():
         if diff_len_nodes:
             examples = ", ".join(diff_len_nodes[:10])
             more = "" if len(diff_len_nodes) <= 10 else ", ..."
-            self.run.warning(f"Alignments have differing lengths for {len(diff_len_nodes)} node(s) "
+            self.run.warning(f"Alignments have differing lengths for {pp(len(diff_len_nodes))} node(s) "
                              f"(e.g., {examples}{more}). This can happen when the upstream alignment "
                              f"step failed for individual gene clusters. The shorter sequences were "
                              f"padded with gap characters so downstream processing can continue, but "
@@ -2382,7 +2382,7 @@ class PangenomeGraph():
         if no_alignment_nodes:
             examples = ", ".join(no_alignment_nodes[:10])
             more = "" if len(no_alignment_nodes) <= 10 else ", ..."
-            self.run.warning(f"No alignments found for {len(no_alignment_nodes)} multi-gene node(s) "
+            self.run.warning(f"No alignments found for {pp(len(no_alignment_nodes))} multi-gene node(s) "
                              f"(e.g., {examples}{more}). Storing empty alignments and continuing.")
         else:
             self.run.info_single("Alignments were found for all nodes and successfully added.")
@@ -2603,12 +2603,12 @@ class PangenomeGraph():
 
         self.progress.end()
 
-        self.run.info_single(f"{merged_pairs} pair(s) merged; "
-                             f"{original_num_nodes - graph.number_of_nodes()} node(s) removed.")
-        self.run.info_single(f"{new_core_num} node(s) retyped 'rearrangement' -> 'core'.")
-        self.run.info_single(f"{new_accessory_num} node(s) retyped 'rearrangement' -> 'accessory'.")
+        self.run.info_single(f"{pp(merged_pairs)} pair(s) merged; "
+                             f"{pp(original_num_nodes - graph.number_of_nodes())} node(s) removed.")
+        self.run.info_single(f"{pp(new_core_num)} node(s) retyped 'rearrangement' -> 'core'.")
+        self.run.info_single(f"{pp(new_accessory_num)} node(s) retyped 'rearrangement' -> 'accessory'.")
         if self.remerge_max_length >= 0:
-            self.run.info_single(f"{n_rejected_asymmetry} pair(s) rejected "
+            self.run.info_single(f"{pp(n_rejected_asymmetry)} pair(s) rejected "
                                  f"(LCA/LCD-asymmetry > {self.remerge_max_length}).")
 
         if not nx.is_directed_acyclic_graph(graph):
@@ -2771,12 +2771,12 @@ class FragmentedGeneAnnotator():
 
         # find fragmentation events across all gene clusters
         self.run.warning(None, header="IDENTIFYING FRAGMENTED GENES", lc="green")
-        self.run.info_single("Please read the documentation of this program to familiarize yourelf with its "
+        self.run.info_single("Please read the documentation of this program to familiarize yourself with its "
                              "assumptions and how to make sense of the results displayed below. You can find "
                              "the documentation at https://anvio.org/m/anvi-annotate-fragmented-genes",
                              level=0, mc='green')
-        self.run.info('Num genomes', len(self.genome_descriptions.genomes), nl_before=1)
-        self.run.info('Num gene clusters', len(gene_clusters))
+        self.run.info('Num genomes', pp(len(self.genome_descriptions.genomes)), nl_before=1)
+        self.run.info('Num gene clusters', pp(len(gene_clusters)))
         self.run.info('Min full-length ratio', self.min_full_length_ratio)
         self.run.info('Max combined length ratio', self.max_combined_length_ratio)
         self.run.info('Search for stray fragments', self.find_stray_fragments)
@@ -2870,14 +2870,14 @@ class FragmentedGeneAnnotator():
         num_non_singleton_gene_clusters = sum(1 for gc_id in gene_clusters if sum(1 for g in gene_clusters[gc_id] if gene_clusters[gc_id][g]) > 1)
         pct_with_fragmentation = gene_clusters_with_fragmentation / num_non_singleton_gene_clusters * 100 if num_non_singleton_gene_clusters else 0
 
-        self.run.info('Non-singleton gene clusters', num_non_singleton_gene_clusters, nl_before=1)
-        self.run.info('Gene clusters with fragmentation', f"{gene_clusters_with_fragmentation} ({pct_with_fragmentation:.1f}% of non-singleton GCs)")
-        self.run.info('Total fragmented genes', total_fragmented_genes)
-        self.run.info('Total gene fragments', total_gene_fragments)
+        self.run.info('Non-singleton gene clusters', pp(num_non_singleton_gene_clusters), nl_before=1)
+        self.run.info('Gene clusters with fragmentation', f"{pp(gene_clusters_with_fragmentation)} ({pct_with_fragmentation:.1f}% of non-singleton GCs)")
+        self.run.info('Total fragmented genes', pp(total_fragmented_genes))
+        self.run.info('Total gene fragments', pp(total_gene_fragments))
 
         if self.find_stray_fragments:
-            self.run.info('Stray fragmented genes', total_stray_fragmented_genes, nl_before=1)
-            self.run.info('Stray gene fragments', total_stray_gene_fragments)
+            self.run.info('Stray fragmented genes', pp(total_stray_fragmented_genes), nl_before=1)
+            self.run.info('Stray gene fragments', pp(total_stray_gene_fragments))
 
         if self.report_only:
             self.run.warning("The --report-only flag is set, so no annotations have been written to any contigs database.",
