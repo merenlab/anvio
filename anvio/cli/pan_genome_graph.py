@@ -122,7 +122,16 @@ def get_args():
     groupD.add_argument('--ranking-mean', default='geometric', choices=['geometric', 'arithmetic'], help = "Mean used to "
                     "combine ranking components into a single score per edge.")
     groupD.add_argument('--minbit-floor', default=0.0, type=float, help = "Edges with AAI minbit below this value are dropped "
-                    "before ranking.")
+                    "before ranking. Applied to the reciprocal-averaged minbit of each undirected cross-genome pair, AFTER pass 2 "
+                    "of DIAMOND parsing has built the directed-pair dictionary. Use this for ranking quality control. For a memory-"
+                    "oriented filter that drops rows DURING pass 2 see --minbit-prefilter.")
+    groupD.add_argument('--minbit-prefilter', default=0.0, type=float, help = "Row-level minbit prefilter applied DURING pass 2 of "
+                    "DIAMOND parsing: rows whose directed minbit (bit_score / min(self_bit_u, self_bit_v)) is below this value are "
+                    "dropped before they enter the directed-pair dictionary. Cuts pass-2 memory in proportion to how aggressive the "
+                    "threshold is -- the dictionary holds all surviving cross-genome directed pairs and can be tens of GB for large "
+                    "pangenomes (e.g., 50+ genomes), which is the most common cause of OOM kills during the engine's parsing phase. "
+                    "Distinct from --minbit-floor, which gates AFTER reciprocal-average and is for ranking quality. 0 disables the "
+                    "prefilter (default). Must be in [0.0, 1.0].")
     groupD.add_argument('--decision-floor', default=0.0, type=float, help = "Edges whose per-edge decision_score (the locality-window "
                     "top-n mean selected by the line-pair orientation label) is below this value are dropped before fusion. Applied "
                     "at ranking time, as soon as the decision score is available; analogous to --minbit-floor for raw minbit. "

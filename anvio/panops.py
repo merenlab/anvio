@@ -1595,6 +1595,7 @@ class PangenomeGraph():
         self.ranking_components = A('ranking_components')
         self.ranking_mean = A('ranking_mean')
         self.minbit_floor = A('minbit_floor')
+        self.minbit_prefilter = A('minbit_prefilter')
         self.decision_floor = A('decision_floor')
         self.support_floor = A('support_floor')
         self.uniqueness_floor = A('uniqueness_floor')
@@ -1735,6 +1736,7 @@ class PangenomeGraph():
         self.run.info("Ranking components", self.ranking_components)
         self.run.info("Ranking mean", self.ranking_mean)
         self.run.info("Minbit floor", self.minbit_floor)
+        self.run.info("Minbit prefilter (row-level)", self.minbit_prefilter)
         self.run.info("Decision floor", self.decision_floor)
         self.run.info("Support floor", self.support_floor)
         self.run.info("Uniqueness floor", self.uniqueness_floor)
@@ -1970,6 +1972,7 @@ class PangenomeGraph():
             'ranking_components': self.ranking_components,
             'ranking_mean': self.ranking_mean,
             'minbit_floor': self.minbit_floor,
+            'minbit_prefilter': self.minbit_prefilter,
             'decision_floor': self.decision_floor,
             'support_floor': self.support_floor,
             'uniqueness_floor': self.uniqueness_floor,

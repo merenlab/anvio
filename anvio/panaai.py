@@ -781,6 +781,7 @@ class PangenomeAAIEngine():
         self.ranking_components = A('ranking_components')
         self.ranking_mean = A('ranking_mean')
         self.minbit_floor = A('minbit_floor')
+        self.minbit_prefilter = A('minbit_prefilter')
         self.decision_floor = A('decision_floor')
         self.support_floor = A('support_floor')
         self.uniqueness_floor = A('uniqueness_floor')
@@ -856,6 +857,11 @@ class PangenomeAAIEngine():
         minbit_floor = float(self.minbit_floor or 0.0)
         if minbit_floor < 0.0 or minbit_floor > 1.0:
             raise ConfigError(f"`--minbit-floor` must be in [0.0, 1.0] (got {minbit_floor}). "
+                              f"minbit is bit_score / min(self_bit_u, self_bit_v), normalized to [0, 1] :/")
+
+        minbit_prefilter = float(self.minbit_prefilter or 0.0)
+        if minbit_prefilter < 0.0 or minbit_prefilter > 1.0:
+            raise ConfigError(f"`--minbit-prefilter` must be in [0.0, 1.0] (got {minbit_prefilter}). "
                               f"minbit is bit_score / min(self_bit_u, self_bit_v), normalized to [0, 1] :/")
 
         decision_floor = float(self.decision_floor or 0.0)
@@ -991,6 +997,13 @@ class PangenomeAAIEngine():
         self.progress.new("DIAMOND pass 2/2")
         self.progress.update("computing minbit per cross-genome pair ...")
 
+        # Row-level prefilter: drop rows where directed minbit falls below
+        # this threshold *before* they enter ``dir_pair``. The reciprocal-
+        # average + ``--minbit-floor`` check stays unchanged downstream.
+        # Cuts pass-2 memory in proportion to the floor value -- useful for
+        # large pangenomes where ``dir_pair`` would otherwise blow up.
+        minbit_prefilter = float(self.minbit_prefilter or 0.0)
+
         dir_pair = {}
         n_rows = 0
         n_self_row = 0
@@ -1002,6 +1015,7 @@ class PangenomeAAIEngine():
         n_kept_dir = 0
         n_cluster_mismatch = 0
         n_cluster_unknown = 0
+        n_below_prefilter = 0
 
         with open(self.diamond_search_results) as f:
             for line in f:
@@ -1067,6 +1081,10 @@ class PangenomeAAIEngine():
                     n_unknown_contig += 1
                     continue
 
+                if minbit < minbit_prefilter:
+                    n_below_prefilter += 1
+                    continue
+
                 u = f"{q_genome}_{q_contig}:{q_gid}"
                 v = f"{s_genome}_{s_contig}:{s_gid}"
                 prev = dir_pair.get((u, v))
@@ -1077,15 +1095,26 @@ class PangenomeAAIEngine():
 
         edges = {}
         seen = set()
+        n_asymmetric_dropped = 0
         for (u, v), w in dir_pair.items():
             key = frozenset({u, v})
             if key in seen:
                 continue
+            seen.add(key)
             rev = dir_pair.get((v, u))
-            w_avg = (w + rev) / 2.0 if rev is not None else w
+            # Strict reciprocity: drop pairs where only one direction
+            # survived to dir_pair. Combined with --minbit-prefilter, this
+            # also catches pairs that started symmetric but lost a direction
+            # to the row-level filter, which is the right semantic -- if one
+            # direction was strong enough to clear the prefilter but the
+            # other wasn't, the pair is borderline and shouldn't anchor a
+            # fusion.
+            if rev is None:
+                n_asymmetric_dropped += 1
+                continue
+            w_avg = (w + rev) / 2.0
             if w_avg >= float(self.minbit_floor or 0.0):
                 edges[key] = w_avg
-            seen.add(key)
 
         self.progress.end()
 
@@ -1103,8 +1132,12 @@ class PangenomeAAIEngine():
             self.run.info('Rows with unknown gene_callers_id', pp(n_unknown_contig), mc='red')
         if n_bad_format:
             self.run.info('Rows with bad format', pp(n_bad_format), mc='red')
+        if minbit_prefilter > 0:
+            self.run.info('Rows dropped (minbit < prefilter)',
+                          f"{pp(n_below_prefilter)} (--minbit-prefilter={minbit_prefilter})")
         self.run.info('Unique directed pairs kept', pp(n_kept_dir))
         self.run.info('Unique undirected pairs (after reciprocal-avg)', pp(len(seen)))
+        self.run.info('Pairs dropped (asymmetric, no reciprocal)', pp(n_asymmetric_dropped))
         self.run.info('Passed minbit floor', pp(len(edges)), mc='green')
 
         return edges
