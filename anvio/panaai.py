@@ -1446,6 +1446,7 @@ class PangenomeAAIEngine():
             if processed & 0x3FF == 0:
                 self.progress.update(f"lines {len(in_g_lines)}/{len(lines)}  "
                                      f"nodes {G.number_of_nodes()}  "
+                                     f"components {nx.number_weakly_connected_components(G)}  "
                                      f"rejects {len(rejected_edges)}")
             self.progress.increment()
 
