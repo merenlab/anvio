@@ -19,7 +19,7 @@ __requires__ = []
 __description__ = "Modify any file in JSON format."
 
 
-def main(args):
+def main(args=None):
     try:
         run_program(args)
     except ConfigError as e:
@@ -164,4 +164,4 @@ def get_args():
 
 
 if __name__ == '__main__':
-    main(get_args())
+    main()
