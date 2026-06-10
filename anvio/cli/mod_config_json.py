@@ -19,7 +19,9 @@ __requires__ = []
 __description__ = "Modify any file in JSON format."
 
 
-def main(args=None):
+def main():
+    args = get_args()
+
     try:
         run_program(args)
     except ConfigError as e:
@@ -39,7 +41,7 @@ def find_patch_leaf_path(patch):
 
     while isinstance(current, dict):
         if len(current) != 1:
-            raise ValueError("patch must have exactly one key at each level")
+            raise ConfigError("A --global-change patch must have exactly one key at each level (one path to a leaf value).")
         key = next(iter(current))
         path.append(key)
         current = current[key]
@@ -90,6 +92,10 @@ def global_update(root, patch, run):
                 if isinstance(item, (dict, list)):
                     stack.append((item, node_path + [idx]))
 
+    if not changed_paths:
+        raise ConfigError(f"No location in the JSON matched the patch path "
+                          f"{'/'.join(str(p) for p in patch_path)}; nothing was changed.")
+
     run.info_single(f"Successfully changed JSON at paths {changed_paths} to {new_value}")
 
 
@@ -121,7 +127,7 @@ def local_update(target, patch, run, only_existing=True, path=()):
             if key not in target and only_existing:
                 raise ConfigError(f"Missing key at path {'/'.join(current_path)}")
 
-            old_value = target[key]
+            old_value = target.get(key, '<absent>')
             target[key] = value
             run.info_single(f"Successfully changed JSON at path {'/'.join(current_path)} from {old_value} to {value}")
 
@@ -132,7 +138,8 @@ def run_program(args):
     filesnpaths.is_file_json_formatted(args.config_file)
     filesnpaths.is_output_file_writable(args.config_file, ok_if_exists=True)
 
-    config_file_dict = json.load(open(args.config_file, 'r'))
+    with open(args.config_file, 'r') as f:
+        config_file_dict = json.load(f)
 
     if args.global_change:
         for string in args.global_change:
@@ -148,7 +155,8 @@ def run_program(args):
 
             local_update(config_file_dict, json_dict, run)
 
-    json.dump(config_file_dict, open(args.config_file, 'w'), indent=4, ensure_ascii=False)
+    with open(args.config_file, 'w') as f:
+        json.dump(config_file_dict, f, indent=4, ensure_ascii=False)
     run.info_single("Successfully saved JSON")
 
 
@@ -157,8 +165,18 @@ def get_args():
     parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('config-file'), **anvio.K('config-file', {'required': True}))
-    parser.add_argument('--local-change', nargs='+', type=str, help = "JSON configuration string necessary ()")
-    parser.add_argument('--global-change', nargs='+', type=str, help = "JSON configuration string necessary ()")
+    parser.add_argument('--local-change', nargs='+', type=str,
+                        help="One or more URL-encoded JSON strings describing a patch to apply at a "
+                             "fixed path from the root of the config file. The patch is walked key-by-key "
+                             "against the config, and every leaf key in the patch must already exist in "
+                             "the config at the same path (otherwise the script errors out). Example: "
+                             "'%%7B%%22output_dir%%22%%3A%%22/tmp/x%%22%%7D' to set the top-level "
+                             "'output_dir' key.")
+    parser.add_argument('--global-change', nargs='+', type=str,
+                        help="One or more URL-encoded JSON strings describing a single key/value chain "
+                             "(exactly one key at each nesting level) ending in the new value. The script "
+                             "searches the entire config tree and updates every occurrence of that path "
+                             "wherever it appears. Errors if no occurrence is found.")
 
     return parser.get_args(parser)
 
