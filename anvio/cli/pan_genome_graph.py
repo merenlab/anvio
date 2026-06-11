@@ -108,7 +108,7 @@ def get_args():
                     "regardless of how the ranking otherwise scores them. 0 disables the cutoff (default).")
     groupD.add_argument('--orientation-tie-threshold', default=0.25, type=float, help = "Score margin under which a line-pair orientation "
                     "call is considered a tie and demoted (see --orientation-demotion-strategy).")
-    groupD.add_argument('--min-orientation-score', default=0.75, type=float, help = "Minimum orientation score for a line pair to be "
+    groupD.add_argument('--min-orientation-score', default=0.5, type=float, help = "Minimum orientation score for a line pair to be "
                     "accepted; pairs below this are dropped.")
     groupD.add_argument('--orientation-demotion-strategy', default='slimmest-margin',
                     choices=['slimmest-margin', 'fewest-edges'], help = "How to break ties when committing line-pair "
