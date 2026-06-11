@@ -16,6 +16,7 @@ import seaborn as sns
 import networkx as nx
 import matplotlib.pyplot as plt
 
+from collections import Counter
 from itertools import chain, combinations
 from scipy.optimize import curve_fit
 
@@ -1778,6 +1779,12 @@ class PangenomeGraph():
         # built, so add_layers walks the unified gene_calls on survivors.
         self.remerge_nodes()
 
+        # Assign node types on the final (post-remerge) graph; honors
+        # --region-scope so component-local splits collapse correctly.
+        # Runs unconditionally -- if remerge was skipped, this is the
+        # only typing pass the graph ever gets.
+        self.type_nodes()
+
         self.add_layers()
 
         # compute region-level summaries; results are stashed on `self` so they can be
@@ -2180,12 +2187,13 @@ class PangenomeGraph():
             gene_clusters=gene_clusters)
 
         # Stash bookkeeping for downstream consumers (add_layers, summarize,
-        # calculate_graph_distance).
+        # calculate_graph_distance, type_nodes).
         self.lines = lines
         self.line_names = line_names
         self.line_to_genome = line_to_genome
         self.in_g_flip = in_g_flip
         self.genome_calls = engine.genome_calls
+        self.gene_clusters_dict = gene_clusters
 
         # Per-edge genome sets, derived by walking committed lines.
         edge_genomes = self._compute_edge_genome_sets(
@@ -2419,11 +2427,10 @@ class PangenomeGraph():
         ``nx.contracted_nodes`` which would silently truncate parallel
         edge attributes.
 
-        After merging, survivors that started as ``rearrangement`` get
-        retyped to ``core`` (if every genome is now represented) or
-        ``accessory`` (if the merged genome set matches the parent GC's
-        full genome coverage in the pan-db).  ``rna`` / ``duplication`` /
-        ``singleton`` survivors keep their type.
+        Node typing is performed once *after* this step (see
+        :py:meth:`type_nodes`) so the merged gene-call coverage is what
+        the type decision sees and ``--region-scope`` is honored
+        consistently.
 
         Component IDs are NOT recomputed -- guard (1) keeps every merge
         intra-component, so the engine's ``component_id`` attribute stays
@@ -2452,20 +2459,8 @@ class PangenomeGraph():
         for syn, data in graph.nodes(data=True):
             gc_to_syns.setdefault(data.get('gene_cluster', ''), []).append(syn)
 
-        # Precompute parent_gc -> {unique genomes covered} (pan-mode only;
-        # in non-panmode every node is its own parent_gc so the outer
-        # bucketing loop never finds a pair anyway).
-        parent_gc_genomes = {}
-        if self.pan_super is not None:
-            for genome, gid_map in self.pan_super.gene_callers_id_to_gene_cluster.items():
-                for _gid, gc_name in gid_map.items():
-                    parent_gc_genomes.setdefault(gc_name, set()).add(genome)
-
-        n_genomes_total = len(self.genome_names)
         original_num_nodes = graph.number_of_nodes()
         merged_pairs = 0
-        new_core_num = 0
-        new_accessory_num = 0
         n_rejected_asymmetry = 0
 
         # O(1) reverse view used to compute the lowest common descendant:
@@ -2522,7 +2517,7 @@ class PangenomeGraph():
                             # Real LCA in a DAG always has a path; defensive.
                             reject = True
 
-                    if not reject and lcd is not None:
+                    if lca is None and not reject and lcd is not None:
                         try:
                             dist_a = nx.shortest_path_length(graph, syn_a, lcd)
                             dist_b = nx.shortest_path_length(graph, syn_b, lcd)
@@ -2594,22 +2589,10 @@ class PangenomeGraph():
                 graph.remove_node(syn_y)
                 merged_pairs += 1
 
-                # Retype only if survivor began as `rearrangement`.
-                if node_x.get('type') == 'rearrangement':
-                    n_calls = len(node_x['gene_calls'])
-                    if n_calls == n_genomes_total:
-                        node_x['type'] = 'core'
-                        new_core_num += 1
-                    elif gc in parent_gc_genomes and n_calls == len(parent_gc_genomes[gc]):
-                        node_x['type'] = 'accessory'
-                        new_accessory_num += 1
-
         self.progress.end()
 
         self.run.info_single(f"{pp(merged_pairs)} pair(s) merged; "
                              f"{pp(original_num_nodes - graph.number_of_nodes())} node(s) removed.")
-        self.run.info_single(f"{pp(new_core_num)} node(s) retyped 'rearrangement' -> 'core'.")
-        self.run.info_single(f"{pp(new_accessory_num)} node(s) retyped 'rearrangement' -> 'accessory'.")
         if self.remerge_max_length >= 0:
             self.run.info_single(f"{pp(n_rejected_asymmetry)} pair(s) rejected "
                                  f"(LCA/LCD-asymmetry > {self.remerge_max_length}).")
@@ -2617,6 +2600,50 @@ class PangenomeGraph():
         if not nx.is_directed_acyclic_graph(graph):
             raise ConfigError("Cyclic graphs are not implemented. Remerge produced a cycle, which means "
                               "one of the guards above failed -- please report this with the dataset.")
+
+
+    def type_nodes(self):
+        """Assign ``type`` on every node of the final (post-remerge) graph.
+
+        Runs three stages in order:
+
+        1. :py:func:`panaai.compute_node_types` with ``scope=self.region_scope``
+           -- structural typing (core / accessory / singleton /
+           rearrangement / duplication). Under ``scope='component'`` the
+           split and genome-denominator counts are restricted to the
+           component each node sits in, so rearrangement / duplication
+           nodes whose siblings live in other components collapse to
+           core / accessory / singleton against the component's genome
+           set.
+        2. :py:func:`panaai.compute_rna_overrides` -- non-coding-only
+           nodes are stamped as ``'rna'`` on top of (1).
+        3. Optional :py:func:`panaai._drop_non_coding_nodes` when
+           ``--no-include-non-coding-genes`` is set.
+
+        Runs unconditionally after :py:meth:`remerge_nodes`; the merged
+        gene-call coverage is what (1) sees. Logs the final type
+        histogram once at the end.
+        """
+        graph = self.pangenome_graph.graph
+
+        panaai.compute_node_types(
+            graph,
+            self.line_to_genome,
+            gene_clusters=self.gene_clusters_dict,
+            scope=self.region_scope)
+
+        _G, n_rna_typed = panaai.compute_rna_overrides(
+            graph, self.genome_calls, self.line_to_genome)
+        self.run.info('Non-coding nodes re-typed as `rna`', pp(n_rna_typed))
+
+        if self.no_include_non_coding_genes:
+            n_dropped = panaai._drop_non_coding_nodes(graph)
+            self.run.info('Non-coding nodes dropped', pp(n_dropped), mc='yellow')
+        else:
+            self.run.info_single('Non-coding nodes kept as singletons.')
+
+        type_counts = Counter(d.get("type", "") for _, d in graph.nodes(data=True))
+        self.run.info('Node types', f"{dict(type_counts)}")
 
 
     def _import_layer_values(self):

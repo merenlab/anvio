@@ -522,43 +522,94 @@ def rename_pangenome_nodes(G, gene_clusters=None, line_to_genome=None):
     return nx.relabel_nodes(G, mapping, copy=True)
 
 
-def compute_node_types(G, line_to_genome, gene_clusters=None):
+def compute_node_types(G, line_to_genome, gene_clusters=None, scope='global'):
     """Assign each super-node a ``type`` attribute.
 
-    Per parent GC, compute ``splits`` (>=2 super-nodes came from this GC)
-    and ``parent_multi_copy`` (the input gene-cluster table had >=2 genes
-    from at least one genome in this GC).  Then per super-node:
+    Per parent GC (``scope='global'``) or per (component, parent GC)
+    (``scope='component'``), compute ``splits`` (>=2 super-nodes from
+    this parent GC in the scope) and ``parent_multi_copy``.  Then per
+    super-node:
 
       * splits AND parent_multi_copy        -> ``duplication``
       * splits AND NOT parent_multi_copy    -> ``rearrangement``
-      * NOT splits, all genomes covered     -> ``core``
+      * NOT splits, all (scope) genomes     -> ``core``
       * NOT splits, >1 genome covered       -> ``accessory``
       * NOT splits, exactly 1 genome        -> ``singleton``
+
+    Under ``scope='global'`` the denominator is every genome in
+    ``line_to_genome`` and ``parent_multi_copy`` comes from the input
+    ``gene_clusters`` table (counts every gene assigned to the parent GC,
+    including ones outside the current graph).  Under ``scope='component'``
+    the denominator is the genomes that touch the component, and
+    ``parent_multi_copy`` is computed from the surviving SynGCs of this
+    parent GC IN this component (a genome counts as multi-copy iff it
+    appears in >=2 such SynGCs; the engine's same-genome-conflict guard
+    makes within-node multi-copy impossible, so this count is exact).
 
     ``rna`` is not assigned here -- the override happens later in
     :py:func:`compute_rna_overrides`, which consults ``call_type`` from
     each genome's CONTIGS.db.  In non-panmode (``gene_clusters=None``)
     every super-node is its own parent GC; only ``core``/``accessory``/
     ``singleton`` are produced at this stage.
+
+    ``scope='component'`` requires ``component_id`` to already be set on
+    every node (see :py:func:`compute_component_ids`).
     """
-    all_genomes = set(line_to_genome.values())
+    if scope not in ('global', 'component'):
+        raise ConfigError(f"Unknown scope {scope!r}; expected 'global' or 'component' :/")
 
-    nodes_by_parent_gc = defaultdict(list)
-    for n in G.nodes():
-        parent_gc = n.rsplit("_", 1)[0] if gene_clusters is not None else n
-        nodes_by_parent_gc[parent_gc].append(n)
+    def _parent_gc(node_name):
+        return node_name.rsplit("_", 1)[0] if gene_clusters is not None else node_name
 
-    parent_multi_copy = {}
-    if gene_clusters is not None:
-        gc_to_genome_counts = defaultdict(Counter)
-        for (genome, _gid), gc_name in gene_clusters.items():
-            gc_to_genome_counts[gc_name][genome] += 1
-        for gc_name, gc_counts in gc_to_genome_counts.items():
-            parent_multi_copy[gc_name] = any(v >= 2 for v in gc_counts.values())
+    # Group nodes by parent GC (global) or (component_id, parent GC) (component).
+    nodes_by_group = defaultdict(list)
+    for n, data in G.nodes(data=True):
+        if scope == 'global':
+            nodes_by_group[_parent_gc(n)].append(n)
+        else:
+            nodes_by_group[(data.get('component_id', 0), _parent_gc(n))].append(n)
 
-    for parent_gc, nodes in nodes_by_parent_gc.items():
+    # Per-group genome denominator for the core/accessory/singleton branch.
+    if scope == 'global':
+        all_genomes = set(line_to_genome.values())
+        def _denom(_key):
+            return all_genomes
+    else:
+        component_genomes = defaultdict(set)
+        for n, data in G.nodes(data=True):
+            cid = data.get('component_id', 0)
+            for endpoint in data.get('genes', ()):
+                line = endpoint.rsplit(":", 1)[0]
+                component_genomes[cid].add(line_to_genome[line])
+        def _denom(key):
+            cid, _ = key
+            return component_genomes[cid]
+
+    # Per-group parent_multi_copy.
+    if scope == 'global':
+        parent_multi_copy = {}
+        if gene_clusters is not None:
+            gc_to_genome_counts = defaultdict(Counter)
+            for (genome, _gid), gc_name in gene_clusters.items():
+                gc_to_genome_counts[gc_name][genome] += 1
+            for gc_name, gc_counts in gc_to_genome_counts.items():
+                parent_multi_copy[gc_name] = any(v >= 2 for v in gc_counts.values())
+        def _pmc(key, _nodes):
+            return parent_multi_copy.get(key, False)
+    else:
+        def _pmc(_key, nodes):
+            if gene_clusters is None:
+                return False
+            genome_appearances = Counter()
+            for n in nodes:
+                for endpoint in G.nodes[n].get("genes", ()):
+                    line = endpoint.rsplit(":", 1)[0]
+                    genome_appearances[line_to_genome[line]] += 1
+            return any(v >= 2 for v in genome_appearances.values())
+
+    for key, nodes in nodes_by_group.items():
         splits = len(nodes) >= 2
-        pmc = parent_multi_copy.get(parent_gc, False)
+        pmc = _pmc(key, nodes)
 
         if splits and pmc:
             for n in nodes:
@@ -567,10 +618,11 @@ def compute_node_types(G, line_to_genome, gene_clusters=None):
             for n in nodes:
                 G.nodes[n]["type"] = "rearrangement"
         else:
+            denom = _denom(key)
             for n in nodes:
                 genomes = {line_to_genome[g.rsplit(":", 1)[0]]
                            for g in G.nodes[n].get("genes", ())}
-                if genomes == all_genomes:
+                if genomes == denom:
                     G.nodes[n]["type"] = "core"
                 elif len(genomes) > 1:
                     G.nodes[n]["type"] = "accessory"
@@ -1777,28 +1829,15 @@ class PangenomeAAIEngine():
         self.run.info('Fuses rejected',
                       f"{pp(len(rejected_edges))} ({dict(reasons) if reasons else '{}'})")
 
-        # 10. Post-processing: rename, type, RNA override, drop, component id.
+        # 10. Post-processing: rename, component id. Typing (core/accessory/
+        # singleton/rearrangement/duplication), the RNA override, and the
+        # optional non-coding drop all run AFTER remerge in panops, so the
+        # type histogram reflects the post-merge graph and honors
+        # ``--region-scope`` consistently.
         G = rename_pangenome_nodes(
             G, gene_clusters=gene_clusters, line_to_genome=line_to_genome)
-        G = compute_node_types(G, line_to_genome, gene_clusters=gene_clusters)
-
-        # Re-type non-coding singletons to 'rna' based on CONTIGS.db call_type
-        # (this corrects pan-mode's pre-override mistyping of stacked
-        # GC_UNKNOWN_N nodes as 'rearrangement').
-        G, n_rna_typed = compute_rna_overrides(G, genome_calls, line_to_genome)
-        self.run.info('Non-coding nodes re-typed as `rna`', pp(n_rna_typed))
-
-        # Optionally drop them (default-off: --no-include-non-coding-genes).
-        if self.no_include_non_coding_genes:
-            n_dropped = _drop_non_coding_nodes(G)
-            self.run.info('Non-coding nodes dropped', pp(n_dropped), mc='yellow')
-        else:
-            self.run.info_single('Non-coding nodes kept as singletons.')
-
         G = compute_component_ids(G)
 
-        type_counts = Counter(d.get("type", "") for _, d in G.nodes(data=True))
-        self.run.info('Node types', f"{dict(type_counts)}")
         component_counts = Counter(d["component_id"] for _, d in G.nodes(data=True))
         largest = component_counts.most_common(1)[0][1] if component_counts else 0
         self.run.info('Components',
