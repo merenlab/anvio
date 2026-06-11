@@ -106,7 +106,7 @@ def get_args():
                     "same-genome-conflict and transitive-cycle guards). Independent of --min-line-pair-hits, which only gates "
                     "orientation labeling: set this above 0 if you want under-supported line pairs to be excluded from fusion "
                     "regardless of how the ranking otherwise scores them. 0 disables the cutoff (default).")
-    groupD.add_argument('--orientation-tie-threshold', default=0.25, type=float, help = "Score margin under which a line-pair orientation "
+    groupD.add_argument('--orientation-tie-threshold', default=0.35, type=float, help = "Score margin under which a line-pair orientation "
                     "call is considered a tie and demoted (see --orientation-demotion-strategy).")
     groupD.add_argument('--min-orientation-score', default=0.5, type=float, help = "Minimum orientation score for a line pair to be "
                     "accepted; pairs below this are dropped.")
