@@ -2556,7 +2556,7 @@ class PangenomeGraphUserInterface {
             <td><input type="radio" name="binradio" id="bin_${n}_radio" bin_id="bin_${n}" checked></td>
             <td><div class="pangraph-colorpicker" id="bin_${n}_color" color="${new_color}" style="background-color: ${new_color}; width: 30px; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div></td>
             <td><input type="text" class="form-control form-control-sm p-0 border-0" style="background-color: #e9ecef;" value="Bin_${n}" id="bin_${n}_text"></td>
-            <td><input type="button" class="form-control form-control-sm p-0 border-0 bin-count-btn" id="bin_${n}_value" value=0 title="Click for functions summary"></td>
+            <td><input type="button" class="form-control form-control-sm p-0 border-0 bin-count-btn" id="bin_${n}_value" value=0 title="Click to inspect bin contents"></td>
             <td><center><span class="default-bin-icon bi bi-trash-fill fa-lg" aria-hidden="true" title="Delete this bin" onclick="pgui.delete_bin('bin_${n}');"></span></center></td>
         </tr>`);
 
@@ -3395,7 +3395,7 @@ class PangenomeGraphUserInterface {
         menu.style.visibility = 'hidden';
 
         const items = [
-            { title: 'Show functions for this SynGC', action: () => this.nodeinfo_with_functions(node_el) },
+            { title: 'Inspect this SynGC', action: () => this.nodeinfo_with_functions(node_el) },
             { title: 'Add SynGC as a new bin', action: () => {
                 this.add_bin();
                 this.marknode(node_el, this.current_bin_id);
@@ -3748,7 +3748,7 @@ class PangenomeGraphUserInterface {
         menu.style.visibility = 'hidden';
 
         const items = [
-            { title: 'Show summary of functions in region', action: () => this.show_region_functions(rid) },
+            { title: 'Inspect this region', action: () => this.show_region_functions(rid) },
             { title: 'Download gene sequences in this region', action: () => this.show_region_fasta_download(rid) },
             { title: 'Add SynGCs in region as a new bin',   action: () => this.add_region_as_new_bin(rid) },
             { title: 'Append SynGCs in region into the active bin', action: () => this.append_region_to_active_bin(rid) },
