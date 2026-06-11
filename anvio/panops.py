@@ -1603,7 +1603,7 @@ class PangenomeGraph():
 
         # STANDARD CLASS VARIABLES
         self.version = anvio.__pangraph__version__
-        self.functional_annotation_sources_available = DBInfo(self.genomes_storage, expecting='genomestorage').get_functional_annotation_sources() if self.genomes_storage else []
+        self.functional_annotation_sources_available = DBInfo(self.genomes_storage, expecting='genomestorage').get_functional_annotation_sources() or [] if self.genomes_storage else []
         self.seed = None
         self.pangenome_graph = PangenomeGraphManager()
         self.pangenome_data_df = pd.DataFrame()
