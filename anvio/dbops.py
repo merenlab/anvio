@@ -3670,7 +3670,8 @@ class PanGraphSuperclass(PanSuperclass):
             gene_cluster_grouping_threshold, groupcompress)
         self.pangenome_graph.cut_edges(max_edge_length_filter)
 
-        region_sides_df, _ = self.pangenome_graph.summarize_all_components()
+        region_sides_df, _ = self.pangenome_graph.summarize_all_components(
+            scope=self.p_meta.get('region_scope', 'global'))
         self._refresh_region_caches(region_sides_df)
         self.p_meta['component'] = int(component)
 
@@ -3696,7 +3697,8 @@ class PanGraphSuperclass(PanSuperclass):
             gene_cluster_grouping_threshold, groupcompress)
         self.pangenome_graph.cut_edges(max_edge_length_filter)
 
-        region_sides_df, _ = self.pangenome_graph.summarize_all_components()
+        region_sides_df, _ = self.pangenome_graph.summarize_all_components(
+            scope=self.p_meta.get('region_scope', 'global'))
         self._refresh_region_caches(region_sides_df)
         self.p_meta['component'] = int(component)
 
