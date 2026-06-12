@@ -561,6 +561,17 @@ def compute_node_types(G, line_to_genome, gene_clusters=None, scope='global'):
     def _parent_gc(node_name):
         return node_name.rsplit("_", 1)[0] if gene_clusters is not None else node_name
 
+    def _node_genomes(data):
+        """Genomes touching a node.  Reads the mirrored ``gene_calls``
+        dict (``{genome: gid}``) when present; falls back to the engine's
+        ``genes`` set (``{"line_name:gid"}``) so this function also works
+        if called on the raw engine graph."""
+        gc = data.get('gene_calls')
+        if gc:
+            return set(gc.keys())
+        return {line_to_genome[g.rsplit(":", 1)[0]]
+                for g in data.get('genes', ())}
+
     # Group nodes by parent GC (global) or (component_id, parent GC) (component).
     nodes_by_group = defaultdict(list)
     for n, data in G.nodes(data=True):
@@ -578,9 +589,7 @@ def compute_node_types(G, line_to_genome, gene_clusters=None, scope='global'):
         component_genomes = defaultdict(set)
         for n, data in G.nodes(data=True):
             cid = data.get('component_id', 0)
-            for endpoint in data.get('genes', ()):
-                line = endpoint.rsplit(":", 1)[0]
-                component_genomes[cid].add(line_to_genome[line])
+            component_genomes[cid] |= _node_genomes(data)
         def _denom(key):
             cid, _ = key
             return component_genomes[cid]
@@ -602,9 +611,8 @@ def compute_node_types(G, line_to_genome, gene_clusters=None, scope='global'):
                 return False
             genome_appearances = Counter()
             for n in nodes:
-                for endpoint in G.nodes[n].get("genes", ()):
-                    line = endpoint.rsplit(":", 1)[0]
-                    genome_appearances[line_to_genome[line]] += 1
+                for genome in _node_genomes(G.nodes[n]):
+                    genome_appearances[genome] += 1
             return any(v >= 2 for v in genome_appearances.values())
 
     for key, nodes in nodes_by_group.items():
@@ -620,8 +628,7 @@ def compute_node_types(G, line_to_genome, gene_clusters=None, scope='global'):
         else:
             denom = _denom(key)
             for n in nodes:
-                genomes = {line_to_genome[g.rsplit(":", 1)[0]]
-                           for g in G.nodes[n].get("genes", ())}
+                genomes = _node_genomes(G.nodes[n])
                 if genomes == denom:
                     G.nodes[n]["type"] = "core"
                 elif len(genomes) > 1:
@@ -656,23 +663,34 @@ def compute_rna_overrides(G, genome_calls, line_to_genome):
         for c in calls:
             call_type_lookup[(genome, c['gene_callers_id'])] = c.get('call_type')
 
+    def _genome_gid_pairs(attrs):
+        """``(genome, gid)`` pairs for a node.  Reads the mirrored
+        ``gene_calls`` dict when present; falls back to parsing the
+        engine's ``genes`` set otherwise.  Returns ``None`` if any
+        endpoint can't be resolved (unknown line, malformed token)."""
+        gc = attrs.get('gene_calls')
+        if gc:
+            return list(gc.items())
+        pairs = []
+        for endpoint in attrs.get('genes', ()):
+            line_name, sep, gid_str = endpoint.rpartition(':')
+            if not sep or not gid_str.isdigit():
+                return None
+            genome = line_to_genome.get(line_name)
+            if genome is None:
+                return None
+            pairs.append((genome, int(gid_str)))
+        return pairs
+
     n_overridden = 0
     for node, attrs in G.nodes(data=True):
-        endpoints = attrs.get('genes', ())
-        if not endpoints:
+        pairs = _genome_gid_pairs(attrs)
+        if not pairs:
             continue
         all_non_coding = True
         any_resolved = False
-        for endpoint in endpoints:
-            line_name, sep, gid_str = endpoint.rpartition(':')
-            if not sep or not gid_str.isdigit():
-                all_non_coding = False
-                break
-            genome = line_to_genome.get(line_name)
-            if genome is None:
-                all_non_coding = False
-                break
-            ct = call_type_lookup.get((genome, int(gid_str)))
+        for genome, gid in pairs:
+            ct = call_type_lookup.get((genome, gid))
             if ct is None:
                 all_non_coding = False
                 break
