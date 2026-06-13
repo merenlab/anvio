@@ -106,7 +106,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'cat_external_gene_calls_file': {'threads': 2},
             'cluster_X_percent_sim_mmseqs': {'threads': 5, '--min-seq-id': 0.97, '--cov-mode': 1, 'clustering_threshold_for_OTUs': [0.99, 0.98], 'AA_mode': False},
             'subset_AA_seqs_with_mmseqs_reps': {'threads': 2},
-            'align_sequences': {'threads': 5, 'additional_params': '-maxiters 1 -diags -sv -distance1 kbit20_3'},
+            'align_sequences': {'threads': 5, 'additional_params': ''},
             'trim_alignment': {'threads': 5, '-gappyout': True},
             'remove_sequences_with_X_percent_gaps': {'threads': 5, '--max-percentage-gaps': 50},
             'count_num_sequences_filtered': {'threads': 5},
