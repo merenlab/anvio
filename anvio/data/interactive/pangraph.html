@@ -162,7 +162,7 @@
                   </span>
 
                   <div id="item-collapse-main" class="ml-2 mr-3 collapse multi-collapse show">
-                    <span class="settings-secondary-header mb-3 mt-3">Drawing Type</span>
+                    <span class="settings-secondary-header mb-3 mt-3">Layout</span>
                     <div class="form-group mt-2">
                       <div class="col-10 menu-padding">
                         <select id="drawing_type_select" class="form-control">
@@ -254,19 +254,19 @@
                           <input type="checkbox" id="flexsaturation" name="flexsaturation" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
                         </div>
                         <div class="col-11 d-flex align-items-center">
-                            Fade colors by genome prevalence <br />(so that the rare nodes and edges appear lighter)
+                            Fade by genome prevalence (rare nodes and edges appear lighter)
                         </div>
                       </div>
                     </div>
 
-                    <span class="settings-secondary-header mb-3 mt-3">Node &amp; Edge Properties</span>
+                    <span class="settings-secondary-header mb-3 mt-3">Node &amp; Edge Appearance</span>
 
                     <div class="row align-items-center mb-3">
                       <div class="col-12 d-flex mb-1">
                         <div class="col-1">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Node x-distance
+                          Horizontal node spacing
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="distx" name="distx" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
@@ -276,7 +276,7 @@
                         <div class="col-1">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Node y-distance
+                          Vertical node spacing
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="disty" name="disty" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
@@ -296,7 +296,7 @@
                         <div class="col-1">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Node line thickness
+                          Node border width
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="circ" name="circ" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
@@ -306,7 +306,7 @@
                         <div class="col-1">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Edge thickness
+                          Edge width
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="edge" name="edge" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
@@ -314,7 +314,7 @@
                       </div>
                     </div>
 
-                    <span class="settings-secondary-header mb-3 mt-3">Variable / Backbone Region Labels</span>
+                    <span class="settings-secondary-header mb-3 mt-3">Region Labels</span>
 
                     <div class="row align-items-center">
                       <div class="col-12 d-flex mb-1 py-1">
@@ -322,7 +322,7 @@
                           <input type="checkbox" id="flexregionlabels" name="flexregionlabels" checked>
                         </div>
                         <div class="col-11 d-flex align-items-center">
-                          Display region labels
+                          Show region labels
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -339,7 +339,7 @@
                         <div class="col-1 d-flex align-items-center">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Min region width (px)
+                          Min region width (px) — hide label if narrower
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style="background-color: #e9ecef;" id="region_label_min_width" name="region_label_min_width" value=80>
@@ -365,7 +365,7 @@
                           <input type="checkbox" id="flexbinlabels" name="flexbinlabels" checked>
                         </div>
                         <div class="col-11 d-flex align-items-center">
-                          Display bin labels
+                          Show bin labels
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -416,14 +416,14 @@
                           <input type="checkbox" id="flexbinedges" name="flexbinedges" checked>
                         </div>
                         <div class="col-11 d-flex align-items-center">
-                          Show edges
+                          Show bin boundaries
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
                         <div class="col-1 d-flex align-items-center">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Edge thickness
+                          Boundary line width
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style="background-color: #e9ecef;" id="bin_edge_thickness" name="bin_edge_thickness" value=4>
@@ -433,17 +433,17 @@
                         <div class="col-1 d-flex align-items-center">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Edge color
+                          Boundary line color
                         </div>
                         <div class="d-flex col-2">
-                          <div class="pangraph-colorpicker" id="bin_edge_color" color="#FFFFFF" style="background-color: #FFFFFF; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
+                          <div class="pangraph-colorpicker" id="bin_edge_color" color="#FFFFFF" style="background-color: #FFFFFF;"></div>
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
                         <div class="col-1 d-flex align-items-center">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Edge opacity
+                          Boundary line opacity
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style="background-color: #e9ecef;" id="bin_edge_opacity" name="bin_edge_opacity" value=1>
@@ -451,7 +451,7 @@
                       </div>
                     </div>
 
-                    <span class="settings-secondary-header mb-3 mt-3">Common Information Layers</span>
+                    <span class="settings-secondary-header mb-3 mt-3">Overlay Layers</span>
 
                     <div id="global_layers" class="row align-items-center">
                       <div class="col-12 d-flex mb-1">
@@ -461,7 +461,7 @@
                           </div>
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Orientation arrow
+                          Genome orientation arrow height
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="arrow" name="arrow" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
@@ -540,14 +540,14 @@
                           <input type="checkbox" id="flextree" name="flextree" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">
                         </div>
                         <div class="col-11 d-flex align-items-center">
-                          Show phylogenic tree
+                          Show phylogenetic tree
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
                         <div class="col-1 d-flex align-items-center">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Tree length
+                          Tree arm length
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="tree_length" name="tree_length" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
@@ -557,7 +557,7 @@
                         <div class="col-1 d-flex align-items-center">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Tree offset
+                          Tree distance
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="tree_offset" name="tree_offset" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
@@ -567,7 +567,7 @@
                         <div class="col-1 d-flex align-items-center">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Tree line thickness
+                          Branch line width
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="tree_thickness" name="tree_thickness" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
@@ -575,14 +575,14 @@
                       </div>
                     </div>
 
-                    <span class="settings-secondary-header mb-3 mt-3">Others</span>
+                    <span class="settings-secondary-header mb-3 mt-3">Genome Labels &amp; Margins</span>
 
                     <div class="row align-items-center mb-3">
                       <div class="col-12 d-flex mb-1">
                         <div class="col-1 d-flex align-items-center">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Label size
+                          Genome label size
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="label" name="label" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
@@ -592,7 +592,7 @@
                         <div class="col-1 d-flex align-items-center">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Label offset
+                          Label distance
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="label_offset" name="label_offset" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
@@ -602,7 +602,7 @@
                         <div class="col-1 d-flex align-items-center">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Search hit size
+                          Search hit marker size
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="search_hit" name="search_hit" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
@@ -612,7 +612,7 @@
                         <div class="col-1 d-flex align-items-center">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Inner layer margin
+                          Inner margin
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="inner_margin" name="inner_margin" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
