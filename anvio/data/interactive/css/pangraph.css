@@ -169,12 +169,22 @@
     min-width: unset !important;
     width: 490px !important;
     height: 100vh !important;
+    overflow: hidden !important;
   }
 
-  /* Keep nav icons visible while settings content scrolls, without fixing to viewport */
+  /* Override main.css fixed positioning; nav column stays put, settings content scrolls */
   .tab-elements {
-    position: sticky !important;
-    top: 0;
+    position: relative !important;
+    top: unset;
+  }
+
+  .inner-wrapper {
+    height: 100%;
+  }
+
+  #sidebar .tab-content {
+    overflow-y: auto;
+    height: 100vh;
   }
 
   #toggle-panel-left{
