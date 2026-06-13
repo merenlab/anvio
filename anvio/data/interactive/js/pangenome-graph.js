@@ -3187,11 +3187,22 @@ class PangenomeGraphUserInterface {
         
         $('#flexgroupcompress').change(function() {
             if ($(this).prop('checked') == true){
-                $('#groupcompress')[0].value = 0.0;
+                $('#groupcompress')[0].value = 0.5;
                 $('#groupcompress').prop('disabled', false);
             } else {
                 $('#groupcompress')[0].value = 1.0;
                 $('#groupcompress').prop('disabled', true);
+            }
+        })
+
+        $('#groupcompress').on('change', function() {
+            const val = parseFloat(this.value);
+            if (val < 0.1) {
+                this.value = 0.1;
+                toastr.warning('Compression factor cannot go below 0.1 :/', 'Value out of range');
+            } else if (val > 1.0) {
+                this.value = 1.0;
+                toastr.warning('Compression value cannot exceed 1.0. Well, it could, but it really should not :/ Anvi\'o set it to 1.0 for now.', 'Value out of range');
             }
         })
         
@@ -3342,7 +3353,9 @@ class PangenomeGraphUserInterface {
         if ($(instance.currentTarget).prop('checked') == true){
             for (var genome of this.genomes) {
                 if ($('#flex' + genome + 'layer').prop('checked') == false){
-                    $('#' + genome + 'layer')[0].value = 50;
+                    const el = document.getElementById(genome + 'layer');
+                    el.dataset.savedHeight = el.value;
+                    el.value = 50;
                     $('#flex' + genome + 'layer').prop('checked', true);
                 }
                 $('#flex' + genome + 'layer').prop('disabled', true);
@@ -3350,6 +3363,11 @@ class PangenomeGraphUserInterface {
         } else {
             for (var genome of this.genomes) {
                 $('#flex' + genome + 'layer').prop('disabled', false);
+                const el = document.getElementById(genome + 'layer');
+                if (el && el.dataset.savedHeight !== undefined) {
+                    el.value = el.dataset.savedHeight;
+                    delete el.dataset.savedHeight;
+                }
             }
         }
     }
