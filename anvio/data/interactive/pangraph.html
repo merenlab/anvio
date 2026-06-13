@@ -177,10 +177,73 @@
                         <div class="col-1 d-flex align-items-center">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Radius
+                          Inner radius
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style="background-color: #e9ecef;" id="inner" name="inner" value=0>
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-1 d-flex align-items-center">
+                        </div>
+                        <div class="col-9 d-flex align-items-center">
+                          Start angle
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style="background-color: #e9ecef;" id="start_angle" name="start_angle" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Clockwise angle where the circular arc begins (degrees)">
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-1 d-flex align-items-center">
+                        </div>
+                        <div class="col-9 d-flex align-items-center">
+                          End angle
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style="background-color: #e9ecef;" id="end_angle" name="end_angle" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Clockwise angle where the arc ends; use 360 for a full circle">
+                        </div>
+                      </div>
+                    </div>
+
+                    <span class="settings-secondary-header mb-3 mt-3">Graph Behavior</span>
+                    <div class="row align-items-center">
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-1 d-flex align-items-center">
+                          <div class="form-switch d-flex">
+                            <input class="" type="checkbox" id="flexcondtr" name="flexcondtr" aria-label="..." data-toggle="tooltip" data-placement="top" title="Collapses consecutive single-path nodes into one group node to reduce clutter" checked>
+                          </div>
+                        </div>
+                        <div class="col-9 d-flex align-items-center">
+                          Min number of sequential nodes to group
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="condtr" name="condtr" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Visual width of condensed groups">
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-1 d-flex align-items-center">
+                          <div class="form-switch d-flex">
+                            <input class="" type="checkbox" id="flexgroupcompress" name="flexgroupcompress" aria-label="..." data-toggle="tooltip" data-placement="top" title="Scales down the display size of condensed groups relative to their node count" checked>
+                          </div>
+                        </div>
+                        <div class="col-9 d-flex align-items-center">
+                          Grouped nodes compression factor
+                        </div>
+                        <div class="col-2 d-flex">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="groupcompress" name="groupcompress" value=0.0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Compression factor for condensed group display size">
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-1 d-flex align-items-center">
+                          <div class="form-switch d-flex">
+                            <input class="" type="checkbox" id="flexmaxlength" name="flexmaxlength" aria-label="..." data-toggle="tooltip" data-placement="top" title="Edges longer than this pixel threshold are hidden to reduce visual noise" checked>
+                          </div>
+                        </div>
+                        <div class="col-9 d-flex align-items-center">
+                          Max edge length to display
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="maxlength" name="maxlength" value=1000 aria-label="..." data-toggle="tooltip" data-placement="top" title="Edges longer than this pixel threshold are hidden">
                         </div>
                       </div>
                     </div>
@@ -473,62 +536,31 @@
                             <input class="" type="checkbox" id="flexglobalbackbone" name="flexglobalbackbone" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
                           </div>
                         </div>
+                        <div class="col-9 d-flex align-items-center">
+                          Backbone/Variable regions height
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="globalbackbone" name="globalbackbone" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Visual height of the backbone/variable region coloring layer">
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-1 d-flex align-items-center">
+                        </div>
                         <div class="col-5 d-flex align-items-center">
-                          Backbone/non-backbone
+                          Backbone/Variable region colors
                         </div>
                         <div class="d-flex col-2">
-                          <div class="pangraph-colorpicker" id="back_color" color="#3D70A0" style="background-color: #3D70A0; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
-                        </div>
-
-                        <div class="d-flex col-2">
-                          <div class="pangraph-colorpicker" id="non_back_color" color="#F8E45C" style="background-color: #F8E45C; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
+                          <div class="pangraph-colorpicker" id="back_color" color="#3D70A0" style="background-color: #3D70A0;"></div>
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="globalbackbone" name="globalbackbone" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <div class="pangraph-colorpicker" id="non_back_color" color="#F8E45C" style="background-color: #F8E45C;"></div>
                         </div>
                       </div>
                     </div>
 
-                    <span class="settings-secondary-header mb-3 mt-3">Path-Specific Information Layers</span>
+                    <span class="settings-secondary-header mb-3 mt-3">Path-Specific Overlay Layers</span>
 
                     <div id="local_layers" class="row align-items-center">
-                    </div>
-
-                    <span class="settings-secondary-header mb-3 mt-3">Genome Tracks</span>
-
-                    <div class="row align-items-center">
-                      <div class="col-12 d-flex mb-1">
-                        <div class="col-1">
-                        </div>
-                        <div class="col-9 d-flex align-items-center">
-                          Background color
-                        </div>
-                        <div class="d-flex col-2">
-                          <div class="pangraph-colorpicker" id="layer_color" color="#F5F5F5" style="background-color: #F5F5F5; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
-                        </div>
-                      </div>
-                      <div class="col-12 d-flex mb-1">
-                        <div class="col-1">
-                        </div>
-                        <div class="col-9 d-flex align-items-center">
-                          Line width
-                        </div>
-                        <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style="background-color: #e9ecef;" id="track_line_width" name="track_line_width" value=5>
-                        </div>
-                      </div>
-                    </div>
-
-                    <hr />
-
-                    <div class="row align-items-center mb-2">
-                      <div class="col-12 d-flex justify-content-end">
-                        <button type="button" class="btn btn-outline-secondary btn-sm mr-2" id="genome_tracks_select_all">Select all</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="genome_tracks_unselect_all">Unselect all</button>
-                      </div>
-                    </div>
-
-                    <div id="genome_tracks" class="row align-items-center">
                     </div>
 
                     <span class="settings-secondary-header mb-3 mt-3">Phylogeny</span>
@@ -622,37 +654,17 @@
                         <div class="col-1 d-flex align-items-center">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Outer layer margin
+                          Outer margin
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="outer_margin" name="outer_margin" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
-                      <div class="col-12 d-flex mb-1">
-                        <div class="col-1">
-                        </div>
-                        <div class="col-9 d-flex align-items-center">
-                          Pangenome Graph start angle
-                        </div>
-                        <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="start_angle" name="start_angle" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
-                        </div>
-                      </div>
                     <div class="col-12 d-flex mb-1">
                         <div class="col-1">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Pangenome Graph end angle
-                        </div>
-                        <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="end_angle" name="end_angle" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
-                        </div>
-                      </div>
-                    <div class="col-12 d-flex mb-1">
-                        <div class="col-1">
-                        </div>
-                        <div class="col-9 d-flex align-items-center">
-                          Number position annotations
+                          Position tick count
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="num_position" name="num_position" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
