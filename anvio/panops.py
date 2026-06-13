@@ -1594,9 +1594,16 @@ class PangenomeGraph():
         self.load_state = A('load_state')
         self.import_values = A('import_values').split(',') if A('import_values') else []
 
+        description_file_path = A('description')
+        if description_file_path:
+            filesnpaths.is_file_plain_text(description_file_path)
+            self.description = open(os.path.abspath(description_file_path), 'r').read()
+        else:
+            self.description = ''
+
         # STANDARD CLASS VARIABLES
         self.version = anvio.__pangraph__version__
-        self.functional_annotation_sources_available = DBInfo(self.genomes_storage, expecting='genomestorage').get_functional_annotation_sources() if self.genomes_storage else []
+        self.functional_annotation_sources_available = DBInfo(self.genomes_storage, expecting='genomestorage').get_functional_annotation_sources() or [] if self.genomes_storage else []
         self.seed = None
         self.pangenome_graph = PangenomeGraphManager()
         self.pangenome_data_df = pd.DataFrame()
@@ -1958,6 +1965,7 @@ class PangenomeGraph():
             'anvio_version': anvio.__version__,
             'version': self.version,
             'project_name': self.project_name,
+            'description': self.description,
             # genome provenance
             'genomes_storage_hash': self.genomes_storage_hash,
             'genome_names': ','.join(self.genome_names),
