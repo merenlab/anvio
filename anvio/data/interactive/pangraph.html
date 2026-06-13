@@ -672,59 +672,18 @@
                       </div>
                     </div>
 
-                    <span class="settings-secondary-header mb-3 mt-3">Graph</span>
-                    <div class="row align-items-center">
-                      <div class="col-12 d-flex mb-1">
-                        <div class="col-1 d-flex align-items-center">
-                          <div class="form-switch d-flex">
-                            <input class="" type="checkbox" id="flexcondtr" name="flexcondtr" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
-                          </div>
-                        </div>
-                        <div class="col-9 d-flex align-items-center">
-                          Merge nodes into groups
-                        </div>
-                        <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="condtr" name="condtr" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
-                        </div>
-                      </div>
-                      <div class="col-12 d-flex mb-1">
-                        <div class="col-1 d-flex align-items-center">
-                          <div class="form-switch d-flex">
-                            <input class="" type="checkbox" id="flexmaxlength" name="flexmaxlength" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
-                          </div>
-                        </div>
-                        <div class="col-9 d-flex align-items-center">
-                          Allowed max edge length
-                        </div>
-                        <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="maxlength" name="maxlength" value=1000 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
-                        </div>
-                      </div>
-                      <div class="col-12 d-flex mb-1">
-                        <div class="col-1 d-flex align-items-center">
-                          <div class="form-switch d-flex">
-                            <input class="" type="checkbox" id="flexgroupcompress" name="flexgroupcompress" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
-                          </div>
-                        </div>
-                        <div class="col-9 d-flex align-items-center">
-                          Group size compression
-                        </div>
-                        <div class="col-2 d-flex">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="groupcompress" name="groupcompress" value=0.0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
-                        </div>
-                      </div>
-                    </div>
-
                     <span class="settings-secondary-header mb-3 mt-3">Genomes</span>
 
-                    <div class="row align-items-center mb-2">
-                      <div class="col-12 d-flex justify-content-end">
-                        <button type="button" class="btn btn-outline-secondary btn-sm mr-2" id="genomes_select_all">Select all</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="genomes_unselect_all">Unselect all</button>
-                      </div>
+                    <div id="genomecolors">
                     </div>
 
-                    <div id="genomecolors" class="row grid align-items-center sortable">
+                    <hr/>
+                    <div class="d-flex align-items-center gap-2 mt-2 mb-1 px-1" style="font-size:0.8em; color:#888;">
+                      <span>Genome tracks background color: </span>
+                      <div class="pangraph-colorpicker" id="layer_color" color="#F5F5F5" style="background-color:#F5F5F5;"></div>
+                      <span class="ms-1">Line Width: </span>
+                      <input type="text" class="form-control text-end p-0 border-0" style="background-color:#e9ecef; width:36px;" id="track_line_width" name="track_line_width" value=5>
+                      <button id="apply-track-defaults" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1" style="font-size:1.4em; margin-left: 9px;">Apply to all</button>
                     </div>
                   </div>
                 </div>

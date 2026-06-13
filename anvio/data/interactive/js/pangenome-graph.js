@@ -2920,31 +2920,48 @@ class PangenomeGraphUserInterface {
         $('#title-panel-first-line').text(this.data['meta']['project_name']);
         $('#title-panel-second-line').text('Pangraph Detail');
         
+        const default_track_bg = $('#layer_color').attr('color') || '#F5F5F5';
+        const default_track_lw = $('#track_line_width')[0].value || '5';
+
         // if (!$('#genomecolors').children().length) {
-        for (var genome of this.genomes) {  
+        for (var genome of this.genomes) {
             $('#genomecolors').append(
-                $('<div class="col-12 d-flex mb-1" id="' + genome + '_row">').append(
-                    $('<div class="col-1 d-flex align-items-center">').append(
-                        $('<div class="form-switch d-flex">').append(
-                            $('<input class="" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">')
+                $('<div class="genome-row mb-1" id="' + genome + '_row">').append(
+                    // Line 1: vis checkbox | line color | genome name
+                    $('<div class="d-flex align-items-center gap-1">').append(
+                        $('<div class="form-switch mb-0">').append(
+                            $('<input class="genome-vis-check form-check-input" type="checkbox" id="flex' + genome + '" name="' + genome + '" checked title="Show/hide this genome">')
                         )
+                    ).append(
+                        $('<div class="pangraph-colorpicker" id="' + genome + '" color="#000000" style="background-color:#000000;"></div>')
+                    ).append(
+                        $('<span class="genome-row-name" title="' + genome + '">').text(genome)
                     )
                 ).append(
-                    $('<div class="col-8 d-flex align-items-center">').append(
-                        genome
-                    )
-                ).append(
-                    $('<div class="col-1 d-flex align-items-center">').append(
-                        $('<i class="user-handle bi bi-arrows-expand"></i>')
-                    )
-                ).append(
-                    $('<div class="d-flex col-2 align-items-center">').append(
-                        $('<div class="pangraph-colorpicker" id="' + genome + '" color="#000000" style="background-color: #000000; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>')
+                    // Line 2: track toggle | track BG color | height | LW
+                    $('<div class="d-flex align-items-center gap-1 ms-1 genome-row-track">').append($('<span style="padding-right:3px;">Display Genome Track: </span>')
+                    ).append(
+                        $('<div class="form-switch mb-0">').append(
+                            $('<input class="genome-track-check form-check-input" type="checkbox" id="flex' + genome + 'layer" name="flex' + genome + 'layer" title="Show/hide track ring">')
+                        )
+                    ).append(
+                        $('<span class="ms-1">&nbsp;Color:</span>')
+                    ).append(
+                        $('<div class="pangraph-colorpicker" id="' + genome + 'trackbg" color="' + default_track_bg + '" style="background-color:' + default_track_bg + ';" title="Track background color"></div>')
+                    ).append(
+                        $('<span class="ms-1">&nbsp;Height:&nbsp;</span>')
+                    ).append(
+                        $('<input type="text" class="form-control text-end p-0 border-0 genome-row-input" id="' + genome + 'layer" name="' + genome + 'layer" value=0 title="Track height">')
+                    ).append(
+                        $('<span class="ms-1">&nbsp;Line W:&nbsp;</span>')
+                    ).append(
+                        $('<input type="text" class="form-control text-end p-0 border-0 genome-row-input" id="' + genome + 'tracklw" name="' + genome + 'tracklw" value="' + default_track_lw + '" title="Track line width">')
                     )
                 )
             );
             this._init_colorpicker('#' + genome);
-    
+            this._init_colorpicker('#' + genome + 'trackbg');
+
             $('#RightOffcanvasBodyTop').append(
                 $('<tr>').append(
                     $('<td class="col-4">').append(
@@ -2956,25 +2973,6 @@ class PangenomeGraphUserInterface {
                     )
                 )
             );
-    
-            // if ($('#flex' + genome + 'layer').length == 0) {
-            var element = $('<div class="col-12 d-flex mb-1"></div>').append(
-                $('<div class="col-1 d-flex align-items-center"></div>').append(
-                    $('<div class="form-switch d-flex"></div>').append(
-                        $('<input class="" type="checkbox" id="flex' + genome + 'layer" name="flex' + genome + 'layer" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
-                    )
-                )
-            ).append(
-                $('<div class="col-9 d-flex align-items-center"></div>').append(
-                    genome
-                )
-            ).append(
-                $('<div class="d-flex col-2"></div>').append(
-                    $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + genome + 'layer" name="' + genome + 'layer" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">')
-                )
-            );
-
-            $('#genome_tracks').append(element);
         }
         // }
         // }
@@ -3247,18 +3245,6 @@ class PangenomeGraphUserInterface {
         $('#redraw').on("click", this.start_draw);
         $('#fit').on('click', this.fit_aspect);
         $('#svgDownload').on('click', this.svg_download);
-        $('#genome_tracks_select_all').on('click', () => {
-            $('#genome_tracks input[type="checkbox"]').prop('checked', true).trigger('change');
-        })
-        $('#genome_tracks_unselect_all').on('click', () => {
-            $('#genome_tracks input[type="checkbox"]').prop('checked', false).trigger('change');
-        })
-        $('#genomes_select_all').on('click', () => {
-            $('#genomecolors input[type="checkbox"]').prop('checked', true).trigger('change');
-        })
-        $('#genomes_unselect_all').on('click', () => {
-            $('#genomecolors input[type="checkbox"]').prop('checked', false).trigger('change');
-        })
         $('#svgbox').on('mousedown', this.press_down)
         $('#svgbox').on('mousemove', this.press_move)
         $('#svgbox').on('mouseup', this.press_up)
@@ -3277,8 +3263,40 @@ class PangenomeGraphUserInterface {
         
         sortable('#genomecolors', {
             forcePlaceholderSize: true,
-            handle: '.user-handle',
-            items: 'div'
+            items: '.genome-row'
+        });
+
+        document.getElementById('genomecolors').addEventListener('sortupdate', () => {
+            if ($('#flextree').prop('checked')) {
+                $('#flextree').prop('checked', false);
+                this.flextree_change({ currentTarget: document.getElementById('flextree') });
+                toastr.warning("As you have changed the genome order manually, the dendrogram is removed from the display (anvi'o hopes you are happy).", 'Dendrogram removed');
+            }
+        });
+
+        $(document).on('change', '.genome-vis-check', function() {
+            const genome = this.name;
+            if (!this.checked) {
+                $('#flex' + genome + 'layer').prop('checked', false);
+                if ($('#flextree').prop('checked')) {
+                    $('#flextree').prop('checked', false);
+                    pgui.flextree_change({ currentTarget: document.getElementById('flextree') });
+                    toastr.warning("As you have changed the genome order manually, the dendrogram is removed from the display (anvi'o hopes you are happy).", 'Dendrogram removed');
+                }
+            } else {
+                $('#flex' + genome + 'layer').prop('checked', true);
+            }
+        });
+
+        $('#apply-track-defaults').on('click', () => {
+            const bgColor = $('#layer_color').attr('color');
+            const lw = $('#track_line_width')[0].value;
+            for (const genome of this.genomes) {
+                $('#' + genome + 'trackbg').css('background-color', bgColor).attr('color', bgColor);
+                $('#' + genome + 'trackbg').colpickSetColor(bgColor.replace('#', ''));
+                $('#' + genome + 'tracklw')[0].value = lw;
+            }
+            this.main_draw();
         });
         this.settings_dict['condtr'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['grouping_threshold']))
         this.settings_dict['maxlength'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['max_edge_length']))
