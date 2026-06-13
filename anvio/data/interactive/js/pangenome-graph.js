@@ -547,52 +547,57 @@ class PangenomeGraphUserInterface {
         for (var genome of this.genomes) {
             var layer_name = genome + 'layer'
             if (Object.keys(middle_layers).includes(layer_name)){
-        
+
                 var [layer_width, layer_start, layer_stop] = middle_layers[layer_name]
-            
+
+                // per-genome track appearance, falling back to globals
+                var genome_bg_color = ($('#' + genome + 'trackbg').attr('color') || '').trim() || layer_color;
+                var genome_track_lw_raw = parseFloat($('#' + genome + 'tracklw')[0].value);
+                var genome_track_lw = isNaN(genome_track_lw_raw) ? track_line_width : genome_track_lw_raw;
+
                 if (linear == 0){
                     var [circle_a_x, circle_a_y] = this.circle_transform(0-0.5, layer_start, theta, start_angle)
                     var [circle_b_x, circle_b_y] = this.circle_transform(0-0.5, layer_stop, theta, start_angle)
                     var [circle_c_x, circle_c_y] = this.circle_transform(this.global_x + 0.5, layer_start, theta, start_angle)
                     var [circle_d_x, circle_d_y] = this.circle_transform(this.global_x + 0.5, layer_stop, theta, start_angle)
-                    
+
                     if ((this.global_x) * theta > 180) {
                         var arc_flag = 1
                     } else {
                         var arc_flag = 0
                     }
-            
+
                     svg_genome_tracks[genome].push(
                         $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
                         ' A ' + layer_start + ' ' + layer_start + ' 0 ' + arc_flag + ' 1 ' + circle_a_x + ' ' + circle_a_y +
                         ' L ' + circle_b_x + ' ' + circle_b_y +
                         ' A ' + layer_stop + ' ' + layer_stop + ' 0 ' + arc_flag + ' 0 ' + circle_d_x + ' ' + circle_d_y +
-                        ' Z" stroke-width="0" fill="' + layer_color + '"></path>')
+                        ' Z" stroke-width="0" fill="' + genome_bg_color + '"></path>')
                     )
                 } else {
                     var [circle_a_x, circle_a_y] = [(0-0.5) * node_distance_x, -layer_start]
                     var [circle_b_x, circle_b_y] = [(0-0.5) * node_distance_x, -layer_stop]
                     var [circle_c_x, circle_c_y] = [(this.global_x + 0.5) * node_distance_x, -layer_start]
                     var [circle_d_x, circle_d_y] = [(this.global_x + 0.5) * node_distance_x, -layer_stop]
-                    
+
                     svg_genome_tracks[genome].push(
                         $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
                         ' L ' + circle_a_x + ' ' + circle_a_y +
                         ' L ' + circle_b_x + ' ' + circle_b_y +
                         ' L ' + circle_d_x + ' ' + circle_d_y +
-                        ' Z" stroke-width="0" fill="' + layer_color + '"></path>')
+                        ' Z" stroke-width="0" fill="' + genome_bg_color + '"></path>')
                     )
                 }
 
                 var sorted_keys = Object.keys(this.synteny[genome]).sort(function (a, b) {return parseInt(a) - parseInt(b);});
-                if (layer_width >= track_line_width) {
+                if (layer_width >= genome_track_lw) {
 
-                    layer_width -= track_line_width
-                    layer_start += track_line_width * 0.5
-                    layer_stop -= track_line_width * 0.5
+                    layer_width -= genome_track_lw
+                    layer_start += genome_track_lw * 0.5
+                    layer_stop -= genome_track_lw * 0.5
 
                     var draw = edgecoloring[genome][1]
-                    var thickness = track_line_width
+                    var thickness = genome_track_lw
                     var stroke = ''
 
                     var edge_chain = []
@@ -2768,6 +2773,11 @@ class PangenomeGraphUserInterface {
             $('#' + genome).colpickSetColor(gc.replace('#', ''));
             $('#flex' + genome + 'layer').prop('checked', gdata['show_track']);
             $('#' + genome + 'layer')[0].value = gdata['track_height'];
+            // per-genome track overrides — fall back to globals for old states
+            const tbc = gdata['track_bg_color'] ?? bgColor;
+            $('#' + genome + 'trackbg').css('background-color', tbc).attr('color', tbc);
+            $('#' + genome + 'trackbg').colpickSetColor(tbc.replace('#', ''));
+            $('#' + genome + 'tracklw')[0].value = gdata['track_line_width'] ?? gt['line_width'];
             genome_order.push(genome);
         }
 
@@ -4402,7 +4412,9 @@ class PangenomeGraphUserInterface {
                 color: $('#' + genome).attr('color'),
                 show: $('#flex' + genome).prop('checked'),
                 track_height: Number($('#' + genome + 'layer')[0].value),
-                show_track: $('#flex' + genome + 'layer').prop('checked')
+                show_track: $('#flex' + genome + 'layer').prop('checked'),
+                track_bg_color: $('#' + genome + 'trackbg').attr('color'),
+                track_line_width: Number($('#' + genome + 'tracklw')[0].value)
             };
         }
 
