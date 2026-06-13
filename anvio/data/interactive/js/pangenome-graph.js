@@ -3347,6 +3347,7 @@ class PangenomeGraphUserInterface {
         this.initialize_colorpickers();
 
         $("#redraw").removeClass("disabled");
+        $("#settings-content").removeClass("settings-loading").addClass("settings-loading-cleared");
     }
 
     flextree_change(instance) {

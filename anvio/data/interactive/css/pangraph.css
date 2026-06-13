@@ -372,3 +372,15 @@
     background-color: #d0d7df;
 }
 
+.settings-loading {
+    filter: blur(3px);
+    pointer-events: none;
+    transition: filter 0.4s ease;
+}
+
+.settings-loading-cleared {
+    filter: blur(0);
+    pointer-events: auto;
+    transition: filter 0.4s ease;
+}
+
