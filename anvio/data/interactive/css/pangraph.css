@@ -211,6 +211,63 @@
     background: var(--secondary-100);
   }
 
+  .genome-row {
+    cursor: grab;
+    padding: 2px 4px;
+    border-radius: 3px;
+    border: 1px dashed #dedede;
+    background: #fbfbfb;
+    margin-bottom: 4px !important;
+  }
+
+  .genome-row-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+    font-size: 1.2em;
+    padding-left: 3px;
+  }
+
+  .genome-row-track {
+    font-size: 0.75em;
+    color: #aaa;
+  }
+
+  .genome-row-input {
+    background-color: #e9ecef;
+    width: 32px;
+  }
+
+  .pangraph-colorpicker {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    border: 1px solid #818181;
+    margin-left: 4px;
+    margin-right: 4px;
+  }
+
+  .genome-row .pangraph-colorpicker {
+    flex-shrink: 0;
+  }
+
+  .genome-row .form-switch {
+    padding-left: 0;
+  }
+
+  .genome-row .form-switch .form-check-input {
+    margin-left: 0;
+    float: none;
+    position: static;
+  }
+
+  .p-0 {
+    padding: 3px !important;
+    height: 22px;
+  }
+
   .tableFixHead          { overflow: auto; height: 100px; }
   .tableFixHead thead th { position: sticky; top: 0; z-index: 1; }
 
