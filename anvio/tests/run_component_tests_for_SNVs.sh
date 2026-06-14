@@ -215,6 +215,32 @@ anvi-gen-gene-consensus-sequences -p test-output/SAMPLES-MERGED/PROFILE.db \
                                   --contigs-mode
 cat test-output/consensus_sequence_contig.fa
 
+INFO "anvi-index-table --list (scoped to the merged profile db, shows existing indexes)"
+anvi-index-table test-output/SAMPLES-MERGED/PROFILE.db --list
+
+INFO "anvi-index-table: build the variable_nucleotides(split_name) index"
+anvi-index-table test-output/SAMPLES-MERGED/PROFILE.db \
+                 --table variable_nucleotides \
+                 --column split_name
+
+INFO "anvi-index-table: rebuilding the same index should be a no-op"
+anvi-index-table test-output/SAMPLES-MERGED/PROFILE.db \
+                 --table variable_nucleotides \
+                 --column split_name
+
+INFO "anvi-index-table: indexing a non-whitelisted column without --just-do-it should fail"
+anvi-index-table test-output/SAMPLES-MERGED/PROFILE.db \
+                 --table variable_nucleotides \
+                 --column reference \
+    && echo "ERROR: that should have failed" || echo "(failed as expected)"
+
+INFO "anvi-index-table: drop the index again and reclaim the space"
+anvi-index-table test-output/SAMPLES-MERGED/PROFILE.db \
+                 --table variable_nucleotides \
+                 --column split_name \
+                 --drop-index \
+                 --reclaim-space
+
 INFO "Do you want the interactive interface? Run the following:"
 
 echo "anvi-interactive -p $(pwd)/test-output/SAMPLES-MERGED/PROFILE.db -c $(pwd)/test-output/single_contig.db"
