@@ -6,7 +6,6 @@ import anvio.filesnpaths as filesnpaths
 
 from pathlib import Path
 from anvio.errors import ConfigError
-from anvio.constants import LR_TECHNOLOGY_MAP
 
 
 class SamplesTxt:
@@ -30,14 +29,10 @@ class SamplesTxt:
             'r1': [<paths>] or [],
             'r2': [<paths>] or [],
             'lr': [<paths>] or [],
-            'lr_technology': <str or None>,
         },
         ...
     }
     """
-
-    # Derived from LR_TECHNOLOGY_MAP so this set and the map can never drift out of sync.
-    VALID_LR_TECHNOLOGIES = set(LR_TECHNOLOGY_MAP.keys())
 
     DEFAULT_VALID_FORMATS = {
         "paired_end": ["r1", "r2"],
@@ -101,7 +96,7 @@ class SamplesTxt:
             raise ConfigError(f"A samples txt file is supposed to have at least the columns {', '.join(expected_columns)}.")
 
         # Warn about extras columns
-        possible_columns = set([self._first_col, "r1", "r2", "lr", "lr_technology", "group"])
+        possible_columns = set([self._first_col, "r1", "r2", "lr", "group"])
         extra_columns = set(self._columns_found) - possible_columns
         if extra_columns:
             self.run.warning(f"Your samples txt file contains {terminal.pluralize('extra column', len(extra_columns))}: "
@@ -125,7 +120,7 @@ class SamplesTxt:
         base = Path(base_dir) if base_dir is not None else self._default_base_dir()
 
         # Build header from what we saw/normalized (keep file order & extras)
-        cols = [self._first_col, "group", "r1", "r2", "lr", "lr_technology"] + list(self._extra_columns)
+        cols = [self._first_col, "group", "r1", "r2", "lr"] + list(self._extra_columns)
         present = [c for c in cols if c == self._first_col or any(c in row for row in self._raw_rows.values())]
 
         lines = ["\t".join(present)]
@@ -160,7 +155,7 @@ class SamplesTxt:
         return {
             s: {
                 k: v for k, v in self._path_view_for_info(info, absolute_paths=absolute_paths, base_dir=base).items()
-                if k in {"group", "r1", "r2", "lr", "lr_technology"}
+                if k in {"group", "r1", "r2", "lr"}
             }
             for s, info in self._data.items()
         }
@@ -179,7 +174,6 @@ class SamplesTxt:
                 "r1": ",".join(view.get("r1", [])) if view.get("r1") else "",
                 "r2": ",".join(view.get("r2", [])) if view.get("r2") else "",
                 "lr": ",".join(view.get("lr", [])) if view.get("lr") else "",
-                "lr_technology": view.get("lr_technology") or "",
             }
             if include_extras:
                 for col in self._extra_columns:
@@ -187,7 +181,7 @@ class SamplesTxt:
             rows.append(row)
 
         df = pd.DataFrame(rows)
-        base_cols = ["sample", "group", "r1", "r2", "lr", "lr_technology"]
+        base_cols = ["sample", "group", "r1", "r2", "lr"]
         cols = base_cols + (self._extra_columns if include_extras else [])
         return df[[c for c in cols if c in df.columns]]
 
@@ -229,7 +223,7 @@ class SamplesTxt:
                 # Rebuild text without extras using the dict view (simpler than column surgery).
                 d = self.as_dict(include_extras=False, absolute_paths=absolute_paths, base_dir=base_dir)
                 # Make a compact TSV with only the canonical columns
-                header = [self._first_col, "group", "r1", "r2", "lr", "lr_technology"]
+                header = [self._first_col, "group", "r1", "r2", "lr"]
                 lines = ["\t".join(header)]
                 for sample, info in d.items():
                     lines.append("\t".join([
@@ -238,7 +232,6 @@ class SamplesTxt:
                         ",".join(info.get("r1") or []),
                         ",".join(info.get("r2") or []),
                         ",".join(info.get("lr") or []),
-                        info.get("lr_technology") or "",
                     ]))
                 text = "\n".join(lines)
 
@@ -271,7 +264,7 @@ class SamplesTxt:
 
         self._extra_columns = [
             c for c in (self._columns_found or [])
-            if c not in {self._first_col, "group", "r1", "r2", "lr", "lr_technology"}
+            if c not in {self._first_col, "group", "r1", "r2", "lr"}
         ]
 
     def _parse_rows_from_file(self):
@@ -286,17 +279,16 @@ class SamplesTxt:
           B) list[dict]:      [{'sample':..., 'r1':..., ...}, ...]
         Compute synthetic header list: first column, canonical fields, then extras (sorted).
         """
-        canonical = {"group", "r1", "r2", "lr", "lr_technology"}
         if isinstance(data, dict):
             # dict-of-dicts → first column will be 'sample'
             keys = set().union(*[set((v or {}).keys()) for v in data.values()]) if data else set()
             self._first_col = "sample"
             cols = ["sample"]
             # Prefer canonical order
-            for c in ["group", "r1", "r2", "lr", "lr_technology"]:
+            for c in ["group", "r1", "r2", "lr"]:
                 if c in keys:
                     cols.append(c)
-            extras = sorted([c for c in keys if c not in canonical])
+            extras = sorted([c for c in keys if c not in {"group","r1","r2","lr"}])
             cols.extend(extras)
             self._columns_found = cols
             self._extra_columns = extras
@@ -304,10 +296,10 @@ class SamplesTxt:
             keys = set().union(*[set((row or {}).keys()) for row in data]) if data else set()
             self._first_col = "sample" if "sample" in keys else ("name" if "name" in keys else "sample")
             cols = [self._first_col]
-            for c in ["group", "r1", "r2", "lr", "lr_technology"]:
+            for c in ["group", "r1", "r2", "lr"]:
                 if c in keys:
                     cols.append(c)
-            extras = sorted([c for c in keys if c not in {self._first_col} | canonical])
+            extras = sorted([c for c in keys if c not in {self._first_col,"group","r1","r2","lr"}])
             cols.extend(extras)
             self._columns_found = cols
             self._extra_columns = extras
@@ -397,15 +389,11 @@ class SamplesTxt:
             if sample in data:
                 raise ConfigError(f"Names of samples in your samples_txt file must be unique. Found duplicate: {sample}")
 
-            raw_lr_tech = row.get("lr_technology")
-            lr_technology = str(raw_lr_tech).strip().lower() if raw_lr_tech not in (None, "") else None
-
             info = {
                 "group": (str(row.get("group")).strip() if row.get("group") not in (None, "") else None),
                 "r1": self._split_paths(row.get("r1")),
                 "r2": self._split_paths(row.get("r2")),
                 "lr": self._split_paths(row.get("lr")),
-                "lr_technology": lr_technology,
             }
 
             # Flatten user extras (strings as-is; keep empty as "")
@@ -420,8 +408,6 @@ class SamplesTxt:
         mode = self.expected_format
         for sample, info in self._data.items():
             r1, r2, lr = info["r1"], info["r2"], info["lr"]
-            lr_technology = info.get("lr_technology")
-
             if mode == "paired_end":
                 if not r1 or not r2:
                     raise ConfigError(f"[{sample}] Paired-end expected: require both 'r1' and 'r2'.")
@@ -457,34 +443,6 @@ class SamplesTxt:
                     raise ConfigError(f"[{sample}] Free mode: number of r1 files ({len(r1)}) must match r2 ({len(r2)}).")
             else:
                 raise ConfigError(f"Unknown validation mode '{mode}'")
-
-            # lr_technology pairing: lr ↔ lr_technology must co-occur
-            if lr and not lr_technology:
-                raise ConfigError(
-                    f"Anvi'o found long-read paths for the sample '{sample}' in your samples-txt file, "
-                    f"but no 'lr_technology' value was provided for that sample. This is a problem because "
-                    f"anvi'o needs to know the sequencing platform in order to run long-read QC tools (LongQC) "
-                    f"and pick the correct mapping preset for minimap2. The fix is straightforward: add a "
-                    f"'lr_technology' column to your samples-txt file and fill in the value for every sample "
-                    f"that has long reads. The valid values you can use are: "
-                    f"{', '.join(sorted(self.VALID_LR_TECHNOLOGIES))}."
-                )
-            if lr_technology and not lr:
-                raise ConfigError(
-                    f"Anvi'o is confused. The sample '{sample}' in your samples-txt file has an "
-                    f"'lr_technology' value of '{lr_technology}', but there are no long-read file paths "
-                    f"in the 'lr' column for that sample. These two columns are a package deal: if you "
-                    f"set 'lr_technology', you must also provide 'lr' paths, and vice versa. Either add "
-                    f"the missing 'lr' paths for this sample or remove the 'lr_technology' value."
-                )
-            if lr_technology and lr_technology not in self.VALID_LR_TECHNOLOGIES:
-                raise ConfigError(
-                    f"The sample '{sample}' in your samples-txt file has an 'lr_technology' value of "
-                    f"'{lr_technology}', which anvi'o does not recognize. This value must be one of the "
-                    f"following: {', '.join(sorted(self.VALID_LR_TECHNOLOGIES))}. If you are unsure which "
-                    f"to use, 'ont' covers most Oxford Nanopore libraries, 'pb-hifi' is for PacBio HiFi "
-                    f"(CCS) reads, 'pb-rs2' and 'pb-sequel' are for older PacBio CLR chemistries."
-                )
 
     def _check_file_existence_and_identical_pairs(self):
         missing = set()
@@ -695,8 +653,7 @@ class SamplesTxt:
                         "type": typ,                # 'SR' or 'LR'
                         "mixed_type": mixed,        # True if this base sample has both SR and LR
                         "group": info.get("group"),
-                        "reads": reads_dict,        # only keys relevant to the type
-                        "lr_technology": info.get("lr_technology") if typ == 'LR' else None, }
+                        "reads": reads_dict, }      # only keys relevant to the type
 
             # Decide ids under chosen read-type suffix
             if mixed:

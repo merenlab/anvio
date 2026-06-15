@@ -7,8 +7,6 @@
 #   u               — anvio.utils (imported in parent Snakefile)
 #   SR_READSETS     — list of SR readset ids
 #   SR_RS_RE        — wildcard constraint regex for SR readsets
-#   run_gzip_fastqs — bool: whether gzip_fastqs is enabled
-#   run_fastqc_sr   — bool: whether fastqc_sr is enabled
 
 
 rule iu_gen_configs:
@@ -221,37 +219,3 @@ rule gzip_fastqs:
         nodes=M.T("gzip_fastqs"),
     shell:
         "gzip {input.fastq} >> {log} 2>&1"
-
-
-fastqc_sr_output_dir = os.path.join(dirs_dict["QC_DIR"], "fastqc")
-
-# gzip_fastqs compresses in-place (gzip destroys the .fastq). Taking .fastq.gz as
-# input creates a DAG edge that forces gzip_fastqs to complete before fastqc_sr starts.
-_fastqc_sr_ext = ".fastq.gz" if run_gzip_fastqs else ".fastq"
-
-if run_fastqc_sr:
-    rule fastqc_sr:
-        """Run FastQC on quality-controlled short reads (for MultiQC input)."""
-        input:
-            r1=os.path.join(dirs_dict["QC_DIR"], "{readset}-QUALITY_PASSED_R1" + _fastqc_sr_ext),
-            r2=os.path.join(dirs_dict["QC_DIR"], "{readset}-QUALITY_PASSED_R2" + _fastqc_sr_ext),
-        output:
-            html_r1=os.path.join(fastqc_sr_output_dir, "{readset}-QUALITY_PASSED_R1_fastqc.html"),
-            html_r2=os.path.join(fastqc_sr_output_dir, "{readset}-QUALITY_PASSED_R2_fastqc.html"),
-            zip_r1=os.path.join(fastqc_sr_output_dir, "{readset}-QUALITY_PASSED_R1_fastqc.zip"),
-            zip_r2=os.path.join(fastqc_sr_output_dir, "{readset}-QUALITY_PASSED_R2_fastqc.zip"),
-        log:
-            rule_log("fastqc_sr", "{readset}-fastqc_sr"),
-        wildcard_constraints:
-            readset=SR_RS_RE,
-        threads: M.T("fastqc_sr")
-        resources:
-            nodes=M.T("fastqc_sr"),
-        params:
-            outdir=fastqc_sr_output_dir,
-            additional_params=M.get_param_value_from_config(["fastqc_sr", "additional_params"]),
-        shell:
-            r"""
-            mkdir -p {params.outdir}
-            fastqc -o {params.outdir} -t {threads} {params.additional_params} {input.r1} {input.r2} >> {log} 2>&1
-            """

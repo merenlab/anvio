@@ -54,8 +54,6 @@ r = errors.remove_spaces
 
 workflow_config_version = versions_for_db_types['config']
 
-from anvio.constants import LR_TECHNOLOGY_MAP as LR_TECHNOLOGY_MAP
-
 
 class WorkflowSuperClass:
     def __init__(self):

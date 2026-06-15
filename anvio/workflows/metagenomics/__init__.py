@@ -11,7 +11,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio import utils as u
 from anvio.drivers import driver_modules
-from anvio.workflows import WorkflowSuperClass, LR_TECHNOLOGY_MAP
+from anvio.workflows import WorkflowSuperClass
 from anvio.workflows.contigs import ContigsDBWorkflow
 from anvio.workflows.qc import QCModule
 from anvio.workflows.read_recruitment import ReadRecruitmentModule
@@ -124,7 +124,7 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
                 raise ConfigError("Multiple long-read assemblers are enabled; please enable Flye")
 
         # sanity check for conda env: use either conda_yaml or conda_env, not both
-        for tool in ['flye','minimap2','bowtie','megahit','metaspades','idba_ud','longqc','filtlong']:
+        for tool in ['flye','minimap2','bowtie','megahit','metaspades','idba_ud']:
             y = self.get_param_value_from_config([tool, 'conda_yaml'])
             n = self.get_param_value_from_config([tool, 'conda_env'])
             if (y and y.strip()) and (n and n.strip()):
@@ -138,15 +138,10 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         self.ensure_tool_in_path_or_conda('flye', 'flye')
         self.ensure_tool_in_path_or_conda('bowtie', 'bowtie2')
         self.ensure_tool_in_path_or_conda('minimap2', 'minimap2')
-        self.ensure_tool_in_path_or_conda('longqc', 'LongQC.py')
-        self.ensure_tool_in_path_or_conda('filtlong', 'filtlong')
 
         self.use_scaffold_from_metaspades = self.get_param_value_from_config(['metaspades', 'use_scaffolds'])
         self.use_scaffold_from_idba_ud = self.get_param_value_from_config(['idba_ud', 'use_scaffolds'])
         self.run_qc = self.get_param_value_from_config(['iu_filter_quality_minoche', 'run']) == True
-        self.run_lr_qc = self.get_param_value_from_config(['longqc', 'run']) == True
-        self.run_filtlong = self.get_param_value_from_config(['filtlong', 'run']) == True
-        self.run_multiqc = self.get_param_value_from_config(['multiqc', 'run']) == True
         self.run_summary = self.get_param_value_from_config(['anvi_summarize', 'run']) == True
         self.run_split = self.get_param_value_from_config(['anvi_split', 'run']) == True
         self.references_mode = self.get_param_value_from_config('references_mode')
@@ -595,43 +590,22 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
 
 
     def get_flye_flag_for_group(self, group_id):
-        """Return the single flye read-type flag (e.g. '--nano-raw') for a group's LR reads.
+        """Return the single Flye read-type flag selected in the config.
 
-        Raises ConfigError if the group's samples have incompatible technologies that
-        map to different flye flags — those must be separated into different groups.
+        The user must enable exactly one of Flye's read-type flags
+        (--pacbio-raw / --pacbio-corr / --pacbio-hifi / --nano-raw / --nano-corr / --nano-hq)
+        in the config; that flag is used for every long-read assembly.
         """
-        member_readsets = self.assembly_members.get(group_id, [])
-        flags = set()
-        techs = set()
-        for rs_id in member_readsets:
-            rs = self.readsets_by_id.get(rs_id)
-            tech = rs.get('lr_technology') if rs else None
-            if not tech:
-                raise ConfigError(
-                    f"Anvi'o needs to know the sequencing technology for readset '{rs_id}' "
-                    f"to run Flye, but no 'lr_technology' was found. Please set it in your "
-                    f"samples.txt. Valid values: {', '.join(sorted(LR_TECHNOLOGY_MAP.keys()))}."
-                )
-            if tech not in LR_TECHNOLOGY_MAP or 'flye' not in LR_TECHNOLOGY_MAP[tech]:
-                raise ConfigError(
-                    f"Anvi'o cannot determine the Flye read-type flag for lr_technology "
-                    f"'{tech}' (readset '{rs_id}'). Valid values: "
-                    f"{', '.join(sorted(LR_TECHNOLOGY_MAP.keys()))}."
-                )
-            flags.add(LR_TECHNOLOGY_MAP[tech]['flye'])
-            techs.add(tech)
-
-        if len(flags) > 1:
-            raise ConfigError(
-                f"Anvi'o is trying to assemble group '{group_id}' with Flye, but its "
-                f"samples use incompatible sequencing technologies: {', '.join(sorted(techs))}. "
-                f"Flye requires a single read type per assembly run. Please split these "
-                f"samples into separate groups in your samples.txt."
-            )
-        if not flags:
-            raise ConfigError(f"Group '{group_id}' has no LR readsets with a detectable flye flag.")
-
-        return flags.pop()
+        flags = ["--pacbio-raw", "--pacbio-corr", "--pacbio-hifi",
+                 "--nano-raw", "--nano-corr", "--nano-hq"]
+        enabled = [f for f in flags if self.get_param_value_from_config(['flye', f])]
+        if len(enabled) == 0:
+            raise ConfigError("flye: please enable exactly one read-type flag in your config (one of "
+                              "--pacbio-raw, --pacbio-corr, --pacbio-hifi, --nano-raw, --nano-corr, --nano-hq).")
+        if len(enabled) > 1:
+            raise ConfigError("flye: the read-type flags are mutually exclusive, but you enabled more "
+                              "than one: %s. Please enable exactly one." % ', '.join(enabled))
+        return enabled[0]
 
 
     def get_sr_fastqs_for_group(self, group_id: str, use_filtered: bool = False, zipped: bool | None = None):

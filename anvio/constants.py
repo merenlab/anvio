@@ -731,16 +731,3 @@ ribosomal_protein_kofams = [
 
 # anvi'o news stuff
 anvio_news_url = "https://raw.githubusercontent.com/merenlab/anvio/master/NEWS.md"
-
-
-# Maps the lr_technology column value (from samples.txt) to tool-specific presets.
-# Keys are the valid values accepted in the lr_technology column of samples-txt files.
-LR_TECHNOLOGY_MAP = {
-    'ont':          {'longqc': 'ont-ligation', 'minimap2': 'map-ont',  'flye': '--nano-raw'},
-    'ont-ligation': {'longqc': 'ont-ligation', 'minimap2': 'map-ont',  'flye': '--nano-raw'},
-    'ont-rapid':    {'longqc': 'ont-rapid',    'minimap2': 'map-ont',  'flye': '--nano-raw'},
-    'ont-1dsq':     {'longqc': 'ont-1dsq',     'minimap2': 'map-ont',  'flye': '--nano-raw'},
-    'pb-rs2':       {'longqc': 'pb-rs2',       'minimap2': 'map-pb',   'flye': '--pacbio-raw'},
-    'pb-sequel':    {'longqc': 'pb-sequel',    'minimap2': 'map-pb',   'flye': '--pacbio-raw'},
-    'pb-hifi':      {'longqc': 'pb-hifi',      'minimap2': 'map-hifi', 'flye': '--pacbio-hifi'},
-}
