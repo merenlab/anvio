@@ -42,7 +42,7 @@ def A(_list, d, default_value=""):
         a = _list.pop(0)
         try:
             d = d[a]
-        except:
+        except Exception:
             return default_value
     return d
 
