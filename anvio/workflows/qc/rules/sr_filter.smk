@@ -133,7 +133,7 @@ rule iu_filter_quality_minoche:
         """
 
 
-rule metagenomics_gen_qc_report:
+rule gen_qc_report:
     """Aggregate iu-filter-quality-minoche statistics across SR readsets."""
     input:
         targets=expand(
@@ -142,10 +142,10 @@ rule metagenomics_gen_qc_report:
     output:
         report=dirs_dict["QC_DIR"] + "/qc-report.txt",
     log:
-        rule_log("metagenomics_gen_qc_report", "metagenomics_gen_qc_report"),
-    threads: M.T("metagenomics_gen_qc_report")
+        rule_log("gen_qc_report", "gen_qc_report"),
+    threads: M.T("gen_qc_report")
     resources:
-        nodes=M.T("metagenomics_gen_qc_report"),
+        nodes=M.T("gen_qc_report"),
     run:
         report_dict = {}
         report_column_headers = [

@@ -21,7 +21,7 @@ class QCModule(WorkflowSuperClass):
 
     Provides:
       - illumina-utils SR filtering (iu-gen-configs + iu-filter-quality-minoche)
-      - QC report aggregation (metagenomics_gen_qc_report)
+      - QC report aggregation (gen_qc_report)
       - Optional gzip of QC'd SR reads
 
     Subclasses must set before any QC methods are called:
@@ -34,7 +34,7 @@ class QCModule(WorkflowSuperClass):
         self.rules.extend([
             'iu_gen_configs',
             'iu_filter_quality_minoche',
-            'metagenomics_gen_qc_report',
+            'gen_qc_report',
             'gzip_fastqs',
         ])
 
@@ -44,7 +44,7 @@ class QCModule(WorkflowSuperClass):
             'run', '--visualize-quality-curves', '--ignore-deflines',
             '--limit-num-pairs', '--print-qual-scores', '--store-read-fate',
         ]
-        rule_acceptable_params_dict['metagenomics_gen_qc_report'] = []
+        rule_acceptable_params_dict['gen_qc_report'] = []
         rule_acceptable_params_dict['gzip_fastqs'] = ["run"]
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
