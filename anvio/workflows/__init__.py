@@ -198,13 +198,13 @@ class WorkflowSuperClass:
         """
         # maps workflow class names to their workflow directory names
         workflow_class_name_map = {
-            'ContigsDBWorkflow':      'contigs',
-            'PhylogenomicsWorkflow':  'phylogenomics',
-            'PangenomicsWorkflow':    'pangenomics',
-            'MetagenomicsWorkflow':   'metagenomics',
-            'TRNASeqWorkflow':        'trnaseq',
-            'EcoPhyloWorkflow':       'ecophylo',
-            'SRADownloadWorkflow':    'sra_download',
+            'ContigsDBWorkflow': 'contigs',
+            'PhylogenomicsWorkflow': 'phylogenomics',
+            'PangenomicsWorkflow': 'pangenomics',
+            'MetagenomicsWorkflow': 'metagenomics',
+            'TRNASeqWorkflow': 'trnaseq',
+            'EcoPhyloWorkflow': 'ecophylo',
+            'SRADownloadWorkflow': 'sra_download',
         }
 
         merged = {'general_params': {}, 'rules': {}}
