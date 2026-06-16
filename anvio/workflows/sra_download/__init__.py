@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """ Classes to define and work with anvi'o SRA_downloads workflow. """
 
 import os
@@ -47,26 +45,9 @@ class SRADownloadWorkflow(WorkflowSuperClass):
         # Snakemake rules
         self.rules.extend(['prefetch',
                            'fasterq_dump',
+                           'check_md5sum',
                            'pigz'])
 
-        self.general_params.extend(['SRA_accession_list']) # user needs provide a tsv of SRA accessions
-        self.general_params.extend(['Remove_unzipped_SRA_files']) # user needs provide a tsv of SRA accessions
-
-        # Parameters for each rule that are accessible in the config.json file
-        rule_acceptable_params_dict = {}
-
-        rule_acceptable_params_dict['prefetch'] = ['--max-size']
-        rule_acceptable_params_dict['fasterq-dump'] = ['--split-files', ' --verbose', '--progress']
-
-        self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
-
-        # Set default values for accessible rules and order of rules in config.json file
-        self.default_config.update({
-            'SRA_accession_list': 'SRA_accession_list.txt',
-            'Remove_unzipped_SRA_files': True,
-            'prefetch': {'--max-size': "40g", 'threads': 2},
-            'fasterq_dump': {'threads': 6},
-            'pigz': {'threads': 8}})
 
         # Directory structure for Snakemake workflow
         self.dirs_dict.update({"SRA_prefetch": "01_NCBI_SRA"})
@@ -111,14 +92,14 @@ class SRADownloadWorkflow(WorkflowSuperClass):
     def get_target_files(self):
         """Get list of target files for snakemake target rule"""
 
-        target_files = [os.path.join(self.dirs_dict['FASTAS'], f"generate_samples_txt.done")]
+        target_files = [os.path.join(self.dirs_dict['FASTAS'], "generate_samples_txt.done")]
 
         return target_files
 
-    
+
     def calculate_md5(self, file_path):
         """Calculate the md5sum of a file"""
-        hash_md5 = hashlib.md5()
+        hash_md5 = hashlib.md5(usedforsecurity=False)
         with open(file_path, "rb") as f:
             for chunk in iter(lambda: f.read(65536), b""):
                 hash_md5.update(chunk)

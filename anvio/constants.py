@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-# pylint: disable=line-too-long
 
 import os
 import sys
@@ -176,9 +174,9 @@ fetch_filters = {None                 : None,
                  'proper-pairs'       : lambda x: not x.mate_is_unmapped,
                  'double-forwards'    : lambda x: x.is_paired and not x.is_reverse and not x.mate_is_reverse and not x.mate_is_unmapped and x.reference_name == x.next_reference_name,
                  'double-reverses'    : lambda x: x.is_paired and x.is_reverse and x.mate_is_reverse and not x.mate_is_unmapped and x.reference_name == x.next_reference_name,
-                 'inversions'         : lambda x: (x.is_paired and not x.is_reverse and not x.mate_is_reverse and not x.mate_is_unmapped and x.reference_name == x.next_reference_name and (abs(x.tlen) < 2000)) or \
+                 'inversions'         : lambda x: (x.is_paired and not x.is_reverse and not x.mate_is_reverse and not x.mate_is_unmapped and x.reference_name == x.next_reference_name and (abs(x.tlen) < 2000)) or
                                                   (x.is_paired and x.is_reverse and x.mate_is_reverse and not x.mate_is_unmapped and x.reference_name == x.next_reference_name and (abs(x.tlen) < 2000)),
-                 'distant-inversions'  : lambda x: (x.is_paired and not x.is_reverse and not x.mate_is_reverse and not x.mate_is_unmapped and x.reference_name == x.next_reference_name) or \
+                 'distant-inversions'  : lambda x: (x.is_paired and not x.is_reverse and not x.mate_is_reverse and not x.mate_is_unmapped and x.reference_name == x.next_reference_name) or
                                                   (x.is_paired and x.is_reverse and x.mate_is_reverse and not x.mate_is_unmapped and x.reference_name == x.next_reference_name),
                  'single-mapped-reads': lambda x: x.mate_is_unmapped,
                  'distant-pairs-1K'   : lambda x: x.is_paired and not x.mate_is_unmapped and abs(x.tlen) > 1000}
@@ -240,7 +238,7 @@ for run_type, default_config in [('single', single_default),
               f"       If you are a developer and getting this error, please make sure the file \n"
               f"       is in anvi'o distribution. If you are a user and getting this error, it \n"
               f"       something went terribly wrong with your installation :(\n")
-        sys.exit()
+        sys.exit(1)
 
 for dir in [d.strip('/').split('/')[-1] for d in glob.glob(os.path.join(clustering_configs_dir, '*/'))]:
     clustering_configs[dir] = {}
@@ -374,6 +372,10 @@ AA_to_full_name = Counter({'Ala': 'Alanine', 'Arg': 'Arginine', 'Asn': 'Asparagi
 amino_acids = sorted(list(AA_to_single_letter_code.keys()))
 amino_acids_long = sorted(list(AA_to_full_name.values()))
 
+decoded_AA_types = list(amino_acids) + ['fMet', 'iMet', 'Ile2', 'SeC', 'Sup']
+decoded_AA_types.remove('STP')
+decoded_AA_types.sort()
+
 # Standard genetic code (translation table 1 at the following link)
 # https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi?chapter=cgencodes
 codon_to_AA = Counter({'ATA': 'Ile', 'ATC': 'Ile', 'ATT': 'Ile', 'ATG': 'Met',
@@ -409,6 +411,23 @@ anticodon_to_AA = Counter({'AAA': 'Phe', 'AAC': 'Val', 'AAG': 'Leu', 'AAT': 'Ile
                            'TCA': 'STP', 'TCC': 'Gly', 'TCG': 'Arg', 'TCT': 'Arg',
                            'TGA': 'Ser', 'TGC': 'Ala', 'TGG': 'Pro', 'TGT': 'Thr',
                            'TTA': 'STP', 'TTC': 'Glu', 'TTG': 'Gln', 'TTT': 'Lys'})
+
+anticodon_to_decoded_AA_types = Counter({'AAA': ['Phe'], 'AAC': ['Val'], 'AAG': ['Leu'], 'AAT': ['Ile'],
+                                         'ACA': ['Cys'], 'ACC': ['Gly'], 'ACG': ['Arg'], 'ACT': ['Ser'],
+                                         'AGA': ['Ser'], 'AGC': ['Ala'], 'AGG': ['Pro'], 'AGT': ['Thr'],
+                                         'ATA': ['Tyr'], 'ATC': ['Asp'], 'ATG': ['His'], 'ATT': ['Asn'],
+                                         'CAA': ['Leu'], 'CAC': ['Val'], 'CAG': ['Leu'], 'CAT': ['Met', 'iMet', 'fMet', 'Ile2'],
+                                         'CCA': ['Trp'], 'CCC': ['Gly'], 'CCG': ['Arg'], 'CCT': ['Arg'],
+                                         'CGA': ['Ser'], 'CGC': ['Ala'], 'CGG': ['Pro'], 'CGT': ['Thr'],
+                                         'CTA': ['Sup'], 'CTC': ['Glu'], 'CTG': ['Gln'], 'CTT': ['Lys'],
+                                         'GAA': ['Phe'], 'GAC': ['Val'], 'GAG': ['Leu'], 'GAT': ['Ile'],
+                                         'GCA': ['Cys'], 'GCC': ['Gly'], 'GCG': ['Arg'], 'GCT': ['Ser'],
+                                         'GGA': ['Ser'], 'GGC': ['Ala'], 'GGG': ['Pro'], 'GGT': ['Thr'],
+                                         'GTA': ['Tyr'], 'GTC': ['Asp'], 'GTG': ['His'], 'GTT': ['Asn'],
+                                         'TAA': ['Leu'], 'TAC': ['Val'], 'TAG': ['Leu'], 'TAT': ['Ile'],
+                                         'TCA': ['SeC', 'Sup'], 'TCC': ['Gly'], 'TCG': ['Arg'], 'TCT': ['Arg'],
+                                         'TGA': ['Ser'], 'TGC': ['Ala'], 'TGG': ['Pro'], 'TGT': ['Thr'],
+                                         'TTA': ['Sup'], 'TTC': ['Glu'], 'TTG': ['Gln'], 'TTT': ['Lys']})
 
 codon_to_codon_RC = Counter({'AAA': 'TTT', 'AAC': 'GTT', 'AAG': 'CTT', 'AAT': 'ATT',
                              'ACA': 'TGT', 'ACC': 'GGT', 'ACG': 'CGT', 'ACT': 'AGT',

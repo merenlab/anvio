@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # A library to search anvi'o programs based on keywords or input/output files
 # see `anvi-help` for its default client
 
@@ -50,11 +49,13 @@ class ProgramSearch:
         self.search_term_user_input = A('search-term', null)
         self.requires = A('requires', bool)
         self.provides = A('provides', bool)
+        self.can_use = A('can-use', bool)
+        self.can_provide = A('can-provide', bool)
         self.name = A('name', bool)
         self.report = A('report', null)
 
         self.headers_to_report = []
-        self.headers = ['Program', 'Description', 'Tags', 'Provides', 'Requires']
+        self.headers = ['Program', 'Description', 'Tags', 'Provides', 'Requires', 'Can Use', 'Can Provide']
         self.table = pd.DataFrame([], columns = self.headers)
 
         self.handle_inputs()
@@ -70,14 +71,15 @@ class ProgramSearch:
         if self.headers_to_report:
             return
 
-        self.headers_to_report = ['Program', 'Description', 'Provides', 'Requires']
+        self.headers_to_report = ['Program', 'Description', 'Provides', 'Requires', 'Can Use', 'Can Provide']
 
 
     def handle_inputs(self):
-        if self.requires and self.provides:
-            raise ConfigError("You can't provide --requires and --provides. Pick one.")
-        if self.name and (self.requires or self.provides):
-            raise ConfigError("You can't provide --name with --provides or --requires. Pick one.")
+        filter_flags = [self.requires, self.provides, self.can_use, self.can_provide]
+        if sum(bool(f) for f in filter_flags) > 1:
+            raise ConfigError("You can only use one of --requires, --provides, --can-use, or --can-provide at a time.")
+        if self.name and any(filter_flags):
+            raise ConfigError("You can't use --name together with --requires, --provides, --can-use, or --can-provide.")
 
         self.search_terms = []
         if self.search_term_user_input:
@@ -92,7 +94,7 @@ class ProgramSearch:
             self.headers_to_report = ['Program'] + self.report.split(',')
             for header in self.headers_to_report:
                 if header not in self.headers:
-                    raise ConfigError('%s isn\'t a valid option for --report. Here are your options (comma separate them): %s' \
+                    raise ConfigError('%s isn\'t a valid option for --report. Here are your options (comma separate them): %s'
                                            % (header, ', '.join(self.headers)))
         else:
             self.get_headers_to_report()
@@ -127,6 +129,8 @@ class ProgramSearch:
             tags = program.meta_info['tags']['value']
             provides = [item.id for item in program.meta_info['provides']['value']]
             requires = [item.id for item in program.meta_info['requires']['value']]
+            can_use = [item.id for item in program.meta_info['can_use']['value']]
+            can_provide = [item.id for item in program.meta_info['can_provide']['value']]
             description = program.meta_info['description']['value']
 
             resources = program.meta_info['resources']['value']
@@ -142,7 +146,7 @@ class ProgramSearch:
 
                 description += "<><>RESOURCES:<><>%s<>" % (resources_text)
 
-            row_info = [program.name, description, tags, provides, requires]
+            row_info = [program.name, description, tags, provides, requires, can_use, can_provide]
             row = dict(zip(self.headers, row_info))
             self.table = self.table.append(row, ignore_index = True)
 
@@ -163,6 +167,10 @@ class ProgramSearch:
                 if self.provides and header != 'Provides':
                     continue
                 if self.requires and header != 'Requires':
+                    continue
+                if self.can_use and header != 'Can Use':
+                    continue
+                if self.can_provide and header != 'Can Provide':
                     continue
                 if self.name and header != 'Program':
                     continue
@@ -264,4 +272,3 @@ class ProgramSearch:
             row.loc[header] = formatted_info
 
         return row
-

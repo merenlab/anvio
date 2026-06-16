@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 
 """The fancy additioanl data module"""
 
@@ -146,12 +144,12 @@ class AdditionalAndOrderDataBaseClass(Table, object):
             raise ConfigError("Some of the keys in your input file contain white characters at the beginning "
                               "or at the end. This is your lucky day, because anvi'o caught it, and you will "
                               "fix it before continuing, and those weird data keys will not cause any headaches "
-                              "in the future. Thank you and you are welcome. Here are the offending keys: %s." % \
+                              "in the future. Thank you and you are welcome. Here are the offending keys: %s." %
                                         (', '.join(['"%s"' % k for k in bad_keys])))
 
         if not len(data_keys):
             raise ConfigError("There is something wrong with the additional data file for %s at %s. "
-                              "It does not seem to have any additional keys for data :/" \
+                              "It does not seem to have any additional keys for data :/"
                                             % (self.target_table, additional_data_file_path))
 
         self.progress.end()
@@ -259,7 +257,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                     self.run.warning("You are exporting data from the additional data table '%s' for the "
                                      "data group '%s'. Great. Just remember that there are %d more data "
                                      "groups in your database, and you are not exporting anything from them "
-                                     "at this point (they know you're the boss, so they're not upset)." \
+                                     "at this point (they know you're the boss, so they're not upset)."
                                         % (self.target_table, self.target_data_group, len(self.available_group_names) - 1),
                                       header="FRIENDLY REMINDER", lc='yellow')
 
@@ -283,7 +281,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
     def list_data_keys(self):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
-        NOPE = lambda: self.run.info_single("There are no additional data for '%s' in this database :/" \
+        NOPE = lambda: self.run.info_single("There are no additional data for '%s' in this database :/"
                                                 % (self.target_table), nl_before=1, nl_after=1, mc='red')
 
         additional_data_keys = {}
@@ -303,9 +301,9 @@ class AdditionalAndOrderDataBaseClass(Table, object):
             group_names = [self.target_data_group] if self.target_data_group_set_by_user else self.available_group_names
 
             for group_name in group_names:
-                data_keys_in_group = database.get_single_column_from_table(self.table_name, \
-                                                                           'data_key', \
-                                                                           unique=True, \
+                data_keys_in_group = database.get_single_column_from_table(self.table_name,
+                                                                           'data_key',
+                                                                           unique=True,
                                                                            where_clause="data_group='%s'" % group_name)
                 additional_data_keys[group_name] = sorted(data_keys_in_group)
 
@@ -313,7 +311,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
             data_keys = sorted(database.get_single_column_from_table(self.table_name, 'data_key', unique=True))
 
             if not len(data_keys):
-                self.run.info_single("There are no additional data for '%s' in this database :/" \
+                self.run.info_single("There are no additional data for '%s' in this database :/"
                                                     % (self.target_table), nl_before=1, nl_after=1, mc='red')
                 database.disconnect()
                 return
@@ -346,7 +344,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
             num_keys_not_displayed = num_keys - num_keys_to_display
             if num_keys_not_displayed > 0:
-                self.run.info_single('(... %d more; use `--debug` to list all ...)' % \
+                self.run.info_single('(... %d more; use `--debug` to list all ...)' %
                                                                 (num_keys_not_displayed), nl_after = 1, mc='cyan', level=3)
 
         database.disconnect()
@@ -539,7 +537,7 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
             predicted_key_type = data_dict[key]['data_type']
 
             data_key_types[key] = predicted_key_type
-            self.run.info('Data key "%s"' % key, 'Type: %s' % (data_key_types[key]), \
+            self.run.info('Data key "%s"' % key, 'Type: %s' % (data_key_types[key]),
                                             nl_after = 1 if key == data_keys_list[-1] else 0)
 
         # we be responsible here.
@@ -590,7 +588,7 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                     layer_names[data_key] = [s.strip() for s in data_dict[data_key]['data_value'].split(',')]
             except:
                 raise ConfigError("Parsing the %s data for %s failed :/ We don't know why, because we are lazy. Please "
-                                  "take a loook at your input data and figure out :(" \
+                                  "take a loook at your input data and figure out :("
                                                                     % (data_dict[data_key]['data_type'], data_key))
 
         return layer_names
@@ -630,7 +628,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                               "here because the last command you run was something like 'show me all the data in misc' "
                               "data tables, then you may try to be more specific by explicitly defining your target "
                               "data table. If you think you have already been as sepecific as you could be, then anvi'o "
-                              "is as frustrated as you are right now :(" % \
+                              "is as frustrated as you are right now :(" %
                                     (self.target_table, self.target_data_group, ', '.join(['"%s"' % d for d in self.available_group_names])))
 
 
@@ -645,7 +643,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         self.progress.update('...')
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        additional_data_keys_in_db = database.get_single_column_from_table(self.table_name, 'data_key', unique=True, \
+        additional_data_keys_in_db = database.get_single_column_from_table(self.table_name, 'data_key', unique=True,
                         where_clause="""data_group LIKE '%s'""" % self.target_data_group)
         database.disconnect()
 
@@ -695,7 +693,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                   "would not have resulted in an exception, and anvi'o would simply returned an empty data "
                                   "dictionary. But since you are requested to get a specific list of keys ('%s'), we are raising "
                                   "an exception and break the flow just to make sure you are aware of the fact that we don't "
-                                  "see the stuff you're requesting :(" \
+                                  "see the stuff you're requesting :("
                                         % (self.db_type, self.db_path, self.target_table, ' ,'.join(additional_data_keys_requested)))
 
             if set(additional_data_keys_requested) - set(additional_data_keys_in_db):
@@ -817,7 +815,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                 predicted_key_type = type_class.__name__ if type_class else None
 
             key_types[key] = predicted_key_type
-            self.run.info('Data key "%s"' % key, 'Predicted type: %s' % (key_types[key]), \
+            self.run.info('Data key "%s"' % key, 'Predicted type: %s' % (key_types[key]),
                                             nl_after = 1 if key == data_keys_list[-1] else 0)
 
         # we be responsible here.
@@ -843,7 +841,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         if len(keys_already_in_db):
             if self.just_do_it:
                 self.run.warning('The following keys in your data dict will replace the ones that are already '
-                                 'in your %s database %s table and %s data group: %s.' \
+                                 'in your %s database %s table and %s data group: %s.'
                                                 % (self.db_type, self.target_table,
                                                    self.target_data_group, ', '.join(keys_already_in_db)))
 
@@ -1081,14 +1079,14 @@ class TableForLayerAdditionalData(AdditionalDataBaseClass):
                               "continue, and hopes that you will try again. In case you want to see a random layer name "
                               "that is only in your data, here is one: %s. In comparison, here is a random layer name "
                               "from your database: %s. If you don't want to deal with this, you could use the flag "
-                              "`--just-do-it`, and anvi'o would do something." \
-                                    % (len(layers_in_data_but_not_in_db), len(layers_in_data), self.db_type, \
+                              "`--just-do-it`, and anvi'o would do something."
+                                    % (len(layers_in_data_but_not_in_db), len(layers_in_data), self.db_type,
                                        layers_in_data_but_not_in_db.pop(), layers_in_db.pop()))
         elif len(layers_in_data_but_not_in_db) and self.just_do_it:
             self.run.warning("Listen up! %d of %d layers in your additional data were *only* in your data (which "
                              "means they are not in the %s database you are working with). But since you asked anvi'o to "
                              "keep its mouth shut, it removed the ones that were not in your database from your input "
-                             "data, hoping that the rest of your probably very dubious operation will go just fine :/" \
+                             "data, hoping that the rest of your probably very dubious operation will go just fine :/"
                                    % (len(layers_in_data_but_not_in_db), len(layers_in_data), self.db_type))
             for layer_name in layers_in_data_but_not_in_db:
                 data_dict.pop(layer_name)
@@ -1096,7 +1094,7 @@ class TableForLayerAdditionalData(AdditionalDataBaseClass):
         layers_in_db_but_not_in_data = layers_in_db.difference(layers_in_data)
         if len(layers_in_db_but_not_in_data):
             self.run.warning("Your input contains additional data for only %d of %d total number of layers in your %s "
-                             "database. Just wanted to make sure you know what's up, but we cool." \
+                             "database. Just wanted to make sure you know what's up, but we cool."
                                 % (len(layers_in_db) - len(layers_in_db_but_not_in_data), len(layers_in_db), self.db_type))
 
 
@@ -1187,7 +1185,7 @@ class TableForNucleotideAdditionalData(AdditionalDataBaseClass):
             elif pos < 0 or pos >= contig_lengths[contig]:
                 raise ConfigError("The data key '%s' (entry #%d) is not properly formatted. The contig "
                                   "'%s' exists in the database, but the position %d falls outside of "
-                                  "the contig, which has a length of %d." % \
+                                  "the contig, which has a length of %d." %
                                   (data_key, i+1, contig, pos, contig_lengths[contig]))
 
         if len(not_in_db):
@@ -1409,12 +1407,12 @@ class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
 
             if gene_callers_id not in gene_lengths:
                 raise ConfigError("There is a problem with data key '%s' (entry #%d). It specifies gene callers "
-                                  "ID %d, which does not exist." % \
+                                  "ID %d, which does not exist." %
                                   (data_key, i+1, gene_callers_id))
 
             if codon_order_in_gene < 0 or codon_order_in_gene >= gene_lengths[gene_callers_id]:
                 raise ConfigError("There is a problem with data key '%s' (entry #%d). It specifies codon_order_in_gene "
-                                  "%d, which falls outside of gene %d (its length is %d)." % \
+                                  "%d, which falls outside of gene %d (its length is %d)." %
                                   (data_key, i+1, codon_order_in_gene, gene_callers_id, gene_lengths[gene_callers_id]))
 
         database.disconnect()
@@ -1442,7 +1440,7 @@ class MiscDataTableFactory(TableForItemAdditionalData, TableForLayerAdditionalDa
             table_classes[target_data_table].__init__(self, args, r=self.run, p=self.progress)
         except KeyError:
             raise ConfigError("MiscDataTableFactory does not know about target data tables for '%s' :( "
-                              "You can go to the online documentation, or you can try any of %s" % \
+                              "You can go to the online documentation, or you can try any of %s" %
                               (target_data_table, ', '.join(["'%s'" % table for table in table_classes])))
 
 

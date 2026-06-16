@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A script to remove replicated genomes from a list of internal and external genome databases or fasta files"""
 
 import sys
@@ -16,7 +15,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ekiefl', 'mahmoudyousef98']
-__requires__ = ['external-genomes', 'internal-genomes', 'fasta', 'genome-similarity']
+__requires__ = ['external-genomes', 'fasta']
+__can_use__ = ['internal-genomes', 'genome-similarity']
 __provides__ = ['fasta']
 __description__ = ("Identify redundant (highly similar) genomes")
 
@@ -85,7 +85,7 @@ def get_args():
                          the pyANI help for v0.2.7 at https://github.com/widdowquinn/pyani, the method 'ANIm' uses\
                          MUMmer (NUCmer) to align the input sequences. 'ANIb' uses BLASTN+ to align 1020nt fragments\
                          of the input sequences. 'ANIblastall': uses the legacy BLASTN to align 1020nt fragments\
-                         Finally, 'TETRA': calculates tetranucleotide frequencies of each input sequence",\
+                         Finally, 'TETRA': calculates tetranucleotide frequencies of each input sequence",
                          choices=['ANIm', 'ANIb', 'ANIblastall', 'TETRA'])
     groupE.add_argument(*anvio.A('min-alignment-fraction'), **anvio.K('min-alignment-fraction', params_dict={'default':0.25}))
     groupE.add_argument(*anvio.A('significant-alignment-length'), **anvio.K('significant-alignment-length'))

@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """
     A module for dealing with genome storages.
 
@@ -279,7 +277,7 @@ class GenomeDescriptions(object):
                              "identical to each other). But since you have instructed anvi'o to ignore that "
                              "it is now continuing with the flow (even though %d hashes for your internal "
                              "genomes and %d) hashes for your external genomes appeared more than once). "
-                             "See below the genome names with identical hashes:" \
+                             "See below the genome names with identical hashes:"
                                      % (len(self.internal_genomes_with_identical_hashes),
                                         len(self.external_genomes_with_identical_hashes)),
                                         overwrite_verbose=True)
@@ -409,7 +407,7 @@ class GenomeDescriptions(object):
                 self.run.warning("Some of your genomes (%d of the %d, to be precise) seem to have no functional annotation. Since this workflow "
                                  "can only use matching functional annotations across all genomes involved, having even one genome without "
                                  "any functions means that there will be no matching function across all. Things will continue to work, but "
-                                 "you will have no functions at the end for your gene clusters." % \
+                                 "you will have no functions at the end for your gene clusters." %
                                                 (len(genomes_with_no_functional_annotation), len(self.genomes)))
 
             # make sure it is clear.
@@ -436,7 +434,7 @@ class GenomeDescriptions(object):
                 # none of the functions are common
                 self.run.warning("Although some of your genomes had some functional annotations, none of them were common to all genomes :/ "
                                  "Anvi'o will continue working with them, but you will have no functions available to you downstream. Just "
-                                 "so you know, these are the annotation sources observed at least once in at least one of your genomes: '%s'" % \
+                                 "so you know, these are the annotation sources observed at least once in at least one of your genomes: '%s'" %
                                                                     (', '.join(all_function_annotation_sources_observed)))
                 self.functions_are_available = False
             else:
@@ -450,14 +448,14 @@ class GenomeDescriptions(object):
                                      "functional annotation sources that are common to all of your genomes, and they will be used whenever "
                                      "it will be appropriate. Here they are: '%s'. The bad news is you had more function annotation sources, "
                                      "but they were not common to all genomes. Here they are so you can say your goodbyes to them (because "
-                                     "they will not be used): '%s'" % \
+                                     "they will not be used): '%s'" %
                                             (', '.join(self.function_annotation_sources), ', '.join(self.function_annotation_sources_some_genomes_miss)))
                 else:
                     # every function ever observed is common to all genomes.
                     self.run.warning("Good news! Anvi'o found all these functions that are common to all of your genomes and will use them for "
                                      "downstream analyses and is very proud of you: '%s'." % (', '.join(self.function_annotation_sources)), lc='green')
 
-    
+
     def list_function_sources(self):
         if not self.initialized:
             self.load_genomes_descriptions()
@@ -663,7 +661,7 @@ class GenomeDescriptions(object):
             info = []
             for genome_name in genomes_with_non_reported_gene_calls_from_other_gene_callers:
                 info.append('%s (%s)' % (genome_name,
-                                         ', '.join(['%d gene calls by "%s"' % (tpl[1], tpl[0]) for \
+                                         ', '.join(['%d gene calls by "%s"' % (tpl[1], tpl[0]) for
                                                          tpl in self.genomes[genome_name]['gene_calls_from_other_gene_callers'].items()])))
 
             gene_caller = list(self.genomes.values())[0]['gene_caller']
@@ -673,13 +671,13 @@ class GenomeDescriptions(object):
                                  "the gene caller anvi'o used, which was set to '%s' either by default, or because you asked for it. "
                                  "The following genomes contained genes that were not processed (this may be exactly what you expect "
                                  "to happen, but if was not, you may need to use the `--gene-caller` flag to make sure anvi'o is using "
-                                 "the gene caller it should be using): %s." % \
+                                 "the gene caller it should be using): %s." %
                                                 (gene_caller, ', '.join(info)), header="PLEASE READ CAREFULLY", lc='green')
             else:
                 self.progress.reset()
                 self.run.warning("Some of your genomes had gene calls identified by gene callers other than "
                                  "the anvi'o default, '%s', and will not be processed. Use the `--debug` flag "
-                                 "if this sounds important and you would like to see more of this message." % \
+                                 "if this sounds important and you would like to see more of this message." %
                                                 (gene_caller), header="JUST FYI", lc='green')
 
         # check whether every genome has at least one gene call.
@@ -703,8 +701,8 @@ class GenomeDescriptions(object):
 
 
     def search_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False, delimiter=',', case_sensitive=False, exact_match=False, genes_as_split_names=False):
-        """Search for gene functions matching the given terms in all contigs databases. Returns dictionaries 
-        in which the genome name has been added to the item matches and to the verbose (gene call) information 
+        """Search for gene functions matching the given terms in all contigs databases. Returns dictionaries
+        in which the genome name has been added to the item matches and to the verbose (gene call) information
         so that downstream reports can specify in which genome each match has been found.
         """
 
@@ -740,8 +738,8 @@ class GenomeDescriptions(object):
             args.contigs_db = self.genomes[genome_name]['contigs_db_path']
             contigs_db = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
             genome_matching_item_names_dict, genome_verbose_output = contigs_db.search_for_gene_functions(search_terms, requested_sources=requested_sources, verbose=verbose, full_report=full_report, delimiter=delimiter, case_sensitive=case_sensitive, exact_match=exact_match, genes_as_split_names=genes_as_split_names)
-            
-            # convert each item to a tuple of (genome name, item) to allow for separating the results later 
+
+            # convert each item to a tuple of (genome name, item) to allow for separating the results later
             for term, item_list in genome_matching_item_names_dict.items():
                 if item_list: # only add non-empty lists to the combined dictionary of matches
                     genome_matching_item_names_dict[term] = [(genome_name, l) for l in item_list]
@@ -1304,7 +1302,9 @@ class AggregateFunctions:
         already_in_the_dict = [g for g in layer_names if g in self.layer_names_considered]
         if len(already_in_the_dict):
             raise ConfigError(f"Anvi'o is not happy because there are some genome or metagenome names that are not unique "
-                              f"across all input databases :/ Here is an example: {already_in_the_dict[0]}.")
+                              f"across all input databases and files. Note that if you provide multiple input types (like "
+                              f"both an external genomes file and a genomes storage database), anvi'o expects the inputs "
+                              f"to contain different genomes. :/ Here is an example duplicated (meta)genome name: {already_in_the_dict[0]}.")
         else:
             # you good fam
             pass

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 
@@ -13,10 +12,10 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ivagljiva']
-__requires__ = ["contigs-db", "kegg-data", "kegg-functions", "profile-db", "collection", "bin",
-                "external-genomes", "internal-genomes", "metagenomes", "user-modules-data",
-                "enzymes-txt", "pan-db", "genomes-storage-db"]
-__provides__ = ["kegg-metabolism","user-metabolism"]
+__requires__ = ["contigs-db", "kegg-data", "kegg-functions"]
+__can_use__ = ["profile-db", "collection", "bin", "external-genomes", "internal-genomes",
+               "metagenomes", "user-modules-data", "enzymes-txt", "pan-db", "genomes-storage-db"]
+__provides__ = ["kegg-metabolism", "user-metabolism"]
 __description__ = "Reconstructs metabolic pathways and estimates pathway completeness for a given set of contigs"
 
 
@@ -99,7 +98,7 @@ def get_args():
                                                    "metabolic capabilities encoded by this list of enzymes.")
     groupX.add_argument(*anvio.A('enzymes-txt'), **anvio.K('enzymes-txt', {'required': False}))
 
-    groupN = parser.add_argument_group('INPUT #5 - ESTIMATION ON A PANGENOME', 
+    groupN = parser.add_argument_group('INPUT #5 - ESTIMATION ON A PANGENOME',
                                                    "If you have a collection of binned gene clusters in a pangenome, you can estimate "
                                                    "metabolism on each bin. You will need to provide the collection name (and optionally, "
                                                    "bin name(s)) -- see INPUT #2 section above. This program will use the most common "

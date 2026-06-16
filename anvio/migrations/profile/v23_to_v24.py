@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 import argparse
@@ -136,7 +135,7 @@ def migrate(db_path):
         else:
             total_reads_mapped = int(total_reads_mapped)
             layer_additional_data_table.add({samples: {'total_reads_mapped': total_reads_mapped}}, ['total_reads_mapped'])
-        
+
         full_upgrade = True
     else:
         full_upgrade = False
@@ -160,11 +159,11 @@ def migrate(db_path):
 
     if full_upgrade:
         run.info_single("Your profile db is now version %s. You can learn more about what happened here "
-                        "by taking a look at this issue: https://github.com/merenlab/anvio/issues/800" \
+                        "by taking a look at this issue: https://github.com/merenlab/anvio/issues/800"
                                                             % next_version, nl_after=1, nl_before=1, mc='green')
     else:
         run.info_single("Your profile db is now version %s. But essentially nothing really happened to your "
-                        "database since it was a blank profile (which is OK, move along)." \
+                        "database since it was a blank profile (which is OK, move along)."
                                                             % next_version, nl_after=1, nl_before=1, mc='green')
 
 

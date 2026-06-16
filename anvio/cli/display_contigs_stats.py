@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 from anvio.argparse import ArgumentParser
@@ -20,7 +19,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ozcan', 'FlorianTrigodet', 'watsonar']
 __requires__ = ['contigs-db']
-__provides__ = ['contigs-stats', 'interactive', 'svg']
+__provides__ = ['contigs-stats', 'interactive']
+__can_provide__ = ['svg']
 __description__ = "Start the anvi'o interactive interface for viewing or comparing contigs statistics."
 
 

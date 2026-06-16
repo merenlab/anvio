@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 import anvio
@@ -17,7 +16,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ekiefl']
-__requires__ = ['structure-db','genes-of-interest-txt']
+__requires__ = ['structure-db']
+__can_use__ = ['genes-of-interest-txt']
 __provides__ = ['protein-structure-txt']
 __description__ = "Export .pdb structure files from a structure database"
 

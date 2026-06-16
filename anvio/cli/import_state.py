@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 
@@ -17,7 +16,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['pan-db', 'profile-db', 'state-json']
+__requires__ = ['state-json', 'profile-db']
+__can_use__ = ['pan-db']
 __provides__ = ['state']
 __description__ = "Import an anvi'o state into a profile database"
 
@@ -27,7 +27,7 @@ def main():
     run = terminal.Run()
 
     try:
-        utils.is_pan_or_profile_db(args.pan_or_profile_db, genes_db_is_also_accepted=True)
+        utils.is_pan_or_profile_db(args.pan_or_profile_db, genes_db_is_also_accepted=True, pan_graph_db_is_also_accepted=True)
         filesnpaths.is_file_json_formatted(args.state)
         utils.is_this_name_OK_for_database('--name parameter', args.name)
 

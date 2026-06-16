@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 
@@ -17,7 +16,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ["contigs-db", "hmm-source", "hmm-hits"]
+__requires__ = ["contigs-db"]
+__can_use__ = ["hmm-source", "hmm-hits"]
 __description__ = "Remove HMM hits from an anvi'o contigs database"
 
 

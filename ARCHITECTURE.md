@@ -182,6 +182,25 @@ All exception classes inherit from `AnvioError` and automatically format with co
 - `TerminalError` — terminal/progress object misuse
 - `GenesDBError`, `TRNAIdentifierError`, etc. — domain-specific
 
+### Warnings vs. Errors
+
+`run.warning(...)` is for genuinely advisory information where the program can still proceed correctly and the user's intent is unambiguous. It is **not** a way to paper over bad input.
+
+**Conflicting or nonsensical flag combinations must always raise a `ConfigError`**, never issue a warning and silently ignore one of the flags. If a user passes two flags that are mutually exclusive or where one makes the other meaningless, they made a mistake — tell them clearly and stop:
+
+```python
+# correct
+if args.include_contig_info and args.matrix_format:
+    raise ConfigError("--include-contig-info has no effect with --matrix-format. "
+                      f"Please remove one of these flags and try again.")
+
+# wrong — silently discarding a flag the user explicitly passed
+if args.include_contig_info and args.matrix_format:
+    run.warning("--include-contig-info has no effect with --matrix-format and will be ignored.")
+```
+
+The same rule applies to any situation where a flag, parameter, or input value would be silently ignored. Silently ignoring user intent is always worse than stopping with a clear error.
+
 ### Global Flags from sys.argv
 
 Set at import time in `anvio/__init__.py` by inspecting `sys.argv` directly:
@@ -261,13 +280,59 @@ Every CLI module has these module-level variables:
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__   = "GPL 3.0"
 __version__   = anvio.__version__
-__authors__   = ['meren', 'ekiefl']          # GitHub handles
-__requires__  = ['contigs-db', 'profile-db'] # anvi'o artifact types consumed
-__provides__  = ['collection']               # anvi'o artifact types produced
+__authors__   = ['meren', 'ekiefl']          # GitHub handles of people who have developed this program
+__requires__  = ['contigs-db', 'profile-db'] # artifacts the program always needs
+__provides__  = ['collection']               # artifacts the program always produces
+__can_use__   = ['external-genomes']         # artifacts the program can optionally consume
+__can_provide__ = ['misc-data-items-order']  # artifacts the program may optionally produce
 __description__ = "One-sentence description of what this program does"
 ```
 
-`__requires__` and `__provides__` are used by `anvi-help` and the programs network graph.
+All four lists feed `anvi-help`, the programs network graph, and `anvio/programs.py`, which builds a global map of artifact/program relationships. They control how artifacts and programs are connected in the dependency graph shown at `https://anvio.org/help/` (which simply serves the output of `anvi-script-gen-help-pages`).
+
+### `__requires__` vs `__can_use__`
+
+`__requires__` lists artifacts the program **always needs**, as in it cannot run without them and will immediately fail if they are absent. `__can_use__` lists artifacts the program **optionally accepts**: they unlock additional behavior or modes when present, but the program runs fine without them.
+
+Real examples from the codebase:
+
+```python
+# anvi-get-sequences-for-hmm-hits: always needs a contigs-db and HMM data,
+# but can optionally work across multiple genomes via external/internal genomes files
+__requires__  = ['contigs-db', 'hmm-source', 'hmm-hits']
+__can_use__   = ['profile-db', 'external-genomes', 'internal-genomes']
+
+# anvi-estimate-metabolism: always needs a contigs-db and KEGG data,
+# but can accept profile/collection/bin info, genome lists, and more
+__requires__  = ['contigs-db', 'kegg-data', 'kegg-functions']
+__can_use__   = ['profile-db', 'collection', 'bin', 'external-genomes',
+                 'internal-genomes', 'metagenomes', 'pan-db', 'genomes-storage-db']
+```
+
+### `__provides__` vs `__can_provide__`
+
+The same distinction applies to outputs. `__provides__` lists artifacts the program **always produces**. `__can_provide__` lists artifacts it **may produce** depending on flags or input.
+
+```python
+# anvi-get-sequences-for-hmm-hits always produces a genes-fasta,
+# but only produces a concatenated alignment when --concatenate-genes is used
+__provides__     = ['genes-fasta']
+__can_provide__  = ['concatenated-gene-alignment-fasta']
+```
+
+### Resolving hard cases
+
+Some programs accept several different input combinations that are all functionally equivalent. For instance, a single `contigs-db`, or an `external-genomes` file, and/or an `internal-genomes` file. Deciding what goes in `__requires__` vs `__can_use__` requires judgment:
+
+**Rule of thumb:** put the most common / most atomic input in `__requires__`, and put the alternative or enriching inputs in `__can_use__`. A practical example:
+
+- A program that works on a single genome via `--contigs-db` **or** many genomes via `--external-genomes` / `--internal-genomes` should list `contigs-db` in `__requires__` and the genomes-file artifacts in `__can_use__`. This is intentionally imprecise. The program technically requires *one of* several combinations, but it keeps the dependency graph readable and matches the program's most basic usage.
+
+- A program that accepts a `profile-db` to enable per-sample operations, but works on raw contigs without it, should leave `profile-db` out of `__requires__` and put it in `__can_use__`.
+
+- When an artifact is needed only together with another optional artifact (e.g., `bin` only makes sense when `collection` is also provided), list both in `__can_use__` rather than promoting either to `__requires__`.
+
+The goal is a dependency graph where `__requires__` edges represent hard blockers and `__can_use__` edges represent enrichments. Erring toward putting things in `__can_use__` is better than polluting `__requires__` with artifacts that only apply to one of several operating modes.
 
 ---
 
@@ -642,6 +707,39 @@ Users group splits into "bins" and name groups of bins "collections". Stored in 
 See https://anvio.org/install/
 
 The development mode installation will allow editing the code and immediately testing it without re-installing anything.
+
+### Linting
+
+Anvi'o uses [Ruff](https://docs.astral.sh/ruff/) for linting, configured in `ruff.toml`, and linting is enforced via a GitHub Actions workflow which is described at `.github/workflows/git-hooks.yaml`. The linting check will runs on every pull request, and if a PR introduces code that violates any of the rules in `ruff.toml`, the CI job will fail and the PR will be blocked until it is fixed. If you directly commit to `master`, even if your changes violate the rules, your commit will go through, but the repository admins will get an email about it. So the best strategy here is to **catch these violations before pushing anything** to `master`.
+
+To catch violations locally **before pushing**, please install [pre-commit](https://pre-commit.com/) and set up the git hook so it is in effect. For this you need to run the following commands in your anvi'o environment:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+After that, `ruff` will run automatically every time you run `git commit`. If it finds and auto-fixes something, the commit will be aborted so you can review the fix, re-stage, and commit again.
+
+You can run the linter manually at any time:
+
+```bash
+pre-commit run --all-files
+```
+
+You can also run `ruff` directly, which will go much faster than running pre-commit, but it will require you to also install `ruff` in your environment:
+
+```bash
+ruff check .
+```
+
+You can install `ruff` using `pip`:
+
+```
+pip install ruff
+```
+
+One issue with pre-commit is that if you wish to do partial commits (i.e., staging only one file while other files have unstaged changes) you may run into issues. There are multiple ways to solve this, but the simplest (and laziest) is to add `--no-verify` to your `git commit` command.
 
 ### Running Tests
 

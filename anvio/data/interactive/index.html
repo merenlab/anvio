@@ -73,9 +73,6 @@
     <!-- /Table sorter -->
 
     <script type="text/javascript" src="./node_modules/marked/marked.min.js" onerror='alertDependencyError("marked")'></script>
-    <link rel="stylesheet" href="./node_modules/bootstrap-markdown/css/bootstrap-markdown.min.css" type="text/css" />
-    <script type="text/javascript" src="./node_modules/bootstrap-markdown/js/bootstrap-markdown.js" onerror='alertDependencyError("bootstrap-markdown", true)' onload='alertDependencyError(null, true)'></script>
-    <link rel="stylesheet" href="css/markdown-local.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="css/loading.css" />
     <link rel="stylesheet" type="text/css" href="css/glowing-button.css" />
     <link rel="stylesheet" type="text/css" href="css/popover.css" />
@@ -143,8 +140,8 @@
                                 </a>
                             </li>
                             <li id="description_panel_tab" role="presentation" class="nav-item">
-                                <a href="#description_tab" aria-controls="description_tab" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block" >
-                                    <i class="nav-icon fs-2x bi bi-file-richtext"></i><i class="nav-icon-fill fs-2x bi bi-file-richtext-fill"></i><span role="tab" class="d-block">Notes</span>
+                                <a href="#" class="nav-link navbar-btn d-block" id="description_toggle_btn" onclick="description_panel.toggle(); return false;">
+                                    <i class="nav-icon fs-2x bi bi-file-richtext"></i><i class="nav-icon-fill fs-2x bi bi-file-richtext-fill"></i><span class="d-block">Notes</span>
                                 </a>
                             </li>
                             <li id="search_panel_tab" role="presentation" class="nav-item">
@@ -859,10 +856,16 @@
                         <div id="bin-settings" class="form-horizontal mt-3">
                             <div class="panel-body">
 
+                                <span class="settings-header mb-3 mt-3"><img src="images/bins-icon-default.svg" alt="Item Icon"/>Bins</span>
+
                                 <div class="form-group form-margin full-mode refine-mode mt-3" id="taxonomy-ops-wrapper">
                                     <div id="estimate-taxonomy-check" class="d-flex">
                                         <input type="checkbox" id="estimate_taxonomy" value="value" onclick="this.onchange();" onchange="toggleTaxonomyEstimation();">
                                         <span class="ml-1" for="estimate_taxonomy">Realtime taxonomy estimation for bins (whenever possible).</span>
+                                    </div>
+                                    <div class="d-flex mt-2">
+                                        <input type="checkbox" id="select_contigs_rather_than_splits" onclick="this.onchange();" onchange="toggleSelectContigsRatherThanSplits();">
+                                        <span class="ml-1" for="select_contigs_rather_than_splits">Select contigs rather than splits</span>
                                     </div>
                                     <div class="mt-2" id="taxonomy-labeling-container" style="display: none;">
                                         <p class="d-flex mb-1">
@@ -960,6 +963,7 @@
                     <!-- SEARCH Tab -->
                     <div role="tabpanel" class="tab-pane fade show" id="search_tab">
                         <div class="mt-1 p-2" id="search_tab_content" tabindex="-1">
+                            <span class="settings-header mb-3 mt-3"><img src="images/search-panel-icon.svg" alt="Item Icon"/>Search</span>
                             <div class="shadow-box focus-box pb-3 pr-3 pl-3 mb-3 rounded">
                                 <span class="settings-header mb-3 pt-2" data-help='search-expression'>Search with expression</span>
                                 <div class="form-horizontal">
@@ -1150,6 +1154,7 @@
 
                     <!-- DATA TAB -->
                     <div role="tabpanel" class="tab-pane fade show" id="data_tab">
+                        <span class="settings-header mb-3 mt-3"><img src="images/data-panel-icon.svg" alt="Item Icon"/>Data</span>
                         <p class="mt-3" style="color: #AAAAAA; padding: 5px;">This panel will show you information for splits when you hover them with your mouse pointer on the tree.</p>
                         <div id="mouse_hover">
                             <table class="table table-striped" style="margin-bottom: 0px; background-color: rgba(100,100,100,0.2); font-weight: bold; word-break: break-all;">
@@ -1175,13 +1180,6 @@
                                     </table>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- NOTES TAB -->
-                    <div role="tabpanel" class="tab-pane fade show" id="description_tab">
-                        <div class="mt-3">
-                            <textarea id="description-editor" rows="10"></textarea>
                         </div>
                     </div>
 
@@ -1632,5 +1630,33 @@
     // open all links in a new tab
     $("body a[href^='http']").attr("target","_blank");
     </script>
+
+    <!-- FLOATING DESCRIPTION PANEL -->
+    <div id="description-panel">
+      <div class="description-panel-header">
+        <span class="description-panel-title">
+          <i class="bi bi-file-richtext me-2"></i> Notes
+        </span>
+        <div class="description-panel-actions">
+          <button id="description-edit-btn" class="description-action-btn" title="Edit" onclick="description_panel.edit()">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button id="description-save-btn" class="description-action-btn description-save-hidden" title="Save" onclick="description_panel.save()">
+            <i class="bi bi-floppy"></i>
+          </button>
+          <button id="description-cancel-btn" class="description-action-btn description-save-hidden" title="Cancel edit" onclick="description_panel.cancel_edit()">
+            <i class="bi bi-x-circle"></i>
+          </button>
+          <button class="description-action-btn description-close-btn" title="Close" onclick="description_panel.hide()">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      </div>
+      <div class="description-panel-body">
+        <div id="description-view-content" class="description-markdown-content"></div>
+        <textarea id="description-edit-content" class="description-textarea description-save-hidden" placeholder="Write notes in Markdown format..."></textarea>
+      </div>
+    </div>
+
 </body>
 </html>

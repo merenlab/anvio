@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """
     Common functions and classes for SCG/TRNA taxonomy.
 """
@@ -270,9 +268,9 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
 
         if self.metagenome_mode or anvio.DEBUG:
             self.run.info_single(f"A total of %s {self._SOURCE_DATA}s with taxonomic affiliations were successfully initialized "
-                                 f"from the contigs database 🎉 Following shows the frequency of these {self._ITEMS}: %s." % \
+                                 f"from the contigs database 🎉 Following shows the frequency of these {self._ITEMS}: %s." %
                                             (pp(len(self.gene_callers_id_to_item_taxonomy_dict)),
-                                             ', '.join(["%s (%d)" % (g, self.frequency_of_items_with_taxonomy[g]) \
+                                             ', '.join(["%s (%d)" % (g, self.frequency_of_items_with_taxonomy[g])
                                                                 for g in self.frequency_of_items_with_taxonomy])), nl_before=1)
 
 
@@ -1308,7 +1306,7 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
                 num_finished_processes += 1
 
                 self.progress.increment(increment_to=num_finished_processes)
-                self.progress.update(f"%s of %s {self._ITEMS} are finished in %s processes with %s threads." \
+                self.progress.update(f"%s of %s {self._ITEMS} are finished in %s processes with %s threads."
                                         % (num_finished_processes, total_num_processes, int(self.num_parallel_processes), self.num_threads))
 
             except KeyboardInterrupt:

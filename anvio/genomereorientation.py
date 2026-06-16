@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# coding: utf-8
 """Reorient circular genomes to match a reference genome coordinate system."""
 
 import os
@@ -83,6 +82,7 @@ class GenomeReorienter:
         self.minimap2_preset = A('minimap2_preset') or "asm5"
         self.near_start_bp = A('near_start_bp') or 10000
         self.use_dnaa_for_reference_orientation = A('use_dnaa_for_reference_orientation') or False
+        self.use_auto_reference_as_is = A('use_auto_reference_as_is') or False
         self.scaffold_fragmented = A('scaffold_fragmented') or False
         self.min_contig_length = A('min_contig_length') or 1000
 
@@ -132,7 +132,7 @@ class GenomeReorienter:
                 self.run.info("Reference rotation", "Not needed (DnaA gene is already at position 0 .. yes, that happened o_O)", nl_after=1)
 
         # If reference was auto-selected and not using DnaA, find the optimal starting position
-        elif not reference_was_user_specified:
+        elif not reference_was_user_specified and not self.use_auto_reference_as_is:
             result = self._find_optimal_reference_start()
             if result:
                 optimal_position, genomes_covering, total_genomes = result
@@ -165,7 +165,7 @@ class GenomeReorienter:
         rotation_msg = "Copied reference genome without reorientation."
         if self.use_dnaa_for_reference_orientation:
             rotation_msg = "Reference genome (rotated to DnaA gene position)."
-        elif not reference_was_user_specified:
+        elif not reference_was_user_specified and not self.use_auto_reference_as_is:
             rotation_msg = "Reference genome (possibly rotated to optimal start position)."
 
         results = [ReorientationResult(self.reference_name, "reference",
@@ -269,6 +269,15 @@ class GenomeReorienter:
             num_sequences = utils.get_num_sequences_in_fasta(genome_path)
             self.genomes[genome_name]['num_contigs'] = num_sequences
             self.genomes[genome_name]['path'] = genome_path
+
+        if self.use_auto_reference_as_is and self.reference_name:
+            raise ConfigError("9 9 9. You can't use `--reference` with `--use-auto-reference-as-is`. You have to "
+                              "choose one of them :/")
+
+        if self.use_auto_reference_as_is and self.use_dnaa_for_reference_orientation:
+            raise ConfigError("Well .. `--use-auto-reference-as-is` and `--use-dnaa-for-reference-orientation` are "
+                              "not compatible with one another. The former keeps the auto-selected reference untouched. "
+                              "The latter rotates it. Incompatible stuff.")
 
         # Validate reference is single-contig if user-specified
         if self.reference_name:

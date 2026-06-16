@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """
     Low-level db operations.
 """
@@ -628,13 +626,13 @@ class DB:
 
         if len(set(dataframe.columns)) != len(list(dataframe.columns)):
             raise ConfigError("insert_rows_from_dataframe :: There is at least one duplicate column "
-                              "name in the dataframe. Here is the list of columns: [{}].".\
+                              "name in the dataframe. Here is the list of columns: [{}].".
                                format(", ".join(list(dataframe.columns))))
 
         if set(dataframe.columns) != set(self.get_table_structure(table_name)):
             raise ConfigError("insert_rows_from_dataframe :: The columns in the dataframe "
                               "do not equal the columns of the requested table. "
-                              "The columns from each are respectively ({}); and ({}).".\
+                              "The columns from each are respectively ({}); and ({}).".
                                format(", ".join(list(dataframe.columns)),
                                       ", ".join(self.get_table_structure(table_name))))
 

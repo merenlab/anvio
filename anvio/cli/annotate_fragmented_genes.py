@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Identify and annotate fragmented genes (pseudogenes) in pangenomes"""
 
 import sys
@@ -16,7 +15,8 @@ __credits__ = ["Sean Crosson"]
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['pan-db', 'genomes-storage-db', 'external-genomes']
+__requires__ = ['pan-db', 'genomes-storage-db']
+__can_use__ = ['external-genomes']
 __provides__ = ['functions']
 __description__ = ("Identify fragmented genes (pseudogenes) in a pangenome by finding adjacent genes from "
                    "the same genome within the same gene cluster, and annotate them under a 'PSEUDO_GENES' "

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import re
 import sys
@@ -21,8 +20,9 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ["profile-db", "contigs-db", "genes-db"]
-__provides__ = ['misc-data-items', 'misc-data-layers']
+__requires__ = ["contigs-db"]
+__can_use__ = ["profile-db", "genes-db"]
+__can_provide__ = ['misc-data-items', 'misc-data-layers']
 __description__ = "A program to find one or more sequence motifs in contig or gene sequences, and store their frequencies"
 
 

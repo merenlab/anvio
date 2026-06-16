@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """This file contains classes for predicting metabolic exchanges via the reaction network and KGML processing subsystems."""
 
 import os
@@ -7,18 +6,15 @@ import sys
 import multiprocessing
 from copy import deepcopy
 from argparse import Namespace
-from collections import defaultdict
 
 import anvio
-import anvio.kgml as kgml
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.kgmlnetworkops as nw
 import anvio.reactionnetwork as rn
 import anvio.filesnpaths as filesnpaths
 
-from anvio.dbops import ContigsDatabase
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.errors import ConfigError
 from anvio.genomedescriptions import GenomeDescriptions
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -58,6 +54,7 @@ class ExchangePredictorArgs():
         self.report_compounds_with_no_prediction = A('report_compounds_with_no_prediction')
         self.no_pathway_walk = A('no_pathway_walk')
         self.pathway_walk_only = A('pathway_walk_only')
+        self.max_reactions_for_pathway_map_walk = A('max_reactions_for_pathway_map_walk')
 
         # this class can either receive the in/exclude_pathway_maps attributes as a string (from the client program)
         # or as a set (when initializing it directly in Python, as is done in the MultiPredictor class)
@@ -177,7 +174,7 @@ class ExchangePredictorArgs():
                 header_list = exchange_header
             if mode == 'compounds-with-no-prediction':
                 header_list = base_header
-            
+
             if len(output_dicts[mode]):
                 if mode == 'evidence':
                     file_obj.append(output_dicts[mode], do_not_write_key_column=True, none_value="None")
@@ -296,6 +293,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             # Hence, we strictly control the number of threads in use by having two functions for doing essentially the same thing.
             # (BONUS: the single-threaded version has more precise terminal output since it knows exactly what is currently being processed)
             self.run.warning("", header="PATHWAY MAP WALK OUTPUT", lc='cyan')
+            self.run.info("Max number of reactions in any given walk", self.max_reactions_for_pathway_map_walk)
             if self.num_threads == 1:
                 failed_maps = self.walk_all_pathway_maps_singlethread()
             else:
@@ -352,7 +350,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                 data_dicts['compounds-with-no-prediction'].update(no_prediction_rn)
                 self.run.warning(f"Identified {len(data_dicts['compounds-with-no-prediction'])} compounds with no prediction",
                                  header='COMPOUNDS WITH NO PREDICTION', lc='green')
-            
+
             # clean up to spare some memory
             del pot_exchanged_rn, uniq_rn, no_prediction_rn
 
@@ -482,6 +480,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         walker_args.kegg_pathway_number = pathway_map
         walker_args.compound_fate = fate
         walker_args.max_gaps = gaps
+        walker_args.max_reactions = self.max_reactions_for_pathway_map_walk
         walker_args.keep_intermediate_chains = True
         walker_args.verbose = False
         return walker_args
@@ -522,6 +521,9 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             self.progress.update(f"{processed_count} / {num_pms_to_process} Pathway Maps (current Map: {pm})")
             try:
                 for g in self.genomes_to_compare:
+                    if anvio.DEBUG:
+                        self.progress.reset()
+                        self.run.info_single(f"Started walking over map {pm} for genome {g}")
                     wargs = self.get_args_for_pathway_walker(self.genomes_to_compare[g]['network'], pm, fate='produce', gaps=self.maximum_gaps)
                     walker = nw.KGMLNetworkWalker(wargs)
                     production_chains = walker.get_chains()
@@ -550,6 +552,9 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                         else:
                             self.compound_to_pathway_walk_chains[modelseed_id][pm][g] = {'produce': production_chains[compound] if compound in production_chains else None,
                                                                                 'consume': consumption_chains[compound] if compound in consumption_chains else None}
+                    if anvio.DEBUG:
+                        self.progress.reset()
+                        self.run.info_single(f"Successfully finished map {pm} for genome {g}")
             except ConfigError as e:
                 self.progress.reset()
                 self.run.warning(f"Just FYI, attempting to do a pathway walk for Pathway Map {pm} resulted in an "
@@ -936,7 +941,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         no_prediction_compounds = {}
         pathway_walk_evidence = {}
         pathway_walk_dict_key = 0
-        
+
         num_compounds_to_process = len(self.compound_to_pathway_walk_chains)
         processed_count = 0
         num_skipped = 0
@@ -1086,12 +1091,12 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
                         def update_reported_pathway_evidence_for_chain(current_chain, comparison_chain):
                             """Updates variables like overall_max_prior with values from the current pathway map as the new 'best'
-                            evidence for an exchange. current_chain and comparison_chain store the length, overlap length, overlap proportion, and map id of 
+                            evidence for an exchange. current_chain and comparison_chain store the length, overlap length, overlap proportion, and map id of
                             the current 'best' reaction chain and the comparison chain, respectively."""
                             cur_max, cur_overlap, cur_prop, cur_map = current_chain
                             comp_max, comp_overlap, comp_prop, comp_map = comparison_chain
                             best_evidence = current_chain # by default we don't update anything
-                            
+
                             if cur_max is not None:
                                 if comp_max is not None and comp_max >= cur_max: # look for the longest chain
                                     if comp_max == cur_max: # if they have the same length, take the one that has smallest real number overlap proportion
@@ -1284,7 +1289,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     potentially_exchanged_compounds[compound_id]['consumption_overlap_proportion'] = None
                     potentially_exchanged_compounds[compound_id]['production_chain_pathway_map'] = None
                     potentially_exchanged_compounds[compound_id]['consumption_chain_pathway_map'] = None
-            else: # no prediction for this compound. 
+            else: # no prediction for this compound.
                 if self.report_compounds_with_no_prediction:
                     no_prediction_compounds[compound_id] = {'compound_name': compound_name,
                                                         'genomes': all_genome_names if all_genome_names else None,
@@ -1431,7 +1436,7 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
             self.run.info_single(f"Child process is starting prediction with an ExchangePredictorSingle class using {args_single.num_threads} threads."
                                  f"If this value is one less than the number provided to the --num-threads parameter, everything is fine. The child "
                                  f"process itself is using 1 thread so we don't let it spawn more than N-1 additional processes.")
-        data_dicts_for_one_pair, failed_maps_list = ExchangePredictorSingle(args_single, progress=progress_quiet, run=run_quiet \
+        data_dicts_for_one_pair, failed_maps_list = ExchangePredictorSingle(args_single, progress=progress_quiet, run=run_quiet
                                                             ).predict_exchanges(output_files_dictionary=self.output_file_dict,
                                                             return_data_dicts=True)
 

@@ -219,6 +219,8 @@ The default directory structure that will appear in the working directory includ
 06_MERGED
 ```
 
+The `00_LOGS` directory contains a subdirectory for the workflow run, such as `00_LOGS/metagenomics` or `00_LOGS/idba_ud` if the config names the run through `LOGS_DIR`. Within that directory, logs are organized by workflow rule, such as `00_LOGS/metagenomics/anvi_profile/` or `00_LOGS/metagenomics/anvi_merge/`. Each rule-specific directory contains the log files for individual jobs. The workflow also writes `00_LOGS/metagenomics/metagenomics-workflow-manifest.tsv`, a tab-delimited file that records whether each job succeeded or failed and points to the relevant rule log.
+
 Don't like these names? You can specify the name of the folder by providing the following information in the config file:
 
 ``` json
@@ -799,5 +801,3 @@ As of anvi'o `v5.3` [metaSPAdes](http://cab.spbu.ru/software/spades/) has been a
 `additional_params` works in the same way as is explained [above for samtools](#can-i-change-the-parameters-of-samtools-view), and allows you to specify anything that metaSPAdes accepts. By default it is set to `--only-assembler`, since QC is done using `iu-filter-quality-minoche`, and we see no reason to have metaSPAdes do another step of QC. If you want to specify more parameters then you probably want it to still include `--only-assembler`.
 
 metaSPAdes has two outputs, `contigs.fasta`, and `scaffolds.fasta`. By default anvi'o will use `contigs.fasta` for the rest of the workflow, but if you want to use `scaffolds.fasta`, then set `use_scaffolds: true` in your config file. In any case, anvi'o will save the one you don't use as well (i.e. by default you will find in your `02_FASTA` directory the `scaffold.fasta` file, and if you choose to use the scaffolds, then you will still find `contigs.fasta`).
-
-

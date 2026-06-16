@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 """A simple anvi'server API."""
 
 import json

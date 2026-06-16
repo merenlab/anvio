@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 
 """ Table schemas for databases."""
 
@@ -133,5 +131,3 @@ class Table(object):
         database.disconnect()
 
         self.progress.end()
-
-

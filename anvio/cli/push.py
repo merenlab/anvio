@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A program to 'push' analyses to anvi'server.
 
    Takes multiple files in, sends them to the server."""

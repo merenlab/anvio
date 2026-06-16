@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A program that computes metabolic enrichment across groups of genomes and metagenomes"""
 
 import sys
@@ -20,7 +19,8 @@ __authors__ = ['ivagljiva', 'adw96']
 __resources__ = [("A description of the enrichment script run by this program can be found in Shaiber et al 2020", "https://genomebiology.biomedcentral.com/articles/10.1186/s13059-020-02195-w"),
                   ("An example of pangenome functional enrichment in the context of the Prochlorococcus metapangenome from Delmont and Eren 2018 is included in the pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/")]
 __tags__ = ["metabolism"]
-__requires__ = ['kegg-metabolism', 'user-metabolism', 'groups-txt', 'external-genomes', 'internal-genomes', 'functions']
+__requires__ = ['groups-txt']
+__can_use__ = ['kegg-metabolism', 'user-metabolism', 'external-genomes', 'internal-genomes', 'functions']
 __provides__ = ['functional-enrichment-txt']
 __description__ = ("A program that computes metabolic enrichment across groups of genomes and metagenomes")
 

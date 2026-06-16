@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 
 """Classes to make sense of sequence variation"""
 
@@ -183,7 +181,7 @@ class VariabilityFilter:
             header = "Filtering failed. Here is the log:"
             self.report_filter_info_log(header)
             print(e)
-            sys.exit()
+            sys.exit(1)
 
         else:
             if verbose:
@@ -375,7 +373,7 @@ class VariabilityFilter:
             has_default = True if params_inspection[param].default is not inspect._empty else False
             if not has_default and param not in kwargs.keys():
                 raise ConfigError("`%s` was passed to filter_data. All its arguments without defaults must "
-                                  "also be passed, but `%s` was not. Do so with \"%s = ...\"" \
+                                  "also be passed, but `%s` was not. Do so with \"%s = ...\""
                                        % (self.passed_function, param, param))
             else:
                 self.append_info_log("`%s` of `%s` was passed or has default" % (param, self.passed_function), True)
@@ -383,7 +381,7 @@ class VariabilityFilter:
         bad_args = [arg for arg in kwargs.keys() if arg not in params_inspection]
         if bad_args:
             raise ConfigError("VariabilityFilter :: The args [%s] were passed to filter_data,\
-                               but are not args of `%s`. Available args for this function are [%s]" \
+                               but are not args of `%s`. Available args for this function are [%s]"
                                % (", ".join(bad_args), self.passed_function, ", ".join(params_inspection)))
         for kwarg in kwargs:
             self.append_info_log("filter argument: `%s`" % (kwarg), "valid argument for `%s`" % (self.passed_function))
@@ -423,7 +421,7 @@ class VariabilityFilter:
 
         if not callable(self.passed_function):
             self.append_info_log("function is callable", False)
-            raise ConfigError("Function %s, which was passed to filter_data, is not callable" \
+            raise ConfigError("Function %s, which was passed to filter_data, is not callable"
                                    % (self.passed_function))
         else:
             self.append_info_log("function is callable", True)
@@ -435,7 +433,7 @@ class VariabilityFilter:
         except AttributeError:
             self.append_info_log("%s is an object" % self.name, False)
             raise ConfigError("VariabilityFilter :: You tried to filter the object `%s` which is "
-                              "not an attribute of VariabilitySuper or its parent classes." \
+                              "not an attribute of VariabilitySuper or its parent classes."
                                    % (self.name))
         self.append_info_log("%s is an object" % self.name, True)
 
@@ -444,7 +442,7 @@ class VariabilityFilter:
         if type(self.df) != pd.core.frame.DataFrame:
             self.append_info_log("name points to a valid dataframe", False)
             raise ConfigError("VariabilityFilter :: You tried to filter the object `%s` which is "
-                              "of type `%s`. You can only filter pandas dataframes." \
+                              "of type `%s`. You can only filter pandas dataframes."
                                    % (self.name, type(self.df)))
         self.append_info_log("name points to a valid dataframe", True)
 
@@ -798,7 +796,7 @@ class VariabilitySuper(VariabilityFilter, object):
         else:
             # Ensure we are working with a copy to avoid modifying the original DataFrame in place
             self.data = self.data.copy()
-            
+
             # Convert counts to frequencies in place
             self.data.loc[:, self.items] = self.data.loc[:, self.items].divide(self.data['coverage'], axis=0)
 
@@ -972,7 +970,7 @@ class VariabilitySuper(VariabilityFilter, object):
                 self.progress.end()
                 some_to_report = bad_gene_caller_ids[:5] if len(bad_gene_caller_ids) <= 5 else bad_gene_caller_ids
                 raise ConfigError("{} of the gene caller ids you provided {} not {}. {}: {}. You only have 2 lives left. "
-                                  "2 more mistakes, and anvi'o will automatically uninstall itself. Yes, seriously :(".\
+                                  "2 more mistakes, and anvi'o will automatically uninstall itself. Yes, seriously :(".
                                    format(len(bad_gene_caller_ids),
                                           "is" if len(bad_gene_caller_ids) == 1 else "are",
                                           "in this variability table" if self.table_provided else "known to this contigs database",
@@ -1068,7 +1066,7 @@ class VariabilitySuper(VariabilityFilter, object):
           as `variable_nucleotides` does). This prevents us fom SQL-querying by splits of interest.
         """
 
-        R = lambda x, y: self.run.info("%s that variability data will be fetched for" % \
+        R = lambda x, y: self.run.info("%s that variability data will be fetched for" %
                          (x.capitalize() if len(y)<200 else "Num of "+x), ", ".join([str(z) for z in y]) if len(y)<200 else len(y))
 
         conditions = {}
@@ -1209,7 +1207,7 @@ class VariabilitySuper(VariabilityFilter, object):
             self.progress.end()
             raise ConfigError("There is no overlap between genes that have structures and genes that have variability. "
                               "Consider changing things upstream in your workflow or do not provide the structure db. "
-                              "Here are the genes in your structure database: {}".\
+                              "Here are the genes in your structure database: {}".
                                format(", ".join([str(x) for x in self.genes_with_structure])))
 
         if self.only_if_structure:
@@ -1286,7 +1284,7 @@ class VariabilitySuper(VariabilityFilter, object):
 
 
     def apply_preliminary_filters(self):
-        self.run.info('Variability data', '%s entries in %s splits across %s samples'\
+        self.run.info('Variability data', '%s entries in %s splits across %s samples'
                 % (pp(len(self.data)), pp(len(self.splits_basic_info)), pp(len(self.available_sample_ids))))
 
         self.filter_data(criterion = "sample_id",
@@ -3061,7 +3059,7 @@ class VariabilityNetwork:
                 raise ConfigError("The sample names you provided in the samples information data is not a subset of "
                                    "sample names found in the variable positions data :/ Essentially, every sample name "
                                    "appears in the variability data must be present in the samples information data, "
-                                   "however, you are missing these ones from your samples information: %s."\
+                                   "however, you are missing these ones from your samples information: %s."
                                                 % (', '.join(samples_missing_in_information_dict)))
 
         if self.include_competing_NTs:
@@ -3131,7 +3129,7 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
         inferred_engine = utils.get_variability_table_engine_type(self.variability_table_path)
         if self.engine and self.engine != inferred_engine:
             raise ConfigError("The engine you requested is {0}, but the engine inferred from {1} is {2}. "
-                              "Explicitly declare the inferred engine type (--engine {2})".\
+                              "Explicitly declare the inferred engine type (--engine {2})".
                                format(self.engine, self.variability_table_path, inferred_engine))
         self.engine = inferred_engine
 

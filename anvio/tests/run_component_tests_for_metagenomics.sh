@@ -147,7 +147,7 @@ anvi-run-hmms -c $output_dir/CONTIGS.db \
 
 INFO "Generating an ad hoc HMM source from two PFAM accessions (A STEP THAT REQUIRES INTERNET CONNECTION AND RESPONSE FROM XFAM.ORG)"
 anvi-script-pfam-accessions-to-hmms-directory --pfam-accessions-list PF00705 PF00706 \
-                                              -O $output_dir/ADHOC_HMMs \
+                                              -o $output_dir/ADHOC_HMMs \
                                               --no-progress
 
 INFO "Running the HMMs in the ad hoc user directory"
@@ -1071,28 +1071,27 @@ anvi-gen-genomes-storage -e $output_dir/external-genomes.txt -o $output_dir/TEST
 
 INFO "Running the pangenome analysis with default parameters"
 anvi-pan-genome -g $output_dir/TEST-GENOMES.db \
-                -o $output_dir/TEST/ \
                 -n TEST \
                 --use-ncbi-blast \
                 --description $output_dir/example_description.md \
                 --no-progress \
                 $thread_controller
-                
+
 INFO "Generating hmm-hits matrix"
-anvi-script-gen-hmm-hits-matrix-across-genomes -o $output_dir/TEST/GENOME_MATRIX.txt \
+anvi-script-gen-hmm-hits-matrix-across-genomes -o $output_dir/TEST-GENOME_MATRIX.txt \
                                                -e $output_dir/external-genomes.txt \
-                                               --hmm-source Bacteria_71 
+                                               --hmm-source Bacteria_71
 
 INFO "Testing anvi-analyze-synteny with default parameters using a pangenome for annotations"
 anvi-analyze-synteny -g $output_dir/TEST-GENOMES.db \
-                     -p $output_dir/TEST/TEST-PAN.db \
+                     -p $output_dir/TEST-PAN.db \
                      --ngram-window-range 2:3 \
                      -o $output_dir/synteny_output_no_unknowns.tsv \
                      --no-progress
 
 INFO "Testing anvi-analyze-synteny now including unannotated genes"
 anvi-analyze-synteny -g $output_dir/TEST-GENOMES.db \
-                     -p $output_dir/TEST/TEST-PAN.db \
+                     -p $output_dir/TEST-PAN.db \
                      --ngram-window-range 2:3 \
                      -o $output_dir/synteny_output_with_unknowns.tsv \
                      --analyze-unknown-functions \
@@ -1124,7 +1123,7 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  --no-progress
 
 INFO "A dry run to fill in anvi'o dbs"
-curdir=`pwd`
+curdir=$(pwd)
 cd $output_dir
 anvi-display-pan --dry-run --no-progress
 cd $curdir

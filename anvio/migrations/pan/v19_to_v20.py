@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import os
 import sys
@@ -72,7 +71,7 @@ def add_smiles_column(pan_db: db.DB) -> bool:
     modelseed_db_available = check_modelseed_database(pan_db)
 
     metabolites_table = pan_db.get_table_as_dataframe('pan_reaction_network_metabolites', error_if_no_data=False)
-    
+
     if 'smiles' in metabolites_table.columns:
         pan_db._exec('ALTER TABLE pan_reaction_network_metabolites DROP smiles')
         run.warning("An existing column by the name of 'smiles' was dropped.")

@@ -1,9 +1,9 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """Clustering operations and helper functions"""
 
 import numpy as np
 import pandas as pd
+
+from itertools import combinations
 
 from sklearn import manifold
 from sklearn import preprocessing
@@ -22,9 +22,9 @@ with terminal.SuppressAllOutput():
     from ete3 import Tree
 
 
-distance_metrics = ['euclidean', 'cityblock', 'sqeuclidean', 'cosine', 'correlation', 'hamming',\
-                    'jaccard', 'chebyshev', 'canberra', 'braycurtis', 'yule', 'matching',\
-                    'dice', 'kulsinski', 'rogerstanimoto', 'russellrao', 'sokalmichener',\
+distance_metrics = ['euclidean', 'cityblock', 'sqeuclidean', 'cosine', 'correlation', 'hamming',
+                    'jaccard', 'chebyshev', 'canberra', 'braycurtis', 'yule', 'matching',
+                    'dice', 'kulsinski', 'rogerstanimoto', 'russellrao', 'sokalmichener',
                     'sokalsneath', 'minkowski']
 
 linkage_methods = ['single', 'complete', 'average', 'weighted', 'centroid', 'median', 'ward']
@@ -100,6 +100,23 @@ def get_newick_tree_data_for_dict(d, transpose=False, linkage=constants.linkage_
     newick = get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict, transpose=transpose)
 
     return newick
+
+
+def get_newick(node, parent_dist, leaf_names, newick=''):
+    """
+    Modified from the solution at https://stackoverflow.com/questions/28222179/save-dendrogram-to-newick-format
+    """
+    if node.is_leaf():
+        return "%s:%.2f%s" % (leaf_names[node.id], parent_dist - node.dist, newick)
+    else:
+        if len(newick) > 0:
+            newick = "):%.2f%s" % (parent_dist - node.dist, newick)
+        else:
+            newick = ");"
+        newick = get_newick(node.get_left(), node.dist, leaf_names, newick=newick)
+        newick = get_newick(node.get_right(), node.dist, leaf_names, newick=",%s" % (newick))
+        newick = "(%s" % (newick)
+        return newick
 
 
 def get_vectors_for_vectors_with_missing_data(vectors):
@@ -466,3 +483,26 @@ def order_contigs_experimental(config, progress=progress, run=run, debug=False):
             open(config.output_file_path, 'w').write(newick + '\n')
 
         return newick
+
+
+def get_linkage_from_tree(tree, linkage, distance):
+    """Get a cluster linkage matrix from a tree.
+
+    See https://stackoverflow.com/a/31036521
+    """
+    leaf_labels = tree.get_leaf_labels()
+    label_index_dict = {label: index for index, label in enumerate(leaf_labels)}
+
+    distance_matrix = np.zeros(len(leaf_labels), len(leaf_labels))
+    for first_label, second_label in combinations(leaf_labels):
+        distance = tree.get_distance(first_label, second_label)
+        first_index = label_index_dict[first_label]
+        second_index = label_index_dict[second_label]
+        distance_matrix[first_index, second_index] = \
+            distance_matrix[second_index, first_index] = distance
+
+    # Condense the distance matrix for clustering.
+    distance_vector = scipy_distance.squareform(distance_matrix)
+    linkage_matrix = hierarchy.linkage(distance_vector, method=linkage, metric=distance)
+
+    return linkage_matrix

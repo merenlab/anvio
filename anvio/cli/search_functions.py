@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Searches contigs database for a given function"""
 
 import sys
@@ -18,7 +17,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'ivagljiva']
-__requires__ = ['contigs-db', 'genomes-storage-db']
+__requires__ = ['contigs-db']
+__can_use__ = ['genomes-storage-db']
 __provides__ = ['functions-txt']
 __description__ = ("Search functions in an anvi'o contigs database or genomes storage. Basically, this program "
                    "searches for one or more search terms you define in functional annotations of "
@@ -127,7 +127,7 @@ class SearchResultReporter(object):
             for search_term in self.search_terms:
                 if item_name in self.matching_item_names_dict[search_term]:
                     results_dict[item_name][search_term + '_hits'] = search_term
-        
+
         if self.search_mode == 'external_genomes':
             header_list = ['key', 'item', 'genome'] + [s + '_hits' for s in self.search_terms]
         else:

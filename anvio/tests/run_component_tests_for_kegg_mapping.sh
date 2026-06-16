@@ -3,7 +3,7 @@ source 00.sh
 
 SETUP_WITH_OUTPUT_DIR $1 $2 $3
 
-rn_python_script=`readlink -f run_component_tests_for_reaction_network`
+rn_python_script=$(readlink -f run_component_tests_for_reaction_network)
 
 INFO "Checking for the required KEGG database set up by anvi'o in a default location"
 ${rn_python_script} --check-default-kegg-database
@@ -32,14 +32,13 @@ anvi-gen-genomes-storage -e external-genomes.txt -o TEST-GENOMES.db --no-progres
 
 INFO "Running the pangenome analysis with default parameters"
 anvi-pan-genome -g TEST-GENOMES.db \
-                -o TEST/ \
                 -n TEST \
                 --use-ncbi-blast \
                 --description example_description.md \
                 --no-progress \
                 ${thread_controller}
 
-use_default_modelseed_db=`${rn_python_script} --check-default-modelseed-database`
+use_default_modelseed_db=$(${rn_python_script} --check-default-modelseed-database)
 if [ "${use_default_modelseed_db}" == "True" ]
 then
     INFO "Using the ModelSEED Biochemistry database already set up by anvi'o in a default location"
@@ -47,14 +46,14 @@ else
     INFO "Setting up the ModelSEED Biochemistry database in a temporary directory (a permanent \
 ModelSEED database can be installed in the default location with \
 'anvi-setup-modelseed-database')"
-    data_dir=`mktemp -d`
+    data_dir=$(mktemp -d)
     anvi-setup-modelseed-database --dir ${data_dir}
     modelseed_data_dir=${data_dir}/MODELSEED
 fi
 
 INFO "Generating a pangenomic reaction network"
 args=()
-args+=( "--pan-db" "TEST/TEST-PAN.db" )
+args+=( "--pan-db" "TEST-PAN.db" )
 args+=( "--genomes-storage" "TEST-GENOMES.db" )
 if [ ${use_default_modelseed_db} == "False" ]
 then
@@ -148,7 +147,7 @@ anvi-draw-kegg-pathways "${args[@]}"
 INFO "Testing mapping KOs from a pangenomic database, displaying genome counts emphasizing shared \
 reactions"
 args=()
-args+=( "--pan-db" "TEST/TEST-PAN.db" )
+args+=( "--pan-db" "TEST-PAN.db" )
 args+=( "--genomes-storage" "TEST-GENOMES.db" )
 args+=( "--output-dir" ${output_dir}/pan_db_kos_genome_count_emphasize_shared )
 args+=( "--ko" )
@@ -159,7 +158,7 @@ anvi-draw-kegg-pathways "${args[@]}"
 INFO "Testing mapping KOs from a pangenomic database, displaying genome counts emphasizing \
 unshared reactions, drawing map grids and map files for each genome"
 args=()
-args+=( "--pan-db" "TEST/TEST-PAN.db" )
+args+=( "--pan-db" "TEST-PAN.db" )
 args+=( "--genomes-storage" "TEST-GENOMES.db" )
 args+=( "--output-dir" ${output_dir}/pan_db_kos_genome_count_emphasize_unshared )
 args+=( "--categorize-files" )
@@ -174,7 +173,7 @@ anvi-draw-kegg-pathways "${args[@]}"
 
 INFO "Testing mapping KOs from a pangenomic database, displaying presence/absence"
 args=()
-args+=( "--pan-db" "TEST/TEST-PAN.db" )
+args+=( "--pan-db" "TEST-PAN.db" )
 args+=( "--genomes-storage" "TEST-GENOMES.db" )
 args+=( "--output-dir" ${output_dir}/pan_db_kos_presence_absence )
 args+=( "--ko" )
@@ -187,7 +186,7 @@ INFO "Testing mapping KOs from a pangenomic database, displaying group count whe
 any genomes in the group, emphasizing shared reactions, drawing map grids and map files for a \
 subset of groups"
 args=()
-args+=( "--pan-db" "TEST/TEST-PAN.db" )
+args+=( "--pan-db" "TEST-PAN.db" )
 args+=( "--genomes-storage" "TEST-GENOMES.db" )
 args+=( "--groups-txt" "pan-group-information.txt" )
 args+=( "--group-threshold" "0" )
@@ -203,7 +202,7 @@ anvi-draw-kegg-pathways "${args[@]}"
 INFO "Testing mapping KOs from a pangenomic database, displaying group membership where KOs are \
 in any genomes in the group, emphasizing unshared reactions, drawing map grids for each group"
 args=()
-args+=( "--pan-db" "TEST/TEST-PAN.db" )
+args+=( "--pan-db" "TEST-PAN.db" )
 args+=( "--genomes-storage" "TEST-GENOMES.db" )
 args+=( "--groups-txt" "pan-group-information.txt" )
 args+=( "--group-threshold" "0" )

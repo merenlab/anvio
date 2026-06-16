@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """The library to merge multiple profiles.
 
 The default client of this library is under bin/anvi-merge"""
@@ -115,7 +113,7 @@ class MultipleRuns:
                              "all of them were single, non-blank anvi'o profiles. Anvi'o removed %d of them, and will merge "
                              "only the remaining %d. At the end of this warning you will find a list of paths to those databases "
                              "anvi'o excluded from merging. If you are not happy with that, please carefully examine what went wrong. "
-                             "Here are all the paths for excluded databases: %s." \
+                             "Here are all the paths for excluded databases: %s."
                                             % (len(self.input_profile_db_paths), len(improper), len(proper), ', '.join(["'%s'" % p for p in improper])))
 
         # replace input profile database paths with proper paths:
@@ -126,7 +124,7 @@ class MultipleRuns:
         if data_group_names:
             self.run.warning("Anvi'o found %d data groups for taxonomy (%s), and will do its best to make sure they "
                              "get worked into the merged profile database. A moment of zero promises but crossed "
-                             "fingers (which is the best way to avoid most computational poopsies)." % \
+                             "fingers (which is the best way to avoid most computational poopsies)." %
                                                 (len(data_group_names), ', '.join(data_group_names)),
                               header="GOOD NEWS",
                               lc="green")
@@ -457,13 +455,13 @@ class MultipleRuns:
                              "(which becomes the center tree in all anvi'o displays). If you want a hierarchical "
                              "clustering to be done anyway, please see the flag `--enforce-hierarchical-clustering`. "
                              "But more importantly, please take a look at the anvi'o tutorial to make sure you know "
-                             "your better options to analyze large metagenomic datasets with anvi'o." \
+                             "your better options to analyze large metagenomic datasets with anvi'o."
                                                                 % pp(self.max_num_splits_for_hierarchical_clustering))
             self.skip_hierarchical_clustering = True
 
         if self.num_splits > self.max_num_splits_for_hierarchical_clustering and self.enforce_hierarchical_clustering:
             self.run.warning("Because you have used the flag `--enforce-hierarchical-clustering`, anvi'o will attempt "
-                             "to create a hierarchical clustering of your %s splits. It may take a bit of time..." \
+                             "to create a hierarchical clustering of your %s splits. It may take a bit of time..."
                                                                 % pp(self.num_splits))
 
         self.total_reads_mapped_per_sample = dict([(s, self.layer_additional_data_dict['default'][s]['total_reads_mapped']) for s in self.layer_additional_data_dict['default']])
@@ -612,7 +610,7 @@ class MultipleRuns:
                              "available in the merged profile, clustering of some of the essential data "
                              "failed. It is likely not a very big deal, but you shall be the judge of it. "
                              "Anvi'o now proceeds to store layers order information for those view items "
-                             "the clustering in fact worked. Here is the list of stuff that failed: '%s'"\
+                             "the clustering in fact worked. Here is the list of stuff that failed: '%s'"
                               % (', '.join(failed_attempts)))
 
         # add the layer orders quietly
@@ -686,6 +684,6 @@ class MultipleRuns:
         self.run.info_single("Anvi'o hierarchical clustering of contigs...", nl_before=1, nl_after=1, mc="blue")
 
         if not self.skip_hierarchical_clustering:
-            dbops.do_hierarchical_clustering_of_items(self.merged_profile_db_path, self.clustering_configs, self.split_names, self.database_paths, \
-                                                      input_directory=self.output_directory, default_clustering_config=constants.merged_default, \
+            dbops.do_hierarchical_clustering_of_items(self.merged_profile_db_path, self.clustering_configs, self.split_names, self.database_paths,
+                                                      input_directory=self.output_directory, default_clustering_config=constants.merged_default,
                                                       distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)

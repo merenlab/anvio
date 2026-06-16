@@ -27,7 +27,7 @@ OUTPUT() {
 SETUP_WITH_OUTPUT_DIR() {
     if [ -z "$1"  ]
     then
-        output_dir="`pwd`/sandbox/test-output"
+        output_dir="$(pwd)/sandbox/test-output"
         rm -rf $output_dir
     else
         output_dir="$1"
@@ -82,5 +82,9 @@ SETUP_WITH_OUTPUT_DIR() {
 
 SHOW_FILE() {
     OUTPUT $1
-    head -n 10 $1 | anvi-script-tabulate
+    if [[ "$2" == "--tail" ]]; then
+        tail -n 10 $1 | anvi-script-tabulate
+    else
+        head -n 10 $1 | anvi-script-tabulate
+    fi
 }

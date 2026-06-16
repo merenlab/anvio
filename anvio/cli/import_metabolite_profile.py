@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 DESCRIPTION = """This program imports metabolite abundance data and stores it in a profile database."""
 
 import pandas as pd

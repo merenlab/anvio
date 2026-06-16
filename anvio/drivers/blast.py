@@ -1,4 +1,3 @@
-# coding: utf-8
 """Interface to NCBI's BLAST."""
 
 import os

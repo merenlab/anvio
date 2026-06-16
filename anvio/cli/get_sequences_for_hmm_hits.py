@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Get sequences for all HMM hits in a given bin.
 
    This program takes a profile database, a collection ID, and a bin name, and an
@@ -56,8 +55,10 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['contigs-db', 'profile-db', 'external-genomes', 'internal-genomes', 'hmm-source', "hmm-hits"]
-__provides__ = ['genes-fasta', 'concatenated-gene-alignment-fasta']
+__requires__ = ['contigs-db', 'hmm-source', 'hmm-hits']
+__can_use__ = ['profile-db', 'external-genomes', 'internal-genomes']
+__provides__ = ['genes-fasta']
+__can_provide__ = ['concatenated-gene-alignment-fasta']
 __description__ = "Get sequences for HMM hits from many inputs"
 __resources__ = [("A tutorial on anvi'o phylogenomics workflow", "http://merenlab.org/2017/06/07/phylogenomics/"),
                  ("A detailed application of phylogenomics to place a new genome on a tree", "http://merenlab.org/data/parcubacterium-in-hbcfdna/")]
@@ -92,7 +93,7 @@ def run_program():
         defline_data_dict = hmmops.SequencesForHMMHits(None).defline_data_dict
         defline_format = hmmops.SequencesForHMMHits(None).defline_format
 
-        run.warning(f"Here are the variables you can use to provide a user-defined defline template: ")
+        run.warning("Here are the variables you can use to provide a user-defined defline template: ")
         for key in defline_data_dict.keys():
             run.info_single("{%s}" % key)
         run.info_single("Remember, by default, anvi'o will use the following template to format the deflines of "

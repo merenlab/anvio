@@ -32,6 +32,7 @@ function searchContigs()
     var _len = layerdata.length;
     var _counter = 0;
     search_results = [];
+    genes_per_split_from_function_search = {};
 
     $('#search_result_message').html("Searching...");
 
@@ -109,6 +110,7 @@ function searchFunctions() {
 
                 search_results = [];
                 search_column = 'Annotation';
+                genes_per_split_from_function_search = {};
 
                 for (var i=0; i < data['results'].length; i++) {
                     console.log(mode);
@@ -129,6 +131,10 @@ function searchFunctions() {
                         var _annotation     = data['results'][i][3];
                         var _search_term    = data['results'][i][4];
                         var _split_name     = data['results'][i][5];
+
+                        // remember which gene(s) matched in each split so the inspect page can
+                        // highlight them when this split is highlighted on the tree.
+                        (genes_per_split_from_function_search[_split_name] ||= []).push(_gene_caller_id);
                     }
 
                     var _beginning = _annotation.toLowerCase().indexOf(_search_term.toLowerCase());
@@ -195,6 +201,7 @@ function filterGeneClusters() {
 
                 search_results = [];
                 search_column = '';
+                genes_per_split_from_function_search = {};
 
                 for (var i=0; i < data['gene_clusters_list'].length; i++) {
                     search_results.push({'split': data['gene_clusters_list'][i], 'value': ''});
@@ -261,10 +268,35 @@ function highlightResult() {
     }
 
     bins.HighlightItems(highlighted_splits);
+    writeSearchHighlightedGenes(highlighted_splits);
 }
 
 function highlightSplit(name) {
     bins.HighlightItems(name);
+    writeSearchHighlightedGenes([name]);
+}
+
+function writeSearchHighlightedGenes(split_names) {
+    // tie gene-level highlighting on the inspect page to the split highlight, but only when the
+    // highlight came from a function (annotation) search. bins.HighlightItems() clears the
+    // transport key, so this must run *after* it to be the one path that leaves it populated.
+    try {
+        if (search_column != 'Annotation') {
+            return;
+        }
+
+        var genes = {};
+        for (var i=0; i < split_names.length; i++) {
+            var s = split_names[i];
+            if (genes_per_split_from_function_search[s]) {
+                genes[s] = genes_per_split_from_function_search[s];
+            }
+        }
+
+        localStorage.search_highlighted_genes = JSON.stringify(genes);
+    } catch (e) {
+        // localStorage may be unavailable; the feature simply won't activate.
+    }
 }
 
 function appendResult() {

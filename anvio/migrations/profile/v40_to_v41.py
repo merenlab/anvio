@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 """Migration script to convert _contigs view tables from split-keyed to contig-keyed.
 
@@ -20,6 +19,8 @@ leaves the database unchanged.
 import re
 import sys
 import argparse
+
+from collections import Counter
 
 import anvio.dbinfo as dbinfo
 import anvio.terminal as terminal
@@ -82,7 +83,9 @@ def migrate(db_path):
     # Strategy: for each _contigs table, we:
     #   1. Read all rows into Python
     #   2. Extract contig names from split names using regex (safe for any digit count)
-    #   3. Validate that all splits of the same contig have identical values per layer
+    #   3. Collect all values per (contig, layer) and resolve conflicts. This only affects
+    #      extremely old anvio profiles and not really relevant for any profile-db files
+    #      generated after 2020.
     #   4. Build the deduplicated rows
     #   5. Queue DROP + CREATE + INSERT operations
     #
@@ -90,6 +93,7 @@ def migrate(db_path):
     # BEGIN...COMMIT block at the end.
 
     queued_operations = []  # list of (sql, params_list_or_None) tuples
+    conflicts_resolved = 0  # number of historical data inconsistencies that were auto-corrected
 
     for field in essential_data_fields:
         table_name = f'{field}_contigs'
@@ -108,27 +112,39 @@ def migrate(db_path):
             queued_operations.append((f'CREATE TABLE "{table_name}" (item text, layer text, value numeric)', None))
             continue
 
-        # Build contig_name -> layer -> value mapping, validating consistency along the way
-        contig_layer_values = {}  # {contig_name: {layer: value}}
+        # First pass: collect all values seen for each (contig, layer) across all splits.
+        contig_layer_all_values = {}  # {contig_name: {layer: [value, ...]}}
 
         for entry_id, split_name, layer, value in rows:
             contig_name = get_contig_name(split_name)
 
-            if contig_name not in contig_layer_values:
-                contig_layer_values[contig_name] = {}
+            if contig_name not in contig_layer_all_values:
+                contig_layer_all_values[contig_name] = {}
+            if layer not in contig_layer_all_values[contig_name]:
+                contig_layer_all_values[contig_name][layer] = []
 
-            if layer in contig_layer_values[contig_name]:
-                existing_value = contig_layer_values[contig_name][layer]
-                if existing_value != value:
-                    raise ConfigError(
-                        f"Data integrity problem in table '{table_name}': the contig '{contig_name}' "
-                        f"has different values across its splits for layer '{layer}' "
-                        f"(found {existing_value} and {value}). This is unexpected — all splits of "
-                        f"a contig should have identical values in the _contigs view tables. The "
-                        f"migration cannot proceed. Please contact the anvi'o developers for help."
-                    )
-            else:
-                contig_layer_values[contig_name][layer] = value
+            contig_layer_all_values[contig_name][layer].append(value)
+
+        # Second pass: detect conflicts and resolve them to the contig-level value.
+        # The true contig-level value is the one most splits agree on (mode). When
+        # a tie occurs, max() is used as a tiebreaker. This handles the historical
+        # bug where a minority of splits received a wrong value (often 0) while the
+        # majority correctly carried the parent contig's statistic.
+        contig_layer_values = {}  # {contig_name: {layer: value}}
+
+        for contig_name, layer_to_values in contig_layer_all_values.items():
+            contig_layer_values[contig_name] = {}
+            for layer, values in layer_to_values.items():
+                unique_values = set(values)
+                if len(unique_values) == 1:
+                    contig_layer_values[contig_name][layer] = values[0]
+                else:
+                    counter = Counter(values)
+                    max_count = max(counter.values())
+                    candidates = [v for v, c in counter.items() if c == max_count]
+                    resolved_value = max(candidates)
+                    contig_layer_values[contig_name][layer] = resolved_value
+                    conflicts_resolved += 1
 
         # Build the deduplicated insert rows
         new_rows = []
@@ -150,6 +166,17 @@ def migrate(db_path):
         queued_operations.append((f'DROP TABLE IF EXISTS "{table_name}"', None))
         queued_operations.append((f'CREATE TABLE "{table_name}" (item text, layer text, value numeric)', None))
         queued_operations.append((f'INSERT INTO "{table_name}" (item, layer, value) VALUES (?, ?, ?)', new_rows))
+
+    if conflicts_resolved:
+        run.warning(f"This profile database had a historical data inconsistency: {conflicts_resolved} "
+                    f"(contig, layer) pair(s) had different values across their splits in the _contigs "
+                    f"view tables, which should never happen. This is a known bug from very early versions "
+                    f"of anvi'o that was fixed shortly after. Each conflict was resolved by keeping the "
+                    f"most common value across splits (the contig-level value), with the maximum used as "
+                    f"a tiebreaker. The migration will proceed normally, and you don't need to worry about "
+                    f"this since this inconsistency only affects a handful of profile-db files in the "
+                    f"entire world generated pre-2020. We are just being romantics and refuse to forget "
+                    f"that they exist, and keep them with us as we venture into a bold future.")
 
     # Now execute everything in a single transaction
     progress.update("Applying changes in a single transaction")

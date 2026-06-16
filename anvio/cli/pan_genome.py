@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A DIAMOND and MCL-based pangenome workflow"""
 
 import sys
@@ -17,8 +16,10 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['genomes-storage-db', 'gene-clusters-txt']
-__provides__ = ['pan-db', 'misc-data-items-order', 'gene-clusters']
+__requires__ = ['genomes-storage-db']
+__can_use__ = ['gene-clusters-txt']
+__provides__ = ['pan-db', 'gene-clusters']
+__can_provide__ = ['misc-data-items-order']
 __description__ = ("An anvi'o program to compute a pangenome from an anvi'o genome storage")
 __resources__ = [("A tutorial on pangenomics", "http://merenlab.org/2016/11/08/pangenomics-v2/"),]
 
@@ -84,13 +85,20 @@ def get_args():
     groupB.add_argument(*anvio.A('pan-mode'), **anvio.K('pan-mode', {'required': False}))
     groupB.add_argument(*anvio.A('skip-sequence-pan'), **anvio.K('skip-sequence-pan'))
 
-    groupC = parser.add_argument_group('DEFAULT GENE CLUSTER FORMATION: SEQUENCE SEARCH', "The first step in this workflow is to perform reciprocal sequence search "
+    groupC = parser.add_argument_group('OUTPUT DATA: WHERE THINGS SHOULD APPEAR?', "If you completely skip this section, anvi'o will put things in reasonable "
+                                "places with reasonable names. But you can change that if you want to.")
+    groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupC.add_argument(*anvio.A('intermediate-data-dir'), **anvio.K('intermediate-data-dir'))
+    groupC.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
+
+
+    groupD = parser.add_argument_group('DEFAULT GENE CLUSTER FORMATION: SEQUENCE SEARCH', "The first step in this workflow is to perform reciprocal sequence search "
                                 "within the gene pool of input genomes. If you don't change anything in this section, things will work fine, and anvi'o will "
                                 "use DIAMOND by default to accomplish the search with default parameters anvi'o developers set for you. But please go "
                                 "through each parameter anyway to have an idea regarding what is available to you to play with.")
-    groupC.add_argument('--use-ncbi-blast', default = False, action = 'store_true', help = "This program uses DIAMOND by default (and you should, too), "
+    groupD.add_argument('--use-ncbi-blast', default = False, action = 'store_true', help = "This program uses DIAMOND by default (and you should, too), "
                                 "but if you'd like to use the good ol' blastp by the NCBI instead, it can't stop you.")
-    groupC.add_argument('--additional-params-for-seq-search', type=str, metavar = "CMD LINE PARAMS", help = "OK. This is very important. While "
+    groupD.add_argument('--additional-params-for-seq-search', type=str, metavar = "CMD LINE PARAMS", help = "OK. This is very important. While "
                                 f"anvi'o has some defaults for whichever approach you choose to use for your sequence search, you can assume full control "
                                 f"over what is passed to the search program. Put anything you wish anvi'o to send your search program in double quotes, and "
                                 f"they will be passed to the program. If you don't use this parameter, in addition to the additional parameters anvi'o will "
@@ -102,10 +110,10 @@ def get_args():
                                 f"you hate your computer and want to see it melting beforey our eyes.")
 
 
-    groupC = parser.add_argument_group('DEFAULT GENE CLUSTER FORMATION: RESOLVING NETWORK', "The second step in this workflow is to use the sequence search results "
+    groupE = parser.add_argument_group('DEFAULT GENE CLUSTER FORMATION: RESOLVING NETWORK', "The second step in this workflow is to use the sequence search results "
                                 "to determine gene clusters. Which is a straightforward step thanks to the MCL algorithm. The following parameters are there "
                                 "to tweak this step, even though default choices will work for the vast majority of cases.")
-    groupC.add_argument('--minbit', type = float, default = 0.5, metavar = "MINBIT", help = "The minimum minbit value. The minbit heuristic \
+    groupE.add_argument('--minbit', type = float, default = 0.5, metavar = "MINBIT", help = "The minimum minbit value. The minbit heuristic \
                                 provides a mean to set a to eliminate weak matches between two amino acid sequences. We learned it from ITEP \
                                 (Benedict MN et al, doi:10.1186/1471-2164-15-8), which is a comprehensive analysis workflow for pangenomes, \
                                 and decided to use it in the anvi'o pangenomic workflow, as well. Briefly, If you have two amino acid sequences,\
@@ -113,69 +121,66 @@ def get_args():
                                 between two sequences goes to 1 if they are very similar over the entire length of the 'shorter' amino acid sequence,\
                                 and goes to 0 if (1) they match over a very short stretch compared even to the length of the shorter amino acid sequence\
                                 or (2) the match between sequence identity is low. The default is %(default)g.")
-    groupC.add_argument('--mcl-inflation', type = float, default = 2.0, metavar = "INFLATION", help = "MCL inflation parameter, that defines\
+    groupE.add_argument('--mcl-inflation', type = float, default = 2.0, metavar = "INFLATION", help = "MCL inflation parameter, that defines\
                                 the sensitivity of the algorithm during the identification of the gene clusters. More information on this\
                                 parameter and it's effect on cluster granularity is here: (http://micans.org/mcl/man/mclfaq.html#faq7.2).\
                                 The default is %(default)g.")
-    groupC.add_argument('--min-percent-identity', type = float, default = 0.0, metavar = "PERCENT", help = "Minimum percent identity\
+    groupE.add_argument('--min-percent-identity', type = float, default = 0.0, metavar = "PERCENT", help = "Minimum percent identity\
                                 between the two amino acid sequences for them to have an edge for MCL analysis. This value will be used\
                                 to filter hits from Diamond search results. Because percent identity is not a predictor of a good match (since\
                                 it does not communicate many other important factors such as the alignment length between the two sequences and\
                                 its proportion to the entire length of those involved), we suggest you rely on 'minbit' parameter. But you know\
                                 what? Maybe you shouldn't listen to anyone, and experiment on your own! The default is %(default)g percent.")
-    groupC.add_argument('--min-occurrence', type = int, default = 1, metavar = 'NUM_OCCURRENCE', help = "Do you not want singletons? You don't?\
+    groupE.add_argument('--min-occurrence', type = int, default = 1, metavar = 'NUM_OCCURRENCE', help = "Do you not want singletons? You don't?\
                                 Well, this parameter will help you get rid of them (along with doubletons, if you want). Anvi'o will remove\
                                 gene clusters that occur less than the number you set using this parameter from the analysis. The default\
                                 is %(default)d, which means everything will be kept. If you want to remove singletons, set it to 2, if you want to\
                                 remove doubletons as well, set it to 3, and so on.")
 
-    groupD = parser.add_argument_group('ALTERNATIVE GENE CLUSTER FORMATION: USER-PROVIDED GENE CLUSTERS', "As an alternative approach, you can provide "
+    groupF = parser.add_argument_group('ALTERNATIVE GENE CLUSTER FORMATION: USER-PROVIDED GENE CLUSTERS', "As an alternative approach, you can provide "
                                 "anvi'o with your own gene cluster affiliations. In this case, anvi'o would not use the default way of computing gene "
                                 "clusters de novo, but take your word for which genes go together.")
-    groupD.add_argument(*anvio.A('gene-clusters-txt'), **anvio.K('gene-clusters-txt'))
+    groupF.add_argument(*anvio.A('gene-clusters-txt'), **anvio.K('gene-clusters-txt'))
 
-    groupE = parser.add_argument_group("GENE CLUSTER CHARACTERIZATION", "Parameters that mostly impact how anvi'o characterizes your gene clusters once "
+    groupG = parser.add_argument_group("GENE CLUSTER CHARACTERIZATION", "Parameters that mostly impact how anvi'o characterizes your gene clusters once "
                                 "they are identified. Such as aligning within gene cluster sequences, computing homogeneity indices for them, etc. "
                                 "Important stuff.")
-    groupE.add_argument('--skip-alignments', default = False, action = 'store_true', help = "By default, anvi'o attempts to align amino acid\
+    groupG.add_argument('--skip-alignments', default = False, action = 'store_true', help = "By default, anvi'o attempts to align amino acid\
                                 sequences in each gene cluster using multiple sequence alignment via muscle. You can use this flag to skip\
                                 that step and be upset later.")
-    groupE.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))
-    groupE.add_argument('--skip-homogeneity', default=False, action='store_true', dest='skip_homogeneity',help="By default, anvi'o attempts to calculate homogeneity\
+    groupG.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))
+    groupG.add_argument('--skip-homogeneity', default=False, action='store_true', dest='skip_homogeneity',help="By default, anvi'o attempts to calculate homogeneity\
                                 values for every gene cluster, given that they are aligned. You can use this flag to have anvi'o skip\
                                 homogeneity calculations. Anvi'o will ignore this flag if you decide to skip alignments")
-    groupE.add_argument('--quick-homogeneity', default=False, action='store_true', dest='quick_homogeneity',help="By default, anvi'o will use a homogeneity\
+    groupG.add_argument('--quick-homogeneity', default=False, action='store_true', dest='quick_homogeneity',help="By default, anvi'o will use a homogeneity\
                                 algorithm that checks for horizontal and vertical geometric homogeneity (along with functional). With this\
                                 flag, you can tell anvi'o to skip horizontal geometric homogeneity calculations. It will be less accurate but quicker.\
                                 Anvi'o will ignore this flag if you skip homogeneity calculations or alignments all together.")
 
-    groupF = parser.add_argument_group("OTHERS", "Sweet parameters of convenience.")
-    groupF.add_argument(*anvio.A('project-name'), **anvio.K('project-name'))
-    groupF.add_argument(*anvio.A('description'), **anvio.K('description'))
-    groupF.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'metavar':'PAN_DB_DIR'}))
-    groupF.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
-    groupF.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    groupF.add_argument(*anvio.A('structures-txt'), **anvio.K('structures-txt'))
-    groupF.add_argument(*anvio.A('min-tm-score'), **anvio.K('min-tm-score'))
-    groupF.add_argument(*anvio.A('foldseek-search-results'), **anvio.K('foldseek-search-results'))
+    groupH = parser.add_argument_group("OTHERS", "Sweet parameters of convenience.")
+    groupH.add_argument(*anvio.A('project-name'), **anvio.K('project-name'))
+    groupH.add_argument(*anvio.A('description'), **anvio.K('description'))
+    groupH.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupH.add_argument(*anvio.A('structures-txt'), **anvio.K('structures-txt'))
+    groupH.add_argument(*anvio.A('min-tm-score'), **anvio.K('min-tm-score'))
+    groupH.add_argument(*anvio.A('foldseek-search-results'), **anvio.K('foldseek-search-results'))
 
-    groupG = parser.add_argument_group("ORGANIZING GENE CLUSTERs", "These are stuff that will change the clustering dendrogram of your gene clusters.")
-    groupG.add_argument(*anvio.A('skip-hierarchical-clustering'), **anvio.K('skip-hierarchical-clustering', {'help': "Anvi'o attempts\
+    groupI = parser.add_argument_group("ORGANIZING GENE CLUSTERs", "These are stuff that will change the clustering dendrogram of your gene clusters.")
+    groupI.add_argument(*anvio.A('skip-hierarchical-clustering'), **anvio.K('skip-hierarchical-clustering', {'help': "Anvi'o attempts\
                                 to generate a hierarchical clustering of your gene clusters once it identifies them so you can use\
                                 `anvi-display-pan` to play with it. But if you want to skip this step, this is your flag."}))
-    groupG.add_argument(*anvio.A('enforce-hierarchical-clustering'), **anvio.K('enforce-hierarchical-clustering', {'help': "If you\
+    groupI.add_argument(*anvio.A('enforce-hierarchical-clustering'), **anvio.K('enforce-hierarchical-clustering', {'help': "If you\
                                 want anvi'o to try to generate a hierarchical clustering of your gene clusters even if the number of gene clusters exceeds\
                                 its suggested limit for hierarchical clustering, you can use this flag to enforce it. Are you are a\
                                 rebel of some sorts? Or did computers make you upset? Express your anger towards machine using this\
                                 flag."}))
-    groupG.add_argument(*anvio.A('distance'), **anvio.K('distance', {'default': None, 'help':
+    groupI.add_argument(*anvio.A('distance'), **anvio.K('distance', {'default': None, 'help':
                       'The distance metric for the clustering of gene clusters. If you do not use this flag,\
                        the default distance metric will be used for each clustering configuration\
                        which is "%s".' % constants.distance_metric_default}))
-    groupG.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'default': None, 'help':
+    groupI.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'default': None, 'help':
                       'The same story with the `--distance`, except, the system default for this one\
                        is %s.' % constants.linkage_method_default}))
-
     return parser.get_args(parser)
 
 

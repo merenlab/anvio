@@ -60,6 +60,9 @@ var last_settings;
 
 var search_column;
 var search_results = [];
+// map of split_name -> [gene_callers_id, ...] populated only by a function (annotation) search,
+// so the inspect page can highlight the matching genes for a highlighted split. see search.js.
+var genes_per_split_from_function_search = {};
 
 var views = {};
 var layers = {};
@@ -75,6 +78,7 @@ var collapsedNodes = [];
 var session_id;
 var mode;
 var server_mode = false;
+var description_panel;
 var samples_tree_hover = false;
 var inspection_available = false;
 var sequences_available = false;
@@ -241,7 +245,8 @@ function initData() {
             item_lengths = response.item_lengths;
 
             switchUserInterfaceMode(response.project, response.title);
-            setupDescriptionPanel(response.description);
+            description_panel = new DescriptionPanel('/store_description');
+            description_panel.setup(response.description);
 
             if (response.state[0] && response.state[0] == 'default')
                 a_default_state_is_found = true;
@@ -370,6 +375,7 @@ function initData() {
             drawInlineScaleBar();
 
             bins = new Bins(response.bin_prefix, document.getElementById('tbody_bins'));
+            bins.SetSelectContigsRatherThanSplits($('#select_contigs_rather_than_splits').is(':checked'));
 
             // redoing intiial bin causes some weird behaviors
             bins.keepHistory = false;
@@ -386,7 +392,7 @@ function initData() {
                         bins.ImportCollection(response.collection);
                     }
 
-                    if ($('#panel-left').is(':visible')) {
+                    if (is_panel_open) {
                         setTimeout(toggleLeftPanel, 500);
                     }
                  });
@@ -528,44 +534,6 @@ function switchUserInterfaceMode(project, title) {
         $('#sidebar').css('margin-top', '81px');
         $('.upload-button').hide();
     }
-}
-
-function setupDescriptionPanel(description) {
-    $('#description-editor').val(description);
-    $('#description-editor').markdown({
-        'onShow': function (e) {
-            $('[data-handler="bootstrap-markdown-cmdPreview"]').trigger('click');
-        },
-        'hiddenButtons': ['cmdUrl', 'cmdImage', 'cmdCode', 'cmdQuote'],
-        'parser': function(content) {
-            return renderMarkdown(content);
-        },
-        'additionalButtons': [
-          [{
-            data: [{
-              name: 'cmdSave',
-              title: 'Save',
-              btnText: 'Save',
-              btnClass: 'btn btn-success btn-sm',
-              icon: {
-                'glyph': 'glyphicon glyphicon-floppy-save',
-              },
-              callback: function(e) {
-                $.ajax({
-                        type: 'POST',
-                        cache: false,
-                        url: '/store_description',
-                        data: {description: e.getContent()},
-                        success: function(data) {
-                            toastr.info("Description successfully saved to database.");
-                        }
-                    });
-              }
-            }]
-          }]
-        ],
-        'fullscreen': {'enable': false},
-    });
 }
 
 function onViewChange() {
@@ -2087,6 +2055,7 @@ function serializeSettings(use_layer_names) {
     state['autorotate-bin-labels'] = $('#autorotate_bin_labels').is(':checked');
     state['estimate-taxonomy'] = $('#estimate_taxonomy').is(':checked');
     state['use-taxonomy-bin-labels'] = $('#use_taxonomy_bin_labels').is(':checked');
+    state['select-contigs-rather-than-splits'] = $('#select_contigs_rather_than_splits').is(':checked');
     state['taxonomy-label-level'] = $('input[name="taxonomy_label_level"]:checked').val();
     state['bin-labels-angle'] = $('#bin_labels_angle').val();
     state['background-opacity'] = $('#background_opacity').val();
@@ -2694,70 +2663,13 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
     });
 }
 
-// Copy helper for reusable "copy names" buttons with lightweight feedback.
-function copyTextWithFeedback(btn, text) {
-    if (typeof text !== 'string' || !text.length) {
-        return;
-    }
-
-    navigator.clipboard.writeText(text)
-        .then(function () {
-            const icon = btn.nextElementSibling;
-            if (!icon) return;
-            icon.textContent = "✔";
-            icon.style.color = "green";
-            icon.style.marginLeft = "4px";
-            setTimeout(function () { icon.textContent = ""; }, 2000);
-        })
-        .catch(function (err) {
-            console.error("Copy failed", err);
-        });
-}
-
-// Generic builder for a copy-enabled names section.
-function buildCopyableNamesSection(label, items, options = {}) {
-    const safeItems = Array.isArray(items) ? items : [];
-    const headerText = `${label} (${safeItems.length})`;
-    const background = options.background || '#ffe4c478';
-    const marginBottom = options.marginBottom || '20px';
-    const copySeparator = options.copySeparator || '\n';
-    const contentRenderer = options.contentRenderer;
-
-    const copyReadyNames = safeItems.join(copySeparator);
-
-    const header = `
-        <div class="bin-modal-header" style="background: ${background};">
-            <span style="font-size: large;">${headerText}</span>
-            <button class="btn btn-primary btn-sm"
-                onclick='copyTextWithFeedback(this, ${JSON.stringify(copyReadyNames)})'>Copy to Clipboard</button>
-            <span class="copy-feedback" style="min-width: 14px; font-size: 0.9em; line-height: 1;"></span>
-        </div>
-    `;
-
-    const body = typeof contentRenderer === 'function'
-        ? contentRenderer(safeItems)
-        : `<p style="margin-bottom: ${marginBottom};">${safeItems.join(', ') || 'No items found.'}</p>`;
-
-    return header + body;
-}
-
-// Small helper to render a copy button with inline feedback.
-function buildCopyButton(label, items) {
-    const safeItems = Array.isArray(items) ? items : [];
-    const copyText = safeItems.join('\n');
-
-    return `
-        <button class="btn btn-primary btn-sm"
-            style="margin-left: 12px;"
-            title="Copy ${label}"
-            onclick='copyTextWithFeedback(this, ${JSON.stringify(copyText)})'>
-            Copy ${label}
-        </button>
-        <span class="copy-feedback" style="min-width: 14px; font-size: 0.9em; line-height: 1;"></span>
-    `;
-}
+// copyTextWithFeedback, buildCopyButton, buildCopyableNamesSection,
+// buildFunctionsContent, buildContigAndSplitNamesTable, buildMetabolismTable,
+// buildFilterControls, buildFunctionsTable, and setupItemTableFiltering
+// live in utils.js (shared with anvi-display-pan-graph).
 
 // Fallback content when functions are unavailable (or when we are in manual mode).
+// Kept here (not in utils.js) because it references the pangenomics-only `mode` variable.
 function buildItemNamesContent(items, config) {
     const safeItems = Array.isArray(items) ? items : [];
     const itemLabelTitle = config.itemLabel.charAt(0).toUpperCase() + config.itemLabel.slice(1);
@@ -4060,6 +3972,10 @@ function processState(state_name, state) {
         toggleTaxonomyLabeling();
     }
 
+    if (state.hasOwnProperty('select-contigs-rather-than-splits')) {
+        $('#select_contigs_rather_than_splits').prop('checked', state['select-contigs-rather-than-splits']).trigger('change');
+    }
+
     if (state.hasOwnProperty('show-grid-for-bins')) {
         $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
     }
@@ -4635,6 +4551,11 @@ function toggleTaxonomyLabeling() {
 function onTaxonomyLabelLevelChange() {
     if (!bins) return;
     bins.ApplyTaxonomyLabels();
+}
+
+function toggleSelectContigsRatherThanSplits() {
+    if (!bins) return;
+    bins.SetSelectContigsRatherThanSplits($('#select_contigs_rather_than_splits').is(':checked'));
 }
 
 function ShadowBoxSelection(type) {

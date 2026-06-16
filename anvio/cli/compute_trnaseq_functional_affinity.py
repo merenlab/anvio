@@ -1,0 +1,2859 @@
+#!/usr/bin/env python
+"""Relate changes in tRNA-seq seed abundances to the codon usage of gene functions"""
+
+import os
+import warnings
+import pandas as pd
+import seaborn as sns
+import scipy.cluster.hierarchy as hierarchy
+
+from argparse import Namespace
+from functools import partial
+
+import anvio
+import anvio.terminal as terminal
+import anvio.constants as constants
+import anvio.clustering as clustering
+import anvio.codonusage as codonusage
+import anvio.filesnpaths as filesnpaths
+import anvio.genomictrnaseq as genomictrnaseq
+
+from anvio import filesnpaths
+from anvio.argparse import ArgumentParser
+from anvio.errors import ConfigError, FilesNPathsError
+
+with terminal.SuppressAllOutput():
+    from ete3 import Tree
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2022, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__authors__ = ['semiller10']
+__resources__ = []
+__tags__ = ['trnaseq']
+__requires__ = ['trnaseq-contigs-db', 'contigs-db']
+__provides__ = []
+__description__ = \
+    "Relate changes in tRNA-seq seed abundances to the codon usage of gene functions"
+
+
+run = terminal.Run()
+run_quiet = terminal.Run(verbose=False)
+progress = terminal.Progress()
+progress_quiet = terminal.Progress(verbose=False)
+
+# Constants used in static plots.
+x_tick_label_rotation = 30
+x_tick_label_alignment = 'right'
+normalization_cmap_dict = {
+    'raw': 'vlag',
+    'min_max': 'rocket',
+    'min_max_mean': 'vlag',
+    'magnitude_min_max': 'rocket'}
+image_dpi = 1200
+
+# ete3 converts certain characters to underscores in output Newick tree files. Rather than losing
+# this information in codon frequency and sample trees, encode the characters as strings.
+ete_newick_encoding_dict = {
+    '(': '\\leftparenthesis',
+    ')': '\\rightparenthesis',
+    '[': '\\leftsquarebracket',
+    ']': '\\rightsquarebracket',
+    ':': '\\colon',
+    ';': '\\semicolon',
+    ',': '\\comma',
+    '=': '\\equals'}
+ete_newick_decoding_dict = {v: k for k, v in ete_newick_encoding_dict.items()}
+
+
+def main():
+    args = get_args()
+
+    ran_helper_mode = run_helper_modes(args)
+    if ran_helper_mode:
+        return
+
+    sanity_check(args)
+    args.normalization_methods = args.normalize_affinity if args.normalize_affinity else []
+    # Add an argument the opposite of `no_codon_dendrogram`.
+    args.plot_codon_dendrogram = True if args.plot and not args.no_codon_dendrogram else False
+
+    (affinities_dict, stderrs_dict,
+     isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict) = get_affinities(args)
+    write_affinity_tables(args, affinities_dict)
+    write_affinity_stderr_tables(args, stderrs_dict)
+    write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict)
+    write_isoacceptor_codon_weights_tables(args, isoacceptor_codon_weights_dict)
+
+    codon_frequency_dict = get_general_codon_frequencies(args, affinities_dict)
+    write_general_codon_frequency_tables(args, codon_frequency_dict)
+
+    # If no subsetting occurred, the returned subset affinity tables contain the identical data as
+    # the passed affinity tables. Subset after generating the codon frequency tables, because those
+    # tables can be saved to file, including all, rather than a subset of, genes or functions for
+    # which affinity was calculated.
+    subset_affinities_dict = subset_affinity_entries(args, affinities_dict)
+
+    codon_linkage_dict = get_codon_linkage(args, codon_frequency_dict, subset_affinities_dict)
+    write_codon_newick_files(args, codon_linkage_dict)
+
+    sample_linkage_dict = get_sample_linkage(args, subset_affinities_dict)
+    write_sample_newick_files(args, sample_linkage_dict)
+
+    plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_linkage_dict)
+
+
+def get_args():
+    parser = ArgumentParser(description=__description__)
+
+    group1A = parser.add_argument_group(
+        'TRNASEQ INPUTS',
+        "TWO FILES are required to compute affinities: "
+        "(1) A 'trnaseq'-variant contigs database produced by `anvi-merge-trnaseq` and integrated "
+        "with (meta)genomic contigs database(s) by `anvi-integrate-trnaseq`, "
+        "(2) a table of **specific** coverages of seeds produced by `anvi-tabulate-trnaseq` from "
+        "the 'trnaseq'-variant contigs database (and other inputs).")
+    group1A.add_argument(*anvio.A('trnaseq-contigs-db'),
+                         **anvio.K('trnaseq-contigs-db', {'required': False}))
+    group1A.add_argument(*anvio.A('seeds-specific-txt'),
+                         **anvio.K('seeds-specific-txt', {'required': False}))
+
+    group1B = parser.add_argument_group(
+        'TRNASEQ SAMPLES',
+        "A BASELINE for the isoacceptor abundance ratios that feed affinity must be defined. "
+        "Either designate one sample as the reference (`--reference-sample`), or use the "
+        "geometric mean of isoacceptor relative abundances across the analyzed samples "
+        "(`--reference-mean`); the two options are mutually exclusive. Sample data is found in "
+        "`seeds-specific-txt`. For convenience, running the current program with the "
+        "`--seeds-specific-txt` argument and the `--list-sample` flag prints all sample names to "
+        "the terminal.")
+    group1B.add_argument(
+        '-r', '--reference-sample', metavar='SAMPLE_NAME', type=str,
+        help="The name of the tRNA-seq sample to be used as the reference in the calculation of "
+             "affinities. Mutually exclusive with `--reference-mean`.")
+    group1B.add_argument(
+        '--reference-mean', metavar='SAMPLE_NAME[S]', nargs='*', type=str, default=None,
+        help="Compare each analyzed sample's isoacceptor relative abundances to the geometric "
+             "mean of those abundances across the analyzed samples, rather than to a single "
+             "designated reference sample. This is the appropriate choice for datasets in which "
+             "no sample is naturally the reference. Under the geometric-mean centroid, the "
+             "log-ratios across samples sum to zero per isoacceptor, so no sample is privileged, "
+             "and every analyzed sample receives an affinity column in the output. Used as a "
+             "flag with no arguments, every sample in `seeds-specific-txt` is analyzed and "
+             "contributes to the geometric mean. Used with one or more sample names, only those "
+             "samples are analyzed and contribute to the geometric mean. Mutually exclusive with "
+             "`--reference-sample`. The companion option `--nonreference-samples` is for "
+             "`--reference-sample` mode only; in `--reference-mean` mode the sample subset is "
+             "passed directly to `--reference-mean`.")
+    group1B.add_argument(
+        '-n', '--nonreference-samples', metavar='SAMPLE_NAME[S]', nargs='+', type=str,
+        help="Names of tRNA-seq samples to be analyzed in `--reference-sample` mode, beside the "
+             "specified reference sample. By default, when this argument is not used, every "
+             "sample in `seeds-specific-txt` other than the reference is analyzed. Not valid in "
+             "`--reference-mean` mode (pass the sample subset to `--reference-mean` directly). "
+             "This argument selects samples but does NOT order them; use `--sample-order` to "
+             "control the column order of the output tables.")
+    group1B.add_argument(
+        '--sample-order', metavar='SAMPLE_NAME[S]', nargs='+', type=str,
+        help="Explicitly order the analyzed tRNA-seq samples in the output affinity tables. The "
+             "provided list must contain exactly the analyzed samples (i.e., the samples that "
+             "survive any `--nonreference-samples` subsetting); a mismatch is an error. By "
+             "default, when this argument is not used, sample columns are ordered "
+             "alphabetically in both `--reference-sample` and `--reference-mean` modes.")
+
+    group1C = parser.add_argument_group(
+        'GENOMIC INPUTS',
+        "Different (meta)genomic inputs that have been integrated with the 'trnaseq'-variant "
+        "contigs database can be provided. To find which (meta)genomes were integrated, run "
+        "`anvi-integrate-trnaseq` with the `--list-genomes` flag. This will print the project "
+        "names and hashes of (meta)genomic contigs databases and any bins (and their profile "
+        "databases/collections) in which linked tRNA genes were found. Affinity is computed "
+        "separately for each (meta)genome. For example, if two internal genomes are provided, "
+        "then the affinity results for each will be returned. The following are valid inputs: "
+        "(1) A single contigs database. This could represent a genome or metagenome. "
+        "(2) A collection of bins, representing genomes in a metagenome. This requires a contigs "
+        "database, profile database, and collection. "
+        "(3) Specified bins. This requires a contigs database, profile database, collection and a "
+        "bin ID or list of bin IDs. "
+        "(4) Internal genomes, or a list of metagenomic bins (can be used with external genomes). "
+        "(5) External genomes, or a list of contigs databases representing genomes (can be used "
+        "with internal genomes).")
+    group1C.add_argument(
+        *anvio.A('contigs-db'), **anvio.K('contigs-db', {
+            'required': False,
+            'help': "Anvi'o (meta)genomic contigs database generated by "
+                    "`anvi-gen-contigs-database`: NOT the tRNA-seq contigs database supplied to "
+                    "`-t/--trnaseq-contigs-db`!"}))
+    group1C.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+    group1C.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    group1C.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+    group1C.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
+    group1C.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
+    group1C.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
+
+    group1D = parser.add_argument_group(
+        'AFFINITY METRIC',
+        "Affinity measures the relationship between the log isoacceptor abundance ratios from "
+        "the tRNA-seq data (non-reference/reference in `--reference-sample` mode, "
+        "sample/geometric-mean in `--reference-mean` mode) and the relative isoacceptor codon "
+        "weights from the function/gene codon frequency data.")
+    group1D.add_argument( # TODO: allow multiple affinity types, producing multiple output files
+        '--affinity-type', type=str, choices=['pearson', 'spearman', 'dot'], default='pearson',
+        help="Affinity can be calculated using the Pearson correlation coefficient, the Spearman "
+             "rank correlation coefficient, or the dot product. Correlation coefficients are "
+             "normalized to the range, [-1, 1], allowing direct comparison of affinities between "
+             "(non-reference) tRNA-seq samples. Spearman is better than Pearson at measuring "
+             "non-linear relationships between the two variables. Unlike correlation coefficients, "
+             "the dot product is not normalized and so cannot be directly compared between "
+             "samples. It scales with the magnitude of the change in the tRNA pool between the "
+             "reference and non-reference samples.")
+
+    group1E = parser.add_argument_group(
+        'OUTPUT',
+        "This program requires an output file argument. The output path is a template. Depending "
+        "on the arguments, an affinity table can be written there and/or files can be written to "
+        "other paths derived from the template. If the output is split by genome "
+        "(`--separate-genomes`) or function annotation source (`--separate-function-sources`), "
+        "files are only written to derived paths. If affinities are normalized "
+        "(`--normalize-affinity`), additional outputs are written per normalization method. If "
+        "plots, codon frequency tables, or Newick trees are stored in addition to affinity tables, "
+        "their paths are likewise derived from the template path. If this program is only run to "
+        "generate plots from existing data files rather than to write new files, then a plot can "
+        "be stored at the output path, or plots are stored at paths derived from this template.")
+    group1E.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    group1E.add_argument(
+        '--separate-genomes', default=False, action='store_true',
+        help="Write separate affinity output files for each genome. The name of each genome/bin "
+             "is inserted into the output path after a hyphen and before the extension, replacing "
+             "any spaces in the name with underscores.")
+    group1E.add_argument(
+        '--separate-function-sources', default=False, action='store_true',
+        help="Write separate output files for each function source. The name of each source is "
+             "inserted into the output path before the extension following a hyphen.")
+    group1E.add_argument(
+        '--normalize-affinity',
+        nargs='+', choices=['min_max', 'min_max_mean', 'magnitude_min_max'], type=str,
+        help="Output normalized affinity data. Normalized affinity data is useful for comparing "
+             "which functions (or genes) are favored and disfavored by the tRNA pool across "
+             "multiple (non-reference) samples, especially in graphs; without the option, "
+             "`--shared-isoacceptors`, different isoacceptors can contribute to affinity in each "
+             "sample given different sample coverage levels and the effects of isoacceptor "
+             "filtering options, so the range of raw affinity values across functions in each "
+             "sample can vary for this reason alone despite the same functions being favored and "
+             "disfavored across samples. When multiple output tables are written, the name of the "
+             "the normalization option (e.g., 'min_max', 'min_max_mean') is inserted into the "
+             "output path after a hyphen and before the extension. 'raw' is similarly inserted "
+             "into raw affinity output filepaths when normalization is used. "
+             "(1) Min-max normalization of a function in a genome for a given tRNA-seq sample "
+             "subtracts the function's affinity from the affinity of the minimum function and "
+             "divides by the difference in affinity between the maximum and minimum functions. The "
+             "minimum affinity -- which may be negative, indicating that the tRNA pool disfavors "
+             "the function in the sample relative to the reference -- is normalized to 0. The "
+             "maximum affinity -- which may also be negative -- is normalized to 1. "
+             "(2) Min-max-mean normalization follows min-max normalization by subtraction of the "
+             "mean to yield negative and positive values lying between -1 and 1. "
+             "(3) Magnitude-min-max normalization takes the absolute value of affinity before "
+             "min-max normalization to yield values that indicate the magnitude of the change in "
+             "favorability of the tRNA pool towards functions, disregarding the direction of "
+             "change.")
+    group1E.add_argument(
+        '--compare-all-function-sources', default=False, action='store_true',
+        help="When affinities are calculated for multiple function sources, lump together all "
+             "sources in the outputs and apply normalization to all sources. For example, KOfam "
+             "and Pfam function affinities could be normalized to each other, written to the same "
+             "tables, and shown in the same plots. This flag cannot be used along with "
+             "`--separate-function-sources`.")
+    group1E.add_argument(
+        '--no-raw-affinity', default=False, action='store_true',
+        help="Do not store tables of raw affinity data. By default, sister tables of regression "
+             "slope standard errors are also written alongside the raw affinity tables, with "
+             "'-STDERR' inserted before the extension. This flag suppresses both the raw affinity "
+             "tables and their stderr companions.")
+    group1E.add_argument(
+        '--save-isoacceptor-abundance-ratios', default=False, action='store_true',
+        help="Write a table of tRNA isoacceptor abundance ratios. Affinities are derived in part "
+             "from these ratios: non-reference/reference in `--reference-sample` mode, "
+             "sample/geometric-mean across analyzed samples in `--reference-mean` mode. This "
+             "table enables the inspection of data underlying affinities, especially together "
+             "with the output of `--save-isoacceptor-codon-weights`. If `--separate-genomes` is "
+             "used, then multiple files are written for each genome, with paths derived from the "
+             "provided `--output-file` template. In these paths, '-ABUNDANCE_RATIOS' is added "
+             "before the extension. The tables have row indices of genome, decoded amino acid, "
+             "and anticodon (including modified wobble nucleotide, if applicable). The column "
+             "headers are tRNA-seq sample names (the analyzed non-reference samples in "
+             "`--reference-sample` mode; every analyzed sample in `--reference-mean` mode).")
+    group1E.add_argument(
+        '--save-isoacceptor-codon-weights', default=False, action='store_true',
+        help="Write a table of tRNA isoacceptor codon weights, calculated for each isoacceptor "
+             "from relative codon frequencies and decoding weights. Affinities are derived in part "
+             "from isoacceptor codon weights. This table enables the inspection of data underlying "
+             "affinities, especially together with the output of "
+             "`--save-isoacceptor-abundance-ratios`. If `--separate-genomes` and/or "
+             "`--separate-function-sources` are used, then multiple files are written for each "
+             "genome, function source, or combination of genome and source, with paths derived "
+             "from the provided `--output-file` template. In these paths, '-CODON_WEIGHTS' is "
+             "added before the extension. The tables have the same row indices of genome, "
+             "function, and gene information as the corresponding affinity tables. The column "
+             "headers are tRNA isoacceptor anticodons (including modified wobble nucleotide, if "
+             "applicable).")
+    group1E.add_argument(
+        '--save-codon-frequencies', default=False, action='store_true',
+        help="Write a table of function or gene codon frequencies. If `--separate-genomes` and/or "
+             "`--separate-function-sources` are used, then multiple files are written for each "
+             "genome, function source, or combination of genome and source, with paths derived "
+             "from the provided `--output-file` template. In these paths, '-CODONS' is added "
+             "before the extension. The tables have the same row indices of genome, function, and "
+             "gene information as the corresponding affinity tables. In plot output, these codon "
+             "frequency data underlie the x-axis dendrograms of functions or genes.")
+
+    group1F = parser.add_argument_group(
+        'CLUSTERING',
+        "The following arguments control hierarchical clustering and can be supplied for the "
+        "production of Newick trees and plots. For both codon frequency and tRNA-seq sample "
+        "clustering, the default distance metric is '{constants.distance_metric_default}' and "
+        "the default linkage method is '{constants.linkage_method_default}'. All available "
+        "distance metrics are listed in the help menu of the hierarchy.distance.pdist function in "
+        "the scipy.cluster module. All available linkage methods are listed in the help menu of "
+        "the hierarchy.linkage function in the scipy.cluster module.")
+    group1F.add_argument(
+        '--codon-distance-metric', metavar='DISTANCE_METRIC', type=str,
+        default=constants.distance_metric_default,
+        help="The distance metric for the hierarchical clustering of functions or genes by their "
+             "codon frequencies.")
+    group1F.add_argument(
+        '--codon-linkage-method', metavar='LINKAGE_METHOD', type=str,
+        default=constants.linkage_method_default,
+        help="The linkage method for the hierarchical clustering of functions or genes by their "
+             "codon frequencies.")
+    group1F.add_argument(
+        '--save-codon-trees', default=False, action='store_true',
+        help="Write Newick-formatted trees of hierarchically clustered codon frequencies. If "
+             "functional affinities are calculated, trees are generated per combination of genome "
+             "and function source, unless the flag, `--compare-all-function-sources`, is used, in "
+             "which case trees are generated per genome taking into account function annotations "
+             "from all sources. If gene affinities are calculated, trees are generated per genome "
+             "from genes. Output paths are derived from the provided `--output-file` template. The "
+             "extension is replaced by '-CODONS.nwk', and the genome name and function source, if "
+             "applicable, are added before the extension following hyphens. In plot output, these "
+             "trees are displayed as y-axis dendrograms of functions or genes.")
+    group1F.add_argument(
+        '--sample-distance-metric', metavar='DISTANCE_METRIC', type=str,
+        default=constants.distance_metric_default,
+        help="The distance metric for the hierarchical clustering of tRNA-seq samples by their "
+             "affinities.")
+    group1F.add_argument(
+        '--sample-linkage-method', metavar='LINKAGE_METHOD', type=str,
+        default=constants.linkage_method_default,
+        help="The linkage method for the hierarchical clustering of tRNA-seq samples by their "
+             "affinities.")
+    group1F.add_argument(
+        '--save-sample-trees', default=False, action='store_true',
+        help="Write Newick-formatted trees of hierarchically clustered tRNA-seq sample affinities. "
+             "Trees are generated per combination of genome, function source (unless using either "
+             "of the flags, `--compare-all-function-sources` or `--gene-affinity`), and affinity "
+             "normalization method. For example, there can be four separate trees generated for "
+             "the same genome from raw affinities and magnitude-min-max normalized affinities of "
+             "KOfam and Pfam functions. Output paths are derived from the provided `--output-file` "
+             "template. The extension is replaced by '-SAMPLES.nwk'. The genome name, function "
+             "source (if applicable), and normalization method (if applicable: raw affinities are "
+             "not marked as raw, unlike normalized affinities), are added before the extension "
+             "following hyphens. In plot output, these trees are displayed as x-axis dendrograms "
+             "of samples. Importantly, note that sample clustering is based on the affinities of "
+             "select functions or genes, including those filtered for plotting by "
+             "`--n-highest-affinity` and `--n-lowest-affinity`.")
+
+    group1G = parser.add_argument_group(
+        'PLOTS',
+        "Static plots can be generated for each genome showing heatmaps of function (or gene) "
+        "affinities, with each row being a function and each column being a tRNA-seq sample. A "
+        "dendrogram orders the functions by their relative codon frequencies regardless of "
+        "codon filters imposed by this program in the calculation of affinity. Optionally, a "
+        "dendrogram orders the samples by the affinities of functions in the heatmap. These static "
+        "plots are well-suited for visualizing a select number of functions, such as those most "
+        "strongly favored (`--n-highest-affinity`) and most strongly disfavored "
+        "(`--n-lowest-affinity`) by the tRNA pool. This program can generate plots in addition to "
+        "tables, or it can be run again just to generate plots with affinity table and, "
+        "optionally, codon frequency table and Newick tree inputs. The anvi'o interactive "
+        "interface is better for visualizing all functions at once. `anvi-interactive` can take "
+        "the affinity table and, optionally, Newick trees for ordering function data and sample "
+        "layers -- such as those produced by `--save-codon-trees` and `--save-sample-trees`. (See "
+        "https://merenlab.org/tutorials/interactive-interface/ and "
+        "https://anvio.org/help/7/programs/anvi-interactive/"
+        "#running-anvi-interactive-in-manual-mode)")
+    group1G.add_argument(
+        '--plot', default=False, action='store_true',
+        help="Store static plots of function (or gene) affinity. Plots for each combination of "
+             "genome, function annotation source (if `--separate-function-sources` is used), and "
+             "affinity normalization method (if `--normalize-affinity` is used) are written to "
+             "filepaths based on `--output-file`, with the extension changed to '.png'. Genome "
+             "name, function source, and normalization method are inserted before the extension "
+             "following a hyphen. If the program is run solely to generate plots from an existing "
+             "affinity table, then use `--output-file` should specify the (template) path for the "
+             "plot. If the input affinity table path contains a recognized normalization method "
+             "before the extension, then it will also be included in the output path, and the "
+             "scale bar of the heatmap will be adjusted accordingly, with 'min-max' and "
+             "'magnitude-min-max' being on a scale of 0 to 1 and 'min-max-mean' being on a scale "
+             "of -1 to 1.")
+    group1G.add_argument(
+        '--n-highest-affinity', default=25, type=int,
+        help="Plot this number of functions (or genes) with the highest affinities in the genome "
+             "averaged across samples. Set this argument and `--n-lowest-affinity` to -1 to plot "
+             "all functions. Set this argument to 0 and `--n-lowest-affinity` to a positive "
+             "integer to only plot the lowest-affinity functions. In plots of normalized affinity, "
+             "the functions with the highest and lowest unnormalized affinities are displayed.")
+    group1G.add_argument(
+        '--n-lowest-affinity', default=25, type=int,
+        help="Plot this number of functions (or genes) with the lowest affinities in the genome "
+             "averaged across samples. Set this argument and `--n-highest-affinity` to -1 to plot "
+             "all functions. Set this argument to 0 and `--n-highest-affinity` to a positive "
+             "integer to only plot the highest-affinity functions. In plots of normalized "
+             "affinity, the functions with the highest and lowest unnormalized affinities are "
+             "displayed.")
+    group1G.add_argument(
+        '--unlabel-function-accession-source', default=False, action='store_true',
+        help="Do not include function accessions or annotation source in the y-axis labels. These "
+             "will still be included in Newick tree outputs.")
+    group1G.add_argument(
+        '--label-brite-hierarchy', default=False, action='store_true',
+        help="When using KEGG BRITE as a function annotation source, display BRITE hierarchies "
+             "containing each category rather than the category alone as the y-axis labels. "
+             "Regardless, BRITE hierarchies constitute the labels in Newick tree outputs.")
+    group1G.add_argument(
+        '--no-codon-dendrogram', default=False, action='store_true',
+        help="Remove the y-axis dendrogram clustering functions or genes by their general codon "
+             "composition.")
+    group1G.add_argument(
+        '--plot-sample-dendrogram', default=False, action='store_true',
+        help="This flag adds a dendrogram clustering tRNA-seq samples. Without this flag, samples "
+             "are ordered by how they are input to the program or, with `--plot-affinity-file`, "
+             "how they appear in the affinity table. With this flag and without "
+             "`--plot-sample-tree-file`, sample clustering is based on the affinities of the "
+             "functions or genes displayed in the heatmap. Alternatively, a dendrogram can be "
+             "supplied as a Newick-formatted file by `--plot-sample-tree-file`. Clustering "
+             "parameters can be altered with `--sample-distance-metric` and "
+             "`--sample-linkage-method`.")
+    group1G.add_argument(
+        '--plot-affinity-file', metavar='FILE_PATH', type=str,
+        help="An affinity table is needed if running the program only to generate plots.")
+    group1G.add_argument(
+        '--select-samples-txt', metavar='FILE_PATH', type=str,
+        help="Select a subset tRNA-seq samples in the loaded affinity table for plotting. The "
+             "input file should have a single column of sample names. Available sample names in an "
+             "affinity table can be printed to the terminal by running this program with the flag, "
+             "`--list-samples`.")
+    group1G.add_argument(
+        '--plot-codon-file', metavar='FILE_PATH', type=str,
+        help="A codon frequency table (see `--save-codon-frequencies` for the proper format) can "
+             "be provided if running the program only to generate plots. The table must contain "
+             "entries for the displayed functions or genes. Clustering parameters can be altered "
+             "with `--sample-distance-metric` and `--sample-linkage-method`.")
+    group1G.add_argument(
+        '--plot-codon-tree-file', metavar='NEWICK', type=str,
+        help="A Newick-formatted tree of functions or genes from a single genome can be provided "
+             "if running the program only to generate plots. `--plot-affinity-file` should be "
+             "provided a table for the corresponding genome. Functions should derive from a single "
+             "annotation source, or functions from multiple sources can be lumped together using "
+             "`--compare-all-function-sources`; this program will not split the tree apart into "
+             "multiple trees per function source.")
+    group1G.add_argument(
+        '--plot-sample-tree-file', metavar='NEWICK', type=str,
+        help="A Newick-formatted tree of the tRNA-seq samples can be provided if running the "
+             "program only to generate plots. `--plot-affinity-file` should be provided a table "
+             "for the corresponding genome.")
+
+    group1H = parser.add_argument_group(
+        'FUNCTIONS',
+        "Functional affinity can be computed for functions from any source, or, indeed, for genes, "
+        "in which case, the term \"gene affinity\" should be used instead. By default, functional "
+        "affinity is computed for the most specific categories in KEGG BRITE hierarchies. For "
+        "example, the category \"Glycolysis / Gluconeogenesis\" is the reported name of \"KEGG "
+        "Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00010 Glycolysis / "
+        "Gluconeogenesis [PATH:ko00010]\" and represents genes annotated by KEGG KOfams assigned "
+        "to this functional category. Functions from multiple sources can be compared at once. "
+        "This program makes no effort to avoid redundancy in the genes or functions that are "
+        "analyzed. Genes can occur in multiple KEGG KOfams, KEGG BRITE categories, or independent "
+        "sources, such as Pfam.")
+    group1H.add_argument(
+        '-f', '--function-sources', nargs='*', type=str,
+        help="Calculate affinity for functions annotated by these sources, e.g., 'KOfam', "
+             "'KEGG_BRITE', 'COG20_FUNCTION'. If `--function-sources` is used as a flag without "
+             "any arguments, then every source will be considered. By default, in the absence of "
+             "function options or `--gene-affinity`, affinity will be calculated for functions "
+             "from the following sources: "
+             f"{', '.join(genomictrnaseq.Affinitizer.default_function_sources)}.")
+    group1H.add_argument(
+        '--all-brite-categories', default=False, action='store_true',
+        help="If using KEGG BRITE as a function source, treat every hierarchy level as a separate "
+             "function. For example, \"KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate "
+             "metabolism>>>00010 Glycolysis / Gluconeogenesis [PATH:ko00010]\" is treated as "
+             "\"00010 Glycolysis / Gluconeogenesis [PATH:ko00010]\" by default, and higher levels "
+             "of the hierarchy are ignored. With this flag, higher categories are also reported as "
+             "functions: \"09101 Carbohydrate metabolism\", \"09100 Metabolism\", and \"KEGG "
+             "Orthology (KO)\".")
+    group1H.add_argument(
+        '--function-accessions', nargs='+', type=str,
+        help="Calculate affinity for select functions with these accessions from the source "
+             "provided in `--function-sources`. To get accessions from multiple sources, instead "
+             "use `--select-functions-txt`.")
+    group1H.add_argument(
+        '--function-names', nargs='+', type=str,
+        help="Calculate affinity for select functions with these names from the source provided in "
+             "`--function-sources`. To get function names from multiple sources, instead use "
+             "`--select-functions-txt`. Regarding KEGG BRITE hierarchies, all functions falling "
+             "under the given hierarchy level are selected. For example, \"KEGG Orthology "
+             "(KO)>>>09100 Metabolism\" includes and selects \"KEGG Orthology (KO)>>>09100 "
+             "Metabolism>>>09101 Carbohydrate metabolism>>>00010 Glycolysis / Gluconeogenesis "
+             "[PATH:ko00010]\".")
+    group1H.add_argument(
+        '--select-functions-txt', metavar='FILE_PATH', type=str,
+        help="Selected functions can be listed in this tab-delimited file of three columns. The "
+             "first column should contain function annotation sources, the second column "
+             "accessions, and the third function names. An entry in the source column is required "
+             "in every row, and either an accession or name, or both, should also be in a row. "
+             "The file should not have a header of column names. Regarding KEGG BRITE hierarchies, "
+             "all functions falling under the given hierarchy level are selected. For example, "
+             "\"KEGG Orthology (KO)>>>09100 Metabolism\" includes and selects \"KEGG Orthology "
+             "(KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00010 Glycolysis / "
+             "Gluconeogenesis [PATH:ko00010]\".")
+    group1H.add_argument(
+        '--lax-function-sources', default=False, action='store_true',
+        help="By default, without this flag, requested function annotation sources must have been "
+             "run on every input (meta)genome. With this flag, it doesn't matter if any number of "
+             "sources was not run on any number of input (meta)genomes.")
+    group1H.add_argument(
+        '--function-blacklist-txt', metavar='FILE_PATH', type=str,
+        help="A single-column file of regular expressions that exclude functions from affinity "
+             "calculations when patterns occur in function annotation strings. Built-in blacklists "
+             "can be stored to file by running this program with the sole option, "
+             "`--get-function-blacklist`. The generated file (indeed, any single-column file) can "
+             "be provided with this argument. For example, if the file contains the regex, "
+             "'[aA]rchaea', then functional annotations containing the substrings, 'archaea' or "
+             "'Archaea', are disregarded.")
+    group1H.add_argument(
+        '--gene-affinity', default=False, action='store_true',
+        help="Compute affinity for genes rather than functions.")
+    group1H.add_argument(
+        '--gene-caller-ids', nargs='+', type=int,
+        help="Select genes by ID, space-separated, if using `--gene-affinity`, and genomic input "
+             "from a single contigs database (not `--internal-genomes` or `--external-genomes`).")
+
+    group1I = parser.add_argument_group(
+        'SEED ASSIGNMENT',
+        "It may not be possible to resolve tRNA transcripts to individual populations or genomes. "
+        "tRNAs have relatively short sequences (~70-100 nt) that are often conserved across deep "
+        "clades. By default, affinity calculations for functions in a genome conservatively use "
+        "only those seeds with unique matches to tRNA genes in the genome, ignoring seeds that "
+        "also match other genomes or unbinned contigs. Alternatively, either all or some seeds "
+        "with an ambiguous source can be included in affinity calculations. "
+        "`anvi-integrate-trnaseq` cannot have been run with the flag, "
+        "`--unambiguous-genome-assignment`, as is the case by default, for the issue of seed "
+        "ambiguity to factor into affinity calculations.")
+    group1I.add_argument(
+        '--seed-assignment',
+        choices=['unambiguous_genome', 'unambiguous_db', 'ambiguous_all', 'ambiguous_choose'],
+        type=str, default='unambiguous_genome',
+        help="Control how tRNA-seq seeds assigned to tRNA genes that are not confined to a single "
+             "genome -- \"ambiguous\" seeds -- affect affinity calculations. Ambiguous seeds may "
+             "assigned to multiple genomes or a single genome and unbinned contigs. "
+             "(1) `unambiguous_genome`: Only seeds assigned to a single INPUT (META)GENOME are "
+             "used in affinity calculations. "
+             "(2) `unambiguous_db`: Only seeds unambiguously assigned to each (meta)genome IN THE "
+             "TRNASEQ CONTIGS DATABASE are used in affinity calculations. `anvi-integrate-trnaseq` "
+             "can be run with any number of (meta)genomes, but a selection of these can be used as "
+             "inputs to `anvi-compute-trnaseq-functional-affinity`. For example, `unambiguous_db` "
+             "could be useful to calculate affinity for a single genome on the basis of "
+             "unambiguous seeds despite multiple genomes having been integrated into the database."
+             "(3): `ambiguous_all`: Both unambiguous and ambiguous seeds are used in affinity "
+             "calculations. As a result, affinity calculations for different genomes will not be "
+             "independent if ambiguous seeds are shared."
+             "(4): `ambiguous_choose`: Try to convert ambiguous seeds to unambiguous seeds by "
+             "seeking a likely genomic source for each ambiguous seed. The most likely genome is "
+             "found from the summed coverages of unambiguous seeds from the competing genomes. "
+             "For a most likely genome to be chosen, its summed coverage must exceed the "
+             "second-highest summed coverage of a genome in every tRNA-seq sample by at least the "
+             "`--min-coverage-ratio`. For example, an ambiguous seed matches genomes A, B, and C, "
+             "and there are two samples, 1 and 2 (reference and non-reference). The summed "
+             "coverage of unambiguous seeds assigned to genome A is 10000 in sample 1 and 5000 in "
+             "sample 2; coverage for genome B, sample 1 is 1000 and genome B, sample 2 is 100; "
+             "coverage for genome C, sample 1 is 500 and genome C, sample 2 is 1000. For sample 1, "
+             "the ratio of highest to second-highest genome is 10000/1000 = 10, and for sample 2, "
+             "the ratio is 5000/1000 = 5. In both samples, genome A has the highest total "
+             "coverage. Therefore, with a `--min-coverage-ratio` ≤5, the ambiguous seed would be "
+             "assigned to genome A for affinity calculations. With a `--min-coverage-ratio` >5, "
+             "the ambiguous seed would be excluded from affinity calculations.")
+    group1I.add_argument(
+        '--min-coverage-ratio', metavar='FLOAT', type=float,
+        default=genomictrnaseq.Affinitizer.default_min_coverage_ratio,
+        help="This argument only applies to `--seed-assignment ambiguous_choose` and not any other "
+             "values of `--seed-assignment`. See (4) in the `--seed-assignment` help message for "
+             "details. An ambiguous seed matching multiple genomes can be salvaged for affinity "
+             "calculations by assigning it to a single genome that is significantly more active "
+             "than the other genomes and thereby the likely source of most of the tRNA molecules "
+             "represented by the seed. The chosen genome must have at least `--min-coverage-ratio` "
+             "greater summed coverage of unambiguous seeds than any of the other genomes in every "
+             "tRNA-seq sample.")
+
+    group1J = parser.add_argument_group(
+        'ISOACCEPTOR PARAMETERS',
+        "The calculation of affinity relies upon the abundances of tRNA isoacceptors, or groups of "
+        "seeds with the same anticodon.")
+    group1J.add_argument(
+        '--min-coverage', metavar='INT', type=int,
+        default=genomictrnaseq.Affinitizer.default_min_coverage,
+        help="The coverage threshold for detection of a tRNA isoacceptor. Coverage is measured at "
+             "the 3' (discriminator) nucleotide of the isoacceptor seeds. In `--reference-sample` "
+             "mode the threshold must be met in the reference sample for the isoacceptor to enter "
+             "affinity calculations, and per-sample isoacceptor rows below the threshold are then "
+             "dropped from the analyzed sample's regression. In `--reference-mean` mode the "
+             "isoacceptor's mean `discriminator_1` across the analyzed samples (counting samples "
+             "without a row as zero) must clear the threshold; per-sample rows below the "
+             "threshold are again dropped orthogonally. The flag `--shared-isoacceptors` "
+             "tightens this to 'every analyzed sample must clear the threshold' in both modes.")
+    group1J.add_argument(
+        '--exclude-unmodified-anticodons', nargs='+', type=str,
+        help="Remove tRNA isoacceptors with the given unmodified anticodons from calculation of "
+             "affinity. Note that this argument only handles unmodified anticodons. For example, "
+             "'ACG' does not exclude 'ICG', and 'CAT' excludes tRNA-Met but not tRNA-Ile2, in "
+             "which 'CAT' is modified to 'LAT' in bacteria. To exclude tRNA-Arg-ACG with the I34 "
+             "modification and tRNA-Ile2, instead use the option `--exclude-modified-anticodons` "
+             "with the value, 'ICG LAT'. Exclusion of tRNAs by anticodon occurs before, and "
+             "thereby affects, the `--min-isoacceptors` filter.")
+    group1J.add_argument(
+        '--exclude-modified-anticodons', nargs='+', type=str,
+        help="Remove tRNA isoacceptors with the given modified anticodons from calculation of "
+             "anticodon. Recognized modifications are wobble nucleotide I (inosine) (anticodons "
+             "'INN', where 'N' is any nucleotide) and L (lysidine and, in this program, archaeal "
+             "agmatidine, with the only anticodon recognized with this modification being 'LAT'). "
+             "Exclusion of tRNAs by anticodon occurs before, and thereby affects, the "
+             "`--min-isoacceptors` filter.")
+    group1J.add_argument(
+        '--min-isoacceptors', metavar='INT', type=int,
+        default=genomictrnaseq.Affinitizer.default_min_isoacceptors,
+        help="The minimum number of tRNA isoacceptors that need to be detected in a (meta)genomic "
+             "source for affinity to be calculated. For example, say the minimum number of "
+             "isoacceptors is 5, there are two internal genomes, A and B, and 10 isoacceptors pass "
+             "the minimum coverage threshold in A whereas 4 isoacceptors pass the threshold in B. "
+             "Affinity will be calculated for genome A but not B.")
+    group1J.add_argument(
+        '--shared-isoacceptors', default=False, action='store_true',
+        help="Retain only isoacceptors that pass `--min-coverage` in EVERY analyzed sample (and "
+             "that also pass the other isoacceptor filters). In `--reference-sample` mode 'every "
+             "analyzed sample' means the reference plus all `--nonreference-samples`; in "
+             "`--reference-mean` mode it means every `--nonreference-samples` entry. This "
+             "facilitates the comparison of raw affinity data between samples, because the same "
+             "set of isoacceptors contributes to each sample's regression.")
+    group1J.add_argument(
+        '--decoding-weights-txt', metavar='FILE_PATH', type=str,
+        help="A tab-delimited file of decoding weights, formatted identically to the file of "
+             "default weights generated by running this program with the single option, "
+             "`--get-default-decoding-weights`. The default weights used by this program are the "
+             "s(i,j) values from Table 2 of dos Reis, Savva, and Wernisch (2004), which are used "
+             "in their tRNA Adaptation Index (tAI) metric (https://doi.org/10.1093/nar/gkh834). "
+             "s(i,j) means \"the selective constraint on the efficiency of the codon-anticodon "
+             "coupling.\" Consistent with Table 2, weights are provided for the anticodon wobble "
+             "nucleotides, A, C, G, T, I (inosine), and L (lysidine) -- these are the row index. "
+             "The codon wobble nucleotides, A, C, G, and T, are the column header. A weight of 0 "
+             "means that base pairing between the anticodon and codon is maximally efficient "
+             "(e.g., C-G), whereas a weight of 1 means that base pairing is maximally inefficient "
+             "(e.g., C-C).")
+
+    group1K = parser.add_argument_group(
+        'CODON FILTERS',
+        "Functions and genes can be filtered by the number of codons that they contain, and "
+        "codons can be selected for removal. The reliability or usefulness of the affinity metric "
+        "is greater for functions with more analyzed codons decoded by measured tRNA-seq "
+        "isoacceptors. Codon selection can be useful, for instance, in testing the effect of "
+        "perturbations in the set of analyzed codons on the affinity results.")
+    group1K.add_argument(
+        '--min-analyzed-codons', type=int, default=0,
+        help="Affinity is calculated for functions (or genes, with the flag, `--gene-affinity`) "
+             "that contain at least this number of codons with corresponding tRNA-seq "
+             "isoacceptors. For example, say a function contains gene sequences with 1,000 codons "
+             "total, of which 300 can be decoded by isoacceptors screened for use in affinity "
+             "calculations. If this argument is set to 500, then affinity would not be calculated "
+             "for the function.")
+    group1K.add_argument(
+        '--function-min-total-codons', type=int, default=0,
+        help="Affinity is calculated for functions that contain at least this number of codons "
+             "total. This option cannot be used with `--gene-affinity`.")
+    group1K.add_argument(
+        '--gene-min-total-codons', type=int, default=0,
+        help="Genes must contain at least this number of codons total to contribute to affinity "
+             "calculations. This option can only be used with `--gene-affinity`.")
+    group1K.add_argument(
+        '--exclude-codons', nargs='+', type=str,
+        help="Remove the given codons from the calculation of affinity.")
+    group1K.add_argument(
+        '--exclude-amino-acids', nargs='+', type=str,
+        help="Remove codons that decode the given amino acids from calculation of affinity.")
+
+    group1L = parser.add_argument_group( # TODO: add this functionality
+        'RAREFACTION STATISTICS',
+        "Rarefaction of the tRNA isoacceptors used in calculation of affinity provides a means of "
+        "evaluating how representative the isoacceptors are of the whole tRNA pool. The smaller "
+        "the subset of isoacceptors involved in the calculation, the less reliable the metric is "
+        "at evaluating the gene functions favored for translation by the tRNA pool. Affinity "
+        "results that are sensitive to rarefaction indicate suggest that not enough isoacceptors "
+        "were measured to achieve 'statistical significance'. Separate output files are produced "
+        "for the results of rarefaction.")
+    group1L.add_argument(
+        '--rarefaction-limit', metavar='INT', type=int, default=0,
+        help="Any positive integer for the rarefaction limit will trigger rarefaction of tRNA "
+             "isoacceptors for recomputations of affinities. The rarefaction limit sets the number "
+             "of randomly drawn subsamples of isoacceptors. For example, given a sample with 10 "
+             "isoacceptors used in the calculation of affinity, there are 10 combinations of 1 "
+             "isoacceptor that can be subsampled for recalculation with 1 isoacceptor, 45 "
+             "combinations of 2 isoacceptors, ..., 252 combinations of 5 isoacceptors, ..., and 10 "
+             "combinations of 9 isoacceptors. Setting a rarefaction limit of 100 would not affect "
+             "any subsamples with 100 or fewer combinations, but would, for example, cause random "
+             "subsampling of 100 of the 252 possible combinations of 5 isoacceptors.")
+
+    group2 = parser.add_argument_group('INFO')
+    group2.add_argument(
+        '-l', '--list-samples', default=False, action='store_true',
+        help="List the names of tRNA-seq samples in `seeds-specific-txt` by using this flag with "
+             "the `--seeds-specific-txt` argument.")
+    group2.add_argument(
+        '-w', '--get-default-decoding-weights', metavar='FILE_PATH',
+        help="Store a tab-delimited file of the default decoding weights used in affinity "
+             "calculations. This file has the format of the input file needed for "
+             "`--decoding-weights-txt`.")
+    group2.add_argument(
+        '-k', '--get-function-blacklist', nargs=2,
+        help="Store a built-in blacklist of regular expressions that exclude functions from "
+             "affinity calculations when patterns occur in function annotation strings. The first "
+             "argument should be the output file path and the second argument should be the name "
+             "of the built-in blacklist. The single-column output file (indeed, any single-column "
+             "file) can be used with `--function-blacklist-txt`. Available named blacklists: "
+             f"{', '.join(genomictrnaseq.Affinitizer.builtin_function_blacklists)}")
+
+    args = parser.get_args(parser)
+    return args
+
+
+def run_helper_modes(args):
+    """Run helper functionality from Group 2 arguments."""
+    if args.list_samples:
+        print_sample_names(args.seeds_specific_txt)
+        return True
+
+    if args.get_default_decoding_weights:
+        write_default_decoding_weights(args.get_default_decoding_weights)
+        return True
+
+    if args.get_function_blacklist:
+        write_function_blacklist(
+            args.get_function_blacklist[0], args.get_function_blacklist[1])
+        return True
+
+    return False
+
+
+def print_sample_names(seeds_specific_txt):
+    samples = genomictrnaseq.Affinitizer.list_sample_names(seeds_specific_txt)
+    if not samples:
+        raise ConfigError(
+            "No sample names were found in `--seeds-specific-txt`, the table of tRNA-seq seed "
+            "specific coverages generated by `anvi-tabulate-trnaseq`!")
+
+    run = terminal.Run()
+    run.info("tRNA-seq sample names", f"{', '.join(sorted(samples))}", nl_after=1)
+
+
+def write_default_decoding_weights(output_path):
+    filesnpaths.is_output_file_writable(output_path, ok_if_exists=False)
+
+    genomictrnaseq.Affinitizer.default_decoding_weights_df.to_csv(output_path, sep='\t')
+
+    run.info("Default decoding weights file", output_path)
+
+
+def write_function_blacklist(output_path, blacklist_name):
+    filesnpaths.is_output_file_writable(output_path, ok_if_exists=False)
+    if blacklist_name not in genomictrnaseq.Affinitizer.builtin_function_blacklists:
+        raise ConfigError(
+            f"An unrecognized built-in blacklist, {blacklist_name}, was provided. Here are the "
+            "available options: "
+            f"{', '.join(genomictrnaseq.Affinitizer.builtin_function_blacklists)}")
+
+    with open(output_path, 'w') as output_file:
+        for blacklist_pattern in genomictrnaseq.Affinitizer.builtin_function_blacklists[
+            blacklist_name]:
+            output_file.write(f"{blacklist_pattern}\n")
+
+    run.info("Function blacklist file", output_path)
+
+
+def sanity_check(args):
+    """Check for valid combinations of arguments."""
+    if not args.output_file:
+        raise ConfigError("An argument is required for `--output-file`.")
+    if not args.seeds_specific_txt:
+        raise ConfigError("An argument is required for `--seeds-specific-txt`.")
+
+    clustering.is_distance_metric_OK(args.codon_distance_metric)
+    clustering.is_linkage_method_OK(args.codon_linkage_method)
+    clustering.is_distance_and_linkage_compatible(
+        args.codon_distance_metric, args.codon_linkage_method)
+    clustering.is_distance_metric_OK(args.sample_distance_metric)
+    clustering.is_linkage_method_OK(args.sample_linkage_method)
+    clustering.is_distance_and_linkage_compatible(
+        args.sample_distance_metric, args.sample_linkage_method)
+
+    if not ((args.n_highest_affinity > 0 and args.n_lowest_affinity > 0) or
+            (args.n_highest_affinity > 0 and args.n_lowest_affinity == 0) or
+            (args.n_highest_affinity == 0 and args.n_lowest_affinity > 0) or
+            (args.n_highest_affinity == -1 and args.n_lowest_affinity == -1)):
+        raise ConfigError(
+            "`--n-highest-affinity` and `--n-lowest-affinity` were passed an invalid combination "
+            "of values.")
+
+    if args.gene_caller_ids and not args.gene_affinity:
+        args.gene_affinity = True
+    if (args.gene_affinity and
+        (args.unlabel_function_accession_source or
+         args.label_brite_hierarchy or
+         args.function_sources or
+         args.all_brite_categories or
+         args.function_accessions or
+         args.function_names or
+         args.select_functions_txt or
+         args.lax_function_sources or
+         args.function_blacklist_txt)):
+        raise ConfigError(
+            "`--gene-affinity` and `--gene-caller-ids` cannot be used with function options: "
+            "`--unlabel-function-accession-source`, `--label-brite-hierarchy`, "
+            "`--function-sources`, `--all-brite-categories`, `--function-accessions`, "
+            "`--function-names`, `--select-functions-txt`, `--lax-function-sources`, and "
+            "`--function-blacklist-txt`.")
+
+    if args.plot_affinity_file:
+        sanity_check_plot_affinity_file(args)
+        return
+
+    if ((args.unlabel_function_accession_source or
+         args.label_brite_hierarchy or
+         args.no_codon_dendrogram or
+         args.plot_sample_dendrogram or
+         args.select_samples_txt or
+         args.plot_codon_file or
+         args.plot_codon_tree_file or
+         args.plot_sample_tree_file) and
+         not args.plot):
+        raise ConfigError(
+            "`--unlabel-function-accession-source`, `--label-brite-hierarchy`, "
+            "`--no-codon-dendrogram`, `--plot-sample-dendrogram`, `--select-samples-txt`, "
+            "`--plot-codon-file`, `--plot-codon-tree-file`, and `--plot-sample-tree-file` must be "
+            "used with `--plot`.")
+
+    # Check arguments needed for computing affinities.
+    if args.trnaseq_contigs_db is None:
+        raise ConfigError(
+            "`--trnaseq-contigs-db` is a required argument for computation of affinities.")
+    if args.reference_sample is None and args.reference_mean is None:
+        raise ConfigError(
+            "A baseline for the isoacceptor abundance ratios is required: pass either "
+            "`--reference-sample` or `--reference-mean`.")
+    if args.reference_sample and args.reference_mean is not None:
+        raise ConfigError(
+            "`--reference-sample` and `--reference-mean` are mutually exclusive.")
+    if args.reference_mean is not None and args.nonreference_samples:
+        raise ConfigError(
+            "`--nonreference-samples` is for `--reference-sample` mode only. In "
+            "`--reference-mean` mode, pass the sample subset directly to `--reference-mean` "
+            "(no arguments to `--reference-mean` analyzes every sample in `seeds-specific-txt`).")
+
+    # The following are checks on combinations of genomic inputs.
+    if ((args.internal_genomes or args.external_genomes) and
+        (args.contigs_db or args.profile_db or args.collection_name or
+         args.bin_id or args.bin_ids_file or args.gene_caller_ids)):
+        raise ConfigError(
+            "`--internal-genomes` and `--external-genomes` cannot be used with other genomic input "
+            "arguments.")
+    if args.profile_db and not (args.contigs_db and args.collection_name):
+        raise ConfigError("`--profile-db` also requires `--contigs-db` and `--collection-name`.")
+    if args.collection_name and not (args.contigs_db and args.profile_db):
+        raise ConfigError("`--collection-name` also requires `--contigs-db` and `--profile-db`.")
+    if args.bin_id and args.bin_ids_file:
+        raise ConfigError("`--bin-id` and `--bin-ids-file` cannot be used together.")
+    if ((args.bin_id or args.bin_ids_file) and
+        not (args.contigs_db and args.profile_db and args.collection_name)):
+        raise ConfigError(
+            "`--bin-id` and `--bin-ids-file` also require `--contigs-db`, `--profile-db`, and "
+            "`--collection-name`.")
+
+    if args.gene_caller_ids and not args.contigs_db:
+        raise ConfigError("`--gene-caller-ids` also requires `--contigs-db`.")
+
+    if (args.gene_affinity and
+        (args.separate_function_sources or args.compare_all_function_sources)):
+        raise ConfigError(
+            "`--gene-affinity` cannot be used with `--separate-function-sources` or "
+            "`--compare-all-function-sources`.")
+    if args.separate_function_sources and args.compare_all_function_sources:
+        raise ConfigError(
+            "`--separate-function-sources` cannot be used with `--compare-all-function-sources`.")
+
+
+def sanity_check_plot_affinity_file(args):
+    """Check arguments needed for plotting stored data without computing affinities anew."""
+    if not args.plot:
+        args.plot = True
+
+    if args.no_codon_dendrogram and (args.plot_codon_file or args.plot_codon_tree_file):
+        raise ConfigError(
+            "`--no-codon-dendrogram` cannot be used with `--plot-codon-file` or "
+            "`--plot-codon-tree-file`.")
+    elif not (args.plot_codon_file or args.plot_codon_tree_file):
+        raise ConfigError(
+            "To plot the dendrogram of displayed functions or genes, either pass a table of codon "
+            "frequency data for tree calculation to `--plot-codon-file`, or pass a Newick tree to "
+            "`--plot-codon-tree-file`.")
+
+    if args.plot_codon_tree_file and args.save_codon_trees:
+        raise ConfigError(
+            "`--plot-codon-tree-file` cannot be used with `--save-codon-trees`. It does not make "
+            "sense to resave the tree just loaded for plotting.")
+    if args.plot_sample_tree_file and args.save_sample_trees:
+        raise ConfigError(
+            "`--plot-sample-tree-file` cannot be used with `--save-sample-trees`. It does not make "
+            "sense to resave the tree just loaded for plotting.")
+    if args.plot_sample_tree_file and args.normalization_methods:
+        raise ConfigError(
+            "`--plot-sample-tree-file` cannot be used with `--normalize-affinity`. The sample tree "
+            "should be constructed from raw affinities or normalized affinities of a single type. "
+            "The table of affinity data provided to `--plot-affinity-file` should be of the same "
+            "type.")
+
+    if args.select_samples_txt:
+        filesnpaths.is_file_plain_text(args.select_samples_txt)
+    if args.plot_codon_file:
+        filesnpaths.is_file_tab_delimited(args.plot_codon_file)
+    if args.plot_codon_tree_file:
+        filesnpaths.is_proper_newick(args.plot_codon_tree_file)
+    if args.plot_sample_tree_file:
+        filesnpaths.is_proper_newick(args.plot_sample_tree_file)
+
+
+def parse_decoding_weights_table(decoding_weights_txt):
+    """Load the decoding weights table as a DataFrame."""
+    if not decoding_weights_txt:
+        return
+
+    filesnpaths.is_file_tab_delimited(decoding_weights_txt)
+
+    decoding_weights_df = pd.read_csv(decoding_weights_txt, sep='\t', index_col=0, header=0)
+
+    is_formatted = True
+    if decoding_weights_df.shape != genomictrnaseq.Affinitizer.default_decoding_weights_df.shape:
+        is_formatted = False
+    else:
+        if not (
+            decoding_weights_df.index ==
+            genomictrnaseq.Affinitizer.default_decoding_weights_df.index).all():
+            is_formatted = False
+        if not (
+            decoding_weights_df.columns ==
+            genomictrnaseq.Affinitizer.default_decoding_weights_df.columns).all():
+            is_formatted = False
+    if not is_formatted:
+        raise ConfigError(
+            "The input decoding weights table is not formatted properly. The tab-delimited file "
+            "generated by running this program with the sole argument, "
+            "`--get-default-decoding-weights`, should be used as a template, with the row index of "
+            "anticodon wobble nucleotides and column header of codon wobble nucleotides left "
+            "unchanged.")
+
+    return decoding_weights_df
+
+
+def get_affinities(args):
+    """
+    Generate or load an affinity table, returning a dictionary containing one or more tables per
+    genome, function or gene source, and normalization method. Also return dictionaries of standard
+    errors of the regression slopes used as affinities, plus isoacceptor abundance ratio and
+    isoacceptor codon weight tables from which affinities are derived.
+
+    Parameters
+    ==========
+    args : argparse.Namespace
+
+    Returns
+    =======
+    affinities_dict : dict
+        This triple-nested dictionary has the following levels is structured as follows: genome name
+        -> function or gene source -> normalization method -> affinity table.
+
+        If considering genes rather than functions, the inner source dictionary will have the single
+        key, 'all_genes'. If considering all functions, the inner source dictionary will have the
+        single key, 'all_functions'. Otherwise, if separating function sources, the dictionary will
+        have a key with the name of each source.
+
+        The inner normalization method dictionary is keyed by normalization method, with 'raw'
+        indicating unnormalized affinities, and the normalization choices of `--normalize-affinity`
+        -- 'min_max', 'min_max_mean', and 'magnitude_min_max' -- being the other possible keys.
+
+        The values of the innermost dictionary are affinity tables with rows representing functions
+        or genes and columns representing tRNA-seq samples.
+    stderrs_dict : dict or None
+        This nested dictionary is structured as follows: genome name -> function or gene source ->
+        stderr table. Each stderr table is aligned 1:1 with the corresponding raw affinity table
+        and reports the standard error of the regression slope used as the affinity. Standard
+        errors are only meaningful for raw affinities and are not propagated through normalization.
+        `None` is returned in `--plot-affinity-file` mode, where affinities are loaded rather than
+        recomputed.
+    isoacceptor_abund_ratios_dict : dict
+        This dictionary is keyed by genome name and contains tables of isoacceptor abundance ratios.
+        Affinities are calculated from isoacceptor abundance ratios in conjunction with isoacceptor
+        codon weights.
+    isoacceptor_codon_weights_dict : dict
+        This nested dictionary is structured as follows: genome name -> function or gene source ->
+        isoacceptor codon weights table. Affinities are calculated from isoacceptor codon weights in
+        conjunction with isoacceptor abundance ratios.
+    """
+    if args.plot_affinity_file:
+        # Affinities are being plotted for a single genome but not computed anew.
+        affinities_dict = load_affinities(args)
+        stderrs_dict = None
+        isoacceptor_abund_ratios_dict = None
+        isoacceptor_codon_weights_dict = None
+    else:
+        # Compute affinities anew.
+        (affinities_dict, stderrs_dict,
+         isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict) = generate_affinities(args)
+
+    return (affinities_dict, stderrs_dict,
+            isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict)
+
+
+def load_affinities(args):
+    """Load single genome affinities for the purposes of plotting."""
+    affinities_df = pd.read_csv(args.plot_affinity_file, sep='\t')
+    # Make sure the loaded table is properly formatted.
+    if affinities_df.columns[: 4] == [
+        'genome_name', 'function_source', 'function_accession', 'function_name']:
+        affinities_df = affinities_df.set_index(
+            ['genome_name', 'function_source', 'function_accession', 'function_name'])
+        args.gene_affinity = False
+    elif affinities_df.columns[: 2] == ['genome_name', 'gene_callers_id']:
+        affinities_df = affinities_df.set_index(['genome_name', 'gene_callers_id'])
+        if args.gene_affinity is False:
+            # Help out the user if they didn't explicitly indicate gene rather function affinity.
+            args.gene_affinity = True
+    else:
+        raise ConfigError(
+            f"The affinity table loaded from '{args.plot_affinity_file}' does not have the "
+            "proper format, with the first columns being 'genome_name', 'function_source', "
+            "'function_accession', and 'function_name' for function affinities or 'genome_name' "
+            "and 'gene_callers_id' for gene affinities.")
+
+    # If also loading a codon tree to plot a y-axis dendrogram, confirm that the table only contains
+    # information on one genome.
+    if (args.plot_codon_tree and
+        affinities_df.index.get_level_values('genome_name').nunique() > 1):
+        raise ConfigError(
+            f"The provided affinity table, '{args.plot_affinity_table}', contains information on "
+            f"more than one genome. However, the provided codon tree, '{args.plot_codon_tree}', is "
+            "only allowed to contain information on one genome. Of course, the affinity table and "
+            "codon tree should contain information on the same genome.")
+
+    if args.select_samples_txt:
+        # Select a subset of samples.
+        with open(args.select_samples_txt) as select_samples_file:
+            select_samples = [line.rstrip() for line in select_samples_file]
+
+        missing_samples = set(select_samples).difference(set(affinities_df.columns))
+        if missing_samples:
+            raise ConfigError(
+                "The following samples given in the `--select-samples-txt` file, "
+                f"'{args.select_samples_txt}', are not found in the affinity table loaded from "
+                f"from '{args.plot_affinity_file}'.")
+
+        affinities_df = affinities_df[select_samples]
+
+    # The dictionary of affinity tables will only have one key for a single genome in the outermost
+    # dictionary.
+    affinities_dict = {}
+    genome_name = affinities_df.index.get_level_values('genome_name')[0]
+    affinities_dict[genome_name] = source_dict = {}
+    if affinities_df.index.get_level_values('function_source').nunique() > 1:
+        multiple_sources = True
+    else:
+        multiple_sources = False
+    if args.gene_affinity:
+        source_dict['genes'] = normalization_dict = {}
+        if args.plot_codon_dendrogram:
+            affinities_df = get_table_with_codon_tree_labels(
+                args, affinities_df, multiple_sources=multiple_sources)
+        normalization_dict['raw'] = affinities_df
+        for normalization_method in args.normalization_methods:
+            normalization_dict[normalization_method] = normalize_affinities_table(affinities_df)
+    elif args.compare_all_function_sources:
+        source_dict['all_functions'] = normalization_dict = {}
+        if args.plot_codon_dendrogram:
+            affinities_df = get_table_with_codon_tree_labels(
+                args, affinities_df, multiple_sources=multiple_sources)
+        normalization_dict['raw'] = affinities_df
+        for normalization_method in args.normalization_methods:
+            normalization_dict[normalization_method] = normalize_affinities_table(affinities_df)
+    else:
+        for source, source_df in affinities_df.groupby('function_source'):
+            source_dict[source] = normalization_dict = {}
+            if args.plot_codon_dendrogram:
+                source_df = get_table_with_codon_tree_labels(
+                    args, source_df, multiple_sources=multiple_sources)
+            normalization_dict['raw'] = source_df
+            for normalization_method in args.normalization_methods:
+                normalization_dict[normalization_method] = normalize_affinities_table(source_df)
+
+    run.info(
+        f"Input table of {'function' if args.gene_affinity else 'gene'} affinities",
+        args.plot_affinity_file)
+
+    return affinities_dict
+
+
+def generate_affinities(args):
+    """Generate affinities anew given one or more genomes. Also return per-genome/source standard
+    errors of the regression slopes used as affinities, plus the isoacceptor abundance ratios and
+    isoacceptor codon weights from which affinities are derived."""
+    args.decoding_weights = parse_decoding_weights_table(args.decoding_weights_txt)
+    affinitizer = genomictrnaseq.Affinitizer(args)
+    affinities_df, stderrs_df, isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df = \
+        affinitizer.go(return_component_tables=True)
+
+    if len(affinities_df) == 0:
+        raise ConfigError(
+            "Affinity could not be calculated given the input data and/or filters applied to the "
+            "data.")
+
+    if args.plot_codon_dendrogram:
+        if affinities_df.index.get_level_values('function_source').nunique() > 1:
+            multiple_sources = True
+        else:
+            multiple_sources = False
+        affinities_df = get_table_with_codon_tree_labels(
+            args,
+            affinities_df,
+            multiple_sources=multiple_sources)
+
+    isoacceptor_abund_ratios_df = pd.pivot(
+        isoacceptor_abund_ratios_df,
+        index=['genome_name', 'decoded_amino_acid', 'anticodon'],
+        columns='trnaseq_sample_name',
+        values='abundance_ratio')
+
+    # Default sample column order is alphabetic (produced by the groupby in `get_isoacceptors`
+    # and preserved through the pivot). `--sample-order` overrides this with an explicit
+    # ordering and requires set-equality with the analyzed samples.
+    if args.sample_order:
+        provided = set(args.sample_order)
+        actual = set(affinities_df.columns)
+        if provided != actual:
+            missing = sorted(actual - provided)
+            extra = sorted(provided - actual)
+            details = []
+            if missing:
+                details.append(f"missing: {', '.join(missing)}")
+            if extra:
+                details.append(f"extra: {', '.join(extra)}")
+            raise ConfigError(
+                "`--sample-order` must list exactly the analyzed tRNA-seq samples in the "
+                f"desired order ({'; '.join(details)}).")
+        if len(args.sample_order) != len(set(args.sample_order)):
+            raise ConfigError(
+                "`--sample-order` contains duplicate sample names; each analyzed sample must "
+                "appear exactly once.")
+        affinities_df = affinities_df[args.sample_order]
+        stderrs_df = stderrs_df[args.sample_order]
+        isoacceptor_abund_ratios_df = isoacceptor_abund_ratios_df[args.sample_order]
+
+    # Cache the final column list on `args` for downstream consumers (e.g., the sample-linkage
+    # warning), regardless of whether `--sample-order` was used.
+    args.nonreference_samples = list(affinities_df.columns)
+
+    affinities_dict = {}
+    for genome_name, genome_df in affinities_df.groupby('genome_name'):
+        affinities_dict[genome_name] = source_dict = {}
+        if args.gene_affinity:
+            source_dict['genes'] = normalization_dict = {}
+            normalization_dict['raw'] = genome_df
+            for normalization_method in args.normalization_methods:
+                normalization_dict[normalization_method] = normalize_affinities_table(genome_df)
+        elif args.compare_all_function_sources:
+            source_dict['all_functions'] = normalization_dict = {}
+            normalization_dict['raw'] = genome_df
+            for normalization_method in args.normalization_methods:
+                normalization_dict[normalization_method] = normalize_affinities_table(
+                    genome_df, normalization_method)
+        else:
+            for source, source_df in genome_df.groupby('function_source'):
+                source_dict[source] = normalization_dict = {}
+                normalization_dict['raw'] = source_df
+                for normalization_method in args.normalization_methods:
+                    normalization_dict[normalization_method] = normalize_affinities_table(
+                        source_df, normalization_method)
+
+    # Standard errors are reported only for the raw regression slopes; they are not propagated
+    # through affinity normalization. The dict is therefore one level shallower than
+    # `affinities_dict`: genome name -> source -> stderr table.
+    stderrs_dict = {}
+    for genome_name, genome_df in stderrs_df.groupby('genome_name'):
+        stderrs_dict[genome_name] = source_dict = {}
+        if args.gene_affinity:
+            source_dict['genes'] = genome_df
+        elif args.compare_all_function_sources:
+            source_dict['all_functions'] = genome_df
+        else:
+            for source, source_df in genome_df.groupby('function_source'):
+                source_dict[source] = source_df
+
+    isoacceptor_abund_ratios_dict = {}
+    for genome_name, genome_df in isoacceptor_abund_ratios_df.groupby('genome_name'):
+        isoacceptor_abund_ratios_dict[genome_name] = genome_df
+
+    isoacceptor_codon_weights_dict = {}
+    for genome_name, genome_df in isoacceptor_codon_weights_df.groupby('genome_name'):
+        isoacceptor_codon_weights_dict[genome_name] = source_dict = {}
+        if args.gene_affinity:
+            source_dict['genes'] = genome_df
+        elif args.compare_all_function_sources:
+            source_dict['all_functions'] = genome_df
+        else:
+            for source, source_df in genome_df.groupby('function_source'):
+                source_dict[source] = source_df
+
+    return (affinities_dict, stderrs_dict,
+            isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict)
+
+
+def normalize_affinities_table(affinities_df, normalization_method):
+    """Normalize affinities across functions or genes within a tRNA-seq sample using a specified
+    normalization method."""
+    # The following normalization functions are written to operate on a generic pandas Series.
+    def min_max_normalize(series):
+        normalized_series = (series - series.min()) / (series.max() - series.min())
+        return normalized_series
+
+    def min_max_mean_normalize(series):
+        min_max_normalized_series = min_max_normalize(series)
+        min_max_mean_normalized_series = \
+            min_max_normalized_series - min_max_normalized_series.mean()
+        return min_max_mean_normalized_series
+
+    def magnitude_min_max_normalize(series):
+        magnitude_series = series.abs()
+        magnitude_min_max_normalized_series = min_max_normalize(magnitude_series)
+        return magnitude_min_max_normalized_series
+
+    def normalize(normalization_method, series):
+        if normalization_method == 'min_max':
+            normalized_series = min_max_normalize(series)
+        elif normalization_method == 'min_max_mean':
+            normalized_series = min_max_mean_normalize(series)
+        elif normalization_method == 'magnitude_min_max':
+            normalized_series = magnitude_min_max_normalize(series)
+        return normalized_series
+
+    # Assume that the normalization method has already been recognized as valid.
+    normalized_affinities_df = affinities_df.transform(partial(normalize, normalization_method))
+
+    return normalized_affinities_df
+
+
+def get_table_with_codon_tree_labels(args, df, multiple_sources=False):
+    """Create a table that has an added index column containing function or gene names
+    formatted like the labels of a codon tree. This allows affinity tables to be cross-referenced
+    with codon frequency tables and trees for the same genome."""
+    df = df.reset_index()
+
+    if 'KEGG_BRITE' in df['function_source']:
+        # A KEGG function name has a hierarchical format, which each level separated by '>>>'.
+        # Retain the most specific level in the label.
+        df['function_name'] = df['function_name'].apply(lambda n: n.split('>>>')[-1])
+
+    if args.gene_affinity:
+        labels = df['gene_callers_id'].tolist()
+    else:
+        labels = []
+        # For consistency, labels always end in parentheses. Empty parentheses are stripped upon
+        # plotting.
+        if multiple_sources:
+            for source, accession, name in zip(
+                df['function_source'], df['function_accession'], df['function_name']):
+                # Function labels in the tree are formatted, "<function_name> (<function_source>
+                # : <function_accession>)", unless no function accession is available (e.g., for
+                # BRITE categories), in which case labels are formatted, "<function_name>
+                # (<function_source>)".
+                if accession == '':
+                    label_suffix = f" ({source})"
+                else:
+                    label_suffix = f" ({source} : {accession})"
+                labels.append(name + label_suffix)
+        else:
+            for accession, name in zip(df['function_accession'], df['function_name']):
+                # Function labels in the tree are formatted, "<function_name>
+                # (<function_accession>)", unless no function accession is available (e.g., for
+                # BRITE categories), in which case labels end in empty parentheses.
+                if accession == '':
+                    label_suffix = " ()"
+                else:
+                    label_suffix = f" ({accession})"
+                labels.append(name + label_suffix)
+
+    df['label'] = labels
+    if args.gene_affinity:
+        df = df.set_index(['genome_name', 'gene_callers_id', 'label'])
+    else:
+        df = df.set_index(
+            ['genome_name', 'function_source', 'function_accession', 'function_name', 'label'])
+
+    return df
+
+
+def write_affinity_tables(args, affinities_dict):
+    """Write one or more affinity tables, if applicable."""
+    if args.plot_affinity_file:
+        # Affinity data was loaded, not generated anew, and so is not rewritten.
+        return
+
+    if args.no_raw_affinity and not args.normalization_methods:
+        run.warning(
+            "No affinity output tables were stored. The flag, `--no-raw-affinity`, was used "
+            "without `--normalize-affinity`, so neither raw nor normalized affinities were "
+            "written.")
+        return
+
+    # The output filepath serves as a template for the paths of other files that may be generated.
+    # Given the configuration of options, nothing may be written to this path. Given the template,
+    # <root><extension>, substrings can be inserted in the derived filepaths, with the most
+    # elaborate such filepath being
+    # <root>-<genome_name>-<function_source>-<normalization_method><extension>.
+    output_root, output_extension = os.path.splitext(args.output_file)
+    valid_derived_output_paths = []
+    invalid_derived_output_paths = []
+    is_given_output_path_valid = True
+
+    # There are options to split the affinity table into smaller tables by genome and function
+    # source, and to generate additional tables of normalized affinity data. The affinity table
+    # dictionary contains derived tables, which may differ in certain ways from the output, since
+    # the plotted tables need not be identical to the written tables (each plotted table, for
+    # example, must be for a single genome, whereas the tabular output can be for all genomes if
+    # `--separate-genomes` is not used).
+    if args.separate_genomes and args.separate_function_sources:
+        # Split written affinity data by both genome and function source.
+        for genome_name, source_dict in affinities_dict.items():
+            for source, normalization_dict in source_dict.items():
+                for normalization_method in args.normalization_methods:
+                    # Write a table for the genome/source/normalization method.
+                    derived_output_path = (
+                        f"{output_root}-{genome_name.replace(' ', '_')}-{source}-"
+                        f"{normalization_method}{output_extension}")
+                    try:
+                        filesnpaths.is_output_file_writable(derived_output_path)
+                    except FilesNPathsError:
+                        invalid_derived_output_paths.append(derived_output_path)
+                    if invalid_derived_output_paths:
+                        continue
+                    valid_derived_output_paths.append(derived_output_path)
+                    normalized_source_df = normalization_dict[normalization_method]
+                    if args.plot_codon_dendrogram:
+                        normalized_source_df.index = normalized_source_df.index.droplevel('label')
+                    normalized_source_df.to_csv(derived_output_path, sep='\t')
+                if args.no_raw_affinity:
+                    continue
+                # Write a table of raw affinities for the genome/source.
+                derived_output_path = (
+                    f"{output_root}-{genome_name.replace(' ', '_')}-{source}{output_extension}")
+                try:
+                    filesnpaths.is_output_file_writable(derived_output_path)
+                except FilesNPathsError:
+                    invalid_derived_output_paths.append(derived_output_path)
+                if invalid_derived_output_paths:
+                    continue
+                valid_derived_output_paths.append(derived_output_path)
+                raw_source_df = normalization_dict['raw']
+                raw_source_df.to_csv(derived_output_path, sep='\t')
+    elif args.separate_genomes:
+        # Split written affinity data by genome and not by function source.
+        for genome_name, source_dict in affinities_dict.items():
+            normalization_dict = source_dict['all_functions']
+            for normalization_method in args.normalization_methods:
+                # Write a table for the genome/normalization method.
+                derived_output_path = (
+                    f"{output_root}-{genome_name.replace(' ', '_')}-{normalization_method}"
+                    f"{output_extension}")
+                try:
+                    filesnpaths.is_output_file_writable(derived_output_path)
+                except FilesNPathsError:
+                    invalid_derived_output_paths.append(derived_output_path)
+                if invalid_derived_output_paths:
+                    continue
+                valid_derived_output_paths.append(derived_output_path)
+                normalized_genome_df = normalization_dict[normalization_method]
+                if args.plot_codon_dendrogram:
+                    normalized_genome_df.index = normalized_genome_df.index.droplevel('label')
+                normalized_genome_df.to_csv(derived_output_path, sep='\t')
+            if args.no_raw_affinity:
+                continue
+            # Write a table of raw affinities for the genome.
+            derived_output_path = f"{output_root}-{genome_name.replace(' ', '_')}{output_extension}"
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
+                continue
+            valid_derived_output_paths.append(derived_output_path)
+            raw_genome_df = normalization_dict['raw']
+            raw_genome_df.to_csv(derived_output_path, sep='\t')
+    elif args.separate_function_sources:
+        # Split written affinity data by function source and not by genome. Due to the order of
+        # inner dictionaries, a convoluted process is required to get a table of affinities per
+        # source and normalization method across genomes. First, get lists of tables per source and
+        # normalization method.
+        source_tables_dict = {}
+        for genome_name, source_dict in affinities_dict.items():
+            for source, normalization_dict in source_dict.items():
+                try:
+                    normalization_tables_dict = source_tables_dict[source]
+                except KeyError:
+                    source_tables_dict[source] = normalization_tables_dict = {}
+                for normalization_method, normalized_df in normalization_dict.items():
+                    if normalization_method == 'raw' and args.no_raw_affinity:
+                        continue
+                    try:
+                        normalization_tables_dict[normalization_method].append(normalized_df)
+                    except KeyError:
+                        normalization_tables_dict[normalization_method] = [normalized_df]
+        # Concatenate tables per source and normalization method and write to file.
+        for source, normalization_tables_dict in source_tables_dict.items():
+            for normalization_method in args.normalization_methods:
+                derived_output_path = \
+                    f"{output_root}-{source}-{normalization_method}{output_extension}"
+                try:
+                    filesnpaths.is_output_file_writable(derived_output_path)
+                except FilesNPathsError:
+                    invalid_derived_output_paths.append(derived_output_path)
+                if invalid_derived_output_paths:
+                    continue
+                valid_derived_output_paths.append(derived_output_path)
+                normalized_source_df = pd.concat(normalization_tables_dict[normalization_method])
+                if args.plot_codon_dendrogram:
+                    normalized_source_df.index = normalized_source_df.index.droplevel('label')
+                normalized_source_df.to_csv(derived_output_path, sep='\t')
+            if args.no_raw_affinity:
+                continue
+            # Write a table of raw affinities for the source.
+            derived_output_path = f"{output_root}-{source}{output_extension}"
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
+                continue
+            valid_derived_output_paths.append(derived_output_path)
+            raw_source_df = pd.concat(normalization_tables_dict['raw'])
+            if args.plot_codon_dendrogram:
+                raw_source_df.index = raw_source_df.index.droplevel('label')
+            raw_source_df.to_csv(derived_output_path, sep='\t')
+    else:
+        # Write affinity data for each normalization method, including all genomes and sources. As
+        # with exclusively per-source tables, this requires concatenation of tables recovered from
+        # the dictionary.
+        normalization_tables_dict = {}
+        for genome_name, source_dict in affinities_dict.items():
+            for source, normalization_dict in source_dict.items():
+                for normalization_method, normalized_df in normalization_dict.items():
+                    if normalization_method == 'raw' and args.no_raw_affinity:
+                        continue
+                    try:
+                        normalization_tables_dict[normalization_method].append(normalized_df)
+                    except KeyError:
+                        normalization_tables_dict[normalization_method] = [normalized_df]
+        for normalization_method in args.normalization_methods:
+            derived_output_path = f"{output_root}-{normalization_method}{output_extension}"
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
+                continue
+            valid_derived_output_paths.append(derived_output_path)
+            normalized_df = pd.concat(normalization_tables_dict[normalization_method])
+            if args.plot_codon_dendrogram:
+                normalized_df.index = normalized_df.index.droplevel('label')
+            normalized_df.to_csv(derived_output_path, sep='\t')
+        if not args.no_raw_affinity and not invalid_derived_output_paths:
+            # Write a table of raw affinities for the source.
+            try:
+                filesnpaths.is_output_file_writable(args.output_file)
+                raw_df = pd.concat(normalization_tables_dict['raw'])
+                raw_df.to_csv(args.output_file, sep='\t')
+                is_given_output_path_valid = 1
+            except FilesNPathsError:
+                is_given_output_path_valid = False
+
+    # Report invalid output paths and, if some paths were invalid, also remove files written to
+    # valid paths.
+    if is_given_output_path_valid:
+        template_output_path_message = ""
+    else:
+        template_output_path_message = (
+            "The table of raw affinities could not be written to `--output-file`, "
+            f"'{args.output_file}'.")
+    if invalid_derived_output_paths:
+        paths_string = ', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])
+        derived_output_paths_message = (
+            "Tables of affinities could not be written to the following derived target paths: "
+            f"{paths_string}")
+    else:
+        derived_output_paths_message = ""
+    if invalid_derived_output_paths or not is_given_output_path_valid:
+        if is_given_output_path_valid == 1:
+            # Derived output paths were invalid, and raw affinities were written to the input
+            # output file.
+            os.remove(args.output_file)
+        for derived_output_path in valid_derived_output_paths:
+            os.remove(derived_output_path)
+        raise ConfigError(
+            f"{template_output_path_message}"
+            f"{' ' if invalid_derived_output_paths and not is_given_output_path_valid else ''}"
+            f"{derived_output_paths_message}")
+
+    run.info_single("Saved affinities")
+    if is_given_output_path_valid == 1:
+        run.info_single(args.output_file, level=2)
+    for valid_derived_output_path in sorted(valid_derived_output_paths, key=len):
+        run.info_single(valid_derived_output_path, level=2)
+
+
+def write_affinity_stderr_tables(args, stderrs_dict):
+    """Write sister tables to the raw affinity output, recording the standard error of the
+    regression slope used as the affinity. The output structure mirrors `write_affinity_tables`
+    splits across `--separate-genomes` and `--separate-function-sources`, but stderrs are reported
+    only for raw affinities, so there is no normalization-method dimension."""
+    if args.plot_affinity_file:
+        # Affinity data was loaded, not generated anew, so stderrs are unavailable.
+        return
+
+    if args.no_raw_affinity:
+        # Stderrs are only paired with the raw affinities.
+        return
+
+    # The output filepath serves as a template for the paths of other files that may be generated.
+    # Given the template, <root><extension>, substrings can be inserted in the derived filepaths,
+    # with the most elaborate such filepath being <root>-<genome_name>-<function_source>-STDERR
+    # <extension>.
+    output_root, output_extension = os.path.splitext(args.output_file)
+    valid_derived_output_paths = []
+    invalid_derived_output_paths = []
+
+    if args.separate_genomes and args.separate_function_sources:
+        # Split written stderr data by both genome and function source.
+        for genome_name, source_dict in stderrs_dict.items():
+            for source, stderrs_df in source_dict.items():
+                derived_output_path = (
+                    f"{output_root}-{genome_name.replace(' ', '_')}-{source}-STDERR"
+                    f"{output_extension}")
+                try:
+                    filesnpaths.is_output_file_writable(derived_output_path)
+                except FilesNPathsError:
+                    invalid_derived_output_paths.append(derived_output_path)
+                if invalid_derived_output_paths:
+                    continue
+                valid_derived_output_paths.append(derived_output_path)
+                stderrs_df.to_csv(derived_output_path, sep='\t')
+    elif args.separate_genomes:
+        # Split written stderr data by genome and not by function source.
+        for genome_name, source_dict in stderrs_dict.items():
+            derived_output_path = (
+                f"{output_root}-{genome_name.replace(' ', '_')}-STDERR{output_extension}")
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
+                continue
+            valid_derived_output_paths.append(derived_output_path)
+            if args.gene_affinity:
+                stderrs_df = source_dict['genes']
+            else:
+                stderrs_df = source_dict['all_functions']
+            stderrs_df.to_csv(derived_output_path, sep='\t')
+    elif args.separate_function_sources:
+        # Split written stderr data by function source and not by genome.
+        source_tables_dict = {}
+        for genome_name, source_dict in stderrs_dict.items():
+            for source, stderrs_df in source_dict.items():
+                try:
+                    source_tables_dict[source].append(stderrs_df)
+                except KeyError:
+                    source_tables_dict[source] = [stderrs_df]
+        for source, stderrs_dfs in source_tables_dict.items():
+            derived_output_path = f"{output_root}-{source}-STDERR{output_extension}"
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
+                continue
+            valid_derived_output_paths.append(derived_output_path)
+            stderrs_df = pd.concat(stderrs_dfs)
+            stderrs_df.to_csv(derived_output_path, sep='\t')
+    else:
+        # Write stderr data for all genomes and sources in a single table.
+        stderrs_dfs = []
+        for source_dict in stderrs_dict.values():
+            for stderrs_df in source_dict.values():
+                stderrs_dfs.append(stderrs_df)
+        derived_output_path = f"{output_root}-STDERR{output_extension}"
+        try:
+            filesnpaths.is_output_file_writable(derived_output_path)
+            stderrs_df = pd.concat(stderrs_dfs)
+            stderrs_df.to_csv(derived_output_path, sep='\t')
+            valid_derived_output_paths.append(derived_output_path)
+        except FilesNPathsError:
+            invalid_derived_output_paths.append(derived_output_path)
+
+    # Report invalid output paths and, if some paths were invalid, also remove files written to
+    # valid paths.
+    if invalid_derived_output_paths:
+        for derived_output_path in valid_derived_output_paths:
+            os.remove(derived_output_path)
+        paths_string = ', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])
+        raise ConfigError(
+            "The following tables of affinity standard errors could not be written to the "
+            f"following derived target paths: {paths_string}")
+
+    run.info_single("Saved affinity standard errors")
+    for valid_derived_output_path in sorted(valid_derived_output_paths, key=len):
+        run.info_single(valid_derived_output_path, level=2)
+
+
+def write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict):
+    """Write one or more tables of isoacceptor abundance ratios in non-reference versus reference
+    samples. Affinities are derived from these abundance ratios and isoacceptor codon weights."""
+    if not args.save_isoacceptor_abundance_ratios:
+        return
+
+    # The output filepath serves as a template for the paths of other files that may be generated.
+    # Given the configuration of options, nothing may be written to this path. Given the template,
+    # <root><extension>, substrings can be inserted in the derived filepaths, with the most
+    # elaborate such filepath being
+    # <root>-<genome_name>-ABUNDANCE_RATIOS<extension>.
+    output_root, output_extension = os.path.splitext(args.output_file)
+    valid_derived_output_paths = []
+    invalid_derived_output_paths = []
+
+    # The option, `--separate-genomes`, splits the isoacceptor abundance ratio table into smaller
+    # tables per genome.
+    if args.separate_genomes:
+        # Split written isoacceptor abundance ratio data by genome.
+        for genome_name, isoacceptor_abund_ratio_df in isoacceptor_abund_ratios_dict.items():
+            derived_output_path = (
+                f"{output_root}-{genome_name.replace(' ', '_')}-ABUNDANCE_RATIOS"
+                f"{output_extension}")
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
+                continue
+            valid_derived_output_paths.append(derived_output_path)
+            isoacceptor_abund_ratio_df.to_csv(derived_output_path, sep='\t')
+    else:
+        # Write isoacceptor abundance ratio data for all genomes and sources in a single table.
+        isoacceptor_abund_ratio_dfs = []
+        for isoacceptor_abund_ratio_df in isoacceptor_abund_ratios_dict.values():
+            isoacceptor_abund_ratio_dfs.append(isoacceptor_abund_ratio_df)
+        derived_output_path = f"{output_root}-ABUNDANCE_RATIOS{output_extension}"
+        try:
+            filesnpaths.is_output_file_writable(derived_output_path)
+            isoacceptor_abund_ratio_df = pd.concat(isoacceptor_abund_ratio_dfs)
+            isoacceptor_abund_ratio_df.to_csv(derived_output_path, sep='\t')
+        except FilesNPathsError:
+            invalid_derived_output_paths.append(derived_output_path)
+
+    # Report invalid output paths and, if some paths were invalid, also remove files written to
+    # valid paths.
+    if invalid_derived_output_paths:
+        for derived_output_path in valid_derived_output_paths:
+            os.remove(derived_output_path)
+        paths_string = ', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])
+        raise ConfigError(
+            "The following tables of isoacceptor abundance ratios could not be written to the "
+            f"following derived target paths: {paths_string}")
+
+    run.info_single("Saved isoacceptor abundance ratios")
+    for valid_derived_output_path in sorted(valid_derived_output_paths, key=len):
+        run.info_single(valid_derived_output_path, level=2)
+    run.warning(
+        "Note that initiator tRNAs do not contribute to affinity, though they can be reported in "
+        "the isoacceptor abundance ratio tables.")
+
+
+def write_isoacceptor_codon_weights_tables(args, isoacceptor_codon_weights_dict):
+    """Write one or more tables of isoacceptor codon weights. Affinities are derived from these
+    codon weights and isoacceptor abundance ratios."""
+    if not args.save_isoacceptor_codon_weights:
+        return
+
+    # The output filepath serves as a template for the paths of other files that may be generated.
+    # Given the configuration of options, nothing may be written to this path. Given the template,
+    # <root><extension>, substrings can be inserted in the derived filepaths, with the most
+    # elaborate such filepath being
+    # <root>-<genome_name>-<function_source>-CODON_WEIGHTS<extension>.
+    output_root, output_extension = os.path.splitext(args.output_file)
+    valid_derived_output_paths = []
+    invalid_derived_output_paths = []
+
+    # There are options to split output tables into smaller tables by genome and function source.
+    if args.separate_genomes and args.separate_function_sources:
+        # Split written isoacceptor codon weight data by both genome and function source.
+        for genome_name, source_dict in isoacceptor_codon_weights_dict.items():
+            for source in source_dict:
+                # Write a table for the genome/function source.
+                derived_output_path = (
+                    f"{output_root}-{genome_name.replace(' ', '_')}-{source}-CODON_WEIGHTS"
+                    f"{output_extension}")
+                try:
+                    filesnpaths.is_output_file_writable(derived_output_path)
+                except FilesNPathsError:
+                    invalid_derived_output_paths.append(derived_output_path)
+                if invalid_derived_output_paths:
+                    continue
+                valid_derived_output_paths.append(derived_output_path)
+                isoacceptor_codon_weights_df = source_dict[source]
+                isoacceptor_codon_weights_df.to_csv(derived_output_path, sep='\t')
+    elif args.separate_genomes:
+        # Split written isoacceptor codon weight data by genome and not by function source.
+        for genome_name, source_dict in isoacceptor_codon_weights_dict.items():
+            derived_output_path = (
+                f"{output_root}-{genome_name.replace(' ', '_')}-CODONS_WEIGHTS"
+                f"{output_extension}")
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
+                continue
+            valid_derived_output_paths.append(derived_output_path)
+            if args.gene_affinity:
+                isoacceptor_codon_weights_df = source_dict['genes']
+            else:
+                isoacceptor_codon_weights_df = source_dict['all_functions']
+            isoacceptor_codon_weights_df.to_csv(derived_output_path, sep='\t')
+    elif args.separate_function_sources:
+        # Split written isoacceptor codon weight data by function source and not by genome. Due to
+        # the order of inner dictionaries, tables of isoacceptor codon weights per source across
+        # genomes must be reconstructed.
+        source_tables_dict = {}
+        for genome_name, source_dict in isoacceptor_codon_weights_dict.items():
+            for source, isoacceptor_codon_weights_df in source_dict.items():
+                try:
+                    source_tables_dict[source].append(isoacceptor_codon_weights_df)
+                except KeyError:
+                    source_tables_dict[source] = [isoacceptor_codon_weights_df]
+        # Concatenate tables per source and write to file.
+        for source, isoacceptor_codon_weights_dfs in source_tables_dict.items():
+            derived_output_path = f"{output_root}-{source}-CODON_WEIGHTS{output_extension}"
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
+                continue
+            valid_derived_output_paths.append(derived_output_path)
+            isoacceptor_codon_weights_df = pd.concat(isoacceptor_codon_weights_dfs)
+            isoacceptor_codon_weights_df.to_csv(derived_output_path, sep='\t')
+    else:
+        # Write isoacceptor codon weight data for all genomes and sources in a single table.
+        isoacceptor_codon_weights_dfs = []
+        for source_dict in isoacceptor_codon_weights_dict.values():
+            for isoacceptor_codon_weights_df in source_dict.values():
+                isoacceptor_codon_weights_dfs.append(isoacceptor_codon_weights_df)
+        derived_output_path = f"{output_root}-CODONS{output_extension}"
+        try:
+            filesnpaths.is_output_file_writable(derived_output_path)
+            isoacceptor_codon_weights_df = pd.concat(isoacceptor_codon_weights_dfs)
+            isoacceptor_codon_weights_df.to_csv(derived_output_path, sep='\t')
+        except FilesNPathsError:
+            invalid_derived_output_paths.append(derived_output_path)
+
+    # Report invalid output paths and, if some paths were invalid, also remove files written to
+    # valid paths.
+    if invalid_derived_output_paths:
+        for derived_output_path in valid_derived_output_paths:
+            os.remove(derived_output_path)
+        paths_string = ', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])
+        raise ConfigError(
+            "The following tables of isoacceptor codon weights could not be written to the "
+            f"following derived target paths: {paths_string}")
+
+    run.info_single("Saved isoacceptor codon weights")
+    for valid_derived_output_path in sorted(valid_derived_output_paths, key=len):
+        run.info_single(valid_derived_output_path, level=2)
+
+
+def get_general_codon_frequencies(args, affinities_dict):
+    """
+    Generate or load a table of absolute codon frequencies for each genome.
+
+    Returns
+    =======
+    codon_frequency_dict : dict
+        This nested dictionary is similar to the dictionary of affinity tables, with the outer
+        dictionary keyed by genome name and the inner dictionary of codon frequencies keyed by
+        source. The source can be separate function sources, all function sources, or 'genes'.
+    """
+    if not (args.plot_codon_dendrogram or args.save_codon_frequencies or args.save_codon_trees):
+        return None
+
+    if args.plot_codon_file:
+        codon_frequency_dict = load_general_codon_frequencies(args, affinities_dict)
+    else:
+        codon_frequency_dict = generate_general_codon_frequencies(args, affinities_dict)
+
+    if args.gene_affinity:
+        multiple_sources = False
+    else:
+        sources = []
+        for source_dict in codon_frequency_dict.values():
+            for source, normalization_dict in source_dict.items():
+                if source == 'all_functions':
+                    sources += normalization_dict['raw'].index.get_level_values(
+                        'function_source').unique().tolist()
+                else:
+                    sources.append(source)
+        if len(set(sources)) > 1:
+            multiple_sources = True
+        else:
+            multiple_sources = False
+    if args.plot_codon_dendrogram or args.save_codon_trees:
+        for source_dict in codon_frequency_dict.values():
+            for source, codon_frequency_df in source_dict.items():
+                source_dict[source] = get_table_with_codon_tree_labels(
+                    args, codon_frequency_df, multiple_sources=multiple_sources)
+
+    return codon_frequency_dict
+
+
+def load_general_codon_frequencies(args, affinities_dict):
+    """Load a table of absolute codon frequencies. Data can be from multiple genomes."""
+    codon_frequency_df = pd.read_csv(args.plot_codon_file, sep='\t')
+
+    if 'genome_name' not in codon_frequency_df.columns:
+        raise ConfigError(
+            f"The codon frequency table loaded from '{args.plot_codon_file}' does not contain "
+            "a required column by the name of 'genome_name'.")
+
+    # Confirm that the genomes with affinity data are the same as the genomes with loaded
+    # general codon data.
+    missing_codon_genome_names = []
+    for genome_name in affinities_dict:
+        if genome_name not in codon_frequency_df:
+            missing_codon_genome_names.append(genome_name)
+    missing_affinity_genome_names = []
+    for genome_name in codon_frequency_df['genome_name'].unique():
+        if genome_name not in affinities_dict:
+            missing_affinity_genome_names.append(genome_name)
+    if missing_codon_genome_names:
+        codon_message = (
+            " The following genome names are in the affinity table but not the codon frequency "
+            f"table: {', '.join(missing_codon_genome_names)}.")
+    else:
+        codon_message = ""
+    if missing_affinity_genome_names:
+        affinity_message = (
+            " The following genome names are in the codon frequency table but not the affinity "
+            f"table: {', '.join(missing_affinity_genome_names)}.")
+    else:
+        affinity_message = ""
+    if missing_codon_genome_names or missing_affinity_genome_names:
+        raise ConfigError(
+            f"The codon frequency table, loaded from '{args.plot_codon_file}', does not "
+            "contain the same genome names as the affinity table loaded from "
+            f"'{args.plot_affinity_file}'.{codon_message}{affinity_message}")
+
+    if args.gene_affinity:
+        if 'gene_callers_id' not in codon_frequency_df.columns:
+            raise ConfigError(
+                f"The codon frequency table loaded from '{args.plot_codon_file}' does not contain "
+                "a column with the header, 'gene_callers_id'.")
+    else:
+        missing_cols = set(['function_source', 'function_accession', 'function_name']).difference(
+            codon_frequency_df.columns)
+        if missing_cols:
+            raise ConfigError(
+                f"The codon frequency table loaded from '{args.plot_codon_file}' does not contain "
+                "function columns with the headers, 'function_source', 'function_accession', and "
+                "'function_name'. The following of these columns is missing: "
+                f"{', '.join(missing_cols)}")
+
+    codon_frequency_dict = {}
+    for genome_name, genome_df in codon_frequency_df.groupby('genome_name'):
+        codon_frequency_dict[genome_name] = codon_frequency_source_dict = {}
+        if args.gene_affinity:
+            codon_frequency_source_dict['genes'] = genome_df
+        else:
+            if args.compare_all_function_sources:
+                codon_frequency_source_dict['all_functions'] = genome_df
+            else:
+                for source, source_df in genome_df.groupby('function_source'):
+                    codon_frequency_source_dict[source] = source_df
+
+    run.info("Loaded codon frequency table", args.plot_codon_file)
+
+    return codon_frequency_dict
+
+
+def generate_general_codon_frequencies(args, affinities_dict):
+    """
+    Get the frequencies of codons encoding amino acids for the functions or genes reported in each
+    affinity table.
+
+    The general set of all codons encoding amino acids is reported here, whereas codons that factor
+    into affinity calculations are determined by the detected tRNA transcripts.
+    """
+    codon_args = Namespace()
+    codon_args.contigs_db = args.contigs_db
+    codon_args.profile_db = args.profile_db
+    codon_args.collection_name = args.collection_name
+    codon_args.bin_id = args.bin_id
+    codon_args.internal_genomes = args.internal_genomes
+    codon_args.external_genomes = args.external_genomes
+    codon_args.function_sources = args.function_sources
+    codon_args.all_brite_categories = args.all_brite_categories
+    codon_args.ignore_start_codons = True
+
+    if (args.collection_name and not args.bin_id) or args.internal_genomes or args.external_genomes:
+        codon_usage = codonusage.MultiGenomeCodonUsage(codon_args, r=run_quiet)
+        multi_genome_info_dict = codon_usage.genome_info_dict
+    else:
+        codon_args.gene_caller_ids = args.gene_caller_ids
+        codon_usage = codonusage.SingleGenomeCodonUsage(codon_args, r=run_quiet)
+        multi_genome_info_dict = None
+
+    codon_frequency_dict = {}
+    for genome_name, source_dict in affinities_dict.items():
+        codon_frequency_dict[genome_name] = codon_frequency_source_dict = {}
+        if multi_genome_info_dict:
+            # Trick the multi-genome object into returning a separate table for each genome by
+            # limiting its genome information to the one under consideration.
+            codon_usage.genome_info_dict = {genome_name: multi_genome_info_dict[genome_name]}
+        for source, normalization_dict in source_dict.items():
+            affinities_df = normalization_dict['raw'].reset_index()
+            if source == 'genes':
+                # Get codon frequencies of genes for which affinities were calculated. This should
+                # be the only entry in `source_dict`, since function sources are not considered.
+                gene_caller_ids = affinities_df['gene_caller_id'].tolist()
+                function_accession_dict = None
+                function_name_dict = None
+            else:
+                # Get codon frequencies of functions for which affinities were calculated.
+                gene_caller_ids = None
+                function_accession_dict = {}
+                function_name_dict = {}
+                for source, accession, name in zip(
+                    affinities_df['function_source'],
+                    affinities_df['function_accession'],
+                    affinities_df['function_name']):
+                    try:
+                        function_accession_dict[source].append(accession)
+                    except KeyError:
+                        function_accession_dict[source] = [accession]
+                    try:
+                        function_name_dict[source].append(name)
+                    except KeyError:
+                        function_name_dict[source] = [name]
+            if isinstance(codon_usage, codonusage.SingleGenomeCodonUsage) and not args.gene_affinity:
+                codon_args.function_sources = [source]
+                codon_usage = codonusage.SingleGenomeCodonUsage(codon_args, r=run_quiet)
+            if isinstance(codon_usage, codonusage.SingleGenomeCodonUsage):
+                codon_frequency_df = codon_usage.get_frequencies(
+                    from_function_sources=not args.gene_affinity,
+                    return_functions=not args.gene_affinity,
+                    gene_caller_ids=gene_caller_ids,
+                    function_accessions=function_accession_dict,
+                    function_names=function_name_dict)
+            else:
+                codon_frequency_df = codon_usage.get_frequencies(
+                    from_function_sources=not args.gene_affinity,
+                    return_functions=not args.gene_affinity,
+                    function_accessions=function_accession_dict,
+                    function_names=function_name_dict)
+            if not multi_genome_info_dict:
+                # An index column consisting of the single provided genome name must be added to the
+                # table returned for a single genome.
+                codon_frequency_df['genome_name'] = genome_name
+                new_index_names = ['genome_name'] + codon_frequency_df.index.names
+                codon_frequency_df = codon_frequency_df.reset_index().set_index(new_index_names)
+            codon_frequency_source_dict[source] = codon_frequency_df
+
+    return codon_frequency_dict
+
+
+def write_general_codon_frequency_tables(args, codon_frequency_dict):
+    """Write one or more codon frequency tables, if applicable."""
+    if not args.save_codon_frequencies:
+        return
+
+    # The output filepath serves as a template for the paths of other files that may be generated.
+    # Given the configuration of options, nothing may be written to this path. Given the template,
+    # <root><extension>, substrings can be inserted in the derived filepaths, with the most
+    # elaborate such filepath being <root>-<genome_name>-<function_source>-CODONS<extension>.
+    output_root, output_extension = os.path.splitext(args.output_file)
+    valid_derived_output_paths = []
+    invalid_derived_output_paths = []
+
+    # There are options to split output tables into smaller tables by genome and function source.
+    # The codon frequency table dictionary contains derived tables, which may differ in certain ways
+    # from the output, since plotted tables need not be identical to written tables (each plotted
+    # table, for example, must be for a single genome, whereas the tabular output can be for all
+    # genomes if `--separate-genomes` is not used).
+    if args.separate_genomes and args.separate_function_sources:
+        # Split written codon frequency data by both genome and function source.
+        for genome_name, source_dict in codon_frequency_dict.items():
+            for source in source_dict:
+                # Write a table for the genome/function source.
+                derived_output_path = (
+                    f"{output_root}-{genome_name.replace(' ', '_')}-{source}-CODONS"
+                    f"{output_extension}")
+                try:
+                    filesnpaths.is_output_file_writable(derived_output_path)
+                except FilesNPathsError:
+                    invalid_derived_output_paths.append(derived_output_path)
+                if invalid_derived_output_paths:
+                    continue
+                valid_derived_output_paths.append(derived_output_path)
+                codon_frequency_df = source_dict[source]
+                if args.plot_codon_dendrogram or args.save_codon_trees:
+                    codon_frequency_df.index = codon_frequency_df.index.droplevel('label')
+                codon_frequency_df.to_csv(derived_output_path, sep='\t')
+    elif args.separate_genomes:
+        # Split written codon frequency data by genome and not by function source.
+        for genome_name, source_dict in codon_frequency_dict.items():
+            derived_output_path = \
+                f"{output_root}-{genome_name.replace(' ', '_')}-CODONS{output_extension}"
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
+                continue
+            valid_derived_output_paths.append(derived_output_path)
+            if args.gene_affinity:
+                codon_frequency_df = source_dict['genes']
+            else:
+                codon_frequency_df = source_dict['all_functions']
+            if args.plot_codon_dendrogram or args.save_codon_trees:
+                codon_frequency_df.index = codon_frequency_df.index.droplevel('label')
+            codon_frequency_df.to_csv(derived_output_path, sep='\t')
+    elif args.separate_function_sources:
+        # Split written codon frequency data by function source and not by genome. Due to the order
+        # of inner dictionaries, tables of codon frequencies per source across genomes must be
+        # reconstructed.
+        source_tables_dict = {}
+        for genome_name, source_dict in codon_frequency_dict.items():
+            for source, codon_frequency_df in source_dict.items():
+                try:
+                    source_tables_dict[source].append(codon_frequency_df)
+                except KeyError:
+                    source_tables_dict[source] = [codon_frequency_df]
+        # Concatenate tables per source and write to file.
+        for source, codon_frequency_dfs in source_tables_dict.items():
+            derived_output_path = f"{output_root}-{source}-CODONS{output_extension}"
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
+                continue
+            valid_derived_output_paths.append(derived_output_path)
+            codon_frequency_df = pd.concat(codon_frequency_dfs)
+            if args.plot_codon_dendrogram or args.save_codon_trees:
+                codon_frequency_df.index = codon_frequency_df.index.droplevel('label')
+            codon_frequency_df.to_csv(derived_output_path, sep='\t')
+    else:
+        # Write codon frequency data for all genomes and sources in a single table.
+        codon_frequency_dfs = []
+        for source_dict in codon_frequency_dict.values():
+            for codon_frequency_df in source_dict.values():
+                codon_frequency_dfs.append(codon_frequency_df)
+        derived_output_path = f"{output_root}-CODONS{output_extension}"
+        try:
+            filesnpaths.is_output_file_writable(derived_output_path)
+            codon_frequency_df = pd.concat(codon_frequency_dfs)
+            codon_frequency_df.to_csv(derived_output_path, sep='\t')
+        except FilesNPathsError:
+            invalid_derived_output_paths.append(derived_output_path)
+
+    # Report invalid output paths and, if some paths were invalid, also remove files written to
+    # valid paths.
+    if invalid_derived_output_paths:
+        for derived_output_path in valid_derived_output_paths:
+            os.remove(derived_output_path)
+        paths_string = ', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])
+        raise ConfigError(
+            "The following tables of codon frequencies could not be written to the following "
+            f"derived target paths: {paths_string}")
+
+    run.info_single("Saved codon frequencies")
+    for valid_derived_output_path in sorted(valid_derived_output_paths, key=len):
+        run.info_single(valid_derived_output_path, level=2)
+
+
+def subset_affinity_entries(args, affinities_dict):
+    """Subset the functions or genes that have the highest and lowest average affinities in each
+    genome and optionally function source. This reduces the number of plotted functions or genes
+    (rows)."""
+    subset_affinities_dict = {}
+    for genome_name, source_dict in affinities_dict.items():
+        subset_affinities_dict[genome_name] = subset_source_dict = {}
+        for source, normalization_dict in source_dict.items():
+            subset_source_dict[source] = subset_normalization_dict = {}
+
+            raw_affinities_df = normalization_dict['raw']
+            raw_affinities_df['mean'] = raw_affinities_df.mean(axis=1)
+
+            subset_raw_affinities_df = raw_affinities_df.sort_values(by='mean', ascending=False)
+            subset_raw_affinities_df = subset_raw_affinities_df.drop('mean', axis=1)
+            if args.n_highest_affinity > 0 and args.n_lowest_affinity > 0:
+                if args.n_highest_affinity + args.n_lowest_affinity >= len(
+                    subset_raw_affinities_df):
+                    if args.gene_affinity:
+                        source_message = ""
+                    elif args.compare_all_function_sources:
+                        source_message = "from all function sources "
+                    else:
+                        source_message = f"from the function source, {source}, "
+                    run.warning(
+                        f"`--n-highest-affinity` was given a value of {args.n_highest_affinity}, "
+                        f"and `--n-lowest-affinity` was given a value of {args.n_lowest_affinity}, "
+                        f"but there were only {len(subset_raw_affinities_df)} "
+                        f"{'genes' if args.gene_affinity else 'functions'} in the affinity table "
+                        f"{source_message}for the genome, {genome_name}. All of these have "
+                        "therefore been retained.")
+                else:
+                    subset_raw_affinities_df = pd.concat([
+                        subset_raw_affinities_df.iloc[: args.n_highest_affinity],
+                        subset_raw_affinities_df.iloc[-args.n_lowest_affinity: ]])
+            elif args.n_highest_affinity > 0:
+                if args.n_highest_affinity >= len(subset_raw_affinities_df):
+                    if args.gene_affinity:
+                        source_message = ""
+                    elif args.compare_all_function_sources:
+                        source_message = "from all function sources "
+                    else:
+                        source_message = f"from the function source, {source}, "
+                    run.warning(
+                        f"`--n-highest-affinity` was given a value of {args.n_highest_affinity}, "
+                        f"but there were only {len(subset_raw_affinities_df)} "
+                        f"{'genes' if args.gene_affinity else 'functions'} in the affinity table "
+                        f"{source_message}for the genome, {genome_name}. All of these have "
+                        "therefore been retained.")
+                else:
+                    subset_raw_affinities_df = subset_raw_affinities_df.iloc[
+                        : args.n_highest_affinity]
+            elif args.n_lowest_affinity > 0:
+                if (args.n_lowest_affinity >= len(subset_raw_affinities_df) and
+                    args.n_highest_affinity < len(subset_raw_affinities_df)):
+                    if args.gene_affinity:
+                        source_message = ""
+                    elif args.normalized_all_function_sources:
+                        source_message = "from all function sources "
+                    else:
+                        source_message = f"from the function source, {source}, "
+                    run.warning(
+                        f"`--n-lowest-affinity` was given a value of {args.n_lowest_affinity}, but "
+                        f"there were only {len(subset_raw_affinities_df)} "
+                        f"{'genes' if args.gene_affinity else 'functions'} in the affinity table "
+                        f"{source_message}for the genome, {genome_name}. All of these have "
+                        "therefore been retained.")
+                else:
+                    subset_raw_affinities_df = subset_raw_affinities_df.iloc[
+                        -args.n_lowest_affinity: ]
+            subset_normalization_dict['raw'] = subset_raw_affinities_df
+
+            # Select the same genes or functions in the table of normalized affinities as in the
+            # table of raw affinities.
+            for normalization_method in args.normalization_methods:
+                normalized_df = normalization_dict[normalization_method]
+                subset_normalized_df = normalized_df.loc[subset_raw_affinities_df.index]
+                subset_normalization_dict[normalization_method] = subset_normalized_df
+
+    return subset_affinities_dict
+
+
+def get_codon_linkage(args, codon_frequency_dict, subset_affinities_dict):
+    """Get clusters of functions or genes."""
+    if args.plot_codon_tree_file:
+        codon_linkage_dict = load_codon_linkage_from_newick(args, subset_affinities_dict)
+    elif args.plot_codon_dendrogram or args.save_codon_trees:
+        codon_linkage_dict = generate_codon_linkages(
+            args, codon_frequency_dict, subset_affinities_dict)
+    else:
+        codon_linkage_dict = None
+
+    return codon_linkage_dict
+
+
+def load_codon_linkage_from_newick(args, subset_affinities_dict):
+    """Load a Newick-formatted tree of functions or genes from a genome as a cluster linkage. The
+    y-axis dendrogram in the plot derives from the linkage object."""
+    codon_tree = Tree(args.plot_codon_tree_file)
+    run.info(
+        f"Loaded tree of {'genes' if args.gene_affinity else 'functions'}",
+        args.plot_codon_tree_file)
+
+    leaves = codon_tree.iter_leaves()
+    leaf_labels = decode_newick_labels(codon_tree.get_leaf_names())
+    for label in leaf_labels:
+        leaf = next(leaves)
+        leaf.name = label
+
+    # Confirm that the affinities sourced from `--plot-affinity-file` derive from a single genome.
+    if len(subset_affinities_dict) > 1:
+        raise ConfigError(
+            f"The affinity table loaded from '{args.plot_affinity_file}' must only contain data "
+            "from one genome in order to be used with `--plot-codon-tree-file`, as the loaded "
+            "codon tree can only represent functions or genes from a single genome.")
+
+    # Get the table of raw affinities for genes or functions from all sources.
+    for source_dict in subset_affinities_dict.values():
+        if len(source_dict) > 1:
+            raise ConfigError(
+                "`--plot-codon-tree-file` can only be used with a single function source or by "
+                "lumping all function sources together with `--compare-all-function-sources`. "
+                "Yet multiple function sources are being analyzed from the affinity table: "
+                f"{', '.join(source_dict.keys())}")
+        for normalization_dict in source_dict.values():
+            subset_affinities_df = normalization_dict['raw']
+            break
+
+    # Confirm that the functions or genes in the subset affinity table are represented in the tree.
+    missing_leaf_labels = sorted(set(subset_affinities_df['label']).difference(set(leaf_labels)))
+    if missing_leaf_labels:
+        raise ConfigError(
+            "The following functions or genes of interest in the affinity table loaded from "
+            f"'{args.plot_affinity_file}' are not represented in the codon tree loaded from "
+            f"'{args.plot_codon_tree_file}': {', '.join(missing_leaf_labels)}")
+
+    # Prune the tree to retain the functions or genes of interest.
+    pruned_codon_tree = codon_tree.prune(subset_affinities_df['label'].tolist())
+    pruned_leaf_labels = pruned_codon_tree.get_leaf_names()
+    if pruned_leaf_labels < leaf_labels:
+        run.warning(
+            f"{len(leaf_labels)} {'genes' if args.gene_affinity else 'functions'} were loaded in "
+            f"the codon tree from '{args.plot_codon_tree_file}' and pruned to "
+            f"{len(pruned_leaf_labels)} {'genes' if args.gene_affinity else 'functions'} of "
+            "interest.")
+
+    # Reindex the raw and normalized affinity tables to match the order of leaves in the dendrogram:
+    # the first leaf is the bottom leaf of the y-axis dendrogram, corresponding to the last row of
+    # the affinity table and heatmap.
+    reindexed_info = []
+    for genome_name, source_dict in subset_affinities_df.items():
+        for source, normalization_dict in source_dict.items():
+            for normalization_method, subset_affinities_df in normalization_dict.items():
+                index_names = subset_affinities_df.index.names
+                reindexed_df = subset_affinities_df.reset_index()
+                reindexed_df = reindexed_df.set_index('label')
+                reindexed_df = reindexed_df.loc[pruned_leaf_labels[::-1]]
+                reindexed_df = reindexed_df.reset_index()
+                reindexed_df = reindexed_df.set_index(index_names)
+                reindexed_info.append((normalization_method, reindexed_df))
+    subset_affinities_df[genome_name][source] = dict(reindexed_info)
+
+    codon_linkage = clustering.get_linkage_from_tree(
+        pruned_codon_tree, args.codon_linkage_method, args.codon_distance_metric)
+    run.warning(
+        "It is assumed that the loaded codon tree was generated with the distance metric, "
+        f"'{args.codon_distance_metric}', and linkage method, '{args.codon_linkage_method}', that "
+        "have been provided to the program by `--codon-distance-metric` and "
+        "`--codon-linkage-method`.")
+
+    codon_linkage_dict = {}
+    codon_linkage_dict[genome_name] = source_codon_linkage_dict = {}
+    # By default, functions or genes are labeled as integers in the linkage object. Labels are later
+    # updated to be informative.
+    source_codon_linkage_dict[source] = {
+        'save_linkage': None,
+        'save_labels': None,
+        'plot_linkage': codon_linkage}
+
+    return codon_linkage_dict
+
+
+def generate_codon_linkages(args, codon_frequency_dict, subset_affinities_dict):
+    """
+    Generate cluster linkages of functions or genes by their relative codon frequencies.
+
+    Clusters of all functions or genes are saved to the Newick file. In contrast, for the generation
+    of the y-axis dendrogram in a plot, only the select displayed functions or genes are clustered.
+    """
+    codon_linkage_dict = {}
+    for genome_name, codon_source_dict in codon_frequency_dict.items():
+        codon_linkage_dict[genome_name] = source_codon_linkage_dict = {}
+        subset_source_dict = subset_affinities_dict[genome_name]
+        for source, codon_frequency_df in codon_source_dict.items():
+            source_codon_linkage_dict[source] = linkage_info_dict = {}
+            subset_affinities_df = subset_source_dict[source]['raw']
+
+            relative_codon_frequency_df = codon_frequency_df.div(
+                codon_frequency_df.sum(axis=1), axis=0)
+
+            # Displayed functions or genes selected by `--n-highest-affinity` and
+            # `--n-lowest-affinity` can be a subset of those saved to file. The saved tree can be
+            # pruned to different functions or genes of interest if reloaded when the program is
+            # rerun for plotting.
+            if args.save_codon_trees:
+                codon_linkage = hierarchy.linkage(
+                    relative_codon_frequency_df,
+                    method=args.codon_linkage_method,
+                    metric=args.codon_distance_metric)
+                # By default, functions or genes are labeled as integers in the linkage object. Labels
+                # are later updated to be informative.
+                leaf_labels = relative_codon_frequency_df.index.get_level_values('label').tolist()
+                linkage_info_dict['save_linkage'] = codon_linkage
+                linkage_info_dict['save_labels'] = leaf_labels
+
+            if args.plot_codon_dendrogram:
+                codon_linkage = hierarchy.linkage(
+                    relative_codon_frequency_df.loc[subset_affinities_df.index],
+                    method=args.codon_linkage_method,
+                    metric=args.codon_distance_metric)
+                linkage_info_dict['plot_linkage'] = codon_linkage
+
+    return codon_linkage_dict
+
+
+def encode_newick_labels(labels):
+    """
+    Encode tree labels for compatibility with Newick files written by `ete3`.
+
+    `ete3.Tree.write` converts certain characters to underscores in the Newick output: parentheses,
+    square brackets, colons, semicolons, commas, equals.
+    """
+    encoded_labels = []
+    for label in labels:
+        encoded_label = label
+        for excluded_char, encoded_string in ete_newick_encoding_dict.items():
+            if excluded_char not in label:
+                continue
+            encoded_label = encoded_label.replace(excluded_char, encoded_string)
+        encoded_labels.append(encoded_label)
+
+    return encoded_labels
+
+
+def decode_newick_labels(labels):
+    """Decode Newick labels formatted for compatability with `ete3` back to original tree labels.
+
+    `ete3.Tree.write` converts certain characters to underscores in the Newick output: parentheses,
+    square brackets, colons, semicolons, commas, equals.
+    """
+    decoded_labels = []
+    for label in labels:
+        decoded_label = label
+        for encoded_string, excluded_char in ete_newick_decoding_dict.items():
+            if encoded_string not in label:
+                continue
+            decoded_label = decoded_label.replace(encoded_string, excluded_char)
+        decoded_labels.append(decoded_label)
+
+    return decoded_labels
+
+
+def write_codon_newick_files(args, codon_linkage_dict):
+    """Write Newick-formatted codon trees."""
+    if not args.save_codon_trees:
+        return
+
+    output_root = os.path.splitext(args.output_file)[0]
+    valid_derived_output_paths = []
+    invalid_derived_output_paths = []
+    for genome_name, source_codon_linkage_dict in codon_linkage_dict.items():
+        for source, linkage_info_dict in source_codon_linkage_dict.items():
+            codon_linkage = linkage_info_dict['save_linkage']
+            labels = encode_newick_labels(linkage_info_dict['save_labels'])
+
+            codon_tree = hierarchy.to_tree(codon_linkage)
+
+            leaf_index_label_dict = dict(enumerate(labels))
+            newick = clustering.get_tree_object_in_newick(
+                codon_tree, id_to_sample_dict=leaf_index_label_dict)
+            derived_output_path = f"{output_root}-{genome_name}-{source}.nwk"
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
+                continue
+            with open(derived_output_path, 'w') as output_file:
+                output_file.write(newick)
+            valid_derived_output_paths.append(derived_output_path)
+
+        if invalid_derived_output_paths:
+            for derived_output_path in valid_derived_output_paths:
+                os.remove(derived_output_path)
+            raise ConfigError(
+                "Codon trees could not be written to the following derived target paths: "
+                f"{', '.join(invalid_derived_output_paths)}")
+
+    run.info_single("Saved codon frequency Newick trees")
+    for valid_derived_output_path in sorted(valid_derived_output_paths, key=len):
+        run.info_single(valid_derived_output_path, level=2)
+
+
+def get_sample_linkage(args, subset_affinities_dict):
+    """Get clusters of tRNA-seq samples."""
+    if len(args.nonreference_samples) == 1:
+        run.warning("tRNA-seq samples cannot be clustered given only one analyzed sample.")
+        return
+
+    if args.plot_sample_tree_file:
+        sample_linkage_dict = load_sample_linkage_from_newick(args, subset_affinities_dict)
+    elif args.plot_sample_dendrogram or args.save_sample_trees:
+        sample_linkage_dict = generate_sample_linkages(args, subset_affinities_dict)
+    else:
+        sample_linkage_dict = None
+
+    return sample_linkage_dict
+
+
+def load_sample_linkage_from_newick(args, subset_affinities_dict):
+    """Load a Newick-formatted tree of tRNA-seq samples as a cluster linkage. The x-axis dendrogram
+    in the plot derives from the linkage object."""
+    sample_tree = Tree(args.plot_sample_tree_file)
+    run.info("Loaded tree of tRNA-seq samples", args.plot_sample_tree_file)
+
+    leaves = sample_tree.iter_leaves()
+    leaf_labels = decode_newick_labels(sample_tree.get_leaf_names())
+    for label in leaf_labels:
+        leaf = next(leaves)
+        leaf.name = label
+
+    # Confirm that the affinities sourced from `--plot-affinity-file` derive from a single genome.
+    if len(subset_affinities_dict) > 1:
+        raise ConfigError(
+            f"The affinity table loaded from '{args.plot_affinity_file}' must only contain data "
+            "from one genome in order to be used with `--plot-sample-tree-file`, as the loaded "
+            "sample tree can only represent affinities from a single genome.")
+
+    # Get the table of raw affinities for genes or functions from all sources.
+    for genome_name, source_dict in subset_affinities_dict.items():
+        if len(source_dict) > 1:
+            raise ConfigError(
+            "`--plot-sample-tree-file` can only be used with a single function source or by "
+            "lumping all function sources together with `--compare-all-function-sources`. "
+            "Yet multiple function sources are being analyzed from the affinity table: "
+            f"{', '.join(source_dict.keys())}")
+        for source, normalization_dict in source_dict.items():
+            # There should only be one table of raw affinities or affinities normalized a single way
+            # in this dictionary. This is ensured by `sanity_check_plot_affinity_file`.
+            for normalization_method, subset_affinities_df in normalization_dict.items():
+                break
+
+    # Confirm that the samples in the affinity table are represented in the tree.
+    missing_leaf_labels = sorted(set(subset_affinities_df.columns)).difference(set(leaf_labels))
+    if missing_leaf_labels:
+        raise ConfigError(
+            "The following select samples in the affinity table loaded from "
+            f"'{args.plot_affinity_file}' are not represented in the sample tree loaded from "
+            f"'{args.plot_sample_tree_file}': {', '.join(missing_leaf_labels)}")
+
+    # Prune the tree to retain the samples of interest.
+    pruned_sample_tree = sample_tree.prune(subset_affinities_df.columns)
+    pruned_leaf_labels = pruned_sample_tree.get_leaf_names()
+    if pruned_leaf_labels < leaf_labels:
+        run.warning(
+            f"{len(leaf_labels)} samples were loaded in the tRNA-seq sample tree from "
+            f"'{args.plot_sample_tree_file}' and pruned to {len(pruned_leaf_labels)} samples of "
+            "interest.")
+
+    # Arrange the affinity table sample columns to match the leaf order in the x-axis dendrogram.
+    subset_affinities_df = subset_affinities_df[pruned_leaf_labels]
+    subset_affinities_dict[genome_name][source][normalization_method] = subset_affinities_df
+
+    sample_linkage = clustering.get_linkage_from_tree(
+        pruned_sample_tree, args.sample_linkage_method, args.sample_distance_metric)
+    run.warning(
+        "It is assumed that the loaded tRNA-seq sample tree was generated with the distance "
+        f"metric, '{args.sample_distance_metric}', and linkage method, "
+        f"'{args.sample_linkage_method}', that have been provided to the program by "
+        "`--codon-distance-metric` and `--codon-linkage-method`.")
+
+    sample_linkage_dict = {}
+    sample_linkage_dict[genome_name] = source_sample_linkage_dict = {}
+    source_sample_linkage_dict[source] = normalization_sample_linkage_dict = {}
+    # By default, samples are labeled as integers in the linkage object. Labels are later updated to
+    # be informative.
+    normalization_sample_linkage_dict[normalization_method] = {
+        'save_linkage': None,
+        'save_labels': None,
+        'plot_linkage': sample_linkage}
+
+    return sample_linkage_dict
+
+
+def generate_sample_linkages(args, subset_affinities_dict):
+    """Generate cluster linkages of tRNA-seq samples by their affinities."""
+    sample_linkage_dict = {}
+    for genome_name, source_dict in subset_affinities_dict.items():
+        sample_linkage_dict[genome_name] = source_sample_linkage_dict = {}
+        for source, normalization_dict in source_dict.items():
+            source_sample_linkage_dict[source] = normalization_sample_linkage_dict = {}
+            for normalization_method, subset_affinities_df in normalization_dict.items():
+                # Note that the linkage object is generated from the subset of functions or genes
+                # retained in the affinity tables after application of `--n-highest-affinity` and
+                # `--n-lowest-affinity`. This differs from the codon frequency linkage objects
+                # generated from all functions or genes for which affinity was calculated, not just
+                # those displayed in the plots.
+                sample_linkage = hierarchy.linkage(
+                    subset_affinities_df.values.T,
+                    method=args.sample_linkage_method,
+                    metric=args.sample_distance_metric)
+                # By default, samples are labeled as integers in the linkage object. Labels are
+                # later updated to be informative.
+                leaf_labels = subset_affinities_df.columns.tolist()
+                normalization_sample_linkage_dict[normalization_method] = linkage_info_dict = {}
+                if args.save_sample_trees:
+                    linkage_info_dict['save_linkage'] = sample_linkage
+                    linkage_info_dict['save_labels'] = leaf_labels
+                if args.plot_sample_dendrogram:
+                    linkage_info_dict['plot_linkage'] = sample_linkage
+
+    return sample_linkage_dict
+
+
+def write_sample_newick_files(args, sample_linkage_dict):
+    """Write Newick-formatted tRNA-seq sample trees."""
+    if not args.save_sample_trees or sample_linkage_dict is None:
+        return
+
+    output_root = os.path.splitext(args.output_file)[0]
+    valid_derived_output_paths = []
+    invalid_derived_output_paths = []
+    for genome_name, source_sample_linkage_dict in sample_linkage_dict.items():
+        for source, normalization_sample_linkage_dict in source_sample_linkage_dict.items():
+            for normalization_method, linkage_info_dict in normalization_sample_linkage_dict.items():
+                sample_linkage = linkage_info_dict['save_linkage']
+                labels = encode_newick_labels(linkage_info_dict['save_labels'])
+
+                sample_tree = hierarchy.to_tree(sample_linkage)
+
+                leaf_index_label_dict = dict(enumerate(labels))
+                newick = clustering.get_tree_object_in_newick(
+                    sample_tree, id_to_sample_dict=leaf_index_label_dict)
+                if normalization_method == 'raw':
+                    derived_output_path = f"{output_root}-{genome_name}-{source}.nwk"
+                else:
+                    derived_output_path = \
+                        f"{output_root}-{genome_name}-{source}-{normalization_method}.nwk"
+                try:
+                    filesnpaths.is_output_file_writable(derived_output_path)
+                except FilesNPathsError:
+                    invalid_derived_output_paths.append(derived_output_path)
+                if invalid_derived_output_paths:
+                    continue
+                with open(derived_output_path, 'w') as output_file:
+                    output_file.write(newick)
+                valid_derived_output_paths.append(derived_output_path)
+
+            if invalid_derived_output_paths:
+                for derived_output_path in valid_derived_output_paths:
+                    os.remove(derived_output_path)
+                raise ConfigError(
+                    "tRNA-seq sample trees could not be written to the following derived target "
+                    f"paths: {', '.join(invalid_derived_output_paths)}")
+
+    run.info_single("Saved tRNA-seq sample Newick trees")
+    for valid_derived_output_path in sorted(valid_derived_output_paths, key=len):
+        run.info_single(valid_derived_output_path, level=2)
+
+
+def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_linkage_dict):
+    """Save static plots of affinity heatmaps, with rows being functions or genes and columns being
+    tRNA-seq samples. A y-axis dendrogram of functions or genes clustered by their general relative
+    codon frequencies is optional. An x-axis dendrogram of samples clustered by the affinities of
+    displayed functions or genes is also optional."""
+    if not args.plot:
+        return
+
+    # The output filepath serves as a template for the paths of other files that may be generated.
+    # Given the configuration of options, nothing may be written to this path. Given the template,
+    # <root><extension>, substrings can be inserted in the derived filepaths, with the most
+    # elaborate such filepath being
+    # <root>-<genome_name>-<function_source>-<normalization_method>.png.
+    output_root = os.path.splitext(args.output_file)[0]
+    valid_derived_output_paths = []
+    invalid_derived_output_paths = []
+
+    progress.new("Plotting")
+    for genome_name, source_dict in subset_affinities_dict.items():
+        for source, normalization_dict in source_dict.items():
+            if codon_linkage_dict:
+                codon_linkage_info_dict = codon_linkage_dict[genome_name][source]
+                codon_linkage = codon_linkage_info_dict['plot_linkage']
+            else:
+                codon_linkage = None
+
+            for normalization_method, subset_affinities_df in normalization_dict.items():
+                if sample_linkage_dict:
+                    sample_linkage_info_dict = sample_linkage_dict[
+                        genome_name][source][normalization_method]
+                    sample_linkage = sample_linkage_info_dict['plot_linkage']
+                else:
+                    sample_linkage = None
+
+                # Determine the output path for the plot.
+                derived_output_path = f"{output_root}"
+                if len(subset_affinities_dict) > 0:
+                    derived_output_path = f"{derived_output_path}-{genome_name}"
+                if args.separate_function_sources:
+                    derived_output_path = f"{derived_output_path}-{source}"
+                if normalization_method != 'raw':
+                    derived_output_path = f"{derived_output_path}-{normalization_method}"
+                derived_output_path = f"{derived_output_path}.pdf"
+                try:
+                    filesnpaths.is_output_file_writable(derived_output_path)
+                except FilesNPathsError:
+                    invalid_derived_output_paths.append(derived_output_path)
+                if invalid_derived_output_paths:
+                    continue
+                valid_derived_output_paths.append(derived_output_path)
+
+                progress.update(os.path.basename(derived_output_path))
+
+                plot_labels = get_plot_labels(args, subset_affinities_df)
+
+                # The function/gene labels of the affinity table should, if everything works
+                # correctly, correspond to the numerical index of the codon frequency linkage
+                # object.
+                heatmap_df = subset_affinities_df.reset_index(drop=True)
+                heatmap_df.index = plot_labels
+
+                # Set affinity heatmap properties.
+                clustermap = partial(
+                    sns.clustermap,
+                    cmap=normalization_cmap_dict[normalization_method],
+                    cbar_kws={'label': 'affinity'},
+                    yticklabels=1)
+                if normalization_method == 'raw':
+                    # Raw affinities lie in the range, (-∞, +∞).
+                    clustermap = partial(clustermap, center=0)
+                elif normalization_method == 'min_max':
+                    # Min-max normalized affinities lie in the range, [0, 1]. Currently, there is no
+                    # way of handling the edge case that every affinity has the same value, which
+                    # yields undefined min-max normalized affinities.
+                    clustermap = partial(clustermap, vmin=0, vmax=1)
+                elif normalization_method == 'min_max_mean':
+                    # Min-max-mean normalized affinities lie in the range, (-1, 1).
+                    clustermap = partial(clustermap, center=0, vmin=-1, vmax=1)
+                elif normalization_method == 'magnitude_min_max':
+                    # Magnitude-min-max normalized affinities lie in the range, [0, 1].
+                    clustermap = partial(clustermap, vmin=0, vmax=1)
+
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore')
+                    if codon_linkage is not None and sample_linkage is not None:
+                        plot = clustermap(
+                            heatmap_df, row_linkage=codon_linkage, col_linkage=sample_linkage)
+                    elif codon_linkage is not None:
+                        plot = clustermap(heatmap_df, row_linkage=codon_linkage, col_cluster=False)
+                    elif sample_linkage is not None:
+                        plot = clustermap(heatmap_df, col_linkage=sample_linkage, row_cluster=False)
+                    else:
+                        plot = clustermap(heatmap_df, row_cluster=False, col_cluster=False)
+
+                plot.ax_heatmap.set_xticklabels(
+                    plot.ax_heatmap.get_xmajorticklabels(),
+                    rotation=x_tick_label_rotation,
+                    ha=x_tick_label_alignment)
+
+                plot.fig.subplots_adjust(left=0.1, right=1, top=1)
+                plot.ax_cbar.set_position((0, 0.3, 0.03, 0.4))
+                plot.ax_cbar.yaxis.set_ticks_position('left')
+                plot.ax_cbar.yaxis.set_label_position('left')
+
+                plot.savefig(derived_output_path, bbox_inches='tight', dpi=image_dpi)
+    progress.end()
+
+    if invalid_derived_output_paths:
+        for derived_output_path in valid_derived_output_paths:
+            os.remove(derived_output_path)
+        paths_string = ', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])
+        raise ConfigError(
+            f"Plots could not be written to the following derived target paths: {paths_string}")
+
+    run.info_single("Saved plots")
+    for valid_derived_output_path in valid_derived_output_paths:
+        run.info_single(valid_derived_output_path, level=2)
+
+
+def get_plot_labels(args, subset_affinities_df):
+    """Return labels to display on the codon frequency dendrogram, which can altered from the
+    labels generated by `get_table_with_codon_tree_labels`."""
+    if args.label_brite_hierarchy:
+        plot_labels = subset_affinities_df.index.get_level_values('label').tolist()
+    else:
+        # Display the specific KEGG BRITE category rather than the category's hierarchy.
+        plot_labels = []
+        for label, source in zip(
+            subset_affinities_df.index.get_level_values('label'),
+            subset_affinities_df.index.get_level_values('function_source')):
+            if source == 'KEGG_BRITE':
+                plot_labels.append(label.split(">>>")[-1])
+            else:
+                plot_labels.append(label)
+
+    new_plot_labels = []
+    if not args.unlabel_function_accession_source:
+        # Strip placeholder empty parentheses from the end of the plot labels. These occur when a
+        # single function annotation source was processed and the function has no accession.
+        for label in plot_labels:
+            if label[-3: ] == ' ()':
+                new_plot_labels.append(label[: -3])
+            else:
+                new_plot_labels.append(label)
+        plot_labels = new_plot_labels
+
+        return plot_labels
+
+    # Strip parentheses at the end of the label containing function annotation source and
+    # accession. This can manifest as "(<source> : <accession>)", "(<source>)", "(<accession>)",
+    # or "()".
+    new_plot_labels = []
+    for label, source, accession in zip(
+        plot_labels,
+        subset_affinities_df.index.get_level_values('function_source'),
+        subset_affinities_df.index.get_level_values('function_accession')):
+        for suffix in [f"({source} : {accession})", f"({source})", f"({accession})", "()"]:
+            if label[-len(suffix): ] == suffix:
+                new_plot_labels.append(label[: -len(suffix)])
+                break
+        else:
+            new_plot_labels.append(label)
+    plot_labels = new_plot_labels
+
+    if 'KEGG_BRITE' not in subset_affinities_df.index.get_level_values('function_source'):
+        return plot_labels
+
+    # If functions come from KEGG BRITE, remove category accessions.
+    new_plot_labels = []
+    for label, source, accession in zip(
+        plot_labels,
+        subset_affinities_df.index.get_level_values('function_source'),
+        subset_affinities_df.index.get_level_values('function_accession')):
+        if source != 'KEGG_BRITE':
+            new_plot_labels.append(label)
+            continue
+
+        if args.label_brite_hierarchy:
+            if accession == 'ko00001':
+                new_plot_label = ""
+                # Strip category numbers. Assume from induction that the number occurs at the
+                # beginning of the category name.
+                for category in label.split(">>>"):
+                    category_number = category.split(" ")[0]
+                    try:
+                        int(category_number)
+                    except ValueError:
+                        # For some reason, the category does not have a number.
+                        new_plot_label += category + ">>>"
+                        continue
+                    num_spaces = (
+                        len(category[len(category_number): ]) -
+                        len(category[len(category_number): ].lstrip()))
+                    new_plot_label += category[len(category_number) + num_spaces: ] + ">>>"
+                if new_plot_label[-3: ] == ">>>":
+                    new_plot_label = new_plot_label[: -3]
+                # Strip the square bracketed pathway at the end of the terminal category, e.g.,
+                # "09100 Metabolism>>>09101 Carbohydrate metabolism>>>00010 Glycolysis /
+                # Gluconeogenesis [PATH:ko00010]".
+                split_category = category.split(" [PATH:")
+                suffix = split_category[-1]
+                if len(split_category) > 1 and suffix[-1] == ']':
+                    new_plot_label = new_plot_label[: -len(suffix) - 7]
+            elif accession == 'ko01000':
+                # Strip EC numbers from categories of the Enzyme Commission hierarchy. Assume from
+                # induction that there is always an EC number at the beginning of the category name.
+                new_plot_label = ""
+                for category in label.split(">>>"):
+                    ec_number = category.split(" ")[0]
+                    if len(ec_number) == len(category.rstrip()):
+                        # The category contains nothing beyond the EC number, so keep it.
+                        new_plot_label += category + ">>>"
+                    else:
+                        num_spaces = (
+                            len(category[len(ec_number): ]) -
+                            len(category[len(ec_number): ].lstrip()))
+                        new_plot_label += category[len(ec_number) + num_spaces: ] + ">>>"
+                if new_plot_label[-3: ] == ">>>":
+                    new_plot_label = new_plot_label[: -3]
+            else:
+                # Terminal categories can end in square bracketed links to other KEGG entries or
+                # external database entries, e.g., "Other transporters>>>Pores ion channels [TC:1]",
+                # "Heterotrimeric G-proteins>>>Alpha Subunits>>>Alpha type 1 (Gi/o) [OT]".
+                split_label = label.split(" [")
+                suffix = split_label[-1]
+                if len(split_label) > 1 and suffix.rstrip()[-1] == ']':
+                    new_plot_label = label[: -len(suffix) - 2].rstrip()
+                else:
+                    new_plot_label = label
+        else:
+            if accession == 'ko00001':
+                # Strip the category number. Assume from induction that the number occurs at the
+                # beginning of the category name.
+                category_number = label.split(" ")[0]
+                try:
+                    int(category_number)
+                    num_spaces = (
+                        len(label[len(category_number): ]) -
+                        len(label[len(category_number): ].lstrip()))
+                    new_plot_label = label[len(category_number) + num_spaces: ]
+                except ValueError:
+                    # For some reason, the category does not have a number.
+                    new_plot_label = label
+                # Strip the square bracketed pathway at the end of the terminal category, e.g.,
+                # "09100 Metabolism>>>09101 Carbohydrate metabolism>>>00010 Glycolysis /
+                # Gluconeogenesis [PATH:ko00010]".
+                split_category = new_plot_label.split(" [PATH:")
+                suffix = split_category[-1]
+                if len(split_category) > 1 and suffix[-1] == ']':
+                    new_plot_label = new_plot_label[: -len(suffix) - 7]
+            elif accession == 'ko01000':
+                # Strip the EC number from the Enzyme Commission category. Assume from induction
+                # that there is always an EC number at the beginning of the category name.
+                ec_number = label.split(" ")[0]
+                if len(ec_number) == len(label.rstrip()):
+                    # The category contains nothing beyond the EC number, so keep it.
+                    new_plot_label = label
+                else:
+                    num_spaces = (
+                        len(label[len(ec_number): ]) -
+                        len(label[len(ec_number): ].lstrip()))
+                    new_plot_label = label[len(ec_number) + num_spaces: ]
+            else:
+                # Terminal categories can end in square bracketed links to other KEGG entries or
+                # other database entries, e.g., "Other transporters>>>Pores ion channels [TC:1]",
+                # "Heterotrimeric G-proteins>>>Alpha Subunits>>>Alpha type 1 (Gi/o) [OT]".
+                split_label = label.split(" [")
+                suffix = split_label[-1]
+                if len(split_label) > 1 and suffix.rstrip()[-1] == ']':
+                    new_plot_label = label[: -len(suffix) - 2].rstrip()
+                else:
+                    new_plot_label = label
+        new_plot_labels.append(new_plot_label)
+    plot_labels = new_plot_labels
+
+    return plot_labels
+
+
+if __name__ == '__main__':
+    main()

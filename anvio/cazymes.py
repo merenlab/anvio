@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """This file contains CAZyme related classes."""
 
 import os
@@ -93,9 +92,9 @@ class CAZymeSetup(object):
         if self.args.cazyme_version:
             self.db_version = self.args.cazyme_version.upper()
         else:
-            self.db_version = 'V13'
+            self.db_version = 'V14'
 
-        self.db_url = os.path.join("https://bcb.unl.edu/dbCAN2/download/Databases", f"{self.db_version}", f"dbCAN-HMMdb-{self.db_version}.txt")
+        self.db_url = os.path.join("https://pro.unl.edu/dbCAN2/download_file.php?file=", f"dbCAN-HMMdb-{self.db_version}.txt")
 
 
     def is_database_exists(self):
@@ -137,7 +136,7 @@ class CAZymeSetup(object):
             self.hmmpress_files()
 
         self.run.info_single(f"The CAZyme database {self.db_version} is successfully setup on your computer for anvi'o to use 🎉 Now you "
-                             f"can use the program `anvi-run-cazyme` on any contigs-db file to annotate genes in them with CAZymes.",
+                             f"can use the program `anvi-run-cazymes` on any contigs-db file to annotate genes in them with CAZymes.",
                              nl_before=1, nl_after=1, mc='green')
 
 

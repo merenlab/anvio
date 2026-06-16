@@ -1,5 +1,3 @@
-# coding: utf-8
-# pylint: disable=line-too-long
 """Provides the necessary class to profile BAM files."""
 
 import gc
@@ -427,7 +425,7 @@ class BAMProfilerQuick:
         if nonnumeric:
             raise ConfigError("Some of the gene caller IDs you requested do not look like gene caller IDs. Here they are "
                              f"so you can remove them from your request: {', '.join(nonnumeric)}")
-        
+
         # to be filled later if necessary
         self.contigs_basic_info = {}
         self.gene_calls_per_contig = {}
@@ -532,7 +530,7 @@ class BAMProfilerQuick:
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
         genes_where_clause = f"source == '{self.gene_caller}'"
         if self.gene_ids_of_interest:
-            genes_where_clause += f" and gene_callers_id in ({', '.join([str(g) for g in self.gene_ids_of_interest])})" 
+            genes_where_clause += f" and gene_callers_id in ({', '.join([str(g) for g in self.gene_ids_of_interest])})"
         self.genes_in_contigs = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=genes_where_clause, error_if_no_data=True)
 
         # little sanity check to make sure we got all the gene calls the user asked for
@@ -1026,7 +1024,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         if A('contigs_of_interest'):
             filesnpaths.is_file_exists(args.contigs_of_interest)
-            self.contig_names_of_interest = set([c.strip() for c in open(args.contigs_of_interest).readlines()\
+            self.contig_names_of_interest = set([c.strip() for c in open(args.contigs_of_interest).readlines()
                                                                            if c.strip() and not c.startswith('#')])
         else:
             self.contig_names_of_interest = set([])
@@ -1325,7 +1323,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.run.warning("Your minimum contig length is set to %s base pairs. So anvi'o will not take into "
                          "consideration anything below that. If you need to kill this an restart your "
-                         "analysis with another minimum contig length value, feel free to press CTRL+C." \
+                         "analysis with another minimum contig length value, feel free to press CTRL+C."
                                                 % (pp(self.min_contig_length)))
 
         if self.max_contig_length < sys.maxsize:
@@ -1725,7 +1723,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.run.warning('According to the data generated in the contigs database, there %s in your BAM file '
                              'with 0 gene calls. Which may not be unusual if (a) some of your contigs are very short, '
                              'or (b) your the gene caller was not capable of dealing with the type of data you had. '
-                             'If you would like to take a look yourself, here is one contig that is missing any genes: %s"' %\
+                             'If you would like to take a look yourself, here is one contig that is missing any genes: %s"' %
                                       (P(len(contigs_without_any_gene_calls)), random.choice(contigs_without_any_gene_calls)))
 
 
@@ -1766,7 +1764,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             raise ConfigError("Anvi'o applied your min/max length criteria for contigs to filter out the bad ones "
                               "and has bad news: not a single contig in your contigs database was greater than %s "
                               "and smaller than %s nts :( So this profiling attempt did not really go anywhere. "
-                              "Please remove your half-baked output directory if it is still there: '%s'." \
+                              "Please remove your half-baked output directory if it is still there: '%s'."
                                         % (pp(self.min_contig_length), pp(self.max_contig_length), self.output_directory))
         else:
             self.contig_names = [self.contig_names[i] for i in contigs_with_good_lengths]
@@ -1855,7 +1853,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                    "and this is another one found in your contigs database: '%s'. You may be using an "
                                    "contigs database for profiling that has nothing to do with the BAM file you are "
                                    "trying to profile, or you may have failed to fix your contig names in your FASTA file "
-                                   "prior to mapping, which is described here: %s"\
+                                   "prior to mapping, which is described here: %s"
                                         % (contig_name, self.contig_names_in_contigs_db.pop(), 'http://goo.gl/Q9ChpS'))
 
         self.run.info('Number of contigs to be conisdered (after -M)', self.num_contigs, display_only=True)
@@ -2411,8 +2409,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def cluster_contigs(self):
         default_clustering_config = constants.blank_default if self.blank else constants.single_default
 
-        dbops.do_hierarchical_clustering_of_items(self.profile_db_path, self.clustering_configs, self.split_names, self.database_paths, \
-                                                  input_directory=self.output_directory, default_clustering_config=default_clustering_config, \
+        dbops.do_hierarchical_clustering_of_items(self.profile_db_path, self.clustering_configs, self.split_names, self.database_paths,
+                                                  input_directory=self.output_directory, default_clustering_config=default_clustering_config,
                                                   distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
 
 

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import os
 import sys
@@ -21,7 +20,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ["contigs-db", "profile-db", "external-genomes", "collection"]
+__requires__ = ["contigs-db"]
+__can_use__ = ["profile-db", "external-genomes", "collection"]
 __provides__ = ["completion"]
 __description__ = "Estimate completion and redundancy using domain-specific single-copy core genes"
 
@@ -180,7 +180,7 @@ def print_for_internal_or_external_genomes(args):
             else:
                 raise ConfigError("%d of %d of your genomes in the external genomes file are missing HMMs for single-copy core "
                                   "genes. To see the full list, run the same command with `--debug` flag. If you want avni'o "
-                                  "to simply ignore the ones that do not have HMMs, run the same command wiht `--just-do-it` flag." \
+                                  "to simply ignore the ones that do not have HMMs, run the same command wiht `--just-do-it` flag."
                                                     % (len(missing_hmms), len(genomes)))
 
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None

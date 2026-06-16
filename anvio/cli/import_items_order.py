@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A program to import an items order into an anvi'o database"""
 
 import sys
@@ -18,8 +17,9 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['pan-db', 'profile-db', 'misc-data-items-order-txt', 'dendrogram', 'phylogeny']
-__provides__ = ['misc-data-items-order',]
+__requires__ = ['profile-db', 'misc-data-items-order-txt']
+__can_use__ = ['pan-db', 'dendrogram', 'phylogeny']
+__provides__ = ['misc-data-items-order']
 __description__ = "Import a new items order into an anvi'o database"
 
 

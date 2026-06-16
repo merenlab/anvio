@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Code for genome similarity calculation"""
 
 import os
@@ -189,7 +188,7 @@ class Dereplicate:
 
         if self.similarity_threshold < 0 or self.similarity_threshold > 1:
             raise ConfigError("When anvi'o collapses %s's output into a similarity matrix, all values are reported as "
-                             "similaritys between 0 and 1. %.2f can't be used to determine redundant genomes"\
+                             "similaritys between 0 and 1. %.2f can't be used to determine redundant genomes"
                               % (self.program_name, self.similarity_threshold))
 
         if self.representative_method == "Qscore" and not (self.external_genomes or self.internal_genomes):
@@ -552,7 +551,7 @@ class Dereplicate:
 
         # calculate the maximum substantive completion value found
         max_substantive_completion = max([e[1] for e in substantive_completion_and_length_values])
-        
+
         # get all the genomes with that exact completion value, sorted by their length (in case there are more than one genomes with identical completion estimates)
         genomes_with_max_substantive_completion = sorted([e for e in substantive_completion_and_length_values if e[1] == max_substantive_completion], key=lambda x: x[2], reverse=True)
 
@@ -965,7 +964,7 @@ class ANI(GenomeSimilarity):
                             "and was below your threshold, and so the ANI scores will be ignored (set to 0) for all downstream "
                             "reports you will find in anvi'o tables and visualizations. %sAnvi'o kindly invites you "
                             "to carefully think about potential implications of discarding hits based on an arbitrary alignment "
-                            "fraction, but does not judge you because it is not perfect either." % \
+                            "fraction, but does not judge you because it is not perfect either." %
                                                     (self.min_alignment_fraction,
                                                      num_anvio_wants_to_remove_via_alignment_fraction,
                                                      len(d), g1, float(self.results['percentage_identity'][g1][g2]), g2, g1, g2,
@@ -977,7 +976,7 @@ class ANI(GenomeSimilarity):
                              "than '%.2f'). Anvi'o found %d such instances between the pairwise "
                              "comparisons of your %d genomes, but the --significant-alignment-length parameter "
                              "saved them all, because each one of them were longer than %d nts. So your filters kinda cancelled "
-                             "each other out. Just so you know." % \
+                             "each other out. Just so you know." %
                                                     (self.min_alignment_fraction,
                                                      num_anvio_wants_to_remove_via_alignment_fraction, len(d),
                                                      self.significant_alignment_length))

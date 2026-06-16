@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """
     Classes to define and work with anvi'o contigs workflows.
 """
@@ -46,54 +44,9 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                            'anvi_script_run_eggnog_mapper', 'reformat_external_gene_calls_table',
                            'reformat_external_functions', 'import_external_functions', 'anvi_run_pfams', 'anvi_run_kegg_kofams'])
 
-        self.general_params.extend(["fasta_txt"])
-
         self.dirs_dict.update({"FASTA_DIR": "01_FASTA",
                                "CONTIGS_DIR": "02_CONTIGS"})
 
-        self.default_config.update({"fasta_txt": "fasta.txt",
-                                    "anvi_gen_contigs_database": {"--project-name": "{group}"},
-                                    "centrifuge": {"threads": 2},
-                                    "anvi_run_hmms": {"run": True, "threads": 5, "--also-scan-trnas": True},
-                                    "anvi_run_kegg_kofams": {"run": True, "threads": 4},
-                                    "anvi_run_ncbi_cogs": {"run": True, "threads": 5},
-                                    "anvi_run_scg_taxonomy": {"run": True, "threads": 6},
-                                    "anvi_run_trna_scan": {"run": False, "threads": 6},
-                                    "anvi_script_reformat_fasta": {"run": True, "--prefix": "{group}", "--simplify-names": True},
-                                    "emapper": {"--database": "bact", "--usemem": True, "--override": True},
-                                    "anvi_script_run_eggnog_mapper": {"--use-version": "0.12.6"}})
-
-        self.rule_acceptable_params_dict['anvi_run_ncbi_cogs'] = ['run', '--cog-data-dir', '--temporary-dir-path', '--search-with']
-
-        self.rule_acceptable_params_dict['anvi_run_scg_taxonomy'] = ['run', '--scgs-taxonomy-data-dir']
-
-        self.rule_acceptable_params_dict['anvi_run_trna_scan'] = ['run', '--trna-cutoff-score']
-
-        self.rule_acceptable_params_dict['anvi_run_hmms'] = ['run', '--installed-hmm-profile', '--hmm-profile-dir', '--also-scan-trnas', '--add-to-functions-table', '--just-do-it']
-
-        self.rule_acceptable_params_dict['anvi_run_pfams'] = ['run', '--pfam-data-dir']
-
-        self.rule_acceptable_params_dict['anvi_run_kegg_kofams'] = ['run', '--kegg-data-dir', '--hmmer-program', '--keep-all-hits', '--log-bitscores', '--just-do-it']
-
-        self.rule_acceptable_params_dict['centrifuge'] = ['run', 'db']
-
-        self.rule_acceptable_params_dict['emapper'] = ['--database', '--usemem', '--override', 'path_to_emapper_dir']
-
-        self.rule_acceptable_params_dict['anvi_script_run_eggnog_mapper'] = ['run', '--cog-data-dir', '--drop-previous-annotations',
-                                         '--use-version']
-
-        self.rule_acceptable_params_dict['anvi_script_reformat_fasta'] = \
-                    ['run', '--keep-ids', '--exclude-ids', '--min-len', '--max-len', "--prefix", "--simplify-names", "--seq-type"]
-
-
-        gen_contigs_params = ['--description', '--skip-gene-calling',\
-                              '--ignore-internal-stop-codons', '--skip-mindful-splitting',\
-                              '--contigs-fasta', '--project-name',\
-                              '--description', '--split-length', '--kmer-size',\
-                              '--skip-mindful-splitting', '--skip-gene-calling',\
-                              '--ignore-internal-stop-codons', '--skip-predict-frame', '--prodigal-translation-table']
-
-        self.rule_acceptable_params_dict['anvi_gen_contigs_database'] = gen_contigs_params
 
 
     def init(self):
@@ -137,8 +90,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         # sanity check for centrifuge db
         if run_taxonomy_with_centrifuge:
             if not self.get_param_value_from_config(["centrifuge", "db"]):
-                raise ConfigError("If you plan to run centrifuge, then you must "\
-                                  "provide a path for the centrifuge db in the "\
+                raise ConfigError("If you plan to run centrifuge, then you must "
+                                  "provide a path for the centrifuge db in the "
                                   "config file. See documentation for more details.")
 
         if run_taxonomy_with_centrifuge:
@@ -172,8 +125,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         # import external functions if provided
         import_external_functions_flags = [os.path.join(self.dirs_dict["CONTIGS_DIR"],
-                                           group + "-steps", "external_functions_imported.done")\
-                                           for group in self.contigs_information \
+                                           group + "-steps", "external_functions_imported.done")
+                                           for group in self.contigs_information
                                            if self.contigs_information[group].get('gene_functional_annotation')]
         if import_external_functions_flags:
             optional_targets.extend(import_external_functions_flags)
@@ -308,11 +261,11 @@ class ContigsDBWorkflow(WorkflowSuperClass):
             raise ConfigError("Your fasta_txt file contains columns that are "
                               "not familiar to us. These are the only columns "
                               "that we accept: '%s'. These are the columns that "
-                              "we don't like in your file: '%s'." % (", ".join(w.get_fields_for_fasta_information()), \
+                              "we don't like in your file: '%s'." % (", ".join(w.get_fields_for_fasta_information()),
                                                                    ", ".join(bad_columns)))
 
         contigs_with_external_functions_and_no_external_gene_calls = \
-                [c for c in self.contigs_information \
+                [c for c in self.contigs_information
                     if self.contigs_information[c].get('gene_functional_annotation')
                     and not self.contigs_information[c].get('external_gene_calls')]
         if contigs_with_external_functions_and_no_external_gene_calls:

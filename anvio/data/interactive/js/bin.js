@@ -81,6 +81,7 @@ function Bins(prefix, container) {
 
     this.manualBinNamesBackup = null;
     this.taxonomyLabelingEnabled = false;
+    this.selectContigsRatherThanSplits = false;
 
     this.keepHistory = false;
     this.allowRedraw = true;
@@ -509,6 +510,36 @@ Bins.prototype.GetBinColor = function(bin_id) {
     return colorElement ? colorElement.getAttribute('color') : null;
 };
 
+Bins.prototype.SetSelectContigsRatherThanSplits = function(enabled) {
+    this.selectContigsRatherThanSplits = Boolean(enabled);
+};
+
+Bins.prototype._getContigNameFromLabel = function(label) {
+    const splitIndex = label.indexOf('_split_');
+    return splitIndex === -1 ? label : label.substring(0, splitIndex);
+};
+
+Bins.prototype._expandNodeForContigSelection = function(node) {
+    if (!this.selectContigsRatherThanSplits || !node || !node.IsLeaf || !node.IsLeaf()) {
+        return [node];
+    }
+
+    if (typeof drawer === 'undefined' || !drawer || !drawer.tree || !Array.isArray(drawer.tree.leaves)) {
+        return [node];
+    }
+
+    const contigName = this._getContigNameFromLabel(node.label);
+    const expandedNodes = [];
+
+    for (const leaf of drawer.tree.leaves) {
+        if (this._getContigNameFromLabel(leaf.label) === contigName) {
+            expandedNodes.push(leaf);
+        }
+    }
+
+    return expandedNodes.length ? expandedNodes : [node];
+};
+
 // ============================================================================
 // Node Operations
 // ============================================================================
@@ -533,12 +564,21 @@ Bins.prototype.AppendNode = function(targets, bin_id) {
     }
 
     // Process each target
+    const processedNodes = new Set();
+
     for (const target of targets) {
         if (target.collapsed) continue;
 
         for (const node of target.IterateChildren()) {
-            this._removeNodeFromOtherBins(node, bin_id, bins_to_update, transaction);
-            this._addNodeToBin(node, bin_id, bin_color, bins_to_update, transaction);
+            const nodesToProcess = this._expandNodeForContigSelection(node);
+
+            for (const expandedNode of nodesToProcess) {
+                if (processedNodes.has(expandedNode)) continue;
+                processedNodes.add(expandedNode);
+
+                this._removeNodeFromOtherBins(expandedNode, bin_id, bins_to_update, transaction);
+                this._addNodeToBin(expandedNode, bin_id, bin_color, bins_to_update, transaction);
+            }
         }
     }
 
@@ -619,12 +659,21 @@ Bins.prototype.RemoveNode = function(targets, bin_id) {
     }
 
     // Process each target
+    const processedNodes = new Set();
+
     for (const target of targets) {
         if (target.collapsed) continue;
 
         for (const node of target.IterateChildren()) {
-            this._removeNodeFromAllBins(node, bins_to_update, transaction);
-            node.ResetColor();
+            const nodesToProcess = this._expandNodeForContigSelection(node);
+
+            for (const expandedNode of nodesToProcess) {
+                if (processedNodes.has(expandedNode)) continue;
+                processedNodes.add(expandedNode);
+
+                this._removeNodeFromAllBins(expandedNode, bins_to_update, transaction);
+                expandedNode.ResetColor();
+            }
         }
     }
 
@@ -1547,6 +1596,11 @@ Bins.prototype.ExportBin = function(bin_id_to_export, use_bin_id = false) {
  * @param {Array|string} item_list - Items to highlight
  */
 Bins.prototype.HighlightItems = function(item_list) {
+    // clear any function-search gene highlights tied to a previous highlight. the function-search
+    // path (search.js) re-populates this key right after calling us, so every other caller leaves
+    // it empty and the gene highlight stays correctly tied to a gene-centric search.
+    try { localStorage.removeItem('search_highlighted_genes'); } catch (e) { /* localStorage may be unavailable */ }
+
     if (!Array.isArray(item_list)) {
         item_list = [item_list];
     }
@@ -1569,6 +1623,7 @@ Bins.prototype.HighlightItems = function(item_list) {
  * Clear highlighted items
  */
 Bins.prototype.ClearHighlightedItems = function() {
+    try { localStorage.removeItem('search_highlighted_genes'); } catch (e) { /* localStorage may be unavailable */ }
     this.higlighted_items = [];
     this.RedrawBins();
 };

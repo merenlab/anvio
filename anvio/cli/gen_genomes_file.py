@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 """A program to generate external or internal genomes files"""
 
@@ -20,8 +19,9 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __authors__ = ['ivagljiva']
+__requires__ = ["contigs-db"]
+__can_use__ = ["profile-db", "collection"]
 __provides__ = ["external-genomes", "internal-genomes"]
-__requires__ = ["contigs-db", "profile-db", "collection"]
 __description__ = "Generate an external genomes or internal genomes file"
 
 

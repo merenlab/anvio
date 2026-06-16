@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 from anvio.argparse import ArgumentParser
@@ -78,7 +77,7 @@ def run_program():
     if args.collection_name:
         progress.new('Initializing gene clusters')
         progress.update('...')
-        pan = summarizer.PanSummarizer(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+        pan = summarizer.PanSummarizer(args, lazy_init=True, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
         progress.end()
 
         if not args.bin_id:

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Allows you to merge multiple bins in a collection"""
 
 import sys
@@ -18,7 +17,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ["pan-db", "profile-db", "collection", "bin"]
+__requires__ = ['collection', 'bin', 'profile-db']
+__can_use__ = ['pan-db']
 __provides = ["bin"]
 __description__ = "Merge a given set of bins in an anvi'o collection"
 

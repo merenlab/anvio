@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A script to import collections (and their colors)"""
 
 import sys
@@ -21,8 +20,9 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['contigs-db', 'profile-db', 'pan-db', 'collection-txt',]
-__provides__ = ['collection',]
+__requires__ = ['contigs-db', 'collection-txt']
+__can_use__ = ['profile-db', 'pan-db', 'pan-graph-db']
+__provides__ = ['collection']
 __description__ = "Import an external binning result into anvi'o"
 __resources__ = [("Another description as part of the metagenomic workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-import-collection")]
 
@@ -49,18 +49,18 @@ def run_program():
     # <SANITY CHECKS>
     #################################################################################################
     if not args.pan_or_profile_db:
-        raise ConfigError("You must provide an anvi'o pan or profile database for this to work :(")
+        raise ConfigError("You must provide an anvi'o pan, pan-graph, or profile database for this to work :(")
 
-    utils.is_pan_or_profile_db(args.pan_or_profile_db)
+    utils.is_pan_or_profile_db(args.pan_or_profile_db, pan_graph_db_is_also_accepted=True)
 
     filesnpaths.is_output_file_writable(args.pan_or_profile_db)
 
     if args.contigs_db:
         utils.is_contigs_db(args.contigs_db)
 
-    if args.pan_or_profile_db and utils.get_db_type(args.pan_or_profile_db) == 'pan' and args.contigs_db:
+    if args.pan_or_profile_db and utils.get_db_type(args.pan_or_profile_db) in ['pan', 'pan-graph'] and args.contigs_db:
         raise ConfigError("There is no need to provide a contigs database when you are working with an anvi'o pan "
-                           "database")
+                           "or pan-graph database")
 
     if not args.contigs_db and args.contigs_mode:
         raise ConfigError("There is no reason for you to use the `--contigs-mode` flag when you have "
@@ -79,7 +79,7 @@ def run_program():
     if not args.collection_name:
         raise ConfigError("You must give a name for this collection.")
 
-    if not args.contigs_db:
+    if not args.contigs_db and utils.get_db_type(args.pan_or_profile_db) == 'profile':
         run.warning("You did not provide a contigs database. Fine. So be it. But know this: anvi'o has no way to check "
                     "the consistency of names you provide in the input file. So if you made a mistake while generating "
                     "this collection, it probably will cause issues later on.")
@@ -100,7 +100,7 @@ def run_program():
     if max(num_occurences_of_entries.values()) != 1:
         raise ConfigError("Some %(item)s names occur more than once in the input file. A %(item)s cannot belong in two "
                            "bins, and neither there should be the same bin assignment for a given %(item)s. Long story "
-                           "short, each name should appear only once in your input file, and it is not the case :/" \
+                           "short, each name should appear only once in your input file, and it is not the case :/"
                                                                         % {'item': 'contig' if args.contigs_mode else 'split'})
     #################################################################################################
     # </SANITY CHECKS>
@@ -249,14 +249,21 @@ def get_args():
     from anvio.argparse import ArgumentParser
     parser = ArgumentParser(description=__description__)
 
-    parser.add_argument('data', metavar = "TAB DELIMITED FILE",
-                        help = 'The input file that describes bin IDs for each split or contig.')
+    groupA = parser.add_argument_group('INPUT DATA', "The input file that maps item names to bin names.")
+    groupA.add_argument('data', metavar='TAB DELIMITED FILE',
+                        help='A two-column, tab-delimited file where column one has item names (splits, '
+                             'gene clusters, or synteny gene clusters) and column two has bin names.')
+    groupA.add_argument(*anvio.A('bins-info'), **anvio.K('bins-info'))
+    groupA.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': True}))
 
-    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
-    parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db', {'required': False}))
-    parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': True}))
-    parser.add_argument(*anvio.A('bins-info'), **anvio.K('bins-info'))
-    parser.add_argument(*anvio.A('contigs-mode'), **anvio.K('contigs-mode'))
+    groupB = parser.add_argument_group('TARGET DATABASE', "Where should the collection be stored?")
+    groupB.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db', {'required': False}))
+    groupB.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+
+    groupC = parser.add_argument_group('EXOTIC OPTIONS', "These parameters are only relevant "
+                                       "when importing into a profile database associated with a contigs "
+                                       "database and have no effect otherwise.")
+    groupC.add_argument(*anvio.A('contigs-mode'), **anvio.K('contigs-mode'))
 
     return parser.get_args(parser)
 
