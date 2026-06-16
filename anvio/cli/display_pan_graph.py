@@ -18,7 +18,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ahenoch', 'meren']
 __requires__ = ['pan-graph-db']
-__provides__ = ['interactive', 'svg']
+__provides__ = ['interactive']
+__can_provide__ = ['svg']
 __description__ = "Start an anvi'o interactive interface to view pan graphs."
 
 
@@ -28,6 +29,7 @@ def main():
     progress = terminal.Progress()
 
     try:
+        utils.is_all_npm_packages_installed()
         d = interactive.PangraphInteractive(args, run=run, progress=progress)
 
         if args.dry_run:
@@ -65,7 +67,7 @@ def get_args():
     groupB.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
     groupB.add_argument(*anvio.A('export-svg'), **anvio.K('export-svg'))
 
-    return parser.get_args(parser)
+    return parser.get_args(parser, auto_fill_anvio_dbs=True)
 
 
 if __name__ == '__main__':

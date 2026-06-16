@@ -15,7 +15,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ["pan-db", "profile-db", "contigs-db", "genomes-storage-db"]
+__requires__ = ['contigs-db']
+__can_use__ = ['pan-db', 'pan-graph-db', 'profile-db', 'genomes-storage-db']
 __description__ = "Update the description in an anvi'o database"
 
 

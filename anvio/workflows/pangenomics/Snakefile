@@ -19,177 +19,43 @@ __email__ = "alon.shaiber@gmail.com"
 
 run = terminal.Run()
 
-this_workflow_is_inherited_by_another= False if 'anvio/workflows/pangenomics' in str(workflow.included[0].abspath()) else True
+this_workflow_is_inherited_by_another = (
+    False
+    if "anvio/workflows/pangenomics" in str(workflow.included[0].abspath())
+    else True
+)
 
 if not this_workflow_is_inherited_by_another:
     M = PangenomicsWorkflow(argparse.Namespace(config=config))
     M.init()
     dirs_dict = M.dirs_dict
+
     # in order to generate the contigs databases we include the snakefile for the generation of contigs databases
     # include statement must come after we get an instance of PangenomicsWorkflow class
-    include: w.get_workflow_snake_file_path('contigs')
-    include: w.get_workflow_snake_file_path('phylogenomics')
+    include: w.get_workflow_snake_file_path("contigs")
+    include: w.get_workflow_snake_file_path("phylogenomics")
 
 
-def rule_log(rule_name, log_file_name='log'):
-    """Return a log path under 00_LOGS/<rule_name>/."""
-    if not log_file_name.endswith('.log'):
+def rule_log(rule_name, log_file_name="log"):
+    """Return a canonical workflow log path under 00_LOGS/<rule_name>/."""
+    if not log_file_name.endswith(".log"):
         log_file_name = f"{log_file_name}.log"
 
     return os.path.join(dirs_dict["LOGS_DIR"], rule_name, log_file_name)
 
 
 rule pangenomics_target_rule:
-    input: M.get_pangenomics_target_files()
+    """Collect the expected pangenomics workflow outputs."""
+    input:
+        targets=M.get_pangenomics_target_files(),
 
 
-# run pangenome
-rule anvi_pan_genome:
-    version: anvio.__pan__version__
-    log: rule_log("anvi_pan_genome", M.project_name)
-    threads: M.T("anvi_pan_genome")
-    resources: nodes = M.T("anvi_pan_genome")
-    input: dirs_dict["PAN_DIR"] + "/" + M.project_name + "-GENOMES.db"
-    params:
-        output_dir = dirs_dict["PAN_DIR"],
-        genome_names = M.get_rule_param("anvi_pan_genome", "--genome-names"),
-        project_name = M.pan_project_name,
-        skip_alignments = M.get_rule_param("anvi_pan_genome", "--skip-alignments"),
-        align_with = M.get_rule_param("anvi_pan_genome", "--align-with"),
-        exclude_partial_gene_calls = M.get_rule_param("anvi_pan_genome", "--exclude-partial-gene-calls"),
-        use_ncbi_blast = M.get_rule_param("anvi_pan_genome", "--use-ncbi-blast"),
-        minbit = M.get_rule_param("anvi_pan_genome", "--minbit"),
-        mcl_inflation = M.get_rule_param("anvi_pan_genome", "--mcl-inflation"),
-        min_occurrence = M.get_rule_param("anvi_pan_genome", "--min-occurrence"),
-        min_percent_identity = M.get_rule_param("anvi_pan_genome", "--min-percent-identity"),
-        description = M.get_rule_param("anvi_pan_genome", "--description"),
-        overwrite_output_destinations = M.get_rule_param("anvi_pan_genome", "--overwrite-output-destinations"),
-        skip_hierarchical_clustering = M.get_rule_param("anvi_pan_genome", "--skip-hierarchical-clustering"),
-        enforce_hierarchical_clustering = M.get_rule_param("anvi_pan_genome", "--enforce-hierarchical-clustering"),
-        distance = M.get_rule_param("anvi_pan_genome", "--distance"),
-        linkage = M.get_rule_param("anvi_pan_genome", "--linkage"),
-        i_know_this_is_not_a_good_idea = M.get_rule_param("anvi_pan_genome", "--I-know-this-is-not-a-good-idea")
-    output: os.path.join(dirs_dict["PAN_DIR"], M.pan_project_name + "-PAN.db")
-    shell:
-        """
-            anvi-pan-genome -g {input} --num-threads {threads} -o {params.output_dir} --project-name {params.project_name} {params.genome_names}\
-            {params.skip_alignments} {params.align_with} {params.exclude_partial_gene_calls}\
-            {params.use_ncbi_blast} {params.minbit} {params.mcl_inflation}\
-            {params.min_occurrence} {params.min_percent_identity} \
-            {params.description} {params.overwrite_output_destinations}\
-            {params.skip_hierarchical_clustering} {params.enforce_hierarchical_clustering}\
-            {params.distance} {params.linkage} {params.i_know_this_is_not_a_good_idea} >> {log} 2>&1
-        """
+# Workflow rule modules. Keep this order to preserve existing rule dependencies.
+include: w.get_workflow_rule_file_path("pangenomics", "core.smk")
 
 
-# generate anvi'o genomes storage
-rule anvi_gen_genomes_storage:
-    log: rule_log("anvi_gen_genomes_storage", M.project_name)
-    threads: M.T("anvi_gen_genomes_storage")
-    resources: nodes = M.T("anvi_gen_genomes_storage")
-    input: unpack(lambda wildcards: M.input_for_anvi_gen_genomes_storage)
-    output: dirs_dict["PAN_DIR"] + "/" + M.project_name + "-GENOMES.db"
-    params:
-        internal_genomes_argument = lambda wildcards: "--internal-genomes " + M.internal_genomes_file if M.internal_genomes_file else "",
-        external_genomes_argument = lambda wildcards: "--external-genomes " + M.external_genomes_file if M.external_genomes_file else "",
-        gene_caller = M.get_rule_param("anvi_gen_genomes_storage", "--gene-caller"),
-    shell:
-        """
-            anvi-gen-genomes-storage -o {output}\
-                                     {params.internal_genomes_argument}\
-                                     {params.external_genomes_argument}\
-                                     {params.gene_caller} >> {log} 2>&1
-        """
-
-if 'anvio/workflows/pangenomics' in str(workflow.included[0].abspath()):
+if "anvio/workflows/pangenomics" in str(workflow.included[0].abspath()):
     M.check_workflow_program_dependencies(workflow)
 
 
-rule anvi_get_sequences_for_gene_clusters:
-    version: 1.0
-    log: rule_log("anvi_get_sequences_for_gene_clusters", M.project_name)
-    input:
-        genomes_storage = os.path.join(dirs_dict["PAN_DIR"], M.project_name + "-GENOMES.db"),
-        pan_db = M.pan_db_path
-    output:
-        os.path.join(dirs_dict["PHYLO_DIR"], M.project_name + "-GC-sequences.fa")
-    params:
-        gene_cluster_id = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--gene-cluster-id'),
-        gene_cluster_ids_file = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--gene-cluster-ids-file'),
-        collection_name = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--collection-name'),
-        bin_id = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--bin-id'),
-        min_num_genomes_gene_cluster_occurs = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--min-num-genomes-gene-cluster-occurs'),
-        max_num_genomes_gene_cluster_occurs = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--max-num-genomes-gene-cluster-occurs'),
-        min_num_genes_from_each_genome = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--min-num-genes-from-each-genome'),
-        max_num_genes_from_each_genome = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--max-num-genes-from-each-genome'),
-        max_num_gene_clusters_missing_from_genome = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--max-num-gene-clusters-missing-from-genome'),
-        min_functional_homogeneity_index = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--min-functional-homogeneity-index'),
-        max_functional_homogeneity_index = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--max-functional-homogeneity-index'),
-        min_geometric_homogeneity_index = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--min-geometric-homogeneity-index'),
-        max_geometric_homogeneity_index = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--max-geometric-homogeneity-index'),
-        add_into_items_additional_data_table = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--add-into-items-additional-data-table'),
-        concatenate_gene_clusters = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--concatenate-gene-clusters'),
-        separator = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--separator'),
-        align_with = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--align-with')
-    threads: M.T('anvi_get_sequences_for_gene_clusters')
-    resources: nodes = M.T('anvi_get_sequences_for_gene_clusters')
-    shell:
-        """
-           anvi-get-sequences-for-gene-clusters -p {input.pan_db} -g {input.genomes_storage} \
-           {params.gene_cluster_id} {params.gene_cluster_ids_file} {params.collection_name} \
-           {params.bin_id} {params.min_num_genomes_gene_cluster_occurs} \
-           {params.max_num_genomes_gene_cluster_occurs} {params.min_num_genes_from_each_genome} \
-           {params.max_num_genes_from_each_genome} {params.max_num_gene_clusters_missing_from_genome} \
-           {params.min_functional_homogeneity_index} {params.max_functional_homogeneity_index} \
-           {params.min_geometric_homogeneity_index} {params.max_geometric_homogeneity_index} \
-           {params.add_into_items_additional_data_table} {params.concatenate_gene_clusters} \
-           {params.separator} {params.align_with} \
-           -o {output} --just-do-it >> {log} 2>&1
-        """
-
-
-rule import_phylogenetic_tree_to_pangenome:
-    version: 1.0
-    log: rule_log("import_phylogenetic_tree_to_pangenome", M.pan_project_name)
-    input:
-        pan_db = M.pan_db_path,
-        newick = os.path.join(M.dirs_dict["PHYLO_DIR"], M.project_name + "-proteins_GAPS_REMOVED.fa" + ".contree")
-    output:
-        layers_orders_file = temp(os.path.join(M.dirs_dict["PAN_DIR"], M.project_name + "-layers-orders.txt")),
-        phylogeny_imported = touch(M.get_phylogeny_imported_flag())
-    params:
-        tree_name = M.tree_name,
-        just_do_it = M.get_rule_param('import_phylogenetic_tree_to_pangenome', '--just-do-it')
-    threads: M.T('import_phylogenetic_tree_to_pangenome')
-    resources: nodes = M.T('import_phylogenetic_tree_to_pangenome')
-    run:
-        shell('echo -e "item_name\tdata_type\tdata_value" > {output.layers_orders_file}')
-        shell('echo -e "{params.tree_name}\tnewick\t`cat {input.newick}`" >> {output.layers_orders_file}')
-        # first create a layers-orders file
-        cmd = "anvi-import-misc-data -p {input.pan_db} \
-                                  -t layer_orders \
-                                  {params.just_do_it} \
-                                  {output.layers_orders_file} >> {log} 2>&1"
-        shell(cmd)
-
-
-
-rule anvi_compute_genome_similarity:
-    version: 1.0
-    log: rule_log("anvi_compute_genome_similarity", M.pan_project_name)
-    input: unpack(lambda wildcards: M.input_for_anvi_compute_genome_similarity)
-    output:
-        anvi_compute_genome_similarity_flag = touch(M.anvi_compute_genome_similarity_flag),
-        output_dir = directory(M.anvi_compute_genome_similarity_output_dir)
-    params:
-        internal_genomes_argument = lambda wildcards: "--internal-genomes " + M.internal_genomes_file if M.internal_genomes_file else "",
-        external_genomes_argument = lambda wildcards: "--external-genomes " + M.external_genomes_file if M.external_genomes_file else "",
-        additional_params = M.get_param_value_from_config(["anvi_compute_genome_similarity", "additional_params"])
-    threads: M.T('anvi_compute_genome_similarity')
-    resources: nodes = M.T('anvi_compute_genome_similarity')
-    shell: " anvi-compute-genome-similarity {params.internal_genomes_argument} \
-                                            {params.external_genomes_argument} \
-                                            -T {threads} \
-                                            -o {output.output_dir} \
-                                            -p {input.pan_db} \
-                                            {params.additional_params} >> {log} 2>&1"
+include: w.get_workflow_rule_file_path("pangenomics", "phylogeny.smk")

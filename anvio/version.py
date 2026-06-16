@@ -17,11 +17,11 @@ minor_python_version_required = 10
 # Version numbers for anvi'o artifacts -- if you need to change any
 # of these numbers, you better have a well-tested migration script
 # ready to go along with that change!
-contigs_db_version = "24"
+contigs_db_version = "25"
 profile_db_version = "42"
 genes_db_version = "6"
 pan_db_version = "21"
-pangraph_db_version = "4"
+pangraph_db_version = "5"
 auxiliary_data_version = "2"
 structure_db_version = "2"
 genomes_storage_version = "8"

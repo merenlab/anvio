@@ -24,8 +24,9 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'ivagljiva', 'mschecht', 'ekiefl']
-__requires__ = ['contigs-db', 'hmm-source',]
-__provides__ = ['hmm-hits',]
+__requires__ = ['contigs-db']
+__can_use__ = ['hmm-source']
+__provides__ = ['hmm-hits']
 __description__ = ("This program deals with populating tables that store HMM hits in an "
                    "anvi'o contigs database")
 __resources__ = [("Another description as part of the metagenomic workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]

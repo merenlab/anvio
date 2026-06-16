@@ -21,7 +21,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
 __requires__ = ['pan-db', 'genomes-storage-db']
-__provides__ = ['genes-fasta', 'concatenated-gene-alignment-fasta', 'misc-data-items']
+__provides__ = ['genes-fasta']
+__can_provide__ = ['concatenated-gene-alignment-fasta', 'misc-data-items']
 __resources__ = [("In action in the Anvi'o pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/#scrutinizing-phylogenomics")]
 __description__ = "Do cool stuff with gene clusters in anvi'o pan genomes"
 
@@ -53,7 +54,7 @@ def run_program():
     if args.collection_name or args.list_collections or args.list_bins:
         progress.new('Initializing')
         progress.update('...')
-        pan = summarizer.PanSummarizer(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+        pan = summarizer.PanSummarizer(args, lazy_init=True, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
         progress.end()
 
         if not args.bin_id:

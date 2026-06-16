@@ -60,6 +60,9 @@ var last_settings;
 
 var search_column;
 var search_results = [];
+// map of split_name -> [gene_callers_id, ...] populated only by a function (annotation) search,
+// so the inspect page can highlight the matching genes for a highlighted split. see search.js.
+var genes_per_split_from_function_search = {};
 
 var views = {};
 var layers = {};
@@ -75,6 +78,7 @@ var collapsedNodes = [];
 var session_id;
 var mode;
 var server_mode = false;
+var description_panel;
 var samples_tree_hover = false;
 var inspection_available = false;
 var sequences_available = false;
@@ -233,7 +237,8 @@ function initData() {
             mode = response.mode;
             server_mode = response.server_mode;
             switchUserInterfaceMode(response.project, response.title);
-            setupDescriptionPanel(response.description);
+            description_panel = new DescriptionPanel('/store_description');
+            description_panel.setup(response.description);
 
             if (response.state[0] && response.state[0] == 'default')
                 a_default_state_is_found = true;
@@ -364,6 +369,7 @@ function initData() {
             drawInlineScaleBar();
 
             bins = new Bins(response.bin_prefix, document.getElementById('tbody_bins'));
+            bins.SetSelectContigsRatherThanSplits($('#select_contigs_rather_than_splits').is(':checked'));
 
             // redoing intiial bin causes some weird behaviors
             bins.keepHistory = false;
@@ -380,7 +386,7 @@ function initData() {
                         bins.ImportCollection(response.collection);
                     }
 
-                    if ($('#panel-left').is(':visible')) {
+                    if (is_panel_open) {
                         setTimeout(toggleLeftPanel, 500);
                     }
                  });
@@ -516,44 +522,6 @@ function switchUserInterfaceMode(project, title) {
         $('#sidebar').css('margin-top', '81px');
         $('.upload-button').hide();
     }
-}
-
-function setupDescriptionPanel(description) {
-    $('#description-editor').val(description);
-    $('#description-editor').markdown({
-        'onShow': function (e) {
-            $('[data-handler="bootstrap-markdown-cmdPreview"]').trigger('click');
-        },
-        'hiddenButtons': ['cmdUrl', 'cmdImage', 'cmdCode', 'cmdQuote'],
-        'parser': function(content) {
-            return renderMarkdown(content);
-        },
-        'additionalButtons': [
-          [{
-            data: [{
-              name: 'cmdSave',
-              title: 'Save',
-              btnText: 'Save',
-              btnClass: 'btn btn-success btn-sm',
-              icon: {
-                'glyph': 'glyphicon glyphicon-floppy-save',
-              },
-              callback: function(e) {
-                $.ajax({
-                        type: 'POST',
-                        cache: false,
-                        url: '/store_description',
-                        data: {description: e.getContent()},
-                        success: function(data) {
-                            toastr.info("Description successfully saved to database.");
-                        }
-                    });
-              }
-            }]
-          }]
-        ],
-        'fullscreen': {'enable': false},
-    });
 }
 
 function onViewChange() {
@@ -2073,6 +2041,7 @@ function serializeSettings(use_layer_names) {
     state['autorotate-bin-labels'] = $('#autorotate_bin_labels').is(':checked');
     state['estimate-taxonomy'] = $('#estimate_taxonomy').is(':checked');
     state['use-taxonomy-bin-labels'] = $('#use_taxonomy_bin_labels').is(':checked');
+    state['select-contigs-rather-than-splits'] = $('#select_contigs_rather_than_splits').is(':checked');
     state['taxonomy-label-level'] = $('input[name="taxonomy_label_level"]:checked').val();
     state['bin-labels-angle'] = $('#bin_labels_angle').val();
     state['background-opacity'] = $('#background_opacity').val();
@@ -3480,6 +3449,10 @@ function processState(state_name, state) {
         toggleTaxonomyLabeling();
     }
 
+    if (state.hasOwnProperty('select-contigs-rather-than-splits')) {
+        $('#select_contigs_rather_than_splits').prop('checked', state['select-contigs-rather-than-splits']).trigger('change');
+    }
+
     if (state.hasOwnProperty('show-grid-for-bins')) {
         $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
     }
@@ -4055,6 +4028,11 @@ function toggleTaxonomyLabeling() {
 function onTaxonomyLabelLevelChange() {
     if (!bins) return;
     bins.ApplyTaxonomyLabels();
+}
+
+function toggleSelectContigsRatherThanSplits() {
+    if (!bins) return;
+    bins.SetSelectContigsRatherThanSplits($('#select_contigs_rather_than_splits').is(':checked'));
 }
 
 function ShadowBoxSelection(type) {

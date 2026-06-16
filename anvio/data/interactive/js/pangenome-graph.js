@@ -1,3 +1,14 @@
+const description_panel = new DescriptionPanel('/pangraph/store_description');
+
+function showFetchOverlay(message) {
+    $('#fetch-overlay-message').text(message || 'Loading...');
+    $('#fetch-overlay').css('display', 'flex');
+}
+
+function hideFetchOverlay() {
+    $('#fetch-overlay').hide();
+}
+
 class PangenomeGraphUserInterface {
     constructor() {
         this.bin_dict = {'bin_1': []};
@@ -66,10 +77,14 @@ class PangenomeGraphUserInterface {
         this.recolor_alignment = this.recolor_alignment.bind(this);
         this.alignment_download = this.alignment_download.bind(this);
         this.info_download = this.info_download.bind(this);
+        this.download_bin_fasta = this.download_bin_fasta.bind(this);
+        this.show_region_fasta_download = this.show_region_fasta_download.bind(this);
         this.add_info_to_bin = this.add_info_to_bin.bind(this);
         this.flextree_change = this.flextree_change.bind(this);
         this.save_bin = this.save_bin.bind(this);
         this.load_bin = this.load_bin.bind(this);
+        this.show_save_state_modal = this.show_save_state_modal.bind(this);
+        this.show_load_state_modal = this.show_load_state_modal.bind(this);
         this.save_state = this.save_state.bind(this);
         this.load_state = this.load_state.bind(this);
         this.set_UI_settings = this.set_UI_settings.bind(this);
@@ -124,7 +139,6 @@ class PangenomeGraphUserInterface {
         var node_size = parseFloat($('#size')[0].value);
         var node_thickness = parseFloat($('#circ')[0].value);
         var edge_thickness = parseFloat($('#edge')[0].value);
-        var line_thickness = parseFloat($('#line')[0].value);
         var track_line_width = parseFloat($('#track_line_width')[0].value);
         var node_distance_x = parseFloat($('#distx')[0].value);
         var node_distance_y = parseFloat($('#disty')[0].value);
@@ -435,9 +449,9 @@ class PangenomeGraphUserInterface {
                     var dir_set = Object.values(edge['directions'])
     
                     if (dir_set.includes('L') && dir_set.includes('R')) {
-                        var stroke = ' stroke-dasharray="' + line_thickness * 4 + ' ' + line_thickness + '" '
+                        var stroke = ' stroke-dasharray="' + edge_thickness * 4 + ' ' + edge_thickness + '" '
                     } else if (dir_set.includes('L')) {
-                        var stroke = ' stroke-dasharray="' + line_thickness + '" '
+                        var stroke = ' stroke-dasharray="' + edge_thickness + '" '
                     } else {
                         var stroke = ''
                     }
@@ -533,52 +547,57 @@ class PangenomeGraphUserInterface {
         for (var genome of this.genomes) {
             var layer_name = genome + 'layer'
             if (Object.keys(middle_layers).includes(layer_name)){
-        
+
                 var [layer_width, layer_start, layer_stop] = middle_layers[layer_name]
-            
+
+                // per-genome track appearance, falling back to globals
+                var genome_bg_color = ($('#' + genome + 'trackbg').attr('color') || '').trim() || layer_color;
+                var genome_track_lw_raw = parseFloat($('#' + genome + 'tracklw')[0].value);
+                var genome_track_lw = isNaN(genome_track_lw_raw) ? track_line_width : genome_track_lw_raw;
+
                 if (linear == 0){
                     var [circle_a_x, circle_a_y] = this.circle_transform(0-0.5, layer_start, theta, start_angle)
                     var [circle_b_x, circle_b_y] = this.circle_transform(0-0.5, layer_stop, theta, start_angle)
                     var [circle_c_x, circle_c_y] = this.circle_transform(this.global_x + 0.5, layer_start, theta, start_angle)
                     var [circle_d_x, circle_d_y] = this.circle_transform(this.global_x + 0.5, layer_stop, theta, start_angle)
-                    
+
                     if ((this.global_x) * theta > 180) {
                         var arc_flag = 1
                     } else {
                         var arc_flag = 0
                     }
-            
+
                     svg_genome_tracks[genome].push(
                         $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
                         ' A ' + layer_start + ' ' + layer_start + ' 0 ' + arc_flag + ' 1 ' + circle_a_x + ' ' + circle_a_y +
                         ' L ' + circle_b_x + ' ' + circle_b_y +
                         ' A ' + layer_stop + ' ' + layer_stop + ' 0 ' + arc_flag + ' 0 ' + circle_d_x + ' ' + circle_d_y +
-                        ' Z" stroke-width="0" fill="' + layer_color + '"></path>')
+                        ' Z" stroke-width="0" fill="' + genome_bg_color + '"></path>')
                     )
                 } else {
                     var [circle_a_x, circle_a_y] = [(0-0.5) * node_distance_x, -layer_start]
                     var [circle_b_x, circle_b_y] = [(0-0.5) * node_distance_x, -layer_stop]
                     var [circle_c_x, circle_c_y] = [(this.global_x + 0.5) * node_distance_x, -layer_start]
                     var [circle_d_x, circle_d_y] = [(this.global_x + 0.5) * node_distance_x, -layer_stop]
-                    
+
                     svg_genome_tracks[genome].push(
                         $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
                         ' L ' + circle_a_x + ' ' + circle_a_y +
                         ' L ' + circle_b_x + ' ' + circle_b_y +
                         ' L ' + circle_d_x + ' ' + circle_d_y +
-                        ' Z" stroke-width="0" fill="' + layer_color + '"></path>')
+                        ' Z" stroke-width="0" fill="' + genome_bg_color + '"></path>')
                     )
                 }
 
                 var sorted_keys = Object.keys(this.synteny[genome]).sort(function (a, b) {return parseInt(a) - parseInt(b);});
-                if (layer_width >= track_line_width) {
+                if (layer_width >= genome_track_lw) {
 
-                    layer_width -= track_line_width
-                    layer_start += track_line_width * 0.5
-                    layer_stop -= track_line_width * 0.5
+                    layer_width -= genome_track_lw
+                    layer_start += genome_track_lw * 0.5
+                    layer_stop -= genome_track_lw * 0.5
 
                     var draw = edgecoloring[genome][1]
-                    var thickness = track_line_width
+                    var thickness = genome_track_lw
                     var stroke = ''
 
                     var edge_chain = []
@@ -1007,9 +1026,6 @@ class PangenomeGraphUserInterface {
                 var x_max = rinfo['x_max'];
                 var x_span = x_max - x_min;
 
-                // Skip single-position (backbone-only) regions
-                if (x_span === 0) continue;
-
                 // Find the tallest node in this region so the label clears it.
                 var region_max_y = 0;
                 for (var [nid, ndata] of Object.entries(this.nodes)) {
@@ -1022,7 +1038,9 @@ class PangenomeGraphUserInterface {
                 var outer_content_r = base_outer_r + region_max_y * node_distance_y;
 
                 var x_mid = (x_min + x_max) / 2;
-                var svg_region_width = x_span * node_distance_x;
+                // Single-position regions have x_span === 0; use one node-width so the
+                // zoom threshold has a non-zero value to work against.
+                var svg_region_width = Math.max(x_span, 1) * node_distance_x;
 
                 // Store geometry as data attributes; position and font-size are set
                 // dynamically by the zoom handler so the label always clears the graph.
@@ -1437,7 +1455,7 @@ class PangenomeGraphUserInterface {
         return(result)
     }
     
-    start_draw() {
+    start_draw(on_complete) {
         var new_settings_dict = {};
         
         new_settings_dict['condtr'] = parseInt($('#condtr')[0].value);
@@ -1462,6 +1480,11 @@ class PangenomeGraphUserInterface {
                 this.settings_dict = JSON.parse(JSON.stringify(new_settings_dict));
                 this.main_draw();
                 $('#svgbox').css('opacity', '');
+                if (on_complete) requestAnimationFrame(() => requestAnimationFrame(on_complete));
+                if (!this._description_panel_shown && description_panel.description) {
+                    this._description_panel_shown = true;
+                    description_panel.show();
+                }
             },
             error: (err) => {
                 $('#svgbox').css('opacity', '');
@@ -2342,6 +2365,8 @@ class PangenomeGraphUserInterface {
                 this.initialize_variables();
                 this.initialize_user_interface();
                 this.set_UI_settings();
+                description_panel.setup(this.data['meta']['description']);
+                this.start_draw(toggleLeftPanel);
             },
             error: (err) => {
                 toastr.error('Could not reach the server during initialization.', 'Initialization error', { 'timeOut': '0', 'extendedTimeOut': '0' });
@@ -2534,9 +2559,9 @@ class PangenomeGraphUserInterface {
 
         const $row = $(`<tr class="bin-row" id="bin_${n}_grid">
             <td><input type="radio" name="binradio" id="bin_${n}_radio" bin_id="bin_${n}" checked></td>
-            <td><div class="pangraph-colorpicker" id="bin_${n}_color" color="${new_color}" style="background-color: ${new_color}; width: 30px; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div></td>
+            <td><div class="pangraph-colorpicker" id="bin_${n}_color" color="${new_color}" style="background-color: ${new_color};"></div></td>
             <td><input type="text" class="form-control form-control-sm p-0 border-0" style="background-color: #e9ecef;" value="Bin_${n}" id="bin_${n}_text"></td>
-            <td><input type="button" class="form-control form-control-sm p-0 border-0 bin-count-btn" id="bin_${n}_value" value=0 title="Click for functions summary"></td>
+            <td><input type="button" class="form-control form-control-sm p-0 border-0 bin-count-btn" id="bin_${n}_value" value=0 title="Click to inspect bin contents"></td>
             <td><center><span class="default-bin-icon bi bi-trash-fill fa-lg" aria-hidden="true" title="Delete this bin" onclick="pgui.delete_bin('bin_${n}');"></span></center></td>
         </tr>`);
 
@@ -2669,55 +2694,145 @@ class PangenomeGraphUserInterface {
     }
 
     set_UI_settings() {
+        const state = this.data['states'];
 
-        var genome_order = []
-
-        for (var [setting, value] of Object.entries(this.data['states'])) {
-            const el = $('#' + setting);
-            if (el.hasClass('pangraph-colorpicker')) {
-                // colpick element: set background and color attribute
-                const hex = value.replace('#', '');
-                el.css('background-color', value).attr('color', value);
-                el.colpickSetColor(hex);
-            } else if (typeof value === 'number') {
-                el[0].value = value;
-            } else if (value == true || value == false) {
-                el.prop('checked', value);
-            } else {
-                el[0].value = value;
-            }
-
-            if (this.genomes.includes(setting)) {
-                genome_order.push(setting)
-            }
-        }
-
-        var container = document.getElementById('genomecolors');
-
-        genome_order.forEach(id => {
-            var element = document.getElementById(id + '_row');
-            if (element) {
-                container.appendChild(element);
-            }
-        });
-
-        // If max edge length filter was never set (legacy -1 default), apply the new default.
-        if (parseInt($('#maxlength')[0].value) === -1) {
-            $('#maxlength')[0].value = 1000;
-            $('#flexmaxlength').prop('checked', true);
-        }
-
-        for(var [layer, max_value] of Object.entries(this.layers_max)) {
-            $('#' + layer + '_max')[0].value = max_value;
-        }
-
-        for(var [layer, min_value] of Object.entries(this.layers_min)) {
-            $('#' + layer + '_min')[0].value = min_value;
-        }
-
-        const isLinear = $('#flexlinear').prop('checked');
+        // drawing
+        const isLinear = state['drawing']['type'] === 'linear';
+        $('#flexlinear').prop('checked', isLinear);
         $('#drawing_type_select').val(isLinear ? 'linear' : 'circular');
         $('#radius_row').toggle(!isLinear);
+        $('#inner')[0].value = state['drawing']['inner_radius'];
+        $('#start_angle')[0].value = state['drawing']['start_angle'];
+        $('#end_angle')[0].value = state['drawing']['end_angle'];
+        $('#distx')[0].value = state['drawing']['node_x_spacing'];
+        $('#disty')[0].value = state['drawing']['node_y_spacing'];
+
+        // nodes
+        $('#size')[0].value = state['nodes']['radius'];
+        $('#circ')[0].value = state['nodes']['outline_width'];
+        $('#flexsaturation').prop('checked', state['nodes']['fade_by_prevalence']);
+        const tc = state['nodes']['type_colors'];
+        for (const [id, color] of Object.entries({
+            'core_color': tc['core'],
+            'rearranged_color': tc['rearrangement'],
+            'accessory_color': tc['accessory'],
+            'paralog_color': tc['multi_copy'],
+            'singleton_color': tc['singleton'],
+            'trna_color': tc['trna']
+        })) {
+            $('#' + id).css('background-color', color).attr('color', color);
+            $('#' + id).colpickSetColor(color.replace('#', ''));
+        }
+
+        // edges
+        $('#edge')[0].value = state['edges']['width'];
+
+        // graph_layout
+        const gl = state['graph_layout'];
+        $('#flexcondtr').prop('checked', gl['grouping_enabled']);
+        $('#condtr')[0].value = gl['grouping_threshold'];
+        $('#flexmaxlength').prop('checked', gl['max_edge_length_enabled']);
+        $('#maxlength')[0].value = gl['max_edge_length'];
+        $('#flexgroupcompress').prop('checked', gl['group_compression_enabled']);
+        $('#groupcompress')[0].value = gl['group_compression'];
+
+        // layers
+        const lyr = state['layers'];
+        $('#flexglobalbackbone').prop('checked', lyr['backbone']['visible']);
+        $('#globalbackbone')[0].value = lyr['backbone']['height'];
+        for (const [id, color] of Object.entries({
+            'back_color': lyr['backbone']['backbone_color'],
+            'non_back_color': lyr['backbone']['variable_region_color']
+        })) {
+            $('#' + id).css('background-color', color).attr('color', color);
+            $('#' + id).colpickSetColor(color.replace('#', ''));
+        }
+        $('#flexarrow').prop('checked', lyr['orientation_arrow']['visible']);
+        $('#arrow')[0].value = lyr['orientation_arrow']['height'];
+        $('#search_hit')[0].value = lyr['search']['hit_height'];
+
+        // layers_tree
+        const lt = state['layers_tree'];
+        $('#flextree').prop('checked', lt['visible']);
+        $('#tree_length')[0].value = lt['height'];
+        $('#tree_offset')[0].value = lt['offset'];
+        $('#tree_thickness')[0].value = lt['line_width'];
+
+        // genome_tracks
+        const gt = state['genome_tracks'];
+        $('#track_line_width')[0].value = gt['line_width'];
+        const bgColor = gt['background_color'];
+        $('#layer_color').css('background-color', bgColor).attr('color', bgColor);
+        $('#layer_color').colpickSetColor(bgColor.replace('#', ''));
+
+        const genome_order = [];
+        for (const [genome, gdata] of Object.entries(gt['genomes'])) {
+            $('#flex' + genome).prop('checked', gdata['show']);
+            const gc = gdata['color'];
+            $('#' + genome).css('background-color', gc).attr('color', gc);
+            $('#' + genome).colpickSetColor(gc.replace('#', ''));
+            $('#flex' + genome + 'layer').prop('checked', gdata['show_track']);
+            $('#' + genome + 'layer')[0].value = gdata['track_height'];
+            // per-genome track overrides — fall back to globals for old states
+            const tbc = gdata['track_bg_color'] ?? bgColor;
+            $('#' + genome + 'trackbg').css('background-color', tbc).attr('color', tbc);
+            $('#' + genome + 'trackbg').colpickSetColor(tbc.replace('#', ''));
+            $('#' + genome + 'tracklw')[0].value = gdata['track_line_width'] ?? gt['line_width'];
+            genome_order.push(genome);
+        }
+
+        // imported_layers
+        const il = state['imported_layers'] || {};
+        for (const [layer, ldata] of Object.entries(il)) {
+            $('#flex' + layer).prop('checked', ldata['visible']);
+            const lel = $('#' + layer);
+            if (lel.length) lel[0].value = ldata['height'];
+        }
+
+        // labels
+        const lbl = state['labels'];
+        $('#label')[0].value = lbl['font_size'];
+        $('#label_offset')[0].value = lbl['offset'];
+        $('#num_position')[0].value = lbl['position_tick_count'];
+
+        // margins
+        $('#inner_margin')[0].value = state['margins']['inner'];
+        $('#outer_margin')[0].value = state['margins']['outer'];
+
+        // region_labels
+        const rl = state['region_labels'];
+        $('#region_label_size')[0].value = rl['font_size'];
+        $('#region_label_min_width')[0].value = rl['min_width_px'];
+        $('#region_label_distance')[0].value = rl['distance'];
+
+        // bins
+        const bins = state['bins'];
+        $('#flexbinlabels').prop('checked', bins['show_labels']);
+        $('#bin_label_orientation')[0].value = bins['label_orientation'];
+        $('#bin_label_size')[0].value = bins['label_font_size'];
+        $('#bin_ring_height')[0].value = bins['ring_height'];
+        $('#bin_ring_opacity')[0].value = bins['ring_opacity'];
+        $('#flexbinedges').prop('checked', bins['show_edges']);
+        $('#bin_edge_thickness')[0].value = bins['edge_thickness'];
+        const beColor = bins['edge_color'];
+        $('#bin_edge_color').css('background-color', beColor).attr('color', beColor);
+        $('#bin_edge_color').colpickSetColor(beColor.replace('#', ''));
+        $('#bin_edge_opacity')[0].value = bins['edge_opacity'];
+
+        // restore genome row order in the genomecolors container
+        const container = document.getElementById('genomecolors');
+        genome_order.forEach(id => {
+            const element = document.getElementById(id + '_row');
+            if (element) container.appendChild(element);
+        });
+
+        // imported layer data min/max values
+        for (const [layer, max_value] of Object.entries(this.layers_max)) {
+            $('#' + layer + '_max')[0].value = max_value;
+        }
+        for (const [layer, min_value] of Object.entries(this.layers_min)) {
+            $('#' + layer + '_min')[0].value = min_value;
+        }
     }
 
     initialize_user_interface() {
@@ -2815,31 +2930,48 @@ class PangenomeGraphUserInterface {
         $('#title-panel-first-line').text(this.data['meta']['project_name']);
         $('#title-panel-second-line').text('Pangraph Detail');
         
+        const default_track_bg = $('#layer_color').attr('color') || '#F5F5F5';
+        const default_track_lw = $('#track_line_width')[0].value || '5';
+
         // if (!$('#genomecolors').children().length) {
-        for (var genome of this.genomes) {  
+        for (var genome of this.genomes) {
             $('#genomecolors').append(
-                $('<div class="col-12 d-flex mb-1" id="' + genome + '_row">').append(
-                    $('<div class="col-1 d-flex align-items-center">').append(
-                        $('<div class="form-switch d-flex">').append(
-                            $('<input class="" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">')
+                $('<div class="genome-row mb-1" id="' + genome + '_row">').append(
+                    // Line 1: vis checkbox | line color | genome name
+                    $('<div class="d-flex align-items-center gap-1">').append(
+                        $('<div class="form-switch mb-0">').append(
+                            $('<input class="genome-vis-check form-check-input" type="checkbox" id="flex' + genome + '" name="' + genome + '" checked title="Show/hide this genome">')
                         )
+                    ).append(
+                        $('<div class="pangraph-colorpicker" id="' + genome + '" color="#000000" style="background-color:#000000;"></div>')
+                    ).append(
+                        $('<span class="genome-row-name" title="' + genome + '">').text(genome)
                     )
                 ).append(
-                    $('<div class="col-8 d-flex align-items-center">').append(
-                        genome
-                    )
-                ).append(
-                    $('<div class="col-1 d-flex align-items-center">').append(
-                        $('<i class="user-handle bi bi-arrows-expand"></i>')
-                    )
-                ).append(
-                    $('<div class="d-flex col-2 align-items-center">').append(
-                        $('<div class="pangraph-colorpicker" id="' + genome + '" color="#000000" style="background-color: #000000; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>')
+                    // Line 2: track toggle | track BG color | height | LW
+                    $('<div class="d-flex align-items-center gap-1 ms-1 genome-row-track">').append($('<span style="padding-right:3px;">Display Genome Track: </span>')
+                    ).append(
+                        $('<div class="form-switch mb-0">').append(
+                            $('<input class="genome-track-check form-check-input" type="checkbox" id="flex' + genome + 'layer" name="flex' + genome + 'layer" title="Show/hide track ring">')
+                        )
+                    ).append(
+                        $('<span class="ms-1">&nbsp;Color:</span>')
+                    ).append(
+                        $('<div class="pangraph-colorpicker" id="' + genome + 'trackbg" color="' + default_track_bg + '" style="background-color:' + default_track_bg + ';" title="Track background color"></div>')
+                    ).append(
+                        $('<span class="ms-1">&nbsp;Height:&nbsp;</span>')
+                    ).append(
+                        $('<input type="text" class="form-control text-end p-0 border-0 genome-row-input" id="' + genome + 'layer" name="' + genome + 'layer" value=0 title="Track height">')
+                    ).append(
+                        $('<span class="ms-1">&nbsp;Line W:&nbsp;</span>')
+                    ).append(
+                        $('<input type="text" class="form-control text-end p-0 border-0 genome-row-input" id="' + genome + 'tracklw" name="' + genome + 'tracklw" value="' + default_track_lw + '" title="Track line width">')
                     )
                 )
             );
             this._init_colorpicker('#' + genome);
-    
+            this._init_colorpicker('#' + genome + 'trackbg');
+
             $('#RightOffcanvasBodyTop').append(
                 $('<tr>').append(
                     $('<td class="col-4">').append(
@@ -2851,25 +2983,6 @@ class PangenomeGraphUserInterface {
                     )
                 )
             );
-    
-            // if ($('#flex' + genome + 'layer').length == 0) {
-            var element = $('<div class="col-12 d-flex mb-1"></div>').append(
-                $('<div class="col-1 d-flex align-items-center"></div>').append(
-                    $('<div class="form-switch d-flex"></div>').append(
-                        $('<input class="" type="checkbox" id="flex' + genome + 'layer" name="flex' + genome + 'layer" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
-                    )
-                )
-            ).append(
-                $('<div class="col-9 d-flex align-items-center"></div>').append(
-                    genome
-                )
-            ).append(
-                $('<div class="d-flex col-2"></div>').append(
-                    $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + genome + 'layer" name="' + genome + 'layer" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">')
-                )
-            );
-
-            $('#genome_tracks').append(element);
         }
         // }
         // }
@@ -3074,11 +3187,22 @@ class PangenomeGraphUserInterface {
         
         $('#flexgroupcompress').change(function() {
             if ($(this).prop('checked') == true){
-                $('#groupcompress')[0].value = 0.0;
+                $('#groupcompress')[0].value = 0.5;
                 $('#groupcompress').prop('disabled', false);
             } else {
                 $('#groupcompress')[0].value = 1.0;
                 $('#groupcompress').prop('disabled', true);
+            }
+        })
+
+        $('#groupcompress').on('change', function() {
+            const val = parseFloat(this.value);
+            if (val < 0.1) {
+                this.value = 0.1;
+                toastr.warning('Compression factor cannot go below 0.1 :/', 'Value out of range');
+            } else if (val > 1.0) {
+                this.value = 1.0;
+                toastr.warning('Compression value cannot exceed 1.0. Well, it could, but it really should not :/ Anvi\'o set it to 1.0 for now.', 'Value out of range');
             }
         })
         
@@ -3142,18 +3266,6 @@ class PangenomeGraphUserInterface {
         $('#redraw').on("click", this.start_draw);
         $('#fit').on('click', this.fit_aspect);
         $('#svgDownload').on('click', this.svg_download);
-        $('#genome_tracks_select_all').on('click', () => {
-            $('#genome_tracks input[type="checkbox"]').prop('checked', true).trigger('change');
-        })
-        $('#genome_tracks_unselect_all').on('click', () => {
-            $('#genome_tracks input[type="checkbox"]').prop('checked', false).trigger('change');
-        })
-        $('#genomes_select_all').on('click', () => {
-            $('#genomecolors input[type="checkbox"]').prop('checked', true).trigger('change');
-        })
-        $('#genomes_unselect_all').on('click', () => {
-            $('#genomecolors input[type="checkbox"]').prop('checked', false).trigger('change');
-        })
         $('#svgbox').on('mousedown', this.press_down)
         $('#svgbox').on('mousemove', this.press_move)
         $('#svgbox').on('mouseup', this.press_up)
@@ -3162,8 +3274,8 @@ class PangenomeGraphUserInterface {
         $('#AlignmentDownload').on("click", this.alignment_download);
         $('#InfoDownload').on("click", this.info_download);
 
-        $('#stateload').on("click", () => this.state_modal('load'));
-        $('#statesave').on("click", () => this.state_modal('save'));
+        $('#stateload').on("click", this.show_load_state_modal);
+        $('#statesave').on("click", this.show_save_state_modal);
         $('#binload').on("click", this.load_bin);
         $('#binsave').on("click", this.save_bin);
 
@@ -3172,12 +3284,44 @@ class PangenomeGraphUserInterface {
         
         sortable('#genomecolors', {
             forcePlaceholderSize: true,
-            handle: '.user-handle',
-            items: 'div'
+            items: '.genome-row'
         });
-        this.settings_dict['condtr'] = JSON.parse(JSON.stringify(this.data['states']['condtr']))
-        this.settings_dict['maxlength'] = JSON.parse(JSON.stringify(this.data['states']['maxlength']))
-        this.settings_dict['groupcompress'] = JSON.parse(JSON.stringify(this.data['states']['groupcompress']))
+
+        document.getElementById('genomecolors').addEventListener('sortupdate', () => {
+            if ($('#flextree').prop('checked')) {
+                $('#flextree').prop('checked', false);
+                this.flextree_change({ currentTarget: document.getElementById('flextree') });
+                toastr.warning("As you have changed the genome order manually, the dendrogram is removed from the display (anvi'o hopes you are happy).", 'Dendrogram removed');
+            }
+        });
+
+        $(document).on('change', '.genome-vis-check', function() {
+            const genome = this.name;
+            if (!this.checked) {
+                $('#flex' + genome + 'layer').prop('checked', false);
+                if ($('#flextree').prop('checked')) {
+                    $('#flextree').prop('checked', false);
+                    pgui.flextree_change({ currentTarget: document.getElementById('flextree') });
+                    toastr.warning("As you have changed the genome order manually, the dendrogram is removed from the display (anvi'o hopes you are happy).", 'Dendrogram removed');
+                }
+            } else {
+                $('#flex' + genome + 'layer').prop('checked', true);
+            }
+        });
+
+        $('#apply-track-defaults').on('click', () => {
+            const bgColor = $('#layer_color').attr('color');
+            const lw = $('#track_line_width')[0].value;
+            for (const genome of this.genomes) {
+                $('#' + genome + 'trackbg').css('background-color', bgColor).attr('color', bgColor);
+                $('#' + genome + 'trackbg').colpickSetColor(bgColor.replace('#', ''));
+                $('#' + genome + 'tracklw')[0].value = lw;
+            }
+            this.main_draw();
+        });
+        this.settings_dict['condtr'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['grouping_threshold']))
+        this.settings_dict['maxlength'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['max_edge_length']))
+        this.settings_dict['groupcompress'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['group_compression']))
         this.settings_dict['state'] = JSON.parse(JSON.stringify(this.data['meta']['state']))
 
         // Delegated handlers for amino acid conservation checkboxes in the alignment modal
@@ -3203,13 +3347,16 @@ class PangenomeGraphUserInterface {
         this.initialize_colorpickers();
 
         $("#redraw").removeClass("disabled");
+        $("#settings-content").removeClass("settings-loading").addClass("settings-loading-cleared");
     }
 
     flextree_change(instance) {
         if ($(instance.currentTarget).prop('checked') == true){
             for (var genome of this.genomes) {
                 if ($('#flex' + genome + 'layer').prop('checked') == false){
-                    $('#' + genome + 'layer')[0].value = 50;
+                    const el = document.getElementById(genome + 'layer');
+                    el.dataset.savedHeight = el.value;
+                    el.value = 50;
                     $('#flex' + genome + 'layer').prop('checked', true);
                 }
                 $('#flex' + genome + 'layer').prop('disabled', true);
@@ -3217,6 +3364,11 @@ class PangenomeGraphUserInterface {
         } else {
             for (var genome of this.genomes) {
                 $('#flex' + genome + 'layer').prop('disabled', false);
+                const el = document.getElementById(genome + 'layer');
+                if (el && el.dataset.savedHeight !== undefined) {
+                    el.value = el.dataset.savedHeight;
+                    delete el.dataset.savedHeight;
+                }
             }
         }
     }
@@ -3257,16 +3409,16 @@ class PangenomeGraphUserInterface {
             toastr.error('The server is no longer accessible.', 'Request failed');
             return;
         }
-        waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
+        showFetchOverlay('Fetching functions and metabolism data...');
         let all_info;
         try {
             all_info = await this.get_gene_cluster_display_tables(gcid, gene_cluster_context, 1, true);
         } catch(err) {
-            waitingDialog.hide();
             toastr.error('Could not load data.', "Request failed");
             return;
+        } finally {
+            hideFetchOverlay();
         }
-        waitingDialog.hide();
 
         const title = `Synteny gene cluster: ${gcid}`;
         showPangraphFunctionsSummaryTableDialog(title, all_info);
@@ -3290,7 +3442,7 @@ class PangenomeGraphUserInterface {
         menu.style.visibility = 'hidden';
 
         const items = [
-            { title: 'Show functions for this SynGC', action: () => this.nodeinfo_with_functions(node_el) },
+            { title: 'Inspect this SynGC', action: () => this.nodeinfo_with_functions(node_el) },
             { title: 'Add SynGC as a new bin', action: () => {
                 this.add_bin();
                 this.marknode(node_el, this.current_bin_id);
@@ -3583,18 +3735,17 @@ class PangenomeGraphUserInterface {
             toastr.error('The server is no longer accessible.', 'Request failed');
             return;
         }
-        waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
+        showFetchOverlay('Fetching functions and metabolism data...');
 
         let response;
         try {
             response = await this.fetch_functions_and_metabolism(sgc_ids);
         } catch(err) {
-            waitingDialog.hide();
             toastr.error('Could not reach the functions endpoint.', "Request failed");
             return;
+        } finally {
+            hideFetchOverlay();
         }
-
-        waitingDialog.hide();
 
         if (!response || response.status !== 0) {
             toastr.error((response && response.message) || 'Could not load functional annotations.', "Server error");
@@ -3602,8 +3753,11 @@ class PangenomeGraphUserInterface {
         }
 
         this._last_gene_clusters = response['gene_clusters'] || {};
+        this._last_bin_sgc_ids = sgc_ids;
+        this._last_bin_functions = response['functions'] || {};
+        this._last_bin_name = raw_name;
         const title = `A summary of functions for ${sgc_ids.length} synteny gene clusters in "${bin_name}"`;
-        showPangraphFunctionsSummaryTableDialog(title, buildFunctionsContent(response, this.get_pangraph_gc_config()));
+        showPangraphFunctionsSummaryTableDialog(title, buildFunctionsContent(response, {...this.get_pangraph_gc_config(), binName: bin_name}));
         setTimeout(() => setupItemTableFiltering(this._last_gene_clusters), 100);
     }
 
@@ -3641,7 +3795,8 @@ class PangenomeGraphUserInterface {
         menu.style.visibility = 'hidden';
 
         const items = [
-            { title: 'Show summary of functions in region', action: () => this.show_region_functions(rid) },
+            { title: 'Inspect this region', action: () => this.show_region_functions(rid) },
+            { title: 'Download gene sequences in this region', action: () => this.show_region_fasta_download(rid) },
             { title: 'Add SynGCs in region as a new bin',   action: () => this.add_region_as_new_bin(rid) },
             { title: 'Append SynGCs in region into the active bin', action: () => this.append_region_to_active_bin(rid) },
         ];
@@ -3668,11 +3823,11 @@ class PangenomeGraphUserInterface {
         document.addEventListener('click', () => menu.remove(), { once: true });
     }
 
-    async show_region_functions(rid) {
+    _get_region_sgc_ids(rid) {
         const svg_ids = this.get_region_svg_node_ids(rid);
         if (!svg_ids.length) {
-            toastr.warning('There are no synteny gene clusters in this region.', "Nothing to show");
-            return;
+            toastr.warning('There are no synteny gene clusters in this region.', 'Nothing to show');
+            return null;
         }
 
         const sgc_ids = [];
@@ -3683,32 +3838,64 @@ class PangenomeGraphUserInterface {
             }
         }
 
+        return sgc_ids;
+    }
+
+    async _fetch_region_data(rid) {
+        const sgc_ids = this._get_region_sgc_ids(rid);
+        if (!sgc_ids) return null;
+
         if (this.server_offline) {
             toastr.error('The server is no longer accessible.', 'Request failed');
-            return;
+            return null;
         }
-        waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
+        showFetchOverlay('Fetching functions and metabolism data...');
 
         let response;
         try {
             response = await this.fetch_functions_and_metabolism(sgc_ids);
         } catch(err) {
-            waitingDialog.hide();
-            toastr.error('Could not reach the functions endpoint.', "Request failed");
-            return;
+            toastr.error('Could not reach the functions endpoint.', 'Request failed');
+            return null;
+        } finally {
+            hideFetchOverlay();
         }
-
-        waitingDialog.hide();
 
         if (!response || response.status !== 0) {
-            toastr.error((response && response.message) || 'Could not load functional annotations.', "Server error");
-            return;
+            toastr.error((response && response.message) || 'Could not load functional annotations.', 'Server error');
+            return null;
         }
 
+        return { sgc_ids, response };
+    }
+
+    async show_region_functions(rid) {
+        const result = await this._fetch_region_data(rid);
+        if (!result) return;
+        const { sgc_ids, response } = result;
+
         this._last_gene_clusters = response['gene_clusters'] || {};
+        this._last_bin_sgc_ids = sgc_ids;
+        this._last_bin_functions = response['functions'] || {};
+        this._last_bin_name = `region_${rid}`;
+
         const title = `A summary of functions for ${sgc_ids.length} synteny gene clusters in region #${rid}`;
-        showPangraphFunctionsSummaryTableDialog(title, buildFunctionsContent(response, this.get_pangraph_gc_config()));
+        showPangraphFunctionsSummaryTableDialog(title, buildFunctionsContent(response, {...this.get_pangraph_gc_config(), binName: `Region #${rid}`}));
         setTimeout(() => setupItemTableFiltering(this._last_gene_clusters), 100);
+    }
+
+    show_region_fasta_download(rid) {
+        const sgc_ids = this._get_region_sgc_ids(rid);
+        if (!sgc_ids) return;
+
+        this._last_bin_sgc_ids = sgc_ids;
+        this._last_bin_functions = {};
+        this._last_bin_name = `region_${rid}`;
+
+        showFastaOptionsDialog(
+            `Download sequences from region #${rid} as FASTA`,
+            buildFastaOptionsHTML({})
+        );
     }
 
     add_region_as_new_bin(rid) {
@@ -4007,6 +4194,90 @@ class PangenomeGraphUserInterface {
         this.download_blob(blob, title + ".fa");
     }
 
+    async download_bin_fasta() {
+        const sgc_ids = this._last_bin_sgc_ids || [];
+        if (!sgc_ids.length) {
+            toastr.warning('No gene clusters to export.', 'Nothing to download');
+            return;
+        }
+
+        const report_dna = document.querySelector('input[name="fasta_seq_type"]:checked')?.value === 'dna';
+        const wrap_sequences = document.getElementById('fasta_wrap_sequences')?.checked ?? false;
+        const active_tokens = [...document.querySelectorAll('.fasta-defline-opt:checked')].map(el => el.value);
+        const functions = this._last_bin_functions || {};
+
+        showFetchOverlay('Fetching sequences...');
+
+        let response;
+        try {
+            response = await $.ajax({
+                url: '/pangraph/get_pangraph_bin_sequences_fasta',
+                type: 'POST',
+                data: JSON.stringify({ synteny_gene_clusters: sgc_ids, report_dna }),
+                contentType: 'application/json',
+                dataType: 'json',
+                timeout: 30000,
+            });
+        } catch(err) {
+            toastr.error('Could not reach the sequences endpoint.', 'Request failed');
+            return;
+        } finally {
+            hideFetchOverlay();
+        }
+
+        if (!response || response.status !== 0) {
+            toastr.error((response && response.message) || 'Could not fetch sequences.', 'Server error');
+            return;
+        }
+
+        const sequences = response.sequences || {};
+        const metadata = response.metadata || {};
+
+        let fasta = '';
+        const sorted_clusters = Object.entries(sequences).sort(([a], [b]) => {
+            const xa = metadata[a]?.x ?? Infinity;
+            const xb = metadata[b]?.x ?? Infinity;
+            return xa !== xb ? xa - xb : a.localeCompare(b);
+        });
+
+        for (const [sgc_id, genomes] of sorted_clusters) {
+            const meta = metadata[sgc_id] || {};
+
+            // Build per-cluster tokens (same for every gene in this cluster)
+            const cluster_parts = [];
+            if (active_tokens.includes('gene_cluster')) cluster_parts.push(`SynGC:${sgc_id}`);
+            if (active_tokens.includes('position') && meta.x != null) cluster_parts.push(`pos:${meta.x}`);
+            if (active_tokens.includes('region') && meta.region) cluster_parts.push(`region:${meta.region}`);
+            if (active_tokens.includes('function')) {
+                const sgc_funcs = functions[sgc_id] || {};
+                const first_source = Object.keys(sgc_funcs)[0];
+                if (first_source) {
+                    const fn = sgc_funcs[first_source]?.function;
+                    if (fn && fn !== 'N/A' && fn !== '-') cluster_parts.push(`function:${fn}`);
+                }
+            }
+
+            for (const [genome, gene_calls] of Object.entries(genomes).sort(([a], [b]) => a.localeCompare(b))) {
+                for (const [gene_callers_id, sequence] of Object.entries(gene_calls)) {
+                    if (!sequence || !sequence.length) continue;
+                    const defline_suffix = cluster_parts.length ? ' ' + cluster_parts.join('|') : '';
+                    fasta += `>${genome}_${gene_callers_id}${defline_suffix}\n`;
+                    fasta += (wrap_sequences ? sequence.match(/.{1,120}/g).join('\n') : sequence) + '\n';
+                }
+            }
+        }
+
+        if (!fasta.length) {
+            toastr.warning('No sequences were available for this bin.', 'Nothing to download');
+            return;
+        }
+
+        const project = (this.data['meta']['project_name'] || 'project').replace(/\s+/g, '_');
+        const bin = (this._last_bin_name || 'bin').replace(/\s+/g, '_');
+        const seq_type = report_dna ? 'DNA' : 'AA';
+        this.download_blob(new Blob([fasta]), `${project}_${bin}_GENES_${seq_type}.fa`);
+    }
+
     save_bin() {
         const exportFn = () => {
             const data = {};
@@ -4070,114 +4341,219 @@ class PangenomeGraphUserInterface {
         new LoadCollectionDialog(importFn).Show();
     }
 
-    load_state () {
-        if ($('#loadstatename')[0].value != "") {
-            this.state = $('#loadstatename')[0].value
-
-            var state = {}
-            state['state_name'] = this.state
-    
-            $.ajax({
-                url: "/pangraph/load_pangraph_state",
-                type: "POST",
-                cache: false,
-                contentType: "application/json",
-                dataType: "json",
-                data: JSON.stringify(state),
-                success: (data) => {
-                    this.data = data['data'];
-                    this.initialize_variables();
-                    this.set_UI_settings();
-                    this.main_draw();
-                    toastr.success(`State "${this.state}" has been loaded.`, 'State loaded');
-                },
-                error: (err) => {
-                    toastr.error('Failed to load state.', 'Error');
-                }
-            })
-            
-            $('#loadstatemodal').modal('hide');
-        }
-    }
-    
-    save_state () {
-        var new_state = {}
-        
-        for (var [setting, value] of Object.entries(this.data['states'])) {
-            const el = $('#' + setting);
-            if (el.hasClass('pangraph-colorpicker')) {
-                new_state[setting] = el.attr('color');
-            } else if (typeof value === 'number') {
-                new_state[setting] = Number(el[0].value);
-            } else if (value == true || value == false) {
-                new_state[setting] = el.prop('checked');
-            } else {
-                new_state[setting] = el[0].value;
-            }
-        }
-
-        var genome_order = [...document.getElementById("genomecolors").children]
-            .filter(element => element.classList.contains("col-12"))
-            .map(element => element.id.replace('_row', ''));
-
-        genome_order.forEach(key => {
-            if (key in new_state) {
-              const value = new_state[key];
-              delete new_state[key];
-              new_state[key] = value;
-            }
-        });
-         
-        var result = {}
-        result['state_name'] = $('#savestatename')[0].value
-        result['state_values'] = new_state
-
-        $.ajax({
-            url: "/pangraph/save_pangraph_state",
-            type: "POST",
-            data: JSON.stringify(result),
-            contentType: "application/json",
-            dataType: "json",
-            error: function(){
-                toastr.error('Failed to save state.', 'Error');
-            },
-            success: function(){
-                toastr.success(`State "${result['state_name']}" has been saved.`, 'State saved');
-            }
-        })
-        
-        $('#savestatemodal').modal('hide');
-    }
-    
-    state_modal (save_load) {
-
+    show_save_state_modal () {
         $.ajax({
             type: 'GET',
             cache: false,
             url: '/pangraph/get_pangraph_states',
-            success: function(data) {
-
-                $('#' + save_load + 'statelisttab').empty()
-                $('#' + save_load + 'statename')[0].value = ""
-                
-                for (var state_name of data['data']) {
-                    $('#' + save_load + 'statelisttab').append(
-                        $('<a class="list-group-item list-group-item-action" id="list-profile-list" data-toggle="list" href="#list-profile" role="tab" aria-controls="profile">').append(
-                            state_name
-                        )
-                    )
+            success: (state_list) => {
+                $('#savestatelist').empty();
+                for (let state_name in state_list) {
+                    const selected = (state_name === this.state) ? ' selected="selected"' : '';
+                    $('#savestatelist').append(`<option${selected}>${state_name}</option>`);
                 }
-    
-                $('#' + save_load + 'statelisttab a').on('click', function (e) {
-                    e.preventDefault()
-                    $(this).tab('show')
-                    $('#' + save_load + 'statename')[0].value = $(this)[0].innerText
-                })
-    
-                $('#' + save_load + 'statemodal').modal('show');
+                if ($('#savestatelist').val() === null) {
+                    $('#savestatename').val('default');
+                } else {
+                    $('#savestatelist').trigger('change');
+                }
+                $('#savestatemodal').modal('show');
             }
         });
     }
+
+    show_load_state_modal () {
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/pangraph/get_pangraph_states',
+            success: (state_list) => {
+                $('#loadstatename').empty();
+                for (let state_name in state_list) {
+                    $('#loadstatename').append(`<option lastmodified="${state_list[state_name]['last_modified']}">${state_name}</option>`);
+                }
+                $('#loadstate_lastmodified').html('Last modified: n/a');
+                $('#loadstatemodal').modal('show');
+            }
+        });
+    }
+
+    load_state () {
+        const state_name = $('#loadstatename').val();
+        if (!state_name) return;
+
+        $('#loadstatemodal').modal('hide');
+
+        $.ajax({
+            url: "/pangraph/load_pangraph_state",
+            type: "POST",
+            cache: false,
+            contentType: "application/json",
+            dataType: "json",
+            data: JSON.stringify({state_name: state_name}),
+            success: (response) => {
+                if (response['status'] != 0) {
+                    toastr.error('Failed to load state: ' + (response['message'] || 'unknown error'), 'Error');
+                    return;
+                }
+                this.state = state_name;
+                this.data = response['data'];
+                this.initialize_variables();
+                this.set_UI_settings();
+                this.main_draw();
+                toastr.success(`State "${this.state}" has been loaded.`, 'State loaded');
+            },
+            error: () => {
+                toastr.error('Failed to load state.', 'Error');
+            }
+        });
+    }
+
+    save_state () {
+        const name = $('#savestatename').val();
+        if (!name || name.length === 0) {
+            $('#savestatename').focus();
+            return;
+        }
+
+        const state_exists = Array.from($('#savestatelist option')).some(o => o.value === name);
+        if (state_exists && !confirm(`"${name}" already exists, do you want to overwrite it?`)) {
+            return;
+        }
+
+        const genome_order = [...document.getElementById("genomecolors").children]
+            .filter(el => el.classList.contains("col-12"))
+            .map(el => el.id.replace('_row', ''));
+
+        const genomes_state = {};
+        for (const genome of genome_order) {
+            genomes_state[genome] = {
+                color: $('#' + genome).attr('color'),
+                show: $('#flex' + genome).prop('checked'),
+                track_height: Number($('#' + genome + 'layer')[0].value),
+                show_track: $('#flex' + genome + 'layer').prop('checked'),
+                track_bg_color: $('#' + genome + 'trackbg').attr('color'),
+                track_line_width: Number($('#' + genome + 'tracklw')[0].value)
+            };
+        }
+
+        const imported_layers_state = {};
+        for (const layer of this.layers) {
+            imported_layers_state[layer] = {
+                visible: $('#flex' + layer).prop('checked'),
+                height: Number($('#' + layer)[0].value)
+            };
+        }
+
+        const new_state = {
+            drawing: {
+                type: $('#drawing_type_select').val(),
+                inner_radius: Number($('#inner')[0].value),
+                start_angle: Number($('#start_angle')[0].value),
+                end_angle: Number($('#end_angle')[0].value),
+                node_x_spacing: Number($('#distx')[0].value),
+                node_y_spacing: Number($('#disty')[0].value)
+            },
+            nodes: {
+                radius: Number($('#size')[0].value),
+                outline_width: Number($('#circ')[0].value),
+                fade_by_prevalence: $('#flexsaturation').prop('checked'),
+                type_colors: {
+                    core: $('#core_color').attr('color'),
+                    rearrangement: $('#rearranged_color').attr('color'),
+                    accessory: $('#accessory_color').attr('color'),
+                    multi_copy: $('#paralog_color').attr('color'),
+                    singleton: $('#singleton_color').attr('color'),
+                    trna: $('#trna_color').attr('color')
+                }
+            },
+            edges: {
+                width: Number($('#edge')[0].value)
+            },
+            graph_layout: {
+                grouping_enabled: $('#flexcondtr').prop('checked'),
+                grouping_threshold: Number($('#condtr')[0].value),
+                max_edge_length_enabled: $('#flexmaxlength').prop('checked'),
+                max_edge_length: Number($('#maxlength')[0].value),
+                group_compression_enabled: $('#flexgroupcompress').prop('checked'),
+                group_compression: Number($('#groupcompress')[0].value)
+            },
+            layers: {
+                backbone: {
+                    visible: $('#flexglobalbackbone').prop('checked'),
+                    height: Number($('#globalbackbone')[0].value),
+                    backbone_color: $('#back_color').attr('color'),
+                    variable_region_color: $('#non_back_color').attr('color')
+                },
+                orientation_arrow: {
+                    visible: $('#flexarrow').prop('checked'),
+                    height: Number($('#arrow')[0].value)
+                },
+                search: {
+                    hit_height: Number($('#search_hit')[0].value)
+                }
+            },
+            layers_tree: {
+                visible: $('#flextree').prop('checked'),
+                height: Number($('#tree_length')[0].value),
+                offset: Number($('#tree_offset')[0].value),
+                line_width: Number($('#tree_thickness')[0].value)
+            },
+            genome_tracks: {
+                line_width: Number($('#track_line_width')[0].value),
+                background_color: $('#layer_color').attr('color'),
+                genomes: genomes_state
+            },
+            imported_layers: imported_layers_state,
+            labels: {
+                font_size: Number($('#label')[0].value),
+                offset: Number($('#label_offset')[0].value),
+                position_tick_count: Number($('#num_position')[0].value)
+            },
+            margins: {
+                inner: Number($('#inner_margin')[0].value),
+                outer: Number($('#outer_margin')[0].value)
+            },
+            region_labels: {
+                font_size: Number($('#region_label_size')[0].value),
+                min_width_px: Number($('#region_label_min_width')[0].value),
+                distance: Number($('#region_label_distance')[0].value)
+            },
+            bins: {
+                show_labels: $('#flexbinlabels').prop('checked'),
+                label_orientation: $('#bin_label_orientation')[0].value,
+                label_font_size: Number($('#bin_label_size')[0].value),
+                ring_height: Number($('#bin_ring_height')[0].value),
+                ring_opacity: Number($('#bin_ring_opacity')[0].value),
+                show_edges: $('#flexbinedges').prop('checked'),
+                edge_thickness: Number($('#bin_edge_thickness')[0].value),
+                edge_color: $('#bin_edge_color').attr('color'),
+                edge_opacity: Number($('#bin_edge_opacity')[0].value)
+            }
+        };
+
+        $.ajax({
+            url: "/pangraph/save_pangraph_state",
+            type: "POST",
+            data: JSON.stringify({state_name: name, state_values: new_state}),
+            contentType: "application/json",
+            dataType: "json",
+            success: (response) => {
+                if (response['status_code'] == '1') {
+                    this.state = name;
+                    toastr.success(`State "${name}" has been saved.`, 'State saved');
+                    $('#savestatemodal').modal('hide');
+                } else {
+                    toastr.error('Failed to save state: ' + (response['error'] || 'server is in read-only mode'), 'Error');
+                }
+            },
+            error: () => {
+                toastr.error('Failed to save state.', 'Error');
+            }
+        });
+    }
+
+
 }
 
 $(document).ready(function () {

@@ -16,8 +16,8 @@ anvio/__pycache__/
 anvio/data/misc/SCG_TAXONOMY/GTDB/SCG_SEARCH_DATABASES/*.dmnd
 
 # Python build and component test outputs
-/build/
 /dist/
+/build/
 test-output/
 package-lock.json
 anvio/tests/sandbox/update-contigs-and-bams-for-mini-test/output
@@ -28,17 +28,16 @@ node_modules/
 
 # domain-specific anvi'o assets
 anvio/data/misc/COG/
+anvio/data/misc/SCG/
+anvio/data/misc/KEGG/
 anvio/data/misc/Pfam/
 anvio/data/misc/PDB.db
+anvio/data/misc/CAZyme/
+anvio/data/misc/GlobDB/
+anvio/data/misc/ModelSEED/
 anvio/data/misc/Interacdome/
 anvio/data/misc/MODELLER/db/
-anvio/data/misc/CAZyme/
-anvio/data/misc/ModelSEED/
-anvio/data/misc/SCG
-anvio/data/misc/SCG/
-anvio/data/misc/SCG_test
-anvio/data/misc/SCG_old.tar.gz
-anvio/data/misc/KEGG
-anvio/data/misc/KEGG/
-anvio/data/interactive/lib/ngl/
 anvio/data/misc/TRNA_TAXONOMY/
+
+# LLM configuration files
+CLAUDE.md

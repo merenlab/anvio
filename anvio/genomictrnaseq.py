@@ -2527,21 +2527,10 @@ class Affinitizer:
             for trnaseq_sample_name, nonreference_sample_df in nonreference_samples_df.groupby(
                 'trnaseq_sample_name'):
                 for row in nonreference_sample_df.itertuples(index=False):
-                    try:
-                        reference_isoacceptor_series = reference_sample_df.loc[(
-                            row.decoded_amino_acid,
-                            row.anticodon,
-                            row.effective_wobble_nucleotide)]
-                    except KeyError:
-                        # The isoacceptor is not detected in the reference sample, so the
-                        # abundance ratio is infinite.
-                        isoacceptor_abund_ratios_rows.append((
-                            genome_id,
-                            row.decoded_amino_acid,
-                            row.effective_wobble_nucleotide + row.anticodon[1: ],
-                            trnaseq_sample_name,
-                            np.nan))
-                        continue
+                    reference_isoacceptor_series = reference_sample_df.loc[(
+                        row.decoded_amino_acid,
+                        row.anticodon,
+                        row.effective_wobble_nucleotide)]
                     reference_abundance = reference_isoacceptor_series[
                         'relative_discriminator_coverage']
 
@@ -2741,7 +2730,7 @@ class Affinitizer:
 
                 missing_anticodons = list(abund_ratios.index.difference(
                     genome_relative_isoacceptor_codon_weights_df.columns))
-                abund_ratios.drop(missing_anticodons)
+                abund_ratios = abund_ratios.drop(missing_anticodons)
                 if missing_anticodons:
                     self.run.warning(
                         "tRNA isoacceptors with the following anticodons do not have any codons to "
