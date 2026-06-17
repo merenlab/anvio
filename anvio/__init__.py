@@ -2260,7 +2260,7 @@ D = {
     'graph-nodes': (
             ['--graph-nodes'],
             {'metavar': "NODE_1,NODE_2",
-             'required': True,
+             'required': False,
              'help': "Nodes in an anvi'o pangenome graph database..",
              'type': str}
                 ),
@@ -2272,6 +2272,14 @@ D = {
                      "in the source contigs databases, so you can trace each gene back to where it came from. "
                      "If you use this flag, anvi'o will instead reset the gene caller ids so they start from 0 "
                      "in each output database (which was the historical default behavior)."}
+                ),
+    'region-id': (
+            ['--region-id'],
+            {'metavar': "INT",
+             'required': False,
+             'help': "A region ID from an anvi'o pangenome graph database. The program will resolve the "
+                     "two boundary nodes (by position) of the region and export the loci between them.",
+             'type': int}
                 ),
     'output-file': (
             ['-o', '--output-file'],
