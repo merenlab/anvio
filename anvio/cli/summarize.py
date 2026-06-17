@@ -101,6 +101,9 @@ def get_args():
                                         are summarizing a standard profile).")
     groupE = parser.add_argument_group('COMMONS', "Common parameters for both pan and standard profile summaries.")
     groupF = parser.add_argument_group('EXTRA', "Extra stuff because you're extra.")
+    groupG = parser.add_argument_group('DISTRIBUTION OF COVERAGE (DISCOV)', "Parameters for computing the DisCov metric \
+                                        as part of the summary (requires `--report-discov`). DisCov quantifies coverage spread \
+                                        (S) and evenness (E) and combines them into a single score.")
 
     groupA.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
 
@@ -113,6 +116,21 @@ def get_args():
     groupC.add_argument('--report-aa-seqs-for-gene-calls', default=False, action='store_true', help="You can use this flag if\
                                   you would like amino acid AND dna sequences for your gene calls in the genes output\
                                   file. By default, only dna sequences are reported.")
+
+    groupG.add_argument(*anvio.A('report-discov'), **anvio.K('report-discov'))
+    groupG.add_argument(*anvio.A('window-length'), **anvio.K('window-length', {'default': None, 'help': f"How long to make the windows for "
+                                            f"computing the spread metric: S = # windows with coverage / # windows. Using this flag sets a "
+                                            f"fixed window length (in bp) for computing S at both bin and contig level. Important note: "
+                                            f"when neither this flag nor --window-length-as-percentage is provided, anvi'o uses context-sensitive "
+                                            f"defaults: `--window-length {DISCOV_BIN_WLEN_DEFAULT}` for bins and `--window-length-as-percentage "
+                                            f"{DISCOV_CONTIG_WPCT_DEFAULT} --min-window-length {DISCOV_CONTIG_MIN_WLEN_DEFAULT}` for individual "
+                                            f"contigs (which can be smaller than the default fixed length)."}))
+    groupG.add_argument(*anvio.A('window-length-as-percentage'), **anvio.K('window-length-as-percentage'))
+    groupG.add_argument(*anvio.A('min-window-length'), **anvio.K('min-window-length'))
+    groupG.add_argument(*anvio.A('foldrange-lower'), **anvio.K('foldrange-lower'))
+    groupG.add_argument(*anvio.A('foldrange-upper'), **anvio.K('foldrange-upper'))
+    groupG.add_argument(*anvio.A('alpha'), **anvio.K('alpha'))
+    groupG.add_argument(*anvio.A('discov-formula'), **anvio.K('discov-formula'))
 
     groupD.add_argument(
         *anvio.A('report-DNA-sequences'),
