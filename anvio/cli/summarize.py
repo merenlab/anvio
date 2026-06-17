@@ -6,6 +6,7 @@ import sys
 import anvio
 import anvio.utils as utils
 import anvio.dbops as dbops
+import anvio.constants as constants
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 
@@ -23,6 +24,9 @@ __description__ = ("Summarizer for anvi'o pan, pan-graph, or profile databases. 
                    "output directory that contaisn flat files for rigorous downstream analyses by humans 🧠 or LLMs 🤖.")
 __resources__ = [("anvi-summarize in the metagenomic workflow tutorial", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-summarize"), ("anvi-summarize in the pangenomic workflow tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/#summarizing-an-anvio-pan-genome")]
 
+DISCOV_BIN_WLEN_DEFAULT = constants.discov_default_bin_window_length
+DISCOV_CONTIG_WPCT_DEFAULT = constants.discov_default_contig_window_percentage
+DISCOV_CONTIG_MIN_WLEN_DEFAULT = constants.discov_default_contig_min_window_length
 
 def main():
     try:

@@ -4,6 +4,7 @@ import sys
 
 import anvio
 import anvio.terminal as terminal
+import anvio.constants as constants
 
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
@@ -23,10 +24,9 @@ __description__ = ("FAST profiling of BAM files to get gene-, contig-, or genome
                    "the program `anvi-script-get-coverage-from-bam` for recovery of data from BAM files "
                    "without an anvi'o contigs database")
 
-# default window sizes for DisCov
-COLLECTION_WLEN_DEFAULT=1000
-CONTIG_MIN_WLEN_DEFAULT=300
-CONTIG_PERCENTAGE_LEN_DEFAULT=1 # 1% of contig length
+COLLECTION_WLEN_DEFAULT = constants.discov_default_bin_window_length
+CONTIG_MIN_WLEN_DEFAULT = constants.discov_default_contig_min_window_length
+CONTIG_PERCENTAGE_LEN_DEFAULT = constants.discov_default_contig_window_percentage
 
 @terminal.time_program
 def main():
@@ -92,8 +92,8 @@ def get_args():
                                         "DisCov = αS + (1-α)E (linear) or DisCov = S^α * E^(1-α) (geometric). Does not apply "
                                         "to --gene-mode.")
     groupE.add_argument(*anvio.A('window-length'), **anvio.K('window-length', {'help': f"How long to make the windows "
-                        f"for computing the spread metric: S = # windows with coverage / # windows. This is the default "
-                        f"when no window length parameters are provided. For genome/bin-level stats, the default window size is "
+                        f"for computing the spread metric: S = # windows with coverage / # windows. For genome/bin-level stats, "
+                        f"this is the default when no window length parameters are provided, and the default window size is "
                         f"{COLLECTION_WLEN_DEFAULT}."}))
     groupE.add_argument(*anvio.A('window-length-as-percentage'), **anvio.K('window-length-as-percentage', {'help':
                         f"With this option you can set the window length for the spread metric (S) dynamically as a percentage "
