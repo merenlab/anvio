@@ -173,11 +173,16 @@ def rev_comp(seq):
     return seq.translate(constants.complements)[::-1]
 
 
-def rev_comp_gene_calls_dict(gene_calls_dict, contig_sequence):
+def rev_comp_gene_calls_dict(gene_calls_dict, contig_sequence, preserve_gene_caller_ids=False):
     contig_length = len(contig_sequence)
     gene_caller_ids = list(gene_calls_dict.keys())
 
-    gene_caller_id_conversion_dict = dict([(gene_caller_ids[-i - 1], i) for i in range(0, len(gene_caller_ids))])
+    if preserve_gene_caller_ids:
+        # the caller wants to keep the original gene caller ids rather than resetting them to
+        # start from 0, so the conversion dict is simply an identity mapping
+        gene_caller_id_conversion_dict = dict([(g, g) for g in gene_caller_ids])
+    else:
+        gene_caller_id_conversion_dict = dict([(gene_caller_ids[-i - 1], i) for i in range(0, len(gene_caller_ids))])
     G = lambda g: gene_caller_id_conversion_dict[g]
 
     reverse_complemented_gene_calls = {}
