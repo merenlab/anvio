@@ -1,0 +1,3 @@
+modifying_enzyme_name	modification	canonical_position	expected_reference	isoacceptor_specificity	aa	anticodon	function_name	function_accession	function_source
+cmoA	cmo5U	34	T	Specific	Leu	TAG	cmoA ubiquinone methylase	COG2226	COG24_FUNCTION
+miaA	i6A	37	A	Non-specific	N/A	N/A	miaA isopentenyl transferase	COG0324	COG24_FUNCTION

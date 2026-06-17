@@ -3988,6 +3988,23 @@ D = {
              'help': "A tab-delimited text file containing modification data on tRNA seeds. "
                      "`anvi-tabulate-trnaseq` generates this file from anvi'o tRNA-seq databases."}
     ),
+    'enzyme-distribution-output': (
+            ['--enzyme-distribution-output'],
+            {'metavar': 'TEXT_FILE',
+             'required': False,
+             'default': None,
+             'help': "Optional path for a tab-delimited output file reporting how many genes "
+                     "encoding each modification enzyme are present in each genome."}
+    ),
+    'modification-enzyme-list': (
+            ['--modification-enzyme-list'],
+            {'metavar': 'TEXT_FILE',
+             'required': True,
+             'help': "A tab-delimited text file listing known tRNA modification enzymes and their "
+                     "targets. Required columns: modifying_enzyme_name, modification, "
+                     "canonical_position, expected_reference, isoacceptor_specificity, aa, "
+                     "anticodon, function_name, function_accession, function_source."}
+    ),
     'codon-frequencies-txt': (
             ['--codon-frequencies-txt', '-f'],
             {'metavar': 'TEXT_FILE',
