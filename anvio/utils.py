@@ -516,6 +516,73 @@ def tar_extract_file(input_file_path, output_file_path=None, keep_original=True)
         os.remove(input_file_path)
 
 
+def validate_discov_params(window_length, window_length_as_percentage, min_window_length, foldrange_lower, foldrange_upper, alpha, discov_formula, require_window_param=True):
+    """Validate Distribution of Coverage (DisCov) parameters and raise ConfigError for any invalid combination.
+
+    Parameters
+    ==========
+    window_length : int or None
+        Fixed window length in bp.
+    window_length_as_percentage : int or None
+        Window length as a percentage of the sequence length.
+    min_window_length : int or None
+        Minimum window length when using window_length_as_percentage.
+    foldrange_lower : float
+        Lower fold-range boundary for evenness score E.
+    foldrange_upper : float
+        Upper fold-range boundary for evenness score E.
+    alpha : float
+        Weight of S in the DisCov score. Must be in [0, 1].
+    discov_formula : str
+        Combination formula. Must be 'linear' or 'geometric'.
+    require_window_param : bool
+        When True, raise an error if neither window_length nor window_length_as_percentage
+        is set. Set to False for callers (e.g. anvi-summarize) that supply context-sensitive
+        defaults when the user omits both flags.
+    """
+    if require_window_param and not window_length and not window_length_as_percentage:
+        raise ConfigError("In order to compute distribution of coverage (DisCov), we need you to specify a scheme "
+                          "for setting the window length. Either provide an exact length using --window-length or a "
+                          "percentage value (as an integer) using --window-length-as-percentage.")
+
+    if window_length and window_length_as_percentage:
+        raise ConfigError("Please choose either --window-length or --window-length-as-percentage, not both.")
+
+    if (window_length and window_length <= 0) or (window_length_as_percentage and window_length_as_percentage <= 0):
+        raise ConfigError("A positive window length (or percentage) is required for computing distribution of coverage (DisCov).")
+
+    if window_length_as_percentage and window_length_as_percentage > 100:
+        raise ConfigError("We cannot work with windows that are longer than 100% of a given sequence. Please change your "
+                          "--window-length-as-percentage value.")
+
+    if window_length and min_window_length:
+        raise ConfigError("The --min-window-length is only relevant when using the --window-length-as-percentage option.")
+
+    if min_window_length and min_window_length < 0:
+        raise ConfigError("The --min-window-length parameter has to be a positive integer.")
+
+    if foldrange_lower is None or foldrange_upper is None or alpha is None:
+        raise ConfigError("You'd better be a programmer messing with stuff, because it is not supposed to be possible "
+                          "to pass None values for DisCov foldrange or alpha parameters. Nor is it advisable (because it will "
+                          "throw off the calculation), so we are stopping the show right here.")
+
+    if foldrange_lower < 0 or foldrange_upper < 0:
+        raise ConfigError("Please provide positive numbers for the fold-range boundary values.")
+
+    if foldrange_lower >= foldrange_upper:
+        raise ConfigError(f"The --foldrange-lower value ({foldrange_lower}) cannot be greater than the --foldrange-upper value "
+                          f"({foldrange_upper}).")
+
+    if alpha < 0 or alpha > 1:
+        raise ConfigError("The --alpha parameter for DisCov should take a value between 0 and 1 (inclusive). Keep in "
+                          "mind that it is going to be used in the following equation: DisCov = αS + (1-α)E. Hopefully "
+                          "that helps explain these restrictions :)")
+
+    if discov_formula not in ('linear', 'geometric'):
+        raise ConfigError(f"The --discov-formula parameter must be either 'linear' or 'geometric', but you provided "
+                          f"'{discov_formula}'. Please fix that and try again.")
+
+
 class CoverageStats:
     """A class to return coverage stats for an array of nucleotide level coverages.
 

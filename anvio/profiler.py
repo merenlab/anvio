@@ -510,32 +510,9 @@ class BAMProfilerQuick:
 
         # DisCov parameter sanity checks
         if not self.report_minimal and not self.gene_level_stats:
-            if not self.window_length and not self.window_length_as_percentage:
-                raise ConfigError("In order to compute distribution of coverage (DisCov), we need you to specify a scheme "
-                        "for setting the window length. Either provide an exact length using --window-length or a percentage "
-                        "value (as an integer) using --window-length-as-percentage.")
-            if self.window_length and self.window_length_as_percentage:
-                raise ConfigError("Please choose either --window-length or --window-length-as-percentage, not both.")
-            if (self.window_length and self.window_length <= 0) or (self.window_length_as_percentage and self.window_length_as_percentage <= 0):
-                raise ConfigError("A positive window length (or percentage) is required for computing distribution of coverage (DisCov).")
-            if self.window_length_as_percentage and self.window_length_as_percentage > 100:
-                raise ConfigError("We cannot work with windows that are longer than 100% of a given sequence. Please change your "
-                                  "--window-length-as-percentage value.")
-            if self.window_length and self.min_window_length:
-                raise ConfigError("The --min-window-length is only relevant when using the --window-length-as-percentage option.")
-            if self.min_window_length and self.min_window_length < 0:
-                raise ConfigError("The --min-window-length parameter has to be a positive integer.")
-            if self.foldrange_lower < 0 or self.foldrange_upper < 0:
-                raise ConfigError("Please provide positive numbers for the fold-range boundary values.")
-            if self.foldrange_lower >= self.foldrange_upper:
-                raise ConfigError("The --foldrange-lower value cannot be greater than the --foldrange-upper value.")
-            if self.alpha < 0 or self.alpha > 1:
-                raise ConfigError("The --alpha parameter for DisCov should take a value between 0 and 1 (inclusive). Keep in "
-                                "mind that it is going to be used in the following equation: DisCov = αS + (1-α)E. Hopefully "
-                                "that helps explain these restrictions :)")
-            if self.discov_formula not in ('linear', 'geometric'):
-                raise ConfigError(f"The --discov-formula parameter must be either 'linear' or 'geometric', but you provided "
-                                  f"'{self.discov_formula}'. Please fix that and try again.")
+            utils.validate_discov_params(self.window_length, self.window_length_as_percentage,
+                                         self.min_window_length, self.foldrange_lower, self.foldrange_upper,
+                                         self.alpha, self.discov_formula, require_window_param=True)
 
         if self.gen_window_level_output:
             if self.gene_level_stats:
