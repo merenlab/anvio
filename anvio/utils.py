@@ -540,8 +540,9 @@ class CoverageStats:
         How long to make the windows for computing S
     discov_window_percentage : int
         If provided, window length will be computed dynamically as a percentage of the input sequence length
-    discov_min_window_len : int
-        Specifies the minimum window length when discov_window_percentage is used.
+    discov_min_window_len : int, None
+        Specifies the minimum window length when discov_window_percentage is used. If None is passed, it will
+        be converted to 0
     discov_foldrange_lower : float
         When computing E, count any bases with coverage over this value * the median nonzero coverage
     discov_foldrange_upper : float
@@ -555,6 +556,9 @@ class CoverageStats:
     def __init__(self, coverage, skip_outliers=False, discov_window_length=10000, discov_window_percentage=None,
                 discov_min_window_len=500, discov_foldrange_lower=0.25, discov_foldrange_upper=4, discov_alpha=0.5,
                 return_window_info=False, discov_formula='geometric'):
+        if discov_min_window_len is None:
+            discov_min_window_len = 0
+
         self.min: float = np.amin(coverage)
         self.max: float = np.amax(coverage)
         self.median: float = np.median(coverage)

@@ -4204,7 +4204,7 @@ D = {
     ),
     'min-window-length': (
             ['--min-window-length'],
-            {'default': 0,
+            {'default': None,
              'type': int,
              'metavar': 'INTEGER',
              'help': "Use with --window-length-as-percentage to ensure that percentage-based window lengths never fall below this value."}

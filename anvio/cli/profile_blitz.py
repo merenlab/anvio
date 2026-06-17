@@ -38,7 +38,8 @@ def main():
             args.window_length = COLLECTION_WLEN_DEFAULT
         else:
             args.window_length_as_percentage = CONTIG_PERCENTAGE_LEN_DEFAULT
-            args.min_window_length = CONTIG_MIN_WLEN_DEFAULT
+    if not args.collection_txt and not args.window_length and args.min_window_length is None:
+        args.min_window_length = CONTIG_MIN_WLEN_DEFAULT # enforce a contig-level min-len default of 300 bp
 
     try:
         p = BAMProfilerQuick(args)
