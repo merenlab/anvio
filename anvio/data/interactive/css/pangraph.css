@@ -169,12 +169,22 @@
     min-width: unset !important;
     width: 490px !important;
     height: 100vh !important;
+    overflow: hidden !important;
   }
 
-  /* Keep nav icons visible while settings content scrolls, without fixing to viewport */
+  /* Override main.css fixed positioning; nav column stays put, settings content scrolls */
   .tab-elements {
-    position: sticky !important;
-    top: 0;
+    position: relative !important;
+    top: unset;
+  }
+
+  .inner-wrapper {
+    height: 100%;
+  }
+
+  #sidebar .tab-content {
+    overflow-y: auto;
+    height: 100vh;
   }
 
   #toggle-panel-left{
@@ -199,6 +209,63 @@
 
   .user-handle:hover{
     background: var(--secondary-100);
+  }
+
+  .genome-row {
+    cursor: grab;
+    padding: 2px 4px;
+    border-radius: 3px;
+    border: 1px dashed #dedede;
+    background: #fbfbfb;
+    margin-bottom: 4px !important;
+  }
+
+  .genome-row-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+    font-size: 1.2em;
+    padding-left: 3px;
+  }
+
+  .genome-row-track {
+    font-size: 0.75em;
+    color: #aaa;
+  }
+
+  .genome-row-input {
+    background-color: #e9ecef;
+    width: 32px;
+  }
+
+  .pangraph-colorpicker {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    border: 1px solid #818181;
+    margin-left: 4px;
+    margin-right: 4px;
+  }
+
+  .genome-row .pangraph-colorpicker {
+    flex-shrink: 0;
+  }
+
+  .genome-row .form-switch {
+    padding-left: 0;
+  }
+
+  .genome-row .form-switch .form-check-input {
+    margin-left: 0;
+    float: none;
+    position: static;
+  }
+
+  .p-0 {
+    padding: 3px !important;
+    height: 22px;
   }
 
   .tableFixHead          { overflow: auto; height: 100px; }
@@ -303,5 +370,17 @@
 }
 .bin-count-btn:hover {
     background-color: #d0d7df;
+}
+
+.settings-loading {
+    filter: blur(3px);
+    pointer-events: none;
+    transition: filter 0.4s ease;
+}
+
+.settings-loading-cleared {
+    filter: blur(0);
+    pointer-events: auto;
+    transition: filter 0.4s ease;
 }
 

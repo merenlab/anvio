@@ -1,0 +1,223 @@
+{
+    "general_params": {
+        "samples_txt":      {"type": "str",  "default": "samples.txt"},
+        "references_mode":  {"type": "bool", "default": null},
+        "all_against_all":  {"type": "bool", "default": null},
+        "kraken_txt":       {"type": "str",  "default": null},
+        "collections_txt":  {"type": "str",  "default": null},
+        "read_type_suffix": {"type": "str",  "default": "auto"}
+    },
+    "rules": {
+        "iu_gen_configs": {
+            "threads":      {"type": "int", "default": 1},
+            "--r1-prefix":  {"type": "str", "default": null},
+            "--r2-prefix":  {"type": "str", "default": null}
+        },
+        "iu_filter_quality_minoche": {
+            "threads":                      {"type": "int",  "default": 1},
+            "run":                          {"type": "bool", "default": true},
+            "--visualize-quality-curves":   {"type": "bool", "default": null},
+            "--ignore-deflines":            {"type": "bool", "default": true},
+            "--limit-num-pairs":            {"type": "int",  "default": null},
+            "--print-qual-scores":          {"type": "bool", "default": null},
+            "--store-read-fate":            {"type": "bool", "default": null}
+        },
+        "gen_qc_report": {
+            "threads": {"type": "int", "default": 1}
+        },
+        "gzip_fastqs": {
+            "threads": {"type": "int",  "default": 1},
+            "run":     {"type": "bool", "default": true}
+        },
+        "merge_fastqs_for_co_assembly": {},
+        "merge_fastas_for_co_assembly":  {},
+        "megahit": {
+            "threads":          {"type": "int",   "default": 7},
+            "run":              {"type": "bool",  "default": null},
+            "conda_yaml":       {"type": "str",   "default": null},
+            "conda_env":        {"type": "str",   "default": null},
+            "--min-contig-len": {"type": "int",   "default": 1000},
+            "--min-count":      {"type": "int",   "default": null},
+            "--k-min":          {"type": "int",   "default": null},
+            "--k-max":          {"type": "int",   "default": null},
+            "--k-step":         {"type": "int",   "default": null},
+            "--k-list":         {"type": "str",   "default": null},
+            "--no-mercy":       {"type": "bool",  "default": null},
+            "--no-bubble":      {"type": "bool",  "default": null},
+            "--merge-level":    {"type": "str",   "default": null},
+            "--prune-level":    {"type": "int",   "default": null},
+            "--prune-depth":    {"type": "float", "default": null},
+            "--low-local-ratio":{"type": "float", "default": null},
+            "--max-tip-len":    {"type": "int",   "default": null},
+            "--no-local":       {"type": "bool",  "default": null},
+            "--kmin-1pass":     {"type": "bool",  "default": null},
+            "--presets":        {"type": "str",   "default": null},
+            "--memory":         {"type": "float", "default": 0.4},
+            "--mem-flag":       {"type": "int",   "default": null},
+            "--use-gpu":        {"type": "bool",  "default": null},
+            "--gpu-mem":        {"type": "float", "default": null},
+            "--keep-tmp-files": {"type": "bool",  "default": null},
+            "--tmp-dir":        {"type": "str",   "default": null},
+            "--continue":       {"type": "bool",  "default": null},
+            "--verbose":        {"type": "bool",  "default": null}
+        },
+        "metaspades": {
+            "threads":          {"type": "int",  "default": 7},
+            "run":              {"type": "bool", "default": null},
+            "conda_yaml":       {"type": "str",  "default": null},
+            "conda_env":        {"type": "str",  "default": null},
+            "additional_params":{"type": "str",  "default": "--only-assembler"},
+            "use_scaffolds":    {"type": "bool", "default": null}
+        },
+        "idba_ud": {
+            "threads":          {"type": "int",  "default": 7},
+            "run":              {"type": "bool", "default": null},
+            "conda_yaml":       {"type": "str",  "default": null},
+            "conda_env":        {"type": "str",  "default": null},
+            "--mink":           {"type": "int",  "default": null},
+            "--maxk":           {"type": "int",  "default": null},
+            "--step":           {"type": "int",  "default": null},
+            "--inner_mink":     {"type": "int",  "default": null},
+            "--inner_step":     {"type": "int",  "default": null},
+            "--prefix":         {"type": "int",  "default": null},
+            "--min_count":      {"type": "int",  "default": null},
+            "--min_support":    {"type": "int",  "default": null},
+            "--seed_kmer":      {"type": "int",  "default": null},
+            "--min_contig":     {"type": "int",  "default": 1000},
+            "--similar":        {"type": "float","default": null},
+            "--max_mismatch":   {"type": "int",  "default": null},
+            "--min_pairs":      {"type": "int",  "default": null},
+            "--no_bubble":      {"type": "bool", "default": null},
+            "--no_local":       {"type": "bool", "default": null},
+            "--no_coverage":    {"type": "bool", "default": null},
+            "--no_correct":     {"type": "bool", "default": null},
+            "--pre_correction": {"type": "bool", "default": null},
+            "use_scaffolds":    {"type": "bool", "default": null}
+        },
+        "flye": {
+            "threads":          {"type": "int",  "default": 7},
+            "run":              {"type": "bool", "default": false},
+            "conda_yaml":       {"type": "str",  "default": null},
+            "conda_env":        {"type": "str",  "default": null},
+            "--meta":           {"type": "bool", "default": true},
+            "--pacbio-raw":     {"type": "bool", "default": null},
+            "--pacbio-corr":    {"type": "bool", "default": null},
+            "--pacbio-hifi":    {"type": "bool", "default": true},
+            "--nano-raw":       {"type": "bool", "default": null},
+            "--nano-corr":      {"type": "bool", "default": null},
+            "--nano-hq":        {"type": "bool", "default": null},
+            "--genome-size":    {"type": "str",  "default": null},
+            "--iterations":     {"type": "int",  "default": null},
+            "--min-overlap":    {"type": "int",  "default": null},
+            "--read-error":     {"type": "float","default": null},
+            "--keep-haplotypes":{"type": "bool", "default": null},
+            "--no-alt-contigs": {"type": "bool", "default": null},
+            "--scaffold":       {"type": "bool", "default": null},
+            "--polish-target":  {"type": "str",  "default": null},
+            "additional_params":{"type": "str",  "default": ""}
+        },
+        "bowtie_build": {
+            "threads":          {"type": "int", "default": 1},
+            "additional_params":{"type": "str", "default": null}
+        },
+        "bowtie": {
+            "threads":          {"type": "int", "default": 3},
+            "conda_yaml":       {"type": "str", "default": null},
+            "conda_env":        {"type": "str", "default": null},
+            "additional_params":{"type": "str", "default": "--no-unal"}
+        },
+        "minimap2_index": {
+            "threads":          {"type": "int", "default": 1},
+            "additional_params":{"type": "str", "default": ""}
+        },
+        "minimap2": {
+            "threads":          {"type": "int", "default": 3},
+            "preset":           {"type": "str", "default": "map-hifi"},
+            "conda_yaml":       {"type": "str", "default": null},
+            "conda_env":        {"type": "str", "default": null},
+            "additional_params":{"type": "str", "default": "--secondary-seq"}
+        },
+        "samtools_view": {
+            "threads":          {"type": "int", "default": 1},
+            "additional_params":{"type": "str", "default": "-F 4"}
+        },
+        "anvi_profile": {
+            "threads":                          {"type": "int",   "default": 3},
+            "--overwrite-output-destinations":  {"type": "bool",  "default": true},
+            "--report-variability-full":        {"type": "bool",  "default": null},
+            "--skip-SNV-profiling":             {"type": "bool",  "default": null},
+            "--profile-SCVs":                   {"type": "bool",  "default": null},
+            "--description":                    {"type": "str",   "default": null},
+            "--skip-hierarchical-clustering":   {"type": "bool",  "default": null},
+            "--distance":                       {"type": "str",   "default": null},
+            "--linkage":                        {"type": "str",   "default": null},
+            "--min-contig-length":              {"type": "int",   "default": null},
+            "--min-mean-coverage":              {"type": "float", "default": null},
+            "--min-coverage-for-variability":   {"type": "int",   "default": null},
+            "--cluster-contigs":                {"type": "bool",  "default": null},
+            "--contigs-of-interest":            {"type": "str",   "default": null},
+            "--queue-size":                     {"type": "int",   "default": null},
+            "--write-buffer-size":              {"type": "int",   "default": null},
+            "--write-buffer-size-per-thread":   {"type": "int",   "default": null},
+            "--fetch-filter":                   {"type": "str",   "default": null},
+            "--min-percent-identity":           {"type": "float", "default": null},
+            "--max-contig-length":              {"type": "int",   "default": null}
+        },
+        "anvi_merge": {
+            "threads":                          {"type": "int",  "default": 1},
+            "--sample-name":                    {"type": "str",  "default": "{group}"},
+            "--description":                    {"type": "str",  "default": null},
+            "--skip-hierarchical-clustering":   {"type": "bool", "default": null},
+            "--enforce-hierarchical-clustering":{"type": "bool", "default": null},
+            "--distance":                       {"type": "str",  "default": null},
+            "--linkage":                        {"type": "str",  "default": null},
+            "--overwrite-output-destinations":  {"type": "bool", "default": true}
+        },
+        "import_percent_of_reads_mapped": {
+            "threads": {"type": "int",  "default": 1},
+            "run":     {"type": "bool", "default": true}
+        },
+        "anvi_cluster_contigs": {
+            "threads":                      {"type": "int",  "default": 1},
+            "run":                          {"type": "bool", "default": null},
+            "--collection-name":            {"type": "str",  "default": "{driver}"},
+            "--driver":                     {"type": "str",  "default": null},
+            "--just-do-it":                 {"type": "bool", "default": null},
+            "--additional-params-concoct":  {"type": "str",  "default": null},
+            "--additional-params-metabat2": {"type": "str",  "default": null},
+            "--additional-params-maxbin2":  {"type": "str",  "default": null},
+            "--additional-params-dastool":  {"type": "str",  "default": null},
+            "--additional-params-binsanity":{"type": "str",  "default": null}
+        },
+        "anvi_summarize": {
+            "threads":          {"type": "int",  "default": 1},
+            "run":              {"type": "bool", "default": null},
+            "additional_params":{"type": "str",  "default": null}
+        },
+        "anvi_split": {
+            "threads":          {"type": "int",  "default": 1},
+            "run":              {"type": "bool", "default": null},
+            "additional_params":{"type": "str",  "default": null}
+        },
+        "krakenuniq": {
+            "threads":          {"type": "int",  "default": 3},
+            "run":              {"type": "bool", "default": null},
+            "--db":             {"type": "str",  "default": null},
+            "--gzip-compressed":{"type": "bool", "default": true},
+            "additional_params":{"type": "str",  "default": ""}
+        },
+        "krakenuniq_mpa_report": {
+            "threads": {"type": "int", "default": 1}
+        },
+        "import_krakenuniq_taxonomy": {
+            "threads":        {"type": "int",   "default": 1},
+            "--min-abundance":{"type": "float", "default": null}
+        },
+        "remove_short_reads_based_on_references": {
+            "threads":                              {"type": "int", "default": 1},
+            "dont_remove_just_map":                 {"type": "bool","default": null},
+            "references_for_removal_txt":           {"type": "str", "default": null},
+            "delimiter-for-iu-remove-ids-from-fastq":{"type": "str", "default": " "}
+        }
+    }
+}
