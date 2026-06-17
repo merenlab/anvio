@@ -1100,7 +1100,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
     def init(self):
         # init profile data for colletion.
-        self.collection_dict, self.bins_info_dict = self.init_collection_profile(self.collection_name, calculate_Q2Q3_carefully=self.calculate_Q2Q3_carefully)
+        self.collection_dict, self.bins_info_dict = self.init_collection_profile(self.collection_name, calculate_Q2Q3_carefully=self.calculate_Q2Q3_carefully, report_discov=self.report_discov)
 
         # let bin names known to all
         self.bin_ids = list(self.collection_profile.keys())
@@ -1444,6 +1444,11 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         if not self.output_directory:
             raise ConfigError("It seems the summarizer class have been inherited without an `output_directory` argument :/ Show stopper "
                               "mistake stopped the show. Bye!")
+
+        # if requested, compute DisCov from the coverage arrays in the aux DB. We do this first because it will also re-do Q2Q3
+        # if --calculate-Q2Q3-carefully was used
+        if self.report_discov:
+            self.compute_discov_stats()
 
         # summarize bins:
         self.progress.new("Summarizing ...", progress_total_items=len(self.bin_ids))
