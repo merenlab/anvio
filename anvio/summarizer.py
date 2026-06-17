@@ -208,6 +208,12 @@ class SummarizerSuperClass(object):
             if self.collection_name not in self.collections.collections_dict:
                 raise ConfigError("%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % self.collection_name)
 
+        if self.report_discov:
+            utils.validate_discov_params(self.discov_window_length, self.discov_window_percentage,
+                                         self.discov_min_window_length, self.discov_foldrange_lower,
+                                         self.discov_foldrange_upper, self.discov_alpha, self.discov_formula,
+                                         require_window_param=False)
+
 
     def get_output_file_handle(self, sub_directory=None, prefix='output.txt', overwrite=False, within=None, compress_output=False, add_project_name=False):
         if sub_directory:
