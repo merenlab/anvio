@@ -1223,6 +1223,220 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         self.initialized = True
 
 
+    def compute_discov_stats(self):
+        """Compute Distribution of Coverage (DisCov) stats for each bin and each contig.
+
+        Combines per-nucleotide coverage arrays taken from the auxiliary database and calls
+        utils.CoverageStats exactly once per contig and once per bin per sample. Contig arrays
+        are reused to assemble the bin array to avoid multiple reads of the auxiliary DB per split.
+
+        When calculate_Q2Q3_carefully is also True, the bin-level CoverageStats result
+        is additionally used to update self.collection_profile with accurate Q2Q3 mean
+        coverage values.
+
+        Writes two tab-delimited files to the bins_across_samples sub-directory:
+          discov_bins.txt    – one row per bin x sample
+          discov_contigs.txt – one row per contig x sample
+
+        Note that the DisCov parameters are established via self.discov_* attributes in SummarizerSuperClass.
+        """
+
+        if self.p_meta['blank']:
+            self.run.warning("DisCov calculation was requested, but this is a blank profile with "
+                             "no coverage data. Skipping DisCov output.")
+            return
+
+        if not self.auxiliary_profile_data_available:
+            q2q3_str = " and careful Q2Q3 calculation" if self.calculate_Q2Q3_carefully else ""
+            self.run.warning(f"DisCov calculation was requested (--report-discov), but the auxiliary "
+                             f"data file could not be found at '{self.auxiliary_data_path}'. "
+                             f"Skipping DisCov output{q2q3_str}. All other summary output is unaffected.",
+                             header="AUXILIARY DATA NOT FOUND")
+            return
+
+        if self.calculate_Q2Q3_carefully:
+            self.run.warning("Since both --report-discov and --calculate-Q2Q3-carefully were requested, "
+                             "anvi'o will compute careful Q2Q3 mean coverage values and DisCov scores simultaneously, "
+                             "using the same auxiliary coverage data. Depending on the size of your dataset and the number "
+                             "of contigs in your bins this step can take much much longer than usual, since anvi'o "
+                             "will have to do a lot of sorting of very large arrays. But be reassured that you will get the "
+                             "most complete summary possible at the end of this journey.",
+                             header="💀 THINGS WILL TAKE LONGER 💀")
+        else:
+            self.run.warning("Since --report-discov was requested, anvi'o will compute DisCov scores using the "
+                             "coverage data in the auxiliary database. Depending on the size of your dataset and the number "
+                             "of contigs in your bins this step can take much much longer than usual, since anvi'o "
+                             "will have to do a lot of sorting of very large arrays. But at least you will receive EVEN MOAR "
+                             "DATA as part of the summary output.",
+                             header="💀 THINGS WILL TAKE LONGER 💀")
+
+        # Determine effective window parameters for bin- or contig-level stats. When the user has not provided
+        # any window length option, use context-sensitive defaults from constants.py: bins get a
+        # fixed window (works well for large concatenated sequences), while contigs get a
+        # percentage-based window (to accommodate smaller contigs)
+        # If the user specifies either --window-length or --window-length-as-percentage, those
+        # values are applied uniformly to both levels.
+        user_specified_window = self.discov_window_length is not None or self.discov_window_percentage is not None
+        if user_specified_window:
+            bin_wlen   = self.discov_window_length
+            bin_wpct   = self.discov_window_percentage
+            bin_minlen = self.discov_min_window_length
+            contig_wlen   = self.discov_window_length
+            contig_wpct   = self.discov_window_percentage
+            contig_minlen = self.discov_min_window_length
+        else: # context-specific defaults
+            bin_wlen   = constants.discov_default_bin_window_length
+            bin_wpct   = None
+            bin_minlen = 0 # not used when --window-length is set
+            contig_wlen   = None
+            contig_wpct   = constants.discov_default_contig_window_percentage
+            if self.discov_min_window_length is None: # allow user to modify just this param
+                contig_minlen = constants.discov_default_contig_min_window_length
+            else:
+                contig_minlen = self.discov_min_window_length
+
+        if user_specified_window:
+            self.run.info('DisCov window length', bin_wlen if bin_wlen else f"{bin_wpct}% of sequence")
+            if bin_wpct:
+                self.run.info('Minimum window length', bin_minlen)
+        else:
+            self.run.info('DisCov window length (bins)', f"{bin_wlen} bp")
+            self.run.info('DisCov window length (contigs)', f"{contig_wpct}% of sequence, min {contig_minlen} bp")
+        self.run.info('DisCov fold-range', f"{self.discov_foldrange_lower}x to {self.discov_foldrange_upper}x of median nonzero coverage")
+        self.run.info('DisCov alpha value', self.discov_alpha)
+        self.run.info('DisCov formula', self.discov_formula)
+
+        bin_level_rows = []
+        contig_level_rows = []
+        DISCOV_BINS_OUTPUT='discov_bins.txt'
+        DISCOV_CONTIGS_OUTPUT='discov_contigs.txt'
+
+        self.progress.new('Computing DisCov', progress_total_items=len(self.collection_dict))
+
+        for bin_id in self.collection_dict:
+            self.progress.update(f"'{bin_id}'")
+            self.progress.increment()
+
+            # Group splits by parent contig, preserving within-contig order
+            splits_by_contig = {}
+            for split_name in self.collection_dict[bin_id]:
+                info = self.splits_basic_info[split_name]
+                parent = info['parent']
+                order = info['order_in_parent']
+                splits_by_contig.setdefault(parent, []).append((order, split_name))
+            for contig_name in splits_by_contig:
+                splits_by_contig[contig_name].sort()
+                splits_by_contig[contig_name] = [s for _, s in splits_by_contig[contig_name]]
+
+            sorted_contigs = sorted(splits_by_contig.keys())
+
+            # fetch each split's full coverage dict (all samples) once, outside the sample loop.
+            # self.split_coverage_values.get() runs a live SQLite query every call and returns
+            # {sample_name: array} for all samples at once
+            split_coverages = {}
+            failed_contigs = set()
+            for contig_name in sorted_contigs:
+                for split_name in splits_by_contig[contig_name]:
+                    try:
+                        split_coverages[split_name] = self.split_coverage_values.get(split_name)
+                    except Exception as e:
+                        self.progress.reset()
+                        self.run.warning(f"Anvi'o failed to retrieve the coverage arrays for split '{split_name}' "
+                                         f"in contig '{contig_name}' (bin '{bin_id}') from the auxiliary DB. Here is the "
+                                         f"error, in case it means anything to you: {e}.\n"
+                                         f"This contig will be excluded from contig-level DisCov output, and the bin it "
+                                         f"belongs to will be excluded from bin-level DisCov output (since its coverage "
+                                         f"array would be incomplete). Please investigate why this happened as it could "
+                                         f"be symptomatic of a more serious issue affecting your data.")
+                        failed_contigs.add(contig_name)
+                        break  # no need to fetch remaining splits for this contig
+
+            for sample_name in self.p_meta['samples']:
+                # assemble per-contig arrays from the cached per-split coverage dicts
+                contig_arrays = {}
+                for contig_name in sorted_contigs:
+                    if contig_name in failed_contigs:
+                        continue
+                    arrays = [split_coverages[split_name][sample_name]
+                              for split_name in splits_by_contig[contig_name]]
+                    contig_arrays[contig_name] = numpy.concatenate(arrays)
+
+                if not contig_arrays:
+                    continue
+
+                # Compute contig-level DisCov (one CoverageStats call per contig)
+                for contig_name, contig_array in contig_arrays.items():
+                    c_stats = utils.CoverageStats(contig_array,
+                                                  skip_outliers=True, # we don't need the self.is_outlier attribute
+                                                  discov_window_length=contig_wlen,
+                                                  discov_window_percentage=contig_wpct,
+                                                  discov_min_window_len=contig_minlen,
+                                                  discov_foldrange_lower=self.discov_foldrange_lower,
+                                                  discov_foldrange_upper=self.discov_foldrange_upper,
+                                                  discov_alpha=self.discov_alpha,
+                                                  discov_formula=self.discov_formula)
+                    contig_level_rows.append({'bin_name': bin_id,
+                                              'contig_name': contig_name,
+                                              'sample_name': sample_name,
+                                              'length': len(contig_array),
+                                              'num_windows': c_stats.num_windows,
+                                              'prop_windows_covered': c_stats.prop_win_covered,
+                                              'fold_range_coverage_depth': c_stats.fold_range_coverage_depth,
+                                              'dis_cov': c_stats.discov})
+
+                # Compute bin-level DisCov; reuse contig arrays
+                if failed_contigs: # unless one of the contig lookups failed; we don't want to compute based on partial bins
+                    continue
+                bin_array = numpy.concatenate([contig_arrays[c] for c in sorted_contigs if c in contig_arrays])
+                b_stats = utils.CoverageStats(bin_array,
+                                              skip_outliers=True,
+                                              discov_window_length=bin_wlen,
+                                              discov_window_percentage=bin_wpct,
+                                              discov_min_window_len=bin_minlen,
+                                              discov_foldrange_lower=self.discov_foldrange_lower,
+                                              discov_foldrange_upper=self.discov_foldrange_upper,
+                                              discov_alpha=self.discov_alpha,
+                                              discov_formula=self.discov_formula)
+                bin_level_rows.append({'bin_name': bin_id,
+                                       'sample_name': sample_name,
+                                       'length': len(bin_array),
+                                       'num_windows': b_stats.num_windows,
+                                       'prop_windows_covered': b_stats.prop_win_covered,
+                                       'fold_range_coverage_depth': b_stats.fold_range_coverage_depth,
+                                       'dis_cov': b_stats.discov})
+
+                # When careful Q2Q3 was also requested, extract it from the bin-level stats here (it was skipped
+                # in init_collection_profile) to avoid redundant array concatenation and computation
+                if self.calculate_Q2Q3_carefully:
+                    self.collection_profile[bin_id]['mean_coverage_Q2Q3'][sample_name] = b_stats.mean_Q2Q3
+
+        self.progress.end()
+
+        # Write bin-level output. Integer keys provide stable row order; the key column itself
+        # is suppressed so the file starts directly with the data columns.
+        bin_headers = ['key', 'bin_name', 'sample_name', 'length', 'num_windows',
+                       'prop_windows_covered', 'fold_range_coverage_depth', 'dis_cov']
+        output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix=DISCOV_BINS_OUTPUT)
+        utils.store_dict_as_TAB_delimited_file({i: row for i, row in enumerate(bin_level_rows)},
+                                               None,
+                                               headers=bin_headers,
+                                               file_obj=output_file_obj,
+                                               do_not_write_key_column=True)
+
+        # Write contig-level output
+        contig_headers = ['key', 'bin_name', 'contig_name', 'sample_name', 'length', 'num_windows',
+                          'prop_windows_covered', 'fold_range_coverage_depth', 'dis_cov']
+        output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix=DISCOV_CONTIGS_OUTPUT)
+        utils.store_dict_as_TAB_delimited_file({i: row for i, row in enumerate(contig_level_rows)},
+                                               None,
+                                               headers=contig_headers,
+                                               file_obj=output_file_obj,
+                                               do_not_write_key_column=True)
+
+        self.run.info('DisCov output (bins)', os.path.join(self.output_directory, 'bins_across_samples', DISCOV_BINS_OUTPUT))
+        self.run.info('DisCov output (contigs)', os.path.join(self.output_directory, 'bins_across_samples', DISCOV_CONTIGS_OUTPUT))
+
+
     def process(self):
         if not self.initialized:
             self.init()
