@@ -98,6 +98,7 @@ class PangenomeGraphSubGraph:
         self.graph_nodes = A('graph_nodes').split(',') if A('graph_nodes') else None
         self.output_dir = A('output_dir')
         self.external_genomes_file_path = A('external_genomes')
+        self.reset_gene_caller_ids = A('reset_gene_caller_ids')
 
         if not self.graph_nodes:
             raise ConfigError("This program is useless without the `--graph-nodes` parameter :/")
@@ -144,6 +145,9 @@ class PangenomeGraphSubGraph:
         self.run.info('Pangenome graph database', pangraph.p_meta['project_name'])
         self.run.info("Pan graph database", self.pan_graph_db_path)
         self.run.info("Nodes to export", ', '.join(self.graph_nodes))
+        self.run.info("Gene caller ids", "Reset to start from 0 in each output database" if self.reset_gene_caller_ids
+                                          else "Kept as they are to match the source contigs databases",
+                      mc="red" if self.reset_gene_caller_ids else "green")
         self.run.info("Loci", '')
 
         d = {}
@@ -185,6 +189,7 @@ class PangenomeGraphSubGraph:
                                             output_file_prefix=genome_name,
                                             delimiter=',',
                                             never_reverse_complement=True,
+                                            reset_gene_caller_ids=self.reset_gene_caller_ids,
                                             include_fasta_output=False)
 
             # let's go
