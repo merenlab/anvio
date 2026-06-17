@@ -2909,6 +2909,17 @@ D = {
                      "for your final summary of everything). Please see https://github.com/merenlab/anvio/pull/2366 for "
                      "details."}
                 ),
+    'report-discov': (
+            ['--report-discov'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Compute the Distribution of Coverage (DisCov) metric for each bin and each contig within each bin. "
+                     "DisCov combines a spread score S (proportion of windows with at least some coverage) "
+                     "and an evenness score E (proportion of covered bases within a fold-range of the median nonzero "
+                     "coverage). Requires access to the auxiliary data file (AUXILIARY-DATA.db). Results are written to "
+                     "'bins_across_samples/discov_bins.txt' (one row per bin x sample) and "
+                     "'bins_across_samples/discov_contigs.txt' (one row per contig x sample)."}
+                ),
     'reformat-contig-names': (
             ['--reformat-contig-names'],
             {'default': False,
