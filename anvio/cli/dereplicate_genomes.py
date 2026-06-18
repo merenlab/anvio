@@ -15,7 +15,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ekiefl', 'mahmoudyousef98']
-__requires__ = ['external-genomes', 'internal-genomes', 'fasta', 'genome-similarity']
+__requires__ = ['external-genomes', 'fasta']
+__can_use__ = ['internal-genomes', 'genome-similarity']
 __provides__ = ['fasta']
 __description__ = ("Identify redundant (highly similar) genomes")
 

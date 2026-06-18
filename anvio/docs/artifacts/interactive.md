@@ -192,7 +192,7 @@ At the very bottom of the Search tab are a few buttons to view and explore the r
 ![search view](../../images/interactive_interface/search_view.png){:.center-img .width-70}
 
   - __List Results__: there you can choose to display the detail of the searched items. By clicking on that button, a table will appear with the details of the items matching your search.
-  - __Highlight the search__: you can highlight the items matching the search by clicking, change the color of the highlight and remove any existing highlight.
+  - __Highlight the search__: you can highlight the items matching the search by clicking, change the color of the highlight and remove any existing highlight. When the highlight comes from a __Search functions__ query, opening one of those splits in the inspect page (%(anvi-inspect)s) will also highlight the gene(s) that matched, so you can spot them at a glance instead of clicking through every gene.
   - __Append/Remove items from selected bin__: you can choose to add the items matching your search to the current bin, or to remove them from your current bin.
 
 ### News tab

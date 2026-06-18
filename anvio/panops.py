@@ -85,6 +85,11 @@ class PangenomeGraphSubGraph:
         >>> subgraph = PangenomeGraphSubGraph(args)
         >>> subgraph.export()
 
+    Alternatively, a region ID can be provided instead of graph nodes, in which case the two boundary
+    nodes of the region (min/max x position) are resolved automatically:
+
+        >>> args = argparse.Namespace(pan_graph_db="PATH/TO/PAN-GRAPH.db", region_id=3, output_dir="OUTPUT_DIR")
+
     A client of this class is the program `anvi-export-pan-subgraph`
     """
 
@@ -96,16 +101,20 @@ class PangenomeGraphSubGraph:
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.pan_graph_db_path = A('pan_graph_db')
         self.graph_nodes = A('graph_nodes').split(',') if A('graph_nodes') else None
+        self.region_id = A('region_id')
         self.output_dir = A('output_dir')
         self.external_genomes_file_path = A('external_genomes')
 
-        if not self.graph_nodes:
-            raise ConfigError("This program is useless without the `--graph-nodes` parameter :/")
+        if not self.graph_nodes and self.region_id is None:
+            raise ConfigError("This program is useless without either `--graph-nodes` or `--region-id` :/")
+
+        if self.graph_nodes and self.region_id is not None:
+            raise ConfigError("Please provide either `--graph-nodes` or `--region-id`, not both.")
 
         if not self.pan_graph_db_path:
             raise ConfigError("Please send a pangenome graph database")
 
-        if len(self.graph_nodes) != 2:
+        if self.graph_nodes and len(self.graph_nodes) != 2:
             raise ConfigError(f"The `--graph-nodes` parameter must be set to two node names that are separated by a comma :/ "
                               f"Your parameter, '{A('graph_nodes')}', does not really comply with that.")
 
@@ -114,12 +123,91 @@ class PangenomeGraphSubGraph:
         filesnpaths.check_output_directory(self.output_dir)
 
 
+    def resolve_graph_nodes_from_region_id(self, pangraph):
+        """Given a region ID, resolve and return the two boundary graph nodes to export between.
+
+        For backbone regions, returns the leftmost and rightmost nodes of the region. For variable
+        regions, returns the closest eligible (non-RNA) backbone nodes flanking the region on each
+        side, since variable region nodes are not necessarily present in all genomes.
+        """
+
+        if self.region_id not in pangraph.regions:
+            raise ConfigError(f"Region ID {self.region_id} was not found in the pangenome graph database. "
+                              f"Available region IDs: {', '.join(str(r) for r in sorted(pangraph.regions))}.")
+
+        region_info = pangraph.regions[self.region_id]
+        region_type = region_info['region_type']
+
+        if region_type == 'backbone':
+            region_nodes = sorted(
+                [(node_id, data['node_x']) for node_id, data in pangraph.nodes.items()
+                 if data['region_id'] == self.region_id],
+                key=lambda x: x[1]
+            )
+
+            if len(region_nodes) < 2:
+                raise ConfigError(f"Region ID {self.region_id} (backbone) has fewer than 2 nodes, "
+                                  f"so there is nothing to export between its boundaries :/")
+
+            self.run.info("Region ID", f"{self.region_id} (backbone)")
+            return [region_nodes[0][0], region_nodes[-1][0]]
+
+        elif region_type == 'variable':
+            x_min = region_info['x_min']
+            x_max = region_info['x_max']
+
+            def is_eligible_backbone_node(data):
+                r = pangraph.regions.get(data['region_id'])
+                return r is not None and r['region_type'] == 'backbone' and data['node_type'] != 'rna'
+
+            left_candidates = [(node_id, data['node_x']) for node_id, data in pangraph.nodes.items()
+                               if is_eligible_backbone_node(data) and data['node_x'] < x_min]
+            right_candidates = [(node_id, data['node_x']) for node_id, data in pangraph.nodes.items()
+                                if is_eligible_backbone_node(data) and data['node_x'] > x_max]
+
+            if not left_candidates:
+                raise ConfigError(f"Region ID {self.region_id} is a variable region, but anvi'o could not "
+                                  f"find any eligible flanking backbone node to its left. This is likely "
+                                  f"because the variable region sits at the very beginning of the graph "
+                                  f"with no backbone region preceding it, which this tool cannot currently "
+                                  f"handle :/")
+
+            if not right_candidates:
+                raise ConfigError(f"Region ID {self.region_id} is a variable region, but anvi'o could not "
+                                  f"find any eligible flanking backbone node to its right. This is likely "
+                                  f"because the variable region sits at the very end of the graph with no "
+                                  f"backbone region following it, which this tool cannot currently "
+                                  f"handle :/")
+
+            left_node = max(left_candidates, key=lambda x: x[1])[0]
+            right_node = min(right_candidates, key=lambda x: x[1])[0]
+
+            self.run.warning(f"The region ID {self.region_id} corresponds to a variable region. Variable "
+                             f"region nodes are not necessarily present in all genomes, so anvi'o will "
+                             f"instead use the closest flanking backbone nodes: '{left_node}' on the left "
+                             f"and '{right_node}' on the right. The exported loci will include the "
+                             f"variable region content plus at least two extra genes from the flanking "
+                             f"backbone regions (one on each side). In cases where the closest backbone "
+                             f"node adjacent to the variable region is a non-coding gene (such as a tRNA "
+                             f"or rRNA), anvi'o steps past it to the next coding backbone node; which "
+                             f"means that non-coding gene also ends up inside the exported locus, giving "
+                             f"you more than two extra genes. If you end up analyzing the conservancy of "
+                             f"genes in variable regions you MUST consider this to avoid "
+                             f"misinterpretations.")
+
+            self.run.info("Region ID", f"{self.region_id} (variable)")
+            return [left_node, right_node]
+
+
     def export(self):
         """Export the genomic loci between self.node_names from every genome involved in pangenome graph"""
 
         # get an instance of PanGraphSuperclass
         pangraph = dbops.PanGraphSuperclass(self.args)
         pangraph.init_synteny_gene_clusters()
+
+        if self.region_id is not None:
+            self.graph_nodes = self.resolve_graph_nodes_from_region_id(pangraph)
 
         missing_nodes = [node for node in self.graph_nodes if node not in pangraph.synteny_gene_cluster_names]
         if len(missing_nodes) == 2:
@@ -1594,9 +1682,16 @@ class PangenomeGraph():
         self.load_state = A('load_state')
         self.import_values = A('import_values').split(',') if A('import_values') else []
 
+        description_file_path = A('description')
+        if description_file_path:
+            filesnpaths.is_file_plain_text(description_file_path)
+            self.description = open(os.path.abspath(description_file_path), 'r').read()
+        else:
+            self.description = ''
+
         # STANDARD CLASS VARIABLES
         self.version = anvio.__pangraph__version__
-        self.functional_annotation_sources_available = DBInfo(self.genomes_storage, expecting='genomestorage').get_functional_annotation_sources() if self.genomes_storage else []
+        self.functional_annotation_sources_available = DBInfo(self.genomes_storage, expecting='genomestorage').get_functional_annotation_sources() or [] if self.genomes_storage else []
         self.seed = None
         self.pangenome_graph = PangenomeGraphManager()
         self.pangenome_data_df = pd.DataFrame()
@@ -1958,6 +2053,7 @@ class PangenomeGraph():
             'anvio_version': anvio.__version__,
             'version': self.version,
             'project_name': self.project_name,
+            'description': self.description,
             # genome provenance
             'genomes_storage_hash': self.genomes_storage_hash,
             'genome_names': ','.join(self.genome_names),

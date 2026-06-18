@@ -16,7 +16,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ahenoch', 'meren']
-__requires__ = ['pan-db', 'genomes-storage-db', 'external-genomes']
+__requires__ = ['pan-db']
+__can_use__ = ['genomes-storage-db', 'external-genomes']
 __provides__ = ['pan-graph-db']
 __description__ = ("An anvi'o program to compute a graph representation of pangenomes. It will do its magic, and store it into your "
                    "pan-db, or report a JSON formatted graph file, for downstream visualization and analyses with `anvi-display-pan-graph`")
@@ -115,6 +116,7 @@ def get_args():
 
     groupF = parser.add_argument_group('METADATA & LAYERS', "Display and metadata options for the resulting pan-graph.")
 
+    groupF.add_argument(*anvio.A('description'), **anvio.K('description'))
     groupF.add_argument('--project-name', default=None, help = "Optional name stored in the pan-graph-db metadata (for display/export).")
     groupF.add_argument('--load-state', default='default', type=str, help="Initial display state name to store/use in the pan-graph-db.")
     groupF.add_argument('--import-values', default='start,stop,partial,call_type', type=str, help = "Comma-separated "

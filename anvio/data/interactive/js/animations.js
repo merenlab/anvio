@@ -21,6 +21,7 @@ var SLIDE_INTERVAL = 4;
 var SLIDE_STEP_SIZE = 15;
 
 var is_left_panel_sliding = false;
+var is_panel_open = true;
 
 function toggleLeftPanel() {
     if (is_left_panel_sliding)
@@ -28,72 +29,49 @@ function toggleLeftPanel() {
 
     is_left_panel_sliding = true;
 
-    // Temporarily disable SVG interactions for performance
+    const panel = document.getElementById('panel-left');
     const svgContainer = document.getElementById('svgbox');
-    if (svgContainer) {
-        svgContainer.style.pointerEvents = 'none';
-    }
+    if (svgContainer) svgContainer.style.pointerEvents = 'none';
 
-    if ($('#panel-left').is(':visible')) {
-        // Hide panel ensure clean transition
-        $('#panel-left').css('transition', 'left 0.3s ease-out');
+    let cleaned_up = false;
+    let fallback_timer = null;
 
-        // Use requestAnimationFrame to ensure smooth start
-        requestAnimationFrame(() => {
-            $('#panel-left').css('left', '-490px');
-        });
+    const cleanup = () => {
+        if (cleaned_up) return;   // run exactly once (transitionend vs. fallback race)
+        cleaned_up = true;
+        if (fallback_timer !== null) clearTimeout(fallback_timer);
+        panel.removeEventListener('transitionend', onDone);
+        if (svgContainer) svgContainer.style.pointerEvents = '';
+        is_left_panel_sliding = false;
+    };
 
+    const onDone = (ev) => {
+        if (ev && ev.target !== panel) return;   // ignore transitions bubbling from descendants
+        cleanup();
+    };
+
+    panel.addEventListener('transitionend', onDone);
+    // Fallback: if no CSS 'transition' is defined on #panel-left, transitionend never
+    // fires. Slightly longer than the 0.3s transition so the event wins when it exists.
+    fallback_timer = setTimeout(cleanup, 350);
+
+    if (is_panel_open) {
+        is_panel_open = false;
+        panel.classList.add('panel-closed');
         $('#toggle-panel-left').css('left', '');
         $('#toggle-panel-left').removeClass('toggle-panel-left-pos');
         $('#toggle-panel-left-inner').html('&#9658;');
-
-        // Clean up after animation
-        setTimeout(() => {
-            $('#panel-left').hide();
-            $('#panel-left').css({
-                'transition': '',
-                'left': '0px'
-            });
-            if (svgContainer) {
-                svgContainer.style.pointerEvents = '';
-            }
-            is_left_panel_sliding = false;
-        }, 320); // extra wait to ensure animation completes before changing CSS props mid animation
-
     } else {
-        // Show panel - ensure clean transition
-        $('#panel-left').css('left', '-490px').show();
-
-        // Force reflow to ensure initial position is applied
-        $('#panel-left')[0].offsetHeight;
-
-        // Add transition and animate in separate steps
-        $('#panel-left').css('transition', 'left 0.3s ease-out');
-
-        // Use requestAnimationFrame for smooth animation start
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {  // Double RAF for extra smoothness
-                $('#panel-left').css('left', '0px');
-            });
-        });
-
+        is_panel_open = true;
+        panel.classList.remove('panel-closed');
         $('#toggle-panel-left').css('left', '');
         $('#toggle-panel-left').addClass('toggle-panel-left-pos');
-        $('#toggle-panel-left-inner').html("&#9664;");
-
-        // Clean up after animation
-        setTimeout(() => {
-            $('#panel-left').css('transition', '');
-            if (svgContainer) {
-                svgContainer.style.pointerEvents = '';
-            }
-            is_left_panel_sliding = false;
-        }, 320); // extra wait to ensure animation completes before changing CSS props mid animation
+        $('#toggle-panel-left-inner').html('&#9664;');
     }
 }
 
 function switchNavigationTabs(tab_number) {
-    if ($('#panel-left').is(':visible')) {
+    if (is_panel_open) {
         $('a').each(function(){
             if (tab_number){
                 $(tab_number).addClass('active');

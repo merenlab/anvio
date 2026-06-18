@@ -18,7 +18,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ["contigs-db", "splits-txt", "hmm-source"]
+__requires__ = ["contigs-db"]
+__can_use__ = ["splits-txt", "hmm-source"]
 __description__ = "A script to generate completeness info for a given list of _splits_"
 
 

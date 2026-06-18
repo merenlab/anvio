@@ -19,7 +19,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['profile-db', 'collection', 'pan-graph-db']
+__requires__ = ['profile-db']
+__can_use__ = ['pan-graph-db', 'collection']
 __provides__ = ['collection-txt']
 __description__ = "Export a collection from an anvi'o database"
 

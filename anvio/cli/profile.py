@@ -19,7 +19,8 @@ __authors__ = ['meren', 'ekiefl', 'ozcan']
 __tags__ = ["metagenomics", "profile_db", "contigs_db", "bam", "variability", "clustering"]
 __resources__ = [("The usage of the profiler in metagenomics workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 __requires__ = ['bam-file', 'contigs-db']
-__provides__ = ['single-profile-db', 'misc-data-items-order', 'variability-profile']
+__provides__ = ['single-profile-db', 'variability-profile']
+__can_provide__ = ['misc-data-items-order']
 __description__ = ("The flagship anvi'o program to profile a BAM file. Running this program on a BAM file "
                    "will quantify coverages per nucleotide position in read recruitment results and will "
                    "average coverage and detection data per contig. It will also calculate single-nucleotide, "
