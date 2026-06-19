@@ -54,7 +54,7 @@ def run_program():
     if args.collection_name or args.list_collections or args.list_bins:
         progress.new('Initializing')
         progress.update('...')
-        pan = summarizer.PanSummarizer(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+        pan = summarizer.PanSummarizer(args, lazy_init=True, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
         progress.end()
 
         if not args.bin_id:

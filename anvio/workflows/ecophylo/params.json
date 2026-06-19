@@ -1,0 +1,135 @@
+{
+    "general_params": {
+        "metagenomes":                  {"type": "str",  "default": "metagenomes.txt"},
+        "external_genomes":             {"type": "str",  "default": "external-genomes.txt"},
+        "hmm_list":                     {"type": "str",  "default": "hmm_list.txt"},
+        "samples_txt":                  {"type": "str",  "default": "samples.txt"},
+        "cluster_representative_method":{"type": "dict", "default": {"method": "mmseqs"}},
+        "gene_caller_to_use":           {"type": "str",  "default": null},
+        "run_genomes_sanity_check":      {"type": "bool", "default": true},
+        "scg_taxonomy_database_version":{"type": "str",  "default": "GTDB: v214.1; Anvi'o: v1"}
+    },
+    "rules": {
+        "anvi_run_hmms_hmmsearch": {
+            "threads_genomes":    {"type": "int", "default": 1},
+            "threads_metagenomes":{"type": "int", "default": 5},
+            "additional_params":  {"type": "str", "default": null}
+        },
+        "anvi_run_scg_taxonomy": {
+            "threads":           {"type": "int",  "default": 2},
+            "run":               {"type": "bool", "default": true},
+            "additional_params": {"type": "str",  "default": null}
+        },
+        "filter_hmm_hits_by_model_coverage": {
+            "threads":                      {"type": "int",   "default": 1},
+            "--min-model-coverage":         {"type": "float", "default": 0.8},
+            "--min-gene-coverage":          {"type": "float", "default": null},
+            "--filter-out-partial-gene-calls":{"type": "bool","default": true},
+            "additional_params":            {"type": "str",   "default": null}
+        },
+        "process_hmm_hits": {
+            "threads": {"type": "int", "default": 2}
+        },
+        "combine_sequence_data": {
+            "threads": {"type": "int", "default": 2}
+        },
+        "anvi_get_external_gene_calls_file": {
+            "threads": {"type": "int", "default": 2}
+        },
+        "cat_external_gene_calls_file": {
+            "threads": {"type": "int", "default": 2}
+        },
+        "cluster_X_percent_sim_mmseqs": {
+            "threads":                      {"type": "int",   "default": 5},
+            "--min-seq-id":                 {"type": "float", "default": 0.97},
+            "--cov-mode":                   {"type": "int",   "default": 1},
+            "clustering_threshold_for_OTUs":{"type": "list",  "default": [0.99, 0.98]},
+            "AA_mode":                      {"type": "bool",  "default": false},
+            "additional_params":            {"type": "str",   "default": null}
+        },
+        "anvi_profile_blitz": {
+            "threads": {"type": "int", "default": 1}
+        },
+        "subset_AA_seqs_with_mmseqs_reps": {
+            "threads": {"type": "int", "default": 2}
+        },
+        "subset_AA_seqs_with_coverage_reps": {
+            "threads": {"type": "int", "default": 1}
+        },
+        "align_sequences": {
+            "threads":           {"type": "int", "default": 5},
+            "additional_params": {"type": "str", "default": "-maxiters 1 -diags -sv -distance1 kbit20_3"}
+        },
+        "trim_alignment": {
+            "threads":           {"type": "int",  "default": 5},
+            "-gt":               {"type": "float","default": null},
+            "-gappyout":         {"type": "bool", "default": true},
+            "additional_params": {"type": "str",  "default": null}
+        },
+        "remove_sequences_with_X_percent_gaps": {
+            "threads":              {"type": "int", "default": 5},
+            "--max-percentage-gaps":{"type": "int", "default": 50}
+        },
+        "count_num_sequences_filtered": {
+            "threads": {"type": "int", "default": 5}
+        },
+        "subset_DNA_reps_with_QCd_AA_reps_for_mapping": {
+            "threads": {"type": "int", "default": 2}
+        },
+        "subset_external_gene_calls_file_all": {
+            "threads": {"type": "int", "default": 2}
+        },
+        "make_fasta_txt": {
+            "threads": {"type": "int", "default": 2}
+        },
+        "fasttree": {
+            "threads": {"type": "int",  "default": 5},
+            "run":     {"type": "bool", "default": true}
+        },
+        "iqtree": {
+            "threads":           {"type": "int",  "default": 5},
+            "run":               {"type": "bool", "default": false},
+            "-m":                {"type": "str",  "default": "MFP"},
+            "additional_params": {"type": "str",  "default": null}
+        },
+        "make_metagenomics_config_file": {
+            "threads": {"type": "int", "default": 1}
+        },
+        "run_metagenomics_workflow": {
+            "threads":                    {"type": "int",  "default": 2},
+            "clusterize":                 {"type": "bool", "default": false},
+            "clusterize_submission_params":{"type": "str", "default": null},
+            "HPC_string":                 {"type": "str",  "default": null},
+            "snakemake_additional_params":{"type": "str",  "default": null},
+            "bowtie2_additional_params":  {"type": "str",  "default": null},
+            "anvi_profile_min_percent_identity":{"type": "float", "default": null}
+        },
+        "add_default_collection": {
+            "threads": {"type": "int", "default": 2}
+        },
+        "anvi_summarize": {
+            "threads": {"type": "int", "default": 5}
+        },
+        "rename_tree_tips": {
+            "threads": {"type": "int", "default": 1}
+        },
+        "make_misc_data": {
+            "threads": {"type": "int", "default": 2}
+        },
+        "add_misc_data_to_taxonomy": {
+            "threads": {"type": "int", "default": 1}
+        },
+        "anvi_estimate_scg_taxonomy": {
+            "threads": {"type": "int", "default": 5}
+        },
+        "make_anvio_state_file": {
+            "threads": {"type": "int", "default": 2}
+        },
+        "anvi_import_state": {
+            "threads": {"type": "int", "default": 1}
+        },
+        "anvi_import_everything": {
+            "threads": {"type": "int", "default": 2}
+        }
+    }
+}

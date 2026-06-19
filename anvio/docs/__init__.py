@@ -406,7 +406,19 @@ ANVIO_ARTIFACTS ={
         "name": "COLLECTION",
         "type": "TXT",
         "provided_by_anvio": True,
-        "provided_by_user":True
+        "provided_by_user": True
+    },
+    "contig-classification": {
+        "name": "CONTIG CLASSIFICATIONS",
+        "type": "COLLECTION",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "contig-classification-txt": {
+        "name": "CONTIG CLASSIFICATIONS",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
     },
     "genes-of-interest-txt": {
         "name": "GENES OF INTEREST",

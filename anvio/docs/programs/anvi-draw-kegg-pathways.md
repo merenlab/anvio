@@ -76,6 +76,25 @@ Here is a simple example of the output file structure produced with `--name-file
 
 Gene sequences in anvi'o databases can be annotated with KEGG Orthologs (KOs): see %(anvi-run-kegg-kofams)s. A KO indicates functional capabilities of the gene product. KO data from one or more contigs databases or a pan database can be mapped using the `--ko` flag, enabling investigation of the metabolic capabilities of individual organisms or multiple organisms, including community samples. Reactions associated with KOs are colored on the pathway maps.
 
+### From a reaction network JSON file
+
+Pathway maps can be drawn from a reaction network JSON file produced by %(anvi-reaction-network)s or %(anvi-get-metabolic-model-file)s, bypassing the need for a contigs database entirely. This is especially useful with custom enzyme lists — for example, annotations from transcriptomic or proteomic data, or predicted gene content of a last common ancestor.
+
+First, generate the reaction network JSON from an enzymes file:
+
+{{ codestart }}
+anvi-reaction-network --enzymes-txt /path/to/enzymes.txt \
+                      --output-json /path/to/network.json
+{{ codestop }}
+
+Then draw pathway maps directly from that JSON:
+
+{{ codestart }}
+anvi-draw-kegg-pathways --reaction-network-json /path/to/network.json \
+                        --ko \
+                        -o output_maps/
+{{ codestop }}
+
 ### Single contigs database
 
 Here is the basic command to draw KO data from a single %(contigs-db)s.

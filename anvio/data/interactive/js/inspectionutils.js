@@ -366,17 +366,33 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
         category = gene.gene_callers_id;
       }
 
-      if (highlight_gene && gene.gene_callers_id == contig_id)
+      let is_inspected_gene = highlight_gene && gene.gene_callers_id == contig_id;
+      let is_search_match = search_highlighted_genes.includes('' + gene.gene_callers_id);
+      if (is_inspected_gene || is_search_match)
       {
         var offset = 6;
+        // the arrowhead (marker-end) overhangs the gene line's tip by ~6px (markerWidth 2 x
+        // strokeWidth 6, tip at viewBox x=5). without compensating, the box looks flush at the
+        // tip but padded at the flat end. add the overhang on whichever side the arrow is drawn.
+        var arrow_overhang = 6;
+        var has_arrow = (gene.direction == 'r' && gene.start_in_split > _start) ||
+                        (gene.direction == 'f' && gene.stop_in_split  < _stop);
+        var left_pad  = offset + ((has_arrow && gene.direction == 'r') ? arrow_overhang : 0);
+        var right_pad = offset + ((has_arrow && gene.direction == 'f') ? arrow_overhang : 0);
+        // soft solid pale-amber "pill" behind highlighted genes — both the gene being inspected
+        // (gene/context mode) and genes that matched a function search. opaque on purpose: the
+        // inspect-page background is a translucent grey band, so a semi-transparent fill would
+        // blend into it and read as muddy.
         paths.append('svg:rect')
-           .attr('x', start - offset)
-           .attr('width', stop + offset * 2)
+           .attr('x', start - left_pad)
+           .attr('width', stop + left_pad + right_pad)
            .attr('y', y - offset)
            .attr('height', 2 * offset)
-           .attr('fill', 'yellow')
+           .attr('stroke-width', 0)
+           .attr('fill', search_highlight_color)
            .attr('fill-opacity', 1)
-           .attr('stroke-width', 0);
+           .attr('rx', 5)
+           .attr('ry', 5);
       }
 
       // M10 15 l20 0
