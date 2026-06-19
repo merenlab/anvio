@@ -6,9 +6,10 @@ import argparse
 import tempfile
 import numpy as np
 import pandas as pd
+import numpy.typing as npt
 
 from itertools import combinations, product
-from scipy.stats import pearsonr, spearmanr, linregress
+from typing import Union, Iterable, Annotated, TypedDict
 
 import anvio
 import anvio.utils as utils
@@ -33,6 +34,37 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
+
+
+# `Annotated` carries dimensionality metadata that documents the expected array shape but is not
+# enforced by type checkers under numpy 1.24 (numpy 2.x adds first-class shape generics). The
+# aliases keep TypedDict field declarations compact.
+Float1D = Annotated[npt.NDArray[np.float64], '1-D']
+
+
+class AffinityIndexIntermediates(TypedDict):
+    """
+    Per-(genome, sample) quantities exposed by
+    `Affinitizer.get_affinities(..., return_intermediates=True)` and consumed by
+    `Affinitizer.get_isoacceptor_contributions` to decompose each affinity into additive
+    per-isoacceptor contributions without recomputation.
+
+    The affinity is the demand-weighted sum of log-supply over the detected isoacceptors, so each
+    isoacceptor's contribution is `demand(g, i) · log_supply(i)`, and these sum across isoacceptors
+    to `beta(g)` by construction. Shape symbols: `n` is the number of isoacceptors detected for
+    this (genome, sample); `G` is the number of gene/function rows.
+    """
+    anticodons: list[str]      # length n; column order (with modified wobble nt, e.g. ICG, LAT)
+    log_supply: pd.Series      # length n; log2(supply / reference), indexed by anticodon
+    demand: pd.DataFrame       # (G, n); relative codon weights w(g, i), rows=genes, cols=anticodons
+    beta: pd.Series            # length G; affinities, indexed by the genome's gene/function rows
+    se: pd.Series              # length G; affinity standard errors, indexed like beta
+
+
+# `IsoacceptorContributionTables` is the nested return shape of
+# `Affinitizer.get_isoacceptor_contributions`: `{genome_name: {source: {output_key: DataFrame}}}`,
+# where `output_key` is a string like 'LONG-RAW' or 'PER_SAMPLE-NORM-MEAN'.
+IsoacceptorContributionTables = dict[str, dict[str, dict[str, pd.DataFrame]]]
 
 
 run = terminal.Run()
@@ -1375,15 +1407,17 @@ class Affinitizer:
     default_min_isoacceptors = 4
 
     recognized_anticodon_wobble_modifications = ['I', 'L']
-    # Default decoding weights are from Table 2 of dos Reis, Savva, and Wernisch (2004), used in
-    # their tRNA Adaptation Index (tAI) metric: https://doi.org/10.1093/nar/gkh834
+    # Default decoding weights are the bacterial mean wobble s(i,j) values from Table 4 of Sabi and
+    # Tuller (2014, https://doi.org/10.1093/dnares/dsu017). They are bacteria-specific refinements
+    # of the wobble weights in the tRNA Adaptation Index (tAI) of dos Reis, Savva, and Wernisch
+    # (2004, https://doi.org/10.1093/nar/gkh834).
     default_decoding_weights_df = pd.DataFrame([
         [1, 1, 1, 0],
         [1, 1, 0, 1],
-        [1, 0, 1, 0.41],
-        [0, 1, 0.68, 1],
-        [0.9999, 0.28, 1, 0],
-        [0.89, 1, 1, 1]],
+        [1, 0, 1, 0.6294],
+        [0, 1, 0.698, 1],
+        [0.8773, 0.4211, 1, 0],
+        [0.7309, 1, 1, 1]],
         index=['A', 'C', 'G', 'T', 'I', 'L'],
         columns=['A', 'C', 'G', 'T'])
 
@@ -1398,17 +1432,23 @@ class Affinitizer:
             '[pP]roteasom',
             'CD molecule',
             '[eE]ndocytosis',
-            '[eE]xocytosis'
+            '[eE]xocytosis',
             '[aA]rchaea',
             '[pP]hotosynthe'
         ]
     }
 
-    affinity_metric_dict = {
-        'pearson': lambda x, y: pearsonr(x, y)[0],
-        'spearman': lambda x, y: spearmanr(x, y)[0],
-        'dot': np.dot}
-
+    # Parameters for quantifying each isoacceptor's contribution to affinity. 'raw' is the additive
+    # contribution demand(g,i)*log_supply(i) (the contributions sum to the affinity); 'norm' is the
+    # raw contribution divided by SE(affinity) for comparability across (gene, sample) pairs of
+    # differing measurement precision. See `get_isoacceptor_contributions` for the math and the
+    # program artifact for the biological interpretation.
+    contribution_variants = ('raw', 'norm')
+    contribution_aggregations = ('long', 'per_sample', 'per_gene', 'global')
+    contribution_statistics = ('mean', 'abs_mean', 'std')
+    default_contribution_variants = ('raw', 'norm')
+    default_contribution_aggregations = ('long', 'per_sample', 'per_gene', 'global')
+    default_contribution_statistics = ('mean', 'abs_mean')
 
     def __init__(self, args={}, r=run, rq=run_quiet, p=progress, do_sanity_check=True):
         self.args = args
@@ -1417,14 +1457,18 @@ class Affinitizer:
         self.trnaseq_contigs_db_path = A('trnaseq_contigs_db')
         self.seeds_specific_txt_path = A('seeds_specific_txt')
 
+        # The reference (the denominator of the supply ratios) is the geometric mean of relative
+        # abundances over a chosen reference set Q of samples. There are three mutually exclusive
+        # ways to define Q, resolved below into `self.reference_sample_names`:
+        #   reference_sample  : a single sample             -> Q = {that sample}
+        #   reference_samples : an explicit list of samples -> Q = those samples
+        #   reference_mean    : True (a flag)               -> Q = all samples in the input
+        # `analyzed_sample_names` is the (independent) set of samples that receive an affinity;
+        # `sample_names` is the union of Q and the analyzed set -- all samples to load coverage for.
         self.reference_sample_name = A('reference_sample')
-        # `reference_mean` is the raw value handed in: None (sample-reference mode), [] (mean
-        # mode with no explicit subset, i.e. all samples in the input file), or a list of sample
-        # names (mean mode with explicit subset). The test "mean mode is active" is therefore
-        # `self.reference_mean is not None`; the test "subset was given explicitly" is
-        # `bool(self.reference_mean)`.
+        self.reference_samples = A('reference_samples')
         self.reference_mean = A('reference_mean')
-        self.nonreference_sample_names = A('nonreference_samples')
+        self.analyzed_sample_names = A('analyzed_samples')
         self.shared_isoacceptors = A('shared_isoacceptors')
         if self.shared_isoacceptors is None:
             self.shared_isoacceptors = False
@@ -1437,9 +1481,6 @@ class Affinitizer:
 
         self.internal_genomes_path = A('internal_genomes')
         self.external_genomes_path = A('external_genomes')
-
-        self.affinity_type = A('affinity_type')
-        self.affinity_function = Affinitizer.affinity_metric_dict.get(self.affinity_type)
 
         self.seed_assignment = A('seed_assignment')
         self.min_coverage_ratio = A('min_coverage_ratio')
@@ -1507,6 +1548,18 @@ class Affinitizer:
         self.rarefaction_limit = A('rarefaction_limit')
         if self.rarefaction_limit is None:
             self.rarefaction_limit = 0
+
+        # Isoacceptor contribution analysis. The sub-option attributes hold the raw user input
+        # (or None when the user didn't pass the flag); `get_isoacceptor_contributions`
+        # resolves None to its class-level defaults at call time. Preserving None here lets
+        # `sanity_check` distinguish "explicitly passed" from "defaulted" -- needed to reject
+        # sub-options when `save_isoacceptor_contributions` is False.
+        self.save_isoacceptor_contributions = A('save_isoacceptor_contributions')
+        if self.save_isoacceptor_contributions is None:
+            self.save_isoacceptor_contributions = False
+        self.contribution_variants_request = A('contribution_variants')
+        self.contribution_aggregations_request = A('contribution_aggregations')
+        self.contribution_statistics_request = A('contribution_statistics')
 
         self.run = r
         self.run_quiet = rq
@@ -1640,34 +1693,37 @@ class Affinitizer:
             # No object attributes are assigned or modified in `sanity_check`.
             self.sanity_check()
 
-        # Resolve the names of the samples to analyze. In sample-reference mode, `sample_names`
-        # is the reference followed by the non-reference samples (from `--nonreference-samples`
-        # or the full input file). In mean-reference mode, every sample contributes to the
-        # geometric-mean centroid AND receives an affinity column; the subset is taken from
-        # `--reference-mean`'s arguments (or the full input file if used as a bare flag). The
-        # `nonreference_sample_names` attribute is reused as the canonical "samples to analyze"
-        # list under both modes, to minimize downstream churn.
-        if self.reference_mean is not None:
-            if self.reference_mean:
-                self.nonreference_sample_names = list(self.reference_mean)
-            else:
-                self.nonreference_sample_names = pd.read_csv(
-                    self.seeds_specific_txt_path,
-                    sep='\t',
-                    header=0,
-                    skiprows=[1, 2],
-                    usecols=['sample_name'])['sample_name'].unique().tolist()
-            self.sample_names = list(self.nonreference_sample_names)
+        # Resolve the reference set Q (`reference_sample_names`) and the analyzed set
+        # (`analyzed_sample_names`); they are independent. `sample_names` is their union -- every
+        # sample whose coverage must be loaded. `sanity_check` has already validated that exactly
+        # one reference mode is set and that all named samples exist.
+        available_sample_names = pd.read_csv(
+            self.seeds_specific_txt_path,
+            sep='\t',
+            header=0,
+            skiprows=[1, 2],
+            usecols=['sample_name'])['sample_name'].unique().tolist()
+
+        if self.reference_sample_name is not None:
+            self.reference_sample_names = [self.reference_sample_name]
+        elif self.reference_samples:
+            self.reference_sample_names = list(self.reference_samples)
         else:
-            if self.nonreference_sample_names is None:
-                self.nonreference_sample_names = pd.read_csv(
-                    self.seeds_specific_txt_path,
-                    sep='\t',
-                    header=0,
-                    skiprows=[1, 2],
-                    usecols=['sample_name'])['sample_name'].unique().tolist()
-                self.nonreference_sample_names.remove(self.reference_sample_name)
-            self.sample_names = [self.reference_sample_name] + self.nonreference_sample_names
+            # `reference_mean` flag: the reference is the geometric mean over every sample.
+            self.reference_sample_names = list(available_sample_names)
+
+        if self.analyzed_sample_names is None:
+            self.analyzed_sample_names = list(available_sample_names)
+            if self.reference_sample_name is not None:
+                # A sample compared against itself yields a trivial zero ratio, so the single
+                # reference sample is excluded from the analyzed set by default.
+                self.analyzed_sample_names = [
+                    sample_name for sample_name in self.analyzed_sample_names
+                    if sample_name != self.reference_sample_name]
+
+        # `dict.fromkeys` removes duplicates while preserving first-seen order.
+        self.sample_names = list(dict.fromkeys(
+            list(self.reference_sample_names) + list(self.analyzed_sample_names)))
 
         if not self.seek_all_function_sources:
             self.function_sources += \
@@ -1761,19 +1817,20 @@ class Affinitizer:
         # Check for tRNA-seq sample selection.
         filesnpaths.is_file_exists(self.seeds_specific_txt_path)
 
-        if self.reference_mean is not None and self.reference_sample_name:
+        # Exactly one of the three reference modes must define the reference set Q.
+        n_reference_modes = (
+            (self.reference_sample_name is not None) +
+            bool(self.reference_samples) +
+            bool(self.reference_mean))
+        if n_reference_modes == 0:
             raise ConfigError(
-                "`reference_sample` and `reference_mean` are mutually exclusive: use one or the "
-                "other to define the baseline against which isoacceptor abundances are compared.")
-        if self.reference_mean is None and self.reference_sample_name is None:
+                "A reference for the supply ratios must be defined with exactly one of: "
+                "`reference_sample` (a single sample), `reference_samples` (the samples whose "
+                "geometric mean is the reference), or `reference_mean` (use all samples).")
+        if n_reference_modes > 1:
             raise ConfigError(
-                "Either a reference sample (`reference_sample`) or the mean-reference mode "
-                "(`reference_mean`) must be provided.")
-        if self.reference_mean is not None and self.nonreference_sample_names is not None:
-            raise ConfigError(
-                "`nonreference_samples` is for sample-reference mode only. In mean-reference "
-                "mode, pass the sample subset directly to `reference_mean` (no arguments to "
-                "`reference_mean` analyzes every sample in `seeds_specific_txt`).")
+                "`reference_sample`, `reference_samples`, and `reference_mean` are mutually "
+                "exclusive; provide exactly one.")
 
         available_sample_names = pd.read_csv(
             self.seeds_specific_txt_path,
@@ -1782,57 +1839,40 @@ class Affinitizer:
             skiprows=[1, 2],
             usecols=['sample_name'])['sample_name'].unique().tolist()
 
-        if self.reference_sample_name and self.reference_sample_name not in available_sample_names:
-            raise ConfigError(
-                f"The provided reference sample name, '{self.reference_sample_name}', is not found "
-                f"in `seeds_specific_txt`, '{self.seeds_specific_txt_path}', the table of specific "
-                "coverages of tRNA-seq seeds in different samples. Here are the samples provided "
-                f"in that table: {', '.join(sorted(available_sample_names))}")
-
-        # The user-supplied sample list lives in `--reference-mean`'s args when active, otherwise
-        # in `--nonreference-samples`. The validation rules (existence, no duplicates, no
-        # reference inclusion in sample mode) are identical.
-        user_samples = (self.reference_mean if self.reference_mean is not None
-                        else self.nonreference_sample_names)
-        if user_samples:
-            bad_sample_names = set(user_samples).difference(set(available_sample_names))
+        # Validate every explicitly named sample list (reference and analyzed): existence and no
+        # duplicates. The analyzed and reference sets are allowed to overlap.
+        named_sample_lists = {}
+        if self.reference_sample_name is not None:
+            named_sample_lists['reference_sample'] = [self.reference_sample_name]
+        if self.reference_samples:
+            named_sample_lists['reference_samples'] = list(self.reference_samples)
+        if self.analyzed_sample_names is not None:
+            named_sample_lists['analyzed_samples'] = list(self.analyzed_sample_names)
+        for arg_name, sample_list in named_sample_lists.items():
+            bad_sample_names = set(sample_list).difference(set(available_sample_names))
             if bad_sample_names:
                 raise ConfigError(
-                    "The following provided sample names were not found in "
-                    f"`seeds_specific_txt`, '{self.seeds_specific_txt_path}', the table of "
-                    "specific coverages of tRNA-seq seeds in different samples: "
-                    f"{', '.join(sorted(bad_sample_names))}. Here are the samples provided in "
-                    f"that table: {', '.join(sorted(available_sample_names))}")
-            if len(user_samples) != len(set(user_samples)):
+                    f"The following `{arg_name}` names were not found in `seeds_specific_txt`, "
+                    f"'{self.seeds_specific_txt_path}': {', '.join(sorted(bad_sample_names))}. "
+                    f"Available samples: {', '.join(sorted(available_sample_names))}")
+            if len(sample_list) != len(set(sample_list)):
                 raise ConfigError(
-                    "The provided sample list contains duplicates: "
-                    f"{', '.join(sorted(user_samples))}. Each analyzed sample must appear "
-                    "exactly once.")
-            if (self.reference_sample_name and
-                self.reference_sample_name in user_samples):
-                raise ConfigError(
-                    f"Please do not include the reference sample, '{self.reference_sample_name}', "
-                    f"in the subset of sample names: {', '.join(user_samples)}. Sorry for the "
-                    "sclerotic idiocy.")
-            nonreference_sample_names = list(user_samples)
-        else:
-            nonreference_sample_names = list(available_sample_names)
-            if self.reference_mean is None:
-                nonreference_sample_names.remove(self.reference_sample_name)
+                    f"`{arg_name}` contains duplicate sample names: "
+                    f"{', '.join(sorted(sample_list))}.")
 
-        if self.reference_mean is not None:
-            if len(nonreference_sample_names) < 2:
-                raise ConfigError(
-                    "At least two analyzed samples are required in mean-reference mode "
-                    "(`reference_mean`), since the centroid is the geometric mean across samples. "
-                    f"Found in `seeds_specific_txt`, '{self.seeds_specific_txt_path}': "
-                    f"{', '.join(nonreference_sample_names) if nonreference_sample_names else '(none)'}.")
+        # Feasibility: there must be at least one sample left to analyze. This mirrors the
+        # resolution in __init__ (default to all samples, excluding the single reference sample).
+        if self.analyzed_sample_names is not None:
+            effective_analyzed_sample_names = list(self.analyzed_sample_names)
         else:
-            if len(nonreference_sample_names) == 0:
-                raise ConfigError(
-                    "There must be one or more samples beside the reference sample in "
-                    f"`seeds-specific-txt`, '{self.seeds_specific_txt_path}'. Only the reference "
-                    f"sample, '{self.reference_sample_name}', was found.")
+            effective_analyzed_sample_names = [
+                sample_name for sample_name in available_sample_names
+                if self.reference_sample_name is None or sample_name != self.reference_sample_name]
+        if len(effective_analyzed_sample_names) == 0:
+            raise ConfigError(
+                "No samples are left to analyze. With a single `reference_sample` and no "
+                f"`analyzed_samples`, the only sample in '{self.seeds_specific_txt_path}' is "
+                "the reference itself. Provide more samples or specify `analyzed_samples`.")
         ##################################################
 
         # Do basic checks of the combinations of (meta)genomic input arguments.
@@ -2071,14 +2111,90 @@ class Affinitizer:
                 "Unrecognized amino acids were provided to `exclude_amino_acids`: "
                 f"{', '.join(unrecognized_amino_acids)}")
 
-        if self.affinity_type not in Affinitizer.affinity_metric_dict:
-            raise ConfigError(
-                f"An unrecognized value of `affinity_type` was provided, '{self.affinity_type}'. "
-                f"Valid affinity types are: {', '.join(Affinitizer.affinity_metric_dict)}")
+        # Reject contribution sub-options passed without `save_isoacceptor_contributions`, so
+        # the user isn't silently told their request was ignored. Argparse's `nargs='+'` and
+        # `choices=...` already enforce non-empty, in-set values for the CLI path; the
+        # per-element validation below catches typos when the CLI is bypassed (e.g., the user
+        # constructs an `argparse.Namespace` directly).
+        if not self.save_isoacceptor_contributions:
+            contribution_sub_args_provided = []
+            if self.contribution_variants_request is not None:
+                contribution_sub_args_provided.append('contribution_variants')
+            if self.contribution_aggregations_request is not None:
+                contribution_sub_args_provided.append('contribution_aggregations')
+            if self.contribution_statistics_request is not None:
+                contribution_sub_args_provided.append('contribution_statistics')
+            if contribution_sub_args_provided:
+                raise ConfigError(
+                    f"The following contribution-analysis sub-option(s) were provided -- "
+                    f"{', '.join(contribution_sub_args_provided)} -- but "
+                    f"`save_isoacceptor_contributions` was not set. Either request the analysis "
+                    f"explicitly or drop the sub-options.")
+        else:
+            for attr, valid in [
+                ('contribution_variants_request', self.contribution_variants),
+                ('contribution_aggregations_request', self.contribution_aggregations),
+                ('contribution_statistics_request', self.contribution_statistics),
+            ]:
+                requested = getattr(self, attr)
+                if requested is None:
+                    continue
+                unknown = [v for v in requested if v not in valid]
+                if unknown:
+                    raise ConfigError(
+                        f"Unknown value(s) for `{attr[:-len('_request')]}`: "
+                        f"{', '.join(map(repr, unknown))}. Valid choices: "
+                        f"{', '.join(sorted(valid))}.")
 
 
-    def go(self, return_component_tables=False):
-        """Relate changes in tRNA-seq seed abundances to the codon usage of gene functions."""
+    def go(self, return_component_tables: bool = False) -> Union[
+        None,
+        tuple[pd.DataFrame, pd.DataFrame],
+        tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame,
+            Union[IsoacceptorContributionTables, None]]
+    ]:
+        """
+        Relate changes in tRNA-seq seed abundances to the codon usage of gene functions.
+
+        Orchestrates the pipeline end-to-end: builds the isoacceptor abundance-ratio and
+        codon-weight tables, computes the per-(genome, sample) affinities, and -- when
+        `self.save_isoacceptor_contributions` is True -- decomposes each affinity into additive
+        per-isoacceptor contributions. Callers that need the contribution tables (or the
+        upstream component tables) must opt in via `return_component_tables=True`; the default
+        2-tuple return is unchanged regardless of whether contributions were computed.
+
+        Parameters
+        ==========
+        return_component_tables : bool, False
+            If True, the per-genome upstream tables (isoacceptor abundance ratios, isoacceptor codon
+            weights) and the contribution output (per-isoacceptor contribution decomposition dict)
+            are returned alongside the affinity/stderr tables.
+
+        Returns
+        =======
+        None
+            Returned when an upstream filter empties out the affinity inputs -- either
+            `get_isoacceptors` returns no surviving (genome, sample, isoacceptor) rows, or
+            `get_isoacceptor_codon_weights` returns no surviving function or gene rows. A warning is
+            emitted explaining which filter bailed.
+
+        (affinities_df, stderrs_df) : tuple[pandas.core.frame.DataFrame, ...]
+            Returned when `return_component_tables` is False. Same row index and column structure as
+            `get_affinities` produces directly; see its docstring.
+
+        (affinities_df, stderrs_df, isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df,
+            contributions_dict) : tuple[..., 5 elements]
+            Returned when `return_component_tables` is True.
+                isoacceptor_abund_ratios_df : pandas.core.frame.DataFrame
+                    Long-form table built by `get_isoacceptors`.
+                isoacceptor_codon_weights_df : pandas.core.frame.DataFrame
+                    Wide table built by `get_isoacceptor_codon_weights`.
+                contributions_dict : IsoacceptorContributionTables or None
+                    `{genome: {source: {output_key: DataFrame}}}` from
+                    `get_isoacceptor_contributions`; None when
+                    `self.save_isoacceptor_contributions` is False, or when there were no affinity
+                    intermediates to feed it.
+        """
         isoacceptor_abund_ratios_df = self.get_isoacceptors()
         if len(isoacceptor_abund_ratios_df) == 0:
             run.warning("Affinity could not be calculated given the lack of tRNA-seq data passing "
@@ -2093,32 +2209,102 @@ class Affinitizer:
                 f"{'genes' if self.gene_affinity else 'functions'} passing the codon filters.")
             return
 
-        affinities_df, stderrs_df = self.get_affinities(
-            isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df)
+        if self.save_isoacceptor_contributions:
+            affinities_df, stderrs_df, intermediates = self.get_affinities(
+                isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df,
+                return_intermediates=True)
+        else:
+            affinities_df, stderrs_df = self.get_affinities(
+                isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df)
+            intermediates = None
         if len(affinities_df) == 0:
             run.warning(
                 "Affinity could not be calculated despite the presence of the prerequisite "
                 f"filtered tRNA-seq and {'gene' if self.gene_affinity else 'function'} codon "
                 "frequency data.")
 
+        contributions_dict = None
+        if self.save_isoacceptor_contributions and intermediates:
+            contributions_dict = self.get_isoacceptor_contributions(
+                intermediates,
+                variants=self.contribution_variants_request,
+                aggregations=self.contribution_aggregations_request,
+                statistics=self.contribution_statistics_request)
+
         if return_component_tables:
             return (affinities_df, stderrs_df,
-                    isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df)
-        else:
-            return affinities_df, stderrs_df
+                    isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df,
+                    contributions_dict)
+        return affinities_df, stderrs_df
 
+
+    @staticmethod
+    def _choose_ambiguous_seed_genome(sample_genome_coverages, min_coverage_ratio):
+        """
+        Decide which single genome an ambiguous tRNA-seq seed should be assigned to in
+        `--seed-assignment ambiguous_choose` mode, from the summed unambiguous-seed coverage of each
+        candidate genome in each sample.
+
+        A seed is assigned to a genome only if that genome dominates *consistently*: in every sample
+        that carries any unambiguous coverage among the candidate genomes, the same genome must have
+        the highest unambiguous coverage and must exceed the runner-up genome by at least
+        `min_coverage_ratio` (a runner-up with zero coverage, including the single-candidate case,
+        counts as domination). If any such sample favors a different genome or fails the ratio, the
+        seed is too ambiguous to assign. Samples in which no candidate genome has unambiguous
+        coverage are uninformative and ignored.
+
+        Parameters
+        ==========
+        sample_genome_coverages : dict
+            {trnaseq_sample_name: {genome_name: summed unambiguous discriminator_1 coverage}}, over
+            the candidate genomes the ambiguous seed maps to, for samples in which at least one
+            input genome has unambiguous coverage.
+        min_coverage_ratio : float
+            Minimum ratio of the leading candidate's coverage to the runner-up's for the leader to
+            win a sample.
+
+        Returns
+        =======
+        str or None
+            The chosen genome name, or None if the seed cannot be confidently assigned (no
+            informative sample, the ratio is unmet in some sample, or samples favor different
+            genomes).
+        """
+        chosen_genome_name = None
+        for genome_coverages in sample_genome_coverages.values():
+            if not genome_coverages:
+                continue
+            ranked_coverages = sorted(genome_coverages.items(), key=lambda item: -item[1])
+            top_genome_name, top_coverage = ranked_coverages[0]
+            if top_coverage == 0:
+                # No candidate genome has unambiguous coverage in this sample: uninformative.
+                continue
+            runner_up_coverage = ranked_coverages[1][1] if len(ranked_coverages) > 1 else 0
+            if runner_up_coverage != 0 and top_coverage / runner_up_coverage < min_coverage_ratio:
+                # The leading genome does not sufficiently dominate this sample.
+                return None
+            if chosen_genome_name is None:
+                chosen_genome_name = top_genome_name
+            elif top_genome_name != chosen_genome_name:
+                # Different samples favor different genomes.
+                return None
+        return chosen_genome_name
 
     def get_isoacceptors(self):
         """
-        Get a table of per-genome isoacceptor non-reference/reference abundance ratios to use in
-        affinity calculations. Isoacceptors are groups of tRNA-seq seeds with the same anticodon
-        that are assigned to a genome.
+        Get a table of per-genome isoacceptor sample/reference abundance ratios to use in affinity
+        calculations. Isoacceptors are groups of tRNA-seq seeds with the same anticodon that are
+        assigned to a genome. The reference is the geometric mean of relative abundances over the
+        reference set Q (a single sample, an arbitrary subset, or all samples).
 
         Returns
         =======
         isoacceptor_abund_ratios_df : pandas.core.frame.DataFrame
-            Each row contains genome and isoacceptor information identifying non-reference/reference
-            abundance ratios. This table is "long," with one column of abundance ratio data.
+            A "long" table with one row per (genome, isoacceptor, analyzed sample). Columns:
+            `genome_name`, `decoded_amino_acid`, `anticodon` (effective, with modified wobble
+            nucleotide), `trnaseq_sample_name`, `abundance_ratio` (relative abundance over the
+            reference), and `log_supply_variance` (the Poisson count-noise variance of
+            log2(abundance_ratio), used downstream to compute affinity standard errors).
         """
         # Load data from the tRNA-seq contigs database.
         trnaseq_contigs_db = self.trnaseq_contigs_db_info.load_db()
@@ -2148,12 +2334,6 @@ class Affinitizer:
             # ambiguous matches among the possible subset of genomes input to this program.
             trna_gene_hits_df = trna_gene_hits_df.groupby('seed_gene_callers_id').filter(
                 lambda seed_df: len(seed_df) == 1)
-
-        if self.seed_assignment == 'ambiguous_choose':
-            # The identities of the ambiguous seeds are needed later when choosing genomes.
-            ambiguous_seed_gene_callers_ids = trna_gene_hits_df.groupby(
-                'seed_gene_callers_id').filter(lambda seed_df: len(seed_df) > 1)[
-                    'seed_gene_callers_id'].unique()
 
         # Select seeds matching input genomes. Replace the four columns needed to uniquely identify
         # a genome with a single column of the unique genome name as given in the input.
@@ -2308,8 +2488,13 @@ class Affinitizer:
             # Include ambiguous seeds if they can be assigned to a single genome due to the
             # preponderance of unambiguous seed abundance in that genome compared to the other
             # genomes in which the ambiguous seed is found.
-            unambiguous_hits_df = trna_gene_hits_df.groupby(
-                'seed_gene_callers_id').filter(lambda seed_df: len(seed_df) == 1)
+            # Partition seeds by the number of analyzed (input) genomes they map to: a seed mapping
+            # to a single genome is unambiguous and kept as-is; a seed mapping to several is
+            # ambiguous and is salvaged below only if one genome dominates.
+            n_input_genomes_per_seed = trna_gene_hits_df.groupby(
+                'seed_gene_callers_id')['genome_name'].transform('nunique')
+            unambiguous_hits_df = trna_gene_hits_df[n_input_genomes_per_seed == 1]
+            ambiguous_hits_df = trna_gene_hits_df[n_input_genomes_per_seed > 1]
             unambiguous_coverage_df = unambiguous_hits_df[
                 ['genome_name', 'trnaseq_sample_name', 'discriminator_1']].groupby(
                     ['genome_name', 'trnaseq_sample_name'], as_index=False).aggregate('sum')
@@ -2322,76 +2507,42 @@ class Affinitizer:
                     genome_coverage_dict = unambiguous_coverage_dict[row.trnaseq_sample_name]
                 except KeyError:
                     unambiguous_coverage_dict[row.trnaseq_sample_name] = genome_coverage_dict = {}
-                genome_coverage_dict[genome_name] = row.discriminator_1
+                genome_coverage_dict[row.genome_name] = row.discriminator_1
 
             def choose_genome(ambiguous_seed_df):
-                # First, for each genome/tRNA-seq sample in which the ambiguous seed is found
-                # ("select" genomes), retrieve the summed unambiguous coverage from
-                # `unambiguous_coverage_dict`. Note that the ambiguous seed may be found in genomes
-                # for which there is zero unambiguous coverage in the same samples with coverage of
-                # the ambiguous seed -- indeed, it is possible for a genome to have zero unambiguous
-                # coverage in all samples.
-                select_unambiguous_coverage_dict = {}
+                # Build {sample: {candidate genome: summed unambiguous coverage}} for this seed,
+                # restricted to samples in which at least one input genome has unambiguous coverage.
+                # A candidate genome with no unambiguous coverage in a sample contributes 0. The
+                # ambiguous seed may map to genomes that have zero unambiguous coverage in a sample,
+                # and a genome may have zero unambiguous coverage in every sample.
+                sample_genome_coverages = {}
                 for trnaseq_sample_name, sample_df in ambiguous_seed_df.groupby(
                     'trnaseq_sample_name'):
-                    try:
-                        select_genome_coverage_dict = select_unambiguous_coverage_dict[
-                            trnaseq_sample_name]
-                    except KeyError:
-                        select_unambiguous_coverage_dict[trnaseq_sample_name] = \
-                            select_genome_coverage_dict = {}
-                    try:
-                        genome_coverage_dict = unambiguous_coverage_dict[trnaseq_sample_name]
-                    except:
-                        # No input genome whatsoever has coverage of unambiguous seeds in the
-                        # tRNA-seq sample -- the ambiguous seed has coverage in the sample and is
-                        # linked to genomes.
+                    genome_coverage_dict = unambiguous_coverage_dict.get(trnaseq_sample_name)
+                    if genome_coverage_dict is None:
+                        # No input genome has unambiguous coverage in this sample.
                         continue
-                    for genome_id in sample_df.groupby('genome_name').groups.keys():
-                        try:
-                            unambiguous_coverage = genome_coverage_dict[genome_id]
-                        except KeyError:
-                            # The genome does not have coverage of unambiguous seeds in the tRNA-seq
-                            # sample -- there is coverage of the ambiguous seed linked to the
-                            # genome.
-                            unambiguous_coverage = 0
-                        select_genome_coverage_dict[genome_id] = unambiguous_coverage
-                # Second, for each select tRNA-seq sample, find the genome with the highest
-                # unambiguous coverage. If this exceeds the second-highest unambiguous coverage
-                # by the threshold ratio for the same genome in every sample, then the genome is
-                # chosen as the source of the ambiguous seed.
-                samples_lacking_unambiguous_coverage = []
-                chosen_genome_id = ''
-                for trnaseq_sample_name, select_genome_coverage_dict in \
-                    select_unambiguous_coverage_dict.items():
-                    if len(select_genome_coverage_dict) == 0:
-                        samples_lacking_unambiguous_coverage.append(trnaseq_sample_name)
-                        continue
-                    select_genome_unambiguous_coverages = sorted(
-                        select_genome_coverage_dict.items(), key=lambda item: -item[1])
-                    first_unambiguous_coverage = select_genome_unambiguous_coverages[0][1]
-                    second_unambiguous_coverage = select_genome_unambiguous_coverages[0][2]
-                    if second_unambiguous_coverage == 0:
-                        sample_chosen_genome_id = select_genome_unambiguous_coverages[0][0]
-                    elif first_unambiguous_coverage / second_unambiguous_coverage >= \
-                        self.min_coverage_ratio:
-                        sample_chosen_genome_id = select_genome_unambiguous_coverages[0][0]
-                    else:
-                        # The threshold ratio is not met in the sample, so no genome can be chosen
-                        # for the ambiguous seed.
-                        sample_chosen_genome_id = None
-                    if sample_chosen_genome_id != chosen_genome_id:
-                        return ambiguous_seed_df[: 0]
-                    if not chosen_genome_id:
-                        chosen_genome_id = sample_chosen_genome_id
-                return ambiguous_seed_df.set_index('genome_name').loc[
-                    chosen_genome_id].reset_index()
+                    sample_genome_coverages[trnaseq_sample_name] = {
+                        candidate_genome_name: genome_coverage_dict.get(candidate_genome_name, 0)
+                        for candidate_genome_name in sample_df['genome_name'].unique()}
+                chosen_genome_name = self._choose_ambiguous_seed_genome(
+                    sample_genome_coverages, self.min_coverage_ratio)
+                if chosen_genome_name is None:
+                    return ambiguous_seed_df.iloc[:0]
+                return ambiguous_seed_df[
+                    ambiguous_seed_df['genome_name'] == chosen_genome_name]
 
-            ambiguous_hits_df = trna_gene_hits_df[
-                trna_gene_hits_df['seed_gene_callers_id'].isin(ambiguous_seed_gene_callers_ids)]
-            # Retain entries for ambiguous seeds for which a genome could be chosen.
-            ambiguous_hits_df = ambiguous_hits_df.groupby('seed_gene_callers_id').filter(
-                choose_genome)
+            # Retain entries only for ambiguous seeds that could be confidently assigned to a single
+            # genome.
+            chosen_ambiguous_seed_dfs = [
+                choose_genome(seed_df) for _, seed_df in
+                ambiguous_hits_df.groupby('seed_gene_callers_id')]
+            chosen_ambiguous_seed_dfs = [
+                seed_df for seed_df in chosen_ambiguous_seed_dfs if len(seed_df)]
+            if chosen_ambiguous_seed_dfs:
+                ambiguous_hits_df = pd.concat(chosen_ambiguous_seed_dfs, ignore_index=True)
+            else:
+                ambiguous_hits_df = ambiguous_hits_df.iloc[:0]
             trna_gene_hits_df = pd.concat(
                 [unambiguous_hits_df, ambiguous_hits_df], ignore_index=True)
         ##################################################
@@ -2423,38 +2574,32 @@ class Affinitizer:
                 ~isoacceptors_df['effective_anticodon'].isin(self.exclude_modified_anticodons)]
             isoacceptors_df = isoacceptors_df.drop('effective_anticodon', axis=1)
 
-        # Genome-level isoacceptor filter. The threshold differs by reference mode:
-        #   - sample mode: the isoacceptor must have a row in the reference sample whose
-        #     `discriminator_1` clears `min_coverage`.
-        #   - mean mode (default): the mean of `discriminator_1` across the analyzed samples
-        #     must clear `min_coverage`. The mean is taken over `len(self.sample_names)`,
-        #     treating samples without a row for the isoacceptor as zero so that sparsely
-        #     detected isoacceptors get filtered out (a single high-coverage sample shouldn't
-        #     drag in an isoacceptor that other samples barely register).
-        #   - `--shared-isoacceptors` (either mode): every analyzed sample must have a row
-        #     whose `discriminator_1` clears `min_coverage`, so the same set of isoacceptors
-        #     contributes to every sample's regression.
-        sample_names_set = set(self.sample_names)
+        # Genome-level isoacceptor filter, enforcing that the REFERENCE (the denominator of the
+        # supply ratios) is reliable:
+        #   - default: the mean of `discriminator_1` over the reference set Q must clear
+        #     `min_coverage`. The mean is taken over `len(Q)`, treating Q-samples without a row
+        #     for the isoacceptor as zero, so a single high-coverage reference sample cannot drag
+        #     in an isoacceptor the rest of the reference set barely registers. This subsumes the
+        #     classic modes: a single-sample reference (|Q|=1) reduces to "that sample's coverage
+        #     >= min_coverage", and an all-samples reference to "mean over all samples".
+        #   - `--shared-isoacceptors`: every sample to be used -- reference OR analyzed -- must
+        #     clear `min_coverage`, so the same isoacceptor set anchors every sample.
+        reference_set = set(self.reference_sample_names)
+        analyzed_set = set(self.analyzed_sample_names)
+        all_samples_set = set(self.sample_names)
         min_coverage = self.min_coverage
-        n_samples = len(self.sample_names)
+        n_reference_samples = len(self.reference_sample_names)
 
         if self.shared_isoacceptors:
             def passes_genome_iso_filter(iso_df):
                 passing_samples = set(
-                    iso_df.loc[iso_df['discriminator_1'] >= min_coverage,
-                               'trnaseq_sample_name'])
-                return sample_names_set.issubset(passing_samples)
-        elif self.reference_mean is not None:
-            def passes_genome_iso_filter(iso_df):
-                return iso_df['discriminator_1'].sum() / n_samples >= min_coverage
+                    iso_df.loc[iso_df['discriminator_1'] >= min_coverage, 'trnaseq_sample_name'])
+                return all_samples_set.issubset(passing_samples)
         else:
-            reference_sample_name = self.reference_sample_name
             def passes_genome_iso_filter(iso_df):
-                reference_rows = iso_df.loc[
-                    iso_df['trnaseq_sample_name'] == reference_sample_name, 'discriminator_1']
-                if len(reference_rows) == 0:
-                    return False
-                return (reference_rows >= min_coverage).all()
+                reference_coverage = iso_df.loc[
+                    iso_df['trnaseq_sample_name'].isin(reference_set), 'discriminator_1'].sum()
+                return reference_coverage / n_reference_samples >= min_coverage
         isoacceptors_df = isoacceptors_df.groupby(
             ['genome_name', 'decoded_amino_acid', 'anticodon']).filter(
                 passes_genome_iso_filter)
@@ -2473,75 +2618,66 @@ class Affinitizer:
         # Drop data for genomes in tRNA-seq samples lacking a minimum isoacceptor diversity.
         isoacceptors_df = isoacceptors_df.groupby(['genome_name', 'trnaseq_sample_name']).filter(
             lambda genome_sample_df:
-                genome_sample_df['anticodon'].nunique() > self.min_isoacceptors)
+                genome_sample_df['anticodon'].nunique() >= self.min_isoacceptors)
 
-        if self.reference_mean is None:
-            # In sample-reference mode, drop genomes whose reference sample didn't survive the
-            # genome+sample diversity filter; otherwise we'd have no denominator for the ratios.
-            isoacceptors_df = isoacceptors_df.groupby('genome_name').filter(
-                lambda genome_df: self.reference_sample_name in genome_df['trnaseq_sample_name'].values)
         ##################################################
 
-        # Create a table of per-sample isoacceptor abundance ratios. The denominator is either
-        # the reference sample's `relative_discriminator_coverage` (sample mode) or the geometric
-        # mean of `relative_discriminator_coverage` across the surviving samples for the
-        # isoacceptor in the genome (mean mode). The log-ratios under the geometric-mean
-        # centroid sum to zero across samples per isoacceptor, the centered-log-ratio property
-        # from compositional data analysis. All retained isoacceptors have a positive denominator
-        # under both modes, so the ratio is well-defined.
+        # Build the per-(analyzed sample) isoacceptor abundance ratios, plus the measurement
+        # variance of each log2 ratio. For each genome and isoacceptor, the reference (denominator)
+        # is the geometric mean of `relative_discriminator_coverage` over the reference set Q --
+        # specifically the Q-samples in which the isoacceptor survived the filters. Each analyzed
+        # sample's ratio is its relative abundance over that reference. An isoacceptor with no
+        # surviving reference-set sample has no denominator and is skipped.
+
+        # The log-supply x = log2(relative abundance / reference) carries counting noise. Modeling
+        # the discriminator coverage as Poisson, Var(log2 count) = K2 / count with
+        # K2 = (1/ln2)^2 (delta method). The per-sample total used to normalize relative abundance
+        # is a sum over the whole pool -- effectively noiseless and common to all isoacceptors --
+        # so it is neglected. Writing x_s = log2(C_s) - (1/m) Σ_{t in Q} log2(C_t) (+ noiseless
+        # total terms), the variance is, with σ_t² = K2 / C_t and m = |Q|:
+        #     s not in Q : Var(x_s) = σ_s² + (1/m²) Σ_{t in Q} σ_t²
+        #     s in Q     : Var(x_s) = (1 - 1/m)² σ_s² + (1/m²) Σ_{t in Q} σ_t²  -  σ_s²/m²
+        # where the s-in-Q form accounts for C_s appearing in both the sample term and the
+        # reference mean (partial cancellation).
+        K2 = (1.0 / np.log(2)) ** 2
+        iso_key_cols = ['decoded_amino_acid', 'anticodon', 'effective_wobble_nucleotide']
         isoacceptor_abund_ratios_rows = []
         for genome_id, genome_df in isoacceptors_df.groupby('genome_name'):
-            if self.reference_mean is not None:
-                iso_key_cols = ['decoded_amino_acid', 'anticodon', 'effective_wobble_nucleotide']
-                for (decoded_amino_acid,
-                     anticodon,
-                     effective_wobble_nucleotide), iso_df in genome_df.groupby(iso_key_cols):
-                    # Geometric mean across surviving samples for this (genome, isoacceptor).
-                    log_values = np.log(iso_df['relative_discriminator_coverage'].values)
-                    geometric_mean = np.exp(log_values.mean())
-                    for row in iso_df.itertuples(index=False):
-                        isoacceptor_abund_ratios_rows.append((
-                            genome_id,
-                            decoded_amino_acid,
-                            effective_wobble_nucleotide + anticodon[1: ],
-                            row.trnaseq_sample_name,
-                            row.relative_discriminator_coverage / geometric_mean))
-                continue
+            for (decoded_amino_acid,
+                 anticodon,
+                 effective_wobble_nucleotide), iso_df in genome_df.groupby(iso_key_cols):
+                reference_rows = iso_df[iso_df['trnaseq_sample_name'].isin(reference_set)]
+                if len(reference_rows) == 0:
+                    # No reference-set coverage for this isoacceptor -- no denominator.
+                    continue
+                reference_abundance = np.exp(
+                    np.log(reference_rows['relative_discriminator_coverage'].values).mean())
 
-            reference_sample_df = genome_df[
-                genome_df['trnaseq_sample_name'] == self.reference_sample_name]
-            if len(reference_sample_df) == 0:
-                # The genome is not detected in the reference sample, precluding affinity
-                # calculations.
-                continue
-            reference_sample_df = reference_sample_df.set_index(
-                ['decoded_amino_acid', 'anticodon', 'effective_wobble_nucleotide'])
+                # Reference-set count variances, and the variance of log2(reference).
+                m = len(reference_rows)
+                reference_sigma_sq_by_sample = {
+                    name: K2 / count for name, count in zip(
+                        reference_rows['trnaseq_sample_name'], reference_rows['discriminator_1'])}
+                reference_variance = sum(reference_sigma_sq_by_sample.values()) / (m ** 2)
 
-            nonreference_samples_df = genome_df[
-                genome_df['trnaseq_sample_name'] != self.reference_sample_name]
-            if len(nonreference_samples_df) == 0:
-                # The genome is not detected in non-reference samples, precluding affinity
-                # calculations.
-                continue
-
-            for trnaseq_sample_name, nonreference_sample_df in nonreference_samples_df.groupby(
-                'trnaseq_sample_name'):
-                for row in nonreference_sample_df.itertuples(index=False):
-                    reference_isoacceptor_series = reference_sample_df.loc[(
-                        row.decoded_amino_acid,
-                        row.anticodon,
-                        row.effective_wobble_nucleotide)]
-                    reference_abundance = reference_isoacceptor_series[
-                        'relative_discriminator_coverage']
-
-                    isoacceptor_abundance_ratio = \
-                        row.relative_discriminator_coverage / reference_abundance
+                analyzed_rows = iso_df[iso_df['trnaseq_sample_name'].isin(analyzed_set)]
+                for row in analyzed_rows.itertuples(index=False):
+                    sample_sigma_sq = K2 / row.discriminator_1
+                    if row.trnaseq_sample_name in reference_sigma_sq_by_sample:
+                        # Analyzed sample is itself in the reference set: partial cancellation.
+                        a_s = 1.0 - 1.0 / m
+                        log_supply_variance = (
+                            a_s ** 2 * sample_sigma_sq
+                            + reference_variance - sample_sigma_sq / (m ** 2))
+                    else:
+                        log_supply_variance = sample_sigma_sq + reference_variance
                     isoacceptor_abund_ratios_rows.append((
                         genome_id,
-                        row.decoded_amino_acid,
-                        row.effective_wobble_nucleotide + row.anticodon[1: ],
-                        trnaseq_sample_name,
-                        isoacceptor_abundance_ratio))
+                        decoded_amino_acid,
+                        effective_wobble_nucleotide + anticodon[1: ],
+                        row.trnaseq_sample_name,
+                        row.relative_discriminator_coverage / reference_abundance,
+                        log_supply_variance))
         isoacceptor_abund_ratios_df = pd.DataFrame(
             isoacceptor_abund_ratios_rows,
             columns=[
@@ -2549,7 +2685,8 @@ class Affinitizer:
                 'decoded_amino_acid',
                 'anticodon',
                 'trnaseq_sample_name',
-                'abundance_ratio'])
+                'abundance_ratio',
+                'log_supply_variance'])
 
         return isoacceptor_abund_ratios_df
 
@@ -2564,9 +2701,9 @@ class Affinitizer:
         ==========
         isoacceptor_abund_ratios_df : pandas.core.frame.DataFrame
             Each row of this table, returned by `get_isoacceptors`, contains genome and isoacceptor
-            information identifying non-reference/reference abundance ratios. This table is only
-            used to retrieve the isoacceptors identified in the tRNA-seq data: abundance data is not
-            used in any way by this method.
+            information identifying sample/reference abundance ratios. This table is only used to
+            retrieve the isoacceptors identified in the tRNA-seq data: abundance data is not used in
+            any way by this method.
 
         Returns
         =======
@@ -2660,43 +2797,72 @@ class Affinitizer:
         return isoacceptor_codon_weights_df
 
 
-    def get_affinities(self, isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df):
+    def get_affinities(
+        self,
+        isoacceptor_abund_ratios_df: pd.DataFrame,
+        isoacceptor_codon_weights_df: pd.DataFrame,
+        return_intermediates: bool = False
+    ) -> Union[
+        tuple[pd.DataFrame, pd.DataFrame],
+        tuple[pd.DataFrame, pd.DataFrame, dict[tuple[str, str], AffinityIndexIntermediates]]
+    ]:
         """
-        Calculate affinities of tRNA isoacceptors for functions or genes in each genome, along with
-        standard errors of the regression slope used as the affinity.
+        Calculate the affinity of each function or gene for the tRNA pool in each analyzed sample.
+
+        The affinity is the demand-weighted average log-supply -- the uncentered tRNA-adaptation
+        index expressed as a log2 ratio to the reference:
+
+            affinity(g, s) = Σ_i  w(g, i) · log2(supply(i, s) / reference(i))
+
+        summed over the isoacceptors `i` detected in sample `s`, where `w(g, i)` is the relative
+        codon weight (demand) of function/gene `g` for isoacceptor `i`, normalized over all
+        isoacceptors. Equivalently, `2 ** affinity` is the ratio of the gene's measured
+        expression-based tAI in the sample to its expression-based tAI in the reference.
+        Isoacceptors not detected in a sample are omitted, i.e. treated as unchanged from the
+        reference.
 
         Parameters
         ==========
         isoacceptor_abund_ratios_df : pandas.core.frame.DataFrame
-            Each row of this table, returned by `get_isoacceptors`, contains genome and isoacceptor
-            information identifying non-reference/reference abundance ratios.
+            Each row, from `get_isoacceptors`, gives a (genome, isoacceptor, analyzed sample)
+            abundance ratio: the isoacceptor's relative abundance in the sample over its reference.
+
         isoacceptor_codon_weights_df : pandas.core.frame.DataFrame
-            This table of isoacceptor codon weights has rows representing functions (or genes) in
-            input genomes and columns representing each isoacceptor identified in the tRNA-seq data
-            regardless of genome source.
+            Isoacceptor codon weights with rows representing functions (or genes) and columns the
+            isoacceptors detected in the tRNA-seq data, regardless of genome source.
+
+        return_intermediates : bool, False
+            If True, also return a dict keyed by (genome_name, trnaseq_sample_name) with the
+            per-(genome, sample) quantities consumed by `get_isoacceptor_contributions` (the demand
+            weights and log-supply that the affinity sums over).
 
         Returns
         =======
         affinities_df : pandas.core.frame.DataFrame
-            The row index columns of the affinity table are, in order, genome name, function source,
-            function accession, function name -- or, if genes are analyzed, there are no function
-            indices, but a gene callers ID index column. Columns are isoacceptor anticodons, with
-            modified wobble nucleotide if applicable (e.g., ICG, LAT).
+            Affinities with a row index of genome name plus function source/accession/name (or, in
+            gene mode, a gene_caller_id index) and one column per analyzed tRNA-seq sample.
+
         stderrs_df : pandas.core.frame.DataFrame
-            Standard errors of the regression slope, aligned 1:1 with `affinities_df` (same row
-            index and column structure). When the number of isoacceptors used in a regression is
-            two or fewer, the standard error is reported as NaN, since the slope has zero or
-            undefined residual degrees of freedom.
+            Standard errors of the affinity, aligned 1:1 with `affinities_df`, computed from the
+            discriminator coverage counts: SE(g, s) = sqrt(Σ_i demand(g, i)² · Var(x_i)), where
+            Var(x_i) is the Poisson count-noise variance of the log2 supply ratio (including the
+            reference samples' counts), supplied per isoacceptor by `get_isoacceptors`.
+
+        intermediates : dict, optional
+            Only returned when `return_intermediates` is True. Keyed by
+            (genome_name, trnaseq_sample_name); each value conforms to the
+            `AffinityIndexIntermediates` TypedDict defined at module level.
         """
         isoacceptor_abund_ratios_gb = isoacceptor_abund_ratios_df.groupby('genome_name')
-        relative_isoacceptor_codon_weights_df = isoacceptor_codon_weights_df.div(
+        relative_isoacceptor_codon_weights_df: pd.DataFrame = isoacceptor_codon_weights_df.div(
             isoacceptor_codon_weights_df.sum(axis=1), axis=0)
         relative_isoacceptor_codon_weights_gb = \
             relative_isoacceptor_codon_weights_df.groupby('genome_name')
 
-        filtered_genome_names = []
-        genome_affinities_dfs = []
-        genome_stderrs_dfs = []
+        filtered_genome_names: list[str] = []
+        genome_affinities_dfs: list[pd.DataFrame] = []
+        genome_stderrs_dfs: list[pd.DataFrame] = []
+        intermediates: dict[tuple[str, str], AffinityIndexIntermediates] = {}
         for genome_name in self.genome_info_dict:
             try:
                 genome_isoacceptor_abund_ratios_df = isoacceptor_abund_ratios_gb.get_group(
@@ -2711,63 +2877,62 @@ class Affinitizer:
                 filtered_genome_names.append(genome_name)
                 continue
 
-            sample_affinities_dict = {}
-            sample_stderrs_dict = {}
+            sample_affinities_dict: dict[str, pd.Series] = {}
+            sample_stderrs_dict: dict[str, pd.Series] = {}
             for trnaseq_sample_name, sample_isoacceptor_abund_ratios_df in \
                 genome_isoacceptor_abund_ratios_df.groupby('trnaseq_sample_name'):
-                # For each function or gene in the genome, regress its relative isoacceptor codon
-                # weights on the log isoacceptor abundance ratios for the sample (ratios are
-                # non-reference/reference in sample mode and sample/geometric-mean in mean mode).
-                # The slope is the affinity; the slope's standard error is also retained.
+                # Initiator tRNAs do not contribute to affinity (their codons were excluded from
+                # the codon-weight table).
+                initiation_filter = sample_isoacceptor_abund_ratios_df[
+                    'decoded_amino_acid'].isin(['iMet', 'fMet'])
+                sample_df = sample_isoacceptor_abund_ratios_df.loc[~initiation_filter].set_index(
+                    'anticodon')
+                abund_ratios = sample_df['abundance_ratio']
+                log_supply_variance = sample_df['log_supply_variance']
 
-                initiation_filter = sample_isoacceptor_abund_ratios_df['decoded_amino_acid'].isin(
-                    ['iMet', 'fMet'])
-                # `get_isoacceptor_codon_weights` should ensure that every anticodon (including
-                # modified wobble nucleotide, if applicable) from the tRNA-seq data is represented
-                # in a column of the weighted codon frequencies table.
-                abund_ratios = sample_isoacceptor_abund_ratios_df.loc[~initiation_filter][
-                    ['anticodon', 'abundance_ratio']].set_index('anticodon')['abundance_ratio']
-
+                # Drop isoacceptors whose codons are not decoded in the analyzed functions/genes:
+                # they carry no demand weight and contribute nothing to affinity.
                 missing_anticodons = list(abund_ratios.index.difference(
                     genome_relative_isoacceptor_codon_weights_df.columns))
                 abund_ratios = abund_ratios.drop(missing_anticodons)
+                log_supply_variance = log_supply_variance.drop(missing_anticodons)
                 if missing_anticodons:
                     self.run.warning(
                         "tRNA isoacceptors with the following anticodons do not have any codons to "
                         f"decode in analyzed {'genes' if self.gene_affinity else 'functions'} from "
                         f"the genome, '{genome_name}', and therefore do not contribute to "
                         f"affinity: {', '.join(missing_anticodons)}")
+                if len(abund_ratios) == 0:
+                    # No isoacceptors left for this (genome, sample); it receives no affinity.
+                    continue
 
-                # Linearize abundance ratios.
-                log_abund_ratios = np.log2(abund_ratios.values)
-                # Standard error of the slope is undefined when residual degrees of freedom <= 0.
-                insufficient_dof = len(log_abund_ratios) <= 2
+                # Affinity = demand-weighted sum of log2 supply ratios over the detected
+                # isoacceptors: affinity(g) = Σ_i demand(g, i) · log2(ratio_i). `demand_df` rows are
+                # genes/functions, columns the detected anticodons in `abund_ratios` order.
+                log_supply: Float1D = np.log2(abund_ratios.values)
+                demand_df: pd.DataFrame = genome_relative_isoacceptor_codon_weights_df[
+                    abund_ratios.index]
+                beta_series = pd.Series(demand_df.values @ log_supply, index=demand_df.index)
+                # SE(affinity_g) = sqrt(Σ_i demand(g, i)² · Var(x_i)): demand is exact and the x_i
+                # are independent across isoacceptors (independent counts; the per-sample total is
+                # treated as noiseless), so the variances add in quadrature with squared weights.
+                affinity_variance = (demand_df.values ** 2) @ \
+                    log_supply_variance[abund_ratios.index].values
+                se_series = pd.Series(np.sqrt(affinity_variance), index=demand_df.index)
+                sample_affinities_dict[trnaseq_sample_name] = beta_series
+                sample_stderrs_dict[trnaseq_sample_name] = se_series
 
-                regression_results = \
-                    genome_relative_isoacceptor_codon_weights_df[abund_ratios.index].apply(
-                        lambda relative_isoacceptor_codon_weights:
-                            linregress(log_abund_ratios, relative_isoacceptor_codon_weights),
-                        axis=1)
+                if return_intermediates:
+                    intermediates[(genome_name, trnaseq_sample_name)] = {
+                        'anticodons': list(demand_df.columns),
+                        'log_supply': pd.Series(log_supply, index=demand_df.columns),
+                        'demand': demand_df,
+                        'beta': beta_series,
+                        'se': se_series,
+                    }
 
-                sample_affinities_dict[trnaseq_sample_name] = regression_results.apply(
-                    lambda r: r.slope)
-                if insufficient_dof:
-                    sample_stderrs_dict[trnaseq_sample_name] = regression_results.apply(
-                        lambda r: np.nan)
-                else:
-                    sample_stderrs_dict[trnaseq_sample_name] = regression_results.apply(
-                        lambda r: r.stderr)
-
-                # The old mistaken affinity was the correlation coefficient when it should have been the slope
-                # sample_affinities_dict[trnaseq_sample_name] = \
-                #     genome_relative_isoacceptor_codon_weights_df[abund_ratios.index].apply(
-                #         lambda relative_isoacceptor_codon_weights: self.affinity_function(
-                #             log_abund_ratios, relative_isoacceptor_codon_weights), axis=1)
-
-            genome_affinities_df = pd.DataFrame.from_dict(sample_affinities_dict)
-            genome_stderrs_df = pd.DataFrame.from_dict(sample_stderrs_dict)
-            genome_affinities_dfs.append(genome_affinities_df)
-            genome_stderrs_dfs.append(genome_stderrs_df)
+            genome_affinities_dfs.append(pd.DataFrame.from_dict(sample_affinities_dict))
+            genome_stderrs_dfs.append(pd.DataFrame.from_dict(sample_stderrs_dict))
 
         if filtered_genome_names:
             self.run.info_single(
@@ -2781,7 +2946,420 @@ class Affinitizer:
             affinities_df = pd.DataFrame()
             stderrs_df = pd.DataFrame()
 
+        if return_intermediates:
+            return affinities_df, stderrs_df, intermediates
         return affinities_df, stderrs_df
+
+
+    def get_isoacceptor_contributions(
+        self,
+        intermediates: dict[tuple[str, str], AffinityIndexIntermediates],
+        variants: Iterable[str] = None,
+        aggregations: Iterable[str] = None,
+        statistics: Iterable[str] = None,
+    ) -> 'IsoacceptorContributionTables':
+        """
+        Decompose each affinity into additive per-isoacceptor contributions.
+
+        The affinity is, by construction, the sum over isoacceptors of a per-isoacceptor
+        contribution:
+
+            affinity(g, s) = Σ_i contribution(g, s, i),
+            contribution(g, s, i) = demand(g, i) · log_supply(i)
+
+        where `demand(g, i)` is the relative codon weight of function/gene `g` for isoacceptor `i`
+        and `log_supply(i) = log2(supply(i, s) / reference(i))`. Each contribution is how much
+        isoacceptor i's log supply change, weighted by how much the gene uses it, moves the
+        affinity: positive when a used isoacceptor's supply is above the reference, negative when
+        below, scaled by demand; an isoacceptor the gene barely uses contributes near zero. The
+        contributions sum to the affinity exactly.
+
+        A standard-error-normalized variant
+
+            contribution_norm(g, s, i) = contribution(g, s, i) / SE(affinity(g, s))
+
+        re-expresses each contribution in units of the affinity's standard error, so contributions
+        are comparable across (g, s) pairs of differing measurement precision.
+
+        The demand weights and log-supply are taken from the per-(genome, sample) intermediates
+        produced by `get_affinities(return_intermediates=True)` and are not recomputed here.
+
+        Parameters
+        ==========
+        intermediates : dict
+            Per-(genome, sample) intermediates as returned by
+            `get_affinities(return_intermediates=True)`.
+
+        variants : Iterable[str], optional
+            Subset of {'raw', 'norm'} selecting which forms of the contribution to compute --
+            'raw' for `contribution(g, s, i)` itself (sums to the affinity), 'norm' for
+            `contribution(g, s, i) / SE(affinity(g, s))`. Defaults to
+            `Affinitizer.default_contribution_variants`.
+
+        aggregations : Iterable[str], optional
+            Subset of {'long', 'per_sample', 'per_gene', 'global'} selecting which output
+            tables to produce. 'long' yields the full 3-D table indexed by (g, s, i); the
+            others collapse one or both of `g` and `s` and produce wide tables of statistics
+            across the collapsed dimension(s). Defaults to
+            `Affinitizer.default_contribution_aggregations`.
+
+        statistics : Iterable[str], optional
+            Subset of {'mean', 'abs_mean', 'std'} selecting which statistics to compute for
+            the aggregated levels. Ignored for 'long'. Defaults to
+            `Affinitizer.default_contribution_statistics`.
+
+        Returns
+        =======
+        IsoacceptorContributionTables
+            Nested dict `contributions_dict[genome_name][source][output_key] = pd.DataFrame`,
+            where `source` matches the existing affinity-output organization ('genes' in
+            gene-affinity mode, the function source name otherwise) and `output_key` is a
+            composite tag such as 'LONG-RAW', 'PER_SAMPLE-NORM-MEAN', 'GLOBAL-RAW-ABS_MEAN',
+            'PER_SAMPLE-RESIDUAL-MEAN'.
+
+            Long-format tables (`'LONG-{RAW,NORM}'`) have one row per (g, s, i) with
+            columns: the gene/function index levels, `trnaseq_sample_name`, `anticodon`, and a
+            single value column (`contribution` or `contribution_norm`).
+
+            Aggregated tables (`'{LEVEL}-{VARIANT}-{STATISTIC}'`) are wide with anticodon
+            columns; row indices include `function_source` in function mode so cross-source
+            concatenation by the writer doesn't collide on (genome, sample) or (genome,) keys:
+                per_sample   : (genome_name, [function_source,] trnaseq_sample_name)
+                per_gene     : (genome_name, [function_source, function_accession, function_name])
+                                in function mode, (genome_name, gene_caller_id) in gene mode
+                global       : (genome_name, [function_source]) -- one row per (genome, source)
+        """
+        if variants is None:
+            variants = self.default_contribution_variants
+        if aggregations is None:
+            aggregations = self.default_contribution_aggregations
+        if statistics is None:
+            statistics = self.default_contribution_statistics
+
+        valid_variants = set(self.contribution_variants)
+        valid_aggregations = set(self.contribution_aggregations)
+        valid_statistics = set(self.contribution_statistics)
+
+        variants = list(variants)
+        aggregations = list(aggregations)
+        statistics = list(statistics)
+
+        if not variants:
+            raise ConfigError(
+                "get_isoacceptor_contributions :: at least one contribution variant must be "
+                "requested."
+            )
+        if not aggregations:
+            raise ConfigError(
+                "get_isoacceptor_contributions :: at least one aggregation level must be "
+                "requested."
+            )
+        unknown_variants = [v for v in variants if v not in valid_variants]
+        if unknown_variants:
+            raise ConfigError(
+                f"get_isoacceptor_contributions :: unknown contribution variant(s): "
+                f"{', '.join(unknown_variants)}. Valid choices: "
+                f"{', '.join(sorted(valid_variants))}."
+            )
+        unknown_aggregations = [a for a in aggregations if a not in valid_aggregations]
+        if unknown_aggregations:
+            raise ConfigError(
+                f"get_isoacceptor_contributions :: unknown aggregation level(s): "
+                f"{', '.join(unknown_aggregations)}. Valid choices: "
+                f"{', '.join(sorted(valid_aggregations))}."
+            )
+        aggregated_levels = [a for a in aggregations if a != 'long']
+        if aggregated_levels and not statistics:
+            raise ConfigError(
+                "get_isoacceptor_contributions :: at least one statistic must be requested when an "
+                "aggregated level ('per_sample', 'per_gene', or 'global') is requested."
+            )
+        unknown_statistics = [s for s in statistics if s not in valid_statistics]
+        if unknown_statistics:
+            raise ConfigError(
+                f"get_isoacceptor_contributions :: unknown contribution statistic(s): "
+                f"{', '.join(unknown_statistics)}. Valid choices: "
+                f"{', '.join(sorted(valid_statistics))}."
+            )
+
+        contributions_dict: IsoacceptorContributionTables = {}
+        if not intermediates:
+            return contributions_dict
+
+        # Restructure intermediates from (genome, sample) keys to {genome: {sample: inter}} so each
+        # genome's samples can be processed together. Genomes' genes/functions must obviously be
+        # processed apart from other genomes.
+        by_genome: dict[str, dict[str, AffinityIndexIntermediates]] = {}
+        for (genome_name, sample_name), inter in intermediates.items():
+            by_genome.setdefault(genome_name, {})[sample_name] = inter
+
+        for genome_name, sample_inters in by_genome.items():
+            # Accumulate per-sample long-format chunks for this genome, one list per variant. Chunks
+            # are concatenated below into per-genome long tables, then split by function source, or
+            # put into a single 'genes' bucket in gene-affinity mode.
+            long_pieces = {'raw': [], 'norm': []}
+
+            for sample_name, inter in sample_inters.items():
+                # The affinity decomposes additively across isoacceptors, by construction:
+                #    affinity(g, s) = Σ_i contribution(g, s, i),
+                #    contribution(g, s, i) = demand(g, i) · log_supply(i).
+                # Each contribution is how much isoacceptor i's log supply change, weighted by how
+                # much gene g uses it, moves the affinity; the contributions sum to the affinity
+                # exactly (no orthogonality identity needed). The standard-error-normalized variant
+                # divides by SE(affinity(g, s)) so contributions are comparable across (gene,
+                # sample) pairs of differing measurement precision.
+                demand = inter['demand']            # (G, n) DataFrame; columns are anticodons
+                log_supply = inter['log_supply']    # length n; Series indexed by anticodon
+                se = inter['se']                    # length G; indexed like the genes/functions
+
+                contribution_raw_df = demand.mul(log_supply, axis=1).rename_axis(columns='anticodon')
+
+                if 'raw' in variants:
+                    long_pieces['raw'].append(self._stack_to_long(
+                        contribution_raw_df, sample_name, value_col='contribution'))
+                if 'norm' in variants:
+                    # SE == 0 (perfect fit) or NaN (undefined) yields ±inf or NaN through division;
+                    # the replace below normalizes ±inf to NaN so contribution_norm is consistently
+                    # NaN whenever it is not well-defined.
+                    with np.errstate(divide='ignore', invalid='ignore'):
+                        contribution_norm_df = contribution_raw_df.div(se, axis=0)
+                    contribution_norm_df = contribution_norm_df.replace([np.inf, -np.inf], np.nan)
+                    long_pieces['norm'].append(self._stack_to_long(
+                        contribution_norm_df, sample_name, value_col='contribution_norm'))
+
+            # Concatenate per-sample chunks into one long table per variant for this genome.
+            # Variants that were not requested are kept as empty DataFrames so downstream lookups by
+            # variant key don't have to special-case missing entries.
+            genome_long = {}
+            for variant in variants:
+                pieces = long_pieces[variant]
+                if pieces:
+                    genome_long[variant] = pd.concat(pieces, axis=0, ignore_index=True)
+                else:
+                    genome_long[variant] = pd.DataFrame()
+
+            # Determine sources for splitting outputs. Function mode has a 'function_source' index
+            # level on the residuals (preserved into the stacked long table); gene mode does not, in
+            # which case we put everything under a single 'genes' source key to match the existing
+            # affinity-output organization.
+            if self.gene_affinity:
+                source_groups = [('genes', genome_long)]
+            else:
+                # Use whichever variant DataFrame is non-empty to enumerate sources; all variants
+                # share the same source set. If every variant came back empty (e.g. all anticodons
+                # were filtered out for this genome), there's nothing to emit for it.
+                source_enum_df = next(
+                    (df for df in genome_long.values() if not df.empty), None)
+                if source_enum_df is None:
+                    continue
+                source_groups = []
+                for source in source_enum_df['function_source'].unique():
+                    source_dict = {}
+                    for variant, df in genome_long.items():
+                        if df.empty:
+                            source_dict[variant] = df
+                        else:
+                            source_dict[variant] = df[df['function_source'] == source]
+                    source_groups.append((source, source_dict))
+
+            genome_outputs = {}
+            for source, source_long in source_groups:
+                source_outputs = self._build_contribution_tables(
+                    source_long, variants, aggregations, statistics)
+                if source_outputs:
+                    genome_outputs[source] = source_outputs
+
+            if genome_outputs:
+                contributions_dict[genome_name] = genome_outputs
+
+        return contributions_dict
+
+
+    @staticmethod
+    def _stack_to_long(wide_df: pd.DataFrame, sample_name: str, value_col: str) -> pd.DataFrame:
+        """
+        Stack a (G, n) per-(genome, sample) contribution table to long format with a sample column.
+
+        Parameters
+        ==========
+        wide_df : pandas.core.frame.DataFrame
+            A (G, n) contribution matrix for a single (genome, sample). `wide_df.index` carries the
+            gene/function multi-index from the original codon-weights table (`genome_name`,
+            optionally `function_source`/`function_accession`/`function_name` in function mode,
+            or `gene_caller_id` in gene mode); `wide_df.columns` is the anticodons used for this
+            (genome, sample). The column-axis name does not need to be set ahead of time; this
+            function names it `'anticodon'` on its own copy before stacking.
+
+        sample_name : str
+            The tRNA-seq sample name to tag every emitted row with.
+
+        value_col : str
+            Name of the contribution-value column in the returned long table ('contribution' or
+            'contribution_norm').
+
+        Returns
+        =======
+        pandas.core.frame.DataFrame
+            Long-format table with one row per (gene/function row x anticodon). The index is reset;
+            the gene/function row index levels become regular columns, plus an `anticodon` column
+            from the stacked column index, a `trnaseq_sample_name` column equal to `sample_name`,
+            and the `value_col` column holding the contribution values. NaN entries are preserved
+            so the output shape is deterministic across (g, s) pairs that share an isoacceptor set.
+        """
+        # Operate on a renamed column axis without mutating the caller's DataFrame.
+        wide_df = wide_df.rename_axis(columns='anticodon')
+        stacked: pd.DataFrame = wide_df.stack(dropna=False).rename(value_col).reset_index()
+        stacked['trnaseq_sample_name'] = sample_name
+        return stacked
+
+
+    def _build_contribution_tables(
+        self,
+        source_long: dict[str, pd.DataFrame],
+        variants: Iterable[str],
+        aggregations: Iterable[str],
+        statistics: Iterable[str]
+    ) -> dict[str, pd.DataFrame]:
+        """
+        Produce the final {output_key: DataFrame} dict for a single (genome, source) bucket.
+
+        Long-format outputs (`LONG-RAW`, `LONG-NORM`) are the input long table verbatim; aggregated
+        outputs are groupby-aggregations of the long table over either genes, samples, or both,
+        pivoted to wide tables with anticodon columns.
+
+        Parameters
+        ==========
+        source_long : dict[str, pandas.core.frame.DataFrame]
+            Per-variant long tables already filtered to a single (genome, source) bucket. Keys are
+            variant names ('raw' and/or 'norm'); each value is the variant's long table (one row
+            per (gene/function row x sample x anticodon)) or an empty DataFrame if the variant
+            was not requested. Built upstream by `get_isoacceptor_contributions`.
+
+        variants : Iterable[str]
+            Variants to emit, in the same allowed set as `Affinitizer.contribution_variants`.
+
+        aggregations : Iterable[str]
+            Aggregation levels to emit, in the same allowed set as
+            `Affinitizer.contribution_aggregations`.
+
+        statistics : Iterable[str]
+            Statistics to compute on the aggregated levels, in the same allowed set as
+            `Affinitizer.contribution_statistics`. Ignored for the 'long' level.
+
+        Returns
+        =======
+        dict[str, pandas.core.frame.DataFrame]
+            Mapping from output identifier (e.g. 'LONG-RAW', 'PER_SAMPLE-NORM-MEAN',
+            'GLOBAL-RAW-ABS_MEAN') to the corresponding DataFrame. Empty if every requested variant
+            had an empty long table.
+        """
+        outputs: dict[str, pd.DataFrame] = {}
+
+        # Anticodon column ordering: use the union of anticodons across all long pieces, sorted for
+        # deterministic column order in wide outputs.
+        anticodon_set: set[str] = set()
+        for df in source_long.values():
+            if not df.empty:
+                anticodon_set.update(df['anticodon'].unique().tolist())
+        anticodon_universe: list[str] = sorted(anticodon_set)
+
+        for variant in variants:
+            df_long = source_long[variant]
+            if df_long.empty:
+                continue
+            value_col = {'raw': 'contribution', 'norm': 'contribution_norm'}[variant]
+
+            if 'long' in aggregations:
+                outputs[f'LONG-{variant.upper()}'] = df_long.reset_index(drop=True)
+
+            for level in aggregations:
+                if level == 'long':
+                    continue
+                wide_template = self._aggregate_and_pivot(
+                    df_long, value_col, level, statistics, anticodon_universe)
+                for stat, wide in wide_template.items():
+                    outputs[f'{level.upper()}-{variant.upper()}-{stat.upper()}'] = wide
+
+        return outputs
+
+
+    @staticmethod
+    def _aggregate_and_pivot(
+        df_long: pd.DataFrame,
+        value_col: str,
+        level: str,
+        statistics: Iterable[str],
+        anticodon_universe: list[str]
+    ) -> dict[str, pd.DataFrame]:
+        """
+        For one aggregation level, return a dict mapping each requested statistic to its wide
+        (rows x anticodons) DataFrame.
+
+        Parameters
+        ==========
+        df_long : pandas.core.frame.DataFrame
+            Long-format share table for one (genome, source, variant). Must contain `value_col`,
+            an `anticodon` column, and the level-specific grouping columns enumerated below.
+
+        value_col : str
+            Name of the contribution-value column in `df_long` ('contribution' or
+            'contribution_norm').
+
+        level : str
+            Aggregation level: 'per_sample' (collapse over genes), 'per_gene' (collapse over
+            samples), or 'global' (collapse over both). Any other value -- including 'long' --
+            returns an empty dict.
+
+        statistics : Iterable[str]
+            Statistics to compute. Recognized values are 'mean', 'abs_mean', and 'std'; any others
+            are silently skipped.
+
+        anticodon_universe : list[str]
+            Sorted union of anticodons across all variants in this (genome, source) bucket. Used to
+            reindex the columns of every wide output so column order is consistent across statistics
+            and aggregations.
+
+        Returns
+        =======
+        dict[str, pandas.core.frame.DataFrame]
+            Mapping from statistic name to wide DataFrame (rows = the grouping multi-index for the
+            level, columns = `anticodon_universe`). Empty if `level` is not one of the recognized
+            aggregation labels.
+        """
+        # Derive the row-identifier columns from the long table itself, so the grouping is robust
+        # to the actual index level names (e.g. the gene level is named `gene_caller_id`, not
+        # `gene_callers_id`). `bucket_cols` identify the (genome, source) bucket and are kept at
+        # every aggregation level; the remaining id columns are the per-gene/function identifiers,
+        # collapsed by `per_sample`/`global` and kept by `per_gene`. `function_source` stays in the
+        # bucket so the CLI writer's cross-source concatenation does not collide on rows.
+        id_cols = [c for c in df_long.columns
+                   if c not in ('trnaseq_sample_name', 'anticodon', value_col)]
+        bucket_cols = ['genome_name'] + (['function_source'] if 'function_source' in id_cols else [])
+        if level == 'per_sample':
+            group_keys = bucket_cols + ['trnaseq_sample_name', 'anticodon']
+        elif level == 'per_gene':
+            group_keys = id_cols + ['anticodon']
+        elif level == 'global':
+            group_keys = bucket_cols + ['anticodon']
+        else:
+            return {}
+
+        result: dict[str, pd.DataFrame] = {}
+        grouped = df_long.groupby(group_keys, dropna=False)[value_col]
+        for stat in statistics:
+            if stat == 'mean':
+                agg = grouped.mean()
+            elif stat == 'abs_mean':
+                agg = grouped.apply(lambda v: v.abs().mean())
+            elif stat == 'std':
+                agg = grouped.std()
+            else:
+                continue
+            # `agg` has the full group_keys as its index; the last level is 'anticodon'.
+            # Reindex columns to enforce a consistent anticodon order across statistics and
+            # aggregations.
+            result[stat] = agg.unstack('anticodon').reindex(columns=anticodon_universe)
+        return result
 
 
     @staticmethod
