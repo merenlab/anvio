@@ -1959,7 +1959,7 @@ function buildLayersTable(order, settings)
                                    .replace(new RegExp('{option-type-([a-z]*)}', 'g'), '')
                                    .replace(new RegExp('{color}', 'g'), color)
                                    .replace(new RegExp('{color-start}', 'g'), color_start)
-                                   .replace(new RegExp('{color-start-hide}', 'g'), (type!='intensity') ? '; visibility: hidden;' : '')
+                                   .replace(new RegExp('{color-start-hide}', 'g'), (type!='intensity' && center==='') ? '; visibility: hidden;' : '')
                                    .replace(new RegExp('{height}', 'g'), height)
                                    .replace(new RegExp('{min}', 'g'), min)
                                    .replace(new RegExp('{max}', 'g'), max)
@@ -1972,6 +1972,16 @@ function buildLayersTable(order, settings)
 
 
                 $('#tbody_layers').append(template);
+
+                $('#tbody_layers .input-center:last').on('input', function() {
+                    var picker_start = $(this).closest('tr').find('.picker_start');
+                    var layer_type = $(this).closest('tr').find('.type').val();
+                    if ($(this).val() !== '' || layer_type === 'intensity') {
+                        picker_start.css('visibility', 'visible');
+                    } else {
+                        picker_start.css('visibility', 'hidden');
+                    }
+                });
             }
 
         }

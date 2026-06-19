@@ -889,8 +889,9 @@ function clearMinMax(selectbox) {
 function togglePickerStart(selectbox, togglePicker) {
     const $tr = $(selectbox).parent().parent();
     const showPickers = ['intensity', 'line', 'text'].includes(selectbox.value);
+    const hasCenterValue = $tr.find('.input-center').val() !== '';
 
-    if (showPickers) {
+    if (showPickers || hasCenterValue) {
         $tr.find('.picker_start').css('visibility', 'visible');
         if (togglePicker) {
             $tr.find('.picker_end').css('visibility', 'visible');
