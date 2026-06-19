@@ -2371,3 +2371,122 @@ Chart.prototype.showOnly = function(b){
 
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }
+
+function exportInspectSvg() {
+    window.URL = (window.URL || window.webkitURL);
+
+    var prefix = {
+        xmlns: "http://www.w3.org/2000/xmlns/",
+        xlink: "http://www.w3.org/1999/xlink",
+        svg:   "http://www.w3.org/2000/svg"
+    };
+
+    var chartSvgEl = document.querySelector('#chart-container svg');
+    if (!chartSvgEl) {
+        toastr.error('Nothing to export — the chart has not been drawn yet.');
+        return;
+    }
+
+    var chartW = parseFloat(chartSvgEl.getAttribute('width'));
+
+    // getBBox() gives the tight bounding box of rendered content, excluding the large
+    // bottom margin reserved for axis labels. This prevents excess whitespace in the
+    // export when some sample layers are hidden.
+    var contentBox = chartSvgEl.getBBox();
+    var contentBottom = contentBox.y + contentBox.height;
+
+    var contextSvgEl = document.querySelector('#context-container svg');
+    var contextH = contextSvgEl ? parseFloat(contextSvgEl.getAttribute('height')) : 0;
+
+    var titleHeight = 50;
+    var totalH = titleHeight + contentBottom + contextH;
+
+    var merged = document.createElementNS(prefix.svg, 'svg');
+    merged.setAttributeNS(prefix.xmlns, "xmlns",       prefix.svg);
+    merged.setAttributeNS(prefix.xmlns, "xmlns:xlink", prefix.xlink);
+    merged.setAttribute('width', chartW);
+    merged.setAttribute('height', totalH);
+    merged.setAttribute('viewBox', '0 0 ' + chartW + ' ' + totalH);
+
+    var bg = document.createElementNS(prefix.svg, 'rect');
+    bg.setAttribute('width', chartW);
+    bg.setAttribute('height', totalH);
+    bg.setAttribute('fill', 'white');
+    merged.appendChild(bg);
+
+    // Inline the CSS rules that govern axis and brush rendering. Without these,
+    // SVG defaults apply: axis paths get fill:black (looking thick) and the brush
+    // background renders as a solid black box.
+    var defs = document.createElementNS(prefix.svg, 'defs');
+    var style = document.createElementNS(prefix.svg, 'style');
+    style.setAttribute('type', 'text/css');
+    style.textContent = [
+        '.axis path, .axis line { fill: none; stroke: #aaa; shape-rendering: crispEdges; }',
+        'g.context g.axis path { stroke-opacity: 0; }',
+        'g.context g.axis line { stroke-opacity: .5; }',
+    ].join(' ');
+    defs.appendChild(style);
+    merged.appendChild(defs);
+
+    // Title matching the inspect page header: bold split name + " detailed"
+    var title = document.createElementNS(prefix.svg, 'text');
+    title.setAttribute('x', chartW / 2);
+    title.setAttribute('y', '35');
+    title.setAttribute('text-anchor', 'middle');
+    title.setAttribute('font-family', 'Roboto, Helvetica, Arial, sans-serif');
+    title.setAttribute('font-size', '30px');
+    title.setAttribute('font-weight', '300');
+    title.setAttribute('fill', '#666');
+    var boldSpan = document.createElementNS(prefix.svg, 'tspan');
+    boldSpan.setAttribute('font-weight', '700');
+    boldSpan.textContent = page_header;
+    title.appendChild(boldSpan);
+    var restSpan = document.createElementNS(prefix.svg, 'tspan');
+    restSpan.textContent = ' detailed';
+    title.appendChild(restSpan);
+    merged.appendChild(title);
+
+    function appendLayer(svgEl, offsetX, offsetY, stripSelectors) {
+        if (!svgEl) return;
+        var g = document.createElementNS(prefix.svg, 'g');
+        g.setAttribute('transform', 'translate(' + offsetX + ',' + offsetY + ')');
+        var clone = svgEl.cloneNode(true);
+        if (stripSelectors) {
+            stripSelectors.forEach(function(sel) {
+                [].forEach.call(clone.querySelectorAll(sel), function(el) {
+                    el.parentNode.removeChild(el);
+                });
+            });
+        }
+        while (clone.firstChild) {
+            g.appendChild(clone.firstChild);
+        }
+        merged.appendChild(g);
+    }
+
+    // The chart, SNV, sample-title, and highlight layers all share the same screen origin.
+    // The context (gene arrows) is fixed at the bottom of the viewport, so we place it
+    // immediately after the rendered chart content in the exported SVG.
+    // The brush (g.brush) is stripped from the context layer — it is a purely interactive
+    // element and renders as a black box without its stylesheet.
+    appendLayer(chartSvgEl, 0, titleHeight);
+    appendLayer(document.querySelector('#highlight-boxes svg'), 0, titleHeight);
+    appendLayer(document.querySelector('#SNV-boxes svg'), 0, titleHeight);
+    appendLayer(document.querySelector('#sample-titles svg'), 0, titleHeight);
+    appendLayer(contextSvgEl, 0, titleHeight + contentBottom, ['g.brush']);
+
+    var doctype = '<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">';
+    var svgStr = doctype + (new XMLSerializer()).serializeToString(merged);
+
+    var filename = (page_header || 'inspect').replace(/[^a-z0-9]/gi, '_') + '.svg';
+    var url = window.URL.createObjectURL(new Blob([svgStr], { "type": "text\/xml" }));
+    var a = document.createElement("a");
+    document.body.appendChild(a);
+    a.setAttribute("download", filename);
+    a.setAttribute("href", url);
+    a.style["display"] = "none";
+    a.click();
+    document.body.removeChild(a);
+
+    setTimeout(function() { window.URL.revokeObjectURL(url); }, 10);
+}
