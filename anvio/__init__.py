@@ -2264,6 +2264,15 @@ D = {
              'help': "Nodes in an anvi'o pangenome graph database..",
              'type': str}
                 ),
+    'reset-gene-caller-ids': (
+            ['--reset-gene-caller-ids'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, the gene caller ids in the resulting contigs databases will match those "
+                     "in the source contigs databases, so you can trace each gene back to where it came from. "
+                     "If you use this flag, anvi'o will instead reset the gene caller ids so they start from 0 "
+                     "in each output database (which was the historical default behavior)."}
+                ),
     'region-id': (
             ['--region-id'],
             {'metavar': "INT",
