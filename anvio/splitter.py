@@ -454,8 +454,13 @@ class PanBinSplitter(summarizer.PanBin, XSplitter):
         self.progress.new('Splitting "%s"' % self.bin_id)
         self.progress.update('Subsetting the pan database')
 
+        # learn the db variant of the parent pan db so the child db is created with the exact
+        # same set of tables. structure-informed pan dbs carry two extra tables (`gc_tracker`
+        # and `gc_psgc_associations`) that sequence-based ones do not, and the child must match.
+        db_variant = self.summary.p_meta.get('db_variant', constants.pangenome_mode_default)
+
         bin_pan_db = dbops.PanDatabase(self.bin_pan_db_path)
-        bin_pan_db.touch()
+        bin_pan_db.touch(db_variant=db_variant)
 
         # copy-paste tables that will largely stay the same from the parent
         bin_pan_db.db.copy_paste(table_name='self', source_db_path=self.pan_db_path)
@@ -489,6 +494,23 @@ class PanBinSplitter(summarizer.PanBin, XSplitter):
                     t.item_additional_data_table_name: ('item_name', self.split_names),
                     t.pan_gene_clusters_table_name: ('gene_cluster_id', self.split_names),
                 }
+
+        # structure-informed pan dbs have two additional tables that need to be subset as well.
+        # the items displayed in a structure-informed pan db (and thus the contents of
+        # `self.split_names`) are protein structure-informed gene clusters (psgcs), while the
+        # `gc_tracker` table is keyed on the sequence-based gene clusters (gcs) that make up those
+        # psgcs. so we first read the parent's gc <-> psgc associations to learn which gcs belong
+        # to the psgcs in this bin, then use that to subset the `gc_tracker` table.
+        if db_variant == constants.PAN_STRUCTURE_MODE:
+            parent_db = db.DB(self.pan_db_path, None, ignore_version=True, skip_rowid_prepend=True)
+            associations = parent_db.get_table_as_dict(t.pan_gc_psgc_associations_table_name)
+            parent_db.disconnect()
+
+            gc_ids_in_bin = set([gc_id for gc_id, entry in associations.items()
+                                 if entry['protein_structure_informed_gene_cluster_id'] in self.split_names])
+
+            tables[t.pan_gc_psgc_associations_table_name] = ('protein_structure_informed_gene_cluster_id', self.split_names)
+            tables[t.pan_gc_tracker_table_name] = ('gene_cluster_id', gc_ids_in_bin)
 
         self.migrate_data(tables, self.pan_db_path, self.bin_pan_db_path)
 
