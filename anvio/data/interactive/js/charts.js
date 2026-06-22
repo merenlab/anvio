@@ -1723,6 +1723,8 @@ function createCharts(state){
 
     var margin = {top: 20, right: 50, bottom: 150, left: 50};
     var width = VIEWER_WIDTH * .80;
+    chart_margin = margin;
+    chart_content_width = width;
     var chartHeight = 200;
     var height = ((chartHeight + 10) * visible_layers);
     curr_height = height + 10;
@@ -2428,6 +2430,32 @@ function exportInspectSvg() {
         'g.context g.axis line { stroke-opacity: .5; }',
     ].join(' ');
     defs.appendChild(style);
+
+    // Clip path for the chart data area. When the user has zoomed in with the brush,
+    // D3 remaps data outside the visible range to x coordinates that fall outside the
+    // axis boundaries. Without a clipPath the paths overflow the chart frame in the
+    // exported SVG.
+    //
+    // The clip is applied to individual data path elements (path.chart, path.line,
+    // SNV markers) rather than to the whole layer group. This is important because
+    // the y-axis groups live in the same layer group but at x positions outside the
+    // data column — clipping the group would clip the axes too.
+    //
+    // Because each data path element sits inside a chartContainer group that is
+    // already translated by margin.left in x, the clip rect uses x=0 (not
+    // x=margin.left). When SVG evaluates the clip, x=0 in the clip path definition
+    // resolves to x=margin.left in the merged SVG coordinate system — exactly the
+    // left edge of the data column.
+    var clipPath = document.createElementNS(prefix.svg, 'clipPath');
+    clipPath.setAttribute('id', 'inspect-chart-clip');
+    var clipRect = document.createElementNS(prefix.svg, 'rect');
+    clipRect.setAttribute('x', 0);
+    clipRect.setAttribute('y', -9999);
+    clipRect.setAttribute('width', chart_content_width || (chartW - 100));
+    clipRect.setAttribute('height', 99999);
+    clipPath.appendChild(clipRect);
+    defs.appendChild(clipPath);
+
     merged.appendChild(defs);
 
     // Title matching the inspect page header: bold split name + " detailed"
