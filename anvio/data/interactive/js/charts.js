@@ -65,6 +65,8 @@ var order_gene_colors_by_count = true;
 var indel_sequences = {};
 var indel_sequence_counter = 0;
 var indel_sequence_preview_length = 60;
+var chart_margin;
+var chart_content_width;
 
 
 function escape_html(value) {
