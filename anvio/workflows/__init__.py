@@ -54,8 +54,6 @@ r = errors.remove_spaces
 
 workflow_config_version = versions_for_db_types['config']
 
-from anvio.constants import LR_TECHNOLOGY_MAP as LR_TECHNOLOGY_MAP
-
 
 class WorkflowSuperClass:
     def __init__(self):
@@ -200,13 +198,13 @@ class WorkflowSuperClass:
         """
         # maps workflow class names to their workflow directory names
         workflow_class_name_map = {
-            'ContigsDBWorkflow':      'contigs',
-            'PhylogenomicsWorkflow':  'phylogenomics',
-            'PangenomicsWorkflow':    'pangenomics',
-            'MetagenomicsWorkflow':   'metagenomics',
-            'TRNASeqWorkflow':        'trnaseq',
-            'EcoPhyloWorkflow':       'ecophylo',
-            'SRADownloadWorkflow':    'sra_download',
+            'ContigsDBWorkflow': 'contigs',
+            'PhylogenomicsWorkflow': 'phylogenomics',
+            'PangenomicsWorkflow': 'pangenomics',
+            'MetagenomicsWorkflow': 'metagenomics',
+            'TRNASeqWorkflow': 'trnaseq',
+            'EcoPhyloWorkflow': 'ecophylo',
+            'SRADownloadWorkflow': 'sra_download',
         }
 
         merged = {'general_params': {}, 'rules': {}}

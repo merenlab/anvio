@@ -74,11 +74,7 @@ class ReadRecruitmentModule(WorkflowSuperClass):
         })
 
     def get_minimap2_preset(self, readset_id):
-        """Return the minimap2 preset for this readset.
-
-        Uses lr_technology if available, otherwise falls back to the config value.
-        Subclasses (e.g. QCModule) override this to use LR_TECHNOLOGY_MAP.
-        """
+        """Return the minimap2 preset from the config (same for every readset)."""
         return self.get_param_value_from_config(['minimap2', 'preset'])
 
     def get_sr_readset_ids(self):

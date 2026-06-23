@@ -18,7 +18,7 @@ if M.get_param_value_from_config(["flye", "run"]) and M.has_lr:
         params:
             env_prefix=lambda wildcards: w.get_conda_env_prefix(M, "flye"),
             meta=M.get_rule_param("flye", "--meta"),
-            # Derived from lr_technology in samples.txt — not a config flag.
+            # The single flye read-type flag enabled in the config (e.g. --nano-raw).
             read_type=lambda wildcards: M.get_flye_flag_for_group(wildcards.group),
             additional_params=M.get_param_value_from_config(
                 ["flye", "additional_params"]

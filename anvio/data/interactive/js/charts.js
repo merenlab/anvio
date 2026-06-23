@@ -46,6 +46,12 @@ var charts;
 var brush;
 var inspect_mode;
 var highlightBoxes;
+// gene_callers_id strings (for the inspected split) that matched a function search on the main
+// page. populated in loadAll() from localStorage. see search.js.
+var search_highlighted_genes = [];
+// solid pale-amber soft-pill accent for those genes — opaque so it never blends with the
+// translucent grey band behind the gene arrows, and a quiet contrast to the green gene arrows.
+var search_highlight_color = '#F7DFBB';
 var indels_enabled;
 var show_nucleotides = true;
 var maxNucleotidesInWindow = 300;
@@ -152,6 +158,18 @@ function loadAll() {
     contig_id = getParameterByName('id');
     highlight_gene = getParameterByName('highlight_gene') === 'true';
     gene_mode = getParameterByName('gene_mode') === 'true';
+
+    // if this split was highlighted on the main page via a function (annotation) search, mark the
+    // matching genes so the user doesn't have to click every gene to find them. in gene_mode
+    // `contig_id` is a gene id rather than a split name, so this is a no-op there.
+    if (!gene_mode) {
+        try {
+            let shg = JSON.parse(localStorage.search_highlighted_genes || '{}');
+            if (shg[contig_id]) {
+                search_highlighted_genes = shg[contig_id].map(x => '' + x);
+            }
+        } catch (e) { /* malformed or absent key: feature stays inactive */ }
+    }
 
     state = typeof localStorage.state === 'undefined' ? {} : JSON.parse(localStorage.state);
 
