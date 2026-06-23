@@ -2418,9 +2418,9 @@ function exportInspectSvg() {
     bg.setAttribute('fill', 'white');
     merged.appendChild(bg);
 
-    // Inline the CSS rules that govern axis and brush rendering. Without these,
-    // SVG defaults apply: axis paths get fill:black (looking thick) and the brush
-    // background renders as a solid black box.
+    // Inline the CSS rules that govern axis rendering. Without these, axis paths
+    // get fill:black (looking thick). Brush rects are handled via explicit attributes
+    // below (after appendLayer) so we don't rely on CSS for their fill/visibility.
     var defs = document.createElementNS(prefix.svg, 'defs');
     var style = document.createElementNS(prefix.svg, 'style');
     style.setAttribute('type', 'text/css');
@@ -2503,14 +2503,14 @@ function exportInspectSvg() {
         merged.appendChild(g);
     }
 
-    // The chart, SNV, sample-title, and highlight layers all share the same screen origin.
-    // The context (gene arrows) is fixed at the bottom of the viewport, so we place it
-    // immediately after the rendered chart content in the exported SVG.
-    // The brush (g.brush) is stripped from the context layer — it is a purely interactive
-    // element and renders as a black box without its stylesheet.
-    appendLayer(chartSvgEl, 0, titleHeight);
+    // Clip is applied to specific data path elements only, not to the whole layer group.
+    // This keeps the y-axis groups (which live outside the data column in x) unclipped.
+    // Sample titles sit in the left margin and must not be clipped.
+    // The context layer (gene arrows) is already filtered to the visible range by
+    // drawArrows() and does not need clipping.
+    appendLayer(chartSvgEl, 0, titleHeight, {clipElements: ['path.chart', 'path.line']});
     appendLayer(document.querySelector('#highlight-boxes svg'), 0, titleHeight);
-    appendLayer(document.querySelector('#SNV-boxes svg'), 0, titleHeight);
+    appendLayer(document.querySelector('#SNV-boxes svg'), 0, titleHeight, {clipElements: ['.SNV_text', '.indels_text', '.insertion_size_whisker_stem', '.insertion_size_whisker_cap']});
     appendLayer(document.querySelector('#sample-titles svg'), 0, titleHeight);
     appendLayer(contextSvgEl, 0, titleHeight + contentBottom, ['g.brush']);
 
