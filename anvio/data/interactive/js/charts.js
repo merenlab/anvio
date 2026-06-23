@@ -2476,15 +2476,24 @@ function exportInspectSvg() {
     title.appendChild(restSpan);
     merged.appendChild(title);
 
-    function appendLayer(svgEl, offsetX, offsetY, stripSelectors) {
+    function appendLayer(svgEl, offsetX, offsetY, opts) {
         if (!svgEl) return;
         var g = document.createElementNS(prefix.svg, 'g');
         g.setAttribute('transform', 'translate(' + offsetX + ',' + offsetY + ')');
         var clone = svgEl.cloneNode(true);
-        if (stripSelectors) {
-            stripSelectors.forEach(function(sel) {
+        // remove elements that we don't want in the exported SVG
+        if (opts && opts.strip) {
+            opts.strip.forEach(function(sel) {
                 [].forEach.call(clone.querySelectorAll(sel), function(el) {
                     el.parentNode.removeChild(el);
+                });
+            });
+        }
+        // clip some elements (for instance, can pass the coverage chart here to keep only visible parts of it when zoomed)
+        if (opts && opts.clipElements) {
+            opts.clipElements.forEach(function(sel) {
+                [].forEach.call(clone.querySelectorAll(sel), function(el) {
+                    el.setAttribute('clip-path', 'url(#inspect-chart-clip)');
                 });
             });
         }
