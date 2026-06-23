@@ -2512,7 +2512,33 @@ function exportInspectSvg() {
     appendLayer(document.querySelector('#highlight-boxes svg'), 0, titleHeight);
     appendLayer(document.querySelector('#SNV-boxes svg'), 0, titleHeight, {clipElements: ['.SNV_text', '.indels_text', '.insertion_size_whisker_stem', '.insertion_size_whisker_cap']});
     appendLayer(document.querySelector('#sample-titles svg'), 0, titleHeight);
-    appendLayer(contextSvgEl, 0, titleHeight + contentBottom, ['g.brush']);
+    appendLayer(contextSvgEl, 0, titleHeight + contentBottom);
+
+    // Brush rects: D3 sets inline styles (visibility:hidden on .background, cursor on both)
+    // that prevent correct rendering in standalone SVG viewers. Here we explicitly set the
+    // style so every viewer renders them without needing CSS or opacity compositing.
+    // .background → light grey: composited equivalent of rgba(0,0,0,0.1) over white,
+    //              which is what the live-page CSS actually renders (the lavender rule is
+    //              overridden by a more-specific grey rule in charts.css).
+    // .extent    → slightly darker grey with a stroke border; composited equivalent of
+    //              rgba(0,0,0,0.125) over the background. Shows the zoomed region when
+    //              the user has made a selection.
+    [].forEach.call(merged.querySelectorAll('.brush rect.background'), function(rect) {
+        rect.style.removeProperty('visibility');
+        rect.style.removeProperty('cursor');
+        rect.setAttribute('fill', 'rgb(230,230,230)');
+        // g.x.brush has no transform, so moving rect.background to the first child of the
+        // parent context group keeps it at the same position but paints it before the axis,
+        // letting tick marks render on top of the background rather than behind it.
+        var contextGroup = rect.parentNode.parentNode;
+        contextGroup.insertBefore(rect, contextGroup.firstChild);
+    });
+    [].forEach.call(merged.querySelectorAll('.brush rect.extent'), function(rect) {
+        rect.style.removeProperty('cursor');
+        rect.setAttribute('fill', 'rgb(201,201,201)');
+        rect.setAttribute('stroke', 'rgb(130,130,130)');
+        rect.setAttribute('stroke-width', '1');
+    });
 
     var doctype = '<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">';
     var svgStr = doctype + (new XMLSerializer()).serializeToString(merged);
