@@ -427,6 +427,12 @@ class WorkflowSuperClass:
                 else:
                     os.environ['ANVIO_WORKFLOW_MANIFEST_PATH'] = original_manifest_env_var
 
+                # remove per-rule log subdirectories that were pre-created but never used
+                for rule in self.rules:
+                    rule_log_dir = os.path.join(self.dirs_dict["LOGS_DIR"], rule)
+                    if os.path.isdir(rule_log_dir) and not os.listdir(rule_log_dir):
+                        os.rmdir(rule_log_dir)
+
 
     def dry_run(self, workflow_graph_output_file_path_prefix='workflow'):
         """Not your regular dry run.
