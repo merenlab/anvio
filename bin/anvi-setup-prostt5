@@ -1,0 +1,2 @@
+#!/usr/bin/env python
+exec "$(dirname "$0")/anvio-migration-notification.sh"

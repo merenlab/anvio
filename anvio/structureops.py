@@ -33,6 +33,7 @@ import anvio.drivers.MODELLER as MODELLER
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.dbops import ContigsSuperclass
+from anvio.artifacts.structures_txt import StructuresTxt
 
 J = lambda x, y: os.path.join(x, y)
 
@@ -514,7 +515,7 @@ class StructureSuperclass(object):
                                   "please instead create an external structures file containing only those structures and use that instead."
                                   "Sorry for the inconvenience.")
 
-            genes_of_interest = self.external_structures.content['gene_callers_id']
+            genes_of_interest = self.external_structures.gene_ids()
             return genes_of_interest
 
         # identify the gene caller ids of all genes available
@@ -1915,117 +1916,76 @@ class Structure(object):
         return np.sqrt(np.sum((COM1 - COM2)**2))
 
 
-class ExternalStructuresFile(object):
+class ExternalStructuresFile(StructuresTxt):
+    """Structures-txt loader specialized for the structure-db (single contigs-db) workflow.
+
+    Inherits the generic format / file-existence / extension / duplicate-id checks from
+    StructuresTxt. Adds: gene_callers_id is parsed as int and must exist in the contigs-db
+    with a coding AA sequence; optional integrity test that opens each structure file and
+    confirms its sequence matches the contigs-db record.
+    """
+
+    # The structure-db workflow downstream of this class uses Biopython's PDBParser
+    # via Structure(path), which only handles PDB. We narrow the parent's permissive
+    # whitelist (which also accepts CIF/mmCIF/.gz/.fcz for the foldseek-driven
+    # pangenome path) so the test_integrity step doesn't crash on a format it can't
+    # actually read.
+    ALLOWED_EXTENSIONS = ('.pdb',)
+
     def __init__(self, path, contigs_db_path, lazy=False, p=terminal.Progress(), r=terminal.Run()):
-        """Check the integrity of an external structures file and provide contents as the attribute self.content
+        super().__init__(path, run=r, progress=p)
 
-        Parameters
-        ==========
-        contigs_db_path : str, None
-            The path to the corresponding contigs database.
-        lazy : bool, False
-            If false, each structure file will be opened and the sequence therein will be explicitly compared to
-            the amino acid of the gene callers id found in the contigs database. If True, only superficial checks
-            will be carried out, like making sure the file is tab-delimited and that all files pointed to actually
-            exist.
-        """
-
-        self.run, self.progress = r, p
-
-        self.path = path
         self.contigs_db_path = contigs_db_path
-
         utils.is_contigs_db(self.contigs_db_path)
-        filesnpaths.is_file_tab_delimited(self.path)
 
-        self.content = pd.read_csv(self.path, sep='\t')
-
-        self.is_header_ok()
-        self.is_duplicates()
+        self._cast_ids_to_int()
         self.is_gene_caller_ids_ok()
-        self.is_files_exist()
         if not lazy:
             self.test_integrity()
 
 
+    def _cast_ids_to_int(self):
+        cast = {}
+        for gid, p in self._data.items():
+            try:
+                cast[int(gid)] = p
+            except ValueError:
+                raise ConfigError(f"For the structure-db workflow, every '{self._id_header_seen}' value in "
+                                  f"'{self.path}' must be an integer (it must match a gene_callers_id in the "
+                                  f"contigs database). Got '{gid}' which is not an integer.")
+        self._data = cast
+
+
     def get_structure(self, gene_callers_id):
         """Return Structure object for given gene callers id"""
-
-        path = self.get_path(gene_callers_id)
-        return Structure(path)
-
-
-    def get_path(self, gene_callers_id):
-        """Return Structure object for given gene callers id"""
-
-        result = self.content.loc[self.content['gene_callers_id'] == gene_callers_id, 'path']
-        if result.empty:
-            raise ConfigError(f"Structure.get_path :: Can't find gene callers id '{gene_callers_id}'.")
-        return result.iloc[0]
-
-
-    def is_header_ok(self):
-        headers_proper = ['gene_callers_id', 'path']
-        with open(self.path, 'r') as input_file:
-            headers = input_file.readline().strip().split('\t')
-            missing_headers = [h for h in headers_proper if h not in headers]
-
-            if len(headers) != 2:
-                raise FilesNPathsError("Your external structures file does not contain the right number of columns :/ Here are "
-                                       "what the header columns should be called, in this order: '%s'." % ', '.join(headers_proper))
-
-            if len(missing_headers):
-                raise FilesNPathsError("Your external structures file has the wrong headers. They should be: '%s', not '%s'." % (', '.join(headers_proper), ', '.join(headers)))
-
-        return True
-
-
-    def is_duplicates(self):
-        counts = self.content['gene_callers_id'].value_counts()
-        multiple = counts[counts > 1].index.tolist()
-        if len(multiple):
-            raise FilesNPathsError(f"Only one structure can be assigned to each gene callers id. But the following genes are present "
-                                   f"multiple times in your external structures file: {multiple}")
-
-
-    def is_files_exist(self):
-        """Check that all files pointed to in the file actually exist"""
-        for _, row in self.content.iterrows():
-            gene_callers_id, path = row['gene_callers_id'], row['path']
-            if not filesnpaths.is_file_exists(path, dont_raise=True):
-                raise FilesNPathsError(f"This is kind of an issue. Your external structures file points to the following path: {path}. "
-                                       f"for gene callers id {gene_callers_id}. Well that path is not a file :\\")
-
-        return True
+        return Structure(self.get_path(gene_callers_id))
 
 
     def is_gene_caller_ids_ok(self):
-        """Returns True if all gene_callers_ids in external structures file are in the contigs database and are coding"""
+        """Every gene_callers_id in the file must exist in the contigs database and be coding."""
 
         contigs_db = db.DB(self.contigs_db_path, client_version=None, ignore_version=True)
         table = contigs_db.get_table_as_dataframe('gene_amino_acid_sequences')
-        genes_in_contigs_db_with_aa_seqs = table.loc[table['sequence'] != '', 'gene_callers_id'].tolist()
-        missing_in_contigs = [x for x in self.content['gene_callers_id'] if x not in genes_in_contigs_db_with_aa_seqs]
+        genes_with_aa_seqs = set(table.loc[table['sequence'] != '', 'gene_callers_id'].tolist())
+        missing = [g for g in self._data.keys() if g not in genes_with_aa_seqs]
 
-        if len(missing_in_contigs):
+        if missing:
             raise ConfigError(f"Some gene caller ids in your external structures file are either missing from your contigs database "
                               f"or are non-coding (they have no corresponding amino acid sequence). This is a show stopper. "
-                              f"Here are the gene caller ids: {missing_in_contigs}")
+                              f"Here are the gene caller ids: {missing}")
 
 
     def test_integrity(self):
-        """Parse the sequence contents of each PDB and ensure it matches the sequences in the contigs database"""
+        """Parse the sequence contents of each structure and ensure it matches the contigs-db AA sequence."""
 
-        # Fetch the amino acid sequences found in contigs database
         contigs_db = db.DB(self.contigs_db_path, client_version=None, ignore_version=True)
         table = contigs_db.get_table_as_dataframe('gene_amino_acid_sequences')
         amino_acid_sequences = dict(zip(table['gene_callers_id'], table['sequence']))
 
-        self.progress.new('External structures', progress_total_items=self.content.shape[0])
+        self.progress.new('External structures', progress_total_items=len(self._data))
         self.progress.update('Testing personal integrity')
 
-        for _, row in self.content.iterrows():
-            gene_callers_id, path = row['gene_callers_id'], row['path']
+        for gene_callers_id, path in self._data.items():
             s = Structure(path)
             aa_seq_structure = s.get_sequence()
             aa_seq_contigs = amino_acid_sequences[gene_callers_id]
@@ -2040,4 +2000,5 @@ class ExternalStructuresFile(object):
             self.progress.update(self.progress.msg)
 
         self.progress.end()
+
         return True
