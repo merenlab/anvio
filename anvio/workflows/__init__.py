@@ -164,8 +164,10 @@ class WorkflowSuperClass:
         self.dirs_dict.update(self.config.get("output_dirs", ''))
         self.dirs_dict["LOGS_DIR"] = self.get_workflow_logs_dir()
 
-        # create log dir if it doesn't exist
+        # create log dir and per-rule subdirectories if they don't exist
         os.makedirs(self.dirs_dict["LOGS_DIR"], exist_ok=True)
+        for rule in self.rules:
+            os.makedirs(os.path.join(self.dirs_dict["LOGS_DIR"], rule), exist_ok=True)
 
         # lets check everything
         if not self.this_workflow_is_inherited_by_another:
@@ -424,6 +426,12 @@ class WorkflowSuperClass:
                     os.environ.pop('ANVIO_WORKFLOW_MANIFEST_PATH', None)
                 else:
                     os.environ['ANVIO_WORKFLOW_MANIFEST_PATH'] = original_manifest_env_var
+
+                # remove per-rule log subdirectories that were pre-created but never used
+                for rule in self.rules:
+                    rule_log_dir = os.path.join(self.dirs_dict["LOGS_DIR"], rule)
+                    if os.path.isdir(rule_log_dir) and not os.listdir(rule_log_dir):
+                        os.rmdir(rule_log_dir)
 
 
     def dry_run(self, workflow_graph_output_file_path_prefix='workflow'):
