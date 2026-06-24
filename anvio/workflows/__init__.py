@@ -164,8 +164,10 @@ class WorkflowSuperClass:
         self.dirs_dict.update(self.config.get("output_dirs", ''))
         self.dirs_dict["LOGS_DIR"] = self.get_workflow_logs_dir()
 
-        # create log dir if it doesn't exist
+        # create log dir and per-rule subdirectories if they don't exist
         os.makedirs(self.dirs_dict["LOGS_DIR"], exist_ok=True)
+        for rule in self.rules:
+            os.makedirs(os.path.join(self.dirs_dict["LOGS_DIR"], rule), exist_ok=True)
 
         # lets check everything
         if not self.this_workflow_is_inherited_by_another:
