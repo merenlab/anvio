@@ -1,0 +1,192 @@
+This program aggregates large indels stored in one or more %(profile-db)s `indels` tables across samples, clusters them by sequence similarity, groups events by insertion site, and emits a **loci × samples element-presence matrix** ready for `anvi-interactive --manual`. The intended use is to **track mobile genetic elements** (insertion sequences, ICEs, transposons, etc.) as they appear at, disappear from, or jump between sites across your metagenomic samples.
+
+### Anvi'o philosophy to track mobile elements via indels
+
+A mobile genetic element (MGE) at the same locus across two samples can show up in two complementary ways depending on which sample you happened to use as the reference:
+
+* If the reference has the element here and a sample's reads do not, that sample's reads carry a **deletion** at this position relative to the reference.
+* If the reference does not have the element here and a sample's reads do, that sample's reads carry an **insertion** at this position.
+
+Both events report the same biology, *"the element is or isn't here"*, they just live on opposite sides of the alignment. %(anvi-report-indels)s clusters INS and DEL events together by sequence similarity, then groups them by contig position into loci, so a single MGE family that has moved around shows up as **one cluster spanning multiple loci**, regardless of which side the element happens to sit on in each sample.
+
+Once you visualize the matrix in %(anvi-interactive)s, every cell tells you the same thing on a consistent 0–1 scale: *"what fraction of reads at this locus, in this sample, carry the element?"*.
+
+### Before you run this program
+
+This program reads indel calls that %(anvi-profile)s already wrote to the `indels` table of your %(profile-db)s during read recruitment: **it does not look at BAM files itself**. You therefore need:
+
+* one %(contigs-db)s,
+* one or more %(profile-db)s (single-sample or merged) generated from BAM files mapped against that contigs-db, with indel profiling enabled (the default in %(anvi-profile)s).
+
+The intended input for the most interesting analyses is **long-read mapping** (PacBio HiFi, ONT), because that's where you reliably see kilobase-scale MGEs as single multi-kb CIGAR operations. The tool will run on short-read profile-dbs too, they just rarely contain indels long enough to be interesting MGE candidates.
+
+### A simple example
+
+If you have a single merged %(profile-db)s and the contigs-db it was built from:
+
+{{ codestart }}
+anvi-report-indels -c %(contigs-db)s \
+                   -p %(profile-db)s \
+                   -o MGE_OUTPUT
+{{ codestop }}
+
+You can also pass several single-sample profile-dbs:
+
+{{ codestart }}
+anvi-report-indels -c %(contigs-db)s \
+                   -p sample-01-PROFILE/PROFILE.db \
+                   -p sample-02-PROFILE/PROFILE.db \
+                   -p sample-03-PROFILE/PROFILE.db \
+                   -o MGE_OUTPUT
+{{ codestop }}
+
+…or list them in a file (one path per line, blank lines and `#` comments ignored):
+
+{{ codestart }}
+anvi-report-indels -c %(contigs-db)s \
+                   --profile-dbs-file profile_dbs.txt \
+                   -o MGE_OUTPUT
+{{ codestop }}
+
+### Filtering which indel rows to consider
+
+`--min-length` (default `500`) sets the minimum indel size in bp. Anything shorter is ignored. Drop it (`--min-length 100`) to also report shorter structural variants; raise it to focus on really big elements only.
+
+`--max-length` is optional; by default there is no upper bound.
+
+`--event-type` lets you keep only insertions (`INS`), only deletions (`DEL`), or both (the default). The element-presence semantics described below still apply: in `DEL`-only mode you only see one side of the story.
+
+### Clustering indel sequences into elements
+
+Indel sequences are clustered with `mmseqs2 easy-cluster` so that two indels carrying the same MGE collapse into one **element** (= one cluster). DEL sequences are reconstructed on the fly from the %(contigs-db)s, since the indels table only stores read-side sequence (i.e. INS sequence); a 435 bp DEL is recovered as `source[pos:pos+435]`.
+
+By default, identity is **length-tiered**: shorter elements need tighter sequence identity to cluster, longer ones tolerate more divergence (the natural anchor of homology grows with length):
+
+| Tier  | Length range    | Minimum identity |
+|-------|-----------------|------------------|
+| short | 500 bp – 1 kb   | 0.95             |
+| mid   | 1 – 5 kb        | 0.90             |
+| long  | > 5 kb          | 0.85             |
+
+Use `--min-identity 0.9` (or whatever fraction in (0, 1]) to override the tiered defaults with one global value. `--min-coverage` controls the mmseqs2 coverage threshold (default 0.8 = 80%% of the shorter sequence must align).
+
+For very short sequences (under the mmseqs2 nucleotide k-mer size of 15 bp), %(anvi-report-indels)s automatically falls back to **exact-match clustering**, useful for tiny test datasets but rarely relevant once `--min-length` is at its default of 500.
+
+### From cluster to loci
+
+Within each cluster, events are then grouped by **contig + position window** into loci. Two events on the same contig within `--position-tolerance` bp of each other's running mean are merged into a single locus. The default tolerance is `50` bp, which is comfortably wider than the typical 1–2 bp jitter you see when read aligners place the same biological indel.
+
+Loci where the element is present in fewer than `--min-samples` distinct samples (i.e., fewer than `--min-samples` cells of the locus's matrix row are non-zero) are dropped. The default is `2` to suppress per-sample noise. The count is applied on the **presence side**, so INS-dominant and DEL-dominant loci are treated symmetrically: an INS locus where only one sample carries the element AND a DEL locus where only one sample (often the reference) still has the element are both dropped at the default. Set `--min-samples 1` to keep these singletons (useful for very small test datasets or unusual study designs).
+
+### Filtering low-occurrence elements
+
+`--min-reads-per-element` (default `5`) requires a clustered element to be supported by at least this many reads in total, summed across all member events and samples (both INS-supporting and DEL-supporting reads count). This filter is applied **after** clustering and **before** locus definition, so it cleanly removes elements that the data simply doesn't see often enough to trust, a useful first sanity filter for real metagenomic data where mmseqs2 occasionally produces tiny clusters from noise.
+
+Set it to `1` to disable the filter.
+
+### What the matrix value means
+
+The view-data matrix reports a single, consistent quantity in every cell on a `0`–`1` scale:
+
+> *"the fraction of reads at this locus in this sample that carry the element"*
+
+How that quantity is computed depends on the **locus type** (recorded in the items-additional file as a `locus_type` column with values `INS` or `DEL`, based on which event type dominates within the locus):
+
+* **INS-dominant locus**: the element is missing from the reference at this position, so reads carrying the element produce INS rows in the indels table.
+    * Sample with INS events here → `presence = sum(supporting reads) / coverage at position`.
+    * Sample with no INS event here → `presence = 0.0` (no element in this sample).
+
+* **DEL-dominant locus**: the element *is* in the reference at this position, so reads lacking the element produce DEL rows in the indels table. The DEL allele frequency is therefore the *absence* of the element, and the tool flips it back to presence:
+    * Sample with DEL events here → `presence = 1 - sum(DEL reads) / coverage`.
+    * Sample with no DEL event here → the tool looks the sample up in the auxiliary-data db and checks per-nt coverage over the deleted region. If ≥ 50%% of the region has ≥ 1× coverage (sufficient detection), `presence = 1.0` (the reads simply match the reference and carry the element); otherwise `presence = 0.0` (no coverage, no information).
+
+Take the simplest case: you have three samples, the reference (S01) carries an MGE at one site, S02 has the same MGE at a different site, and S03 has it at a third site. After running %(anvi-report-indels)s, the matrix looks like this (numbers are illustrative):
+
+| item            | S01   | S02   | S03   | locus_type | n_supporting_reads |
+|-----------------|-------|-------|-------|------------|--------------------|
+| locus_00000001  | 1.000 | 0.000 | 0.000 | DEL        | 94                 |
+| locus_00000002  | 0.000 | 0.945 | 0.000 | INS        | 52                 |
+| locus_00000003  | 0.000 | 0.000 | 0.928 | INS        | 64                 |
+
+All three rows belong to the same cluster (the same MGE family), and the matrix shows you at a glance that the element is present once in each sample but at a different site each time.
+
+### Output files
+
+%(anvi-report-indels)s writes five files into `--output-dir`:
+
+```
+MGE_OUTPUT/
+├── INDELS-VIEW-DATA.txt           ← the loci × samples matrix (view-data for anvi-interactive --manual)
+├── INDELS-ITEMS-ADDITIONAL.txt    ← per-locus decoration (cluster id, locus type, contig, position,
+│                                    event-type breakdown, gene-caller-id at the locus, gene function, …)
+├── INDELS-ITEMS-ORDER.newick      ← items-order dendrogram built from the matrix (Ward linkage)
+├── INDELS-LOCI-LONG.txt           ← long-format audit trail: one row per individual indel observation
+│                                    mapped to its cluster and locus
+└── INDELS-CLUSTERS.fa             ← FASTA of representative sequences, one entry per final element
+                                    family (cluster), ready to BLAST / HMM-search downstream
+```
+
+A few decoration columns worth knowing about in `INDELS-ITEMS-ADDITIONAL.txt`:
+
+* `cluster_id`: same value for all loci belonging to one element family.
+* `locus_type`: `INS` or `DEL`, indicating which path produced the matrix values for this row.
+* `n_supporting_reads`: total reads supporting the locus, summed across every member event and every sample (the biologically meaningful read count, robust to anvi-profile splitting one biological event into many unique-sequence rows).
+* `n_events`: how many individual indel rows from the profile-db indels table feed this locus. Inflated by HiFi-error variants; `n_supporting_reads` is usually the more useful number.
+* `n_samples_supporting`: how many distinct samples contributed an event at this locus. Note this is different from the matrix presence count (see `--min-samples`): it counts samples on the *event* side, so DEL-dominant loci where the element survives only in the reference will show this as the number of samples that *lost* the element.
+* `in_orf`, `gene_caller_id`, `gene_function_source`, `gene_function_accession`, `gene_function`: what gene call (if any) overlaps the locus and what function is annotated. Useful for spotting MGE insertions that land in or disrupt a specific gene.
+* `representative_id`: the mmseqs2 cluster representative; the FASTA-style id encodes `idx|sample|contig|pos|type|length`.
+
+`INDELS-LOCI-LONG.txt` lists every accepted indel observation with its `cluster_id`, `locus_id`, sample, position, length, count, coverage, and per-event allele frequency. This is the file to consult when something in the matrix looks odd.
+
+`INDELS-CLUSTERS.fa` carries one FASTA entry per **final cluster** (element families that have at least one locus surviving every filter). Each header captures the cluster identity, length, event-type breakdown, and event/locus/sample counts, while the body is the representative's actual nucleotide sequence (the mmseqs2 cluster representative, or the first member for exact-match singletons):
+
+```
+>C_00000001 length=435 cluster_type=mixed n_supporting_reads=210 n_loci=3 n_samples=2 representative=6|S03|c_000000000001|100434|INS|435
+TTCAAAAAAATGCGTGGGATTGCCCAAGGCATCAGTGGTGGTGTGAATTTTCGTACTTAA
+GCCACCTCTAGAACGACCAATCGCTTCCTGCTCTGCTGAGCTGTGTTTGGCTCCAGCACT
+[...]
+```
+
+This file is meant to be a drop-in input for downstream sequence-level analyses, e.g. BLAST against NCBI or a curated MGE database, HMM scans (ISfinder, IS-family models), translated annotation with %(anvi-run-pfams)s / %(anvi-run-ncbi-cogs)s after gene calling, or simple inspection in an alignment viewer.
+
+### Visualizing with anvi-interactive
+
+The headline use case is to view the matrix in %(anvi-interactive)s in `--manual` mode. The program prints the exact invocation at the end of its run; it looks like:
+
+{{ codestart }}
+anvi-interactive --manual-mode \
+                 -p MGE_OUTPUT/manual-profile.db \
+                 --view-data MGE_OUTPUT/INDELS-VIEW-DATA.txt \
+                 --additional-layers MGE_OUTPUT/INDELS-ITEMS-ADDITIONAL.txt \
+                 --tree MGE_OUTPUT/INDELS-ITEMS-ORDER.newick
+{{ codestop }}
+
+The `manual-profile.db` referenced above is created by %(anvi-interactive)s on first launch; you don't need to make it yourself.
+
+![interactive overview](../../images/anvi-report-indels-01.png)
+
+### Targeting specific event types or thresholds
+
+A handful of common variations on the basic run:
+
+```
+# Insertion-only matrix (skip the DEL flip + auxiliary coverage lookup entirely)
+anvi-report-indels -c contigs.db -p profile.db --event-type INS -o INS_ONLY
+
+# Only very large elements, with a stricter cluster occurrence threshold
+anvi-report-indels -c contigs.db -p profile.db \
+                   --min-length 2000 --min-reads-per-element 20 -o BIG_MGES
+
+# Keep singletons (small test datasets where each event occurs in only one sample)
+anvi-report-indels -c contigs.db -p profile.db --min-samples 1 -o SMALL_TEST
+
+# Loosen clustering with a single global identity to merge slightly divergent variants of an element
+anvi-report-indels -c contigs.db -p profile.db --min-identity 0.85 -o LOOSE_CLUSTERING
+```
+
+### Notes and caveats
+
+* The mmseqs2 binary must be available on your PATH. The program checks for it and exits with a clear error otherwise.
+* Profile-dbs created with `anvi-profile --report-variability-full` retain low-frequency indel rows that would otherwise be filtered out by the default per-coverage statistical test. For long-read data with kilobase-scale events this is often what you want; otherwise the default filter is fine.
+* When you supply multiple profile-dbs, all of them must reference the same %(contigs-db)s (same `contigs_db_hash`). The program refuses to proceed otherwise unless you pass `--just-do-it`.
+* All sample names known to the supplied profile-dbs become columns in the matrix, even those that don't have any indel events: they show as `0.0` (INS-dominant rows) or `1.0` after detection check (DEL-dominant rows).
