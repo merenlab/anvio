@@ -29,6 +29,8 @@ NOTES:
     log:
         rule_log("prefetch", "{accession}_prefetch"),
     threads: M.T("prefetch")
+    resources:
+        nodes=M.T("prefetch"),
     params:
         SRA_OUTPUT_DIR=os.path.join(dirs_dict["SRA_prefetch"]),
         MAX_SIZE=M.get_param_value_from_config(["prefetch", "--max-size"]),
@@ -68,6 +70,8 @@ rule check_md5sum:
     log:
         rule_log("check_md5sum", "{accession}_check_md5sum"),
     threads: M.T("check_md5sum")
+    resources:
+        nodes=M.T("check_md5sum"),
     params:
         md5sum=os.path.join(
             dirs_dict["SRA_prefetch"], "{accession}", "{accession}.json"
@@ -135,6 +139,8 @@ Threads:
     log:
         rule_log("fasterq_dump", "{accession}_fasterq_dump"),
     threads: M.T("fasterq_dump")
+    resources:
+        nodes=M.T("fasterq_dump"),
     params:
         SRA_INPUT_DIR=os.path.join(dirs_dict["SRA_prefetch"], "{accession}"),
         OUTPUT_DIR=dirs_dict["FASTAS"],
@@ -180,6 +186,8 @@ example:
     log:
         rule_log("pigz", "{accession}_pigz"),
     threads: M.T("pigz")
+    resources:
+        nodes=M.T("pigz"),
     params:
         READS=os.path.join(dirs_dict["FASTAS"], "{accession}*.fastq"),
     shell:
@@ -211,6 +219,9 @@ Threads:
         done=touch(os.path.join(dirs_dict["FASTAS"], "generate_samples_txt.done")),
     log:
         rule_log("generate_samples_txt", "generate_samples_txt"),
+    threads: 1
+    resources:
+        nodes=1,
     params:
         ACCESSION=M.accessions_list,
         OUTPUT_DIR=dirs_dict["FASTAS"],

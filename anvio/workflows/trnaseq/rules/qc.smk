@@ -8,6 +8,9 @@ rule make_iu_input:
         ),
     log:
         rule_log("make_iu_input", "make_iu_input"),
+    threads: 1
+    resources:
+        nodes=1,
     run:
         library_num = M.sample_names.index(wildcards.sample_name)
         r1_path = M.r1_paths[library_num]
@@ -29,6 +32,9 @@ rule iu_gen_configs:
         ),
     log:
         rule_log("iu_gen_configs", "iu_gen_configs"),
+    threads: 1
+    resources:
+        nodes=1,
     run:
         out_dir = os.path.join(dirs_dict["QC_DIR"], wildcards.sample_name)
         library_num = M.sample_names.index(wildcards.sample_name)
@@ -60,6 +66,8 @@ rule iu_merge_pairs:
     log:
         rule_log("iu_merge_pairs", "iu_merge_pairs"),
     threads: M.T("iu_merge_pairs")
+    resources:
+        nodes=M.T("iu_merge_pairs"),
     params:
         marker_gene_stringent=M.get_rule_param(
             "iu_merge_pairs", "--marker-gene-stringent"
@@ -119,6 +127,9 @@ rule gen_qc_report:
         report=os.path.join(dirs_dict["QC_DIR"], "qc_report.txt"),  # optional target file that triggers Illumina-utils QC steps
     log:
         rule_log("gen_qc_report", "gen_qc_report"),
+    threads: 1
+    resources:
+        nodes=1,
     run:
         report_dict = {}
         headers = []
