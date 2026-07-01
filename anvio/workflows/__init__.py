@@ -619,6 +619,15 @@ class WorkflowSuperClass:
         else:
             c = self.fill_empty_config_params(self.default_config)
 
+        # `max_threads` is a global general parameter (see `get_global_general_params`) that governs
+        # the total-thread budget for the workflow (it is passed to snakemake as `--cores` and
+        # `--resources nodes`). It is not declared in most workflows' `params.json`, so we make sure
+        # it always shows up in the default config. We only set it when a workflow's schema did not
+        # already provide it, so any workflow-specific default (e.g. trnaseq) is preserved. An empty
+        # string means "unset", which is how `get_max_num_cpus_requested_by_the_workflow` treats it.
+        if 'max_threads' not in c:
+            c["max_threads"] = ''
+
         c["output_dirs"] = self.dirs_dict
         c["config_version"] = workflow_config_version
         c["workflow_name"] = self.name
