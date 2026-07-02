@@ -413,6 +413,21 @@ class WorkflowSuperClass:
         else:
             if max_num_cpus_requested_by_the_workflow:
                 sys.argv.extend(['-p', '--cores', f'{max_num_cpus_requested_by_the_workflow}'])
+
+                # `--cores` only bounds locally-run jobs; jobs dispatched to a cluster via `--cluster`
+                # are not counted against it. Every rule declares `resources: nodes=<threads>`, so we
+                # also pass the same budget as `--resources nodes=N` to cap the total number of threads
+                # in flight across dispatched jobs too. We skip this if the user set `--resources`
+                # themselves via `--additional-params`, in which case their value takes precedence.
+                user_set_resources = self.additional_params and '--resources' in self.additional_params
+                if not user_set_resources:
+                    sys.argv.extend(['--resources', f'nodes={max_num_cpus_requested_by_the_workflow}'])
+                    self.run.info('Total thread budget (--cores & --resources nodes)', max_num_cpus_requested_by_the_workflow)
+                else:
+                    self.run.warning("anvi'o found a `--resources` parameter in your `--additional-params`, so it did "
+                                     "NOT auto-set the `nodes` resource from your config's `max_threads`. Your "
+                                     "`--resources` value takes precedence, and you are responsible for making sure "
+                                     "it includes a sensible `nodes` budget if you are submitting jobs to a cluster.")
             else:
                 sys.argv.extend(['-p'])
             try:
@@ -603,6 +618,15 @@ class WorkflowSuperClass:
                 c[param] = meta['default']
         else:
             c = self.fill_empty_config_params(self.default_config)
+
+        # `max_threads` is a global general parameter (see `get_global_general_params`) that governs
+        # the total-thread budget for the workflow (it is passed to snakemake as `--cores` and
+        # `--resources nodes`). It is not declared in most workflows' `params.json`, so we make sure
+        # it always shows up in the default config. We only set it when a workflow's schema did not
+        # already provide it, so any workflow-specific default (e.g. trnaseq) is preserved. An empty
+        # string means "unset", which is how `get_max_num_cpus_requested_by_the_workflow` treats it.
+        if 'max_threads' not in c:
+            c["max_threads"] = ''
 
         c["output_dirs"] = self.dirs_dict
         c["config_version"] = workflow_config_version
