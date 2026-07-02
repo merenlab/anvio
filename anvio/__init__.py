@@ -2275,9 +2275,17 @@ D = {
     'graph-nodes': (
             ['--graph-nodes'],
             {'metavar': "NODE_1,NODE_2",
-             'required': True,
+             'required': False,
              'help': "Nodes in an anvi'o pangenome graph database..",
              'type': str}
+                ),
+    'region-id': (
+            ['--region-id'],
+            {'metavar': "INT",
+             'required': False,
+             'help': "A region ID from an anvi'o pangenome graph database. The program will resolve the "
+                     "two boundary nodes (by position) of the region and export the loci between them.",
+             'type': int}
                 ),
     'output-file': (
             ['-o', '--output-file'],

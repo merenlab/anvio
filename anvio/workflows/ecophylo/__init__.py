@@ -43,7 +43,9 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                            'anvi_get_external_gene_calls_file',
                            'cat_external_gene_calls_file',
                            'cluster_X_percent_sim_mmseqs',
+                           'anvi_profile_blitz',
                            'subset_AA_seqs_with_mmseqs_reps',
+                           'subset_AA_seqs_with_coverage_reps',
                            'align_sequences',
                            'trim_alignment',
                            'remove_sequences_with_X_percent_gaps',
@@ -59,73 +61,13 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                            'anvi_summarize',
                            'rename_tree_tips',
                            'make_misc_data',
+                           'add_misc_data_to_taxonomy',
                            'anvi_estimate_scg_taxonomy',
                            'make_anvio_state_file',
+                           'anvi_import_state',
                            'anvi_import_everything'
                            ])
 
-        self.general_params.extend(['metagenomes']) # user needs to input a metagenomes.txt file
-        self.general_params.extend(['external_genomes']) # user can add isolate genomes if needed
-        self.general_params.extend(['hmm_list']) # user must input which Reference proteins will be used for workflow
-        self.general_params.extend(['samples_txt']) # user must input which Reference proteins will be used for workflow
-        self.general_params.extend(['cluster_representative_method']) # pick cluster rep based on single profile coverage values
-        self.general_params.extend(['gene_caller_to_use']) # designate gene-caller for all contig-dbs if not default Prodigal
-        self.general_params.extend(['run_genomes_sanity_check']) # run GenomeDescriptions and MetagenomesDescriptions
-        self.general_params.extend(['scg_taxonomy_database_version']) # run GenomeDescriptions and MetagenomesDescriptions
-
-        # Parameters for each rule that are accessible in the config.json file
-        rule_acceptable_params_dict = {}
-
-        rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['threads_genomes', 'threads_metagenomes', 'additional_params']
-        rule_acceptable_params_dict['anvi_run_scg_taxonomy'] = ['run', 'additional_params']
-        rule_acceptable_params_dict['filter_hmm_hits_by_model_coverage'] = ['--min-model-coverage', '--min-gene-coverage', '--filter-out-partial-gene-calls', 'additional_params']
-        rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id', '--cov-mode', 'clustering_threshold_for_OTUs', 'AA_mode', 'additional_params']
-        rule_acceptable_params_dict['align_sequences'] = ['additional_params']
-        rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
-        rule_acceptable_params_dict['remove_sequences_with_X_percent_gaps'] = ['--max-percentage-gaps']
-        rule_acceptable_params_dict['fasttree'] = ['run']
-        rule_acceptable_params_dict['iqtree'] = ['run', '-m', 'additional_params']
-        rule_acceptable_params_dict['run_metagenomics_workflow'] = ['clusterize', 'clusterize_submission_params', 'HPC_string', 'snakemake_additional_params', 'bowtie2_additional_params', 'anvi_profile_min_percent_identity']
-
-        self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
-
-        # Set default values for accessible rules and order of rules in config.json file
-        self.default_config.update({
-            'metagenomes': 'metagenomes.txt',
-            'external_genomes': 'external-genomes.txt',
-            'hmm_list': 'hmm_list.txt',
-            'samples_txt': 'samples.txt',
-            'cluster_representative_method': {'method': 'mmseqs'},
-            'anvi_run_hmms_hmmsearch': {'threads_genomes': 1, 'threads_metagenomes': 5},
-            'anvi_run_scg_taxonomy': {'run': True, 'threads': 2},
-            'anvi_estimate_scg_taxonomy': {'threads': 5},
-            'filter_hmm_hits_by_model_coverage': {'--min-model-coverage': 0.8, '--filter-out-partial-gene-calls': True},
-            'process_hmm_hits': {'threads': 2},
-            'combine_sequence_data': {'threads': 2},
-            'anvi_get_external_gene_calls_file': {'threads': 2},
-            'cat_external_gene_calls_file': {'threads': 2},
-            'cluster_X_percent_sim_mmseqs': {'threads': 5, '--min-seq-id': 0.97, '--cov-mode': 1, 'clustering_threshold_for_OTUs': [0.99, 0.98], 'AA_mode': False},
-            'subset_AA_seqs_with_mmseqs_reps': {'threads': 2},
-            'align_sequences': {'threads': 5, 'additional_params': '-maxiters 1 -diags -sv -distance1 kbit20_3'},
-            'trim_alignment': {'threads': 5, '-gappyout': True},
-            'remove_sequences_with_X_percent_gaps': {'threads': 5, '--max-percentage-gaps': 50},
-            'count_num_sequences_filtered': {'threads': 5},
-            'subset_DNA_reps_with_QCd_AA_reps_for_mapping': {'threads': 2},
-            'subset_external_gene_calls_file_all': {'threads': 2},
-            'make_fasta_txt': {'threads': 2},
-            'fasttree': {'run': True, 'threads': 5},
-            'iqtree': {'threads': 5,'-m': "MFP"},
-            'make_metagenomics_config_file': {'threads': 1},
-            'run_metagenomics_workflow': {'threads': 2, 'clusterize': False},
-            'add_default_collection': {'threads': 2},
-            'anvi_summarize': {'threads': 5},
-            'rename_tree_tips': {'threads': 1},
-            'make_misc_data': {'threads': 2},
-            'make_anvio_state_file': {'threads': 2},
-            'anvi_import_everything': {'threads': 2},
-            'run_genomes_sanity_check': True,
-            'scg_taxonomy_database_version': "GTDB: v214.1; Anvi'o: v1",
-            })
 
         # Directory structure for Snakemake workflow
         self.dirs_dict.update({"HOME": "ECOPHYLO_WORKFLOW"})

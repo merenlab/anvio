@@ -45,26 +45,9 @@ class SRADownloadWorkflow(WorkflowSuperClass):
         # Snakemake rules
         self.rules.extend(['prefetch',
                            'fasterq_dump',
+                           'check_md5sum',
                            'pigz'])
 
-        self.general_params.extend(['SRA_accession_list']) # user needs provide a tsv of SRA accessions
-        self.general_params.extend(['Remove_unzipped_SRA_files']) # user needs provide a tsv of SRA accessions
-
-        # Parameters for each rule that are accessible in the config.json file
-        rule_acceptable_params_dict = {}
-
-        rule_acceptable_params_dict['prefetch'] = ['--max-size']
-        rule_acceptable_params_dict['fasterq-dump'] = ['--split-files', ' --verbose', '--progress']
-
-        self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
-
-        # Set default values for accessible rules and order of rules in config.json file
-        self.default_config.update({
-            'SRA_accession_list': 'SRA_accession_list.txt',
-            'Remove_unzipped_SRA_files': True,
-            'prefetch': {'--max-size': "40g", 'threads': 2},
-            'fasterq_dump': {'threads': 6},
-            'pigz': {'threads': 8}})
 
         # Directory structure for Snakemake workflow
         self.dirs_dict.update({"SRA_prefetch": "01_NCBI_SRA"})

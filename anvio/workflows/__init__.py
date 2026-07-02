@@ -14,6 +14,29 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.version import versions_for_db_types
+from anvio.workflows.config import (
+    A as A,
+    B as B,
+    T as T,
+    dirs_dict as dirs_dict,
+    get_dir_names as get_dir_names,
+    check_for_risky_param_change as check_for_risky_param_change,
+    get_fields_for_fasta_information as get_fields_for_fasta_information,
+    get_workflow_name_and_version_from_config as get_workflow_name_and_version_from_config,
+)
+from anvio.workflows.paths import (
+    get_path_to_workflows_dir as get_path_to_workflows_dir,
+    get_workflow_snake_file_path as get_workflow_snake_file_path,
+    get_workflow_rule_file_path as get_workflow_rule_file_path,
+)
+from anvio.workflows.registry import get_workflow_module_dict as get_workflow_module_dict
+from anvio.workflows.snakemake_utils import (
+    D as D,
+    regex_from_ids as regex_from_ids,
+    get_conda_yaml_path as get_conda_yaml_path,
+    get_conda_env_prefix as get_conda_env_prefix,
+    gunzip_file as gunzip_file,
+)
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -31,8 +54,10 @@ r = errors.remove_spaces
 
 workflow_config_version = versions_for_db_types['config']
 
+
 class WorkflowSuperClass:
     def __init__(self):
+        """Initialize shared workflow state from command-line or Snakefile args."""
         if 'args' not in self.__dict__:
             raise ConfigError("You need to initialize `WorkflowSuperClass` from within a class that "
                               "has a member `self.args`.")
@@ -98,7 +123,17 @@ class WorkflowSuperClass:
 
 
     def init(self):
+        """Finalize workflow defaults, output directories, and config validation."""
         run.warning('We are initiating parameters for the %s workflow' % self.name)
+
+        # populate rule_acceptable_params_dict and general_params from params.json schema if available
+        schema = self.load_params_schema()
+        if schema:
+            for rule, params in schema.get('rules', {}).items():
+                self.rule_acceptable_params_dict[rule] = list(params.keys())
+            for param in schema.get('general_params', {}).keys():
+                if param not in self.general_params:
+                    self.general_params.append(param)
 
         for rule in self.rules:
             if rule not in self.rule_acceptable_params_dict:
@@ -129,16 +164,20 @@ class WorkflowSuperClass:
         self.dirs_dict.update(self.config.get("output_dirs", ''))
         self.dirs_dict["LOGS_DIR"] = self.get_workflow_logs_dir()
 
-        # create log dir if it doesn't exist
+        # create log dir and per-rule subdirectories if they don't exist
         os.makedirs(self.dirs_dict["LOGS_DIR"], exist_ok=True)
+        for rule in self.rules:
+            os.makedirs(os.path.join(self.dirs_dict["LOGS_DIR"], rule), exist_ok=True)
 
         # lets check everything
         if not self.this_workflow_is_inherited_by_another:
             self.check_config()
             self.check_rule_params()
+            self.check_config_types()
 
 
     def get_params_that_all_rules_accept(self):
+        """Return parameters that every workflow rule accepts."""
         return ['threads']
 
 
@@ -147,7 +186,57 @@ class WorkflowSuperClass:
         return ['output_dirs', 'max_threads', 'config_version', 'workflow_name']
 
 
+    def load_params_schema(self):
+        """Load and merge params.json schemas for this workflow and any parent workflows.
+
+        Walks the MRO in base-first order so child entries override parent entries on
+        conflict. Returns an empty dict if no params.json is found for any class in the
+        hierarchy (preserving backward compatibility for workflows not yet migrated).
+
+        Returns
+        =======
+        dict
+            Merged schema with 'general_params' and 'rules' keys.
+        """
+        # maps workflow class names to their workflow directory names
+        workflow_class_name_map = {
+            'ContigsDBWorkflow': 'contigs',
+            'PhylogenomicsWorkflow': 'phylogenomics',
+            'PangenomicsWorkflow': 'pangenomics',
+            'MetagenomicsWorkflow': 'metagenomics',
+            'TRNASeqWorkflow': 'trnaseq',
+            'EcoPhyloWorkflow': 'ecophylo',
+            'SRADownloadWorkflow': 'sra_download',
+        }
+
+        merged = {'general_params': {}, 'rules': {}}
+        found_any = False
+
+        for cls in reversed(type(self).__mro__):
+            workflow_name = workflow_class_name_map.get(cls.__name__)
+            if not workflow_name:
+                continue
+
+            schema_path = os.path.join(get_path_to_workflows_dir(), workflow_name, 'params.json')
+            if not os.path.exists(schema_path):
+                continue
+
+            try:
+                with open(schema_path) as f:
+                    schema = json.load(f)
+            except json.JSONDecodeError as e:
+                raise ConfigError(f"The params.json file for the '{workflow_name}' workflow at '{schema_path}' "
+                                  f"is not valid JSON. Here is the error: {e}")
+
+            merged['general_params'].update(schema.get('general_params', {}))
+            merged['rules'].update(schema.get('rules', {}))
+            found_any = True
+
+        return merged if found_any else {}
+
+
     def get_workflow_logs_dir(self):
+        """Return the workflow-specific logs directory."""
         from anvio.workflows.scripts.manifest import get_workflow_logs_dir
 
         return get_workflow_logs_dir(self.dirs_dict["LOGS_DIR"], self.config.get('workflow_name', self.name))
@@ -160,6 +249,7 @@ class WorkflowSuperClass:
 
 
     def warn_user_regarding_param_with_wildcard_default_value(self, rule_name, param, wildcard_name):
+        """Warn users when changing wildcard-backed defaults could affect repeated jobs."""
         try:
             default_value = self.default_config[rule_name][param]
         except KeyError:
@@ -337,6 +427,12 @@ class WorkflowSuperClass:
                 else:
                     os.environ['ANVIO_WORKFLOW_MANIFEST_PATH'] = original_manifest_env_var
 
+                # remove per-rule log subdirectories that were pre-created but never used
+                for rule in self.rules:
+                    rule_log_dir = os.path.join(self.dirs_dict["LOGS_DIR"], rule)
+                    if os.path.isdir(rule_log_dir) and not os.listdir(rule_log_dir):
+                        os.rmdir(rule_log_dir)
+
 
     def dry_run(self, workflow_graph_output_file_path_prefix='workflow'):
         """Not your regular dry run.
@@ -418,7 +514,35 @@ class WorkflowSuperClass:
         if self.this_workflow_is_inherited_by_another:
             return
 
-        shell_programs_needed = [r.shellcmd.strip().split()[0] for r in snakemake_workflow_object.rules if r.shellcmd]
+        def get_shell_program(shellcmd):
+            """Return the first concrete command token from a Snakemake shell command."""
+            shell_keywords = {"if", "then", "else", "elif", "fi", "for", "while", "do", "done", "case", "esac"}
+
+            for line in shellcmd.splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+
+                tokens = line.split()
+                while tokens and (tokens[0].startswith("{") or "=" in tokens[0]):
+                    tokens.pop(0)
+
+                if tokens and tokens[0] in shell_keywords:
+                    continue
+
+                if tokens:
+                    return tokens[0]
+
+            return None
+
+        shell_programs_needed = []
+        for rule in snakemake_workflow_object.rules:
+            if not rule.shellcmd:
+                continue
+
+            shell_program = get_shell_program(rule.shellcmd)
+            if shell_program:
+                shell_programs_needed.append(shell_program)
 
         shell_programs_missing = [s for s in shell_programs_needed if not u.is_program_exists(s, dont_raise=dont_raise)]
 
@@ -434,6 +558,7 @@ class WorkflowSuperClass:
                                   "missing :(")
 
     def check_config(self):
+        """Validate top-level config keys, output directories, and global values."""
         if not self.config.get('config_version'):
             raise ConfigError("Config files must include a config_version. If this is news to you, and/or you don't know what "
                               "version your config should be, please run in your terminal the command `anvi-migrate %s` to "
@@ -467,7 +592,18 @@ class WorkflowSuperClass:
 
 
     def get_default_config(self):
-        c = self.fill_empty_config_params(self.default_config)
+        """Return a complete default config dictionary for this workflow."""
+        schema = self.load_params_schema()
+
+        if schema:
+            c = {}
+            for rule, params in schema.get('rules', {}).items():
+                c[rule] = {p: meta['default'] for p, meta in params.items()}
+            for param, meta in schema.get('general_params', {}).items():
+                c[param] = meta['default']
+        else:
+            c = self.fill_empty_config_params(self.default_config)
+
         c["output_dirs"] = self.dirs_dict
         c["config_version"] = workflow_config_version
         c["workflow_name"] = self.name
@@ -491,6 +627,7 @@ class WorkflowSuperClass:
 
 
     def check_rule_params(self):
+        """Validate rule-specific config keys against each rule's accepted parameters."""
         for rule in self.rules:
             if rule in self.config:
                 wrong_params = [p for p in self.config[rule] if p not in self.rule_acceptable_params_dict[rule]]
@@ -503,27 +640,84 @@ class WorkflowSuperClass:
 
 
     def save_empty_config_in_json_format(self, file_path='empty_config.json'):
+        """Write an empty workflow config template to a JSON file."""
         self.save_config_in_json_format(file_path, self.get_empty_config())
         self.run.info("Empty config file", "Stored for workflow '%s' as '%s'." % (self.name, file_path))
 
 
+    def check_config_types(self):
+        """Validate user config values against types declared in params.json for this workflow."""
+        schema = self.load_params_schema()
+        if not schema:
+            return
+
+        def _validate(value, expected_type, param, location):
+            if value is None or value == '':
+                return
+            if expected_type == 'bool':
+                if not isinstance(value, bool):
+                    raise ConfigError(f"The parameter '{param}' in '{location}' must be true or false, "
+                                      f"but you provided: '{value}'.")
+            elif expected_type == 'int':
+                if isinstance(value, bool):
+                    raise ConfigError(f"The parameter '{param}' in '{location}' must be an integer, "
+                                      f"but you provided a boolean: '{value}'.")
+                try:
+                    int(value)
+                except (ValueError, TypeError):
+                    raise ConfigError(f"The parameter '{param}' in '{location}' must be an integer, "
+                                      f"but you provided: '{value}'.")
+            elif expected_type == 'float':
+                if isinstance(value, bool):
+                    raise ConfigError(f"The parameter '{param}' in '{location}' must be a number, "
+                                      f"but you provided a boolean: '{value}'.")
+                try:
+                    float(value)
+                except (ValueError, TypeError):
+                    raise ConfigError(f"The parameter '{param}' in '{location}' must be a number, "
+                                      f"but you provided: '{value}'.")
+            elif expected_type == 'list':
+                if not isinstance(value, list):
+                    raise ConfigError(f"The parameter '{param}' in '{location}' must be a list, "
+                                      f"but you provided: '{value}'.")
+            elif expected_type == 'dict':
+                if not isinstance(value, dict):
+                    raise ConfigError(f"The parameter '{param}' in '{location}' must be a dictionary, "
+                                      f"but you provided: '{value}'.")
+
+        for param, meta in schema.get('general_params', {}).items():
+            value = self.config.get(param)
+            if value is not None:
+                _validate(value, meta['type'], param, 'general params')
+
+        for rule, rule_schema in schema.get('rules', {}).items():
+            if rule not in self.config:
+                continue
+            for param, meta in rule_schema.items():
+                value = self.config[rule].get(param)
+                if value is not None:
+                    _validate(value, meta['type'], param, f"rule '{rule}'")
+
+
     def save_default_config_in_json_format(self, file_path='default_config.json'):
+        """Write this workflow's default config to a JSON file."""
         self.save_config_in_json_format(file_path, self.default_config)
         self.run.info("Default config file", "Stored for workflow '%s' as '%s'." % (self.name, file_path))
 
 
     def save_config_in_json_format(self, file_path, config):
+        """Write a workflow config dictionary to a JSON file."""
         filesnpaths.is_output_file_writable(file_path)
         open(file_path, 'w').write(json.dumps(config, indent=4))
 
 
     def get_empty_config(self):
-        ''' This returns a dictionary with all the possible configurables for a workflow'''
+        """Return a config dictionary with every accepted parameter set to an empty value."""
         return self.fill_empty_config_params(config={})
 
 
     def fill_empty_config_params(self, config={}):
-        ''' Takes a config dictionary and assigns an empty string to any parameter that wasnt defined in the config'''
+        """Fill missing workflow config parameters with empty strings."""
         new_config = config.copy()
 
         for rule in self.rules:
@@ -540,6 +734,7 @@ class WorkflowSuperClass:
 
 
     def set_config_param(self, _list, value):
+        """Set a nested config value, creating intermediate dictionaries as needed."""
         d = self.config
         if type(_list) is not list:
             # converting to list for the cases of only one item
@@ -601,6 +796,7 @@ class WorkflowSuperClass:
 
 
     def T(self, rule_name):
+        """Return the thread count for a rule, capped by global max_threads."""
         max_threads = self.get_param_value_from_config("max_threads")
         if not max_threads:
             max_threads = float("Inf")
@@ -648,6 +844,7 @@ class WorkflowSuperClass:
 
 
     def get_internal_and_external_genomes_files(self):
+            """Validate and return configured internal and external genomes file paths."""
             internal_genomes_file = self.get_param_value_from_config('internal_genomes')
             external_genomes_file = self.get_param_value_from_config('external_genomes')
 
@@ -684,157 +881,3 @@ class WorkflowSuperClass:
                 d['external_genomes_file'] = external_genomes_file
 
             return d
-
-
-# The config file contains many essential configurations for the workflow
-# Setting the names of all directories
-dirs_dict = {"LOGS_DIR"     : "00_LOGS"         ,
-             "QC_DIR"       : "01_QC"           ,
-             "FASTA_DIR"    : "02_FASTA"     ,
-             "CONTIGS_DIR"  : "03_CONTIGS"      ,
-             "MAPPING_DIR"  : "04_MAPPING"      ,
-             "PROFILE_DIR"  : "05_ANVIO_PROFILE",
-             "MERGE_DIR"    : "06_MERGED"       ,
-             "PAN_DIR"      : "07_PAN"          ,
-             "LOCI_DIR"     : "04_LOCI_FASTAS"
-}
-
-
-########################################
-# Helper functions
-########################################
-
-def A(_list, d, default_value = ""):
-    '''
-        A helper function to make sense of config details.
-        string_list is a list of strings (or a single string)
-        d is a dictionary
-
-        this function checks if the strings in x are nested values in y.
-        For example if x = ['a','b','c'] then this function checkes if the
-        value y['a']['b']['c'] exists, if it does then it is returned
-    '''
-    if type(_list) is not list:
-        # converting to list for the cases of only one item
-        _list = [_list]
-    while _list:
-        a = _list.pop(0)
-        try:
-            d = d[a]
-        except:
-            return default_value
-    return d
-
-
-def B(config, _rule, _param, default=''):
-    # helper function for params
-    val = A([_rule, _param], config, default)
-    if val:
-        if isinstance(val, bool):
-            # the param is a flag so no need for a value
-            val = ''
-        return _param + ' ' + str(val)
-    else:
-        return ''
-
-
-def D(debug_message, debug_log_file_path=".SNAKEMAKEDEBUG"):
-    with open(debug_log_file_path, 'a') as output:
-            output.write(terminal.get_date() + '\n')
-            output.write(str(debug_message) + '\n\n')
-
-
-# a helper function to get the user defined number of threads for a rule
-def T(config, rule_name, N=1): return A([rule_name,'threads'], config, default_value=N)
-
-
-def get_dir_names(config, dont_raise=False):
-    ########################################
-    # Reading some definitions from config files (also some sanity checks)
-    ########################################
-    DICT = dirs_dict
-    for d in A("output_dirs", config):
-        # renaming folders according to the config file, if the user specified.
-        if d not in DICT and not dont_raise:
-            # making sure the user is asking to rename an existing folder.
-            raise ConfigError("You define a name for the directory '%s' in your "
-                              "config file, but the only available folders are: "
-                              "%s" % (d, DICT))
-
-        DICT[d] = A(d,config["output_dirs"])
-    return DICT
-
-
-def get_path_to_workflows_dir():
-    # this returns a path
-    base_path = os.path.dirname(__file__)
-    return base_path
-
-
-def get_workflow_snake_file_path(workflow):
-    workflow_dir = os.path.join(get_path_to_workflows_dir(), workflow)
-
-    if not os.path.isdir(workflow_dir):
-        raise ConfigError("Anvi'o does not know about the workflow '%s' :/" % workflow)
-
-    snakefile_path = os.path.join(workflow_dir, 'Snakefile')
-
-    if not os.path.exists(snakefile_path):
-        raise ConfigError("The snakefile path for the workflow '%s' seems to be missing :/" % workflow)
-
-    return snakefile_path
-
-
-def check_for_risky_param_change(config, rule, param, wildcard, our_default=None):
-    value = A([rule, param], config)
-    if value != our_default:
-        warning_message = 'You chose to define %s for the rule %s in the config file as %s.\
-                           while this is allowed, know that you are doing so at your own risk.\
-                           The reason this is risky is because this rule uses a wildcard/wildcards\
-                           and hence is probably running more than once, and this might cause a problem.\
-                           In case you wanted to know, these are the wildcards used by this rule: %s' % (param, rule, value, wildcard)
-        if our_default:
-            warning_message = warning_message + ' Just so you are aware, if you dont provide a value\
-                                                 in the config file, the default value is %s' % wildcard
-        run.warning(warning_message)
-
-
-def get_fields_for_fasta_information():
-    """ Return a list of legitimate column names for fasta.txt files"""
-    # Notice we don't include the name of the first column because
-    # utils.get_TAB_delimited_file_as_dictionary doesn't really care about it.
-    return ["path", "external_gene_calls", "gene_functional_annotation"]
-
-
-def get_workflow_module_dict():
-    from anvio.workflows.contigs import ContigsDBWorkflow
-    from anvio.workflows.metagenomics import MetagenomicsWorkflow
-    from anvio.workflows.pangenomics import PangenomicsWorkflow
-    from anvio.workflows.phylogenomics import PhylogenomicsWorkflow
-    from anvio.workflows.trnaseq import TRNASeqWorkflow
-    from anvio.workflows.ecophylo import EcoPhyloWorkflow
-    from anvio.workflows.sra_download import SRADownloadWorkflow
-
-    workflows_dict = {'contigs': ContigsDBWorkflow,
-                      'metagenomics': MetagenomicsWorkflow,
-                      'pangenomics': PangenomicsWorkflow,
-                      'phylogenomics': PhylogenomicsWorkflow,
-                      'trnaseq': TRNASeqWorkflow,
-                      'ecophylo': EcoPhyloWorkflow,
-                      'sra_download': SRADownloadWorkflow}
-
-    return workflows_dict
-
-
-def get_workflow_name_and_version_from_config(config_file, dont_raise=False):
-    filesnpaths.is_file_json_formatted(config_file)
-    config = json.load(open(config_file))
-    workflow_name = config.get('workflow_name')
-    # Notice that if there is no config_version then we return "0".
-    # This is in order to accomodate early config files that had no such parameter.
-    version = config.get('config_version', "0")
-
-    if (not dont_raise) and (not workflow_name):
-        raise ConfigError('Config files must contain a workflow_name.')
-
-    return (workflow_name, version)

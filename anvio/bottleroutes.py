@@ -1756,9 +1756,6 @@ class BottleApplication(Bottle):
             payload = request.json
             synteny_gene_clusters = payload['synteny_gene_clusters']
 
-            if not len(self.interactive.gene_clusters_function_sources):
-                return json.dumps({'status': 1, 'message': 'No functional annotations are available for this pangenome graph database.'})
-
             functions = {}
             for sgc in synteny_gene_clusters:
                 functions[sgc] = self.interactive.synteny_gene_clusters_functions_summary_dict.get(sgc, {})
