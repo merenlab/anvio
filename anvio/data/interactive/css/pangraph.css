@@ -165,14 +165,14 @@
   }
 
   #panel-left.panel-closed {
-    left: -490px;
+    left: -560px;
   }
 
   /* Override main.css fixed positioning so #sidebar moves with the panel during animation */
   #sidebar {
     position: relative !important;
     min-width: unset !important;
-    width: 490px !important;
+    width: 560px !important;
     height: 100vh !important;
     overflow: hidden !important;
   }
@@ -197,7 +197,7 @@
   }
 
   .toggle-panel-left-pos {
-    left: 490px;
+    left: 560px;
   }
 
   #toggle-panel-top{
