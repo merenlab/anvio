@@ -118,7 +118,7 @@
         },
         "bowtie_build": {
             "threads":          {"type": "int", "default": 1},
-            "additional_params":{"type": "str", "default": null}
+            "additional_params":{"type": "str", "default": ""}
         },
         "bowtie": {
             "threads":          {"type": "int", "default": 3},
@@ -192,12 +192,12 @@
         "anvi_summarize": {
             "threads":          {"type": "int",  "default": 1},
             "run":              {"type": "bool", "default": null},
-            "additional_params":{"type": "str",  "default": null}
+            "additional_params":{"type": "str",  "default": ""}
         },
         "anvi_split": {
             "threads":          {"type": "int",  "default": 1},
             "run":              {"type": "bool", "default": null},
-            "additional_params":{"type": "str",  "default": null}
+            "additional_params":{"type": "str",  "default": ""}
         },
         "krakenuniq": {
             "threads":          {"type": "int",  "default": 3},
