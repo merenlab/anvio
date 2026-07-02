@@ -32,7 +32,7 @@ ALL_RS_RE = w.regex_from_ids(SR_READSETS + LR_READSETS)
 BT2_EXT = (
     "bt2l"
     if "--large-index"
-    in M.get_param_value_from_config(["bowtie_build", "additional_params"])
+    in (M.get_param_value_from_config(["bowtie_build", "additional_params"]) or "")
     else "bt2"
 )
 BT2_PREFIX = os.path.join(dirs_dict["MAPPING_DIR"], "{group}", "{group}-contigs")

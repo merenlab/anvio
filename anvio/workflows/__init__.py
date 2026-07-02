@@ -640,7 +640,7 @@ class WorkflowSuperClass:
         if 'additional_params' in self.config[rule].keys() and self.forbidden_params.get(rule):
             # if the rule has 'additional_params' we need to make sure
             # that the user didn't include forbidden params there as well
-            params = self.config[rule]['additional_params'].split(' ')
+            params = (self.config[rule]['additional_params'] or '').split(' ')
 
             bad_params = [p for p in self.forbidden_params.get(rule) if p in params]
             if bad_params:
