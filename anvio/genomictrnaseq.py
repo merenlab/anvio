@@ -2881,7 +2881,7 @@ class GenomeSpecificModificationExporter:
         df = pd.read_csv(self.enzyme_list_path, sep='\t')
         required = [
             'modifying_enzyme_name', 'modification', 'canonical_position', 'expected_reference',
-            'isoacceptor_specificity', 'aa', 'anticodon', 'function_name', 'function_accession',
+            'isoacceptor_specificity', 'aa', 'anticodon', 'function_accession',
             'function_source',
         ]
         missing = [c for c in required if c not in df.columns]
@@ -3029,8 +3029,7 @@ class GenomeSpecificModificationExporter:
 
 
     def _write_enzyme_distribution(self, enzyme_df, genome_infos):
-        enzyme_cols = ['modifying_enzyme_name', 'modification', 'function_name',
-                       'function_accession', 'function_source']
+        enzyme_cols = ['modifying_enzyme_name', 'modification', 'function_accession', 'function_source']
         unique_enzymes = enzyme_df[enzyme_cols].drop_duplicates()
 
         dist_rows = []
@@ -3041,13 +3040,15 @@ class GenomeSpecificModificationExporter:
                     mask = ((gfunc_df['source'] == enz['function_source']) &
                             (gfunc_df['accession'] == enz['function_accession']))
                     matching = gfunc_df.loc[mask, 'gene_callers_id']
+                    func_name = gfunc_df.loc[mask, 'function'].iloc[0] if mask.any() else NA
                 else:
                     matching = pd.Series(dtype=int)
+                    func_name = NA
                 gene_count = len(matching)
                 gene_callers_ids = ','.join(str(g) for g in sorted(matching)) if gene_count else ''
                 dist_rows.append([
                     enz['modifying_enzyme_name'], enz['modification'],
-                    enz['function_name'], enz['function_accession'],
+                    func_name, enz['function_accession'],
                     genome_name, gene_count, gene_callers_ids,
                 ])
 
@@ -3079,7 +3080,6 @@ class GenomeSpecificModificationExporter:
             expected_ref = enzyme_row['expected_reference']
             func_accession = enzyme_row['function_accession']
             func_source = enzyme_row['function_source']
-            func_name = enzyme_row['function_name']
             is_specific = str(enzyme_row['isoacceptor_specificity']).strip() == 'Specific'
             target_aa = str(enzyme_row['aa']).strip() if is_specific else None
             target_anticodon = str(enzyme_row['anticodon']).strip() if is_specific else None
@@ -3094,6 +3094,8 @@ class GenomeSpecificModificationExporter:
                 mask = (gfunc_df['source'] == func_source) & (gfunc_df['accession'] == func_accession)
                 if not mask.any():
                     continue
+
+                func_name = gfunc_df.loc[mask, 'function'].iloc[0]
 
                 relevant_hits = hits_df[hits_df['gene_contigs_db_hash'] == genome_hash]
 
