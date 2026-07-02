@@ -26,7 +26,7 @@ ANVIO_WORKFLOWS = {
     },
 
     "metagenomics": {
-        "authors": ['ShaiberAlon'],
+        "authors": ['FlorianTrigodet', 'ShaiberAlon'],
         "artifacts_produced": ['contigs-db', 'profile-db'],
         "artifacts_accepted": ['samples-txt', 'fasta-txt'],
         "anvio_workflows_inherited": ['contigs'],
@@ -49,7 +49,7 @@ ANVIO_WORKFLOWS = {
             "workflow, you can optionally run annotation programs on your contigs database as well.")
     },
     "ecophylo": {
-        "authors": ['mschecht'],
+        "authors": ['FlorianTrigodet', 'Kekananen', 'mschecht'],
         "artifacts_accepted": ['samples-txt', 'hmm-list', 'external-genomes', 'metagenomes'],
         "artifacts_produced": ['contigs-db', 'profile-db'],
         "anvio_workflows_inherited": [],
@@ -103,7 +103,7 @@ ANVIO_WORKFLOWS = {
     },
 
     "sra-download": {
-        "authors": ['mschecht'],
+        "authors": ['mschecht', 'FlorianTrigodet', 'Kekananen'],
         "artifacts_accepted": [],
         "artifacts_produced": ['paired-end-fastq', 'samples-txt'],
         "anvio_workflows_inherited": [],
