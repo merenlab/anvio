@@ -865,7 +865,7 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
 
         path = os.path.join(self.output_directory, 'SYNGCs.txt')
 
-        header = ['node_id', 'bin_name', 'source_gene_cluster_id', 'node_type', 'region_id', 'region_type',
+        header = ['node_id', 'bin_name', 'source_gene_cluster_id', 'node_type', 'component_id', 'region_id', 'region_type',
                   'node_x', 'node_y', 'num_genomes_present', 'genomes_present']
 
         # items_additional_data layers (e.g. backbone), in stable order
@@ -901,6 +901,7 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
                        node_to_bin.get(node_id, ''),
                        node.get('gene_cluster_id', ''),
                        node.get('node_type', ''),
+                       component_id if component_id is not None else '',
                        region_id if region_id is not None else '',
                        region_type,
                        node.get('node_x', ''),
@@ -936,7 +937,7 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
         function_sources = sorted(self.gene_function_sources)
 
         header = ['node_id', 'bin_name', 'source_gene_cluster_id', 'genome_name', 'gene_caller_id',
-                  'region_id', 'region_type']
+                  'component_id', 'region_id', 'region_type']
         for source in function_sources:
             header.append(source + '_ACC')
             header.append(source)
@@ -967,6 +968,7 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
                 for genome_name in self.genome_names:
                     for gene_caller_id in per_genome.get(genome_name, []):
                         row = [node_id, bin_name, gene_cluster_id, genome_name, gene_caller_id,
+                               component_id if component_id is not None else '',
                                region_id if region_id is not None else '',
                                region_type]
 
