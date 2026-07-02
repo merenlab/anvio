@@ -1992,6 +1992,8 @@ class PangenomeGraph():
                         'color': '#000000',
                         'show': True,
                         'track_height': tracks_layer,
+                        'track_bg_color': '#F5F5F5',
+                        'track_line_width': 5,
                         'show_track': True
                     } for genome in self.genome_names
                 }
