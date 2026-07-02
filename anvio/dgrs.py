@@ -2240,6 +2240,61 @@ class DGR_Finder:
         return (n_start >= start1 and n_start <= end1) or (n_end >= start1 and n_end <= end1) or (start1 >= n_start and start1 <= n_end and end1 >= n_start and end1 <= n_end)
 
 
+    def check_vr_containment(self, dgr_key, new_vr_contig, new_vr_start, new_vr_end, new_tr_start, new_tr_end):
+        """Detect whether a new VR+TR pair is contained within (or contains) an existing VR+TR pair in a DGR.
+
+        Called only after the TR-overlap check has confirmed the correct DGR. Both VR and TR must
+        be in the same containment direction for a match — this distinguishes a BLAST boundary
+        artifact (one alignment is a strict subset of the other) from a legitimate second VR that
+        merely overlaps with an existing one.
+
+        Parameters
+        ==========
+        dgr_key : str
+            Key of the existing DGR in self.DGRs_found_dict (e.g. 'DGR_001').
+        new_vr_contig : str
+            Contig name of the incoming VR.
+        new_vr_start : int
+            Genomic start position of the incoming VR.
+        new_vr_end : int
+            Genomic end position of the incoming VR.
+        new_tr_start : int
+            Genomic start position of the incoming TR.
+        new_tr_end : int
+            Genomic end position of the incoming TR.
+
+        Returns
+        =======
+        str or None
+            'new_is_inner'  — the incoming VR+TR pair is inside an existing pair; caller should discard the new one.
+            vr_key (str)    — an existing VR key (e.g. 'VR_001') whose pair is inside the new one;
+                                caller should overwrite that entry with the new (larger) data.
+            None            — no containment found; caller should proceed normally.
+        """
+        for vr_key, vr_data in self.DGRs_found_dict[dgr_key]['VRs'].items():
+            if vr_data['VR_contig'] != new_vr_contig:
+                continue
+
+            ex_vr_start = vr_data['VR_start_position']
+            ex_vr_end   = vr_data['VR_end_position']
+            ex_tr_start = vr_data['TR_start_position']
+            ex_tr_end   = vr_data['TR_end_position']
+
+            new_in_existing = (new_vr_start >= ex_vr_start and new_vr_end <= ex_vr_end and
+                                new_tr_start >= ex_tr_start and new_tr_end <= ex_tr_end)
+
+            existing_in_new = (ex_vr_start >= new_vr_start and ex_vr_end <= new_vr_end and
+                                ex_tr_start >= new_tr_start and ex_tr_end <= new_tr_end)
+
+            if new_in_existing:
+                return 'new_is_inner'
+
+            if existing_in_new:
+                return vr_key
+
+        return None
+
+
 
     def process_blast_results(self, max_percent_identity=100, vr_in_query=True, apply_snv_filters=True, mode='activity'):
         """
@@ -3231,6 +3286,32 @@ class DGR_Finder:
                                                                                                         subject_genome_end_position,
                                                                                                         self.DGRs_found_dict[dgr]['TR_start_position'],
                                                                                                         self.DGRs_found_dict[dgr]['TR_end_position']):
+                            # before adding a new VR, check whether this is a BLAST boundary artifact:
+                            # one alignment is a strict subset of an existing VR+TR pair in this DGR.
+                            containment = self.check_vr_containment(dgr, query_contig,
+                                                                    query_genome_start_position,
+                                                                    query_genome_end_position,
+                                                                    subject_genome_start_position,
+                                                                    subject_genome_end_position)
+                            if containment == 'new_is_inner':
+                                # New VR+TR is the smaller pair — discard it, keep the existing larger one.
+                                was_added = True
+                                break
+                            elif containment is not None:
+                                # an existing VR+TR (containment = its vr_key) is the smaller pair —
+                                # overwrite it with the new larger VR+TR data so we always keep the largest.
+                                inner_vr = self.DGRs_found_dict[dgr]['VRs'][containment]
+                                inner_vr['VR_start_position']      = query_genome_start_position
+                                inner_vr['VR_end_position']        = query_genome_end_position
+                                inner_vr['VR_sequence']            = VR_sequence
+                                inner_vr['TR_start_position']      = subject_genome_start_position
+                                inner_vr['TR_end_position']        = subject_genome_end_position
+                                inner_vr['TR_sequence']            = TR_sequence
+                                inner_vr['midline']                = midline
+                                inner_vr['percentage_of_mismatches'] = percentage_of_mismatches
+                                inner_vr['numb_of_mismatches']     = numb_of_mismatches
+                                was_added = True
+                                break
                             was_added = True
                             #TODO can rename consensus_TR
                             self.update_existing_DGR(dgr, bin_name, TR_frame, VR_sequence, VR_frame, TR_sequence, midline, percentage_of_mismatches, is_reverse_complement, query_genome_start_position,
