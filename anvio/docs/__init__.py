@@ -276,6 +276,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "discov-stats": {
+        "name": "DISCOV STATS",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "bams-and-profiles-txt": {
         "name": "BAMS AND PROFILES TXT",
         "type": "TXT",
