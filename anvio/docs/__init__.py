@@ -894,6 +894,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "light-summary": {
+        "name": "LIGHT SUMMARY",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "split-bins": {
         "name": "SPLIT BINS",
         "type": "CONCEPT",

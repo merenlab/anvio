@@ -90,6 +90,7 @@ class ArgsTemplateForSummarizerClass:
         self.list_bins = None
         self.debug = None
         self.quick_summary = False
+        self.light_summary = False
         self.init_gene_coverages = False
         self.calculate_Q2Q3_carefully = False
         self.report_discov = False
@@ -153,6 +154,7 @@ class SummarizerSuperClass(object):
         self.discov_formula = A('discov_formula')
         self.output_directory = A('output_dir')
         self.quick = A('quick_summary')
+        self.light_summary = A('light_summary')
         self.debug = A('debug')
         self.cog_data_dir = A('cog_data_dir')
         self.report_aa_seqs_for_gene_calls = A('report_aa_seqs_for_gene_calls')
@@ -1078,7 +1080,9 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         self.summary = {}
         self.summary_type = 'profile'
         self.debug = False
-        self.quick = False
+        A_local = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.quick = A_local('quick_summary') or False
+        self.light_summary = A_local('light_summary') or False
         self.profile_db_path = None
         self.contigs_db_path = None
         self.output_directory = None
@@ -1479,6 +1483,10 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         self.summary['meta']['bins'] = self.get_bins_ordered_by_completeness_and_size()
 
         if not self.quick:
+            self.report_misc_data_files(target_table='layers')
+            self.report_misc_data_files(target_table='items')
+
+        if self.light_summary or not self.quick:
             # generate a TAB-delimited text output file for bin summaries
             summary_of_bins = {}
             properties = ['total_length', 'num_contigs', 'N50', 'GC_content']
@@ -1494,9 +1502,6 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
             output_file_obj = self.get_output_file_handle(prefix='bins_summary.txt')
             utils.store_dict_as_TAB_delimited_file(summary_of_bins, None, headers=['bins'] + properties, file_obj=output_file_obj)
-
-            self.report_misc_data_files(target_table='layers')
-            self.report_misc_data_files(target_table='items')
 
             # save merged matrices for bins x samples
             for table_name in self.summary['collection_profile_items']:
@@ -1553,7 +1558,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
             import json
             print(json.dumps(self.summary, sort_keys=True, indent=4))
 
-        self.index_html = SummaryHTMLOutput(self.summary, r=self.run, p=self.progress).generate(quick=self.quick)
+        self.index_html = SummaryHTMLOutput(self.summary, r=self.run, p=self.progress).generate(quick=self.quick or self.light_summary)
 
 
     def get_bins_ordered_by_completeness_and_size(self):
@@ -1912,7 +1917,7 @@ class Bin:
         # in collections stored in the contigs database, split_names that are not in the
         # oritinal contigs used to generate contigs database *may* end up in the
         # collections table. we gotta make sure we deal with them properly:
-        missing_ids = [split_id for split_id in self.split_names if split_id not in self.summary.split_sequences]
+        missing_ids = [split_id for split_id in self.split_names if split_id not in self.summary.splits_basic_info]
         if len(missing_ids):
             for missing_id in missing_ids:
                 self.split_names.remove(missing_id)
@@ -2015,7 +2020,7 @@ class Bin:
 
 
     def store_profile_data(self):
-        if self.summary.quick:
+        if self.summary.quick or self.summary.light_summary:
             return
 
         self.progress.update('Storing profile data ...')
@@ -2045,9 +2050,6 @@ class Bin:
            up above later makes sense of all to generate files and matrices, as well as
            dictionaries to diplay part of this information in the interface.
         """
-
-        if self.summary.quick:
-            return
 
         info_dict = {}
 
@@ -2120,7 +2122,7 @@ class Bin:
 
 
     def store_gene_level_coverage_stats(self):
-        if self.summary.quick:
+        if self.summary.quick or self.summary.light_summary:
             return
 
         if not self.summary.gene_level_coverage_stats_dict:
@@ -2144,7 +2146,7 @@ class Bin:
 
 
     def store_genes_basic_info(self):
-        if self.summary.quick:
+        if self.summary.quick or self.summary.light_summary:
             return
 
         self.progress.update('Sorting out gene calls ...')
@@ -2224,7 +2226,7 @@ class Bin:
 
 
     def store_sequences_for_hmm_hits(self):
-        if self.summary.quick:
+        if self.summary.quick or self.summary.light_summary:
             return
 
         s = SequencesForHMMHits(self.summary.contigs_db_path, split_names_of_interest=self.split_names, progress=progress_quiet, bin_name=self.bin_id)
@@ -2270,7 +2272,7 @@ class Bin:
         self.bin_info_dict['contig_names'] = self.contig_names
         self.bin_info_dict['num_contigs'] = len(self.contig_names)
 
-        if self.summary.quick or quick:
+        if self.summary.quick or self.summary.light_summary or quick:
             return
 
         self.progress.update('Creating the FASTA file ...')

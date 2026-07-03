@@ -17,7 +17,7 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__authors__ = ['meren']
+__authors__ = ['meren', 'btrouche']
 __requires__ = ['collection', 'profile-db']
 __can_use__ = ['contigs-db', 'pan-db', 'pan-graph-db', 'genomes-storage-db']
 __provides__ = ['pan-summary', 'pan-graph-summary', 'profile-summary']
@@ -115,6 +115,7 @@ def get_args():
     groupC.add_argument(*anvio.A('init-gene-coverages'), **anvio.K('init-gene-coverages'))
     groupC.add_argument(*anvio.A('calculate-Q2Q3-carefully'), **anvio.K('calculate-Q2Q3-carefully'))
     groupC.add_argument(*anvio.A('reformat-contig-names'), **anvio.K('reformat-contig-names'))
+    groupC.add_argument(*anvio.A('light-summary'), **anvio.K('light-summary'))
     groupC.add_argument('--report-aa-seqs-for-gene-calls', default=False, action='store_true', help="You can use this flag if\
                                   you would like amino acid AND dna sequences for your gene calls in the genes output\
                                   file. By default, only dna sequences are reported.")

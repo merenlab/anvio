@@ -2953,12 +2953,22 @@ D = {
                      "is skipped. In case those buggers cause issues with your data, and you still want to see your stuff and "
                      "deal with the other issue maybe later."}
                 ),
-    'quick-summary': (
+     'quick-summary': (
             ['--quick-summary'],
             {'default': False,
              'action': 'store_true',
              'help': "When declared the summary output will be generated as quickly as possible, with minimum amount "
                      "of essential information about bins."}
+                ),
+     'light-summary': (
+            ['--light-summary'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Generate a lighter summary that skips per-bin FASTA files, gene-call tables, "
+                     "and per-gene coverage statistics, but still produces bins_summary.txt, "
+                     "bins_across_samples/ tables, and bins_per_recruitment.txt. Use this when "
+                     "you need aggregate bin statistics without the overhead of per-bin sequence "
+                     "or gene-level detail."}
                 ),
     'only-complete-links': (
             ['--only-complete-links'],
