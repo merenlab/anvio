@@ -21,6 +21,7 @@ __authors__ = ['meren']
 __requires__ = ['collection', 'profile-db']
 __can_use__ = ['contigs-db', 'pan-db', 'pan-graph-db', 'genomes-storage-db']
 __provides__ = ['pan-summary', 'pan-graph-summary', 'profile-summary']
+__can_provide__ = ['discov-stats']
 __description__ = ("Summarizer for anvi'o pan, pan-graph, or profile databases. Depending on the input, the program produces a "
                    "output directory that contaisn flat files for rigorous downstream analyses by humans 🧠 or LLMs 🤖.")
 __resources__ = [("anvi-summarize in the metagenomic workflow tutorial", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-summarize"), ("anvi-summarize in the pangenomic workflow tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/#summarizing-an-anvio-pan-genome")]
