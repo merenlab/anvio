@@ -13,19 +13,19 @@
         "anvi_run_hmms_hmmsearch": {
             "threads_genomes":    {"type": "int", "default": 1},
             "threads_metagenomes":{"type": "int", "default": 5},
-            "additional_params":  {"type": "str", "default": null}
+            "additional_params":  {"type": "str", "default": ""}
         },
         "anvi_run_scg_taxonomy": {
             "threads":           {"type": "int",  "default": 2},
             "run":               {"type": "bool", "default": true},
-            "additional_params": {"type": "str",  "default": null}
+            "additional_params": {"type": "str",  "default": ""}
         },
         "filter_hmm_hits_by_model_coverage": {
             "threads":                      {"type": "int",   "default": 1},
             "--min-model-coverage":         {"type": "float", "default": 0.8},
             "--min-gene-coverage":          {"type": "float", "default": null},
             "--filter-out-partial-gene-calls":{"type": "bool","default": true},
-            "additional_params":            {"type": "str",   "default": null}
+            "additional_params":            {"type": "str",   "default": ""}
         },
         "process_hmm_hits": {
             "threads": {"type": "int", "default": 2}
@@ -45,7 +45,7 @@
             "--cov-mode":                   {"type": "int",   "default": 1},
             "clustering_threshold_for_OTUs":{"type": "list",  "default": [0.99, 0.98]},
             "AA_mode":                      {"type": "bool",  "default": false},
-            "additional_params":            {"type": "str",   "default": null}
+            "additional_params":            {"type": "str",   "default": ""}
         },
         "anvi_profile_blitz": {
             "threads": {"type": "int", "default": 1}
@@ -64,7 +64,7 @@
             "threads":           {"type": "int",  "default": 5},
             "-gt":               {"type": "float","default": null},
             "-gappyout":         {"type": "bool", "default": true},
-            "additional_params": {"type": "str",  "default": null}
+            "additional_params": {"type": "str",  "default": ""}
         },
         "remove_sequences_with_X_percent_gaps": {
             "threads":              {"type": "int", "default": 5},
@@ -90,7 +90,7 @@
             "threads":           {"type": "int",  "default": 5},
             "run":               {"type": "bool", "default": false},
             "-m":                {"type": "str",  "default": "MFP"},
-            "additional_params": {"type": "str",  "default": null}
+            "additional_params": {"type": "str",  "default": ""}
         },
         "make_metagenomics_config_file": {
             "threads": {"type": "int", "default": 1}
@@ -100,8 +100,8 @@
             "clusterize":                 {"type": "bool", "default": false},
             "clusterize_submission_params":{"type": "str", "default": null},
             "HPC_string":                 {"type": "str",  "default": null},
-            "snakemake_additional_params":{"type": "str",  "default": null},
-            "bowtie2_additional_params":  {"type": "str",  "default": null},
+            "snakemake_additional_params":{"type": "str",  "default": ""},
+            "bowtie2_additional_params":  {"type": "str",  "default": ""},
             "anvi_profile_min_percent_identity":{"type": "float", "default": null}
         },
         "add_default_collection": {

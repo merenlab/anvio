@@ -10,6 +10,9 @@ rule anvi_reformat_fasta:
         ),
     log:
         rule_log("anvi_reformat_fasta", "reformat_fasta"),
+    threads: M.T("anvi_reformat_fasta")
+    resources:
+        nodes=M.T("anvi_reformat_fasta"),
     params:
         simplify_names=M.get_rule_param("anvi_reformat_fasta", "--simplify-names"),
     run:
@@ -74,6 +77,9 @@ rule all_reformatting_done:
         ),
     output:
         done=touch(os.path.join(dirs_dict["QC_DIR"], "ALL_REFORMATTING.done")),
+    threads: 1
+    resources:
+        nodes=1,
 
 
 rule anvi_trnaseq:
@@ -89,6 +95,8 @@ rule anvi_trnaseq:
     log:
         rule_log("anvi_trnaseq", "anvi_trnaseq"),
     threads: M.T("anvi_trnaseq")
+    resources:
+        nodes=M.T("anvi_trnaseq"),
     params:
         overwrite_output_destinations=M.get_rule_param(
             "anvi_trnaseq", "--overwrite-output-destinations"

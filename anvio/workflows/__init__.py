@@ -164,8 +164,10 @@ class WorkflowSuperClass:
         self.dirs_dict.update(self.config.get("output_dirs", ''))
         self.dirs_dict["LOGS_DIR"] = self.get_workflow_logs_dir()
 
-        # create log dir if it doesn't exist
+        # create log dir and per-rule subdirectories if they don't exist
         os.makedirs(self.dirs_dict["LOGS_DIR"], exist_ok=True)
+        for rule in self.rules:
+            os.makedirs(os.path.join(self.dirs_dict["LOGS_DIR"], rule), exist_ok=True)
 
         # lets check everything
         if not self.this_workflow_is_inherited_by_another:
@@ -411,6 +413,21 @@ class WorkflowSuperClass:
         else:
             if max_num_cpus_requested_by_the_workflow:
                 sys.argv.extend(['-p', '--cores', f'{max_num_cpus_requested_by_the_workflow}'])
+
+                # `--cores` only bounds locally-run jobs; jobs dispatched to a cluster via `--cluster`
+                # are not counted against it. Every rule declares `resources: nodes=<threads>`, so we
+                # also pass the same budget as `--resources nodes=N` to cap the total number of threads
+                # in flight across dispatched jobs too. We skip this if the user set `--resources`
+                # themselves via `--additional-params`, in which case their value takes precedence.
+                user_set_resources = self.additional_params and '--resources' in self.additional_params
+                if not user_set_resources:
+                    sys.argv.extend(['--resources', f'nodes={max_num_cpus_requested_by_the_workflow}'])
+                    self.run.info('Total thread budget (--cores & --resources nodes)', max_num_cpus_requested_by_the_workflow)
+                else:
+                    self.run.warning("anvi'o found a `--resources` parameter in your `--additional-params`, so it did "
+                                     "NOT auto-set the `nodes` resource from your config's `max_threads`. Your "
+                                     "`--resources` value takes precedence, and you are responsible for making sure "
+                                     "it includes a sensible `nodes` budget if you are submitting jobs to a cluster.")
             else:
                 sys.argv.extend(['-p'])
             try:
@@ -424,6 +441,12 @@ class WorkflowSuperClass:
                     os.environ.pop('ANVIO_WORKFLOW_MANIFEST_PATH', None)
                 else:
                     os.environ['ANVIO_WORKFLOW_MANIFEST_PATH'] = original_manifest_env_var
+
+                # remove per-rule log subdirectories that were pre-created but never used
+                for rule in self.rules:
+                    rule_log_dir = os.path.join(self.dirs_dict["LOGS_DIR"], rule)
+                    if os.path.isdir(rule_log_dir) and not os.listdir(rule_log_dir):
+                        os.rmdir(rule_log_dir)
 
 
     def dry_run(self, workflow_graph_output_file_path_prefix='workflow'):
@@ -596,6 +619,15 @@ class WorkflowSuperClass:
         else:
             c = self.fill_empty_config_params(self.default_config)
 
+        # `max_threads` is a global general parameter (see `get_global_general_params`) that governs
+        # the total-thread budget for the workflow (it is passed to snakemake as `--cores` and
+        # `--resources nodes`). It is not declared in most workflows' `params.json`, so we make sure
+        # it always shows up in the default config. We only set it when a workflow's schema did not
+        # already provide it, so any workflow-specific default (e.g. trnaseq) is preserved. An empty
+        # string means "unset", which is how `get_max_num_cpus_requested_by_the_workflow` treats it.
+        if 'max_threads' not in c:
+            c["max_threads"] = ''
+
         c["output_dirs"] = self.dirs_dict
         c["config_version"] = workflow_config_version
         c["workflow_name"] = self.name
@@ -608,7 +640,7 @@ class WorkflowSuperClass:
         if 'additional_params' in self.config[rule].keys() and self.forbidden_params.get(rule):
             # if the rule has 'additional_params' we need to make sure
             # that the user didn't include forbidden params there as well
-            params = self.config[rule]['additional_params'].split(' ')
+            params = (self.config[rule]['additional_params'] or '').split(' ')
 
             bad_params = [p for p in self.forbidden_params.get(rule) if p in params]
             if bad_params:
