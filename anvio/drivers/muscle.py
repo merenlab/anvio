@@ -38,8 +38,10 @@ class Muscle:
         self.citation = "Edgar, doi:10.1093/nar/gkh340"
         self.web = "http://www.drive5.com/muscle"
 
+        self.major_version = self.get_major_version()
 
-    def run_stdin(self, sequences_list, debug=False, clustalw_format=False):
+
+    def run_stdin(self, sequences_list, debug=False):
         """Takes a list of tuples for sequences, performs MSA using muscle, returns a dict.
 
             >>> from anvio.drivers.muscle import Muscle
@@ -55,56 +57,9 @@ class Muscle:
         debug : Boolean
             controls whether or not the temporary directory is removed after execution. Probably a good
             idea to set this to anvio.DEBUG
-        clustalw_format : Boolean
-            if True, will return alignment in CLUSTALW format (obtained using Muscle's -clw flag) rather than
-            a dict of FASTA alignments
         """
 
-        tmp_dir = filesnpaths.get_temp_directory_path()
-        log_file_path = os.path.join(tmp_dir, '00_log.txt')
-
-        self.run.info('Running %s' % self.program_name, '%d sequences will be aligned' % len(sequences_list))
-        self.run.info('Log file path', log_file_path)
-
-        sequences_data = ''.join(['>%s\n%s\n' % (t[0], t[1]) for t in sequences_list])
-        cmd_line = [self.program_name, '-quiet']
-
-        if clustalw_format:
-            cmd_line += ['-clw']
-
-        additional_params = self.get_additional_params_from_shell()
-        if additional_params:
-            cmd_line += additional_params
-
-        output = utils.run_command_STDIN(cmd_line, log_file_path, sequences_data)
-
-        if not clustalw_format and not (len(output) and output[0] == '>'):
-            with open(log_file_path, "a") as log_file: log_file.write('# THIS IS THE OUTPUT YOU ARE LOOKING FOR:\n\n%s\n' % (output))
-            raise ConfigError("Drivers::Muscle: Something went wrong with this alignment that was working on %d "
-                              "sequences :/ You can find the output in this log file: %s" % (len(sequences_list), log_file_path))
-
-        if clustalw_format:
-            return output
-
-        alignments = {}
-
-        # parse the output, and fill alignments
-        defline, seq = None, None
-        for line in [o for o in output.split('\n') if len(o)] + ['>']:
-            if line.startswith('>'):
-                if defline:
-                    alignments[defline[1:]] = seq
-                defline, seq = line, None
-            else:
-                if not seq:
-                    seq = line
-                else:
-                    seq += line
-
-        if not debug:
-            shutil.rmtree(tmp_dir)
-
-        return alignments
+        return self.run_default(sequences_list, debug=debug)
 
 
     def run_default(self, sequences_list, debug=False):
@@ -134,16 +89,23 @@ class Muscle:
         with open(input_file_path, 'w') as input_file:
             input_file.write(sequences_data)
 
-        cmd_line = [self.program_name, '-in', input_file_path, '-out', output_file_path]
+        cmd_line = [self.program_name, '-align', input_file_path, '-output', output_file_path]
 
         additional_params = self.get_additional_params_from_shell()
         if additional_params:
+            if '-super5' in additional_params:
+                cmd_line = [self.program_name, '-super5', input_file_path, '-output', output_file_path]
+                additional_params.remove('-super5')
+
             cmd_line += additional_params
 
-        output = utils.run_command(cmd_line, log_file_path)
+        ret_val = utils.run_command(cmd_line, log_file_path)
+
+        if ret_val:
+            raise ConfigError("Drivers::Muscle: Something went wrong with this alignment that was working on %d "
+                              "sequences :/ You can find the output in this log file: %s" % (len(sequences_list), log_file_path))
 
         if not os.path.exists(output_file_path) or os.path.getsize(output_file_path) == 0:
-            with open(log_file_path, "a") as log_file: log_file.write('# THIS IS THE OUTPUT YOU ARE LOOKING FOR:\n\n%s\n' % (output))
             raise ConfigError("Drivers::Muscle: Something went wrong with this alignment that was working on %d "
                               "sequences :/ You can find the output in this log file: %s" % (len(sequences_list), log_file_path))
 
@@ -159,6 +121,26 @@ class Muscle:
             shutil.rmtree(tmp_dir)
 
         return alignments
+
+
+    def get_major_version(self):
+        """Get the MUSCLE major version."""
+
+        output, ret_code = utils.get_command_output_from_shell('%s -version' % self.program_name)
+        output = output.decode('utf-8', errors='replace') if isinstance(output, bytes) else output
+        output = output.lower()
+
+        if output.startswith('muscle 5') or output.startswith('muscle v5'):
+            return 5
+
+        if output.startswith('muscle v3'):
+            raise ConfigError("The anvi'o MUSCLE driver requires MUSCLE 5, but the installed `muscle` is "
+                              "MUSCLE 3. Please update your environment to include `muscle>=5`. For instance, "
+                              "if you use conda, you can run `conda install -c conda-forge -c bioconda "
+                              "\"muscle>=5\"`.")
+
+        raise ConfigError("The anvi'o MUSCLE driver requires MUSCLE 5, but failed to recognize the installed "
+                          "MUSCLE version from `muscle -version` output: %s" % output)
 
 
     def get_additional_params_from_shell(self):
