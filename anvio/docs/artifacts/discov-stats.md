@@ -24,7 +24,7 @@ Here you'll find a description on how DisCov is computed. You can modify most as
 
 _S_, _E_, and DisCov scores are computed based on per-nucleotide coverage arrays for individual contigs. When computing scores at the genome-level, the arrays for all contigs within a given genome (or more generically, a given bin) are concatenated. Note that the concatentation of per-contig coverage arrays means that the windows for the _S_ metric can span across contig boundaries within the genome.
 
-The per-base coverage arrays are either obtained directly from %{bam-file}ss, or from the auxiliary database files (`AUXILIARY-DATA.db`) produced by %{anvi-profile}s.
+The per-base coverage arrays are either obtained directly from a %(bam-file)s, or from the auxiliary database files (`AUXILIARY-DATA.db`) produced by %(anvi-profile)s.
 
 ### _S_ and window length
 
@@ -37,16 +37,16 @@ There are two strategies for setting the window length:
 * **Fixed window length** (`--window-length`): a constant window size in bp applied to all sequences.
 * **Percentage-based window length** (`--window-length-as-percentage`): the window size is set as a percentage of each sequence's length, optionally with a minimum length floor (`--min-window-length`).
 
-If you don't explicitly set any of these parameters, the default sizing strategy depends on the context. For genome-level stats, the default is a fixed 1,000 bp window. For contig-level stats, a percentage-based window (1% of contig length, with a minimum of 300 bp) is used to better accommodate contigs of varying sizes.
+If you don't explicitly set any of these parameters, the default sizing strategy depends on the context. For genome-level stats, the default is a fixed 1,000 bp window. For contig-level stats, a percentage-based window (1%% of contig length, with a minimum of 300 bp) is used to better accommodate contigs of varying sizes.
 
 {:.warning}
 If a contig (or genome) is _shorter_ than the window length, the sequence will not be divided; that is, the entire sequence will be a single window. In this case, the _S_ metric collapses to a binary value (does the contig have any coverage, or not), and from there: (1) If the contig has no coverage at all (_S_ = 0), DisCov will be 0 (as the evenness metric _E_ will also be 0). (2) If the contig does have coverage (_S_ = 1), then the DisCov value will have a minimum value of _α_ and the increase from _α_ is determined by _E_: DisCov = _α_ + (1-_α_)_E_. DisCov may not be very meaningful for these short sequences. In most cases, anvi'o will warn you if contigs are shorter than the computed window length, and regardless you should be able to see the number of windows per sequence in the output files.
 
 **Removal of very short 'remainder' windows**
 
-Since the windows for computing _S_ are non-overlapping, the final window in the sequence is often shorter than the other windows (its length is the remainder when you divide the total sequence length by the window size). In general it is not a big problem to include one shorter window in the calculation, but it means that these final bases can sometimes have very disproportional representation in the spread metric. So when the remainder is _very small_ (<10% of the window size), we exclude the final, shorter window entirely from the calculation of _S_.
+Since the windows for computing _S_ are non-overlapping, the final window in the sequence is often shorter than the other windows (its length is the remainder when you divide the total sequence length by the window size). In general it is not a big problem to include one shorter window in the calculation, but it means that these final bases can sometimes have very disproportional representation in the spread metric. So when the remainder is _very small_ (<10%% of the window size), we exclude the final, shorter window entirely from the calculation of _S_.
 
-What happens if we using a fixed window length and are dealing with very short contigs that by themselves are <10% of that length? We don't throw anything away, and those contigs will have exactly 1 window. 
+What happens if we using a fixed window length and are dealing with very short contigs that by themselves are <10%% of that length? We don't throw anything away, and those contigs will have exactly 1 window.
 
 ### _E_ and the fold-range
 
@@ -65,7 +65,7 @@ You can adjust the weights on _S_ and _E_ by setting the `--alpha` parameter. In
 
 ### Choosing the DisCov formula
 
-The parameter `--discov-formula` controls which equation is used to combine _S_ and _E_ into the final DisCov score. If it's `linear` (the default), we take a weighted average of _S_ and _E_, and if it's `geometric`, we compute a weighted geometric mean of the two. 
+The parameter `--discov-formula` controls which equation is used to combine _S_ and _E_ into the final DisCov score. If it's `linear` (the default), we take a weighted average of _S_ and _E_, and if it's `geometric`, we compute a weighted geometric mean of the two.
 
 Each formulation has pros and cons. The linear version is typically easier to interpret -- high numbers mean at least one of _S_ and _E_ is high and this often is a good evidence for presence in a metagenome sample. However, the exceptions to this are the edge cases mentioned in the warning boxes above -- _S_ will be 1.0 for very short input sequences with some coverage while _E_ will be 1.0 when a few isolated reads map to the sequence. Those cases yield mid-level DisCov scores even though the evidence for their presence is not very strong, and that means that linear DisCov values close to ~0.5 are rather ambiguous (they might result from similar yet low-ish values of _S_ and _E_, or they might result from these extreme edge cases where one takes a value near 1.0 and the other takes a value near 0.0). The alternative geometric formulation requires input sequences to have both high _S_ and high _E_ to yield a high DisCov score and can therefore more clearly distinguish ambiguous cases.
 

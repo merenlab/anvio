@@ -116,7 +116,7 @@ The default parameters are designed to work well across typical metagenomics dat
 
 **Window sizing for _S_**
 
-The spread score (_S_) is computed by dividing the input sequence into non-overlapping windows. By default, contig-level stats use a window length equal to 1% of the contig length (minimum 300 bp). Genome/bin-level stats (when using `--collection-txt`) use a fixed 1,000 bp window. You can override these defaults with the following parameters:
+The spread score (_S_) is computed by dividing the input sequence into non-overlapping windows. By default, contig-level stats use a window length equal to 1%% of the contig length (minimum 300 bp). Genome/bin-level stats (when using `--collection-txt`) use a fixed 1,000 bp window. You can override these defaults with the following parameters:
 
 * `--window-length INT` — use a fixed window size in bp for all sequences
 * `--window-length-as-percentage FLOAT` — set window length as a percentage of each sequence's length

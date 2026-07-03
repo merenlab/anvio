@@ -86,7 +86,7 @@ This requires access to the auxiliary data file (`AUXILIARY-DATA.db`) in the sam
 * `discov_bins.txt` — one row per bin × sample
 * `discov_contigs.txt` — one row per contig × sample
 
-You can adjust how DisCov is computed using the following parameters. When neither `--window-length` nor `--window-length-as-percentage` is specified, anvi'o applies context-sensitive defaults: a fixed 1,000 bp window for bins, and a percentage-based window (1% of contig length, minimum 300 bp) for individual contigs.
+You can adjust how DisCov is computed using the following parameters. When neither `--window-length` nor `--window-length-as-percentage` is specified, anvi'o applies context-sensitive defaults: a fixed 1,000 bp window for bins, and a percentage-based window (1%% of contig length, minimum 300 bp) for individual contigs.
 
 **Window sizing for S**
 
