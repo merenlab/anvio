@@ -30,24 +30,23 @@ These files can also contain Distribution of Coverage (DisCov) scores and relate
 
 ### Contig mode, default output
 
-12-column TAB delimited file, where each row represents a single contig x sample pair (so the values in the first column are not unique):
+16-column TAB delimited file, where each row represents a single contig x sample pair (so the values in the first column are not unique):
 
-|**contig**|**sample**|**length**|**gc_content**|**num_mapped_reads**|**detection**|**mean_cov**|**q2q3_cov**|**median_cov**|**min_cov**|**max_cov**|**std_cov**|
-|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|
-|contig_878|SAMPLE-01|27538|0.608|11877|0.9995|63.61|65.2|65.0|0|107|15.21|
-|contig_6515|SAMPLE-01|12315|0.446|7669|0.9985|91.51|92.5|92.0|0|195|23.98|
-|contig_1720|SAMPLE-01|16856|0.312|4237|0.9993|37.85|38.25|38.0|0|56|7.961|
-|contig_878|SAMPLE-02|27538|0.608|1594|0.9999|9.262|9.161|9.0|0|21|3.42|
-|contig_6515|SAMPLE-02|12315|0.446|2562|0.9918|33.05|33.47|33.0|0|56|8.503|
-|contig_1720|SAMPLE-02|16856|0.312|926|0.9986|8.93|8.751|9.0|0|19|3.306|
-|contig_878|SAMPLE-03|27538|0.608|6395|1.0|37.32|37.21|37.0|0|75|11.46|
-|contig_6515|SAMPLE-03|12315|0.446|300|0.9276|3.953|3.682|4.0|0|15|2.644|
-|contig_1720|SAMPLE-03|16856|0.312|18175|1.0|178.1|178.1|178.0|1|269|29.13|
+|**`contig`**|**`sample`**|**`length`**|**`gc_content`**|**`num_mapped_reads`**|**`detection`**|**`mean_cov`**|**`q2q3_cov`**|**`median_cov`**|**`min_cov`**|**`max_cov`**|**`std_cov`**|**`num_windows`**|**`prop_windows_covered`**|**`prop_cov_within_foldrange`**|**`dis_cov`**|
+|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|
+|contig_878|SAMPLE-01|27538|0.608|11877|0.9995|63.61|65.2|65.0|0|107|15.21|92|1.0|0.9536|0.9768|
+|contig_6515|SAMPLE-01|12315|0.446|7669|0.9985|91.51|92.5|92.0|0|195|23.98|41|1.0|0.9567|0.9784|
+|contig_1720|SAMPLE-01|16856|0.312|4237|0.9993|37.85|38.25|38.0|0|56|7.961|57|1.0|0.9809|0.9905|
+|contig_878|SAMPLE-02|27538|0.608|1594|0.9999|9.262|9.161|9.0|0|21|3.42|92|1.0|0.9071|0.9536|
+|contig_6515|SAMPLE-02|12315|0.446|2562|0.9918|33.05|33.47|33.0|0|56|8.503|41|1.0|0.9694|0.9847|
+|contig_1720|SAMPLE-02|16856|0.312|926|0.9986|8.93|8.751|9.0|0|19|3.306|57|1.0|0.927|0.9635|
+|contig_878|SAMPLE-03|27538|0.608|6395|1.0|37.32|37.21|37.0|0|75|11.46|92|1.0|0.9492|0.9746|
+|contig_6515|SAMPLE-03|12315|0.446|300|0.9276|3.953|3.682|4.0|0|15|2.644|41|1.0|0.8077|0.9038|
+|contig_1720|SAMPLE-03|16856|0.312|18175|1.0|178.1|178.1|178.0|1|269|29.13|57|1.0|0.9924|0.9962|
 
 ### Contig mode, minimal output:
 
 7-column TAB delimited file, where each row represents a single contig x sample pair:
-
 
 |**contig**|**sample**|**length**|**gc_content**|**num_mapped_reads**|**detection**|**mean_cov**|
 |:--|:--|:--|:--|:--|:--|:--|
@@ -60,6 +59,38 @@ These files can also contain Distribution of Coverage (DisCov) scores and relate
 |contig_878|SAMPLE-03|27538|0.608|6395|1.0|37.32|
 |contig_6515|SAMPLE-03|12315|0.446|300|0.9276|3.953|
 |contig_1720|SAMPLE-03|16856|0.312|18175|1.0|178.1|
+
+### Genome mode, default output
+
+16-column TAB delimited file, where each row represents a single bin/genome x sample pair:
+
+|**`bin`**|**`sample`**|**`length`**|**`gc_content`**|**`num_mapped_reads`**|**`detection`**|**`mean_cov`**|**`q2q3_cov`**|**`median_cov`**|**`min_cov`**|**`max_cov`**|**`std_cov`**|**`num_windows`**|**`prop_windows_covered`**|**`prop_cov_within_foldrange`**|**`dis_cov`**|
+|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|
+|Bin_2|SAMPLE-01|16856|0.312|4237|0.9993|37.85|38.25|38.0|0|56|7.961|17|1.0|0.9809|0.9905|
+|Bin_3|SAMPLE-01|12315|0.446|7669|0.9985|91.51|92.5|92.0|0|195|23.98|13|1.0|0.9567|0.9784|
+|Bin_1|SAMPLE-01|27538|0.608|11877|0.9995|63.61|65.2|65.0|0|107|15.21|28|1.0|0.9536|0.9768|
+|Bin_2|SAMPLE-02|16856|0.312|926|0.9986|8.93|8.751|9.0|0|19|3.306|17|1.0|0.927|0.9635|
+|Bin_3|SAMPLE-02|12315|0.446|2562|0.9918|33.05|33.47|33.0|0|56|8.503|13|1.0|0.9694|0.9847|
+|Bin_1|SAMPLE-02|27538|0.608|1594|0.9999|9.262|9.161|9.0|0|21|3.42|28|1.0|0.9071|0.9536|
+|Bin_2|SAMPLE-03|16856|0.312|18175|1.0|178.1|178.1|178.0|1|269|29.13|17|1.0|0.9924|0.9962|
+|Bin_3|SAMPLE-03|12315|0.446|300|0.9276|3.953|3.682|4.0|0|15|2.644|13|1.0|0.8077|0.9038|
+|Bin_1|SAMPLE-03|27538|0.608|6395|1.0|37.32|37.21|37.0|0|75|11.46|28|1.0|0.9492|0.9746|
+
+### Genome mode, minimal output
+
+7-column TAB delimited file, where each row represents a single bin/genome x sample pair:
+
+|**`bin`**|**`sample`**|**`length`**|**`gc_content`**|**`num_mapped_reads`**|**`detection`**|**`mean_cov`**|
+|:--|:--|:--|:--|:--|:--|:--|
+|Bin_2|SAMPLE-01|16856|0.312|4237|0.9993|37.85|
+|Bin_3|SAMPLE-01|12315|0.446|7669|0.9985|91.51|
+|Bin_1|SAMPLE-01|27538|0.608|11877|0.9995|63.61|
+|Bin_2|SAMPLE-02|16856|0.312|926|0.9986|8.93|
+|Bin_3|SAMPLE-02|12315|0.446|2562|0.9918|33.05|
+|Bin_1|SAMPLE-02|27538|0.608|1594|0.9999|9.262|
+|Bin_2|SAMPLE-03|16856|0.312|18175|1.0|178.1|
+|Bin_3|SAMPLE-03|12315|0.446|300|0.9276|3.953|
+|Bin_1|SAMPLE-03|27538|0.608|6395|1.0|37.32|
 
 ### Gene mode, default output
 
