@@ -690,6 +690,125 @@
       inst_link: https://cemist.dtu.dk/
       current: true
 
+- github: Med1Bel
+  name: Ahmed Belfaqih
+  avatar: medbel.jpg
+  email: mr.medbel@gmail.com
+  git_records:
+    - mr.medbel@gmail.com
+  linkedin: www.linkedin.com/in/med1bel
+  bio: "Microbiology master's student with a growing focus on bioinformatics"
+  affiliations:
+    - title: Master's Student
+      inst: Institute for Chemistry and Biology of the Marine Environment, University of Oldenburg
+      inst_link: https://uol.de/icbm
+      current: true
+
+- github: sarilog
+  name: Sarahi L. Garcia
+  web: http://miint.org
+  avatar: sarilog.jpg
+  email: sarilog@gmail.com
+  git_records:
+    - sarilog@gmail.com
+  linkedin: sarilog
+  orcid: 0000-0002-8622-0308
+  bio: "Microbial ecologist studying interactions at different levels of microbial organization."
+  affiliations:
+    - title: Professor
+      inst: Institute for Chemistry and Biology of the Marine Environment, University of Oldenburg
+      inst_link: https://uol.de/icbm
+      current: true
+    - title: Scientific Member
+      inst: Helmholtz Institute for Functional Marine Biodiversity
+      inst_link: https://hifmb.de
+      current: true
+
+- github: tucker4
+  name: Sarah Tucker
+  web: https://sarahjtucker.com/
+  avatar: tucker4.jpeg
+  email: stucker@mbl.edu
+  git_records:
+    - tucker4@hawaii.edu
+    - 35471280+tucker4@users.noreply.github.com
+  linkedin: sarah-j-tucker-0a9591a2
+  orcid: 0000-0003-0541-0853
+  bio: "I am a marine microbiologist interested in the genomic, metabolic, and physiological diversity of microorganisms and how this diversity impacts ecological interactions and ocean processes."
+  intellectual-contributions:
+    - contribution: "Collaborated on the development of anvi'o tools to implement protein structure-informed pangenomes, analyze transfer RNA transcripts, and reconstruct pangenome graphs."
+  affiliations:
+    - title: Post-doctoral scientist
+      inst: Josephine Bay Paul Center for Comparative Molecular Biology and Evolution, Marine Biological Laboratory
+      inst_link: https://www.mbl.edu/research/research-centers/josephine-bay-paul-center
+      current: true
+    - title: Fellow
+      inst: Simons Postdoctoral Fellowship in Marine Microbial Ecology
+      inst_link: https://www.simonsfoundation.org/grant/simons-postdoctoral-fellowships-in-marine-microbial-ecology/
+      current: true
+    - title: Fellow
+      inst: John A. Knauss Marine Policy Fellowship Program
+      inst_link: https://seagrant.noaa.gov/knauss-fellowship-program/
+    - title: PhD Student
+      inst: Hawaiʻi Institute of Marine Biology, University of Hawaiʻi at Mānoa
+      inst_link: https://www.himb.hawaii.edu/
+
+- github: AviHuene
+  name: Avril Hoyningen-Huene
+  avatar: avrilhoyningen.jpg
+  email: avril.hoyningen@hifmb.de
+  git_records:
+    - avril.hoyningen@hifmb.de
+  orcid: 0000-0002-1928-3560
+  linkedin: avril-von-hoyningen-huene
+  bio: "I am a microbial ecologist delving into the dynamics of phytoplankton functional changes in response to saesonal environmental changes."
+  affiliations:
+    - title: Post-doctoral Scientist
+      inst: Helmholtz Institute for Functional Marine Biodiversity
+      inst_link: https://hifmb.de
+      current: true
+    - title: Post-doctoral Scientist
+      inst: Institute for General Microbiology, Kiel University (CAU)
+      inst_link: https://www.mikrobio.uni-kiel.de/de
+      current: false
+    - title: Graduate Student
+      inst: General and Applied Microbiology, University of Göttingen
+      inst_link: http://appmibio.uni-goettingen.de/
+      current: false
+
+- github: u-xixi
+  name: Xi Chen (Xixi)
+  avatar: bio-xixi.jpg
+  email: xi.chen@hifmb.de
+  git_records:
+    - chenxi1251@gmail.com
+  orcid: 0009-0007-7692-9771
+  bio: "I am a bioinformatician and microbial ecologist. I enjoy tailoring computational methods to explore the diversity and dynamics of microbes. My current focus is on those that live in the ocean."
+  affiliations:
+    - title: Post-doctoral Scientist
+      inst: Helmholtz Institute for Functional Marine Biodiversity
+      inst_link: https://hifmb.de/
+      current: true
+    - title: PhD student
+      inst: University of Tübingen
+      inst_link: https://uni-tuebingen.de/
+      current: false
+
+- github: guille0387
+  name: Guillermo Rangel-Pineros
+  avatar: guillermo_rangel.jpg
+  email: guillermo.pineros@sund.ku.dk
+  git_records:
+    - guillermo.pineros@sund.ku.dk
+  linkedin: guillermorangelp
+  orcid: 0000-0003-3848-4330
+  bio: "I am a microbiologist and bioinformatician interested in the development of computational workflows for the analysis of ancient microbial DNA"
+  affiliations:
+    - title: Staff Bioinformatician
+      inst: Centre for Ancient Environmental Genomics CAEG, University of Copenhagen
+      inst_link: https://globe.ku.dk/research/caeg/
+      current: true
+
 - github: btrouche
   name: Blandine Trouche
   avatar: btrouche.png
@@ -703,6 +822,7 @@
     - title: Post-doctoral scientist
       inst: University of Southern Denmark
       inst_link: https://www.sdu.dk/en/forskning/hadal
+      current: true
 
 - github: dspeth
   name: Daan R. Speth
@@ -764,3 +884,23 @@
       inst: Max Planck Institute for Marine Microbiology
       inst_link: https://www.mpi-bremen.de/
       current: true
+
+- github: igorspp
+  name: Igor S. Pessi
+  email: igor.pessi@gmail.com
+  web: http://igorpessi.com
+  git_records:
+    - igor.pessi@gmail.com
+  bluesky: igorspp.bsky.social
+  avatar: igorspp.jpg
+  bio: "Microbiologist specialized in the study of polar microbial communities, with a focus on the use of molecular ecology methods such as metagenomics and metatranscriptomics."
+  affiliations:
+    - title: Researcher
+      inst: Finnish Environment Institute
+      inst_link: http://environment.fi
+      current: true
+    - title: Visiting Researcher
+      inst: University of Helsinki
+      inst_link: http://helsinki.fi
+
+

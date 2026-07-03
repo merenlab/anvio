@@ -87,7 +87,7 @@ if '--tmp-dir' in sys.argv:
         os.environ['TMPDIR'] = TMP_DIR
     except Exception as e:
         print("OSError: ", e)
-        sys.exit()
+        sys.exit(1)
 
 def P(d, dont_exit=False):
     """Poor man's debug output printer during debugging."""
@@ -1265,6 +1265,12 @@ D = {
              'action': 'store_true',
              'help': "List available HMM sources in the contigs database and quit."}
                 ),
+    'list-contig-classification-sources': (
+            ['-l', '--list-contig-classification-sources'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "List available contig classification sources in the contigs database and quit."}
+                ),
     'annotation-source': (
             ['--annotation-source'],
             {'metavar': 'FUNCTION_ANNOTATION_SOURCE',
@@ -2254,9 +2260,17 @@ D = {
     'graph-nodes': (
             ['--graph-nodes'],
             {'metavar': "NODE_1,NODE_2",
-             'required': True,
+             'required': False,
              'help': "Nodes in an anvi'o pangenome graph database..",
              'type': str}
+                ),
+    'region-id': (
+            ['--region-id'],
+            {'metavar': "INT",
+             'required': False,
+             'help': "A region ID from an anvi'o pangenome graph database. The program will resolve the "
+                     "two boundary nodes (by position) of the region and export the loci between them.",
+             'type': int}
                 ),
     'output-file': (
             ['-o', '--output-file'],
@@ -3535,6 +3549,22 @@ D = {
                      "metabolite to help rank the output by likelihood of the interaction. This parameter allows "
                      "you to choose how many gaps there can be in the chain on either side of the metabolite in "
                      "the network. Very conservatively set to 0, as in no gaps allowed."}
+                ),
+    'max-reactions-for-pathway-map-walk': (
+            ['--max-reactions-for-pathway-map-walk'],
+            {'default': None,
+             'type': int,
+             'metavar': 'INT',
+             'required': False,
+             'help': "Truncate pathway map walks at this number of reactions. By default there is no limit, "
+                     "but with certain inputs some pathway maps yield very long walks (sometimes even to "
+                     "the point of causing memory issues). Note that setting this parameter bounds the walk length "
+                     "for all pathway maps, so it may be a good idea to first identify problematic maps using the "
+                     "`--debug` flag, run the program once while excluding those problematic maps with `--exclude-pathway-maps`, "
+                     "and THEN run the program again using this flag to bound the pathway map walk only for those maps "
+                     "with `--include-pathway-maps`. It's likely that if you need this flag, something is wrong (like an infinite "
+                     "cycle in the walk), so check the Pathway Map walk evidence carefully to make sure results are biologically "
+                     "meaningful."}
                 ),
     'add-reactions-to-output': (
             ['--add-reactions-to-output'],

@@ -204,6 +204,20 @@ anvi-compute-gene-cluster-homogeneity -p TEST-PAN.db \
                                       $thread_controller
 SHOW_FILE gene_cluster_homogeneity_results.txt
 
+INFO "Generating a pangenome-informed representative genome"
+anvi-gen-pan-representative -p TEST-PAN.db \
+                            -g TEST-GENOMES.db \
+                            -e external-genomes.txt \
+                            -o REPRESENTATIVE_GENOME_FOR_PAN.db \
+                            --no-progress
+
+INFO "Exporting PanRepresentative annotations for the representative genome"
+anvi-export-functions -c REPRESENTATIVE_GENOME_FOR_PAN.db \
+                      --annotation-source PanRepresentative \
+                      -o REPRESENTATIVE_GENOME_FOR_PAN_FUNCTIONS.txt \
+                      --no-progress
+SHOW_FILE REPRESENTATIVE_GENOME_FOR_PAN_FUNCTIONS.txt --tail
+
 INFO "Importing the default state for pretty outputs"
 anvi-import-state -p TEST-PAN.db -s default-state.json -n default
 anvi-import-state -p ANOTHER_TEST-PAN.db -s default-state.json -n default

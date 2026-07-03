@@ -17,7 +17,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ekiefl']
 __tags__ = ['ani', 'dereplication', 'redundancy']
-__requires__ = ['external-genomes', 'internal-genomes', 'pan-db']
+__requires__ = ['external-genomes']
+__can_use__ = ['internal-genomes', 'pan-db']
 __provides__ = ['genome-similarity']
 __description__ = ("Export sequences from sequence sources and compute a similarity metric (e.g. ANI). If a Pan Database "
                    "is given anvi'o will write computed output to misc data tables of Pan Database")

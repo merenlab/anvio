@@ -94,7 +94,7 @@ class SyntenyGeneCluster():
         if self.pan_graph_yaml:
             self.functional_annotation_sources_available = []
         else:
-            self.functional_annotation_sources_available = DBInfo(self.genomes_storage, expecting='genomestorage').get_functional_annotation_sources()
+            self.functional_annotation_sources_available = DBInfo(self.genomes_storage, expecting='genomestorage').get_functional_annotation_sources() or []
         # self.pangenome_data_df = pd.DataFrame()
         self.contig_identifiers = {}
 
@@ -240,7 +240,8 @@ class SyntenyGeneCluster():
                 # caller_id_cluster_df["syn_cluster"] = ""
 
                 additional_info_df = pd.DataFrame.from_dict(additional_info_cluster, orient="index").rename_axis("gene_cluster").reset_index()
-                additional_info_df.drop(self.functional_annotation_sources_available, axis=1, errors='ignore', inplace=True)
+                if self.functional_annotation_sources_available:
+                    additional_info_df.drop(self.functional_annotation_sources_available, axis=1, errors='ignore', inplace=True)
 
                 joined_contigs_df = caller_id_cluster_df.merge(genes_in_contigs_df, on="gene_caller_id", how="left").merge(gene_function_calls_df, on="gene_caller_id", how="left").merge(additional_info_df, on="gene_cluster", how="left")
 

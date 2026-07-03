@@ -1595,6 +1595,11 @@ Bins.prototype.ExportBin = function(bin_id_to_export, use_bin_id = false) {
  * @param {Array|string} item_list - Items to highlight
  */
 Bins.prototype.HighlightItems = function(item_list) {
+    // clear any function-search gene highlights tied to a previous highlight. the function-search
+    // path (search.js) re-populates this key right after calling us, so every other caller leaves
+    // it empty and the gene highlight stays correctly tied to a gene-centric search.
+    try { localStorage.removeItem('search_highlighted_genes'); } catch (e) { /* localStorage may be unavailable */ }
+
     if (!Array.isArray(item_list)) {
         item_list = [item_list];
     }
@@ -1617,6 +1622,7 @@ Bins.prototype.HighlightItems = function(item_list) {
  * Clear highlighted items
  */
 Bins.prototype.ClearHighlightedItems = function() {
+    try { localStorage.removeItem('search_highlighted_genes'); } catch (e) { /* localStorage may be unavailable */ }
     this.higlighted_items = [];
     this.RedrawBins();
 };

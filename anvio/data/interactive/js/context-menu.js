@@ -138,7 +138,7 @@ ContextMenu = function(options) {
         'open_in_legends': {
             'title': 'Change category color(s)',
             'action': (node, layer, param) => {
-                if (!$('#panel-left').is(':visible')) {
+                if (!is_panel_open) {
                     toggleLeftPanel()
                 }
 

@@ -21,8 +21,9 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
+__requires__ = ["collection", "bin", "profile-db"]
+__can_use__ = ["contigs-db"]
 __provides__ = ["collection", "bin"]
-__requires__ = ["collection", "bin", "profile-db", "contigs-db"]
 __description__ = "Rename all bins in a given collection (so they have pretty names)"
 
 

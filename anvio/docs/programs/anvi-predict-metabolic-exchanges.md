@@ -222,6 +222,21 @@ Resource requirement: Your computer (or the job you submitted to a high-performa
 {:.notice}
 Why >12 threads? Well, 4 * 3 = 12, plus there is one additional thread on which the main program is running while waiting for its child processes for a total usage of n=13 threads (confused? read the yellow box under the first example). If you are paying _really_ close attention, you might realize that each child process needs to run on its own thread while spawning its own set of (grand)child processes. Good catch! We account for this by allowing each child process to create `t-1` threads (where `t` is the `--num-threads` value) so that the total per-process footprint is equal to `--num-threads`. So in this example, technically only 3 Pathway Map walks are done at once for each genome pair comparison even though we set `--num-threads` to 4. At large scales, we cannot necessarily afford to ignore an extra thread per child process like we do for the parent process.
 
+### The program is running out of memory?
+
+If this program starts consuming tons of memory and taking ages to run at the Pathway Map walk step, it's likely stuck in an infinite cycle of reactions for one of the Pathway Maps. We have sanity checks to prevent this sort of thing, but we cannot guarantee that we've identified all problematic cases. The good thing is that these sort of issues are input-dependent, so you can avoid them by excluding problematic maps with the `--exclude-pathway-maps` flag (if you cannot figure out which maps are problematic from the regular program output, try re-running the program with `--debug`).
+
+If you don't want to exclude specific Maps entirely from your analysis, one workaround is to use the `--max-reactions-for-pathway-map-walk` parameter to truncate problematic walks early. Note that this upper bound on reaction chain length applies globally, so it's probably best to use it only on problematic Pathway Maps:
+
+{{ codestart }}
+anvi-predict-metabolic-exchanges -e %(external-genomes)s \
+                                 -O ANY_PREFIX \
+                                 --max-reactions 25 \
+                                 --include-pathway-maps 00061
+{{ codestop }}
+
+Just keep in mind when you interpret the results that all reaction chain lengths in the evidence output will be artificially capped at the value you set, and that long chains could be technical artifacts from cycles rather than biologically relevant.
+
 ## Technical Details
 
 This section describes how the predictions of metabolic exchanges are done, for a given pair of genomes.

@@ -207,7 +207,9 @@ class BottleApplication(Bottle):
         self.route('/pangraph/get_pangraph_synteny_gene_cluster_region',          callback=self.get_pangraph_synteny_gene_cluster_region, method="POST")
         self.route('/pangraph/get_pangraph_synteny_gene_cluster_search_result',   callback=self.get_pangraph_synteny_gene_cluster_search_result, method="POST")
         self.route('/pangraph/get_pangraph_synteny_gc_functions_and_metabolism',  callback=self.get_pangraph_synteny_gc_functions_and_metabolism, method="POST")
+        self.route('/pangraph/get_pangraph_bin_sequences_fasta',                  callback=self.get_pangraph_bin_sequences_fasta, method="POST")
         self.route('/pangraph/session_id',                                        callback=self.get_pangraph_session_id)
+        self.route('/pangraph/store_description',                                 callback=self.store_pangraph_description, method='POST')
 
 
     def run_application(self, ip, port):
@@ -1030,14 +1032,14 @@ class BottleApplication(Bottle):
 
     def store_description(self):
         if self.read_only:
-            return
+            return json.dumps({'status': 1, 'message': 'Server is in read-only mode.'})
 
         description = request.forms.get('description')
 
         db_path = self.interactive.pan_db_path or self.interactive.profile_db_path
         dbops.update_description_in_db(db_path, description)
         self.interactive.p_meta['description'] = description
-        return json.dumps("")
+        return json.dumps({'status': 0})
 
 
     def get_sequence_for_split(self, split_name):
@@ -1641,34 +1643,32 @@ class BottleApplication(Bottle):
 
 
     def save_pangraph_state(self):
+        if self.read_only:
+            return json.dumps({'status_code': '0'})
+
         try:
             payload = request.json
             state_name = payload['state_name']
             state_dict = payload['state_values']
             self.interactive.save_state(state_dict, state_name)
-            return(json.dumps({'status': 0}))
-        except:
-            return(json.dumps({'status': 1}))
+            return json.dumps({'status_code': '1'})
+        except Exception as e:
+            return json.dumps({'status_code': '0', 'error': str(e)})
 
     def load_pangraph_state(self):
-
         try:
             payload = request.json
             state_name = payload['state_name']
             self.interactive.load_state(state=state_name, order='default')
-
             data = self.interactive.get_json()
-            return(json.dumps({'status': 0, 'data': data}))
-        except:
-            return(json.dumps({'status': 1, 'data': ''}))
-
+            return json.dumps({'status': 0, 'data': data})
+        except Exception as e:
+            return json.dumps({'status': 1, 'message': str(e)})
 
     def get_pangraph_states(self):
-        try:
-            data = self.interactive.get_states()
-            return(json.dumps({'status': 0, 'data': data}))
-        except:
-            return(json.dumps({'status': 1, 'data': ''}))
+        states_info = {name: {'last_modified': info['last_modified']}
+                       for name, info in self.interactive.states.items()}
+        return json.dumps(states_info)
 
 
     def get_pangraph_json_data(self):
@@ -1681,6 +1681,16 @@ class BottleApplication(Bottle):
 
     def get_pangraph_session_id(self):
         return json.dumps(self.session_id)
+
+
+    def store_pangraph_description(self):
+        if self.read_only:
+            return json.dumps({'status': 1, 'message': 'Server is in read-only mode.'})
+
+        description = request.forms.get('description')
+        dbops.update_description_in_db(self.interactive.pan_graph_db_path, description)
+        self.interactive.p_meta['description'] = description
+        return json.dumps({'status': 0})
 
 
     def initial_pangraph_json_data(self):
@@ -1745,9 +1755,6 @@ class BottleApplication(Bottle):
             payload = request.json
             synteny_gene_clusters = payload['synteny_gene_clusters']
 
-            if not len(self.interactive.gene_clusters_function_sources):
-                return json.dumps({'status': 1, 'message': 'No functional annotations are available for this pangenome graph database.'})
-
             functions = {}
             for sgc in synteny_gene_clusters:
                 functions[sgc] = self.interactive.synteny_gene_clusters_functions_summary_dict.get(sgc, {})
@@ -1771,6 +1778,27 @@ class BottleApplication(Bottle):
                        'sources': list(self.interactive.gene_clusters_function_sources)}
 
             return json.dumps(payload, default=utils.to_jsonable)
+        except Exception as e:
+            return json.dumps({'status': 1, 'message': str(e)})
+
+
+    def get_pangraph_bin_sequences_fasta(self):
+        try:
+            payload = request.json
+            synteny_gene_clusters = payload['synteny_gene_clusters']
+            report_dna = payload.get('report_dna', False)
+
+            sequences = self.interactive.get_sequences_for_synteny_gene_clusters(
+                gene_cluster_names=set(synteny_gene_clusters),
+                report_DNA_sequences=report_dna
+            )
+
+            metadata = {}
+            for sgc in synteny_gene_clusters:
+                info = self.interactive.synteny_gene_cluster_summary_info.get(sgc, {})
+                metadata[sgc] = {'x': info.get('x', None), 'region': info.get('region', None)}
+
+            return json.dumps({'status': 0, 'sequences': sequences, 'metadata': metadata})
         except Exception as e:
             return json.dumps({'status': 1, 'message': str(e)})
 
