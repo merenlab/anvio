@@ -235,7 +235,8 @@ class TablesForGeneCalls(Table):
                                                                          expected_fields=expected_fields,
                                                                          only_expected_fields=True,
                                                                          column_mapping=column_mapping)
-            gene_calls_dict = self.normalize_gene_calls_dict_integer_types(gene_calls_dict)
+            # NOTE: no need to normalize integer types here since `column_mapping` above already
+            #       casts the gene caller ids and integer fields to native Python ints via `int`.
 
             if not len(gene_calls_dict):
                 raise ConfigError("You provided an external gene calls file, but it returned zero gene calls. Assuming that "
@@ -247,6 +248,9 @@ class TablesForGeneCalls(Table):
 
             self.run.info("External gene calls", "%d gene calls recovered and will be processed." % len(gene_calls_dict))
         else:
+            # a caller passed us a `gene_calls_dict` directly (rather than a file). Its integer-like
+            # values may be numpy scalars (e.g. when built from a pandas/numpy source), which SQLite
+            # cannot bind, so we normalize them to native Python ints here.
             gene_calls_dict = self.normalize_gene_calls_dict_integer_types(gene_calls_dict)
 
             # FIXME: we need to make sure the gene caller ids in the incoming directory is not going to
