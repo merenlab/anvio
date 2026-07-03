@@ -90,7 +90,6 @@ anvi-profile-blitz %(bam-file)s \
 You don't want to profile all genes in your %(contigs-db)s? Then you should tell anvi'o which specific genes you are interested in by either providing a comma-separated list of gene-caller IDs:
 
 {{ codestart }}
-# the following will profile 4 specific gene calls
 anvi-profile-blitz %(bam-file)s \
                    -c %(contigs-db)s \
                    --gene-mode \
