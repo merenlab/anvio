@@ -1280,18 +1280,18 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         # values are applied uniformly to both levels.
         user_specified_window = self.discov_window_length is not None or self.discov_window_percentage is not None
         if user_specified_window:
-            bin_wlen   = self.discov_window_length
-            bin_wpct   = self.discov_window_percentage
+            bin_wlen = self.discov_window_length
+            bin_wpct = self.discov_window_percentage
             bin_minlen = self.discov_min_window_length
-            contig_wlen   = self.discov_window_length
-            contig_wpct   = self.discov_window_percentage
+            contig_wlen = self.discov_window_length
+            contig_wpct = self.discov_window_percentage
             contig_minlen = self.discov_min_window_length
         else: # context-specific defaults
-            bin_wlen   = constants.discov_default_bin_window_length
-            bin_wpct   = None
+            bin_wlen = constants.discov_default_bin_window_length
+            bin_wpct = None
             bin_minlen = 0 # not used when --window-length is set
-            contig_wlen   = None
-            contig_wpct   = constants.discov_default_contig_window_percentage
+            contig_wlen = None
+            contig_wpct = constants.discov_default_contig_window_percentage
             if self.discov_min_window_length is None: # allow user to modify just this param
                 contig_minlen = constants.discov_default_contig_min_window_length
             else:
