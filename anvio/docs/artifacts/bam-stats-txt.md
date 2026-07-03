@@ -2,22 +2,31 @@ A collection of TAB-delimited text files generated from the profiling of BAM fil
 
 ## Example outputs
 
-The number of columns and their content for files that are considered artifact %(bam-stats-txt)s will be variable and depend on the user parameters set for %(anvi-profile-blitz)s.
+The number of columns and their content will be variable and depend on the user parameters set for %(anvi-profile-blitz)s.
 
 The column names may be one of these:
 
 * `gene_callers_id`: Unique number assigned by the gene caller during the creation of the %(contigs-db)s.
-* `contig`: Contig name as appears in the %(bam-file)s and %(contigs-db)s
+* `contig`: Contig name as appears in the %(bam-file)s and %(contigs-db)s (for contig-level stats)
+* `bin`: Genome name as it appears in the %(collection)s being worked on (for genome-level stats)
+* `gene_callers_id`: Gene ID number as it appears in the %(contigs-db)s (for gene-level stats)
 * `sample`: The name of the %(bam-file)s without its prefix. I.e., the value *SAMPLE-01* will appear in the *sample* column if the BAM file path was */path/to/SAMPLE-01.bam*.
-* `length`: Depending on the context, the length of the gene or contig.
-* `num_mapped_reads`: The actual number of short reads mapping to a gene or contig in a given sample. Useful for those who wish to do TPM/RPKM normalizations.
+* `length`: Depending on the context, the length of the gene, contig or genome.
+* `num_mapped_reads`: The actual number of short reads mapping to a gene, contig or genome in a given sample. Useful for those who wish to do TPM/RPKM normalizations.
 * `detection`: Proportion of nucleotides that have at least 1X coverage.
 * `mean_cov`: Mean coverage.
 * `q2q3_cov`: Mean of the coverage (inner quartiles).
 * `median_cov`: Median coverage.
-* `min_cov`: Minimum coverage value observed for the gene or the contig.
-* `max_cov`: Minimum coverage value observed for the gene or the contig.
+* `min_cov`: Minimum coverage value observed for the gene, contig, or genome.
+* `max_cov`: Minimum coverage value observed for the gene, contig, or genome.
 * `std_cov`: Standard deviation of coverage.
+
+These files can also contain Distribution of Coverage (DisCov) scores and related data values. You can see a fuller description of these in %(discov-stats)s, but here is a quick overview of the related columns:
+
+* `num_windows`: The number of non-overlapping windows the contig (or genome) was divided into when computing the Spread (_S_) metric.
+* `prop_windows_covered`: The proportion of windows that contain bases with at least some reads mapping to them. Also known as the Spread (_S_) metric.
+* `prop_cov_within_foldrange`: The proportion of bases with nonzero coverage for which the coverage depth is within the expected fold-range of the median nonzero coverage. Also known as the Evenness (_E_) metric.
+* `dis_cov`: The overall Distribution of Coverage score for the contig (or genome), which is either a linear or geometric combination of _S_ and _E_.
 
 ### Contig mode, default output
 
