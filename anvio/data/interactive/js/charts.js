@@ -65,6 +65,8 @@ var order_gene_colors_by_count = true;
 var indel_sequences = {};
 var indel_sequence_counter = 0;
 var indel_sequence_preview_length = 60;
+var chart_margin;
+var chart_content_width;
 
 
 function escape_html(value) {
@@ -1721,6 +1723,8 @@ function createCharts(state){
 
     var margin = {top: 20, right: 50, bottom: 150, left: 50};
     var width = VIEWER_WIDTH * .80;
+    chart_margin = margin;
+    chart_content_width = width;
     var chartHeight = 200;
     var height = ((chartHeight + 10) * visible_layers);
     curr_height = height + 10;
@@ -2370,4 +2374,184 @@ Chart.prototype.showOnly = function(b){
     this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("font-size", 2*mk_font_size+"px");
 
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
+}
+
+function exportInspectSvg() {
+    window.URL = (window.URL || window.webkitURL);
+
+    var prefix = {
+        xmlns: "http://www.w3.org/2000/xmlns/",
+        xlink: "http://www.w3.org/1999/xlink",
+        svg:   "http://www.w3.org/2000/svg"
+    };
+
+    var chartSvgEl = document.querySelector('#chart-container svg');
+    if (!chartSvgEl) {
+        toastr.error('Nothing to export — the chart has not been drawn yet.');
+        return;
+    }
+
+    var chartW = parseFloat(chartSvgEl.getAttribute('width'));
+
+    // getBBox() gives the tight bounding box of rendered content, excluding the large
+    // bottom margin reserved for axis labels. This prevents excess whitespace in the
+    // export when some sample layers are hidden.
+    var contentBox = chartSvgEl.getBBox();
+    var contentBottom = contentBox.y + contentBox.height;
+
+    var contextSvgEl = document.querySelector('#context-container svg');
+    var contextH = contextSvgEl ? parseFloat(contextSvgEl.getAttribute('height')) : 0;
+
+    var titleHeight = 50;
+    var totalH = titleHeight + contentBottom + contextH;
+
+    var merged = document.createElementNS(prefix.svg, 'svg');
+    merged.setAttributeNS(prefix.xmlns, "xmlns",       prefix.svg);
+    merged.setAttributeNS(prefix.xmlns, "xmlns:xlink", prefix.xlink);
+    merged.setAttribute('width', chartW);
+    merged.setAttribute('height', totalH);
+    merged.setAttribute('viewBox', '0 0 ' + chartW + ' ' + totalH);
+
+    var bg = document.createElementNS(prefix.svg, 'rect');
+    bg.setAttribute('width', chartW);
+    bg.setAttribute('height', totalH);
+    bg.setAttribute('fill', 'white');
+    merged.appendChild(bg);
+
+    // Inline the CSS rules that govern axis rendering. Without these, axis paths
+    // get fill:black (looking thick). Brush rects are handled via explicit attributes
+    // below (after appendLayer) so we don't rely on CSS for their fill/visibility.
+    var defs = document.createElementNS(prefix.svg, 'defs');
+    var style = document.createElementNS(prefix.svg, 'style');
+    style.setAttribute('type', 'text/css');
+    style.textContent = [
+        '.axis path, .axis line { fill: none; stroke: #aaa; shape-rendering: crispEdges; }',
+        'g.context g.axis path { stroke-opacity: 0; }',
+        'g.context g.axis line { stroke-opacity: .5; }',
+    ].join(' ');
+    defs.appendChild(style);
+
+    // Clip path for the chart data area. When the user has zoomed in with the brush,
+    // D3 remaps data outside the visible range to x coordinates that fall outside the
+    // axis boundaries. Without a clipPath the paths overflow the chart frame in the
+    // exported SVG.
+    //
+    // The clip is applied to individual data path elements (path.chart, path.line,
+    // SNV markers) rather than to the whole layer group. This is important because
+    // the y-axis groups live in the same layer group but at x positions outside the
+    // data column — clipping the group would clip the axes too.
+    //
+    // Because each data path element sits inside a chartContainer group that is
+    // already translated by margin.left in x, the clip rect uses x=0 (not
+    // x=margin.left). When SVG evaluates the clip, x=0 in the clip path definition
+    // resolves to x=margin.left in the merged SVG coordinate system — exactly the
+    // left edge of the data column.
+    var clipPath = document.createElementNS(prefix.svg, 'clipPath');
+    clipPath.setAttribute('id', 'inspect-chart-clip');
+    var clipRect = document.createElementNS(prefix.svg, 'rect');
+    clipRect.setAttribute('x', 0);
+    clipRect.setAttribute('y', -9999);
+    clipRect.setAttribute('width', chart_content_width || (chartW - 100));
+    clipRect.setAttribute('height', 99999);
+    clipPath.appendChild(clipRect);
+    defs.appendChild(clipPath);
+
+    merged.appendChild(defs);
+
+    // Title matching the inspect page header: bold split name + " detailed"
+    var title = document.createElementNS(prefix.svg, 'text');
+    title.setAttribute('x', chartW / 2);
+    title.setAttribute('y', '35');
+    title.setAttribute('text-anchor', 'middle');
+    title.setAttribute('font-family', 'Roboto, Helvetica, Arial, sans-serif');
+    title.setAttribute('font-size', '30px');
+    title.setAttribute('font-weight', '300');
+    title.setAttribute('fill', '#666');
+    var boldSpan = document.createElementNS(prefix.svg, 'tspan');
+    boldSpan.setAttribute('font-weight', '700');
+    boldSpan.textContent = page_header;
+    title.appendChild(boldSpan);
+    var restSpan = document.createElementNS(prefix.svg, 'tspan');
+    restSpan.textContent = ' detailed';
+    title.appendChild(restSpan);
+    merged.appendChild(title);
+
+    function appendLayer(svgEl, offsetX, offsetY, opts) {
+        if (!svgEl) return;
+        var g = document.createElementNS(prefix.svg, 'g');
+        g.setAttribute('transform', 'translate(' + offsetX + ',' + offsetY + ')');
+        var clone = svgEl.cloneNode(true);
+        // remove elements that we don't want in the exported SVG
+        if (opts && opts.strip) {
+            opts.strip.forEach(function(sel) {
+                [].forEach.call(clone.querySelectorAll(sel), function(el) {
+                    el.parentNode.removeChild(el);
+                });
+            });
+        }
+        // clip some elements (for instance, can pass the coverage chart here to keep only visible parts of it when zoomed)
+        if (opts && opts.clipElements) {
+            opts.clipElements.forEach(function(sel) {
+                [].forEach.call(clone.querySelectorAll(sel), function(el) {
+                    el.setAttribute('clip-path', 'url(#inspect-chart-clip)');
+                });
+            });
+        }
+        while (clone.firstChild) {
+            g.appendChild(clone.firstChild);
+        }
+        merged.appendChild(g);
+    }
+
+    // Clip is applied to specific data path elements only, not to the whole layer group.
+    // This keeps the y-axis groups (which live outside the data column in x) unclipped.
+    // Sample titles sit in the left margin and must not be clipped.
+    // The context layer (gene arrows) is already filtered to the visible range by
+    // drawArrows() and does not need clipping.
+    appendLayer(chartSvgEl, 0, titleHeight, {clipElements: ['path.chart', 'path.line']});
+    appendLayer(document.querySelector('#highlight-boxes svg'), 0, titleHeight);
+    appendLayer(document.querySelector('#SNV-boxes svg'), 0, titleHeight, {clipElements: ['.SNV_text', '.indels_text', '.insertion_size_whisker_stem', '.insertion_size_whisker_cap']});
+    appendLayer(document.querySelector('#sample-titles svg'), 0, titleHeight);
+    appendLayer(contextSvgEl, 0, titleHeight + contentBottom);
+
+    // Brush rects: D3 sets inline styles (visibility:hidden on .background, cursor on both)
+    // that prevent correct rendering in standalone SVG viewers. Here we explicitly set the
+    // style so every viewer renders them without needing CSS or opacity compositing.
+    // .background → light grey: composited equivalent of rgba(0,0,0,0.1) over white,
+    //              which is what the live-page CSS actually renders (the lavender rule is
+    //              overridden by a more-specific grey rule in charts.css).
+    // .extent    → slightly darker grey with a stroke border; composited equivalent of
+    //              rgba(0,0,0,0.125) over the background. Shows the zoomed region when
+    //              the user has made a selection.
+    [].forEach.call(merged.querySelectorAll('.brush rect.background'), function(rect) {
+        rect.style.removeProperty('visibility');
+        rect.style.removeProperty('cursor');
+        rect.setAttribute('fill', 'rgb(230,230,230)');
+        // g.x.brush has no transform, so moving rect.background to the first child of the
+        // parent context group keeps it at the same position but paints it before the axis,
+        // letting tick marks render on top of the background rather than behind it.
+        var contextGroup = rect.parentNode.parentNode;
+        contextGroup.insertBefore(rect, contextGroup.firstChild);
+    });
+    [].forEach.call(merged.querySelectorAll('.brush rect.extent'), function(rect) {
+        rect.style.removeProperty('cursor');
+        rect.setAttribute('fill', 'rgb(201,201,201)');
+        rect.setAttribute('stroke', 'rgb(130,130,130)');
+        rect.setAttribute('stroke-width', '1');
+    });
+
+    var doctype = '<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">';
+    var svgStr = doctype + (new XMLSerializer()).serializeToString(merged);
+
+    var filename = (page_header || 'inspect').replace(/[^a-z0-9]/gi, '_') + '.svg';
+    var url = window.URL.createObjectURL(new Blob([svgStr], { "type": "text\/xml" }));
+    var a = document.createElement("a");
+    document.body.appendChild(a);
+    a.setAttribute("download", filename);
+    a.setAttribute("href", url);
+    a.style["display"] = "none";
+    a.click();
+    document.body.removeChild(a);
+
+    setTimeout(function() { window.URL.revokeObjectURL(url); }, 10);
 }

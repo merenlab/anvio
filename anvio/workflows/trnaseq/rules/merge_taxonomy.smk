@@ -12,6 +12,8 @@ rule anvi_merge_trnaseq:
     log:
         rule_log("anvi_merge_trnaseq", "anvi_merge_trnaseq"),
     threads: M.T("anvi_merge_trnaseq")
+    resources:
+        nodes=M.T("anvi_merge_trnaseq"),
     params:
         trnaseq_dbs=expand(
             os.path.join(
@@ -61,6 +63,8 @@ rule anvi_run_trna_taxonomy:
     log:
         rule_log("anvi_run_trna_taxonomy", "anvi_run_trna_taxonomy"),
     threads: M.T("anvi_run_trna_taxonomy")
+    resources:
+        nodes=M.T("anvi_run_trna_taxonomy"),
     params:
         contigs_db=os.path.join(
             os.path.join(
@@ -101,6 +105,9 @@ rule anvi_tabulate_trnaseq:
         done=touch(os.path.join(dirs_dict["CONVERT_DIR"], "TABULATE.done")),
     log:
         rule_log("anvi_tabulate_trnaseq", "anvi_tabulate_trnaseq"),
+    threads: M.T("anvi_tabulate_trnaseq")
+    resources:
+        nodes=M.T("anvi_tabulate_trnaseq"),
     params:
         contigs_db=os.path.join(
             os.path.join(
