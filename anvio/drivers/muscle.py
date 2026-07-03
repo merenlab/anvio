@@ -41,31 +41,8 @@ class Muscle:
         self.major_version = self.get_major_version()
 
 
-    def run_stdin(self, sequences_list, debug=False):
-        """Takes a list of tuples for sequences, performs MSA using muscle, returns a dict.
-
-            >>> from anvio.drivers.muscle import Muscle
-            >>> m = Muscle()
-            >>> m.run_stdin([('seq1', 'ATCATCATCGA'), ('seq2', 'ATCGAGTCGAT')])
-            {u'seq1': u'ATCATCATCGA-', u'seq2': u'ATCG-AGTCGAT'}
-
-        PARAMETERS
-        ==========
-        sequences_list : List of tuples
-            each tuple should contain the sequence name as the first element, and the sequence itself
-            as the second element
-        debug : Boolean
-            controls whether or not the temporary directory is removed after execution. Probably a good
-            idea to set this to anvio.DEBUG
-        """
-
-        return self.run_default(sequences_list, debug=debug)
-
-
     def run_default(self, sequences_list, debug=False):
         """Takes a list of tuples for sequences, performs MSA using muscle, returns a dict.
-
-        Unlike `run_stdin`, runs everything through files rather than passing data via STDIN.
 
             >>> from anvio.drivers.muscle import Muscle
             >>> m = Muscle()

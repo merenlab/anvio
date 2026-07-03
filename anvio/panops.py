@@ -1381,7 +1381,7 @@ class Pangenome(object):
             # everything goes into the trash bin. to prevent that, here we have a try/except
             # block with lots of warnings if something goes wrong.
             try:
-                alignments = aligner(run=r).run_stdin(gene_sequences_in_gene_cluster)
+                alignments = aligner(run=r).run_default(gene_sequences_in_gene_cluster)
                 alignment_was_successful = True
             except:
                 # realm of sad face. before we continue to spam the user with error messages,
