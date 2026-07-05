@@ -1,3 +1,14 @@
+const description_panel = new DescriptionPanel('/pangraph/store_description');
+
+function showFetchOverlay(message) {
+    $('#fetch-overlay-message').text(message || 'Loading...');
+    $('#fetch-overlay').css('display', 'flex');
+}
+
+function hideFetchOverlay() {
+    $('#fetch-overlay').hide();
+}
+
 class PangenomeGraphUserInterface {
     constructor() {
         this.bin_dict = {'bin_1': []};
@@ -66,6 +77,8 @@ class PangenomeGraphUserInterface {
         this.recolor_alignment = this.recolor_alignment.bind(this);
         this.alignment_download = this.alignment_download.bind(this);
         this.info_download = this.info_download.bind(this);
+        this.download_bin_fasta = this.download_bin_fasta.bind(this);
+        this.show_region_fasta_download = this.show_region_fasta_download.bind(this);
         this.add_info_to_bin = this.add_info_to_bin.bind(this);
         this.flextree_change = this.flextree_change.bind(this);
         this.save_bin = this.save_bin.bind(this);
@@ -534,52 +547,57 @@ class PangenomeGraphUserInterface {
         for (var genome of this.genomes) {
             var layer_name = genome + 'layer'
             if (Object.keys(middle_layers).includes(layer_name)){
-        
+
                 var [layer_width, layer_start, layer_stop] = middle_layers[layer_name]
-            
+
+                // per-genome track appearance, falling back to globals
+                var genome_bg_color = ($('#' + genome + 'trackbg').attr('color') || '').trim() || layer_color;
+                var genome_track_lw_raw = parseFloat($('#' + genome + 'tracklw')[0].value);
+                var genome_track_lw = isNaN(genome_track_lw_raw) ? track_line_width : genome_track_lw_raw;
+
                 if (linear == 0){
                     var [circle_a_x, circle_a_y] = this.circle_transform(0-0.5, layer_start, theta, start_angle)
                     var [circle_b_x, circle_b_y] = this.circle_transform(0-0.5, layer_stop, theta, start_angle)
                     var [circle_c_x, circle_c_y] = this.circle_transform(this.global_x + 0.5, layer_start, theta, start_angle)
                     var [circle_d_x, circle_d_y] = this.circle_transform(this.global_x + 0.5, layer_stop, theta, start_angle)
-                    
+
                     if ((this.global_x) * theta > 180) {
                         var arc_flag = 1
                     } else {
                         var arc_flag = 0
                     }
-            
+
                     svg_genome_tracks[genome].push(
                         $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
                         ' A ' + layer_start + ' ' + layer_start + ' 0 ' + arc_flag + ' 1 ' + circle_a_x + ' ' + circle_a_y +
                         ' L ' + circle_b_x + ' ' + circle_b_y +
                         ' A ' + layer_stop + ' ' + layer_stop + ' 0 ' + arc_flag + ' 0 ' + circle_d_x + ' ' + circle_d_y +
-                        ' Z" stroke-width="0" fill="' + layer_color + '"></path>')
+                        ' Z" stroke-width="0" fill="' + genome_bg_color + '"></path>')
                     )
                 } else {
                     var [circle_a_x, circle_a_y] = [(0-0.5) * node_distance_x, -layer_start]
                     var [circle_b_x, circle_b_y] = [(0-0.5) * node_distance_x, -layer_stop]
                     var [circle_c_x, circle_c_y] = [(this.global_x + 0.5) * node_distance_x, -layer_start]
                     var [circle_d_x, circle_d_y] = [(this.global_x + 0.5) * node_distance_x, -layer_stop]
-                    
+
                     svg_genome_tracks[genome].push(
                         $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
                         ' L ' + circle_a_x + ' ' + circle_a_y +
                         ' L ' + circle_b_x + ' ' + circle_b_y +
                         ' L ' + circle_d_x + ' ' + circle_d_y +
-                        ' Z" stroke-width="0" fill="' + layer_color + '"></path>')
+                        ' Z" stroke-width="0" fill="' + genome_bg_color + '"></path>')
                     )
                 }
 
                 var sorted_keys = Object.keys(this.synteny[genome]).sort(function (a, b) {return parseInt(a) - parseInt(b);});
-                if (layer_width >= track_line_width) {
+                if (layer_width >= genome_track_lw) {
 
-                    layer_width -= track_line_width
-                    layer_start += track_line_width * 0.5
-                    layer_stop -= track_line_width * 0.5
+                    layer_width -= genome_track_lw
+                    layer_start += genome_track_lw * 0.5
+                    layer_stop -= genome_track_lw * 0.5
 
                     var draw = edgecoloring[genome][1]
-                    var thickness = track_line_width
+                    var thickness = genome_track_lw
                     var stroke = ''
 
                     var edge_chain = []
@@ -1008,9 +1026,6 @@ class PangenomeGraphUserInterface {
                 var x_max = rinfo['x_max'];
                 var x_span = x_max - x_min;
 
-                // Skip single-position (backbone-only) regions
-                if (x_span === 0) continue;
-
                 // Find the tallest node in this region so the label clears it.
                 var region_max_y = 0;
                 for (var [nid, ndata] of Object.entries(this.nodes)) {
@@ -1023,7 +1038,9 @@ class PangenomeGraphUserInterface {
                 var outer_content_r = base_outer_r + region_max_y * node_distance_y;
 
                 var x_mid = (x_min + x_max) / 2;
-                var svg_region_width = x_span * node_distance_x;
+                // Single-position regions have x_span === 0; use one node-width so the
+                // zoom threshold has a non-zero value to work against.
+                var svg_region_width = Math.max(x_span, 1) * node_distance_x;
 
                 // Store geometry as data attributes; position and font-size are set
                 // dynamically by the zoom handler so the label always clears the graph.
@@ -1438,7 +1455,7 @@ class PangenomeGraphUserInterface {
         return(result)
     }
     
-    start_draw() {
+    start_draw(on_complete) {
         var new_settings_dict = {};
         
         new_settings_dict['condtr'] = parseInt($('#condtr')[0].value);
@@ -1463,6 +1480,11 @@ class PangenomeGraphUserInterface {
                 this.settings_dict = JSON.parse(JSON.stringify(new_settings_dict));
                 this.main_draw();
                 $('#svgbox').css('opacity', '');
+                if (on_complete) requestAnimationFrame(() => requestAnimationFrame(on_complete));
+                if (!this._description_panel_shown && description_panel.description) {
+                    this._description_panel_shown = true;
+                    description_panel.show();
+                }
             },
             error: (err) => {
                 $('#svgbox').css('opacity', '');
@@ -2343,6 +2365,8 @@ class PangenomeGraphUserInterface {
                 this.initialize_variables();
                 this.initialize_user_interface();
                 this.set_UI_settings();
+                description_panel.setup(this.data['meta']['description']);
+                this.start_draw(toggleLeftPanel);
             },
             error: (err) => {
                 toastr.error('Could not reach the server during initialization.', 'Initialization error', { 'timeOut': '0', 'extendedTimeOut': '0' });
@@ -2535,9 +2559,9 @@ class PangenomeGraphUserInterface {
 
         const $row = $(`<tr class="bin-row" id="bin_${n}_grid">
             <td><input type="radio" name="binradio" id="bin_${n}_radio" bin_id="bin_${n}" checked></td>
-            <td><div class="pangraph-colorpicker" id="bin_${n}_color" color="${new_color}" style="background-color: ${new_color}; width: 30px; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div></td>
+            <td><div class="pangraph-colorpicker" id="bin_${n}_color" color="${new_color}" style="background-color: ${new_color};"></div></td>
             <td><input type="text" class="form-control form-control-sm p-0 border-0" style="background-color: #e9ecef;" value="Bin_${n}" id="bin_${n}_text"></td>
-            <td><input type="button" class="form-control form-control-sm p-0 border-0 bin-count-btn" id="bin_${n}_value" value=0 title="Click for functions summary"></td>
+            <td><input type="button" class="form-control form-control-sm p-0 border-0 bin-count-btn" id="bin_${n}_value" value=0 title="Click to inspect bin contents"></td>
             <td><center><span class="default-bin-icon bi bi-trash-fill fa-lg" aria-hidden="true" title="Delete this bin" onclick="pgui.delete_bin('bin_${n}');"></span></center></td>
         </tr>`);
 
@@ -2749,6 +2773,11 @@ class PangenomeGraphUserInterface {
             $('#' + genome).colpickSetColor(gc.replace('#', ''));
             $('#flex' + genome + 'layer').prop('checked', gdata['show_track']);
             $('#' + genome + 'layer')[0].value = gdata['track_height'];
+            // per-genome track overrides — fall back to globals for old states
+            const tbc = gdata['track_bg_color'] ?? bgColor;
+            $('#' + genome + 'trackbg').css('background-color', tbc).attr('color', tbc);
+            $('#' + genome + 'trackbg').colpickSetColor(tbc.replace('#', ''));
+            $('#' + genome + 'tracklw')[0].value = gdata['track_line_width'] ?? gt['line_width'];
             genome_order.push(genome);
         }
 
@@ -2901,31 +2930,48 @@ class PangenomeGraphUserInterface {
         $('#title-panel-first-line').text(this.data['meta']['project_name']);
         $('#title-panel-second-line').text('Pangraph Detail');
         
+        const default_track_bg = $('#layer_color').attr('color') || '#F5F5F5';
+        const default_track_lw = $('#track_line_width')[0].value || '5';
+
         // if (!$('#genomecolors').children().length) {
-        for (var genome of this.genomes) {  
+        for (var genome of this.genomes) {
             $('#genomecolors').append(
-                $('<div class="col-12 d-flex mb-1" id="' + genome + '_row">').append(
-                    $('<div class="col-1 d-flex align-items-center">').append(
-                        $('<div class="form-switch d-flex">').append(
-                            $('<input class="" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">')
+                $('<div class="genome-row mb-1" id="' + genome + '_row">').append(
+                    // Line 1: vis checkbox | line color | genome name
+                    $('<div class="d-flex align-items-center gap-1">').append(
+                        $('<div class="form-switch mb-0">').append(
+                            $('<input class="genome-vis-check form-check-input" type="checkbox" id="flex' + genome + '" name="' + genome + '" checked title="Show/hide this genome">')
                         )
+                    ).append(
+                        $('<div class="pangraph-colorpicker" id="' + genome + '" color="#000000" style="background-color:#000000;"></div>')
+                    ).append(
+                        $('<span class="genome-row-name" title="' + genome + '">').text(genome)
                     )
                 ).append(
-                    $('<div class="col-8 d-flex align-items-center">').append(
-                        genome
-                    )
-                ).append(
-                    $('<div class="col-1 d-flex align-items-center">').append(
-                        $('<i class="user-handle bi bi-arrows-expand"></i>')
-                    )
-                ).append(
-                    $('<div class="d-flex col-2 align-items-center">').append(
-                        $('<div class="pangraph-colorpicker" id="' + genome + '" color="#000000" style="background-color: #000000; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>')
+                    // Line 2: track toggle | track BG color | height | LW
+                    $('<div class="d-flex align-items-center gap-1 ms-1 genome-row-track">').append($('<span style="padding-right:3px;">Display Genome Track: </span>')
+                    ).append(
+                        $('<div class="form-switch mb-0">').append(
+                            $('<input class="genome-track-check form-check-input" type="checkbox" id="flex' + genome + 'layer" name="flex' + genome + 'layer" title="Show/hide track ring">')
+                        )
+                    ).append(
+                        $('<span class="ms-1">&nbsp;Color:</span>')
+                    ).append(
+                        $('<div class="pangraph-colorpicker" id="' + genome + 'trackbg" color="' + default_track_bg + '" style="background-color:' + default_track_bg + ';" title="Track background color"></div>')
+                    ).append(
+                        $('<span class="ms-1">&nbsp;Height:&nbsp;</span>')
+                    ).append(
+                        $('<input type="text" class="form-control text-end p-0 border-0 genome-row-input" id="' + genome + 'layer" name="' + genome + 'layer" value=0 title="Track height">')
+                    ).append(
+                        $('<span class="ms-1">&nbsp;Line W:&nbsp;</span>')
+                    ).append(
+                        $('<input type="text" class="form-control text-end p-0 border-0 genome-row-input" id="' + genome + 'tracklw" name="' + genome + 'tracklw" value="' + default_track_lw + '" title="Track line width">')
                     )
                 )
             );
             this._init_colorpicker('#' + genome);
-    
+            this._init_colorpicker('#' + genome + 'trackbg');
+
             $('#RightOffcanvasBodyTop').append(
                 $('<tr>').append(
                     $('<td class="col-4">').append(
@@ -2937,25 +2983,6 @@ class PangenomeGraphUserInterface {
                     )
                 )
             );
-    
-            // if ($('#flex' + genome + 'layer').length == 0) {
-            var element = $('<div class="col-12 d-flex mb-1"></div>').append(
-                $('<div class="col-1 d-flex align-items-center"></div>').append(
-                    $('<div class="form-switch d-flex"></div>').append(
-                        $('<input class="" type="checkbox" id="flex' + genome + 'layer" name="flex' + genome + 'layer" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
-                    )
-                )
-            ).append(
-                $('<div class="col-9 d-flex align-items-center"></div>').append(
-                    genome
-                )
-            ).append(
-                $('<div class="d-flex col-2"></div>').append(
-                    $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + genome + 'layer" name="' + genome + 'layer" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">')
-                )
-            );
-
-            $('#genome_tracks').append(element);
         }
         // }
         // }
@@ -3160,11 +3187,22 @@ class PangenomeGraphUserInterface {
         
         $('#flexgroupcompress').change(function() {
             if ($(this).prop('checked') == true){
-                $('#groupcompress')[0].value = 0.0;
+                $('#groupcompress')[0].value = 0.5;
                 $('#groupcompress').prop('disabled', false);
             } else {
                 $('#groupcompress')[0].value = 1.0;
                 $('#groupcompress').prop('disabled', true);
+            }
+        })
+
+        $('#groupcompress').on('change', function() {
+            const val = parseFloat(this.value);
+            if (val < 0.1) {
+                this.value = 0.1;
+                toastr.warning('Compression factor cannot go below 0.1 :/', 'Value out of range');
+            } else if (val > 1.0) {
+                this.value = 1.0;
+                toastr.warning('Compression value cannot exceed 1.0. Well, it could, but it really should not :/ Anvi\'o set it to 1.0 for now.', 'Value out of range');
             }
         })
         
@@ -3228,18 +3266,6 @@ class PangenomeGraphUserInterface {
         $('#redraw').on("click", this.start_draw);
         $('#fit').on('click', this.fit_aspect);
         $('#svgDownload').on('click', this.svg_download);
-        $('#genome_tracks_select_all').on('click', () => {
-            $('#genome_tracks input[type="checkbox"]').prop('checked', true).trigger('change');
-        })
-        $('#genome_tracks_unselect_all').on('click', () => {
-            $('#genome_tracks input[type="checkbox"]').prop('checked', false).trigger('change');
-        })
-        $('#genomes_select_all').on('click', () => {
-            $('#genomecolors input[type="checkbox"]').prop('checked', true).trigger('change');
-        })
-        $('#genomes_unselect_all').on('click', () => {
-            $('#genomecolors input[type="checkbox"]').prop('checked', false).trigger('change');
-        })
         $('#svgbox').on('mousedown', this.press_down)
         $('#svgbox').on('mousemove', this.press_move)
         $('#svgbox').on('mouseup', this.press_up)
@@ -3258,8 +3284,40 @@ class PangenomeGraphUserInterface {
         
         sortable('#genomecolors', {
             forcePlaceholderSize: true,
-            handle: '.user-handle',
-            items: 'div'
+            items: '.genome-row'
+        });
+
+        document.getElementById('genomecolors').addEventListener('sortupdate', () => {
+            if ($('#flextree').prop('checked')) {
+                $('#flextree').prop('checked', false);
+                this.flextree_change({ currentTarget: document.getElementById('flextree') });
+                toastr.warning("As you have changed the genome order manually, the dendrogram is removed from the display (anvi'o hopes you are happy).", 'Dendrogram removed');
+            }
+        });
+
+        $(document).on('change', '.genome-vis-check', function() {
+            const genome = this.name;
+            if (!this.checked) {
+                $('#flex' + genome + 'layer').prop('checked', false);
+                if ($('#flextree').prop('checked')) {
+                    $('#flextree').prop('checked', false);
+                    pgui.flextree_change({ currentTarget: document.getElementById('flextree') });
+                    toastr.warning("As you have changed the genome order manually, the dendrogram is removed from the display (anvi'o hopes you are happy).", 'Dendrogram removed');
+                }
+            } else {
+                $('#flex' + genome + 'layer').prop('checked', true);
+            }
+        });
+
+        $('#apply-track-defaults').on('click', () => {
+            const bgColor = $('#layer_color').attr('color');
+            const lw = $('#track_line_width')[0].value;
+            for (const genome of this.genomes) {
+                $('#' + genome + 'trackbg').css('background-color', bgColor).attr('color', bgColor);
+                $('#' + genome + 'trackbg').colpickSetColor(bgColor.replace('#', ''));
+                $('#' + genome + 'tracklw')[0].value = lw;
+            }
+            this.main_draw();
         });
         this.settings_dict['condtr'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['grouping_threshold']))
         this.settings_dict['maxlength'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['max_edge_length']))
@@ -3289,13 +3347,16 @@ class PangenomeGraphUserInterface {
         this.initialize_colorpickers();
 
         $("#redraw").removeClass("disabled");
+        $("#settings-content").removeClass("settings-loading").addClass("settings-loading-cleared");
     }
 
     flextree_change(instance) {
         if ($(instance.currentTarget).prop('checked') == true){
             for (var genome of this.genomes) {
                 if ($('#flex' + genome + 'layer').prop('checked') == false){
-                    $('#' + genome + 'layer')[0].value = 50;
+                    const el = document.getElementById(genome + 'layer');
+                    el.dataset.savedHeight = el.value;
+                    el.value = 50;
                     $('#flex' + genome + 'layer').prop('checked', true);
                 }
                 $('#flex' + genome + 'layer').prop('disabled', true);
@@ -3303,6 +3364,11 @@ class PangenomeGraphUserInterface {
         } else {
             for (var genome of this.genomes) {
                 $('#flex' + genome + 'layer').prop('disabled', false);
+                const el = document.getElementById(genome + 'layer');
+                if (el && el.dataset.savedHeight !== undefined) {
+                    el.value = el.dataset.savedHeight;
+                    delete el.dataset.savedHeight;
+                }
             }
         }
     }
@@ -3343,16 +3409,16 @@ class PangenomeGraphUserInterface {
             toastr.error('The server is no longer accessible.', 'Request failed');
             return;
         }
-        waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
+        showFetchOverlay('Fetching functions and metabolism data...');
         let all_info;
         try {
             all_info = await this.get_gene_cluster_display_tables(gcid, gene_cluster_context, 1, true);
         } catch(err) {
-            waitingDialog.hide();
             toastr.error('Could not load data.', "Request failed");
             return;
+        } finally {
+            hideFetchOverlay();
         }
-        waitingDialog.hide();
 
         const title = `Synteny gene cluster: ${gcid}`;
         showPangraphFunctionsSummaryTableDialog(title, all_info);
@@ -3376,7 +3442,7 @@ class PangenomeGraphUserInterface {
         menu.style.visibility = 'hidden';
 
         const items = [
-            { title: 'Show functions for this SynGC', action: () => this.nodeinfo_with_functions(node_el) },
+            { title: 'Inspect this SynGC', action: () => this.nodeinfo_with_functions(node_el) },
             { title: 'Add SynGC as a new bin', action: () => {
                 this.add_bin();
                 this.marknode(node_el, this.current_bin_id);
@@ -3669,18 +3735,17 @@ class PangenomeGraphUserInterface {
             toastr.error('The server is no longer accessible.', 'Request failed');
             return;
         }
-        waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
+        showFetchOverlay('Fetching functions and metabolism data...');
 
         let response;
         try {
             response = await this.fetch_functions_and_metabolism(sgc_ids);
         } catch(err) {
-            waitingDialog.hide();
             toastr.error('Could not reach the functions endpoint.', "Request failed");
             return;
+        } finally {
+            hideFetchOverlay();
         }
-
-        waitingDialog.hide();
 
         if (!response || response.status !== 0) {
             toastr.error((response && response.message) || 'Could not load functional annotations.', "Server error");
@@ -3688,8 +3753,11 @@ class PangenomeGraphUserInterface {
         }
 
         this._last_gene_clusters = response['gene_clusters'] || {};
+        this._last_bin_sgc_ids = sgc_ids;
+        this._last_bin_functions = response['functions'] || {};
+        this._last_bin_name = raw_name;
         const title = `A summary of functions for ${sgc_ids.length} synteny gene clusters in "${bin_name}"`;
-        showPangraphFunctionsSummaryTableDialog(title, buildFunctionsContent(response, this.get_pangraph_gc_config()));
+        showPangraphFunctionsSummaryTableDialog(title, buildFunctionsContent(response, {...this.get_pangraph_gc_config(), binName: bin_name}));
         setTimeout(() => setupItemTableFiltering(this._last_gene_clusters), 100);
     }
 
@@ -3727,7 +3795,8 @@ class PangenomeGraphUserInterface {
         menu.style.visibility = 'hidden';
 
         const items = [
-            { title: 'Show summary of functions in region', action: () => this.show_region_functions(rid) },
+            { title: 'Inspect this region', action: () => this.show_region_functions(rid) },
+            { title: 'Download gene sequences in this region', action: () => this.show_region_fasta_download(rid) },
             { title: 'Add SynGCs in region as a new bin',   action: () => this.add_region_as_new_bin(rid) },
             { title: 'Append SynGCs in region into the active bin', action: () => this.append_region_to_active_bin(rid) },
         ];
@@ -3754,11 +3823,11 @@ class PangenomeGraphUserInterface {
         document.addEventListener('click', () => menu.remove(), { once: true });
     }
 
-    async show_region_functions(rid) {
+    _get_region_sgc_ids(rid) {
         const svg_ids = this.get_region_svg_node_ids(rid);
         if (!svg_ids.length) {
-            toastr.warning('There are no synteny gene clusters in this region.', "Nothing to show");
-            return;
+            toastr.warning('There are no synteny gene clusters in this region.', 'Nothing to show');
+            return null;
         }
 
         const sgc_ids = [];
@@ -3769,32 +3838,64 @@ class PangenomeGraphUserInterface {
             }
         }
 
+        return sgc_ids;
+    }
+
+    async _fetch_region_data(rid) {
+        const sgc_ids = this._get_region_sgc_ids(rid);
+        if (!sgc_ids) return null;
+
         if (this.server_offline) {
             toastr.error('The server is no longer accessible.', 'Request failed');
-            return;
+            return null;
         }
-        waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
+        showFetchOverlay('Fetching functions and metabolism data...');
 
         let response;
         try {
             response = await this.fetch_functions_and_metabolism(sgc_ids);
         } catch(err) {
-            waitingDialog.hide();
-            toastr.error('Could not reach the functions endpoint.', "Request failed");
-            return;
+            toastr.error('Could not reach the functions endpoint.', 'Request failed');
+            return null;
+        } finally {
+            hideFetchOverlay();
         }
-
-        waitingDialog.hide();
 
         if (!response || response.status !== 0) {
-            toastr.error((response && response.message) || 'Could not load functional annotations.', "Server error");
-            return;
+            toastr.error((response && response.message) || 'Could not load functional annotations.', 'Server error');
+            return null;
         }
 
+        return { sgc_ids, response };
+    }
+
+    async show_region_functions(rid) {
+        const result = await this._fetch_region_data(rid);
+        if (!result) return;
+        const { sgc_ids, response } = result;
+
         this._last_gene_clusters = response['gene_clusters'] || {};
+        this._last_bin_sgc_ids = sgc_ids;
+        this._last_bin_functions = response['functions'] || {};
+        this._last_bin_name = `region_${rid}`;
+
         const title = `A summary of functions for ${sgc_ids.length} synteny gene clusters in region #${rid}`;
-        showPangraphFunctionsSummaryTableDialog(title, buildFunctionsContent(response, this.get_pangraph_gc_config()));
+        showPangraphFunctionsSummaryTableDialog(title, buildFunctionsContent(response, {...this.get_pangraph_gc_config(), binName: `Region #${rid}`}));
         setTimeout(() => setupItemTableFiltering(this._last_gene_clusters), 100);
+    }
+
+    show_region_fasta_download(rid) {
+        const sgc_ids = this._get_region_sgc_ids(rid);
+        if (!sgc_ids) return;
+
+        this._last_bin_sgc_ids = sgc_ids;
+        this._last_bin_functions = {};
+        this._last_bin_name = `region_${rid}`;
+
+        showFastaOptionsDialog(
+            `Download sequences from region #${rid} as FASTA`,
+            buildFastaOptionsHTML({})
+        );
     }
 
     add_region_as_new_bin(rid) {
@@ -4093,6 +4194,90 @@ class PangenomeGraphUserInterface {
         this.download_blob(blob, title + ".fa");
     }
 
+    async download_bin_fasta() {
+        const sgc_ids = this._last_bin_sgc_ids || [];
+        if (!sgc_ids.length) {
+            toastr.warning('No gene clusters to export.', 'Nothing to download');
+            return;
+        }
+
+        const report_dna = document.querySelector('input[name="fasta_seq_type"]:checked')?.value === 'dna';
+        const wrap_sequences = document.getElementById('fasta_wrap_sequences')?.checked ?? false;
+        const active_tokens = [...document.querySelectorAll('.fasta-defline-opt:checked')].map(el => el.value);
+        const functions = this._last_bin_functions || {};
+
+        showFetchOverlay('Fetching sequences...');
+
+        let response;
+        try {
+            response = await $.ajax({
+                url: '/pangraph/get_pangraph_bin_sequences_fasta',
+                type: 'POST',
+                data: JSON.stringify({ synteny_gene_clusters: sgc_ids, report_dna }),
+                contentType: 'application/json',
+                dataType: 'json',
+                timeout: 30000,
+            });
+        } catch(err) {
+            toastr.error('Could not reach the sequences endpoint.', 'Request failed');
+            return;
+        } finally {
+            hideFetchOverlay();
+        }
+
+        if (!response || response.status !== 0) {
+            toastr.error((response && response.message) || 'Could not fetch sequences.', 'Server error');
+            return;
+        }
+
+        const sequences = response.sequences || {};
+        const metadata = response.metadata || {};
+
+        let fasta = '';
+        const sorted_clusters = Object.entries(sequences).sort(([a], [b]) => {
+            const xa = metadata[a]?.x ?? Infinity;
+            const xb = metadata[b]?.x ?? Infinity;
+            return xa !== xb ? xa - xb : a.localeCompare(b);
+        });
+
+        for (const [sgc_id, genomes] of sorted_clusters) {
+            const meta = metadata[sgc_id] || {};
+
+            // Build per-cluster tokens (same for every gene in this cluster)
+            const cluster_parts = [];
+            if (active_tokens.includes('gene_cluster')) cluster_parts.push(`SynGC:${sgc_id}`);
+            if (active_tokens.includes('position') && meta.x != null) cluster_parts.push(`pos:${meta.x}`);
+            if (active_tokens.includes('region') && meta.region) cluster_parts.push(`region:${meta.region}`);
+            if (active_tokens.includes('function')) {
+                const sgc_funcs = functions[sgc_id] || {};
+                const first_source = Object.keys(sgc_funcs)[0];
+                if (first_source) {
+                    const fn = sgc_funcs[first_source]?.function;
+                    if (fn && fn !== 'N/A' && fn !== '-') cluster_parts.push(`function:${fn}`);
+                }
+            }
+
+            for (const [genome, gene_calls] of Object.entries(genomes).sort(([a], [b]) => a.localeCompare(b))) {
+                for (const [gene_callers_id, sequence] of Object.entries(gene_calls)) {
+                    if (!sequence || !sequence.length) continue;
+                    const defline_suffix = cluster_parts.length ? ' ' + cluster_parts.join('|') : '';
+                    fasta += `>${genome}_${gene_callers_id}${defline_suffix}\n`;
+                    fasta += (wrap_sequences ? sequence.match(/.{1,120}/g).join('\n') : sequence) + '\n';
+                }
+            }
+        }
+
+        if (!fasta.length) {
+            toastr.warning('No sequences were available for this bin.', 'Nothing to download');
+            return;
+        }
+
+        const project = (this.data['meta']['project_name'] || 'project').replace(/\s+/g, '_');
+        const bin = (this._last_bin_name || 'bin').replace(/\s+/g, '_');
+        const seq_type = report_dna ? 'DNA' : 'AA';
+        this.download_blob(new Blob([fasta]), `${project}_${bin}_GENES_${seq_type}.fa`);
+    }
+
     save_bin() {
         const exportFn = () => {
             const data = {};
@@ -4246,7 +4431,9 @@ class PangenomeGraphUserInterface {
                 color: $('#' + genome).attr('color'),
                 show: $('#flex' + genome).prop('checked'),
                 track_height: Number($('#' + genome + 'layer')[0].value),
-                show_track: $('#flex' + genome + 'layer').prop('checked')
+                show_track: $('#flex' + genome + 'layer').prop('checked'),
+                track_bg_color: $('#' + genome + 'trackbg').attr('color'),
+                track_line_width: Number($('#' + genome + 'tracklw')[0].value)
             };
         }
 
@@ -4365,6 +4552,8 @@ class PangenomeGraphUserInterface {
             }
         });
     }
+
+
 }
 
 $(document).ready(function () {

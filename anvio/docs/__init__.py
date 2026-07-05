@@ -26,7 +26,7 @@ ANVIO_WORKFLOWS = {
     },
 
     "metagenomics": {
-        "authors": ['ShaiberAlon'],
+        "authors": ['FlorianTrigodet', 'ShaiberAlon'],
         "artifacts_produced": ['contigs-db', 'profile-db'],
         "artifacts_accepted": ['samples-txt', 'fasta-txt'],
         "anvio_workflows_inherited": ['contigs'],
@@ -49,7 +49,7 @@ ANVIO_WORKFLOWS = {
             "workflow, you can optionally run annotation programs on your contigs database as well.")
     },
     "ecophylo": {
-        "authors": ['mschecht'],
+        "authors": ['FlorianTrigodet', 'Kekananen', 'mschecht'],
         "artifacts_accepted": ['samples-txt', 'hmm-list', 'external-genomes', 'metagenomes'],
         "artifacts_produced": ['contigs-db', 'profile-db'],
         "anvio_workflows_inherited": [],
@@ -103,7 +103,7 @@ ANVIO_WORKFLOWS = {
     },
 
     "sra-download": {
-        "authors": ['mschecht'],
+        "authors": ['mschecht', 'FlorianTrigodet', 'Kekananen'],
         "artifacts_accepted": [],
         "artifacts_produced": ['paired-end-fastq', 'samples-txt'],
         "anvio_workflows_inherited": [],
@@ -276,6 +276,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "discov-stats": {
+        "name": "DISCOV STATS",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "bams-and-profiles-txt": {
         "name": "BAMS AND PROFILES TXT",
         "type": "TXT",
@@ -406,7 +412,19 @@ ANVIO_ARTIFACTS ={
         "name": "COLLECTION",
         "type": "TXT",
         "provided_by_anvio": True,
-        "provided_by_user":True
+        "provided_by_user": True
+    },
+    "contig-classification": {
+        "name": "CONTIG CLASSIFICATIONS",
+        "type": "COLLECTION",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "contig-classification-txt": {
+        "name": "CONTIG CLASSIFICATIONS",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
     },
     "genes-of-interest-txt": {
         "name": "GENES OF INTEREST",
@@ -872,6 +890,12 @@ ANVIO_ARTIFACTS ={
     },
     "quick-summary": {
         "name": "QUICK SUMMARY",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "light-summary": {
+        "name": "LIGHT SUMMARY",
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False

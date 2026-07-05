@@ -147,7 +147,7 @@ anvi-run-hmms -c $output_dir/CONTIGS.db \
 
 INFO "Generating an ad hoc HMM source from two PFAM accessions (A STEP THAT REQUIRES INTERNET CONNECTION AND RESPONSE FROM XFAM.ORG)"
 anvi-script-pfam-accessions-to-hmms-directory --pfam-accessions-list PF00705 PF00706 \
-                                              -O $output_dir/ADHOC_HMMs \
+                                              -o $output_dir/ADHOC_HMMs \
                                               --no-progress
 
 INFO "Running the HMMs in the ad hoc user directory"
@@ -654,6 +654,14 @@ anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                -C 'cmdline_concoct_RENAMED' \
                --reformat-contig-names \
                --quick-summary \
+               --no-progress
+
+INFO "Run light summary of CONCOCT results"
+anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+               -c $output_dir/CONTIGS.db \
+               -o $output_dir/SAMPLES-MERGED-SUMMARY-LIGHT \
+               -C 'cmdline_concoct_RENAMED' \
+               --light-summary \
                --no-progress
 
 INFO "Generate a SNV variabilty profile for PSAMPLES_Bin_00001 using a collection id"

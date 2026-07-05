@@ -746,7 +746,7 @@ But, just in case, here is an example of how to use SLURM with `anvi-run-workflo
 anvi-run-workflow -w metagenomics \
                   -c config.json \
                   --additional-params \
-                      --cores 48 \
+                      --jobs 10 \
                       --cluster \
                           'sbatch --job-name=CHOOSE_A_NICE_JOB_NAME \
                                   --account=YOUR_ACCOUNT \
@@ -755,7 +755,7 @@ anvi-run-workflow -w metagenomics \
                                   --nodes={threads}'
 ```
 
-Notice that when you use `--cluster`, snakemake also requires you to include the `--cores / --jobs`. From the `snakemake` help menu:
+When you use `--cluster`, snakemake also requires you to tell it how many jobs may be in the queue at the same time, via `--jobs` (a.k.a. `--cores`). From the `snakemake` help menu:
 
 ```
 --cores [N], --jobs [N], -j [N]
@@ -764,24 +764,10 @@ Notice that when you use `--cluster`, snakemake also requires you to include the
                         cores.
 ```
 
-We use `qsub` on our system, and we have found the behaviour a little funny in this case, where if we choose `--cores N`, then snakemake would submit `N` jobs, regardless of the number of threads each job is requesting. And hence we added the option to use the `--resources` argument, so the command from above would look like this:
+In the example above, `--jobs 10` means that at most 10 jobs are submitted to the queue in parallel. Note that this is a count of *jobs*, not CPUs: if those 10 jobs each request 20 threads, that is 200 CPUs. To cap the *total* number of threads (CPUs) used across all running jobs, snakemake uses a resource called `nodes` — every anvi'o workflow rule declares a `nodes` value equal to its number of threads. **anvi'o sets this `nodes` budget for you automatically**, using the `max_threads` value from your config file, so you normally do not need to pass `--resources` at all.
 
-
-```bash
-anvi-run-workflow -w metagenomics \
-                  -c config.json \
-                      --additional-params \
-                          --cores 10 \
-                          --resources nodes=48 \
-                          --cluster \
-                              'sbatch --job-name=CHOOSE_A_NICE_JOB_NAME \
-                                      --account=YOUR_ACCOUNT \
-                                      --output={log} \
-                                      --error={log} \
-                                      --nodes={threads}'
-```
-
-Now, at most 10 jobs would be submitted to the queue in parallel, but only as long as the total number of threads (nodes) that is requested by the submitted jobs doesn't go above 48. So if we have 3 `anvi-run-hmms` jobs and each require 20 threads, then only two would run in parallel.
+{:.notice}
+If you want to set the total-CPU ceiling explicitly — for example, to a value different from your config's `max_threads` — you can pass it yourself with `--resources nodes=MAX_THREAD`. For instance, adding `--resources nodes=48` to `--additional-params` guarantees that the combined number of threads requested by all simultaneously running jobs never exceeds 48 (so if you have 3 jobs each requiring 20 threads, only two would run in parallel). An explicit `--resources` value always takes precedence over the one anvi'o would otherwise derive from `max_threads`. One caveat: for the automatic behavior to kick in, let anvi'o manage `--cores` for you (i.e. use `--jobs` as in the example above rather than passing your own `--cores`); if you pass `--cores` yourself, anvi'o assumes you are managing resources manually and will not auto-set `nodes`.
 
 ### How to use metaSPAdes for assembly
 

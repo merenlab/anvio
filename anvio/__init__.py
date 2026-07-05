@@ -1270,6 +1270,12 @@ D = {
              'action': 'store_true',
              'help': "List available HMM sources in the contigs database and quit."}
                 ),
+    'list-contig-classification-sources': (
+            ['-l', '--list-contig-classification-sources'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "List available contig classification sources in the contigs database and quit."}
+                ),
     'annotation-source': (
             ['--annotation-source'],
             {'metavar': 'FUNCTION_ANNOTATION_SOURCE',
@@ -2259,9 +2265,17 @@ D = {
     'graph-nodes': (
             ['--graph-nodes'],
             {'metavar': "NODE_1,NODE_2",
-             'required': True,
+             'required': False,
              'help': "Nodes in an anvi'o pangenome graph database..",
              'type': str}
+                ),
+    'region-id': (
+            ['--region-id'],
+            {'metavar': "INT",
+             'required': False,
+             'help': "A region ID from an anvi'o pangenome graph database. The program will resolve the "
+                     "two boundary nodes (by position) of the region and export the loci between them.",
+             'type': int}
                 ),
     'output-file': (
             ['-o', '--output-file'],
@@ -2914,6 +2928,17 @@ D = {
                      "for your final summary of everything). Please see https://github.com/merenlab/anvio/pull/2366 for "
                      "details."}
                 ),
+    'report-discov': (
+            ['--report-discov'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Compute the Distribution of Coverage (DisCov) metric for each bin and each contig within each bin. "
+                     "DisCov combines a spread score S (proportion of windows with at least some coverage) "
+                     "and an evenness score E (proportion of covered bases within a fold-range of the median nonzero "
+                     "coverage). Requires access to the auxiliary data file (AUXILIARY-DATA.db). Results are written to "
+                     "'bins_across_samples/discov_bins.txt' (one row per bin x sample) and "
+                     "'bins_across_samples/discov_contigs.txt' (one row per contig x sample)."}
+                ),
     'reformat-contig-names': (
             ['--reformat-contig-names'],
             {'default': False,
@@ -2933,12 +2958,22 @@ D = {
                      "is skipped. In case those buggers cause issues with your data, and you still want to see your stuff and "
                      "deal with the other issue maybe later."}
                 ),
-    'quick-summary': (
+     'quick-summary': (
             ['--quick-summary'],
             {'default': False,
              'action': 'store_true',
              'help': "When declared the summary output will be generated as quickly as possible, with minimum amount "
                      "of essential information about bins."}
+                ),
+     'light-summary': (
+            ['--light-summary'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Generate a lighter summary that skips per-bin FASTA files, gene-call tables, "
+                     "and per-gene coverage statistics, but still produces bins_summary.txt, "
+                     "bins_across_samples/ tables, and bins_per_recruitment.txt. Use this when "
+                     "you need aggregate bin statistics without the overhead of per-bin sequence "
+                     "or gene-level detail."}
                 ),
     'only-complete-links': (
             ['--only-complete-links'],
@@ -4176,7 +4211,77 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Use this flag to report all C/R estimates, from all domains."}
-    )
+    ),
+    'window-length': (
+            ['--window-length'],
+            {'default': None,
+             'type': int,
+             'metavar': 'INTEGER',
+             'help': "How long to make the windows for computing the spread metric: S = # windows with coverage / # windows."}
+    ),
+    'window-length-as-percentage': (
+            ['--window-length-as-percentage'],
+            {'default': None,
+             'type': int,
+             'metavar': 'INTEGER',
+             'help': "With this option you can set the window length for the spread metric (S) dynamically as a percentage "
+                     "of a given input sequence length. This works well when your input sequences (contigs or genomes) have "
+                     "a wide size distribution and you don't have a one-size-fits-all window length to use. For instance, if "
+                     "you want the window size to be 5%% of the contig length, you would use `--window-length-as-percentage 5`. "
+                     "You may want to consider also specifying a reasonable minimum window length with the --min-window-length "
+                     "parameter."}
+    ),
+    'min-window-length': (
+            ['--min-window-length'],
+            {'default': None,
+             'type': int,
+             'metavar': 'INTEGER',
+             'help': "Use with --window-length-as-percentage to ensure that percentage-based window lengths never fall below this value."}
+    ),
+    'foldrange-lower': (
+            ['--foldrange-lower'],
+            {'default': 0.5,
+             'type': float,
+             'metavar': 'FLOAT',
+             'help': "When computing evenness of coverage depth (E), count any bases with coverage OVER this value * the "
+                     "median nonzero coverage. In typical use-cases, this value will be the inverse of --foldrange-upper. "
+                     "The default is '%(default)s'."}
+    ),
+    'foldrange-upper': (
+            ['--foldrange-upper'],
+            {'default': 2.0,
+             'type': float,
+             'metavar': 'FLOAT',
+             'help': "When computing evenness of coverage depth (E), count any bases with coverage UNDER this value * the "
+                     "median nonzero coverage. In typical use-cases, this value will be the inverse of --foldrange-lower. "
+                     "The default is '%(default)s'."}
+    ),
+    'alpha': (
+            ['--alpha'],
+            {'default': 0.5,
+             'type': float,
+             'metavar': 'FLOAT',
+             'help': "How much to weight S over E in the DisCov score. Should be a value in the range [0,1]. The default "
+                     "is '%(default)s'."}
+    ),
+    'discov-formula': (
+            ['--discov-formula'],
+            {'default': 'linear',
+             'type': str,
+             'metavar': 'STRING',
+             'help': "Which formula to use when combining S and E into the DisCov score. Options are 'linear' "
+                     "(DisCov = αS + (1-α)E) and 'geometric' (DisCov = S^α * E^(1-α)). The default is '%(default)s'."}
+    ),
+    'gen-window-level-output': (
+            ['--gen-window-level-output'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Generate an additional output file with per-window coverage statistics. For each window used to "
+                     "compute the DisCov metric, the output includes the window's start/stop positions in the "
+                     "sequence, its length, whether it has any coverage, and the number of bases within the fold-range "
+                     "of the median nonzero coverage. The file is named after the main output file with '-WINDOWS' "
+                     "inserted before the extension. Not compatible with --gene-mode or --report-minimal."}
+    ),
 }
 
 # two functions that works with the dictionary above.
