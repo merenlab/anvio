@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """Compute a graph representation of a pangenome"""
 
-import argparse
 import sys
 
 import anvio
