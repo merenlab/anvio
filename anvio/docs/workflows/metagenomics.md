@@ -359,6 +359,33 @@ anvi-run-workflow -w metagenomics \
                   -c config-references-mode.json
 ```
 
+### Long-read and mixed read-type support
+
+The metagenomics workflow handles long reads (Oxford Nanopore, PacBio) alongside — or instead of — short reads. To include long reads, add an `lr` column to your %(samples-txt)s pointing to the long-read FASTQ/FASTA files. A single sample can carry both short reads (`r1`/`r2`) and long reads (`lr`); the workflow tracks the two read sets separately and never mixes incompatible read types in assembly or mapping.
+
+Long reads are assembled with [(meta)Flye](https://github.com/mikolmogorov/Flye) and mapped with [minimap2](https://github.com/lh3/minimap2), while short reads continue to use your chosen short-read assembler and bowtie2.
+
+#### Choosing long-read presets: the `lr_technology` column vs. the config
+
+Each long-read tool needs a technology-appropriate preset: a read-type flag for Flye (e.g. `--nano-raw`), a mapping preset for minimap2 (e.g. `map-ont`), and — if you enable it — a platform for LongQC. There are two ways to provide these, and **anvi'o will never run these tools on their built-in defaults**: if it cannot determine a preset, it stops before building the workflow with a message telling you exactly what to set.
+
+1. **Recommended — the `lr_technology` column in your %(samples-txt)s.** If you declare the sequencing technology per sample (e.g. `ont`, `pb-hifi`; see the %(samples-txt)s documentation for the full list), anvi'o automatically selects the correct preset for every long-read tool. When the column is present it is all-or-nothing: every long-read sample must have a value, and short-read-only samples leave it blank. Samples in the same co-assembly `group` must use technologies that map to the same Flye read type, otherwise anvi'o asks you to split them into separate groups.
+
+2. **The config file.** If you omit the `lr_technology` column, you must set the presets explicitly in your %(workflow-config)s: `minimap2`'s `preset`, exactly one of Flye's read-type flags (`--nano-raw`, `--pacbio-hifi`, …), and — if LongQC is enabled — `longqc`'s `platform`.
+
+The technology → preset mapping is maintained in `anvio/workflows/lr_technology_presets.yaml`, which also records the tool versions each preset was validated against; if you have an untested version installed, anvi'o prints a non-fatal heads-up but proceeds.
+
+#### Long-read quality control
+
+Beyond the default short-read QC (illumina-utils), the workflow offers several optional QC steps, all disabled by default and enabled per rule in your %(workflow-config)s with `"run": true`:
+
+* `longqc` — long-read quality assessment with [LongQC](https://github.com/yfukasawa/LongQC). LongQC requires at least 4 threads. Note that **LongQC does not work on PacBio HiFi (`pb-hifi`) data** — anvi'o blocks this combination with an actionable error, since LongQC's HiFi preset expects spike-in controls that biological HiFi libraries do not contain.
+* `filtlong` — length/quality filtering of long reads with [Filtlong](https://github.com/rrwick/Filtlong) (`--min-length`, `--max-length`, `--target-bases`). When enabled, downstream mapping and assembly use the filtered reads.
+* `fastqc_sr` — [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) on quality-controlled short reads.
+* `multiqc` — aggregates FastQC and LongQC outputs into a single [MultiQC](https://multiqc.info) report.
+
+Because `longqc` and `filtlong` are not shipped with anvi'o, you can point the workflow at an environment that provides them via each rule's `conda_yaml` or `conda_env` parameter (set one, not both), or make sure they are on your `$PATH`.
+
 ### Running binning algorithms
 
 If you wish to utilize automatic binning algorithms, you can use %(anvi-cluster-contigs)s as part of your metagenomics workflow. You can run one or more binning algorithms, and resulting %(collection)ss would be automatically imported into your merged profile database/s.
