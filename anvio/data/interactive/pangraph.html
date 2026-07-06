@@ -564,6 +564,26 @@
                           <div class="pangraph-colorpicker" id="non_back_color" color="#CC5252" style="background-color: #CC5252;"></div>
                         </div>
                       </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-1 d-flex align-items-center">
+                        </div>
+                        <div class="col-9 d-flex align-items-center">
+                          Search hit color
+                        </div>
+                        <div class="d-flex col-2">
+                          <div class="pangraph-colorpicker" id="search_color" color="#FF7F0E" style="background-color: #FF7F0E;" title="Color for highlighted search results (ring and node outline)"></div>
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-1 d-flex align-items-center">
+                        </div>
+                        <div class="col-9 d-flex align-items-center">
+                          Search hit outline width
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style="background-color: #e9ecef;" id="search_outline_width" name="search_outline_width" value=3 title="Thickness of the ring drawn around matched nodes">
+                        </div>
+                      </div>
                     </div>
 
                     <span class="settings-secondary-header mb-3 mt-3">Path-Specific Overlay Layers</span>
@@ -779,16 +799,16 @@
                           <td class="col-3">Operator:</td>
                           <td class="col-9">
                               <select class="form-control form-control-sm col-12 select-sm" id="expressionrel" data-help="search-operator" disabled>
-                                  <option value="Choose operator">Choose operator</option>
-                                  <option value="=">Equal</option>
-                                  <option class="font-weight-bold" value="&ne;">Unequal</option>
-                                  <option class="font-weight-bold" value="&le;">Less than or equal</option>
-                                  <option class="font-weight-bold" value="&ge;">Greater than or equal</option>
-                                  <option class="font-weight-bold" value="&lt;">Less than</option>
-                                  <option class="font-weight-bold" value="&gt;">Greater than</option>
-                                  <option class="font-weight-bold" value="&#9666;&#9642;&#9656;">Contains</option>
-                                  <option class="font-weight-bold" value="&#9666;&#9642;">Ends with</option>
-                                  <option class="font-weight-bold" value="&#9642;&#9656;">Starts with</option>
+                                  <option value="">Choose operator</option>
+                                  <option value="eq">Equal</option>
+                                  <option value="ne">Unequal</option>
+                                  <option value="le">Less than or equal</option>
+                                  <option value="ge">Greater than or equal</option>
+                                  <option value="lt">Less than</option>
+                                  <option value="gt">Greater than</option>
+                                  <option value="contains">Contains</option>
+                                  <option value="ends">Ends with</option>
+                                  <option value="starts">Starts with</option>
                               </select>
                           </td>
                       </tr>

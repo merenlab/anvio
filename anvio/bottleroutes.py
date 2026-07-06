@@ -1807,9 +1807,47 @@ class BottleApplication(Bottle):
     def get_pangraph_synteny_gene_cluster_search_result(self):
         try:
             payload = request.json
-            search_terms = payload['search_terms']
 
-            data = self.interactive.search_for_gene_functions(search_list)[0]
-            return(json.dumps({'status': 0, 'data': data}))
-        except:
-            return(json.dumps({'status': 1, 'data': ''}))
+            # accept either a list of terms or a single comma-separated string
+            search_terms = payload['search_terms']
+            if isinstance(search_terms, str):
+                search_terms = [t.strip() for t in search_terms.split(',')]
+            search_terms = [t for t in search_terms if t]
+
+            requested_sources = payload.get('sources') or None
+
+            if not search_terms:
+                return(json.dumps({'status': 1, 'message': 'No search terms were provided.', 'data': {}}))
+
+            # search_for_gene_functions returns (gene_clusters, full_report) where
+            # gene_clusters maps each term -> [synteny gene cluster (node) id, ...], and
+            # full_report carries the per-gene-call annotation details.
+            gene_clusters, full_report = self.interactive.search_for_gene_functions(search_terms, requested_sources=requested_sources)
+
+            # Build a per-SynGC summary: which sources/accessions/annotations matched.
+            # 'n/a' means the functional hit did not end up in any synteny gene cluster.
+            data = {}
+            for entry in full_report:
+                gene_caller_id, genome_name, source, accession, function, search_term, gene_cluster_id = entry[:7]
+                if gene_cluster_id == 'n/a':
+                    continue
+                data.setdefault(gene_cluster_id, []).append({
+                    'genome': genome_name,
+                    'source': source,
+                    'accession': accession,
+                    'function': function,
+                    'search_term': search_term,
+                })
+
+            # The client only holds the active component's nodes, but function
+            # search spans the whole pangenome. Report each match's component so
+            # the UI can point the user to hits that live in other components.
+            components = {}
+            graph = self.interactive.pangenome_graph.graph
+            for gene_cluster_id in data:
+                if gene_cluster_id in graph.nodes:
+                    components[gene_cluster_id] = int(graph.nodes[gene_cluster_id].get('component_id', 0))
+
+            return(json.dumps({'status': 0, 'data': data, 'components': components}))
+        except Exception as e:
+            return(json.dumps({'status': 1, 'message': str(e), 'data': {}}))

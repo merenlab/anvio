@@ -1975,7 +1975,9 @@ class PangenomeGraph():
                     'height': arrow
                 },
                 'search': {
-                    'hit_height': search
+                    'hit_height': search,
+                    'hit_color': '#FF7F0E',
+                    'hit_outline_width': 3
                 }
             },
             'layers_tree': {

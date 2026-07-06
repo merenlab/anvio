@@ -94,6 +94,14 @@ class PangenomeGraphUserInterface {
         this.draw_newick = this.draw_newick.bind(this);
         this.generate_svg = this.generate_svg.bind(this);
 
+        this.run_search = this.run_search.bind(this);
+        this.highlight_search = this.highlight_search.bind(this);
+        this.clear_search_highlight = this.clear_search_highlight.bind(this);
+        this.append_search_to_bin = this.append_search_to_bin.bind(this);
+        this.remove_search_from_bin = this.remove_search_from_bin.bind(this);
+
+        this._search_results = [];
+
         this.initialize_JSON();
     }
 
@@ -786,7 +794,7 @@ class PangenomeGraphUserInterface {
                 var j_y = search_stop
                 
                 if (!global_values.includes(k_x)) {
-                    svg_search.push(this.create_rectangle(i_x, i_y, j_x, j_y, theta, start_angle, node_distance_x, linear, 'white', k_x))
+                    svg_search.push(this.create_rectangle(i_x, i_y, j_x, j_y, theta, start_angle, node_distance_x, linear, 'white', 'searchhit_' + k_x, 'pangraph-search-hit'))
                 }
     
                 for (var layer_name of this.layers) {
@@ -1224,14 +1232,16 @@ class PangenomeGraphUserInterface {
         return color4
     }
 
-    create_rectangle(i_x, i_y, j_x, j_y, theta, start_angle, node_distance_x, linear, color, id='') {
-    
+    create_rectangle(i_x, i_y, j_x, j_y, theta, start_angle, node_distance_x, linear, color, id='', css_class='') {
+
+        var extra = ''
         if (id != '') {
-            var extra = '" id="' + id
-        } else {
-            var extra = ''
+            extra += '" id="' + id
         }
-        
+        if (css_class != '') {
+            extra += '" class="' + css_class
+        }
+
         if (linear == 0) {
             var [a_x, a_y] = this.circle_transform(i_x, i_y, theta, start_angle)
             var [b_x, b_y] = this.circle_transform(j_x, i_y, theta, start_angle)
@@ -2710,8 +2720,29 @@ class PangenomeGraphUserInterface {
     initialize_colorpickers() {
         const genomeColorIds = new Set(this.genomes);
         document.querySelectorAll('.pangraph-colorpicker').forEach(el => {
-            if (!genomeColorIds.has(el.id)) {
-                this._init_colorpicker('#' + el.id);
+            if (genomeColorIds.has(el.id)) return;
+            if (el.id === 'search_color') {
+                this._init_search_colorpicker();
+                return;
+            }
+            this._init_colorpicker('#' + el.id);
+        });
+    }
+
+    // The search-hit color doesn't affect generate_svg, so instead of the
+    // generic full redraw on close we just re-apply the current highlight (if
+    // any) in the new color.
+    _init_search_colorpicker() {
+        $('#search_color').colpick({
+            layout: 'hex',
+            submit: 0,
+            colorScheme: 'light',
+            onChange: (hsb, hex, rgb, el, bySetColor) => {
+                $(el).css('background-color', '#' + hex);
+                $(el).attr('color', '#' + hex);
+            },
+            onHide: () => {
+                if ((this._search_svg_ids || []).length) this.highlight_search();
             }
         });
     }
@@ -2773,6 +2804,10 @@ class PangenomeGraphUserInterface {
         $('#flexarrow').prop('checked', lyr['orientation_arrow']['visible']);
         $('#arrow')[0].value = lyr['orientation_arrow']['height'];
         $('#search_hit')[0].value = lyr['search']['hit_height'];
+        const searchColor = lyr['search']['hit_color'] ?? '#FF7F0E';
+        $('#search_color').css('background-color', searchColor).attr('color', searchColor);
+        $('#search_color').colpickSetColor(searchColor.replace('#', ''));
+        $('#search_outline_width')[0].value = lyr['search']['hit_outline_width'] ?? 3;
 
         // layers_tree
         const lt = state['layers_tree'];
@@ -3334,6 +3369,22 @@ class PangenomeGraphUserInterface {
         $('#AddBin').on("click", this.add_info_to_bin);
         $('#AlignmentDownload').on("click", this.alignment_download);
         $('#InfoDownload').on("click", this.info_download);
+
+        // Search tab: the expression controls ship disabled in the HTML; enable
+        // them now that the layer/source/filter options have been populated.
+        $('#expressiondrop, #expressionrel, #expressiontext').prop('disabled', false);
+        $('#search').on('click', this.run_search);
+        $('#searchcolor').on('click', this.highlight_search);
+        $('#searcherase').on('click', this.clear_search_highlight);
+        $('#searchadd').on('click', this.append_search_to_bin);
+        $('#searchremove').on('click', this.remove_search_from_bin);
+        $('#expressiontext, #searchFunctionsValue').on('keydown', (ev) => {
+            if (ev.key === 'Enter') { ev.preventDefault(); this.run_search(); }
+        });
+        // re-apply an active highlight when the outline width changes
+        $('#search_outline_width').on('change', () => {
+            if ((this._search_svg_ids || []).length) this.highlight_search();
+        });
 
         $('#stateload').on("click", this.show_load_state_modal);
         $('#statesave').on("click", this.show_save_state_modal);
@@ -3996,6 +4047,431 @@ class PangenomeGraphUserInterface {
         toastr.success(`Appended ${added} new item(s) to "${bin_id}".`, "Bin updated");
     }
 
+    // ---------------------------------------------------------------------
+    // SEARCH
+    // ---------------------------------------------------------------------
+
+    // Map a list of SynGC (node) ids to the SVG element ids that actually
+    // represent them on screen: an ungrouped node keeps its own id, a grouped
+    // node is represented by its GCG_ group element.
+    _node_ids_to_svg_ids(node_ids) {
+        const node_to_group = {};
+        for (const [group_id, members] of Object.entries(this.group_dict)) {
+            for (const member of members) node_to_group[member] = group_id;
+        }
+        const svg_ids = new Set();
+        for (const nid of node_ids) {
+            if (!this.data['nodes'][nid]) continue;   // not in the active component
+            svg_ids.add(nid in node_to_group ? node_to_group[nid] : nid);
+        }
+        return svg_ids;
+    }
+
+    // Client-side "Search with expression": Name / Position / any layer value.
+    // Returns a Set of matching node ids, or null if the box is not in use.
+    _gather_expression_matches() {
+        const item = $('#expressiondrop').val();
+        const operator = $('#expressionrel').val();
+        const term = ($('#expressiontext').val() || '').trim();
+
+        if (!item || item === 'Choose item' || !operator || term === '') return null;
+
+        const num_term = parseFloat(term);
+        const matches = new Set();
+
+        for (const [nid, node] of Object.entries(this.data['nodes'])) {
+            let cell;
+            if (item === 'Name') {
+                cell = node['gene_cluster'];
+            } else if (item === 'Position') {
+                cell = node['position'][0];
+            } else {
+                cell = node['layer'] ? node['layer'][item] : undefined;
+            }
+            if (cell === undefined || cell === null) continue;
+
+            const num_cell = parseFloat(cell);
+            const str_cell = String(cell);
+            let hit = false;
+            switch (operator) {
+                case 'eq':       hit = (str_cell === term) || (num_cell === num_term); break;
+                case 'ne':       hit = (str_cell !== term) && !(num_cell === num_term); break;
+                case 'lt':       hit = (num_cell <  num_term); break;
+                case 'le':       hit = (num_cell <= num_term); break;
+                case 'gt':       hit = (num_cell >  num_term); break;
+                case 'ge':       hit = (num_cell >= num_term); break;
+                case 'contains': hit = str_cell.toLowerCase().includes(term.toLowerCase()); break;
+                case 'starts':   hit = str_cell.toLowerCase().startsWith(term.toLowerCase()); break;
+                case 'ends':     hit = str_cell.toLowerCase().endsWith(term.toLowerCase()); break;
+            }
+            if (hit) matches.add(nid);
+        }
+        return matches;
+    }
+
+    // Client-side "Filter": min/max ranges on Position and any layer value.
+    // Returns a Set of matching node ids, or null if no filter is active.
+    _gather_filter_matches() {
+        const constraints = [];   // {accessor, min, max}
+
+        const read = (key, accessor) => {
+            const min_on = $('#min' + key).prop('checked');
+            const max_on = $('#max' + key).prop('checked');
+            if (!min_on && !max_on) return;
+            const min_v = min_on ? parseFloat($('#min' + key + 'text').val()) : -Infinity;
+            const max_v = max_on ? parseFloat($('#max' + key + 'text').val()) :  Infinity;
+            constraints.push({ accessor, min: isNaN(min_v) ? -Infinity : min_v, max: isNaN(max_v) ? Infinity : max_v });
+        };
+
+        read('position', (node) => node['position'][0]);
+        for (const layer of this.layers) {
+            read(layer, (node) => (node['layer'] ? node['layer'][layer] : undefined));
+        }
+
+        if (constraints.length === 0) return null;
+
+        const matches = new Set();
+        for (const [nid, node] of Object.entries(this.data['nodes'])) {
+            let ok = true;
+            for (const c of constraints) {
+                const v = parseFloat(c.accessor(node));
+                if (isNaN(v) || v < c.min || v > c.max) { ok = false; break; }
+            }
+            if (ok) matches.add(nid);
+        }
+        return matches;
+    }
+
+    // Server-backed "Search functions". Returns a Set of matching node ids
+    // (and caches per-node annotation detail in this._search_function_detail),
+    // or null if the box is not in use.
+    async _gather_function_matches() {
+        const terms = ($('#searchFunctionsValue').val() || '').trim();
+        if (terms === '') return null;
+
+        const sources = [];
+        $('#searchSources input:checkbox:checked').each((i, el) => {
+            sources.push(el.id.replace(/^flex/, ''));
+        });
+
+        if (this.server_offline) {
+            toastr.error('The server is no longer accessible.', 'Request failed');
+            return new Set();
+        }
+
+        showFetchOverlay('Searching functional annotations...');
+        let response;
+        try {
+            response = await $.ajax({
+                url: '/pangraph/get_pangraph_synteny_gene_cluster_search_result',
+                type: 'POST',
+                data: JSON.stringify({ search_terms: terms, sources: sources }),
+                contentType: 'application/json',
+                dataType: 'json',
+                timeout: 30000,
+            });
+        } catch (err) {
+            toastr.error('Could not reach the functions search endpoint.', 'Request failed');
+            return new Set();
+        } finally {
+            hideFetchOverlay();
+        }
+
+        if (!response || response.status !== 0) {
+            toastr.error((response && response.message) || 'Function search failed.', 'Server error');
+            return new Set();
+        }
+
+        this._search_function_detail = response['data'] || {};
+        this._search_function_components = response['components'] || {};
+        return new Set(Object.keys(this._search_function_detail));
+    }
+
+    // The component currently shipped to the client (only its nodes are in
+    // this.data['nodes']).
+    _active_component() {
+        const v = parseInt($('#component_select').val());
+        if (!isNaN(v)) return v;
+        return parseInt(this.data['meta']['component'] || 0) || 0;
+    }
+
+    // Component id for a matched node: the server-provided one for function
+    // hits, otherwise the active component (expression/filter only ever match
+    // nodes that are already in view).
+    _component_of_match(nid) {
+        const c = (this._search_function_components || {})[nid];
+        if (c !== undefined) return c;
+        if (this.data['nodes'][nid]) return this._active_component();
+        return null;   // component not reported by the server
+    }
+
+    // Run whichever search boxes are filled and intersect their results.
+    async run_search() {
+        this._search_function_detail = {};
+        this._search_function_components = {};
+
+        const expr = this._gather_expression_matches();
+        const filt = this._gather_filter_matches();
+        const func = await this._gather_function_matches();
+
+        const active = [expr, filt, func].filter(s => s !== null);
+        if (active.length === 0) {
+            toastr.warning('Fill in an expression, a function term, or a filter first.', 'Nothing to search');
+            return;
+        }
+
+        // intersect the active result sets
+        let result_ids = null;
+        for (const s of active) {
+            if (result_ids === null) {
+                result_ids = new Set(s);
+            } else {
+                result_ids = new Set([...result_ids].filter(x => s.has(x)));
+            }
+        }
+        const all_ids = [...result_ids];
+
+        // Function search spans the whole pangenome, but only the active
+        // component's nodes are drawn. Split matches accordingly: mark/bin the
+        // ones in view, and tally the rest per component so the user knows
+        // where they are.
+        const active_comp = this._active_component();
+        const node_ids = all_ids.filter(nid => this.data['nodes'][nid]);   // in view
+        this._search_results = node_ids;
+        this._search_svg_ids = [...this._node_ids_to_svg_ids(node_ids)];
+
+        // per-component tally over ALL matches (nodes the server didn't place
+        // fall into an "other" bucket)
+        const per_component = {};
+        let other = 0;
+        for (const nid of all_ids) {
+            const c = this._component_of_match(nid);
+            if (c === null) { other++; continue; }
+            per_component[c] = (per_component[c] || 0) + 1;
+        }
+        this._search_component_tally = per_component;
+        this._search_other_count = other;
+
+        this.render_search_results();
+
+        const has_results = node_ids.length > 0;
+        $('#searchcolor, #searcherase, #searchadd, #searchremove').prop('disabled', !has_results);
+
+        // highlight the in-view hits right away
+        if (has_results) this.highlight_search();
+
+        this.show_search_toast(this._format_component_breakdown(all_ids.length, per_component, other, active_comp));
+    }
+
+    // "17 hits: 12 in component 0 (current), 4 in component 5, 1 in component 8"
+    _format_component_breakdown(total, per_component, other, active_comp) {
+        if (total === 0) return 'No synteny gene clusters matched.';
+        const comps = Object.keys(per_component)
+            .map(Number)
+            .sort((a, b) => (a === active_comp ? -1 : b === active_comp ? 1 : a - b));
+        const parts = comps.map(c =>
+            `${per_component[c]} in component ${c}${c === active_comp ? ' (current)' : ''}`);
+        if (other) parts.push(`${other} in other component(s)`);
+        return `${total} hit${total === 1 ? '' : 's'}: ` + parts.join(', ');
+    }
+
+    show_search_toast(message) {
+        $('#searchtoastbody').text(message);
+        const el = document.getElementById('searchtoast');
+        if (el && window.bootstrap && bootstrap.Toast) {
+            bootstrap.Toast.getOrCreateInstance(el).show();
+        }
+    }
+
+    render_search_results() {
+        const node_ids = this._search_results || [];
+        const per_component = this._search_component_tally || {};
+        const other = this._search_other_count || 0;
+        const active_comp = this._active_component();
+        const total = Object.values(per_component).reduce((a, b) => a + b, 0) + other;
+
+        if (total === 0) {
+            $('#searchtable').html('<p class="text-muted mt-2">No matches.</p>');
+            return;
+        }
+
+        // Per-component breakdown message
+        let summary = `<div class="mt-2 mb-1"><strong>${this._format_component_breakdown(total, per_component, other, active_comp)}</strong></div>`;
+
+        // Buttons to jump to other components that contain hits
+        const other_comps = Object.keys(per_component).map(Number).filter(c => c !== active_comp).sort((a, b) => a - b);
+        if (other_comps.length) {
+            summary += `<div class="mb-2" style="font-size:0.85em;">Jump to: `;
+            summary += other_comps.map(c =>
+                `<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 me-1 pangraph-search-goto" data-component="${c}">component ${c} (${per_component[c]})</button>`
+            ).join('');
+            summary += `</div>`;
+        }
+
+        let table = '';
+        if (node_ids.length) {
+            let rows = '';
+            for (const nid of node_ids) {
+                const node = this.data['nodes'][nid];
+                const gc_name = node['gene_cluster'];
+                let detail = '';
+                const fd = (this._search_function_detail || {})[nid];
+                if (fd && fd.length) {
+                    const first = fd[0];
+                    detail = `${first.source}: ${first.function || first.accession || ''}`;
+                }
+                rows += `<tr>` +
+                        `<td><a href="#" class="no-link pangraph-search-hit-link" data-node-id="${nid}">${nid}</a></td>` +
+                        `<td>${gc_name}</td>` +
+                        `<td>${detail}</td>` +
+                        `</tr>`;
+            }
+            table = `<table class="table table-striped table-bordered table-sm">` +
+                `<thead><tr><th>SynGC</th><th>Gene cluster</th><th>Function</th></tr></thead>` +
+                `<tbody>${rows}</tbody></table>`;
+        } else {
+            table = `<p class="text-muted">No hits in the current component. Use the buttons above to switch to a component that has hits.</p>`;
+        }
+
+        $('#searchtable').html(summary + table);
+
+        // clicking a result inspects that SynGC
+        $('#searchtable .pangraph-search-hit-link').on('click', (ev) => {
+            ev.preventDefault();
+            const nid = ev.currentTarget.getAttribute('data-node-id');
+            const svg_ids = [...this._node_ids_to_svg_ids([nid])];
+            const el = svg_ids.length ? document.getElementById(svg_ids[0]) : null;
+            if (el) this.nodeinfo(el);
+        });
+
+        // clicking a "jump to component" button switches component and re-runs the search
+        $('#searchtable .pangraph-search-goto').on('click', (ev) => {
+            const comp = ev.currentTarget.getAttribute('data-component');
+            this.switch_to_component(comp);
+        });
+    }
+
+    // Switch the drawn component, then re-run the current search so its hits in
+    // the now-active component get marked.
+    switch_to_component(comp) {
+        $('#component_select').val(String(comp));
+        this.start_draw(() => { this.run_search(); });
+    }
+
+    highlight_search() {
+        const svg_ids = this._search_svg_ids || [];
+        if (!svg_ids.length) {
+            toastr.warning('Run a search first.', 'Nothing to highlight');
+            return;
+        }
+        this.clear_search_highlight();
+
+        const highlight_color = $('#search_color').attr('color') || '#FF7F0E';
+
+        // 1) recolor the search-hit ring at each match's x-position. Nodes
+        // stacked at the same x share a search-hit id, so match by id across
+        // all rects rather than relying on getElementById (which finds one).
+        const target_x = new Set();
+        for (const nid of this._search_results) {
+            if (this.data['nodes'][nid]) target_x.add(String(this.data['nodes'][nid]['position'][0]));
+        }
+        document.querySelectorAll('.pangraph-search-hit').forEach(rect => {
+            if (target_x.has(rect.id.replace('searchhit_', ''))) rect.setAttribute('fill', highlight_color);
+        });
+
+        // 2) draw a ring just *outside* each matched node (and trace the outline
+        // of matched groups) into a dedicated overlay group. Using a separate
+        // element rather than thickening the node's own centered stroke keeps
+        // the node body uncovered, and leaves its `class`/attributes untouched
+        // (press_up and marknode match class exactly, e.g. class === 'node').
+        const outline_width = parseFloat($('#search_outline_width')[0].value) || 3;
+        const svg_el = document.getElementById('result');
+        const vp = svg_el ? (svg_el.querySelector('.svg-pan-zoom_viewport') || svg_el) : null;
+        if (!vp) return;
+
+        const grp = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        grp.setAttribute('id', 'search-outline-group');
+        for (const svg_id of svg_ids) {
+            const el = document.getElementById(svg_id);
+            if (!el) continue;
+            let marker;
+            if (el.tagName.toLowerCase() === 'circle') {
+                // concentric ring sitting just outside the node's outer edge
+                const cx = parseFloat(el.getAttribute('cx'));
+                const cy = parseFloat(el.getAttribute('cy'));
+                const r = parseFloat(el.getAttribute('r'));
+                const sw = parseFloat(el.getAttribute('stroke-width')) || 0;
+                marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                marker.setAttribute('cx', cx);
+                marker.setAttribute('cy', cy);
+                marker.setAttribute('r', r + sw / 2 + outline_width / 2);
+            } else {
+                // group node: trace its boundary in the highlight color
+                const d = el.getAttribute('d');
+                if (!d) continue;
+                marker = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                marker.setAttribute('d', d);
+            }
+            marker.setAttribute('fill', 'none');
+            marker.setAttribute('stroke', highlight_color);
+            marker.setAttribute('stroke-width', outline_width);
+            marker.setAttribute('pointer-events', 'none');
+            grp.appendChild(marker);
+        }
+        vp.appendChild(grp);
+    }
+
+    clear_search_highlight() {
+        // reset recolored search-hit rectangles back to white
+        document.querySelectorAll('.pangraph-search-hit').forEach(rect => rect.setAttribute('fill', 'white'));
+
+        // remove the search-hit outline overlay
+        const grp = document.getElementById('search-outline-group');
+        if (grp) grp.remove();
+    }
+
+    append_search_to_bin() {
+        const svg_ids = this._search_svg_ids || [];
+        if (!svg_ids.length) {
+            toastr.warning('Run a search first.', 'Nothing to add');
+            return;
+        }
+        const bin_id = this.current_bin_id;
+        this._suppress_bin_ring_draw = true;
+        let added = 0;
+        for (const svg_id of svg_ids) {
+            if (!this.bin_dict[bin_id].includes(svg_id)) {
+                const el = document.getElementById(svg_id);
+                if (el) { this.marknode(el, bin_id); added++; }
+            }
+        }
+        this._suppress_bin_ring_draw = false;
+        this.draw_bin_rings();
+        toastr.success(`Appended ${added} synteny gene cluster(s) to "${bin_id}".`, 'Bin updated');
+    }
+
+    remove_search_from_bin() {
+        const svg_ids = this._search_svg_ids || [];
+        if (!svg_ids.length) {
+            toastr.warning('Run a search first.', 'Nothing to remove');
+            return;
+        }
+        const bin_id = this.current_bin_id;
+        this._suppress_bin_ring_draw = true;
+        let removed = 0;
+        for (const svg_id of svg_ids) {
+            // marknode toggles a node out of its bin only when it is currently in
+            // *this* bin, so restrict removal to members of the active bin.
+            if (this.bin_dict[bin_id].includes(svg_id)) {
+                const el = document.getElementById(svg_id);
+                if (el) { this.marknode(el, bin_id); removed++; }
+            }
+        }
+        this._suppress_bin_ring_draw = false;
+        this.draw_bin_rings();
+        toastr.success(`Removed ${removed} synteny gene cluster(s) from "${bin_id}".`, 'Bin updated');
+    }
+
 
     get_gene_cluster_context_table(gene_cluster_id_current, gene_cluster_context, add_align) {
         
@@ -4574,7 +5050,9 @@ class PangenomeGraphUserInterface {
                     height: Number($('#arrow')[0].value)
                 },
                 search: {
-                    hit_height: Number($('#search_hit')[0].value)
+                    hit_height: Number($('#search_hit')[0].value),
+                    hit_color: $('#search_color').attr('color'),
+                    hit_outline_width: Number($('#search_outline_width')[0].value)
                 }
             },
             layers_tree: {
