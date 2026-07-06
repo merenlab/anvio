@@ -656,6 +656,14 @@ anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                --quick-summary \
                --no-progress
 
+INFO "Run light summary of CONCOCT results"
+anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+               -c $output_dir/CONTIGS.db \
+               -o $output_dir/SAMPLES-MERGED-SUMMARY-LIGHT \
+               -C 'cmdline_concoct_RENAMED' \
+               --light-summary \
+               --no-progress
+
 INFO "Generate a SNV variabilty profile for PSAMPLES_Bin_00001 using a collection id"
 anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
                              -p $output_dir/SAMPLES-MERGED/PROFILE.db \

@@ -59,7 +59,7 @@
         "anvi_compute_genome_similarity": {
             "threads":           {"type": "int",  "default": 1},
             "run":               {"type": "bool", "default": false},
-            "additional_params": {"type": "str",  "default": null}
+            "additional_params": {"type": "str",  "default": ""}
         }
     }
 }

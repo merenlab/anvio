@@ -1952,7 +1952,8 @@ class PangenomeGraph():
                 }
             },
             'edges': {
-                'width': 5
+                'width': 5,
+                'min_line_width_px': 0.5
             },
             'graph_layout': {
                 'grouping_enabled': self.gene_cluster_grouping_threshold != -1,
