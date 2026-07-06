@@ -1,12 +1,14 @@
 """
-    QCModule — a mixin providing short-read quality-control steps for workflows.
+    QCModule — a mixin providing quality-control steps for short-read and long-read workflows.
 """
 
 import os
+import gzip
+import importlib.util
 import anvio
 import anvio.utils as u
 
-from anvio.workflows import WorkflowSuperClass
+from anvio.workflows import WorkflowSuperClass, get_lr_preset, warn_if_tool_version_untested
 from anvio.errors import ConfigError
 
 
@@ -23,45 +25,86 @@ class QCModule(WorkflowSuperClass):
       - illumina-utils SR filtering (iu-gen-configs + iu-filter-quality-minoche)
       - QC report aggregation (gen_qc_report)
       - Optional gzip of QC'd SR reads
+      - Optional FastQC on SR reads
+      - Optional LongQC quality assessment on LR reads
+      - Optional Filtlong filtering of LR reads
+      - Optional MultiQC aggregation of all QC outputs
 
     Subclasses must set before any QC methods are called:
       - self.readsets: list[dict] from SamplesTxt.iter_readsets()
       - self.dirs_dict: includes "QC_DIR"
       - self.run_qc: bool (SR QC enabled)
+      - self.run_lr_qc: bool (LongQC enabled)
+      - self.run_filtlong: bool
+      - self.run_multiqc: bool
     """
 
     def __init__(self):
+        # Register the QC rule names this mixin provides. Their accepted parameters, types,
+        # and default values are declared in the consuming workflow's params.json (e.g.
+        # anvio/workflows/metagenomics/params.json), which is the single source of truth —
+        # WorkflowSuperClass.init() populates rule_acceptable_params_dict and the default
+        # config from that schema, so we intentionally do not duplicate them here.
         self.rules.extend([
             'iu_gen_configs',
             'iu_filter_quality_minoche',
             'gen_qc_report',
             'gzip_fastqs',
+            'fastqc_sr',
+            'longqc',
+            'filtlong',
+            'multiqc',
         ])
 
-        rule_acceptable_params_dict = {}
-        rule_acceptable_params_dict['iu_gen_configs'] = ["--r1-prefix", "--r2-prefix"]
-        rule_acceptable_params_dict['iu_filter_quality_minoche'] = [
-            'run', '--visualize-quality-curves', '--ignore-deflines',
-            '--limit-num-pairs', '--print-qual-scores', '--store-read-fate',
-        ]
-        rule_acceptable_params_dict['gen_qc_report'] = []
-        rule_acceptable_params_dict['gzip_fastqs'] = ["run"]
+    def get_longqc_platform(self, readset_id):
+        """Return the LongQC --sample_type (-x) value for this readset.
 
-        self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
+        Resolution order: (1) the readset's 'lr_technology' token from samples-txt (mapped
+        to a LongQC platform via the LR technology preset file); (2) the explicit
+        'longqc: platform' value from the config; otherwise a ConfigError. Anvi'o never lets
+        LongQC fall back to a built-in default so quality assessment can't silently use the
+        wrong platform model.
 
-        self.default_config.update({
-            'iu_filter_quality_minoche': {"run": True, "--ignore-deflines": True},
-            'gzip_fastqs': {"run": True},
-        })
+        pb-hifi is a valid token/platform for mapping and assembly, but LongQC crashes on
+        biological PacBio HiFi data (its pb-hifi preset filters spike-in controls that HiFi
+        libraries don't contain, yielding an empty coverage file / EmptyDataError). pb-hifi
+        readsets are therefore blocked upfront in check_qc_program_dependencies().
+        """
+        rs = self.readsets_by_id.get(readset_id)
+        if rs is None:
+            raise ConfigError(
+                f"Anvi'o was asked to look up the LongQC platform for a readset called '{readset_id}', "
+                f"but that readset id does not exist in the workflow. This is most likely a bug — please "
+                f"let a developer know."
+            )
+        tech = rs.get('lr_technology')
+        if tech:
+            # token validity is enforced during init(); get_lr_preset returns the platform
+            platform = get_lr_preset(tech, 'longqc')
+            if platform:
+                return platform
+        platform = self.get_param_value_from_config(['longqc', 'platform'])
+        if platform:
+            return platform
+        raise ConfigError(
+            f"Anvi'o needs a LongQC platform (the -x/--sample_type value) for the long-read readset "
+            f"'{readset_id}', but none is available. Either add an 'lr_technology' column to your "
+            f"samples-txt file (anvi'o will map it to the right LongQC platform automatically), or set "
+            f"'longqc': {{'platform': ...}} in your workflow config (e.g. 'ont-ligation', 'ont-rapid', "
+            f"'pb-rs2', 'pb-sequel'). Note that LongQC does not work on PacBio HiFi ('pb-hifi') data."
+        )
 
     def get_fastq(self, readset, pre_ref_removal=False):
         """Return FASTQ paths for a readset.
 
-        For LR: returns the raw long-read files.
+        For LR: returns filtlong output (if run_filtlong), otherwise raw LR.
         For SR: delegates to _resolve_sr_path() — override there for ref-removal logic.
         """
         rs = self.readsets_by_id.get(readset)
         if rs['type'] == 'LR':
+            if getattr(self, 'run_filtlong', False):
+                path = os.path.join(self.dirs_dict["QC_DIR"], f"{readset}-FILTERED_LR.fastq.gz")
+                return {'lr': [path]}
             return {'lr': self.get_lr_files_for_readset(readset)}
         elif rs['type'] == 'SR':
             return self._resolve_sr_path(readset, pre_ref_removal=pre_ref_removal)
@@ -76,11 +119,23 @@ class QCModule(WorkflowSuperClass):
             return {'r1': [r1], 'r2': [r2]}
         return self.get_sr_files_for_readset(readset)
 
+    def _tool_provided_by_conda(self, tool):
+        """Whether a tool is supplied via a conda env (conda_yaml or conda_env) rather than $PATH.
+
+        When it is, we must not check for the executable (or its Python modules) on the current
+        $PATH / interpreter — Snakemake will run the rule inside the configured environment. Mirrors
+        the logic in MetagenomicsWorkflow.ensure_tool_in_path_or_conda().
+        """
+        y = self.get_param_value_from_config([tool, 'conda_yaml'])
+        n = self.get_param_value_from_config([tool, 'conda_env'])
+        return bool((y and y.strip()) or (n and n.strip()))
+
     def check_qc_program_dependencies(self):
         """Raise ConfigError for any program required by an enabled QC tool that is missing.
 
         Only checks tools that are actually enabled in the config, avoiding the
-        false-positive noise from the generic check_workflow_program_dependencies.
+        false-positive noise from the generic check_workflow_program_dependencies. Tools provided
+        via conda (conda_yaml/conda_env) are not checked on the current $PATH/interpreter.
         """
         missing = []
 
@@ -89,6 +144,57 @@ class QCModule(WorkflowSuperClass):
                 if not u.is_program_exists(prog, dont_raise=True):
                     missing.append((prog, 'iu_filter_quality_minoche'))
 
+        if self.get_param_value_from_config(['filtlong', 'run']) == True:
+            if not self._tool_provided_by_conda('filtlong') and not u.is_program_exists('filtlong', dont_raise=True):
+                missing.append(('filtlong', 'filtlong'))
+
+        if self.get_param_value_from_config(['fastqc_sr', 'run']) == True:
+            if not u.is_program_exists('fastqc', dont_raise=True):
+                missing.append(('fastqc', 'fastqc_sr'))
+
+        if self.get_param_value_from_config(['longqc', 'run']) == True:
+            # Resolve the LongQC platform per readset (from lr_technology or config) and refuse
+            # to run on pb-hifi — see get_longqc_platform() for why HiFi crashes LongQC.
+            hifi_readsets = [
+                rs_id for rs_id in self.get_lr_readset_ids()
+                if self.get_longqc_platform(rs_id) == 'pb-hifi'
+            ]
+            if hifi_readsets:
+                raise ConfigError(
+                    f"LongQC is enabled but {len(hifi_readsets)} readset(s) resolve to the 'pb-hifi' "
+                    f"platform ({', '.join(hifi_readsets)}). LongQC's pb-hifi preset always "
+                    f"attempts to filter spike-in control reads, but PacBio HiFi library "
+                    f"preparation does not include instrument spike-in controls, so no control "
+                    f"reads are present in biological HiFi data. This causes LongQC to produce "
+                    f"an empty coverage file and crash. LongQC does work with PacBio RS II "
+                    f"(pb-rs2) and Sequel/Sequel II (pb-sequel) data, which do carry spike-in "
+                    f"controls. Please set lr_technology (or 'longqc': {{'platform': ...}}) to "
+                    f"'pb-rs2' or 'pb-sequel' if appropriate, or disable LongQC "
+                    f"('longqc': {{'run': false}}) for HiFi samples."
+                )
+
+            # Only probe the current $PATH / interpreter when LongQC is expected there. When it is
+            # provided via conda, Snakemake runs the rule inside that env, so these checks would be
+            # false positives (and the module check would probe the wrong interpreter anyway).
+            if not self._tool_provided_by_conda('longqc'):
+                if not u.is_program_exists('LongQC.py', dont_raise=True):
+                    missing.append(('LongQC.py', 'longqc'))
+                else:
+                    warn_if_tool_version_untested('longqc', executable='LongQC.py', run=self.run)
+                    for mod in ['mixem', 'pysam', 'numpy', 'scipy', 'matplotlib']:
+                        if importlib.util.find_spec(mod) is None:
+                            missing.append((f"Python module '{mod}'", 'longqc'))
+            longqc_threads = self.get_param_value_from_config(['longqc', 'threads'])
+            if longqc_threads and int(longqc_threads) < 4:
+                raise ConfigError(
+                    f"LongQC requires at least 4 threads (-p/--ncpu >= 4) but 'longqc.threads' "
+                    f"is set to {longqc_threads}. Please set it to 4 or higher in your config."
+                )
+
+        if self.get_param_value_from_config(['multiqc', 'run']) == True:
+            if not u.is_program_exists('multiqc', dont_raise=True):
+                missing.append(('multiqc', 'multiqc'))
+
         if missing:
             details = '\n  '.join(f"{prog}  (required by: {rule})" for prog, rule in missing)
             raise ConfigError(
@@ -96,12 +202,98 @@ class QCModule(WorkflowSuperClass):
                 f"Please install them before running the workflow:\n\n  {details}"
             )
 
+    def check_lr_readsets_no_duplicate_names(self):
+        """Raise ConfigError if any LR readset FASTQ has duplicate read names.
+
+        Filtlong aborts mid-run on the first duplicate it finds, giving a cryptic
+        error. This check catches the problem upfront with a clear, actionable message.
+        """
+        problematic = []
+        for rs_id in self.get_lr_readset_ids():
+            for path in self.get_lr_files_for_readset(rs_id):
+                if not os.path.exists(path):
+                    continue
+                seen = set()
+                opener = gzip.open if path.endswith('.gz') else open
+                with opener(path, 'rt') as f:
+                    for i, line in enumerate(f):
+                        if i % 4 == 0:
+                            name = line[1:].split()[0]
+                            if name in seen:
+                                problematic.append((rs_id, path, name))
+                                break
+                            seen.add(name)
+
+        if problematic:
+            details = '\n  '.join(
+                f"readset '{rs}' ({p}): first duplicate: '{n}'"
+                for rs, p, n in problematic
+            )
+            raise ConfigError(
+                f"Anvi'o found duplicate read names in {len(problematic)} long-read input "
+                f"file(s). Filtlong will crash mid-run when it encounters them, so anvi'o "
+                f"refuses to start. Fix the input files with 'seqkit rename' before retrying:\n\n"
+                f"  seqkit rename <input.fastq.gz> -o <fixed.fastq.gz>\n\n"
+                f"Affected file(s):\n  {details}"
+            )
+
+    def get_fastqc_sr_input_files(self, readset):
+        """Return the short-read FASTQ files FastQC should run on for a readset.
+
+        When short-read QC is enabled, these are the quality-controlled QUALITY_PASSED_R{1,2} files
+        (with the extension depending on whether gzip_fastqs is on) — depending on them also creates
+        the DAG edge that forces SR QC to finish first. When SR QC is disabled, they are the
+        readset's raw r1/r2 files, so FastQC still has something to report on rather than the
+        workflow failing on missing QUALITY_PASSED inputs.
+        """
+        if self.get_param_value_from_config(['iu_filter_quality_minoche', 'run']) == True:
+            ext = '.fastq.gz' if self.get_param_value_from_config(['gzip_fastqs', 'run']) == True else '.fastq'
+            qc_dir = self.dirs_dict["QC_DIR"]
+            return [os.path.join(qc_dir, f"{readset}-QUALITY_PASSED_R1{ext}"),
+                    os.path.join(qc_dir, f"{readset}-QUALITY_PASSED_R2{ext}")]
+
+        # SR QC disabled: run FastQC on the raw short reads instead
+        d = self.get_sr_files_for_readset(readset)
+        return list(d.get('r1', [])) + list(d.get('r2', []))
+
     def get_qc_target_files(self):
-        """Return the list of QC target files based on enabled options."""
+        """Return the list of all QC target files based on enabled options."""
         self.check_qc_program_dependencies()
         targets = []
 
         if getattr(self, 'run_qc', False):
             targets.append(os.path.join(self.dirs_dict["QC_DIR"], "qc-report.txt"))
+
+        run_fastqc_sr = self.get_param_value_from_config(['fastqc_sr', 'run']) == True
+        if run_fastqc_sr:
+            sr_readset_ids = self.get_sr_readset_ids()
+            if not sr_readset_ids:
+                self.run.warning(
+                    "'fastqc_sr' is enabled, but there are no short-read samples in your samples-txt "
+                    "for FastQC to run on — it will be skipped."
+                )
+            fastqc_dir = os.path.join(self.dirs_dict["QC_DIR"], "fastqc")
+            # FastQC writes into a per-readset directory (see the fastqc_sr rule); target the dir.
+            for rs_id in sr_readset_ids:
+                targets.append(os.path.join(fastqc_dir, rs_id))
+
+        if getattr(self, 'run_lr_qc', False):
+            for rs_id in self.get_lr_readset_ids():
+                targets.append(os.path.join(self.dirs_dict["QC_DIR"], "longqc", rs_id, "log.txt"))
+
+        if getattr(self, 'run_filtlong', False):
+            self.check_lr_readsets_no_duplicate_names()
+            for rs_id in self.get_lr_readset_ids():
+                targets.append(os.path.join(self.dirs_dict["QC_DIR"], f"{rs_id}-FILTERED_LR.fastq.gz"))
+
+        if getattr(self, 'run_multiqc', False):
+            has_multiqc_inputs = run_fastqc_sr or getattr(self, 'run_lr_qc', False)
+            if has_multiqc_inputs:
+                targets.append(os.path.join(self.dirs_dict["QC_DIR"], "multiqc", "multiqc_report.html"))
+            else:
+                self.run.warning(
+                    "MultiQC is enabled but neither 'fastqc_sr' nor 'longqc' is enabled — "
+                    "MultiQC has no compatible inputs to aggregate and will be skipped."
+                )
 
         return targets

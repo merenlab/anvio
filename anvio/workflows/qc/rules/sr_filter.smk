@@ -7,6 +7,8 @@
 #   u               — anvio.utils (imported in parent Snakefile)
 #   SR_READSETS     — list of SR readset ids
 #   SR_RS_RE        — wildcard constraint regex for SR readsets
+#   run_gzip_fastqs — bool: whether gzip_fastqs is enabled
+#   run_fastqc_sr   — bool: whether fastqc_sr is enabled
 
 
 rule iu_gen_configs:
@@ -219,3 +221,37 @@ rule gzip_fastqs:
         nodes=M.T("gzip_fastqs"),
     shell:
         "gzip {input.fastq} >> {log} 2>&1"
+
+
+fastqc_sr_output_dir = os.path.join(dirs_dict["QC_DIR"], "fastqc")
+
+if run_fastqc_sr:
+    rule fastqc_sr:
+        """Run FastQC on short reads for MultiQC input.
+
+        The input is resolved by M.get_fastqc_sr_input_files(): the quality-controlled
+        QUALITY_PASSED reads when SR QC is enabled (which also creates the DAG edge that forces
+        iu_filter_quality_minoche / gzip_fastqs to finish first), or the raw short reads when SR QC
+        is disabled. The output is a per-readset directory rather than named files, because FastQC
+        derives report filenames from the input basenames (which vary for raw / multi-file readsets);
+        we let it write whatever it produces into {readset}/ and MultiQC aggregates by scanning the
+        parent fastqc directory.
+        """
+        input:
+            reads=lambda wildcards: M.get_fastqc_sr_input_files(wildcards.readset),
+        output:
+            report_dir=directory(os.path.join(fastqc_sr_output_dir, "{readset}")),
+        log:
+            rule_log("fastqc_sr", "{readset}-fastqc_sr"),
+        wildcard_constraints:
+            readset=SR_RS_RE,
+        threads: M.T("fastqc_sr")
+        resources:
+            nodes=M.T("fastqc_sr"),
+        params:
+            additional_params=M.get_param_value_from_config(["fastqc_sr", "additional_params"]),
+        shell:
+            r"""
+            mkdir -p {output.report_dir}
+            fastqc -o {output.report_dir} -t {threads} {params.additional_params} {input.reads} >> {log} 2>&1
+            """
