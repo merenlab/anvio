@@ -1,0 +1,41 @@
+# Long-read technology presets for anvi'o workflows.
+#
+# This file maps each accepted value of the `lr_technology` column in a samples-txt
+# file to the tool-specific presets/flags anvi'o should use for that technology:
+#   - longqc:   the LongQC `-x/--sample_type` platform preset (long-read QC)
+#   - minimap2: the minimap2 `-x` preset (long-read mapping)
+#   - flye:     the Flye read-type flag (long-read assembly)
+#
+# Providing the `lr_technology` column is OPTIONAL. When it is present, every
+# long-read sample must carry one of the tokens below, and the presets here are
+# used automatically. When it is absent, anvi'o falls back to the presets set
+# explicitly in the workflow config file (there are no silent defaults).
+#
+# To add support for a new technology, add a token under `technologies:` with a
+# preset for each tool. To add a new tool, add its presets to every token and a
+# `tested_versions` entry under `tools:`.
+#
+# `tested_versions` documents the tool versions these presets were validated
+# against. It is advisory only: anvi'o emits a soft WARNING (never an error) if an
+# installed tool reports a version outside this set, and never changes which preset
+# it selects based on the installed version.
+
+tools:
+    minimap2:
+        tested_versions: ["2.24", "2.26", "2.28"]
+    flye:
+        tested_versions: ["2.9.2", "2.9.3", "2.9.5"]
+    longqc:
+        tested_versions: ["1.2.0c"]
+
+technologies:
+    # Oxford Nanopore
+    ont:          {longqc: ont-ligation, minimap2: map-ont,  flye: --nano-raw}
+    ont-ligation: {longqc: ont-ligation, minimap2: map-ont,  flye: --nano-raw}
+    ont-rapid:    {longqc: ont-rapid,    minimap2: map-ont,  flye: --nano-raw}
+    ont-1dsq:     {longqc: ont-1dsq,     minimap2: map-ont,  flye: --nano-raw}
+
+    # PacBio
+    pb-rs2:       {longqc: pb-rs2,       minimap2: map-pb,   flye: --pacbio-raw}
+    pb-sequel:    {longqc: pb-sequel,    minimap2: map-pb,   flye: --pacbio-raw}
+    pb-hifi:      {longqc: pb-hifi,      minimap2: map-hifi, flye: --pacbio-hifi}
