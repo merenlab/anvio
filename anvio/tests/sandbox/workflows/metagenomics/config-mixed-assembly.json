@@ -151,8 +151,8 @@
         "--meta": true,
         "--pacbio-raw": "",
         "--pacbio-corr": "",
-        "--pacbio-hifi": false,
-        "--nano-raw": true,
+        "--pacbio-hifi": "",
+        "--nano-raw": "",
         "--nano-corr": "",
         "--nano-hq": "",
         "--genome-size": "",
@@ -189,7 +189,7 @@
     },
     "minimap2": {
         "threads": 3,
-        "preset": "map-ont",
+        "preset": "",
         "additional_params": "--secondary-seq",
         "conda_yaml": "",
         "conda_env": ""

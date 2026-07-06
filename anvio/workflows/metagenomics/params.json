@@ -130,7 +130,7 @@
             "--meta":           {"type": "bool", "default": true},
             "--pacbio-raw":     {"type": "bool", "default": null},
             "--pacbio-corr":    {"type": "bool", "default": null},
-            "--pacbio-hifi":    {"type": "bool", "default": true},
+            "--pacbio-hifi":    {"type": "bool", "default": null},
             "--nano-raw":       {"type": "bool", "default": null},
             "--nano-corr":      {"type": "bool", "default": null},
             "--nano-hq":        {"type": "bool", "default": null},
@@ -160,7 +160,7 @@
         },
         "minimap2": {
             "threads":          {"type": "int", "default": 3},
-            "preset":           {"type": "str", "default": "map-hifi"},
+            "preset":           {"type": "str", "default": ""},
             "conda_yaml":       {"type": "str", "default": null},
             "conda_env":        {"type": "str", "default": null},
             "additional_params":{"type": "str", "default": "--secondary-seq"}
