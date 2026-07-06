@@ -29,6 +29,7 @@ class SamplesTxt:
             'r1': [<paths>] or [],
             'r2': [<paths>] or [],
             'lr': [<paths>] or [],
+            'lr_technology': <str or None>,
         },
         ...
     }
@@ -96,7 +97,7 @@ class SamplesTxt:
             raise ConfigError(f"A samples txt file is supposed to have at least the columns {', '.join(expected_columns)}.")
 
         # Warn about extras columns
-        possible_columns = set([self._first_col, "r1", "r2", "lr", "group"])
+        possible_columns = set([self._first_col, "r1", "r2", "lr", "lr_technology", "group"])
         extra_columns = set(self._columns_found) - possible_columns
         if extra_columns:
             self.run.warning(f"Your samples txt file contains {terminal.pluralize('extra column', len(extra_columns))}: "
@@ -120,7 +121,7 @@ class SamplesTxt:
         base = Path(base_dir) if base_dir is not None else self._default_base_dir()
 
         # Build header from what we saw/normalized (keep file order & extras)
-        cols = [self._first_col, "group", "r1", "r2", "lr"] + list(self._extra_columns)
+        cols = [self._first_col, "group", "r1", "r2", "lr", "lr_technology"] + list(self._extra_columns)
         present = [c for c in cols if c == self._first_col or any(c in row for row in self._raw_rows.values())]
 
         lines = ["\t".join(present)]
@@ -155,7 +156,7 @@ class SamplesTxt:
         return {
             s: {
                 k: v for k, v in self._path_view_for_info(info, absolute_paths=absolute_paths, base_dir=base).items()
-                if k in {"group", "r1", "r2", "lr"}
+                if k in {"group", "r1", "r2", "lr", "lr_technology"}
             }
             for s, info in self._data.items()
         }
@@ -174,6 +175,7 @@ class SamplesTxt:
                 "r1": ",".join(view.get("r1", [])) if view.get("r1") else "",
                 "r2": ",".join(view.get("r2", [])) if view.get("r2") else "",
                 "lr": ",".join(view.get("lr", [])) if view.get("lr") else "",
+                "lr_technology": view.get("lr_technology") or "",
             }
             if include_extras:
                 for col in self._extra_columns:
@@ -181,7 +183,7 @@ class SamplesTxt:
             rows.append(row)
 
         df = pd.DataFrame(rows)
-        base_cols = ["sample", "group", "r1", "r2", "lr"]
+        base_cols = ["sample", "group", "r1", "r2", "lr", "lr_technology"]
         cols = base_cols + (self._extra_columns if include_extras else [])
         return df[[c for c in cols if c in df.columns]]
 
@@ -223,7 +225,7 @@ class SamplesTxt:
                 # Rebuild text without extras using the dict view (simpler than column surgery).
                 d = self.as_dict(include_extras=False, absolute_paths=absolute_paths, base_dir=base_dir)
                 # Make a compact TSV with only the canonical columns
-                header = [self._first_col, "group", "r1", "r2", "lr"]
+                header = [self._first_col, "group", "r1", "r2", "lr", "lr_technology"]
                 lines = ["\t".join(header)]
                 for sample, info in d.items():
                     lines.append("\t".join([
@@ -232,6 +234,7 @@ class SamplesTxt:
                         ",".join(info.get("r1") or []),
                         ",".join(info.get("r2") or []),
                         ",".join(info.get("lr") or []),
+                        info.get("lr_technology") or "",
                     ]))
                 text = "\n".join(lines)
 
@@ -243,6 +246,15 @@ class SamplesTxt:
     def extra_columns(self):
         """Return a list of user-supplied extra column names in file order."""
         return list(self._extra_columns)
+
+    @property
+    def has_lr_technology_column(self):
+        """Whether the (optional) 'lr_technology' column is present in the input.
+
+        Consumers use this to distinguish "column absent → fall back to config presets"
+        from "column present → every long-read sample must declare its technology".
+        """
+        return 'lr_technology' in (self._columns_found or [])
 
     # Optional helper for CLI code that still passes args:
     @classmethod
@@ -264,7 +276,7 @@ class SamplesTxt:
 
         self._extra_columns = [
             c for c in (self._columns_found or [])
-            if c not in {self._first_col, "group", "r1", "r2", "lr"}
+            if c not in {self._first_col, "group", "r1", "r2", "lr", "lr_technology"}
         ]
 
     def _parse_rows_from_file(self):
@@ -279,16 +291,17 @@ class SamplesTxt:
           B) list[dict]:      [{'sample':..., 'r1':..., ...}, ...]
         Compute synthetic header list: first column, canonical fields, then extras (sorted).
         """
+        canonical = {"group", "r1", "r2", "lr", "lr_technology"}
         if isinstance(data, dict):
             # dict-of-dicts → first column will be 'sample'
             keys = set().union(*[set((v or {}).keys()) for v in data.values()]) if data else set()
             self._first_col = "sample"
             cols = ["sample"]
             # Prefer canonical order
-            for c in ["group", "r1", "r2", "lr"]:
+            for c in ["group", "r1", "r2", "lr", "lr_technology"]:
                 if c in keys:
                     cols.append(c)
-            extras = sorted([c for c in keys if c not in {"group","r1","r2","lr"}])
+            extras = sorted([c for c in keys if c not in canonical])
             cols.extend(extras)
             self._columns_found = cols
             self._extra_columns = extras
@@ -296,10 +309,10 @@ class SamplesTxt:
             keys = set().union(*[set((row or {}).keys()) for row in data]) if data else set()
             self._first_col = "sample" if "sample" in keys else ("name" if "name" in keys else "sample")
             cols = [self._first_col]
-            for c in ["group", "r1", "r2", "lr"]:
+            for c in ["group", "r1", "r2", "lr", "lr_technology"]:
                 if c in keys:
                     cols.append(c)
-            extras = sorted([c for c in keys if c not in {self._first_col,"group","r1","r2","lr"}])
+            extras = sorted([c for c in keys if c not in {self._first_col} | canonical])
             cols.extend(extras)
             self._columns_found = cols
             self._extra_columns = extras
@@ -389,11 +402,15 @@ class SamplesTxt:
             if sample in data:
                 raise ConfigError(f"Names of samples in your samples_txt file must be unique. Found duplicate: {sample}")
 
+            raw_lr_tech = row.get("lr_technology")
+            lr_technology = str(raw_lr_tech).strip().lower() if raw_lr_tech not in (None, "") else None
+
             info = {
                 "group": (str(row.get("group")).strip() if row.get("group") not in (None, "") else None),
                 "r1": self._split_paths(row.get("r1")),
                 "r2": self._split_paths(row.get("r2")),
                 "lr": self._split_paths(row.get("lr")),
+                "lr_technology": lr_technology,
             }
 
             # Flatten user extras (strings as-is; keep empty as "")
@@ -408,6 +425,8 @@ class SamplesTxt:
         mode = self.expected_format
         for sample, info in self._data.items():
             r1, r2, lr = info["r1"], info["r2"], info["lr"]
+            lr_technology = info.get("lr_technology")
+
             if mode == "paired_end":
                 if not r1 or not r2:
                     raise ConfigError(f"[{sample}] Paired-end expected: require both 'r1' and 'r2'.")
@@ -443,6 +462,31 @@ class SamplesTxt:
                     raise ConfigError(f"[{sample}] Free mode: number of r1 files ({len(r1)}) must match r2 ({len(r2)}).")
             else:
                 raise ConfigError(f"Unknown validation mode '{mode}'")
+
+            # lr_technology structural checks. The column is OPTIONAL: when it is absent
+            # entirely, the workflow falls back to the presets set in the config file, so we
+            # do not require it here. When the user DOES include the column, we enforce that
+            # it is complete and internally consistent. NOTE: which tokens are *valid* is not
+            # checked here on purpose — that vocabulary belongs to the workflow that owns the
+            # technology→preset map, so this artifact stays free of workflow/tool knowledge.
+            if self.has_lr_technology_column and lr and not lr_technology:
+                raise ConfigError(
+                    f"Your samples-txt file includes an 'lr_technology' column, but the sample "
+                    f"'{sample}' has long-read paths in its 'lr' column without a matching "
+                    f"'lr_technology' value. The column is all-or-nothing: once you add it, anvi'o "
+                    f"expects every long-read sample to declare its sequencing platform there. Please "
+                    f"fill in the 'lr_technology' value for '{sample}', or remove the column entirely "
+                    f"to fall back to the presets set in your workflow config file."
+                )
+            if lr_technology and not lr:
+                raise ConfigError(
+                    f"Anvi'o is confused. The sample '{sample}' in your samples-txt file has an "
+                    f"'lr_technology' value of '{lr_technology}', but there are no long-read file paths "
+                    f"in the 'lr' column for that sample. These two go together: 'lr_technology' only "
+                    f"makes sense for samples that actually have long reads. Either add the missing 'lr' "
+                    f"paths for this sample, or clear the 'lr_technology' value (short-read-only samples "
+                    f"should leave it blank)."
+                )
 
     def _check_file_existence_and_identical_pairs(self):
         missing = set()
@@ -653,7 +697,8 @@ class SamplesTxt:
                         "type": typ,                # 'SR' or 'LR'
                         "mixed_type": mixed,        # True if this base sample has both SR and LR
                         "group": info.get("group"),
-                        "reads": reads_dict, }      # only keys relevant to the type
+                        "reads": reads_dict,        # only keys relevant to the type
+                        "lr_technology": info.get("lr_technology") if typ == 'LR' else None, }
 
             # Decide ids under chosen read-type suffix
             if mixed:
