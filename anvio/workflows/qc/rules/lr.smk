@@ -46,12 +46,12 @@ rule longqc:
         r"""
         # LongQC refuses to run if its output directory already exists.
         rm -rf {params.outdir}
-        # conda installs LongQC.py without execute permission, so we locate it with `which` and run
+        # conda installs longQC.py without execute permission, so we locate it with `which` and run
         # it via python. The `bash -c` wrapper makes the command substitution run INSIDE the conda
-        # environment ({params.env_prefix}); without it, `$(which LongQC.py)` would resolve in the
+        # environment ({params.env_prefix}); without it, `$(which longQC.py)` would resolve in the
         # outer shell and break the `conda_env` case. When env_prefix is empty (PATH or conda_yaml,
         # where Snakemake already activated the env), it simply runs in the current environment.
-        {params.env_prefix} bash -c 'python "$(which LongQC.py)" sampleqc \
+        {params.env_prefix} bash -c 'python "$(which longQC.py)" sampleqc \
             -x {params.platform} \
             -o {params.outdir} \
             -p {threads} \
