@@ -36,6 +36,11 @@ from anvio.workflows.snakemake_utils import (
     get_conda_yaml_path as get_conda_yaml_path,
     get_conda_env_prefix as get_conda_env_prefix,
     gunzip_file as gunzip_file,
+    get_lr_technology_presets as get_lr_technology_presets,
+    get_lr_technology_map as get_lr_technology_map,
+    get_valid_lr_technologies as get_valid_lr_technologies,
+    get_lr_preset as get_lr_preset,
+    warn_if_tool_version_untested as warn_if_tool_version_untested,
 )
 
 
