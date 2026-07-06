@@ -342,6 +342,6 @@
         "LOGS_DIR": "00_LOGS-references-mode"
     },
     "max_threads": "",
-    "config_version": "5",
+    "config_version": "6",
     "workflow_name": "metagenomics"
 }
