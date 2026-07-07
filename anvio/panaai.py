@@ -1005,7 +1005,14 @@ class PangenomeAAIEngine():
             total_calls += len(calls)
         self.progress.end()
 
-        self.run.info('Total gene calls loaded', pp(total_calls))
+        # Per-genome breakdown of what was ingested (genes + contigs), so the
+        # user can immediately spot a genome that came in unexpectedly small,
+        # empty, or fragmented.
+        for genome in sorted(genome_calls):
+            calls = genome_calls[genome]
+            n_contigs = len({c['contig'] for c in calls})
+            self.run.info(f"  {genome}", f"{pp(len(calls))} genes in {P('contig', n_contigs)}")
+        self.run.info('Total gene calls loaded', pp(total_calls), mc='green')
         return genome_calls
 
 
@@ -1806,7 +1813,15 @@ class PangenomeAAIEngine():
             For each committed line index, whether the line was added in
             reversed orientation.
         """
-        self.run.warning(None, header="BUILDING PANGENOME GRAPH (AAI ENGINE)", lc="green")
+        self.run.warning("This is the heart of the tool. Anvi'o reads the gene calls from each genome, "
+                         "derives candidate edges from the pan-db gene clusters (every cross-genome pair of "
+                         "genes that share a gene cluster), optionally scores/weights those edges with your "
+                         "DIAMOND search results, scans the local gene-order context to decide how contigs "
+                         "are oriented relative to one another, ranks the edges, and greedily fuses genes "
+                         "into synteny gene clusters (super-nodes) to build a directed acyclic pangenome "
+                         "graph. Without a DIAMOND file the same graph is built on gene-cluster membership "
+                         "alone. The counts below let you follow each of these steps.",
+                         header="BUILDING PANGENOME GRAPH (AAI ENGINE)", lc="green")
 
         self.sanity_check()
 
@@ -1963,8 +1978,9 @@ class PangenomeAAIEngine():
         n_fused = len(lines) - len(orphan_lines)
         self.run.info('Lines fused via AAI', f"{pp(n_fused)} / {pp(len(lines))}")
         self.run.info('Lines added as orphan chains', pp(len(orphan_lines)))
-        self.run.info('Fuses rejected',
-                      f"{pp(len(rejected_edges))} ({dict(reasons) if reasons else '{}'})")
+        self.run.info('Fuses rejected', pp(len(rejected_edges)))
+        for reason in sorted(reasons):
+            self.run.info(f"  {reason}", pp(reasons[reason]))
 
         # 10. Post-processing: rename, component id. Typing (core/accessory/
         # singleton/rearrangement/duplication), the RNA override, and the

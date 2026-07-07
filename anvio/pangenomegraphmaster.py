@@ -692,7 +692,12 @@ class PangenomeGraphManager():
            pandas DataFrame indexed and columned by genome names. `newick` may be an empty
            string if all pairwise distances are zero (i.e. genomes are graph-identical).
         """
-        self.run.warning(None, header="COMPUTING GRAPH-BASED GENOME DISTANCES", lc="green")
+        self.run.warning("Anvi'o now derives a pairwise distance between every pair of genomes directly from "
+                         "the graph structure: genomes that traverse the same synteny gene clusters in the "
+                         "same order are close, while genomes that diverge (through rearrangements, "
+                         "insertions, or accessory content) are further apart. The full distance matrix is "
+                         "written into the pan-graph-db and used to order genomes in downstream displays.",
+                         header="COMPUTING GRAPH-BASED GENOME DISTANCES", lc="green")
         genome_names = list(set(it.chain(*[list(d.keys()) for node, d in self.graph.nodes(data='gene_calls')])))
 
         X = np.zeros([len(genome_names), len(genome_names)])
@@ -732,8 +737,8 @@ class PangenomeGraphManager():
                 max_dist, max_pair = d, (genome_i, genome_j)
 
         if min_pair is not None:
-            self.run.info_single(f"Smallest distance: d({min_pair[0]},{min_pair[1]}) = {round(min_dist, 3)}", cut_after=None)
-            self.run.info_single(f"Largest distance:  d({max_pair[0]},{max_pair[1]}) = {round(max_dist, 3)}", cut_after=None)
+            self.run.info(f"Smallest distance: d({min_pair[0]},{min_pair[1]}) = {round(min_dist, 3)}", cut_after=None)
+            self.run.info(f"Largest distance:  d({max_pair[0]},{max_pair[1]}) = {round(max_dist, 3)}", cut_after=None)
             self.run.info_single("(full matrix written to the pan-graph-db)", cut_after=None)
 
         distance_matrix = pd.DataFrame(X, index=genome_names, columns=genome_names)
@@ -741,7 +746,6 @@ class PangenomeGraphManager():
         # Check if all distances are zero (identical genomes)
         if np.all(X == 0):
             self.run.warning("All pairwise distances are zero (genomes are identical). No dendrogram will be generated.")
-            self.run.info_single("Done.")
             return('', distance_matrix, genome_names)
 
         condensed_X = squareform(X)
@@ -749,8 +753,6 @@ class PangenomeGraphManager():
 
         tree = to_tree(Z, False)
         newick = clustering.get_newick(tree, tree.dist, genome_names)
-
-        self.run.info_single("Done.")
 
         return(newick, distance_matrix, genome_names)
 

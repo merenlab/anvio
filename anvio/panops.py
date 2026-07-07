@@ -1724,7 +1724,13 @@ class PangenomeGraph():
 
 
     def summarize_pangenome_graph(self):
-        self.run.warning(None, header="GENERATING SUMMARY TABLES", lc="green")
+        self.run.warning("Anvi'o now walks the finished graph and summarizes it into regions: contiguous "
+                         "stretches are classified as backbone (shared by the genomes in scope) or variable, "
+                         "region-level metrics (complexity, diversity, expansion, weight) are computed, and a "
+                         "region ID is attached to every node. The `--region-scope` setting controls whether "
+                         "the backbone/variable denominator counts all genomes or only those present in each "
+                         "component. These tables are what downstream displays and exports read.",
+                         header="GENERATING SUMMARY TABLES", lc="green")
 
         # bounds-check --component against the actual number of weakly connected components
         n_components = sum(1 for _ in nx.weakly_connected_components(self.pangenome_graph.graph))
@@ -1803,7 +1809,13 @@ class PangenomeGraph():
 
 
     def print_settings(self):
-        self.run.warning(None, header="SETTINGS", lc="green")
+        self.run.warning("Here are all the parameters this run will use to build your pangenome graph, "
+                         "echoed back so you can see exactly what anvi'o is about to do (and so the choices "
+                         "are easy to revisit later, since they are also stored in the resulting "
+                         "pan-graph-db). The defaults work well for most datasets; the AAI engine and "
+                         "ranking parameters below rarely need tuning unless you are chasing a specific "
+                         "over-splitting or orientation issue.",
+                         header="SETTINGS", lc="green")
         if self.genome_names_user_focused:
             n = len(self.genome_names)
             preview = ', '.join(self.genome_names[:3]) + ('...' if n > 3 else '')
@@ -2090,7 +2102,12 @@ class PangenomeGraph():
         return state
 
     def generate_pan_graph_db(self):
-        self.run.warning(None, header="STORING PAN-GRAPH-DB", lc="green")
+        self.run.warning("Time to write everything to disk. Anvi'o stores the graph nodes (synteny gene "
+                         "clusters), the edges between them, the region summaries, the genome-distance "
+                         "matrix, and all of the run settings as metadata into a single pan-graph-db. This "
+                         "is the file you hand to `anvi-display-pan-graph` (and related programs) to "
+                         "visualize and further analyze your pangenome graph.",
+                         header="STORING PAN-GRAPH-DB", lc="green")
 
         """Generates an empty pan-graph-db and populates it with essential information"""
 
@@ -2413,6 +2430,24 @@ class PangenomeGraph():
         self.run.info('Graph nodes', pp(self.pangenome_graph.graph.number_of_nodes()), mc='green')
         self.run.info('Graph edges', pp(self.pangenome_graph.graph.number_of_edges()))
 
+        # How the pan-db's gene clusters expanded into synteny super-nodes: a
+        # single parent gene cluster can be split into several SynGCs by the
+        # engine (later partly re-collapsed by remerge). Reporting the distinct
+        # parent-GC count alongside the node count makes that expansion visible.
+        parent_gcs = {node.rsplit('_', 1)[0] for node in self.pangenome_graph.graph.nodes()}
+        self.run.info('Distinct parent gene clusters represented', pp(len(parent_gcs)))
+
+        # Per-genome count of genes that actually made it into the graph (after
+        # the short-contig filter), shown for reasonably sized genome sets.
+        genes_per_genome = Counter()
+        for _node, data in self.pangenome_graph.graph.nodes(data=True):
+            for genome in data.get('gene_calls', {}):
+                genes_per_genome[genome] += 1
+        self.run.info('Genes placed in graph', pp(sum(genes_per_genome.values())))
+        if 0 < len(genes_per_genome) <= 20:
+            for genome in sorted(genes_per_genome):
+                self.run.info(f"  {genome}", pp(genes_per_genome[genome]))
+
 
     def _compute_edge_genome_sets(self, G, lines, line_names, line_to_genome, in_g_flip):
         """Walk each committed line in its placement orientation and
@@ -2462,8 +2497,13 @@ class PangenomeGraph():
         per super-node by mean across the super-node's genes; non-numeric
         values are skipped.
         """
-        self.run.warning("Adding per-node alignments.",
-                         header="ADDING LAYERS", lc="green")
+        self.run.warning("Anvi'o now decorates every node (synteny gene cluster) with a per-genome sequence "
+                         "alignment. The gene alignments computed for each gene cluster in the pan-db are "
+                         "collected, padded to a common length, and re-summarized so each node carries a "
+                         "compact multiple-sequence alignment for downstream display. Nodes whose genes have "
+                         "no alignment in the pan-db (for example non-coding/RNA genes, or pan-dbs built "
+                         "without alignments) simply receive empty alignment strings and are reported below.",
+                         header="ADDING ALIGNMENT LAYER", lc="green")
 
         if not self.gene_alignments_computed:
             self.run.info_single("No alignments were computed for this pan-db — alignment "
@@ -2776,16 +2816,26 @@ class PangenomeGraph():
 
         _G, n_rna_typed = panaai.compute_rna_overrides(
             graph, self.genome_calls, self.line_to_genome)
-        self.run.info('Non-coding nodes re-typed as `rna`', pp(n_rna_typed))
+        self.run.info_single(f"{pp(n_rna_typed)} non-coding nodes re-typed as `rna`")
 
         if self.no_include_non_coding_genes:
             n_dropped = panaai._drop_non_coding_nodes(graph)
-            self.run.info('Non-coding nodes dropped', pp(n_dropped), mc='yellow')
+            self.run.info_single(f"{pp(n_dropped)} non-coding nodes dropped.")
         else:
             self.run.info_single('Non-coding nodes kept as singletons.')
 
+        # Report the final node-type distribution as labeled rows (one per
+        # type) rather than a raw dict, so the core/accessory/singleton/
+        # rearrangement/duplication/rna breakdown is easy to read at a glance.
         type_counts = Counter(d.get("type", "") for _, d in graph.nodes(data=True))
-        self.run.info('Node types', f"{dict(type_counts)}")
+        known_order = ('core', 'accessory', 'singleton', 'rearrangement', 'duplication', 'rna')
+        for node_type in known_order:
+            if type_counts.get(node_type):
+                self.run.info(f"Nodes typed '{node_type}'", pp(type_counts[node_type]))
+        for node_type in sorted(type_counts):
+            if node_type not in known_order:
+                self.run.info(f"Nodes typed '{node_type or 'untyped'}'", pp(type_counts[node_type]))
+        self.run.info('Total nodes typed', pp(sum(type_counts.values())), mc='green')
 
 
     def _import_layer_values(self):
