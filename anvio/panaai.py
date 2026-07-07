@@ -482,47 +482,42 @@ def _try_commit_tie_line(li, lines, line_names, anchors, pending_merges, G,
     return False
 
 
-def rename_pangenome_nodes(G, gene_clusters=None, line_to_genome=None):
+def rename_pangenome_nodes(G, gene_clusters, line_to_genome=None):
     """Rename super-nodes deterministically in topological order.
 
-    Panmode (``gene_clusters`` given): each super-node is named after its
-    parent GC; multiple super-nodes from the same GC get ``_1``, ``_2``,
-    ... suffixes in topological order.
-
-    Non-panmode: synthesize sequential names ``GC_00000001_1``,
-    ``GC_00000002_1``, ... in topological order.
+    Each super-node is named after its parent gene cluster; multiple
+    super-nodes from the same gene cluster get ``_1``, ``_2``, ... suffixes
+    in topological order. ``gene_clusters`` is the pan-db map (always
+    provided; the pan-db is a hard requirement of the tool).
 
     Node attributes (``lines``, ``genes``, ``fuses``) are preserved.
     Returns a new graph; the original is not mutated.
     """
     topo = list(nx.topological_sort(G))
 
-    if gene_clusters is not None:
-        seen = Counter()
-        mapping = {}
-        for n in topo:
-            parent_gc = None
-            for g in G.nodes[n].get("genes", ()):
-                line_name, sep, gid_str = g.rpartition(":")
-                if not sep or not gid_str.isdigit():
-                    continue
-                genome = line_to_genome.get(line_name) if line_to_genome else None
-                if genome is None:
-                    continue
-                parent_gc = gene_clusters.get((genome, int(gid_str)))
-                if parent_gc is not None:
-                    break
-            if parent_gc is None:
-                parent_gc = "GC_UNKNOWN"
-            seen[parent_gc] += 1
-            mapping[n] = f"{parent_gc}_{seen[parent_gc]}"
-    else:
-        mapping = {n: f"GC_{i + 1:08d}_1" for i, n in enumerate(topo)}
+    seen = Counter()
+    mapping = {}
+    for n in topo:
+        parent_gc = None
+        for g in G.nodes[n].get("genes", ()):
+            line_name, sep, gid_str = g.rpartition(":")
+            if not sep or not gid_str.isdigit():
+                continue
+            genome = line_to_genome.get(line_name) if line_to_genome else None
+            if genome is None:
+                continue
+            parent_gc = gene_clusters.get((genome, int(gid_str)))
+            if parent_gc is not None:
+                break
+        if parent_gc is None:
+            parent_gc = "GC_UNKNOWN"
+        seen[parent_gc] += 1
+        mapping[n] = f"{parent_gc}_{seen[parent_gc]}"
 
     return nx.relabel_nodes(G, mapping, copy=True)
 
 
-def compute_node_types(G, line_to_genome, gene_clusters=None, scope='global'):
+def compute_node_types(G, line_to_genome, gene_clusters, scope='global'):
     """Assign each super-node a ``type`` attribute.
 
     Per parent GC (``scope='global'``) or per (component, parent GC)
@@ -548,9 +543,8 @@ def compute_node_types(G, line_to_genome, gene_clusters=None, scope='global'):
 
     ``rna`` is not assigned here -- the override happens later in
     :py:func:`compute_rna_overrides`, which consults ``call_type`` from
-    each genome's CONTIGS.db.  In non-panmode (``gene_clusters=None``)
-    every super-node is its own parent GC; only ``core``/``accessory``/
-    ``singleton`` are produced at this stage.
+    each genome's CONTIGS.db.  ``gene_clusters`` is the pan-db map (always
+    provided; the pan-db is a hard requirement of the tool).
 
     ``scope='component'`` requires ``component_id`` to already be set on
     every node (see :py:func:`compute_component_ids`).
@@ -559,7 +553,7 @@ def compute_node_types(G, line_to_genome, gene_clusters=None, scope='global'):
         raise ConfigError(f"Unknown scope {scope!r}; expected 'global' or 'component' :/")
 
     def _parent_gc(node_name):
-        return node_name.rsplit("_", 1)[0] if gene_clusters is not None else node_name
+        return node_name.rsplit("_", 1)[0]
 
     def _node_genomes(data):
         """Genomes touching a node.  Reads the mirrored ``gene_calls``
@@ -597,18 +591,15 @@ def compute_node_types(G, line_to_genome, gene_clusters=None, scope='global'):
     # Per-group parent_multi_copy.
     if scope == 'global':
         parent_multi_copy = {}
-        if gene_clusters is not None:
-            gc_to_genome_counts = defaultdict(Counter)
-            for (genome, _gid), gc_name in gene_clusters.items():
-                gc_to_genome_counts[gc_name][genome] += 1
-            for gc_name, gc_counts in gc_to_genome_counts.items():
-                parent_multi_copy[gc_name] = any(v >= 2 for v in gc_counts.values())
+        gc_to_genome_counts = defaultdict(Counter)
+        for (genome, _gid), gc_name in gene_clusters.items():
+            gc_to_genome_counts[gc_name][genome] += 1
+        for gc_name, gc_counts in gc_to_genome_counts.items():
+            parent_multi_copy[gc_name] = any(v >= 2 for v in gc_counts.values())
         def _pmc(key, _nodes):
             return parent_multi_copy.get(key, False)
     else:
         def _pmc(_key, nodes):
-            if gene_clusters is None:
-                return False
             genome_appearances = Counter()
             for n in nodes:
                 for genome in _node_genomes(G.nodes[n]):
@@ -893,6 +884,9 @@ class PangenomeAAIEngine():
         self.lines = None
         self.line_names = None
         self.line_to_genome = None
+        # True once process() confirms a DIAMOND scorer weighted the edges;
+        # False when the graph is built on gene-cluster membership alone.
+        self.edges_scored = None
 
 
     # -----------------------------------------------------------------------
@@ -906,14 +900,14 @@ class PangenomeAAIEngine():
         if not self.genomes_storage:
             raise ConfigError("PangenomeAAIEngine needs a genomes-storage db (`--genomes-storage`) to "
                               "resolve DIAMOND hash prefixes back to genome names :/")
-        if not self.diamond_search_results:
-            raise ConfigError("PangenomeAAIEngine needs the DIAMOND search results file "
-                              "(`--diamond-search-results`) to build cross-genome AAI edges :/")
         if not os.path.exists(self.external_genomes):
             raise ConfigError(f"external-genomes file not found: '{self.external_genomes}' :/")
         if not os.path.exists(self.genomes_storage):
             raise ConfigError(f"genomes-storage db not found: '{self.genomes_storage}' :/")
-        if not os.path.exists(self.diamond_search_results):
+        # DIAMOND is OPTIONAL. Candidate edges are always defined by the pan-db
+        # gene clusters (see _edges_from_gene_clusters); when a DIAMOND file is
+        # given it only scores/weights those edges. Validate it only if present.
+        if self.diamond_search_results and not os.path.exists(self.diamond_search_results):
             raise ConfigError(f"DIAMOND search results not found: '{self.diamond_search_results}' :/")
 
         if int(self.locality_window or 0) < 1:
@@ -1016,6 +1010,92 @@ class PangenomeAAIEngine():
 
 
     # -----------------------------------------------------------------------
+    # Edge candidacy (gene clusters).
+    # -----------------------------------------------------------------------
+
+    def _edges_from_gene_clusters(self, gene_clusters, gene_to_contig):
+        """Build the candidate edge set from pan-db gene clusters.
+
+        Two genes are a candidate edge iff they (a) belong to the same gene
+        cluster and (b) live in different genomes. Same-genome pairs (paralogs
+        within one genome) are never emitted -- fusing them would collapse a
+        genome's own copies into a single node. Non-coding / RNA genes are
+        absent from gene clusters (the pangenome is built on translated
+        proteins) and therefore never appear here, so they survive as
+        singleton super-nodes exactly as before.
+
+        This method OWNS candidacy for the whole engine. The optional DIAMOND
+        scorer (see :py:meth:`_parse_diamond_minbit`) only weights and filters
+        the pairs produced here; it can never introduce a pair that is not a
+        same-cluster cross-genome pair. When no scorer runs, every pair
+        returned here is an unweighted edge.
+
+        Parameters
+        ==========
+        gene_clusters : dict
+            ``{(genome_name, gene_callers_id): gene_cluster_name}`` from the
+            pan-db.
+        gene_to_contig : dict
+            ``{(genome_name, gene_callers_id): contig_name}`` from the gene
+            calls, used to build the ``"<genome>_<contig>:<gid>"`` endpoint
+            tokens the rest of the engine expects.
+
+        Returns
+        =======
+        edges : dict
+            ``{frozenset({u, v}): 1.0}`` -- one entry per cross-genome pair
+            within a gene cluster. The ``1.0`` is a neutral placeholder weight;
+            it is overwritten by the reciprocal-averaged minbit when DIAMOND
+            scores the pair, and is not consumed by ranking otherwise (the
+            ``minbit`` component is dropped when no scorer runs).
+        """
+        self.progress.new("Gene-cluster edges")
+        self.progress.update("grouping genes by gene cluster ...")
+
+        # Invert to {gc_name: [(genome, endpoint_token), ...]}, keeping only
+        # genes we can resolve to a contig. Genes with no contig are dropped;
+        # this also transparently drops genes from genomes excluded by
+        # --genome-names (their calls are absent from gene_to_contig), which
+        # mirrors the DIAMOND path's n_unknown_hash skip.
+        gc_to_members = defaultdict(list)
+        n_unresolved = 0
+        for (genome, gid), gc_name in gene_clusters.items():
+            contig = gene_to_contig.get((genome, gid))
+            if contig is None:
+                n_unresolved += 1
+                continue
+            gc_to_members[gc_name].append((genome, f"{genome}_{contig}:{gid}"))
+
+        self.progress.update("enumerating cross-genome within-cluster pairs ...")
+        edges = {}
+        n_multi_member = 0
+        largest_gc = 0
+        for members in gc_to_members.values():
+            m = len(members)
+            if m < 2:
+                continue
+            n_multi_member += 1
+            if m > largest_gc:
+                largest_gc = m
+            for i in range(m):
+                gi, ti = members[i]
+                for j in range(i + 1, m):
+                    gj, tj = members[j]
+                    if gi == gj:
+                        # same-genome paralogs: never an edge (see docstring).
+                        continue
+                    edges[frozenset((ti, tj))] = 1.0
+
+        self.progress.end()
+        self.run.info('Gene clusters with >= 2 members', pp(n_multi_member))
+        self.run.info('Largest gene cluster (members)', pp(largest_gc))
+        self.run.info('Candidate edges from gene clusters', pp(len(edges)), mc='green')
+        if n_unresolved:
+            self.run.info('Genes skipped (no contig / outside focus)', pp(n_unresolved))
+        return edges
+
+
+    # -----------------------------------------------------------------------
     # DIAMOND parsing.
     # -----------------------------------------------------------------------
 
@@ -1055,14 +1135,24 @@ class PangenomeAAIEngine():
 
 
     def _parse_diamond_minbit(self, hash_to_genome, gene_to_contig,
-                              self_bs, gene_clusters=None):
-        """Second DIAMOND pass: minbit = bitscore / min(self[q], self[s]),
-        reciprocal-averaged across both directions, dropped if below
-        ``self.minbit_floor`` or (in panmode) if the endpoints are in
-        different gene clusters.
+                              self_bs, candidate_edges):
+        """Optional scorer: weight the gene-cluster candidate edges with the
+        DIAMOND minbit and drop any that DIAMOND did not score.
 
-        Returns ``{frozenset({u, v}): minbit}`` keyed by gene endpoint
-        strings ``"<genome>_<contig>:<gene_callers_id>"``.
+        minbit = bitscore / min(self[q], self[s]), reciprocal-averaged across
+        both directions and dropped if below ``self.minbit_floor``.
+
+        ``candidate_edges`` is the ``{frozenset({u, v}): weight}`` set produced
+        by :py:meth:`_edges_from_gene_clusters`. A DIAMOND row is scored only
+        if its ``frozenset({u, v})`` is a candidate edge; every other row is
+        skipped. This membership test replaces the old same-gene-cluster gate
+        (a same-cluster cross-genome pair is exactly a candidate edge) and,
+        importantly, bounds the whole parse to ``|candidate_edges|`` -- the
+        scorer never stores a pair that is not already an edge.
+
+        Returns ``{frozenset({u, v}): minbit}`` -- a subset of
+        ``candidate_edges``, keyed by gene endpoint strings
+        ``"<genome>_<contig>:<gene_callers_id>"``.
         """
         self.progress.new("DIAMOND pass 2/2")
         self.progress.update("computing minbit per cross-genome pair ...")
@@ -1083,8 +1173,7 @@ class PangenomeAAIEngine():
         n_unknown_contig = 0
         n_bad_format = 0
         n_kept_dir = 0
-        n_cluster_mismatch = 0
-        n_cluster_unknown = 0
+        n_not_candidate = 0
         n_below_prefilter = 0
 
         with open(self.diamond_search_results) as f:
@@ -1125,15 +1214,21 @@ class PangenomeAAIEngine():
                     n_self_genome += 1
                     continue
 
-                if gene_clusters is not None:
-                    q_cluster = gene_clusters.get((q_genome, q_gid))
-                    s_cluster = gene_clusters.get((s_genome, s_gid))
-                    if q_cluster is None or s_cluster is None:
-                        n_cluster_unknown += 1
-                        continue
-                    if q_cluster != s_cluster:
-                        n_cluster_mismatch += 1
-                        continue
+                q_contig = gene_to_contig.get((q_genome, q_gid))
+                s_contig = gene_to_contig.get((s_genome, s_gid))
+                if q_contig is None or s_contig is None:
+                    n_unknown_contig += 1
+                    continue
+
+                u = f"{q_genome}_{q_contig}:{q_gid}"
+                v = f"{s_genome}_{s_contig}:{s_gid}"
+
+                # Candidacy gate: score a row only if its pair is a gene-cluster
+                # edge. This replaces the old same-gene-cluster comparison and
+                # bounds dir_pair (and this whole pass) to |candidate_edges|.
+                if frozenset((u, v)) not in candidate_edges:
+                    n_not_candidate += 1
+                    continue
 
                 q_self = self_bs.get(qseqid)
                 s_self = self_bs.get(sseqid)
@@ -1145,18 +1240,10 @@ class PangenomeAAIEngine():
                     continue
                 minbit = bs / denom
 
-                q_contig = gene_to_contig.get((q_genome, q_gid))
-                s_contig = gene_to_contig.get((s_genome, s_gid))
-                if q_contig is None or s_contig is None:
-                    n_unknown_contig += 1
-                    continue
-
                 if minbit < minbit_prefilter:
                     n_below_prefilter += 1
                     continue
 
-                u = f"{q_genome}_{q_contig}:{q_gid}"
-                v = f"{s_genome}_{s_contig}:{s_gid}"
                 prev = dir_pair.get((u, v))
                 if prev is None or minbit > prev:
                     dir_pair[(u, v)] = minbit
@@ -1191,9 +1278,7 @@ class PangenomeAAIEngine():
         self.run.info('DIAMOND rows read', pp(n_rows))
         self.run.info('Self-row hits skipped', pp(n_self_row))
         self.run.info('Self-genome rows skipped', pp(n_self_genome))
-        if gene_clusters is not None:
-            self.run.info('Rows dropped (endpoint not in any GC)', pp(n_cluster_unknown))
-            self.run.info('Rows dropped (endpoints in different GCs)', pp(n_cluster_mismatch))
+        self.run.info('Rows dropped (not a gene-cluster edge)', pp(n_not_candidate))
         if n_no_self_bs:
             self.run.info('Rows with missing self-bitscore', pp(n_no_self_bs), mc='red')
         if n_unknown_hash:
@@ -1359,6 +1444,20 @@ class PangenomeAAIEngine():
         if bad:
             raise ConfigError(f"`--ranking-components`: unknown component(s) {bad}; "
                               f"choices: {list(valid)} :/")
+
+        # `minbit` is only meaningful when a scorer weighted the edges. Without
+        # DIAMOND every edge weight is the neutral 1.0 placeholder, so we drop
+        # the component (rather than let a constant term skew the mean).
+        if not getattr(self, 'edges_scored', True) and 'minbit' in components:
+            components = [c for c in components if c != 'minbit']
+            if not components:
+                raise ConfigError("`--ranking-components` was `minbit` only, but no "
+                                  "`--diamond-search-results` was provided to compute it. "
+                                  "Provide a DIAMOND file, or include other components "
+                                  "(decision, support, uniqueness) :/")
+            self.run.warning("No DIAMOND scores available — dropping `minbit` from "
+                             f"`--ranking-components`; ranking on {','.join(components)}.",
+                             lc='yellow')
 
         support_by_pair = {}
         for (li_a, li_b), n in total.items():
@@ -1713,15 +1812,10 @@ class PangenomeAAIEngine():
 
         self.run.info('External genomes', self.external_genomes)
         self.run.info('Genomes storage', self.genomes_storage)
-        self.run.info('DIAMOND search results', self.diamond_search_results)
+        self.run.info('DIAMOND search results', self.diamond_search_results or '(none — gene-cluster edges only)')
         if self.tables_dir:
             self.run.info('Intermediate tables dir', self.tables_dir, mc='green')
-        if gene_clusters is None:
-            self.run.info_single("No pan-db given — alignments will be unavailable downstream "
-                                 "and node types collapse to core / accessory / singleton.",
-                                 mc='yellow')
-        else:
-            self.run.info('Gene-cluster assignments', pp(len(gene_clusters)))
+        self.run.info('Gene-cluster assignments', pp(len(gene_clusters)))
 
         # 1. Read GENOMES.db.
         hash_to_genome = self._load_genome_hash_map()
@@ -1755,14 +1849,30 @@ class PangenomeAAIEngine():
         genome_calls = self._load_genome_calls(genome_paths)
         gene_to_contig = build_gene_to_contig(genome_calls)
 
-        # 4. DIAMOND parsing.
-        self_bs = self._collect_self_bitscores()
-        edges_dict = self._parse_diamond_minbit(
-            hash_to_genome, gene_to_contig, self_bs,
-            gene_clusters=gene_clusters)
+        # 4. Candidate edges from gene clusters (candidacy owner). Every edge
+        # the engine will ever consider is a cross-genome within-cluster pair.
+        candidate_edges = self._edges_from_gene_clusters(gene_clusters, gene_to_contig)
 
-        # Per-gene uniqueness, derived from the final edges_dict so the
-        # GC gate (in panmode) and --minbit-floor are already applied.
+        # 4b. Optional scoring: when a DIAMOND file is given, weight the
+        # candidate edges by reciprocal-averaged minbit and drop any candidate
+        # DIAMOND did not score (reproducing the classic edge set exactly,
+        # since the parser is bounded to candidate_edges). Without DIAMOND,
+        # every candidate edge stands as an unweighted edge.
+        if self.diamond_search_results:
+            self_bs = self._collect_self_bitscores()
+            edges_dict = self._parse_diamond_minbit(
+                hash_to_genome, gene_to_contig, self_bs, candidate_edges)
+            self.edges_scored = True
+            self.run.info('Edge scorer', 'DIAMOND minbit', mc='green')
+        else:
+            edges_dict = candidate_edges
+            self.edges_scored = False
+            self.run.info_single("No DIAMOND search results provided — building the graph on gene-"
+                                 "cluster membership alone. Edges are unweighted and the `minbit` "
+                                 "ranking component is dropped.", mc='yellow')
+
+        # Per-gene uniqueness, derived from the final edges_dict so candidacy
+        # (same gene cluster) and --minbit-floor are already applied.
         # For each gene endpoint we track:
         #   * hit_count          : total cross-genome partners
         #   * partner_genomes    : unique genomes those partners belong to
@@ -1837,6 +1947,15 @@ class PangenomeAAIEngine():
             f"seed={self.fusion_seed}) ...")
         G, rejected_edges, orphan_lines, in_g_flip = self._build_pangenome_graph(
             lines, line_names, line_to_genome, pair_label, ranking)
+
+        # Without a scorer the edge weight carried into each fuse log is the
+        # neutral 1.0 placeholder, not a measured minbit. Null it so the
+        # persisted fuse records don't misrepresent an unweighted edge as a
+        # perfect-minbit one.
+        if not self.edges_scored:
+            for _n, data in G.nodes(data=True):
+                for fuse in data.get('fuses', ()):
+                    fuse['minbit'] = None
 
         reasons = Counter(reason for (_u, _v, _m, reason) in rejected_edges)
         self.run.info('Graph nodes', pp(G.number_of_nodes()), mc='green')

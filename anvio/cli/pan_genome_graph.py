@@ -45,11 +45,18 @@ def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT', "Anvi'o artifacts for the pan graph to be computed.")
-    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
+    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': True}))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': True}))
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {'required': True}))
     groupA.add_argument(*anvio.A('genomes-names'), **anvio.K('genomes-names', {'required': False}))
-    groupA.add_argument(*anvio.A('diamond-search-results'), **anvio.K('diamond-search-results', {'required': True}))
+    groupA.add_argument(*anvio.A('diamond-search-results'), **anvio.K('diamond-search-results', {'required': False,
+                                'help': "OPTIONAL (but recommended). A DIAMOND tabular (outfmt 6) search-results file used to "
+                                "SCORE and WEIGHT the gene-cluster-derived edges. Candidate edges are always defined by the pan-db "
+                                "gene clusters; if this file is provided, each cross-genome pair inside a gene cluster is weighted by "
+                                "its reciprocal-averaged minbit and edges without a DIAMOND score are dropped (reproducing the "
+                                "classic behavior exactly). If omitted, the tool runs on gene-cluster membership alone: every "
+                                "cross-genome pair within a gene cluster becomes an unweighted edge and the `minbit` ranking "
+                                "component is dropped."}))
 
     groupB = parser.add_argument_group('OUTPUT', "Where the resulting pan-graph-db should be written. If you don't specify a path, "
                                 "anvi'o will write the database into the current working directory using the project name as the "
@@ -117,20 +124,11 @@ def get_args():
                     "'uniqueness' (opt-in; not in the default) is min(uniqueness(u), uniqueness(v)) where uniqueness(g) = "
                     "partner_genomes(g) / hit_count(g) -- the number of distinct genomes among g's cross-genome DIAMOND partners "
                     "divided by the total partner count (gated by GC in panmode). Any single-copy gene scores 1.0 regardless of "
-                    "how core it is; multi-copy GCs score below 1.0; capped at 1.0 by construction.")
+                    "how core it is; multi-copy GCs score below 1.0; capped at 1.0 by construction. NOTE: `minbit` requires "
+                    "`--diamond-search-results`; when no DIAMOND file is provided it is silently dropped from this list (edges are "
+                    "unweighted) and the remaining components are used.")
     groupD.add_argument('--ranking-mean', default='geometric', choices=['geometric', 'arithmetic'], help = "Mean used to "
                     "combine ranking components into a single score per edge.")
-    groupD.add_argument('--minbit-floor', default=0.0, type=float, help = "Edges with AAI minbit below this value are dropped "
-                    "before ranking. Applied to the reciprocal-averaged minbit of each undirected cross-genome pair, AFTER pass 2 "
-                    "of DIAMOND parsing has built the directed-pair dictionary. Use this for ranking quality control. For a memory-"
-                    "oriented filter that drops rows DURING pass 2 see --minbit-prefilter.")
-    groupD.add_argument('--minbit-prefilter', default=0.0, type=float, help = "Row-level minbit prefilter applied DURING pass 2 of "
-                    "DIAMOND parsing: rows whose directed minbit (bit_score / min(self_bit_u, self_bit_v)) is below this value are "
-                    "dropped before they enter the directed-pair dictionary. Cuts pass-2 memory in proportion to how aggressive the "
-                    "threshold is -- the dictionary holds all surviving cross-genome directed pairs and can be tens of GB for large "
-                    "pangenomes (e.g., 50+ genomes), which is the most common cause of OOM kills during the engine's parsing phase. "
-                    "Distinct from --minbit-floor, which gates AFTER reciprocal-average and is for ranking quality. 0 disables the "
-                    "prefilter (default). Must be in [0.0, 1.0].")
     groupD.add_argument('--decision-floor', default=0.0, type=float, help = "Edges whose per-edge decision_score (the locality-window "
                     "top-n mean selected by the line-pair orientation label) is below this value are dropped before fusion. Applied "
                     "at ranking time, as soon as the decision score is available; analogous to --minbit-floor for raw minbit. "
@@ -162,37 +160,51 @@ def get_args():
                     "(Prim-style frontier growth with stochastic top-K bucketing).")
     groupD.add_argument('--fusion-seed', default=42, type=int, help = "Random seed for the stochastic top-K fusion sampler.")
 
-    groupE = parser.add_argument_group('LAYOUT & SIMPLIFICATION', "Controls how the graph is compressed and long edges are filtered.")
+    groupE = parser.add_argument_group('OPTIONAL DIAMOND USE', "Additional parameters controlling the AAI-based gene-endpoint fusion "
+                    "engine with scores coming from diamond. These rarely need tuning; defaults work well for most datasets.")
+    groupE.add_argument('--minbit-floor', default=0.0, type=float, help = "Edges with AAI minbit below this value are dropped "
+                    "before ranking. Applied to the reciprocal-averaged minbit of each undirected cross-genome pair, AFTER pass 2 "
+                    "of DIAMOND parsing has built the directed-pair dictionary. Use this for ranking quality control. For a memory-"
+                    "oriented filter that drops rows DURING pass 2 see --minbit-prefilter.")
+    groupE.add_argument('--minbit-prefilter', default=0.0, type=float, help = "Row-level minbit prefilter applied DURING pass 2 of "
+                    "DIAMOND parsing: rows whose directed minbit (bit_score / min(self_bit_u, self_bit_v)) is below this value are "
+                    "dropped before they enter the directed-pair dictionary. Cuts pass-2 memory in proportion to how aggressive the "
+                    "threshold is -- the dictionary holds all surviving cross-genome directed pairs and can be tens of GB for large "
+                    "pangenomes (e.g., 50+ genomes), which is the most common cause of OOM kills during the engine's parsing phase. "
+                    "Distinct from --minbit-floor, which gates AFTER reciprocal-average and is for ranking quality. 0 disables the "
+                    "prefilter (default). Must be in [0.0, 1.0].")
 
-    groupE.add_argument('--component', default=0, type=int, help = "Which weakly connected component to lay out and summarize. "
+    groupF = parser.add_argument_group('LAYOUT & SIMPLIFICATION', "Controls how the graph is compressed and long edges are filtered.")
+
+    groupF.add_argument('--component', default=0, type=int, help = "Which weakly connected component to lay out and summarize. "
                     "Components are indexed largest-first; the default (0) selects the largest. All components are still persisted "
                     "in the pan-graph-db.")
-    groupE.add_argument('--region-scope', default='component', choices=['global', 'component'], help = "Scope of the genome-count "
+    groupF.add_argument('--region-scope', default='component', choices=['global', 'component'], help = "Scope of the genome-count "
                     "denominator used during region classification (backbone vs. variable) and the normalized region metrics. "
                     "'global' (default) counts genomes across the entire pangenome -- a region is BR only if every genome in "
                     "the pangenome reaches it. 'component' counts only the genomes present in the current weakly-connected "
                     "component -- a region is BR relative to the genomes that actually appear in its component, which treats "
                     "each component as an independent sub-pangenome. With 'component' a 1-genome component is trivially classified "
                     "as backbone; pick 'global' if that's not the intent.")
-    groupE.add_argument('--gene-cluster-grouping-threshold', default=-1, type=int, help = "Compress linear chains of nodes of "
+    groupF.add_argument('--gene-cluster-grouping-threshold', default=-1, type=int, help = "Compress linear chains of nodes of "
                     "this length or longer into groups (-1 disables grouping; useful to simplify long conserved runs).")
-    groupE.add_argument('--grouping-compression', default=1.0, type=float, help = "Compression factor for grouped chains "
+    groupF.add_argument('--grouping-compression', default=1.0, type=float, help = "Compression factor for grouped chains "
                     "(1.0 = no compression; lower values squeeze grouped nodes closer in the layout).")
-    groupE.add_argument('--max-edge-length-filter', default=-1, type=int, help = "Remove edges longer than this length threshold "
+    groupF.add_argument('--max-edge-length-filter', default=-1, type=int, help = "Remove edges longer than this length threshold "
                     "after layout (-1 disables filtering; lower values prune long jumps/repeats).")
 
-    groupF = parser.add_argument_group('METADATA & LAYERS', "Display and metadata options for the resulting pan-graph.")
+    groupG = parser.add_argument_group('METADATA & LAYERS', "Display and metadata options for the resulting pan-graph.")
 
-    groupF.add_argument(*anvio.A('description'), **anvio.K('description'))
-    groupF.add_argument(*anvio.A('project-name'), **anvio.K('project-name'))
-    groupF.add_argument('--load-state', default='default', type=str, help="Initial display state name to store/use in the pan-graph-db.")
-    groupF.add_argument('--import-values', default='start,stop,partial,call_type', type=str, help = "Comma-separated "
+    groupG.add_argument(*anvio.A('description'), **anvio.K('description'))
+    groupG.add_argument(*anvio.A('project-name'), **anvio.K('project-name'))
+    groupG.add_argument('--load-state', default='default', type=str, help="Initial display state name to store/use in the pan-graph-db.")
+    groupG.add_argument('--import-values', default='start,stop,partial,call_type', type=str, help = "Comma-separated "
                     "numeric columns from the pangenome table to copy as node layers (e.g., start, stop, partial); "
                     "non-numeric/missing columns are ignored.")
 
-    groupG = parser.add_argument_group('ROBUSTNESS & DEBUGGING', "Controls safety checks and noisy-data handling.")
+    groupH = parser.add_argument_group('ROBUSTNESS & DEBUGGING', "Controls safety checks and noisy-data handling.")
 
-    groupG.add_argument('--just-do-it', default=False, action="store_true", help = "Bypass safety checks (e.g., "
+    groupH.add_argument('--just-do-it', default=False, action="store_true", help = "Bypass safety checks (e.g., "
                     "over-splitting) and continue even when warnings would normally abort; use to diagnose tough datasets.")
 
     return parser.get_args(parser)

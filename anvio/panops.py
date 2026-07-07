@@ -1610,29 +1610,32 @@ class PangenomeGraph():
         else:
             self.genome_names = []
 
-        if self.pan_db_path:
-            if filesnpaths.is_file_exists(self.pan_db_path, dont_raise=False):
-                self.pan_db = dbops.PanDatabase(self.pan_db_path)
-                self.gene_alignments_computed = self.pan_db.meta['gene_alignments_computed']
+        # A pan-db is a hard requirement: the gene clusters it stores are what
+        # define the candidate edges of the pangenome graph. DIAMOND (below) is
+        # optional and only scores/weights those edges.
+        if not self.pan_db_path:
+            raise ConfigError("This program requires a pan-db (`--pan-db`): its gene clusters define "
+                              "the candidate edges of the pangenome graph. A DIAMOND search-results "
+                              "file is optional and only weights those edges :/")
 
-                self.pan_super = dbops.PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
-                self.pan_super.init_gene_clusters()
+        if filesnpaths.is_file_exists(self.pan_db_path, dont_raise=False):
+            self.pan_db = dbops.PanDatabase(self.pan_db_path)
+            self.gene_alignments_computed = self.pan_db.meta['gene_alignments_computed']
 
-                # --genome-names must be a subset of the pan-db's genome list:
-                # the pan-graph is computed downstream of the pan, so the focus
-                # set can only narrow what the pan already knows about.
-                if A('genome_names'):
-                    pan_genomes = set(self.pan_super.genome_names)
-                    absent = sorted(set(self.genome_names) - pan_genomes)
-                    if absent:
-                        head = ', '.join(absent[:3]) + ('...' if len(absent) > 3 else '')
-                        raise ConfigError(f"{len(absent)} name(s) in `--genome-names` are not "
-                                          f"in the pan-db's genome list (the pan-graph must be "
-                                          f"a subset of the pan's genomes): {head} :/")
-        else:
-            self.pan_db = None
-            self.pan_super = None
-            self.gene_alignments_computed = False
+            self.pan_super = dbops.PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+            self.pan_super.init_gene_clusters()
+
+            # --genome-names must be a subset of the pan-db's genome list:
+            # the pan-graph is computed downstream of the pan, so the focus
+            # set can only narrow what the pan already knows about.
+            if A('genome_names'):
+                pan_genomes = set(self.pan_super.genome_names)
+                absent = sorted(set(self.genome_names) - pan_genomes)
+                if absent:
+                    head = ', '.join(absent[:3]) + ('...' if len(absent) > 3 else '')
+                    raise ConfigError(f"{len(absent)} name(s) in `--genome-names` are not "
+                                      f"in the pan-db's genome list (the pan-graph must be "
+                                      f"a subset of the pan's genomes): {head} :/")
 
         if self.genomes_storage:
             if filesnpaths.is_file_exists(self.genomes_storage, dont_raise=False):
@@ -1641,12 +1644,7 @@ class PangenomeGraph():
             self.genomes_storage_hash = None
 
         if not self.project_name:
-            if self.pan_db:
-                self.project_name = self.pan_db.meta['project_name']
-            else:
-                raise ConfigError("You need to explicitly define a `--project-name` for this "
-                                  "run (anvi'o would have figured it out for you, but you don't "
-                                  "even have a pan-db).")
+            self.project_name = self.pan_db.meta['project_name']
 
         # ANVI'O OUTPUTS
         user_pan_graph_db_path = A('output_file') or A('pan_graph_db')
@@ -1684,6 +1682,11 @@ class PangenomeGraph():
         self.ranking_mean = A('ranking_mean')
         self.minbit_floor = A('minbit_floor')
         self.minbit_prefilter = A('minbit_prefilter')
+        # DIAMOND is optional: when provided it scores/weights the gene-cluster-
+        # derived edges; when absent, edges are unweighted and `minbit` is
+        # dropped from the ranking. This flag drives the conditional meta below.
+        self.diamond_search_results = A('diamond_search_results')
+        self.edges_scored = bool(self.diamond_search_results)
         self.decision_floor = A('decision_floor')
         self.support_floor = A('support_floor')
         self.uniqueness_floor = A('uniqueness_floor')
@@ -2120,8 +2123,13 @@ class PangenomeGraph():
             'orientation_demotion_strategy': self.orientation_demotion_strategy,
             'ranking_components': self.ranking_components,
             'ranking_mean': self.ranking_mean,
-            'minbit_floor': self.minbit_floor,
-            'minbit_prefilter': self.minbit_prefilter,
+            # Edge scorer provenance: 'diamond' when a DIAMOND search-results
+            # file weighted the edges, 'none' when the graph was built on gene-
+            # cluster membership alone. minbit_* thresholds only apply to the
+            # DIAMOND path, so they are stored as None otherwise.
+            'edge_scorer': 'diamond' if self.edges_scored else 'none',
+            'minbit_floor': self.minbit_floor if self.edges_scored else None,
+            'minbit_prefilter': self.minbit_prefilter if self.edges_scored else None,
             'decision_floor': self.decision_floor,
             'support_floor': self.support_floor,
             'uniqueness_floor': self.uniqueness_floor,
@@ -2304,24 +2312,18 @@ class PangenomeGraph():
         (see :mod:`anvio.panaai`) and mirror the result into
         ``self.pangenome_graph`` (a :class:`PangenomeGraphManager`).
 
-        In panmode the parent gene-cluster map is pulled from the pan-db and
-        passed to the engine; in non-panmode the engine still runs but only
-        ``core`` / ``accessory`` / ``singleton`` node types are produced and
-        alignments are unavailable downstream.
+        The parent gene-cluster map is pulled from the (mandatory) pan-db and
+        passed to the engine, where it defines the candidate edges of the graph.
         """
 
-        # In panmode, get the (genome, gene_caller_id) -> gene_cluster map.
-        gene_clusters = None
-        if self.pan_super is not None:
-            gene_clusters = {}
-            for genome, gid_map in self.pan_super.gene_callers_id_to_gene_cluster.items():
-                for gid, gc_name in gid_map.items():
-                    gene_clusters[(genome, gid)] = gc_name
-            self.run.info('Gene clusters loaded from pan-db', len(gene_clusters))
-        else:
-            self.run.info_single('No pan-db given — alignments will be unavailable in the output '
-                                 'and node types collapse to core/accessory/singleton.',
-                                 mc='yellow')
+        # Get the (genome, gene_caller_id) -> gene_cluster map from the pan-db.
+        # This map defines candidacy: two genes can be an edge only if they
+        # share a gene cluster (see PangenomeAAIEngine._edges_from_gene_clusters).
+        gene_clusters = {}
+        for genome, gid_map in self.pan_super.gene_callers_id_to_gene_cluster.items():
+            for gid, gc_name in gid_map.items():
+                gene_clusters[(genome, gid)] = gc_name
+        self.run.info('Gene clusters loaded from pan-db', len(gene_clusters))
 
         # Drive the AAI engine.
         engine = panaai.PangenomeAAIEngine(self.args, r=self.run, p=self.progress)
@@ -2385,7 +2387,7 @@ class PangenomeGraph():
                 if pos is not None:
                     synteny[genome] = pos
 
-            parent_gc = node.rsplit('_', 1)[0] if gene_clusters is not None else ''
+            parent_gc = node.rsplit('_', 1)[0]
 
             self.pangenome_graph.add_node_to_graph(node, {
                 'gene_cluster': parent_gc,
@@ -2449,20 +2451,23 @@ class PangenomeGraph():
         """Populate the ``alignment`` attribute on every super-node and copy
         user-requested numeric layers from CONTIGS.dbs into ``node['layer']``.
 
-        In panmode, per-genome alignments are pulled from
+        Per-genome alignments are pulled from
         ``self.pan_super.gene_clusters_gene_alignments`` (the existing pan-db
         alignment machinery), padded to a common length, and re-summarized.
-        In non-panmode the pan-db is unavailable, so we emit empty alignment
-        strings and move on. After alignments, the columns named in
-        ``self.import_values`` are aggregated per super-node by mean across
-        the super-node's genes; non-numeric values are skipped.
+        When the pan-db has no alignments computed, we emit empty alignment
+        strings and move on. Non-coding (RNA) and other non-gene-cluster
+        genes are naturally not present in the pan-db alignments, so the
+        per-node loop below assigns them empty alignment strings. After
+        alignments, the columns named in ``self.import_values`` are aggregated
+        per super-node by mean across the super-node's genes; non-numeric
+        values are skipped.
         """
         self.run.warning("Adding per-node alignments.",
                          header="ADDING LAYERS", lc="green")
 
-        if not self.gene_alignments_computed or self.pan_super is None:
-            self.run.info_single("No pan-db (or no alignments computed) — alignment summaries "
-                                 "will be empty.")
+        if not self.gene_alignments_computed:
+            self.run.info_single("No alignments were computed for this pan-db — alignment "
+                                 "summaries will be empty.")
             for _node, data in self.pangenome_graph.graph.nodes(data=True):
                 data['alignment'] = {g: '' for g in data['gene_calls']}
             self._import_layer_values()
@@ -2580,11 +2585,6 @@ class PangenomeGraph():
         """
         if self.no_remerge:
             self.run.info_single('Remerge step skipped (`--no-remerge`).')
-            return
-
-        if self.pan_super is None:
-            self.run.info_single('Remerge step skipped (non-pan-mode: every node is its own parent '
-                                 'gene cluster, so there is nothing to remerge against).')
             return
 
         self.run.warning("Remerging nodes. This is extremely useful in case of highly sensitive graph creation "
