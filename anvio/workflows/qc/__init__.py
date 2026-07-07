@@ -64,11 +64,6 @@ class QCModule(WorkflowSuperClass):
         'longqc: platform' value from the config; otherwise a ConfigError. Anvi'o never lets
         LongQC fall back to a built-in default so quality assessment can't silently use the
         wrong platform model.
-
-        pb-hifi is a valid token/platform for mapping and assembly, but LongQC crashes on
-        biological PacBio HiFi data (its pb-hifi preset filters spike-in controls that HiFi
-        libraries don't contain, yielding an empty coverage file / EmptyDataError). pb-hifi
-        readsets are therefore blocked upfront in check_qc_program_dependencies().
         """
         rs = self.readsets_by_id.get(readset_id)
         if rs is None:
@@ -91,7 +86,7 @@ class QCModule(WorkflowSuperClass):
             f"'{readset_id}', but none is available. Either add an 'lr_technology' column to your "
             f"samples-txt file (anvi'o will map it to the right LongQC platform automatically), or set "
             f"'longqc': {{'platform': ...}} in your workflow config (e.g. 'ont-ligation', 'ont-rapid', "
-            f"'pb-rs2', 'pb-sequel'). Note that LongQC does not work on PacBio HiFi ('pb-hifi') data."
+            f"'pb-rs2', 'pb-sequel', 'pb-hifi')."
         )
 
     def get_fastq(self, readset, pre_ref_removal=False):
@@ -153,26 +148,6 @@ class QCModule(WorkflowSuperClass):
                 missing.append(('fastqc', 'fastqc_sr'))
 
         if self.get_param_value_from_config(['longqc', 'run']) == True:
-            # Resolve the LongQC platform per readset (from lr_technology or config) and refuse
-            # to run on pb-hifi — see get_longqc_platform() for why HiFi crashes LongQC.
-            hifi_readsets = [
-                rs_id for rs_id in self.get_lr_readset_ids()
-                if self.get_longqc_platform(rs_id) == 'pb-hifi'
-            ]
-            if hifi_readsets:
-                raise ConfigError(
-                    f"LongQC is enabled but {len(hifi_readsets)} readset(s) resolve to the 'pb-hifi' "
-                    f"platform ({', '.join(hifi_readsets)}). LongQC's pb-hifi preset always "
-                    f"attempts to filter spike-in control reads, but PacBio HiFi library "
-                    f"preparation does not include instrument spike-in controls, so no control "
-                    f"reads are present in biological HiFi data. This causes LongQC to produce "
-                    f"an empty coverage file and crash. LongQC does work with PacBio RS II "
-                    f"(pb-rs2) and Sequel/Sequel II (pb-sequel) data, which do carry spike-in "
-                    f"controls. Please set lr_technology (or 'longqc': {{'platform': ...}}) to "
-                    f"'pb-rs2' or 'pb-sequel' if appropriate, or disable LongQC "
-                    f"('longqc': {{'run': false}}) for HiFi samples."
-                )
-
             # Only probe the current $PATH / interpreter when LongQC is expected there. When it is
             # provided via conda, Snakemake runs the rule inside that env, so these checks would be
             # false positives (and the module check would probe the wrong interpreter anyway).

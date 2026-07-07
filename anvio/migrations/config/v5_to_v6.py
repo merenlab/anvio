@@ -79,11 +79,10 @@ def migrate(config_path):
         message = (f"The config file version is now {next_version}. This upgrade added the following "
                    f"optional long-read QC rules to your metagenomics config (all disabled by default, "
                    f"so nothing changes unless you turn them on): {', '.join(added_rules)}. "
-                   f"Two related notes for long-read users: (1) anvi'o no longer applies a silent default "
+                   f"One related note for long-read users: anvi'o no longer applies a silent default "
                    f"minimap2 preset or Flye read-type — provide them either via the new `lr_technology` "
                    f"column in your samples-txt (recommended) or explicitly in this config; your existing "
-                   f"values (if any) were left untouched. (2) LongQC does not work on PacBio HiFi data. "
-                   f"See the metagenomics workflow documentation for details.")
+                   f"values (if any) were left untouched. See the metagenomics workflow documentation for details.")
     else:
         message = (f"The config file version is now {next_version}. No rule changes were necessary for the "
                    f"'{workflow_name}' workflow — this was just a version stamp update.")

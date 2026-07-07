@@ -88,7 +88,6 @@ A few rules govern this column:
 
 * It is **optional**. If you omit it entirely, anvi'o falls back to the presets you set explicitly in your %(workflow-config)s (e.g. `minimap2: {"preset": ...}` and the Flye read-type flag). Anvi'o will not run these tools with their built-in defaults, so if the column is absent you must set those presets yourself or the workflow will stop with an error telling you exactly what is missing.
 * It is **all-or-nothing**. If you include the column, then *every* sample that has long reads must have a value in it. Short-read-only samples should leave it blank.
-* `pb-hifi` is valid for mapping and assembly, but **LongQC does not work on PacBio HiFi data** (its `pb-hifi` preset filters spike-in controls that HiFi libraries do not contain). If you enable LongQC for a `pb-hifi` sample, anvi'o will stop with an actionable error.
 
 Here is an example samples.txt file with the optional `lr_technology` column for a set of long-read samples:
 

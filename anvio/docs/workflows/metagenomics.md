@@ -379,7 +379,7 @@ The technology → preset mapping is maintained in `anvio/workflows/lr_technolog
 
 Beyond the default short-read QC (illumina-utils), the workflow offers several optional QC steps, all disabled by default and enabled per rule in your %(workflow-config)s with `"run": true`:
 
-* `longqc` — long-read quality assessment with [LongQC](https://github.com/yfukasawa/LongQC). LongQC requires at least 4 threads. Note that **LongQC does not work on PacBio HiFi (`pb-hifi`) data** — anvi'o blocks this combination with an actionable error, since LongQC's HiFi preset expects spike-in controls that biological HiFi libraries do not contain.
+* `longqc` — long-read quality assessment with [LongQC](https://github.com/yfukasawa/LongQC). LongQC requires at least 4 threads.
 * `filtlong` — length/quality filtering of long reads with [Filtlong](https://github.com/rrwick/Filtlong) (`--min-length`, `--max-length`, `--target-bases`). When enabled, downstream mapping and assembly use the filtered reads.
 * `fastqc_sr` — [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) on quality-controlled short reads.
 * `multiqc` — aggregates FastQC and LongQC outputs into a single [MultiQC](https://multiqc.info) report.
