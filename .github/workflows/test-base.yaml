@@ -1,24 +1,31 @@
-name: Component Tests and Migrations
+name: Anvi'o Base Workflow
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: "0 9 * * *"
-
-permissions:
-  contents: read
-
-env:
-  MINICONDA_VERSION: "py310_26.1.1-1"
+  workflow_call:
+    inputs:
+      test-name:
+        description: Name of the test suite (e.g., "Component Tests")
+        required: true
+        type: string
+      test-commands:
+        description: Multiline shell commands to execute
+        required: true
+        type: string
+      python-version:
+        description: Python version to use (e.g., "3.10")
+        required: false
+        default: "3.10"
+        type: string
+      miniconda-version:
+        description: Miniconda version to use (e.g., "py310_26.1.1-1")
+        required: false
+        default: "py310_26.1.1-1"
+        type: string
 
 jobs:
-  build:
-    name: Component Tests (Python ${{ matrix.python-version }})
+  run:
+    name: ${{ inputs.test-name }} (Python ${{ inputs.python-version }})
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.10"]
-      fail-fast: false
 
     steps:
     - name: "Checkout"
@@ -26,7 +33,7 @@ jobs:
       with:
         persist-credentials: false
 
-    - name: "Set up Miniconda (${{ env.MINICONDA_VERSION }}) and Anvi'o environment"
+    - name: "Set up Miniconda (${{ inputs.miniconda-version }}) and Anvi'o environment"
       uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5 # v4.0.1
       with:
         # FIXME:
@@ -37,7 +44,7 @@ jobs:
         auto-update-conda: true
         activate-environment: anvio_env
         environment-file: .conda/environment.yaml
-        python-version: ${{ matrix.python-version }}
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: "Export Python paths"
       shell: bash -l {0}
@@ -69,22 +76,7 @@ jobs:
       run: |
         npm install
 
-    - name: "Run component tests"
+    - name: Run tests
       shell: bash -l {0}
       run: |
-        anvi-self-test --suite metagenomics-full --no-interactive
-        anvi-self-test --suite pangenomics --no-interactive
-        anvi-self-test --suite inversions --no-interactive
-
-# the following steps cause our actions to fail on GitHub runners
-# due to space limitations :/ please do not uncomment this until we
-# have a solution for this :/
-    #- name: "Run component tests for metabolism framework"
-    #  shell: bash -l {0}
-    #  run: |
-    #    anvi-self-test --suite metabolism --no-interactive
-
-    #- name: "Migrate ancient anvi'o databases"
-    #  shell: bash -l {0}
-    #  run: |
-    #    anvi-self-test --suite database-migrations
+        ${{ inputs.test-commands }}

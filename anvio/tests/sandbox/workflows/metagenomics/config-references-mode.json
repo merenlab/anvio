@@ -189,7 +189,7 @@
     },
     "minimap2": {
         "threads": 3,
-        "preset": "map-hifi",
+        "preset": "map-ont",
         "additional_params": "--secondary-seq",
         "conda_yaml": "",
         "conda_env": ""
