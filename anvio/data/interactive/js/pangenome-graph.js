@@ -147,6 +147,7 @@ class PangenomeGraphUserInterface {
         var offset = parseFloat($('#tree_offset')[0].value);
         var tree_thickness = parseFloat($('#tree_thickness')[0].value);
         var text_offset = parseFloat($('#label_offset')[0].value);
+        var position_tick_font_size = parseFloat($('#position_tick_font_size')[0].value);
         
         var core_color = $('#core_color').attr('color');
         var paralog_color = $('#paralog_color').attr('color');
@@ -399,12 +400,12 @@ class PangenomeGraphUserInterface {
                     }
 
                     svg_arrow.push(
-                        $('<text text-anchor="middle" dominant-baseline="middle" transform="rotate(-' + rotate + ' ' + circle_l_x + ' ' + circle_l_y +')" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="white">' + l + '</text>')
+                        $('<text text-anchor="middle" dominant-baseline="middle" transform="rotate(-' + rotate + ' ' + circle_l_x + ' ' + circle_l_y +')" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + position_tick_font_size + '" font-family="sans-serif" fill="white">' + l + '</text>')
                     )
                 } else {
                     var [circle_l_x, circle_l_y] = [(l) * node_distance_x, -(arrow_start + arrow_thickness * 2)]
                     svg_arrow.push(
-                        $('<text text-anchor="middle" dominant-baseline="middle" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="white">' + l + '</text>')
+                        $('<text text-anchor="middle" dominant-baseline="middle" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + position_tick_font_size + '" font-family="sans-serif" fill="white">' + l + '</text>')
                     )
                 }
                 l += steps
@@ -2849,6 +2850,7 @@ class PangenomeGraphUserInterface {
         $('#label')[0].value = lbl['font_size'];
         $('#label_offset')[0].value = lbl['offset'];
         $('#num_position')[0].value = lbl['position_tick_count'];
+        $('#position_tick_font_size')[0].value = lbl['position_tick_font_size'] || lbl['font_size'];
 
         // margins
         $('#inner_margin')[0].value = state['margins']['inner'];
@@ -4573,7 +4575,8 @@ class PangenomeGraphUserInterface {
             labels: {
                 font_size: Number($('#label')[0].value),
                 offset: Number($('#label_offset')[0].value),
-                position_tick_count: Number($('#num_position')[0].value)
+                position_tick_count: Number($('#num_position')[0].value),
+                position_tick_font_size: Number($('#position_tick_font_size')[0].value)
             },
             margins: {
                 inner: Number($('#inner_margin')[0].value),
