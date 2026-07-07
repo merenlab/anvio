@@ -737,9 +737,9 @@ class PangenomeGraphManager():
                 max_dist, max_pair = d, (genome_i, genome_j)
 
         if min_pair is not None:
-            self.run.info(f"Smallest distance: d({min_pair[0]},{min_pair[1]}) = {round(min_dist, 3)}", cut_after=None)
-            self.run.info(f"Largest distance:  d({max_pair[0]},{max_pair[1]}) = {round(max_dist, 3)}", cut_after=None)
-            self.run.info_single("(full matrix written to the pan-graph-db)", cut_after=None)
+            self.run.info('Smallest distance', f"d({min_pair[0]},{min_pair[1]}) = {round(min_dist, 3)}")
+            self.run.info('Largest distance',  f"d({max_pair[0]},{max_pair[1]}) = {round(max_dist, 3)}")
+            self.run.info_single("full matrix written to the pan-graph-db", cut_after=None)
 
         distance_matrix = pd.DataFrame(X, index=genome_names, columns=genome_names)
 
