@@ -1906,8 +1906,9 @@ class PangenomeGraph():
 
 
     def get_default_state(self):
-        """Calculates a default state for the pangenome graph"""
+        """Calculates and returns a dynamically scaled default state for the pangenome graph."""
 
+        # Determines the maximum spatial dimensions of a pangenome graph layout.
         x_max = max([data['position'][0] for node, data in self.pangenome_graph.graph.nodes(data=True)])
         y_max = max([data['position'][1] for node, data in self.pangenome_graph.graph.nodes(data=True)])
         for i, j, data in self.pangenome_graph.graph.edges(data=True):
@@ -1915,31 +1916,80 @@ class PangenomeGraph():
                 for x, y in data['route']:
                     y_max = y if y > y_max else y_max
 
-        distx = 45
+        # --- 1. Base Graph Metrics ---
+        num_backbone_nodes = x_max + 1
+        num_genomes = len(self.genome_names)
+
+        # Use a linear layout for small graphs; default to circular for everything else
+        drawing_type = 'linear' if num_backbone_nodes < 30 and num_genomes < 6 else 'circular'
+
+        # --- 2. Dynamic Scaling Factor ---
+        # Scaling increases with num_backbone_nodes at a decelerating rate:
+        # ~0.7x at 5 nodes -> 1.0x at 50 nodes -> 3.0x at 1000 nodes.
+        # This anchor factor maintains visual consistency across tracks and spacing.
+        node_scale = 1.0 + 3.0 * (num_backbone_nodes - 50.0) / (num_backbone_nodes + 400.0)
+
+        # --- 3. Node Geometry & Spacing ---
+        distx = max(10, int(45 * node_scale))
+        node_radius = int(distx / 3)
+        disty = int(node_radius * 2.5) if num_backbone_nodes < 200 else int(node_radius * 5)
+        node_border_width = int(node_radius / 3)
+        edge_width = node_border_width
+
+        # Expand y_max based on edge routing paths
+        for _, _, data in self.pangenome_graph.graph.edges(data=True):
+            if data.get('route'):
+                for x, y in data['route']:
+                    y_max = max(y_max, y)
+
+        # Calculate circular layout radii based on the dynamic x-distance
         full_radius = int(180 * (distx * x_max) / (math.pi * 270))
-        tracks_radius = int((2 * full_radius / 3))
-        inner = int((1 * full_radius / 3))
-        tracks_layer = int(tracks_radius / (3/2 * len(self.genome_names) + (5/2)))
+        tracks_radius = int(2 * full_radius / 3)
+        inner = int(full_radius / 3)
 
-        inner_margin = int(tracks_layer / 2)
-        backbone = int(tracks_layer / 2)
-        arrow = tracks_layer
-        search = int(tracks_layer / 2)
+        # --- 4. Layout-Specific Formatting ---
+        if drawing_type == 'linear':
+            # Increase track height for small genomes; apply a height penalty as genome count increases
+            base_layer = max(1, int(40 * node_scale))
+            tracks_layer = max(16, base_layer - num_genomes + 3)
+            disty = int(tracks_layer * 2)
+        else:
+            if num_backbone_nodes < 30:
+                # Small genomes in circular layout mirror the linear layout logic
+                base_layer = max(1, int(40 * node_scale))
+                tracks_layer = max(16, base_layer - num_genomes + 3)
+            else:
+                # Large genomes scale track height based on the radius ratio
+                tracks_layer = int(tracks_radius / (1.5 * num_genomes + 2.5))
 
-        label = int(arrow * 0.25)
+        track_line_width = max(1, min(int(tracks_layer / 20), edge_width * 3))
 
+        # --- 5. Dependent Visual Parameters ---
+        # Tie UI elements to the calculated track height (tracks_layer) for visual harmony
+        anchor_size = max(1, int(tracks_layer / 2))
+        inner_margin = anchor_size
+        backbone = anchor_size
+        arrow = anchor_size
+        search = anchor_size
+        label = int(arrow * 1.2)
+
+        # Prevent position ticks from bleeding past the graph range on small node sets
+        position_tick_count = num_backbone_nodes // 2 if num_backbone_nodes < 40 else 20
+        position_tick_font_size = int(0.3 * arrow)
+
+        # --- 6. State Assembly ---
         state = {
             'drawing': {
-                'type': 'circular',
+                'type': drawing_type,
                 'inner_radius': inner,
                 'start_angle': 0,
                 'end_angle': 270,
                 'node_x_spacing': distx,
-                'node_y_spacing': 120
+                'node_y_spacing': disty
             },
             'nodes': {
-                'radius': 15,
-                'outline_width': 5,
+                'radius': node_radius,
+                'outline_width': node_border_width,
                 'fade_by_prevalence': True,
                 'type_colors': {
                     'core': '#BCBCBC',
@@ -1951,7 +2001,7 @@ class PangenomeGraph():
                 }
             },
             'edges': {
-                'width': 5,
+                'width': edge_width,
                 'min_line_width_px': 0.5
             },
             'graph_layout': {
@@ -1984,10 +2034,10 @@ class PangenomeGraph():
                 'visible': True,
                 'height': tracks_layer,
                 'offset': int(inner_margin / 2),
-                'line_width': 10
+                'line_width': track_line_width
             },
             'genome_tracks': {
-                'line_width': 5,
+                'line_width': track_line_width,
                 'background_color': '#F5F5F5',
                 'genomes': {
                     genome: {
@@ -2009,7 +2059,8 @@ class PangenomeGraph():
             'labels': {
                 'font_size': label,
                 'offset': int(inner_margin / 2),
-                'position_tick_count': 20
+                'position_tick_count': position_tick_count,
+                'position_tick_font_size': position_tick_font_size
             },
             'margins': {
                 'inner': inner_margin,
@@ -2034,7 +2085,6 @@ class PangenomeGraph():
         }
 
         return state
-
 
     def generate_pan_graph_db(self):
         self.run.warning(None, header="STORING PAN-GRAPH-DB", lc="green")
