@@ -196,7 +196,11 @@ def _contract_x_with_ghosts(L, positions, global_x):
 
     ghost_id = 0
     for x in range(global_x - 1, 0, -1):
-        for node in list(by_x[x]):
+        # sorted(key=str) so nodes within a column are processed in a deterministic
+        # order; by_x[x] is a set, and its iteration order is process-dependent. That
+        # order sets the ghost-edge insertion order into L, which downstream feeds
+        # branch ordering and thus persisted edge-route coordinates.
+        for node in sorted(by_x[x], key=str):
             node_x = positions[node]
             # Brackets (weight=0) need asymmetric treatment in this pass:
             #   * They must *cap* the rightward pull -- otherwise the anchor
@@ -320,7 +324,10 @@ def _make_branch_list(L, groups, groups_rev, spine_set, positions, gc_size):
             seq=seq,
         ))
         seq += 1
-    out.sort(key=lambda b: (b.length, b.x_start, b.impact))
+    # b.seq (deterministic creation counter) as the final tiebreaker so branches that
+    # tie on (length, x_start, impact) get a stable y-assignment order independent of
+    # L's adjacency iteration order.
+    out.sort(key=lambda b: (b.length, b.x_start, b.impact, b.seq))
     return out
 
 

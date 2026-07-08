@@ -499,7 +499,11 @@ def rename_pangenome_nodes(G, gene_clusters, line_to_genome=None):
     mapping = {}
     for n in topo:
         parent_gc = None
-        for g in G.nodes[n].get("genes", ()):
+        # sorted() so that, in the (unusual) case where a super-node's genes resolve to
+        # more than one parent gene cluster, the first-match winner -- and thus the
+        # persisted node name -- is deterministic. `genes` is a set of strings whose
+        # iteration order is process-dependent (CPython string hash randomization).
+        for g in sorted(G.nodes[n].get("genes", ())):
             line_name, sep, gid_str = g.rpartition(":")
             if not sep or not gid_str.isdigit():
                 continue

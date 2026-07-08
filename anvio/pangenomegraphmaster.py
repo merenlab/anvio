@@ -698,7 +698,10 @@ class PangenomeGraphManager():
                          "insertions, or accessory content) are further apart. The full distance matrix is "
                          "written into the pan-graph-db and used to order genomes in downstream displays.",
                          header="COMPUTING GRAPH-BASED GENOME DISTANCES", lc="green")
-        genome_names = list(set(it.chain(*[list(d.keys()) for node, d in self.graph.nodes(data='gene_calls')])))
+        # sorted (not just list(set(...))) so the distance-matrix row/column order and the
+        # newick leaf order below are deterministic across runs -- otherwise set iteration
+        # order (process-dependent) would reshuffle the genome ordering every run.
+        genome_names = sorted(set(it.chain(*[list(d.keys()) for node, d in self.graph.nodes(data='gene_calls')])))
 
         X = np.zeros([len(genome_names), len(genome_names)])
         min_pair = max_pair = None

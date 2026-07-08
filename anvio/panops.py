@@ -2263,8 +2263,13 @@ class PangenomeGraph():
 
         # (...)
 
+        # sort keys so the layer column order is deterministic across runs. `keys` is a
+        # set, and `list(set(...))` of strings has process-dependent order (CPython string
+        # hash randomization), which means separate summarize runs would otherwise emit the
+        # items_additional_data columns in different orders -- scrambling any downstream step
+        # that combines per-run outputs positionally.
         args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="items")
-        miscdata.TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(data, list(keys), skip_check_names=True)
+        miscdata.TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(data, sorted(keys), skip_check_names=True)
 
 
     def store_nodes_in_pan_graph_db(self):

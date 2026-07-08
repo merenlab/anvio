@@ -892,8 +892,9 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
         header = ['node_id', 'bin_name', 'source_gene_cluster_id', 'node_type', 'component_id', 'region_id', 'region_type',
                   'node_x', 'node_y', 'num_genomes_present', 'genomes_present']
 
-        # items_additional_data layers (e.g. backbone), in stable order
-        layer_keys = list(self.items_additional_data_keys) if self.items_additional_data_keys else []
+        # items_additional_data layers (e.g. backbone), sorted for a stable column order
+        # so per-run SYNGCs.txt files can be combined positionally without scrambling.
+        layer_keys = sorted(self.items_additional_data_keys) if self.items_additional_data_keys else []
         header += layer_keys
 
         # function consensus columns: ACC + annotation per source
