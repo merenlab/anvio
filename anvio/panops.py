@@ -2444,9 +2444,8 @@ class PangenomeGraph():
             for genome in data.get('gene_calls', {}):
                 genes_per_genome[genome] += 1
         self.run.info('Genes placed in graph', pp(sum(genes_per_genome.values())))
-        if 0 < len(genes_per_genome) <= 20:
-            for genome in sorted(genes_per_genome):
-                self.run.info(f"  {genome}", pp(genes_per_genome[genome]))
+        for genome in sorted(genes_per_genome):
+            self.run.info(f"  {genome}", pp(genes_per_genome[genome]))
 
 
     def _compute_edge_genome_sets(self, G, lines, line_names, line_to_genome, in_g_flip):
