@@ -19,6 +19,21 @@ anvi-get-sequences-for-gene-clusters -g %(genomes-storage-db)s \
 {:.notice}
 The program will report the DNA sequences if the flag `--report-DNA-sequences` is used.
 
+### Reporting a single representative sequence per gene cluster
+
+By default this program reports every gene sequence in each gene cluster. If instead you want a single representative amino acid sequence per gene cluster, use the flag `--representative-sequences`:
+
+{{ codestart }}
+anvi-get-sequences-for-gene-clusters -g %(genomes-storage-db)s \
+                                     -p %(pan-db)s \
+                                     --representative-sequences \
+                                     -o %(genes-fasta)s
+{{ codestop }}
+
+Anvi'o picks the representative using a medoid-based strategy: it discards length outliers, prefers complete (non-partial) gene calls, and selects the sequence that is most similar to the others in the gene cluster. The resulting %(fasta)s uses the gene cluster names as deflines and contains no gap characters, so it is ready to be fed to protein structure predictors such as ColabFold.
+
+This flag requires a pangenome for which gene alignments were computed (i.e., **not** created with `--skip-alignments`), and it cannot be combined with `--concatenate-gene-clusters` or `--report-DNA-sequences`. It honors all the same selection and filtering options described below, as well as `--split-output-per-gene-cluster`.
+
 ### Splitting gene clusters into their own files
 
 The command above will put all gene cluster sequences in a single output %(fasta)s file. If you would like to report each gene cluster in a separate FASTA file, it is also an option thanks to the flag `--split-output-per-gene-cluster`. This optional reporting throught this flag applies to all commands shown on this page. For instance, the following command will report every gene cluster as a separate FASTA file in your directory,

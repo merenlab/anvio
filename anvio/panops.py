@@ -2297,18 +2297,16 @@ class Pangenome(object):
     def get_gene_cluster_representative_sequences(self, gene_clusters_dict):
         """Select representative sequences per GC.
 
-        Strategy:
-            1) exclude length outliers using median length of non-partial genes (fallback to all genes).
-            2) compute a medoid based on pairwise similarity of aligned sequences.
-            3) prefer non-partial genes; if all are partial, fall back to the best partial medoid.
-            4) if only one sequence exists, return it.
+        The actual representative-picking logic lives in `utils.get_representative_sequence_from_gene_cluster`
+        so that this build-time path and the user-facing `anvi-get-sequences-for-gene-clusters --representative`
+        path (via `dbops.PanSuperclass.get_gene_cluster_representative_sequences`) pick representatives
+        identically. See that function for the selection strategy.
         """
 
         representative_sequences = {}
 
         for gc_name in gene_clusters_dict:
             sequence_entries = []
-            non_partial_lengths = []
 
             for gc_info in gene_clusters_dict[gc_name]:
                 # recover key data
@@ -2320,77 +2318,15 @@ class Pangenome(object):
                 aa_sequence = self.genomes_storage.gene_info[genome_name][gene_caller_id]['aa_sequence']
                 sequence = utils.restore_alignment(aa_sequence, alignment_summary)
                 is_partial = self.genomes_storage.is_partial_gene_call(genome_name, gene_caller_id)
-                length = len(aa_sequence)
-
-                if not is_partial:
-                    non_partial_lengths.append(length)
 
                 sequence_entries.append({
                     'sequence': sequence,
-                    'length': length,
+                    'length': len(aa_sequence),
                     'gap_count': sequence.count('-'),
                     'is_partial': bool(is_partial)
                 })
 
-            # short-circuit: single-member cluster
-            if len(sequence_entries) == 1:
-                representative_sequences[gc_name] = {'sequence': sequence_entries[0]['sequence']}
-                continue
-
-            # compute median length excluding partials if possible
-            lengths_for_median = non_partial_lengths if len(non_partial_lengths) else [e['length'] for e in sequence_entries]
-            median_length = np.median(lengths_for_median) if len(lengths_for_median) else 0
-
-            # exclude length outliers (+/-20% of median). If everything is excluded, fall back to all.
-            filtered_entries = sequence_entries
-            if median_length:
-                lower, upper = 0.8 * median_length, 1.2 * median_length
-                filtered_entries = [e for e in sequence_entries if lower <= e['length'] <= upper]
-                if not len(filtered_entries):
-                    filtered_entries = sequence_entries
-
-            # compute pairwise similarities (identity over aligned positions without gaps)
-            def pairwise_similarity(seq_a, seq_b):
-                matches, positions = 0, 0
-                for aa, bb in zip(seq_a, seq_b):
-                    if aa == '-' or bb == '-':
-                        continue
-                    positions += 1
-                    if aa == bb:
-                        matches += 1
-                if positions == 0:
-                    return 0
-                return matches / positions
-
-            def average_distance(entry, entries):
-                if len(entries) == 1:
-                    return 0
-                total = 0
-                for other in entries:
-                    if other is entry:
-                        continue
-                    sim = pairwise_similarity(entry['sequence'], other['sequence'])
-                    total += (1 - sim)
-                return total / (len(entries) - 1)
-
-            # rank candidates by average distance, then gaps, then length (longer preferred)
-            ranked = []
-            for entry in filtered_entries:
-                avg_dist = average_distance(entry, filtered_entries)
-                ranked.append((avg_dist, entry['gap_count'], -entry['length'], entry['is_partial'], entry['sequence']))
-
-            ranked.sort()
-
-            # prefer non-partial medoid if available
-            representative_sequence = None
-            for _, _, _, is_partial, seq in ranked:
-                if not is_partial:
-                    representative_sequence = seq
-                    break
-            if representative_sequence is None:
-                representative_sequence = ranked[0][4]  # all sequences are partial
-
-            representative_sequences[gc_name] = {'sequence': representative_sequence}
+            representative_sequences[gc_name] = {'sequence': utils.get_representative_sequence_from_gene_cluster(sequence_entries)}
 
         return representative_sequences
 
