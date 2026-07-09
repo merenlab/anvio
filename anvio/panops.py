@@ -339,8 +339,14 @@ class ComparePan:
                 raise ConfigError("SOMEONE added an illegal value to the 'status' entry in self.compare_pan_dict. "
                                   "Very illegal. Here is the culprit value: '%s'" % gene_cluster_dict['status'])
 
+            # key the summary by the UNION of both pans' function sources. `self.pan`'s source set is
+            # derived only from the gene clusters that happened to be initialized (see the FIXME in
+            # dbops.init_gene_clusters_functions), so it can be a strict subset of `self.compared_pan`'s
+            # -- e.g. when the primary pan is a structure pan (a subset of the sequence pan). Since we
+            # pull annotations from compared-pan GCs below, keying by only `self.pan`'s sources would
+            # KeyError on any source the primary pan happens not to carry.
             function_summary = {}
-            for source in self.pan.gene_clusters_function_sources:
+            for source in self.pan.gene_clusters_function_sources | self.compared_pan.gene_clusters_function_sources:
                 function_summary[source] = {'function': set([]), 'accession': set([]), 'heterogeneity': 0}
 
             for gc in gene_cluster_dict.get(GC_source, []):
