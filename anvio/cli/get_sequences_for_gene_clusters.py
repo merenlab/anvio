@@ -259,8 +259,7 @@ def get_args():
     groupG.add_argument(*anvio.A('list-aligners'), **anvio.K('list-aligners'))
 
     groupR = parser.add_argument_group('REPRESENTATIVE SEQUENCES', "Rather than reporting every gene in a gene cluster, "
-                                       "report a single representative amino acid sequence per gene cluster (handy for "
-                                       "feeding gene cluster representatives to protein structure predictors like ColabFold).")
+                                       "report a single representative amino acid sequence per gene cluster.")
     groupR.add_argument(*anvio.A('representative-sequences'), **anvio.K('representative-sequences'))
 
     groupH = parser.add_argument_group('LIFE SAVERS', "Just when you need them.")

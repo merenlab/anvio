@@ -2210,8 +2210,7 @@ class PanSuperclass(object):
     def write_gene_cluster_representative_sequences_to_file(self, gene_clusters_dict=None, gene_cluster_names=set([]), output_file_path=None):
         """Write one representative amino acid sequence per gene cluster to a FASTA file.
 
-        The FASTA deflines are the gene cluster names, and the sequences are reported WITHOUT gap
-        characters, so the output is ready to be fed to protein structure predictors such as ColabFold.
+        The FASTA deflines are the gene cluster names, and the sequences are reported WITHOUT gap characters.
         """
 
         if output_file_path:
