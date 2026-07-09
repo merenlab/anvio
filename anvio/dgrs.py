@@ -4904,7 +4904,7 @@ class DGR_Finder:
         """
         A function to generate primers for each and every VR. These are composed of not only an initial primer sequence before the VR
         but also of anchor points in the VR. These anchor points are the bases in the TR that are not A bases and only at the places the TR and VR match.
-        The primer_sequence is then composed of the initial primer sequence, the masked primer sequence, and a flag stating if the primer is a L_to_R or not (left to right or right to left) because they are all on the same strand. These primers don't take the total primer length into account yet.
+        The primer_sequence is then composed of the initial primer sequence and the masked primer sequence, joined according to which side the initial primer anchors to (`primer_side`: 'L' when the initial primer is the upstream flank, 'R' when it is the downstream flank, or 'NA' when there is no flank on either side). The side is chosen from the VR's own strand (frame) so that the anchor sits at the VR's 5' end where possible.
 
                     TR:GCTAACTGACATAATT
         masked_primer :GCT..C.G.C.T..TT
@@ -4935,7 +4935,11 @@ class DGR_Finder:
         self.init_vr_contigs()
         sample_names = set(self.samples_artifact.samples())
 
-        if self.pre_computed_dgrs_path and self.profile_db_path:
+        # ensure SNV access is ready whenever a profile.db is available, so per-sample SNV
+        # masking works regardless of how we got here (a fresh run initialises `self.snv`
+        # earlier, but the pre-computed-dgrs shortcut does not). init_snv_access() is
+        # idempotent, so calling it again on an already-initialised run is a cheap no-op.
+        if self.profile_db_path:
             self.init_snv_access()
 
         # Sanity check for samples (move this outside the main loops)
@@ -5038,6 +5042,9 @@ class DGR_Finder:
                         vr_initial_primer_region = contig_sequence[vr_start - self.initial_primer_length : vr_start]
                     initial_primer_sequence = vr_initial_primer_region
 
+                    # vr_coverage_start/end record which slice of VR_sequence the primer spans;
+                    # they are written to the output TSV for the user's reference only and are
+                    # NOT consumed by PrimerSearch (which reads only 'primer_sequence').
                     vr_portion_length = min(self.whole_primer_length - self.initial_primer_length, len(VR_sequence))
                     # For frame=-1 the per-sample rev_comp flips which end of VR_sequence is
                     # covered: the R primer (genomic right flank) covers VR_sequence[0:53] and
@@ -5429,18 +5436,16 @@ class DGR_Finder:
             "and the flag `--only-report-remainders` to explore the variable region activity of that one variable region "
             "manually. Maybe this makes no sense? See the documentation for `anvi-report-dgrs` (and hope for "
             "the best)")
-        self.run.warning(None, header="PERFORMANCE NOTE", lc="yellow")
+        self.run.warning(msg, header="PERFORMANCE NOTE", lc="yellow")
 
         if num_samples > self.num_threads:
             self.run.info_single(f"You have {PL('sample', num_samples)} but {PL('thread', self.num_threads)}. Therefore, not all samples will be processed "
-                                f"in parallel. Just an FYI. {msg}.", level=0, nl_before=1)
+                                f"in parallel. Just an FYI.", level=0, nl_before=1)
         elif self.num_threads > num_samples:
             self.run.info_single(f"You have {PL('sample', num_samples)} but {PL('thread', self.num_threads)}. Since only samples are run in "
                                 f"parallel, the additional {PL('thread', self.num_threads - num_samples)} you have there are not really "
-                                f"useful for anything. Just an FYI. {msg}.", level=0, nl_before=1)
+                                f"useful for anything. Just an FYI.", level=0, nl_before=1)
             self.num_threads = num_samples
-        else:
-            self.run.info_single(f"{msg}.", level=0, nl_before=1)
 
         # here we will need to reconstruct a samples_dict and primers_dict to pass to the class
         # `PrimerSearch`. for this we first need to generate a list of primers. for each
