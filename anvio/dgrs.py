@@ -4989,9 +4989,13 @@ class DGR_Finder:
 
                 vr_group = f"{dgr_id}_{vr_id}"
 
-                # one SQL query per VR (not per sample) — fetch all samples at once
+                # one SQL query per VR (not per sample) — fetch all samples at once.
+                # vr_end is the inclusive last genomic position of the VR, and
+                # SNVAccessor.get_snvs_for_region is inclusive on both bounds, so we
+                # pass vr_end (not vr_end - 1) to also catch an SNV at the very last
+                # VR position — matching the parsing-time call site.
                 if hasattr(self, 'snv'):
-                    region_snvs = self.snv.get_snvs_for_region(vr_contig, vr_start, vr_end - 1)
+                    region_snvs = self.snv.get_snvs_for_region(vr_contig, vr_start, vr_end)
                     snvs_by_sample = {}
                     for row in region_snvs.itertuples(index=False):
                         snvs_by_sample.setdefault(row.sample_id, set()).add(row.pos_in_contig)
@@ -5010,7 +5014,7 @@ class DGR_Finder:
 
                         sample_primer_list = list(base_vr_masked_primer)
                         for pos in snv_positions:
-                            idx = (vr_end - 1 - pos) if VR_frame == -1 else (pos - vr_start)
+                            idx = (vr_end - pos) if VR_frame == -1 else (pos - vr_start)
                             if 0 <= idx < len(sample_primer_list):
                                 sample_primer_list[idx] = '.'
 
@@ -5078,10 +5082,11 @@ class DGR_Finder:
                         snv_positions = snvs_by_sample.get(sample_name, set())
 
                         # For frame=-1 the primer list is in minus-strand orientation: position i
-                        # corresponds to genomic coordinate vr_end-1-i.
+                        # corresponds to genomic coordinate vr_end-i (vr_end is the inclusive
+                        # last VR position, which maps to alignment index 0 after rev-comp).
                         sample_primer_list = list(base_vr_masked_primer)
                         for pos in snv_positions:
-                            idx = (vr_end - 1 - pos) if VR_frame == -1 else (pos - vr_start)
+                            idx = (vr_end - pos) if VR_frame == -1 else (pos - vr_start)
                             if 0 <= idx < len(sample_primer_list):
                                 sample_primer_list[idx] = '.'
 
