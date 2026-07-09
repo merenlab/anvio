@@ -26,13 +26,7 @@ tools:
         tested_versions: ["2.9.2", "2.9.3", "2.9.5"]
 
 technologies:
-    # Oxford Nanopore. A single 'ont' token for now: the ONT sub-kits (ligation / rapid / 1D²)
-    # currently share the same minimap2 and flye presets, so there is nothing to distinguish yet.
-    # Finer-grained ONT tokens (e.g. one mapping to flye's --nano-hq for Q20+ chemistries) can be
-    # added later once they map to different presets.
     ont:          {minimap2: map-ont,  flye: --nano-raw}
 
-    # PacBio
-    pb-rs2:       {minimap2: map-pb,   flye: --pacbio-raw}
-    pb-sequel:    {minimap2: map-pb,   flye: --pacbio-raw}
+    pb-clr:       {minimap2: map-pb,   flye: --pacbio-raw}
     pb-hifi:      {minimap2: map-hifi, flye: --pacbio-hifi}

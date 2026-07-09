@@ -77,8 +77,7 @@ The accepted values are:
 |lr_technology|Description|
 |:--|:--|
 |`ont`|Oxford Nanopore (any kit)|
-|`pb-rs2`|PacBio RS II (CLR)|
-|`pb-sequel`|PacBio Sequel / Sequel II (CLR)|
+|`pb-clr`|PacBio CLR (RS II / Sequel / Sequel II)|
 |`pb-hifi`|PacBio HiFi (CCS)|
 
 A few rules govern this column:

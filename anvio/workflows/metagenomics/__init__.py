@@ -625,8 +625,8 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
                 raise ConfigError(
                     f"Your samples-txt file uses one or more 'lr_technology' values that anvi'o does not "
                     f"recognize: {details}. Valid values are: {', '.join(sorted(valid))}. If you are unsure "
-                    f"which to use, 'ont' covers most Oxford Nanopore libraries, 'pb-hifi' is for PacBio "
-                    f"HiFi (CCS) reads, and 'pb-rs2'/'pb-sequel' are for older PacBio CLR chemistries."
+                    f"which to use, 'ont' covers Oxford Nanopore libraries, 'pb-hifi' is for PacBio "
+                    f"HiFi (CCS) reads, and 'pb-clr' is for older PacBio CLR chemistries (RS II / Sequel)."
                 )
             # soft heads-up if installed tool versions are outside anvi'o's tested set (never fatal)
             warn_if_tool_version_untested('minimap2', run=self.run)
