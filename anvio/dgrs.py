@@ -4974,10 +4974,12 @@ class DGR_Finder:
                 VR_frame = vr_data['VR_frame']
 
                 # decide where initial primer comes from
-                # check each side independently: left needs vr_start >= primer_length bases of
-                # upstream flank; right needs primer_length bases of downstream flank.
+                # check each side independently. vr_start is the inclusive first VR base and
+                # vr_end the inclusive last, so the upstream flank is contig[vr_start-L:vr_start]
+                # and the downstream flank is contig[vr_end+1:vr_end+1+L]. Left needs L bases
+                # before vr_start; right needs L bases after vr_end.
                 left_ok = vr_start >= self.initial_primer_length
-                right_ok = (vr_end + self.initial_primer_length) <= contig_length
+                right_ok = (vr_end + 1 + self.initial_primer_length) <= contig_length
 
                 skip_initial_primer = not left_ok and not right_ok
                 if skip_initial_primer:
@@ -5037,7 +5039,10 @@ class DGR_Finder:
                     is_right = (side == 'R')
 
                     if is_right:
-                        vr_initial_primer_region = contig_sequence[vr_end : vr_end + self.initial_primer_length]
+                        # vr_end is the inclusive last VR base, so the downstream flank starts at
+                        # vr_end + 1. Starting at vr_end would repeat the VR's last base at the
+                        # masked↔initial junction and the assembled primer would match no read.
+                        vr_initial_primer_region = contig_sequence[vr_end + 1 : vr_end + 1 + self.initial_primer_length]
                     else:
                         vr_initial_primer_region = contig_sequence[vr_start - self.initial_primer_length : vr_start]
                     initial_primer_sequence = vr_initial_primer_region
