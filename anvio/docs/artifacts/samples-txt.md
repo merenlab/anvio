@@ -70,16 +70,13 @@ Here is an example samples.txt file with the optional `group` column in addition
 
 The following is an **optional** column relevant only to long reads (i.e., samples with an `lr` path):
 
-* `lr_technology`: The long-read sequencing technology used for a sample. When you provide this column, anvi'o automatically selects the appropriate presets for each long-read tool it runs — the LongQC platform, the minimap2 mapping preset, and the Flye read-type flag — so you do not have to set them by hand in your %(workflow-config)s.
+* `lr_technology`: The long-read sequencing technology used for a sample. When you provide this column, anvi'o automatically selects the appropriate presets for each long-read tool it runs — the minimap2 mapping preset and the Flye read-type flag — so you do not have to set them by hand in your %(workflow-config)s.
 
 The accepted values are:
 
 |lr_technology|Description|
 |:--|:--|
-|`ont`|Oxford Nanopore (generic; same presets as `ont-ligation`)|
-|`ont-ligation`|Oxford Nanopore, ligation kit|
-|`ont-rapid`|Oxford Nanopore, rapid kit|
-|`ont-1dsq`|Oxford Nanopore, 1D² kit|
+|`ont`|Oxford Nanopore (any kit)|
 |`pb-rs2`|PacBio RS II (CLR)|
 |`pb-sequel`|PacBio Sequel / Sequel II (CLR)|
 |`pb-hifi`|PacBio HiFi (CCS)|

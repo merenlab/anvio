@@ -5,9 +5,7 @@
 #   dirs_dict     — M.dirs_dict (or equivalent)
 #   rule_log()    — canonical log-path helper
 #   SR_READSETS   — list of SR readset ids
-#   LR_READSETS   — list of LR readset ids
 #   run_fastqc_sr — bool: whether fastqc_sr was run
-#   run_lr_qc     — bool: whether longqc was run
 #
 # Tool:
 #   MultiQC — Ewels et al. 2016, PMID 27312411 (https://multiqc.info)
@@ -22,10 +20,6 @@ def get_multiqc_inputs(wildcards):
         for rs in SR_READSETS:
             inputs.append(os.path.join(fastqc_dir, rs))
 
-    if run_lr_qc:
-        for rs in LR_READSETS:
-            inputs.append(os.path.join(dirs_dict["QC_DIR"], "longqc", rs, "log.txt"))
-
     return inputs
 
 
@@ -35,12 +29,10 @@ def get_multiqc_inputs(wildcards):
 _multiqc_input_dirs = []
 if run_fastqc_sr:
     _multiqc_input_dirs.append(os.path.join(dirs_dict["QC_DIR"], "fastqc"))
-if run_lr_qc:
-    _multiqc_input_dirs.append(os.path.join(dirs_dict["QC_DIR"], "longqc"))
 
 
 rule multiqc:
-    """Aggregate QC outputs from FastQC and LongQC into a single MultiQC report."""
+    """Aggregate QC outputs (currently FastQC) into a single MultiQC report."""
     input:
         get_multiqc_inputs,
     output:

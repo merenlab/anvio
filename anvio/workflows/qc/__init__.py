@@ -4,11 +4,10 @@
 
 import os
 import gzip
-import importlib.util
 import anvio
 import anvio.utils as u
 
-from anvio.workflows import WorkflowSuperClass, get_lr_preset, warn_if_tool_version_untested
+from anvio.workflows import WorkflowSuperClass
 from anvio.errors import ConfigError
 
 
@@ -26,7 +25,6 @@ class QCModule(WorkflowSuperClass):
       - QC report aggregation (gen_qc_report)
       - Optional gzip of QC'd SR reads
       - Optional FastQC on SR reads
-      - Optional LongQC quality assessment on LR reads
       - Optional Filtlong filtering of LR reads
       - Optional MultiQC aggregation of all QC outputs
 
@@ -34,7 +32,6 @@ class QCModule(WorkflowSuperClass):
       - self.readsets: list[dict] from SamplesTxt.iter_readsets()
       - self.dirs_dict: includes "QC_DIR"
       - self.run_qc: bool (SR QC enabled)
-      - self.run_lr_qc: bool (LongQC enabled)
       - self.run_filtlong: bool
       - self.run_multiqc: bool
     """
@@ -51,43 +48,9 @@ class QCModule(WorkflowSuperClass):
             'gen_qc_report',
             'gzip_fastqs',
             'fastqc_sr',
-            'longqc',
             'filtlong',
             'multiqc',
         ])
-
-    def get_longqc_platform(self, readset_id):
-        """Return the LongQC --sample_type (-x) value for this readset.
-
-        Resolution order: (1) the readset's 'lr_technology' token from samples-txt (mapped
-        to a LongQC platform via the LR technology preset file); (2) the explicit
-        'longqc: platform' value from the config; otherwise a ConfigError. Anvi'o never lets
-        LongQC fall back to a built-in default so quality assessment can't silently use the
-        wrong platform model.
-        """
-        rs = self.readsets_by_id.get(readset_id)
-        if rs is None:
-            raise ConfigError(
-                f"Anvi'o was asked to look up the LongQC platform for a readset called '{readset_id}', "
-                f"but that readset id does not exist in the workflow. This is most likely a bug — please "
-                f"let a developer know."
-            )
-        tech = rs.get('lr_technology')
-        if tech:
-            # token validity is enforced during init(); get_lr_preset returns the platform
-            platform = get_lr_preset(tech, 'longqc')
-            if platform:
-                return platform
-        platform = self.get_param_value_from_config(['longqc', 'platform'])
-        if platform:
-            return platform
-        raise ConfigError(
-            f"Anvi'o needs a LongQC platform (the -x/--sample_type value) for the long-read readset "
-            f"'{readset_id}', but none is available. Either add an 'lr_technology' column to your "
-            f"samples-txt file (anvi'o will map it to the right LongQC platform automatically), or set "
-            f"'longqc': {{'platform': ...}} in your workflow config (e.g. 'ont-ligation', 'ont-rapid', "
-            f"'pb-rs2', 'pb-sequel', 'pb-hifi')."
-        )
 
     def get_fastq(self, readset, pre_ref_removal=False):
         """Return FASTQ paths for a readset.
@@ -146,25 +109,6 @@ class QCModule(WorkflowSuperClass):
         if self.get_param_value_from_config(['fastqc_sr', 'run']) == True:
             if not u.is_program_exists('fastqc', dont_raise=True):
                 missing.append(('fastqc', 'fastqc_sr'))
-
-        if self.get_param_value_from_config(['longqc', 'run']) == True:
-            # Only probe the current $PATH / interpreter when LongQC is expected there. When it is
-            # provided via conda, Snakemake runs the rule inside that env, so these checks would be
-            # false positives (and the module check would probe the wrong interpreter anyway).
-            if not self._tool_provided_by_conda('longqc'):
-                if not u.is_program_exists('LongQC.py', dont_raise=True):
-                    missing.append(('LongQC.py', 'longqc'))
-                else:
-                    warn_if_tool_version_untested('longqc', executable='LongQC.py', run=self.run)
-                    for mod in ['mixem', 'pysam', 'numpy', 'scipy', 'matplotlib']:
-                        if importlib.util.find_spec(mod) is None:
-                            missing.append((f"Python module '{mod}'", 'longqc'))
-            longqc_threads = self.get_param_value_from_config(['longqc', 'threads'])
-            if longqc_threads and int(longqc_threads) < 4:
-                raise ConfigError(
-                    f"LongQC requires at least 4 threads (-p/--ncpu >= 4) but 'longqc.threads' "
-                    f"is set to {longqc_threads}. Please set it to 4 or higher in your config."
-                )
 
         if self.get_param_value_from_config(['multiqc', 'run']) == True:
             if not u.is_program_exists('multiqc', dont_raise=True):
@@ -252,23 +196,18 @@ class QCModule(WorkflowSuperClass):
             for rs_id in sr_readset_ids:
                 targets.append(os.path.join(fastqc_dir, rs_id))
 
-        if getattr(self, 'run_lr_qc', False):
-            for rs_id in self.get_lr_readset_ids():
-                targets.append(os.path.join(self.dirs_dict["QC_DIR"], "longqc", rs_id, "log.txt"))
-
         if getattr(self, 'run_filtlong', False):
             self.check_lr_readsets_no_duplicate_names()
             for rs_id in self.get_lr_readset_ids():
                 targets.append(os.path.join(self.dirs_dict["QC_DIR"], f"{rs_id}-FILTERED_LR.fastq.gz"))
 
         if getattr(self, 'run_multiqc', False):
-            has_multiqc_inputs = run_fastqc_sr or getattr(self, 'run_lr_qc', False)
-            if has_multiqc_inputs:
+            if run_fastqc_sr:
                 targets.append(os.path.join(self.dirs_dict["QC_DIR"], "multiqc", "multiqc_report.html"))
             else:
                 self.run.warning(
-                    "MultiQC is enabled but neither 'fastqc_sr' nor 'longqc' is enabled — "
-                    "MultiQC has no compatible inputs to aggregate and will be skipped."
+                    "MultiQC is enabled but 'fastqc_sr' is not — MultiQC has no compatible inputs "
+                    "to aggregate and will be skipped."
                 )
 
         return targets

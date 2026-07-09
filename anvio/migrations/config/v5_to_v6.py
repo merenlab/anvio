@@ -23,8 +23,6 @@ progress = terminal.Progress()
 # rule is not already present, so any values the user already set are preserved untouched.
 NEW_METAGENOMICS_QC_RULES = {
     'fastqc_sr': {"threads": 1, "run": False, "additional_params": ""},
-    'longqc':    {"threads": 4, "run": False, "conda_yaml": "", "conda_env": "",
-                  "platform": "", "additional_params": ""},
     'filtlong':  {"threads": 1, "run": False, "conda_yaml": "", "conda_env": "",
                   "--min-length": None, "--max-length": None, "--target-bases": None,
                   "additional_params": ""},
@@ -57,9 +55,9 @@ def migrate(config_path):
     config = workflow_object.config
     anvio.QUIET = False
 
-    # v6 adds optional long-read QC rules (LongQC, Filtlong, FastQC, MultiQC) to the
-    # metagenomics workflow. Add their default blocks to metagenomics configs if they are not
-    # already there. Every rule defaults to `run: False`, so this changes no existing behavior.
+    # v6 adds optional QC rules (Filtlong, FastQC, MultiQC) to the metagenomics workflow. Add
+    # their default blocks to metagenomics configs if they are not already there. Every rule
+    # defaults to `run: False`, so this changes no existing behavior.
     added_rules = []
     if workflow_name == 'metagenomics':
         for rule, default_block in NEW_METAGENOMICS_QC_RULES.items():

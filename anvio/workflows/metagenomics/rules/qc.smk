@@ -5,7 +5,6 @@
 
 # Expose QCModule flags to the multiqc.smk scope
 run_fastqc_sr = M.get_param_value_from_config(["fastqc_sr", "run"]) == True
-run_lr_qc     = M.get_param_value_from_config(["longqc",   "run"]) == True
 run_filtlong  = M.get_param_value_from_config(["filtlong",  "run"]) == True
 
 

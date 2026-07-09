@@ -52,7 +52,7 @@ def get_lr_technology_presets():
     """Load and cache the long-read technology preset map (lr_technology_presets.yaml).
 
     Returns the parsed dict with two top-level keys: 'tools' (per-tool tested_versions)
-    and 'technologies' (token -> {longqc, minimap2, flye} presets). Parsed once per process.
+    and 'technologies' (token -> {minimap2, flye} presets). Parsed once per process.
     """
     global _lr_technology_presets_cache
 
@@ -82,7 +82,7 @@ def get_valid_lr_technologies():
 def get_lr_preset(technology, tool):
     """Return the preset/flag for a (technology token, tool) pair, or None if not defined.
 
-    `tool` is one of 'longqc', 'minimap2', 'flye'. Returns None when the technology is
+    `tool` is one of 'minimap2', 'flye'. Returns None when the technology is
     unknown or the tool has no preset for it (callers validate/raise as appropriate).
     """
     return get_lr_technology_map().get(technology, {}).get(tool)

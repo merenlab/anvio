@@ -126,7 +126,7 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
                 raise ConfigError("Multiple long-read assemblers are enabled; please enable Flye")
 
         # sanity check for conda env: use either conda_yaml or conda_env, not both
-        for tool in ['flye','minimap2','bowtie','megahit','metaspades','idba_ud','longqc','filtlong']:
+        for tool in ['flye','minimap2','bowtie','megahit','metaspades','idba_ud','filtlong']:
             y = self.get_param_value_from_config([tool, 'conda_yaml'])
             n = self.get_param_value_from_config([tool, 'conda_env'])
             if (y and y.strip()) and (n and n.strip()):
@@ -140,13 +140,11 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         self.ensure_tool_in_path_or_conda('flye', 'flye')
         self.ensure_tool_in_path_or_conda('bowtie', 'bowtie2')
         self.ensure_tool_in_path_or_conda('minimap2', 'minimap2')
-        self.ensure_tool_in_path_or_conda('longqc', 'LongQC.py')
         self.ensure_tool_in_path_or_conda('filtlong', 'filtlong')
 
         self.use_scaffold_from_metaspades = self.get_param_value_from_config(['metaspades', 'use_scaffolds'])
         self.use_scaffold_from_idba_ud = self.get_param_value_from_config(['idba_ud', 'use_scaffolds'])
         self.run_qc = self.get_param_value_from_config(['iu_filter_quality_minoche', 'run']) == True
-        self.run_lr_qc = self.get_param_value_from_config(['longqc', 'run']) == True
         self.run_filtlong = self.get_param_value_from_config(['filtlong', 'run']) == True
         self.run_multiqc = self.get_param_value_from_config(['multiqc', 'run']) == True
         self.run_summary = self.get_param_value_from_config(['anvi_summarize', 'run']) == True
@@ -610,9 +608,9 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
             knows about (the vocabulary lives in the LR technology preset file). Presets are then
             derived from that column automatically.
           - If the column is absent, the relevant presets MUST be set explicitly in the config
-            (minimap2 preset for mapping; exactly one Flye read-type flag for assembly; LongQC
-            platform when LongQC is enabled). Anvi'o never lets a long-read tool run on its own
-            built-in default, so it fails here — before building a DAG — with an actionable message.
+            (minimap2 preset for mapping; exactly one Flye read-type flag for assembly). Anvi'o
+            never lets a long-read tool run on its own built-in default, so it fails here — before
+            building a DAG — with an actionable message.
         """
         if not self.has_lr:
             return
@@ -646,8 +644,6 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
             if not any(self.get_param_value_from_config(['flye', f]) for f in flye_flags):
                 missing.append("exactly one Flye read-type flag (e.g. --nano-raw / --pacbio-hifi) "
                                "for long-read assembly")
-        if self.run_lr_qc and not self.get_param_value_from_config(['longqc', 'platform']):
-            missing.append("'longqc: platform' (e.g. ont-ligation / pb-rs2) for LongQC")
 
         if missing:
             details = '\n  - '.join(missing)

@@ -2,7 +2,6 @@
 #
 # This file maps each accepted value of the `lr_technology` column in a samples-txt
 # file to the tool-specific presets/flags anvi'o should use for that technology:
-#   - longqc:   the LongQC `-x/--sample_type` platform preset (long-read QC)
 #   - minimap2: the minimap2 `-x` preset (long-read mapping)
 #   - flye:     the Flye read-type flag (long-read assembly)
 #
@@ -25,17 +24,15 @@ tools:
         tested_versions: ["2.24", "2.26", "2.28"]
     flye:
         tested_versions: ["2.9.2", "2.9.3", "2.9.5"]
-    longqc:
-        tested_versions: ["1.2.0c"]
 
 technologies:
-    # Oxford Nanopore
-    ont:          {longqc: ont-ligation, minimap2: map-ont,  flye: --nano-raw}
-    ont-ligation: {longqc: ont-ligation, minimap2: map-ont,  flye: --nano-raw}
-    ont-rapid:    {longqc: ont-rapid,    minimap2: map-ont,  flye: --nano-raw}
-    ont-1dsq:     {longqc: ont-1dsq,     minimap2: map-ont,  flye: --nano-raw}
+    # Oxford Nanopore. A single 'ont' token for now: the ONT sub-kits (ligation / rapid / 1D²)
+    # currently share the same minimap2 and flye presets, so there is nothing to distinguish yet.
+    # Finer-grained ONT tokens (e.g. one mapping to flye's --nano-hq for Q20+ chemistries) can be
+    # added later once they map to different presets.
+    ont:          {minimap2: map-ont,  flye: --nano-raw}
 
     # PacBio
-    pb-rs2:       {longqc: pb-rs2,       minimap2: map-pb,   flye: --pacbio-raw}
-    pb-sequel:    {longqc: pb-sequel,    minimap2: map-pb,   flye: --pacbio-raw}
-    pb-hifi:      {longqc: pb-hifi,      minimap2: map-hifi, flye: --pacbio-hifi}
+    pb-rs2:       {minimap2: map-pb,   flye: --pacbio-raw}
+    pb-sequel:    {minimap2: map-pb,   flye: --pacbio-raw}
+    pb-hifi:      {minimap2: map-hifi, flye: --pacbio-hifi}

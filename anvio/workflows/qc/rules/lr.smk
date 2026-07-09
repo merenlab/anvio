@@ -1,4 +1,4 @@
-# QC module — long-read QC rules (LongQC + Filtlong)
+# QC module — long-read QC rules (Filtlong)
 #
 # Expects the following in the including Snakefile scope:
 #   M           — a QCModule-enabled workflow instance
@@ -8,56 +8,7 @@
 #   LR_RS_RE    — wildcard constraint regex for LR readsets
 #
 # Tools:
-#   LongQC   — Fukasawa et al. 2020, PMID 32663312 (https://github.com/yfukasawa/LongQC)
 #   Filtlong — Wick R, GitHub only (https://github.com/rrwick/Filtlong)
-
-
-longqc_output_dir = os.path.join(dirs_dict["QC_DIR"], "longqc")
-
-
-rule longqc:
-    """
-    Run LongQC quality assessment on long reads.
-
-    Platform is resolved per-readset from the lr_technology column in samples.txt
-    via M.get_longqc_platform(). LongQC must be installed and accessible via
-    conda_yaml/conda_env or directly on $PATH.
-    """
-    input:
-        reads=lambda wildcards: M.get_lr_files_for_readset(wildcards.readset),
-    output:
-        log_file=os.path.join(longqc_output_dir, "{readset}", "log.txt"),
-    log:
-        rule_log("longqc", "{readset}-longqc"),
-    wildcard_constraints:
-        readset=LR_RS_RE,
-    conda:
-        w.get_conda_yaml_path(M, "longqc")
-    threads: M.T("longqc")
-    resources:
-        nodes=M.T("longqc"),
-    params:
-        platform=lambda wildcards: M.get_longqc_platform(wildcards.readset),
-        outdir=lambda wildcards: os.path.join(longqc_output_dir, wildcards.readset),
-        reads=lambda wildcards, input: " ".join(input.reads),
-        env_prefix=w.get_conda_env_prefix(M, "longqc"),
-        additional_params=M.get_param_value_from_config(["longqc", "additional_params"]),
-    shell:
-        r"""
-        # LongQC refuses to run if its output directory already exists.
-        rm -rf {params.outdir}
-        # conda installs longQC.py without execute permission, so we locate it with `which` and run
-        # it via python. The `bash -c` wrapper makes the command substitution run INSIDE the conda
-        # environment ({params.env_prefix}); without it, `$(which longQC.py)` would resolve in the
-        # outer shell and break the `conda_env` case. When env_prefix is empty (PATH or conda_yaml,
-        # where Snakemake already activated the env), it simply runs in the current environment.
-        {params.env_prefix} bash -c 'python "$(which longQC.py)" sampleqc \
-            -x {params.platform} \
-            -o {params.outdir} \
-            -p {threads} \
-            {params.additional_params} \
-            {params.reads}' >> {log} 2>&1
-        """
 
 
 rule filtlong:

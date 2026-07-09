@@ -34,14 +34,6 @@
             "run":              {"type": "bool", "default": false},
             "additional_params":{"type": "str",  "default": ""}
         },
-        "longqc": {
-            "threads":          {"type": "int",  "default": 4},
-            "run":              {"type": "bool", "default": false},
-            "conda_yaml":       {"type": "str",  "default": ""},
-            "conda_env":        {"type": "str",  "default": ""},
-            "platform":         {"type": "str",  "default": ""},
-            "additional_params":{"type": "str",  "default": ""}
-        },
         "filtlong": {
             "threads":          {"type": "int",  "default": 1},
             "run":              {"type": "bool", "default": false},
