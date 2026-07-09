@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # pylint: disable=line-too-long
 """
 Generic loader for the anvi'o `structures-txt` artifact: a two-column TSV that

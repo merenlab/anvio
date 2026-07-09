@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Compare two pan databases made from the same genomes storage"""
 
 import sys

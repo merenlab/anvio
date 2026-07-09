@@ -1,23 +1,17 @@
 #!/usr/bin/env python
-# coding: utf-8
 """ Foldseek Driver """
 
 import os
 import shutil
-import argparse
 import tempfile
 
 import anvio
-import anvio.fastalib as f
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.constants as constants
 
-from collections import defaultdict
-from anvio.drivers.mcl import MCL
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.filesnpaths import AppendableFile
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
