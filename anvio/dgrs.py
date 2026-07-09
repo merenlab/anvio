@@ -4918,7 +4918,14 @@ class DGR_Finder:
         Returns
         =======
         primers_dict : dict
-            A dictionary containing the various primers for each sample including the compositional sections of each primer (i.e. masked primer and the initial primer)
+            A compact per-VR dictionary keyed by primer id. Each value has three parts:
+            `meta` (fields shared by every sample of the VR: primer_side, vr_group,
+            vr_contig, vr_coverage_start/end, initial_primer_sequence), `base` (the
+            {vr_masked_primer, primer_sequence} used by any sample with no SNVs in the VR
+            region), and `overrides` ({sample_name: {vr_masked_primer, primer_sequence}}
+            holding only the samples that carried at least one SNV and therefore need a
+            distinct primer). Use `materialize_primer_data()` to expand an entry into a
+            flat per-sample primer_data dict.
         """
 
         # create primers dictionary
@@ -5002,47 +5009,17 @@ class DGR_Finder:
                 else:
                     snvs_by_sample = {}
 
+                # geometry shared by every sample of this VR: which side the initial primer
+                # anchors to, the conserved flank, and which VR bases the primer covers.
+                # Computed once per VR (not once per sample).
                 if skip_initial_primer:
-                    # no flanking sequence on either side — one primer, just the masked VR
+                    side = 'NA'
+                    is_right = False
+                    vr_initial_primer_region = ''
+                    initial_primer_sequence = 'N/A'
+                    vr_coverage_start = 0
+                    vr_coverage_end = min(self.whole_primer_length, len(VR_sequence)) - 1
                     dgr_vr_key = f"{dgr_id}_{vr_id}_Primer"
-                    primers_dict[dgr_vr_key] = {}
-                    warned_no_flank = False
-                    no_flank_coverage_end = min(self.whole_primer_length, len(VR_sequence)) - 1
-
-                    for sample_name in sample_names:
-                        snv_positions = snvs_by_sample.get(sample_name, set())
-
-                        sample_primer_list = list(base_vr_masked_primer)
-                        for pos in snv_positions:
-                            idx = (vr_end - pos) if VR_frame == -1 else (pos - vr_start)
-                            if 0 <= idx < len(sample_primer_list):
-                                sample_primer_list[idx] = '.'
-
-                        vr_masked_primer = ''.join(sample_primer_list)
-                        used_original_primer = (len(snv_positions) == 0)
-
-                        if VR_frame == -1:
-                            vr_masked_primer = utils.rev_comp(vr_masked_primer)
-
-                        primer_sequence = vr_masked_primer[:self.whole_primer_length]
-
-                        if not warned_no_flank:
-                            self.run.warning(
-                                f"Creating primer for DGR {dgr_id} VR {vr_id} without any flanking "
-                                f"sequence. Only the masked VR pattern is used, which is riskier.")
-                            warned_no_flank = True
-
-                        primers_dict[dgr_vr_key][sample_name] = {
-                            'primer_side':             'NA',
-                            'vr_group':                vr_group,
-                            'vr_contig':               vr_contig,
-                            'vr_coverage_start':       0,
-                            'vr_coverage_end':         no_flank_coverage_end,
-                            'used_original_primer':    used_original_primer,
-                            'initial_primer_sequence': 'N/A',
-                            'vr_masked_primer':        vr_masked_primer,
-                            'primer_sequence':         primer_sequence
-                        }
 
                 else:
                     # pick one side: prefer the 5' anchor relative to the VR's own strand.
@@ -5059,6 +5036,7 @@ class DGR_Finder:
                         vr_initial_primer_region = contig_sequence[vr_end : vr_end + self.initial_primer_length]
                     else:
                         vr_initial_primer_region = contig_sequence[vr_start - self.initial_primer_length : vr_start]
+                    initial_primer_sequence = vr_initial_primer_region
 
                     vr_portion_length = min(self.whole_primer_length - self.initial_primer_length, len(VR_sequence))
                     # For frame=-1 the per-sample rev_comp flips which end of VR_sequence is
@@ -5073,53 +5051,91 @@ class DGR_Finder:
                         vr_coverage_end   = vr_portion_length - 1
 
                     dgr_vr_key = f"{dgr_id}_{vr_id}_Primer_{side}"
-                    primers_dict[dgr_vr_key] = {}
 
-                    for sample_name in sample_names:
-                        if anvio.DEBUG:
-                            self.run.info_single(f"Processing sample {sample_name} for DGR {dgr_id} VR {vr_id} side {side}", nl_before=1)
+                # build the masked primer + full primer sequence for a set of SNV positions.
+                # An empty set yields the "base" primer (derived from the TR/VR mask only).
+                def build_primer(snv_positions):
+                    sample_primer_list = list(base_vr_masked_primer)
+                    for pos in snv_positions:
+                        # frame=-1: the primer list is in minus-strand orientation, so position i
+                        # maps to genomic coordinate vr_end-i (vr_end is the inclusive last VR
+                        # base, which becomes alignment index 0 after the rev-comp below).
+                        idx = (vr_end - pos) if VR_frame == -1 else (pos - vr_start)
+                        if 0 <= idx < len(sample_primer_list):
+                            sample_primer_list[idx] = '.'
 
-                        snv_positions = snvs_by_sample.get(sample_name, set())
+                    vr_masked_primer = ''.join(sample_primer_list)
+                    if VR_frame == -1:
+                        vr_masked_primer = utils.rev_comp(vr_masked_primer)
 
-                        # For frame=-1 the primer list is in minus-strand orientation: position i
-                        # corresponds to genomic coordinate vr_end-i (vr_end is the inclusive
-                        # last VR position, which maps to alignment index 0 after rev-comp).
-                        sample_primer_list = list(base_vr_masked_primer)
-                        for pos in snv_positions:
-                            idx = (vr_end - pos) if VR_frame == -1 else (pos - vr_start)
-                            if 0 <= idx < len(sample_primer_list):
-                                sample_primer_list[idx] = '.'
+                    if skip_initial_primer:
+                        primer_sequence = vr_masked_primer[:self.whole_primer_length]
+                    elif is_right:
+                        primer_sequence = (vr_masked_primer + vr_initial_primer_region)[-self.whole_primer_length:]
+                    else:
+                        primer_sequence = (vr_initial_primer_region + vr_masked_primer)[:self.whole_primer_length]
 
-                        vr_masked_primer = ''.join(sample_primer_list)
-                        used_original_primer = (len(snv_positions) == 0)
+                    return {'vr_masked_primer': vr_masked_primer, 'primer_sequence': primer_sequence}
 
-                        if VR_frame == -1:
-                            vr_masked_primer = utils.rev_comp(vr_masked_primer)
+                # The vast majority of (VR, sample) pairs carry no SNVs and therefore share one
+                # identical "base" primer. To keep memory bounded on large, sparse datasets
+                # (thousands of VRs × thousands of samples), we store the base primer once and
+                # add a per-sample override ONLY for samples that have at least one SNV in this
+                # VR region. Any sample absent from `overrides` uses the base primer. SNVs are
+                # keyed by profile.db sample_id and looked up by the samples-txt sample name,
+                # preserving the original name-matching behaviour.
+                overrides = {}
+                for sample_name in sample_names:
+                    snv_positions = snvs_by_sample.get(sample_name)
+                    if not snv_positions:
+                        continue
+                    if anvio.DEBUG:
+                        self.run.info_single(f"Processing sample {sample_name} for DGR {dgr_id} VR {vr_id} side {side}", nl_before=1)
+                    overrides[sample_name] = build_primer(snv_positions)
 
-                        if is_right:
-                            primer_sequence = (vr_masked_primer + vr_initial_primer_region)[-self.whole_primer_length:]
-                        else:
-                            primer_sequence = (vr_initial_primer_region + vr_masked_primer)[:self.whole_primer_length]
-
-                        primers_dict[dgr_vr_key][sample_name] = {
-                            'primer_side':             side,
-                            'vr_group':                vr_group,
-                            'vr_contig':               vr_contig,
-                            'vr_coverage_start':       vr_coverage_start,
-                            'vr_coverage_end':         vr_coverage_end,
-                            'used_original_primer':    used_original_primer,
-                            'initial_primer_sequence': vr_initial_primer_region,
-                            'vr_masked_primer':        vr_masked_primer,
-                            'primer_sequence':         primer_sequence
-                        }
+                primers_dict[dgr_vr_key] = {
+                    'meta': {
+                        'primer_side':             side,
+                        'vr_group':                vr_group,
+                        'vr_contig':               vr_contig,
+                        'vr_coverage_start':       vr_coverage_start,
+                        'vr_coverage_end':         vr_coverage_end,
+                        'initial_primer_sequence': initial_primer_sequence,
+                    },
+                    'base': build_primer(set()),
+                    'overrides': overrides,
+                }
 
         return primers_dict
+
+
+    @staticmethod
+    def materialize_primer_data(entry, sample_name):
+        """Expand a compact primer entry into a flat per-sample primer_data dict.
+
+        A sample uses its override primer if it has one (i.e. it carried SNVs in the VR
+        region); otherwise it falls back to the shared base primer.
+        """
+        meta = entry['meta']
+        override = entry['overrides'].get(sample_name)
+        seq = override if override is not None else entry['base']
+        return {
+            'primer_side':             meta['primer_side'],
+            'vr_group':                meta['vr_group'],
+            'vr_contig':               meta['vr_contig'],
+            'vr_coverage_start':       meta['vr_coverage_start'],
+            'vr_coverage_end':         meta['vr_coverage_end'],
+            'used_original_primer':    override is None,
+            'initial_primer_sequence': meta['initial_primer_sequence'],
+            'vr_masked_primer':        seq['vr_masked_primer'],
+            'primer_sequence':         seq['primer_sequence'],
+        }
 
 
     def get_sample_to_primers_dict(self, primers_dict):
         """Invert primers_dict and apply coverage/detection filtering per sample.
 
-        Takes the nested {primer_key → {sample → primer_data}} structure from
+        Takes the compact per-VR {primer_key → {meta, base, overrides}} structure from
         generate_primers_for_vrs() and produces a flat {sample → {primer_key → primer_data}}
         dict. When a profile.db is available and sample names overlap with the samples-txt,
         only sample-VR pairs where the VR's contig meets --min-detection-for-vr-profiling
@@ -5139,9 +5155,8 @@ class DGR_Finder:
         overlap             = set()
 
         if self.profile_db_path:
-            contigs_of_interest = {d['vr_contig']
-                                   for sd in primers_dict.values()
-                                   for d in sd.values()}
+            contigs_of_interest = {entry['meta']['vr_contig']
+                                   for entry in primers_dict.values()}
 
             # profile.db detection_contigs may use bare contig names (merged profiles) or
             # split names (single-sample or older profiles). Query with both to cover either.
@@ -5230,10 +5245,9 @@ class DGR_Finder:
                 self.run.info_single("No profile.db provided; skipping coverage/detection filtering.")
 
         sample_to_primers = {}
-        for primer_key, samples_data in primers_dict.items():
-            for sample_name, primer_data in samples_data.items():
-                vr_contig = primer_data['vr_contig']
-
+        for primer_key, entry in primers_dict.items():
+            vr_contig = entry['meta']['vr_contig']
+            for sample_name in samples_txt_samples:
                 if filtering_active and sample_name in overlap:
                     det = detection_by_contig.get(vr_contig, {}).get(sample_name)
                     cov = coverage_by_contig.get(vr_contig, {}).get(sample_name)
@@ -5247,7 +5261,7 @@ class DGR_Finder:
                     passes = True
 
                 if passes:
-                    sample_to_primers.setdefault(sample_name, {})[primer_key] = primer_data
+                    sample_to_primers.setdefault(sample_name, {})[primer_key] = self.materialize_primer_data(entry, sample_name)
 
         self.run.info('Samples with ≥1 relevant VR after filtering', len(sample_to_primers))
         self.run.info('Total search pairs (sample × primer)',
@@ -5598,10 +5612,16 @@ class DGR_Finder:
         Turn the primers dictionary into a tsv file for users to visualise post analysis.
         This function will create a TSV file named 'DGR_Primers_used_for_VR_diversity.tsv' in the output directory.
 
+        The file is written in a compact form: for each VR primer there is one row for the
+        shared base primer (with Sample_ID '*'), followed by one row for each sample that
+        required an SNV-specific override. Any sample not listed with its own row used the
+        base ('*') primer. This avoids emitting one near-identical row per sample on large,
+        sparse datasets.
+
         Parameters
         ==========
         primers_dict : dict
-            Dictionary of primer metadata
+            Compact per-VR primer dictionary from generate_primers_for_vrs().
         Returns
         =======
         None
@@ -5624,20 +5644,21 @@ class DGR_Finder:
             writer = csv.writer(file, delimiter='\t')
             writer.writerow(csv_header)
 
-            for primer_name, samples in primers_dict.items():
-                for sample_id, primer_info in samples.items():
-                    writer.writerow([
-                        primer_name,
-                        primer_info['vr_group'],
-                        primer_info['primer_side'],
-                        primer_info['vr_coverage_start'],
-                        primer_info['vr_coverage_end'],
-                        sample_id,
-                        primer_info['used_original_primer'],
-                        primer_info['initial_primer_sequence'],
-                        primer_info['vr_masked_primer'],
-                        primer_info['primer_sequence']
-                    ])
+            for primer_name, entry in primers_dict.items():
+                meta = entry['meta']
+                shared = [primer_name, meta['vr_group'], meta['primer_side'],
+                          meta['vr_coverage_start'], meta['vr_coverage_end']]
+
+                # one row for the shared base primer (Sample_ID '*'): every sample that is
+                # NOT listed with its own row below used this primer (i.e. it had no SNV in
+                # the VR region). Then one row per sample that required an SNV override.
+                base = entry['base']
+                writer.writerow(shared + ['*', True, meta['initial_primer_sequence'],
+                                          base['vr_masked_primer'], base['primer_sequence']])
+
+                for sample_id, seq in entry['overrides'].items():
+                    writer.writerow(shared + [sample_id, False, meta['initial_primer_sequence'],
+                                              seq['vr_masked_primer'], seq['primer_sequence']])
         return
 
 
