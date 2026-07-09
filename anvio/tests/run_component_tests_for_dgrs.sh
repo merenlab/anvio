@@ -8,6 +8,7 @@ SETUP_WITH_OUTPUT_DIR $1 $2 $3
 INFO "Setting up the dgrs analysis directory"
 cp $files/mock_data_for_dgrs/reference.fa $output_dir/
 cp $files/mock_data_for_dgrs/mutations.tsv $output_dir/
+cp $files/mock_data_for_dgrs/check_dgr_primers.py $output_dir/
 cd $output_dir/
 
 ####################################################################################################
@@ -284,6 +285,19 @@ anvi-report-dgrs -c CONTIGS.db \
                 --samples-txt samples.txt \
                 $thread_controller
 
+# validate the VR primers and the reads they recovered against the actual inputs
+# (reference.fa + mutations.tsv). All expectations are derived from those inputs, so
+# editing the read generation or the mutation sites does not require touching this check.
+# It catches: malformed primers (bad initial<->masked junction / flank / strand -> no match
+# to the reference), frame/rev-comp masking off-by-ones (masks landing on conserved bases),
+# and primers that recover zero reads end to end.
+INFO "Validating VR primers and recovered reads against the inputs"
+python check_dgr_primers.py --dgr-output-dir DGRS_ACTIVITY_VARIABLE_PRIMERS \
+                            --reference reference.fa \
+                            --contigs-db CONTIGS.db \
+                            --profile-db MERGED_PROFILE/PROFILE.db \
+                            --mutations mutations.tsv
+
 INFO "Running variability profiling with an impossible detection threshold (>1.0) to test that all overlapping samples are excluded and the run completes gracefully with 0 search pairs"
 anvi-report-dgrs -c CONTIGS.db \
                 -p MERGED_PROFILE/PROFILE.db \
@@ -313,3 +327,10 @@ anvi-report-dgrs -c CONTIGS.db \
                 --samples-txt samples.txt \
                 --num-threads 3 \
                 $thread_controller
+
+INFO "Validating VR primers and recovered reads from the multi-threaded run"
+python check_dgr_primers.py --dgr-output-dir DGRS_ACTIVITY_VARIABLE_PRIMERS_PARALLEL \
+                            --reference reference.fa \
+                            --contigs-db CONTIGS.db \
+                            --profile-db MERGED_PROFILE/PROFILE.db \
+                            --mutations mutations.tsv
