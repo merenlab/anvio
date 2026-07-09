@@ -38,9 +38,6 @@ default_modeller_scripts_dir = os.path.join(os.path.dirname(anvio.__file__), 'da
 # Interacdome data path
 default_interacdome_data_path = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/Interacdome')
 
-# ProstT5 data files
-default_prostt5_weight_path = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/PROSTT5/weights')
-
 # Pangenome mode trackers
 PAN_STRUCTURE_MODE = 'structure-informed'
 PAN_SEQUENCE_MODE = 'sequence-based'

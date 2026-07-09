@@ -875,7 +875,6 @@ class Pangenome(object):
         self.enforce_the_analysis_of_excessive_number_of_genomes = anvio.USER_KNOWS_IT_IS_NOT_A_GOOD_IDEA
 
         self.pan_mode = A('pan_mode') or constants.pangenome_mode_default
-        self.prostt5_data_dir = A('prostt5_data_dir')
         self.foldseek_search_results_output_file = A('foldseek_search_results')
         self.structures_txt_path = A('structures_txt')
         self.min_tm_score = A('min_tm_score')
@@ -1217,37 +1216,21 @@ class Pangenome(object):
         return blast.get_blast_results()
 
 
-    def run_foldseek(self, structures_dict=None, fasta_path=None):
+    def run_foldseek(self, structures_dict):
         """Build a foldseek DB and run easy-search self-vs-self.
 
-        Exactly one of `structures_dict` (mapping gene_id -> structure file path) or
-        `fasta_path` (legacy ProstT5 input) must be provided. The structures path is the
-        canonical anvi-pan-genome workflow; the FASTA + ProstT5 path is kept for completeness
-        but is no longer reachable from the CLI.
-
-        For the structures path, anvi'o stages a directory of symlinks named `{gene_id}.{ext}`
-        and hands that single directory to foldseek's createdb. This (a) keeps us safely
-        below ARG_MAX regardless of how many structures the user has and (b) makes
-        foldseek's query/target columns use gene_ids verbatim, so the easy-search output is
-        directly indexable against the conventional pangenome's gene cluster IDs.
+        `structures_dict` maps gene_id -> structure file path. anvi'o stages a directory of
+        symlinks named `{gene_id}.{ext}` and hands that single directory to foldseek's createdb.
+        This (a) keeps us safely below ARG_MAX regardless of how many structures the user has and
+        (b) makes foldseek's query/target columns use gene_ids verbatim, so the easy-search output
+        is directly indexable against the conventional pangenome's gene cluster IDs.
         """
-        if (structures_dict is None) == (fasta_path is None):
-            raise ConfigError("run_foldseek :: provide exactly one of `structures_dict` or `fasta_path`.")
-
-        if structures_dict is not None:
-            structure_dir = self._stage_structures_for_foldseek(structures_dict)
-            fs = Foldseek(structure_dir=structure_dir,
-                          run=self.run,
-                          progress=self.progress,
-                          num_threads=self.num_threads,
-                          overwrite_output_destinations=self.overwrite_output_destinations)
-        else:
-            fs = Foldseek(query_fasta=fasta_path,
-                          run=self.run,
-                          progress=self.progress,
-                          num_threads=self.num_threads,
-                          weight_dir=self.prostt5_data_dir,
-                          overwrite_output_destinations=self.overwrite_output_destinations)
+        structure_dir = self._stage_structures_for_foldseek(structures_dict)
+        fs = Foldseek(structure_dir=structure_dir,
+                      run=self.run,
+                      progress=self.progress,
+                      num_threads=self.num_threads,
+                      overwrite_output_destinations=self.overwrite_output_destinations)
 
         fs.process(self.intermediate_data_dir)
 
@@ -2372,7 +2355,7 @@ class Pangenome(object):
         #   1. --foldseek-search-results was provided (precomputed result file): use it as-is.
         #   2. --structures-txt was provided: load it, build a foldseek DB from those structure
         #      files, run easy-search self-vs-self.
-        #   3. Neither: error (the legacy ProstT5 path is unreachable from the CLI on purpose).
+        #   3. Neither: error (anvi'o needs either precomputed results or structures to work with).
         gcs_with_structures = None
         if not self.foldseek_search_results_output_file:
             structures_dict, gcs_with_structures = self.resolve_structure_files_for_gcs(list(gene_cluster_representatives.keys()))

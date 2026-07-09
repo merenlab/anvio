@@ -79,9 +79,9 @@ def get_args():
                                 partial gene calls from the analysis (whether a gene call is partial or not is an information that comes directly\
                                 from the gene caller used to identify genes during the generation of the contigs database).")
 
-    groupB = parser.add_argument_group('MODE: SEQUENCE-BASED or STRUCTURE-INFORMED', "Anvi'o can calculate a pangenome based one amino acid sequence homology "
-                                "or based on predicted protein structures by utilizing the protein language model ProstT5 to go from a AA sequence to a 3di "
-                                "to form gene clusters.")
+    groupB = parser.add_argument_group('MODE: SEQUENCE-BASED or STRUCTURE-INFORMED', "Anvi'o can calculate a pangenome based on amino acid sequence homology "
+                                "or based on predicted protein structures (which you provide, e.g. from ColabFold or AlphaFold) that anvi'o compares with "
+                                "foldseek to form gene clusters.")
     groupB.add_argument(*anvio.A('pan-mode'), **anvio.K('pan-mode', {'required': False}))
     groupB.add_argument(*anvio.A('skip-sequence-pan'), **anvio.K('skip-sequence-pan'))
 
