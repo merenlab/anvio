@@ -1,11 +1,11 @@
 # pylint: disable=line-too-long
-"""PangenomeAAI engine.
+"""Pangenome graph engine.
 
 Builds a pangenome graph from the artifacts produced *upstream* of a pan-db:
 the genomes-storage db (genome hash -> name), each genome's CONTIGS.db (gene
 calls), and DIAMOND's raw cross-genome bitscore output.
 
-The engine fuses gene endpoints into super-nodes by AAI minbit, picking
+The engine fuses gene endpoints into super-nodes by minbit, picking
 fusions with a frontier-growth (Prim-style) walk over a stochastic top-K
 bucket of the ranked edges.  Super-nodes are guaranteed to contain at most
 one gene per genome.  The output graph is a DAG by construction; no
@@ -107,7 +107,7 @@ def _cmp_window_topn(W_a, W_b, sing_minbit):
 
 
 def _aggregate_line_pairs(lines, line_names, edges, K, min_completeness=0):
-    """Walk every AAI edge, accumulate (forward, reverse) sums per
+    """Walk every engine edge, accumulate (forward, reverse) sums per
     ordered line-pair ``(li_a, li_b)`` with ``li_a < li_b``, and record
     the per-edge ``(forward, reverse)`` signals.
 
@@ -739,7 +739,7 @@ def compute_component_ids(G):
 
 
 # ---------------------------------------------------------------------------
-# Debug table writers (gated on PangenomeAAIEngine.tables_dir).
+# Debug table writers (gated on PangenomeGraphEngine.tables_dir).
 # ---------------------------------------------------------------------------
 
 
@@ -782,7 +782,7 @@ def write_edges_file(edges_dict, savepath):
 
 def write_orientation_tsv(rows, savepath):
     """TSV of per-line-pair orientation diagnostics.  ``rows`` is a list of
-    11-tuples produced by :py:meth:`PangenomeAAIEngine._compute_orientations`."""
+    11-tuples produced by :py:meth:`PangenomeGraphEngine._compute_orientations`."""
     with open(savepath, "w") as f:
         f.write("line_a\tline_b\tgenome_a\tgenome_b\tn_edges\tn_fwd"
                 "\tavg_forward\tn_rev\tavg_reverse\tdiff\torientation\n")
@@ -808,14 +808,14 @@ def write_ranking_tsv(ranking, ranking_mean, gene_uniqueness, savepath):
 
 
 # ---------------------------------------------------------------------------
-# PangenomeAAIEngine — orchestrates the full pipeline.
+# PangenomeGraphEngine — orchestrates the full pipeline.
 # ---------------------------------------------------------------------------
 
 
-# ANCHOR - PangenomeAAIEngine
-class PangenomeAAIEngine():
+# ANCHOR - PangenomeGraphEngine
+class PangenomeGraphEngine():
     """Build a pangenome DAG from raw DIAMOND results + CONTIGS.dbs via
-    AAI minbit fusion.
+    minbit fusion.
 
     Call :py:meth:`process` to run the full pipeline; it returns the
     constructed DiGraph plus the line bookkeeping that downstream consumers
@@ -835,7 +835,7 @@ class PangenomeAAIEngine():
         self.genomes_storage = A('genomes_storage')
         self.diamond_search_results = A('diamond_search_results')
 
-        # AAI engine parameters.
+        # Pangenome graph engine parameters.
         self.locality_window = A('locality_window')
         self.min_window_completeness = A('min_window_completeness')
         self.min_line_pair_hits = A('min_line_pair_hits')
@@ -899,10 +899,10 @@ class PangenomeAAIEngine():
 
     def sanity_check(self):
         if not self.external_genomes:
-            raise ConfigError("PangenomeAAIEngine needs an external-genomes file (`--external-genomes`) "
+            raise ConfigError("PangenomeGraphEngine needs an external-genomes file (`--external-genomes`) "
                               "to know which CONTIGS.dbs to read. None was given :/")
         if not self.genomes_storage:
-            raise ConfigError("PangenomeAAIEngine needs a genomes-storage db (`--genomes-storage`) to "
+            raise ConfigError("PangenomeGraphEngine needs a genomes-storage db (`--genomes-storage`) to "
                               "resolve DIAMOND hash prefixes back to genome names :/")
         if not os.path.exists(self.external_genomes):
             raise ConfigError(f"external-genomes file not found: '{self.external_genomes}' :/")
@@ -1373,10 +1373,10 @@ class PangenomeAAIEngine():
             _aggregate_line_pairs(lines, line_names, edges_list, K, min_completeness=mwc))
 
         if mwc > 0:
-            self.run.info("AAI edges dropped at contig-end filter",
+            self.run.info("Edges dropped at contig-end filter",
                           f"{pp(dropped_contig_end)} / {pp(len(edges_list))}")
             if len(edges_list) and dropped_contig_end / len(edges_list) > 0.5:
-                self.run.warning("More than 50% of AAI edges were dropped by "
+                self.run.warning("More than 50% of edges were dropped by "
                                  "`--min-window-completeness`. Consider lowering it, or "
                                  "lowering `--locality-window`, if your genomes are heavily "
                                  "fragmented.")
@@ -1609,12 +1609,11 @@ class PangenomeAAIEngine():
         * Both lines off-graph -> seed two new lines in the natural
           orientation (Line_X) and flipped if labeled flip (Line_Y).
 
-        After the AAI-driven loop, any line that never appeared in a
+        After the pangenome graph engine-driven loop, any line that never appeared in a
         qualifying ranked edge is added as a forward-oriented singleton
         chain. Each such ``orphan_line`` becomes its own weakly-connected
         component via ``compute_component_ids`` downstream; the absolute
-        orientation is inherited from the CONTIGS.db gene order (no AAI
-        evidence is available to verify it).
+        orientation is inherited from the CONTIGS.db gene order.
 
         Returns ``(G, rejected_edges, orphan_lines, in_g_flip)``. After
         this pass ``in_g_flip`` covers every line in ``lines``; the
@@ -1765,10 +1764,10 @@ class PangenomeAAIEngine():
 
         self.progress.end()
 
-        # Any line that never made it into G via the AAI loop is committed
+        # Any line that never made it into G via the engine loop is committed
         # here as a forward-oriented singleton chain (its own weakly-
         # connected component). Orientation is inherited from CONTIGS.db
-        # order -- without AAI evidence we have no basis to flip.
+        # order -- without engine evidence we have no basis to flip.
         orphan_lines = sorted(li for li in range(len(lines))
                               if li not in in_g_lines)
         for li in orphan_lines:
@@ -1825,7 +1824,7 @@ class PangenomeAAIEngine():
                          "into synteny gene clusters (super-nodes) to build a directed acyclic pangenome "
                          "graph. Without a DIAMOND file the same graph is built on gene-cluster membership "
                          "alone. The counts below let you follow each of these steps.",
-                         header="BUILDING PANGENOME GRAPH (AAI ENGINE)", lc="green")
+                         header="BUILDING PANGENOME GRAPH (PANGENOME GRAPH ENGINE)", lc="green")
 
         self.sanity_check()
 
@@ -1980,7 +1979,7 @@ class PangenomeAAIEngine():
         self.run.info('Graph nodes', pp(G.number_of_nodes()), mc='green')
         self.run.info('Graph edges', pp(G.number_of_edges()))
         n_fused = len(lines) - len(orphan_lines)
-        self.run.info('Lines fused via AAI', f"{pp(n_fused)} / {pp(len(lines))}")
+        self.run.info('Lines fused via pangenome graph engine', f"{pp(n_fused)} / {pp(len(lines))}")
         self.run.info('Lines added as orphan chains', pp(len(orphan_lines)))
         self.run.info('Fuses rejected', pp(len(rejected_edges)))
         for reason in sorted(reasons):

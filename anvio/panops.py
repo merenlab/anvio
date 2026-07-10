@@ -53,9 +53,9 @@ from anvio.tables.geneclusters import TableForGeneClusters
 from anvio.tables.genefunctions import TableForGeneFunctions
 from anvio.tables.pangraphdata import TableForNodes, TableForEdges, TableForRegions, TableForGenomeDistances
 
-from anvio import panaai
+from anvio import pangenomegraphengine
 from anvio.topologicallayout import TopologicalLayout
-from anvio.pangenomegraphmaster import PangenomeGraphManager
+from anvio.pangenomegraphmanager import PangenomeGraphManager
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -1670,7 +1670,7 @@ class PangenomeGraph():
         self.load_state = A('load_state')
         self.import_values = A('import_values').split(',') if A('import_values') else []
 
-        # NEMESIS / AAI ENGINE PARAMETERS
+        # ENGINE PARAMETERS
         self.locality_window = A('locality_window')
         self.min_window_completeness = A('min_window_completeness')
         self.min_line_pair_hits = A('min_line_pair_hits')
@@ -1812,7 +1812,7 @@ class PangenomeGraph():
         self.run.warning("Here are all the parameters this run will use to build your pangenome graph, "
                          "echoed back so you can see exactly what anvi'o is about to do (and so the choices "
                          "are easy to revisit later, since they are also stored in the resulting "
-                         "pan-graph-db). The defaults work well for most datasets; the AAI engine and "
+                         "pan-graph-db). The defaults work well for most datasets; the pangenome graph engine and "
                          "ranking parameters below rarely need tuning unless you are chasing a specific "
                          "over-splitting or orientation issue.",
                          header="SETTINGS", lc="green")
@@ -1873,7 +1873,7 @@ class PangenomeGraph():
         # display some settings if applicable
         self.print_settings()
 
-        # delegate the graph build to the AAI engine and mirror the result
+        # delegate the graph build to the pangenome graph engine and mirror the result
         # into self.pangenome_graph (a PangenomeGraphManager).
         self.create_pangenome_graph()
 
@@ -2126,7 +2126,7 @@ class PangenomeGraph():
             'num_genomes': len(self.genome_names),
             'gene_alignments_computed': self.gene_alignments_computed,
             'gene_function_sources': ','.join(self.functional_annotation_sources_available),
-            # AAI engine parameters
+            # pangenome graph engine parameters
             'min_contig_chain': self.min_contig_chain,
             'no_include_non_coding_genes': self.no_include_non_coding_genes,
             'no_remerge': self.no_remerge,
@@ -2330,8 +2330,8 @@ class PangenomeGraph():
 
 
     def create_pangenome_graph(self):
-        """Build the pangenome graph by delegating to ``PangenomeAAIEngine``
-        (see :mod:`anvio.panaai`) and mirror the result into
+        """Build the pangenome graph by delegating to ``PangenomeGraphEngine``
+        (see :mod:`anvio.pangenomegraphengine`) and mirror the result into
         ``self.pangenome_graph`` (a :class:`PangenomeGraphManager`).
 
         The parent gene-cluster map is pulled from the (mandatory) pan-db and
@@ -2340,15 +2340,15 @@ class PangenomeGraph():
 
         # Get the (genome, gene_caller_id) -> gene_cluster map from the pan-db.
         # This map defines candidacy: two genes can be an edge only if they
-        # share a gene cluster (see PangenomeAAIEngine._edges_from_gene_clusters).
+        # share a gene cluster (see PangenomeGraphEngine._edges_from_gene_clusters).
         gene_clusters = {}
         for genome, gid_map in self.pan_super.gene_callers_id_to_gene_cluster.items():
             for gid, gc_name in gid_map.items():
                 gene_clusters[(genome, gid)] = gc_name
         self.run.info('Gene clusters loaded from pan-db', len(gene_clusters))
 
-        # Drive the AAI engine.
-        engine = panaai.PangenomeAAIEngine(self.args, r=self.run, p=self.progress)
+        # Drive the pangenome graph engine.
+        engine = pangenomegraphengine.PangenomeGraphEngine(self.args, r=self.run, p=self.progress)
         G, lines, line_names, line_to_genome, in_g_flip = engine.process(
             gene_clusters=gene_clusters)
 
@@ -2793,7 +2793,7 @@ class PangenomeGraph():
 
         Runs three stages in order:
 
-        1. :py:func:`panaai.compute_node_types` with ``scope=self.region_scope``
+        1. :py:func:`pangenomegraphengine.compute_node_types` with ``scope=self.region_scope``
            -- structural typing (core / accessory / singleton /
            rearrangement / duplication). Under ``scope='component'`` the
            split and genome-denominator counts are restricted to the
@@ -2801,9 +2801,9 @@ class PangenomeGraph():
            nodes whose siblings live in other components collapse to
            core / accessory / singleton against the component's genome
            set.
-        2. :py:func:`panaai.compute_rna_overrides` -- non-coding-only
+        2. :py:func:`pangenomegraphengine.compute_rna_overrides` -- non-coding-only
            nodes are stamped as ``'rna'`` on top of (1).
-        3. Optional :py:func:`panaai._drop_non_coding_nodes` when
+        3. Optional :py:func:`pangenomegraphengine._drop_non_coding_nodes` when
            ``--no-include-non-coding-genes`` is set.
 
         Runs unconditionally after :py:meth:`remerge_nodes`; the merged
@@ -2812,18 +2812,18 @@ class PangenomeGraph():
         """
         graph = self.pangenome_graph.graph
 
-        panaai.compute_node_types(
+        pangenomegraphengine.compute_node_types(
             graph,
             self.line_to_genome,
             gene_clusters=self.gene_clusters_dict,
             scope=self.region_scope)
 
-        _G, n_rna_typed = panaai.compute_rna_overrides(
+        _G, n_rna_typed = pangenomegraphengine.compute_rna_overrides(
             graph, self.genome_calls, self.line_to_genome)
         self.run.info_single(f"{pp(n_rna_typed)} non-coding nodes re-typed as `rna`")
 
         if self.no_include_non_coding_genes:
-            n_dropped = panaai._drop_non_coding_nodes(graph)
+            n_dropped = pangenomegraphengine._drop_non_coding_nodes(graph)
             self.run.info_single(f"{pp(n_dropped)} non-coding nodes dropped.")
         else:
             self.run.info_single('Non-coding nodes kept as singletons.')
