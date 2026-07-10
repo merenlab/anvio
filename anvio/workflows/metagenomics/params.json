@@ -34,6 +34,8 @@
             "run":              {"type": "bool", "default": false},
             "run_on_raw":       {"type": "bool", "default": false},
             "run_on_filtered":  {"type": "bool", "default": false},
+            "conda_yaml":       {"type": "str",  "default": ""},
+            "conda_env":        {"type": "str",  "default": ""},
             "additional_params":{"type": "str",  "default": ""}
         },
         "filtlong": {
@@ -58,6 +60,8 @@
         "multiqc": {
             "threads":          {"type": "int",  "default": 1},
             "run":              {"type": "bool", "default": false},
+            "conda_yaml":       {"type": "str",  "default": ""},
+            "conda_env":        {"type": "str",  "default": ""},
             "additional_params":{"type": "str",  "default": ""}
         },
         "merge_fastqs_for_co_assembly": {},

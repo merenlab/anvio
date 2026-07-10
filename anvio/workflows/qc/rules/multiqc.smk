@@ -4,6 +4,7 @@
 #   M             — a QCModule-enabled workflow instance
 #   dirs_dict     — M.dirs_dict (or equivalent)
 #   rule_log()    — canonical log-path helper
+#   w             — anvio.workflows (imported in parent Snakefile)
 #   SR_READSETS   — list of SR readset ids
 #   LR_READSETS   — list of LR readset ids
 #   run_fastqc_sr — bool: whether fastqc_sr was run
@@ -53,10 +54,13 @@ rule multiqc:
         report=os.path.join(dirs_dict["QC_DIR"], "multiqc", "multiqc_report.html"),
     log:
         rule_log("multiqc", "multiqc"),
+    conda:
+        w.get_conda_yaml_path(M, "multiqc")
     threads: M.T("multiqc")
     resources:
         nodes=M.T("multiqc"),
     params:
+        env_prefix=w.get_conda_env_prefix(M, "multiqc"),
         outdir=os.path.join(dirs_dict["QC_DIR"], "multiqc"),
         indirs=" ".join(_multiqc_input_dirs),
         additional_params=M.get_param_value_from_config(["multiqc", "additional_params"]),
@@ -67,5 +71,5 @@ rule multiqc:
         # the same readset into one colliding sample. It also gives readable 'raw | S1' / 'filtered | S1'
         # labels for all tools. Users can still override naming via multiqc additional_params.
         r"""
-        multiqc {params.indirs} --dirs --dirs-depth 2 -o {params.outdir} --force {params.additional_params} >> {log} 2>&1
+        {params.env_prefix} multiqc {params.indirs} --dirs --dirs-depth 2 -o {params.outdir} --force {params.additional_params} >> {log} 2>&1
         """

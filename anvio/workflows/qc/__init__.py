@@ -115,11 +115,11 @@ class QCModule(WorkflowSuperClass):
                 missing.append(('NanoPlot', 'nanoplot'))
 
         if self.get_param_value_from_config(['fastqc_sr', 'run']) == True:
-            if not u.is_program_exists('fastqc', dont_raise=True):
+            if not self._tool_provided_by_conda('fastqc_sr') and not u.is_program_exists('fastqc', dont_raise=True):
                 missing.append(('fastqc', 'fastqc_sr'))
 
         if self.get_param_value_from_config(['multiqc', 'run']) == True:
-            if not u.is_program_exists('multiqc', dont_raise=True):
+            if not self._tool_provided_by_conda('multiqc') and not u.is_program_exists('multiqc', dont_raise=True):
                 missing.append(('multiqc', 'multiqc'))
 
         if missing:

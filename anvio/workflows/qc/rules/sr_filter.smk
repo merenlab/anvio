@@ -5,6 +5,7 @@
 #   dirs_dict       — M.dirs_dict (or equivalent)
 #   rule_log()      — canonical log-path helper
 #   u               — anvio.utils (imported in parent Snakefile)
+#   w               — anvio.workflows (imported in parent Snakefile)
 #   SR_READSETS     — list of SR readset ids
 #   SR_RS_RE        — wildcard constraint regex for SR readsets
 #   run_gzip_fastqs — bool: whether gzip_fastqs is enabled
@@ -248,13 +249,16 @@ if run_fastqc_sr:
         wildcard_constraints:
             readset=SR_RS_RE,
             stage="raw|filtered",
+        conda:
+            w.get_conda_yaml_path(M, "fastqc_sr")
         threads: M.T("fastqc_sr")
         resources:
             nodes=M.T("fastqc_sr"),
         params:
+            env_prefix=w.get_conda_env_prefix(M, "fastqc_sr"),
             additional_params=M.get_param_value_from_config(["fastqc_sr", "additional_params"]),
         shell:
             r"""
             mkdir -p {output.report_dir}
-            fastqc -o {output.report_dir} -t {threads} {params.additional_params} {input.reads} >> {log} 2>&1
+            {params.env_prefix} fastqc -o {output.report_dir} -t {threads} {params.additional_params} {input.reads} >> {log} 2>&1
             """

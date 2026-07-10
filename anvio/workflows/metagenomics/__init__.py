@@ -126,7 +126,7 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
                 raise ConfigError("Multiple long-read assemblers are enabled; please enable Flye")
 
         # sanity check for conda env: use either conda_yaml or conda_env, not both
-        for tool in ['flye','minimap2','bowtie','megahit','metaspades','idba_ud','filtlong','nanoplot']:
+        for tool in ['flye','minimap2','bowtie','megahit','metaspades','idba_ud','filtlong','nanoplot','fastqc_sr','multiqc']:
             y = self.get_param_value_from_config([tool, 'conda_yaml'])
             n = self.get_param_value_from_config([tool, 'conda_env'])
             if (y and y.strip()) and (n and n.strip()):

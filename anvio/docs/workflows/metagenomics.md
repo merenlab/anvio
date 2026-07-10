@@ -386,7 +386,7 @@ Beyond the default short-read QC (illumina-utils), the workflow offers several o
 
 For `nanoplot` and `fastqc_sr`, anvi'o validates the stage flags before running: if the tool is enabled you must select at least one stage, and `run_on_filtered` is only allowed when the matching filter (`filtlong` for `nanoplot`, `iu_filter_quality_minoche` for `fastqc_sr`) is enabled — otherwise there would be no filtered reads to look at. In practice, if you enable one of these tools without any filtering, set `run_on_raw: true`.
 
-Because `filtlong` and `nanoplot` are not shipped with anvi'o, you can point the workflow at an environment that provides each via that rule's `conda_yaml` or `conda_env` parameter (set one, not both), or make sure it is on your `$PATH`.
+Because `filtlong`, `nanoplot`, `fastqc_sr`, and `multiqc` are not shipped with anvi'o, you can point the workflow at an environment that provides each via that rule's `conda_yaml` or `conda_env` parameter (set one, not both), or make sure it is on your `$PATH`.
 
 ### Running binning algorithms
 
