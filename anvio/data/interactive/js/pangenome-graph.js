@@ -2285,7 +2285,7 @@ class PangenomeGraphUserInterface {
             controlIconsEnabled: false,
             minZoom: 0.1,
             maxZoom: 100,
-            onZoom: () => { this.apply_stroke_floor(); this.refresh_region_label_visibility(); this._render_bin_visuals(); }
+            onZoom: () => { this.apply_stroke_floor(); this.refresh_region_label_visibility(); this._render_bin_visuals(); this.refresh_search_outline(); }
         });
 
         // Restore pan/zoom from before the redraw (e.g. after a color change).
@@ -3407,6 +3407,7 @@ class PangenomeGraphUserInterface {
             if (this.apply_stroke_floor) {
                 this._strokeRegime = null;
                 this.apply_stroke_floor();
+                this.refresh_search_outline();
             }
         })
         $('#flexregionlabels').on("change", () => this.main_draw())
@@ -3447,10 +3448,8 @@ class PangenomeGraphUserInterface {
         $('#expressiontext, #searchFunctionsValue').on('keydown', (ev) => {
             if (ev.key === 'Enter') { ev.preventDefault(); this.run_search(); }
         });
-        // re-apply an active highlight when the outline width changes
-        $('#search_outline_width').on('change', () => {
-            if ((this._search_svg_ids || []).length) this.highlight_search();
-        });
+        // re-size an active highlight ring when the outline width changes
+        $('#search_outline_width').on('change', () => this.refresh_search_outline());
 
         $('#stateload').on("click", this.show_load_state_modal);
         $('#statesave').on("click", this.show_save_state_modal);
@@ -4450,7 +4449,6 @@ class PangenomeGraphUserInterface {
         // element rather than thickening the node's own centered stroke keeps
         // the node body uncovered, and leaves its `class`/attributes untouched
         // (press_up and marknode match class exactly, e.g. class === 'node').
-        const outline_width = parseFloat($('#search_outline_width')[0].value) || 3;
         const svg_el = document.getElementById('result');
         const vp = svg_el ? (svg_el.querySelector('.svg-pan-zoom_viewport') || svg_el) : null;
         if (!vp) return;
@@ -4462,15 +4460,15 @@ class PangenomeGraphUserInterface {
             if (!el) continue;
             let marker;
             if (el.tagName.toLowerCase() === 'circle') {
-                // concentric ring sitting just outside the node's outer edge
-                const cx = parseFloat(el.getAttribute('cx'));
-                const cy = parseFloat(el.getAttribute('cy'));
-                const r = parseFloat(el.getAttribute('r'));
-                const sw = parseFloat(el.getAttribute('stroke-width')) || 0;
+                // concentric ring hugging the node's outer edge. cx/cy are fixed,
+                // but the radius and stroke-width are (re)computed by
+                // refresh_search_outline() -- which is also run on every zoom --
+                // so the ring keeps tracking the node's *rendered* stroke as
+                // apply_stroke_floor re-floors it, instead of drifting away.
                 marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                marker.setAttribute('cx', cx);
-                marker.setAttribute('cy', cy);
-                marker.setAttribute('r', r + sw / 2 + outline_width / 2);
+                marker.setAttribute('cx', el.getAttribute('cx'));
+                marker.setAttribute('cy', el.getAttribute('cy'));
+                marker.dataset.nodeId = svg_id;
             } else {
                 // group node: trace its boundary in the highlight color
                 const d = el.getAttribute('d');
@@ -4480,11 +4478,46 @@ class PangenomeGraphUserInterface {
             }
             marker.setAttribute('fill', 'none');
             marker.setAttribute('stroke', highlight_color);
-            marker.setAttribute('stroke-width', outline_width);
             marker.setAttribute('pointer-events', 'none');
             grp.appendChild(marker);
         }
         vp.appendChild(grp);
+        this.refresh_search_outline();
+    }
+
+    // Size and position the search-highlight ring(s) to hug the node's current
+    // rendered edge. Split out from highlight_search() so it can also run on
+    // zoom: the ring radius depends on the node's stroke-width, which
+    // apply_stroke_floor() rewrites as you zoom, so a once-computed ring would
+    // otherwise drift off the edge (and its own thickness would collapse or
+    // balloon). The outline thickness follows the same MIN_PX floor as the
+    // graph lines so it renders at a consistent on-screen width.
+    refresh_search_outline() {
+        const grp = document.getElementById('search-outline-group');
+        if (!grp) return;
+
+        const base_outline = parseFloat($('#search_outline_width')[0].value) || 3;
+        let outline = base_outline;
+        const MIN_PX = parseFloat($('#min_line_px')[0].value) || 0;
+        if (!$('#flexhighperf').prop('checked') && MIN_PX > 0 && this.panZoomInstance) {
+            const floor = MIN_PX / this.panZoomInstance.getSizes().realZoom;
+            if (floor > base_outline) outline = floor;
+        }
+
+        grp.querySelectorAll('circle').forEach(marker => {
+            const node = document.getElementById(marker.dataset.nodeId);
+            if (!node) return;
+            const r = parseFloat(node.getAttribute('r')) || 0;
+            // node stroke is centered, so its rendered outer edge is r + sw/2;
+            // the ring stroke is also centered, so offset by another outline/2
+            // to leave the ring's inner edge flush with the node's outer edge.
+            const sw = parseFloat(node.getAttribute('stroke-width')) || 0;
+            marker.setAttribute('r', r + sw / 2 + outline / 2);
+            marker.setAttribute('stroke-width', outline);
+        });
+        grp.querySelectorAll('path').forEach(marker => {
+            marker.setAttribute('stroke-width', outline);
+        });
     }
 
     clear_search_highlight() {
