@@ -52,16 +52,43 @@ rule nanoplot:
         """
 
 
+rule check_lr_read_names:
+    """
+    Pre-flight validation: fail fast if a long-read readset has duplicate read names.
+
+    Filtlong aborts mid-run on the first duplicate with a cryptic error, so this scans the raw
+    long reads and raises a clear anvi'o ConfigError (with a seqkit fix) if any are found. It runs
+    as its own rule — NOT at parse time — so full long-read files are not re-scanned on every dry
+    run / DAG rebuild; on a real run it executes once per readset and gates the filtlong rule. On
+    success it writes a small sentinel that filtlong depends on.
+    """
+    input:
+        reads=lambda wildcards: M.get_lr_files_for_readset(wildcards.readset),
+    output:
+        names_ok=os.path.join(dirs_dict["QC_DIR"], "{readset}-LR_NAMES_OK.flag"),
+    log:
+        rule_log("check_lr_read_names", "{readset}-check_lr_read_names"),
+    wildcard_constraints:
+        readset=LR_RS_RE,
+    run:
+        # raises ConfigError (failing this job) if the readset has duplicate read names
+        M.check_lr_readset_no_duplicate_names(wildcards.readset)
+        with open(output.names_ok, "w") as f:
+            f.write("no duplicate read names found\n")
+
+
 rule filtlong:
     """
     Filter long reads using Filtlong to remove low-quality or short reads.
 
     Output is written to {QC_DIR}/{readset}-FILTERED_LR.fastq.gz.
     When filtlong is enabled, M.get_fastq() returns these filtered reads
-    for downstream mapping and assembly.
+    for downstream mapping and assembly. Depends on the check_lr_read_names sentinel so the
+    duplicate-read-name validation runs (once) before filtlong touches the reads.
     """
     input:
         reads=lambda wildcards: M.get_lr_files_for_readset(wildcards.readset),
+        names_ok=os.path.join(dirs_dict["QC_DIR"], "{readset}-LR_NAMES_OK.flag"),
     output:
         filtered=os.path.join(dirs_dict["QC_DIR"], "{readset}-FILTERED_LR.fastq.gz"),
     log:

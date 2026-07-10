@@ -129,37 +129,36 @@ class QCModule(WorkflowSuperClass):
                 f"Please install them before running the workflow:\n\n  {details}"
             )
 
-    def check_lr_readsets_no_duplicate_names(self):
-        """Raise ConfigError if any LR readset FASTQ has duplicate read names.
+    def check_lr_readset_no_duplicate_names(self, readset):
+        """Raise ConfigError if a long-read readset's FASTQ(s) contain duplicate read names.
 
-        Filtlong aborts mid-run on the first duplicate it finds, giving a cryptic
-        error. This check catches the problem upfront with a clear, actionable message.
+        Filtlong aborts mid-run on the first duplicate it finds, giving a cryptic error, so this
+        validates a readset up front with a clear, actionable message. It scans the full input
+        file(s), which is expensive — so it is invoked as its own Snakemake rule (see the
+        check_lr_read_names rule in lr.smk) that gates filtlong, rather than at parse time. Doing
+        it at parse time would re-read every long-read file on every dry run and DAG rebuild.
         """
         problematic = []
-        for rs_id in self.get_lr_readset_ids():
-            for path in self.get_lr_files_for_readset(rs_id):
-                if not os.path.exists(path):
-                    continue
-                seen = set()
-                opener = gzip.open if path.endswith('.gz') else open
-                with opener(path, 'rt') as f:
-                    for i, line in enumerate(f):
-                        if i % 4 == 0:
-                            name = line[1:].split()[0]
-                            if name in seen:
-                                problematic.append((rs_id, path, name))
-                                break
-                            seen.add(name)
+        for path in self.get_lr_files_for_readset(readset):
+            if not os.path.exists(path):
+                continue
+            seen = set()
+            opener = gzip.open if path.endswith('.gz') else open
+            with opener(path, 'rt') as f:
+                for i, line in enumerate(f):
+                    if i % 4 == 0:
+                        name = line[1:].split()[0]
+                        if name in seen:
+                            problematic.append((path, name))
+                            break
+                        seen.add(name)
 
         if problematic:
-            details = '\n  '.join(
-                f"readset '{rs}' ({p}): first duplicate: '{n}'"
-                for rs, p, n in problematic
-            )
+            details = '\n  '.join(f"{p}: first duplicate: '{n}'" for p, n in problematic)
             raise ConfigError(
-                f"Anvi'o found duplicate read names in {len(problematic)} long-read input "
-                f"file(s). Filtlong will crash mid-run when it encounters them, so anvi'o "
-                f"refuses to start. Fix the input files with 'seqkit rename' before retrying:\n\n"
+                f"Anvi'o found duplicate read names in the long-read input for readset '{readset}'. "
+                f"Filtlong will crash mid-run when it encounters them, so anvi'o refuses to continue. "
+                f"Fix the input file(s) with 'seqkit rename' before retrying:\n\n"
                 f"  seqkit rename <input.fastq.gz> -o <fixed.fastq.gz>\n\n"
                 f"Affected file(s):\n  {details}"
             )
@@ -272,7 +271,9 @@ class QCModule(WorkflowSuperClass):
                     targets.append(os.path.join(fastqc_dir, stage, rs_id))
 
         if getattr(self, 'run_filtlong', False):
-            self.check_lr_readsets_no_duplicate_names()
+            # NB: the duplicate-read-name validation is NOT done here — it runs as the
+            # check_lr_read_names rule (which gates filtlong), so full long-read files are not
+            # re-scanned at parse time on every dry run / DAG rebuild.
             for rs_id in self.get_lr_readset_ids():
                 targets.append(os.path.join(self.dirs_dict["QC_DIR"], f"{rs_id}-FILTERED_LR.fastq.gz"))
 
