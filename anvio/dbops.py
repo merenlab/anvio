@@ -1931,6 +1931,9 @@ class PanSuperclass(object):
         self.views = {}
         self.collection_profile = {}
 
+        self.gc_tracker = {}
+        self.gc_psgc_associations = {}
+
         # the following are initialized via `init_items_additional_data()` and use information
         # stored in item additional data tables in the pan database
         self.items_additional_data_dict = None
@@ -2134,12 +2137,118 @@ class PanSuperclass(object):
         return sequences
 
 
+    def get_gene_cluster_representative_sequences(self, gene_clusters_dict=None, gene_cluster_names=set([])):
+        """Return a single representative amino acid sequence per gene cluster.
+
+        For each gene cluster this recovers the aligned amino acid sequences of its member genes and
+        hands them to `utils.get_representative_sequence_from_gene_cluster` to pick a medoid-like
+        representative. This is the exact same selection logic anvi'o uses internally when it builds a
+        structural pangenome (see `anvio.panops.Pangenome.get_gene_cluster_representative_sequences`).
+
+        You can call this function either with a `gene_clusters_dict`, or with a `gene_cluster_names`
+        set (see `get_sequences_for_gene_clusters` for the reasoning behind this design).
+
+        Returns
+        =======
+        representative_sequences : dict
+            A dictionary of the form `{gene_cluster_name: {'sequence': <aligned AA sequence with gaps>}}`.
+            Strip the gap characters if you want the raw amino acid sequence.
+        """
+
+        if gene_clusters_dict and gene_cluster_names:
+            raise ConfigError("get_gene_cluster_representative_sequences is speaking: You can call this function either "
+                              "with a `gene_clusters_dict`, or with a `gene_cluster_names` set, but not both.")
+
+        if not self.genomes_storage_is_available:
+            raise ConfigError("You are asking anvi'o for gene cluster representative sequences, but there is no genomes "
+                              "storage available to recover the amino acid sequences from :/")
+
+        if not self.gene_clusters_gene_alignments_available:
+            raise ConfigError("Anvi'o can't pick representative sequences for your gene clusters because the gene "
+                              "alignments were not computed for this pangenome (it was most likely created with the "
+                              "flag `--skip-alignments`). The representative-picking strategy relies on the aligned "
+                              "sequences to find the one that best represents each gene cluster, so there is nothing "
+                              "anvi'o can do here without them. Sorry :/")
+
+        if gene_clusters_dict is None:
+            if not self.gene_clusters_initialized:
+                self.init_gene_clusters()
+            gene_clusters_dict = self.gene_clusters
+
+        if not gene_cluster_names:
+            gene_cluster_names = set(list(gene_clusters_dict.keys()))
+
+        representative_sequences = {}
+
+        self.progress.new('Picking gene cluster representatives', progress_total_items=len(gene_cluster_names))
+        for gene_cluster_name in gene_cluster_names:
+            self.progress.increment()
+            self.progress.update("processing '%s' ..." % gene_cluster_name)
+
+            sequence_entries = []
+            for genome_name in gene_clusters_dict[gene_cluster_name]:
+                for gene_callers_id in gene_clusters_dict[gene_cluster_name][genome_name]:
+                    aa_sequence = self.genomes_storage.get_gene_sequence(genome_name, gene_callers_id)
+                    alignment_summary = self.gene_clusters_gene_alignments[genome_name][gene_callers_id]
+                    sequence = utils.restore_alignment(aa_sequence, alignment_summary)
+                    is_partial = self.genomes_storage.is_partial_gene_call(genome_name, gene_callers_id)
+
+                    sequence_entries.append({
+                        'sequence': sequence,
+                        'length': len(aa_sequence),
+                        'gap_count': sequence.count('-'),
+                        'is_partial': bool(is_partial)
+                    })
+
+            representative_sequences[gene_cluster_name] = {'sequence': utils.get_representative_sequence_from_gene_cluster(sequence_entries)}
+
+        self.progress.end()
+
+        return representative_sequences
+
+
+    def write_gene_cluster_representative_sequences_to_file(self, gene_clusters_dict=None, gene_cluster_names=set([]), output_file_path=None):
+        """Write one representative amino acid sequence per gene cluster to a FASTA file.
+
+        The FASTA deflines are the gene cluster names, and the sequences are reported WITHOUT gap characters.
+        """
+
+        if output_file_path:
+            filesnpaths.is_output_file_writable(output_file_path)
+
+        representative_sequences = self.get_gene_cluster_representative_sequences(gene_clusters_dict=gene_clusters_dict,
+                                                                                 gene_cluster_names=gene_cluster_names)
+
+        output_file = open(output_file_path, 'w')
+        for gene_cluster_name in representative_sequences:
+            sequence = representative_sequences[gene_cluster_name]['sequence'].replace('-', '')
+            output_file.write('>%s\n%s\n' % (gene_cluster_name, sequence))
+        output_file.close()
+
+        if len(representative_sequences) == 1:
+            self.run.info('Gene cluster name', list(representative_sequences.keys())[0])
+        self.run.info('Sequence type', 'Amino acid (gene cluster representatives)')
+        self.run.info('Num representative sequences reported', len(representative_sequences))
+        self.run.info('Output FASTA file', output_file_path, mc='green', nl_after=1)
+
+
     def compute_AAI_for_gene_cluster(self, gene_cluster):
         """Simple AAI calculator for sequences in a gene cluster"""
 
         def calculate_sequence_identity(s1, s2):
-            matches = sum(r1 == r2 for r1, r2 in zip(s1, s2))
-            identity = matches / len(s1)
+            matches = 0
+            comparable_positions = 0
+            for r1, r2 in zip(s1, s2):
+                if r1 == '-' and r2 == '-':
+                    continue
+                comparable_positions += 1
+                if r1 == r2:
+                    matches +=1
+            # Handle edge case where there are no comparable positions
+            if comparable_positions == 0:
+                return None
+
+            identity = matches / comparable_positions
             return identity
 
         # turn the sequences dict into a more useful format for this
@@ -2152,25 +2261,29 @@ class PanSuperclass(object):
 
         # if there is only one sequence, then there is nothing to do here.
         if len(d) == 1:
-            return (0.0, 0.0, 0.0)
+            return (0.0, 0.0, 0.0, 0.0)
 
         # get all pairs of sequences
         pairs_of_sequences = list(itertools.combinations(d.keys(), 2))
-
-        # FIXME: we need a smart strategy here to deal with gaps, but meren is old and it is 11pm.
 
         # calculate pairwise identities
         identities = []
         for s1, s2 in pairs_of_sequences:
             identity = calculate_sequence_identity(d[s1], d[s2])
-            identities.append(identity)
+            if identity is not None:
+                identities.append(identity)
+
+        # Handle case where no valid comparisons exist
+        if not identities:
+            return (0.0, 0.0, 0.0)
 
         # calculate AAI values
         AAI_min = min(identities)
         AAI_max = max(identities)
         AAI_avg = numpy.mean(identities)
+        AAI_min_nonzero = min([identity for identity in identities if identity > 0.0], default=0.0)
 
-        return (AAI_min, AAI_max, AAI_avg)
+        return (AAI_min, AAI_max, AAI_avg, AAI_min_nonzero)
 
 
     def compute_homogeneity_indices_for_gene_clusters(self, gene_cluster_names=set([]), gene_clusters_failed_to_align=set([]), num_threads=1):
@@ -2219,7 +2332,8 @@ class PanSuperclass(object):
                                                                       'combined_homogeneity_index': homogeneity_dict['combined'],
                                                                       'AAI_min': homogeneity_dict['AAI_min'],
                                                                       'AAI_max': homogeneity_dict['AAI_max'],
-                                                                      'AAI_avg': homogeneity_dict['AAI_avg']}
+                                                                      'AAI_avg': homogeneity_dict['AAI_avg'],
+                                                                      'AAI_min_nonzero': homogeneity_dict['AAI_min_nonzero']}
 
                 received_gene_clusters += 1
                 self.progress.increment(increment_to=received_gene_clusters)
@@ -2256,7 +2370,7 @@ class PanSuperclass(object):
                 indices_dict['geometric'] = geo_index[gene_cluster_name]
                 indices_dict['combined'] = combined_index[gene_cluster_name]
 
-                indices_dict['AAI_min'], indices_dict['AAI_max'], indices_dict['AAI_avg'] = AAI_calculator(gene_cluster)
+                indices_dict['AAI_min'], indices_dict['AAI_max'], indices_dict['AAI_avg'], indices_dict['AAI_min_nonzero'] = AAI_calculator(gene_cluster)
 
             except:
                 if gene_cluster_name not in str(gene_clusters_failed_to_align):
@@ -2275,6 +2389,7 @@ class PanSuperclass(object):
                 indices_dict['AAI_min'] = -1
                 indices_dict['AAI_max'] = -1
                 indices_dict['AAI_avg'] = -1
+                indices_dict['AAI_min_nonzero'] = -1
 
             output_queue.put(indices_dict)
 
@@ -2751,6 +2866,52 @@ class PanSuperclass(object):
         self.functions_initialized = True
 
         self.progress.end()
+
+
+    def init_gc_tracker(self):
+        """Initializes the gc_tracker dictionary from the pan database.
+
+        The structure of the dictionary is:
+        {
+            gene_caller_id: {
+                'gene_cluster_id': str,
+                'genome_name': str,
+                'alignment_summary': str
+            }
+        }
+        """
+        pan_db = PanDatabase(self.pan_db_path)
+
+        gc_tracker_data = pan_db.db.get_table_as_dict('gc_tracker')
+
+        gene_entries = {}
+        for entry in gc_tracker_data.values():
+            gene_caller_id = entry['gene_caller_id']
+            if gene_caller_id not in gene_entries:
+                gene_entries[gene_caller_id] = []
+            gene_entries[gene_caller_id].append({'gene_cluster_id': entry['gene_cluster_id'],'genome_name': entry['genome_name'],'alignment_summary': entry['alignment_summary']})
+
+        self.gc_tracker = gene_entries
+
+        pan_db.disconnect()
+
+
+    def init_gc_psgc_associations(self):
+        """Initializes the gc_psgc_associations dictionary from the pan database.
+
+        The structure of the dictionary is:
+        {
+            gene_cluster_id: protein_structure_informed_gene_cluster_id
+        }
+        """
+        pan_db = PanDatabase(self.pan_db_path)
+
+        associations_data = pan_db.db.get_table_as_dict('gc_psgc_associations')
+
+        for gc_id, entry in associations_data.items():
+            self.gc_psgc_associations[gc_id] = entry['protein_structure_informed_gene_cluster_id']
+
+        pan_db.disconnect()
 
 
     def init_items_additional_data(self):
@@ -5072,8 +5233,9 @@ class PanDatabase:
     """To create an empty pan database, and/or access to one."""
     def __init__(self, db_path, run=run, progress=progress, quiet=True):
         self.db = None
-        self.db_path = db_path
         self.db_type = 'pan'
+        self.db_variant = None
+        self.db_path = db_path
 
         self.run = run
         self.progress = progress
@@ -5106,15 +5268,16 @@ class PanDatabase:
         self.internal_genomes = [s.strip() for s in self.meta['internal_genome_names'].split(',')]
         self.external_genomes = [s.strip() for s in self.meta['external_genome_names'].split(',')]
         self.genomes = self.internal_genomes + self.external_genomes
+        self.db_variant = self.meta['db_variant']
 
         # open the database
         self.db = db.DB(self.db_path, anvio.__pan__version__)
 
-        self.run.info('Pan database', 'An existing database, %s, has been initiated.' % self.db_path, quiet=self.quiet)
-        self.run.info('Genomes', '%d found' % len(self.genomes), quiet=self.quiet)
+        self.run.info(f'Pan database ({self.db_variant})', f'An existing database, {self.db_path}, has been initiated.', quiet=self.quiet)
+        self.run.info('Genomes', f'{len(self.genomes)} found', quiet=self.quiet)
 
 
-    def touch(self):
+    def touch(self, db_variant=constants.pangenome_mode_default):
         is_db_ok_to_create(self.db_path, self.db_type)
 
         self.db = db.DB(self.db_path, anvio.__pan__version__, new_database=True)
@@ -5124,6 +5287,11 @@ class PanDatabase:
         self.db.create_table(t.pan_reaction_network_reactions_table_name, t.pan_reaction_network_reactions_table_structure, t.pan_reaction_network_reactions_table_types)
         self.db.create_table(t.pan_reaction_network_metabolites_table_name, t.pan_reaction_network_metabolites_table_structure, t.pan_reaction_network_metabolites_table_types)
         self.db.create_table(t.pan_reaction_network_kegg_table_name, t.pan_reaction_network_kegg_table_structure, t.pan_reaction_network_kegg_table_types)
+
+        # these are the ones only necessary when the db_variant is structure-informed
+        if db_variant == constants.PAN_STRUCTURE_MODE:
+            self.db.create_table(t.pan_gc_psgc_associations_table_name, t.pan_gc_psgc_associations_table_structure, t.pan_gc_psgc_associations_table_types)
+            self.db.create_table(t.pan_gc_tracker_table_name, t.pan_gc_tracker_table_structure, t.pan_gc_tracker_table_types)
 
         # creating empty default tables for standard anvi'o pan dbs
         self.db.create_table(t.item_additional_data_table_name, t.item_additional_data_table_structure, t.item_additional_data_table_types)
@@ -5141,8 +5309,8 @@ class PanDatabase:
         return self.db
 
 
-    def create(self, meta_values={}):
-        self.touch()
+    def create(self, meta_values={}, db_variant=constants.pangenome_mode_default):
+        self.touch(db_variant=db_variant)
 
         for key in meta_values:
             self.db.set_meta_value(key, meta_values[key])
@@ -5151,10 +5319,11 @@ class PanDatabase:
 
         # know thyself
         self.db.set_meta_value('db_type', 'pan')
+        self.db.set_meta_value('db_variant', db_variant)
 
         self.disconnect()
 
-        self.run.info('Pan database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
+        self.run.info(f'Pan database ({db_variant})', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
 
 
     def disconnect(self):

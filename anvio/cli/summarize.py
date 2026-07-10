@@ -119,6 +119,7 @@ def get_args():
     groupC.add_argument('--report-aa-seqs-for-gene-calls', default=False, action='store_true', help="You can use this flag if\
                                   you would like amino acid AND dna sequences for your gene calls in the genes output\
                                   file. By default, only dna sequences are reported.")
+    groupC.add_argument(*anvio.A('init-pan-mode'), **anvio.K('init-pan-mode'))
 
     groupG.add_argument(*anvio.A('report-discov'), **anvio.K('report-discov'))
     groupG.add_argument(*anvio.A('window-length'), **anvio.K('window-length', {'default': None, 'help': f"How long to make the windows for "
