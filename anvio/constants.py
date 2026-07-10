@@ -739,3 +739,14 @@ ribosomal_protein_kofams = [
 
 # anvi'o news stuff
 anvio_news_url = "https://raw.githubusercontent.com/merenlab/anvio/master/NEWS.md"
+
+# Default window sizing for the Distribution of Coverage (DisCov) metric.
+# These are shared by any program that computes DisCov (anvi-profile-blitz, anvi-summarize, etc.)
+# and apply when the user has not specified any window length parameters.
+# Bin/genome-level stats use a fixed window so that very large concatenated sequences do not
+# produce windows too large to be informative.
+# Contig-level stats use a percentage-based window to adapt to the wide size distribution of
+# individual contigs, with a floor to prevent degenerate windows on very short contigs.
+discov_default_bin_window_length = 1000      # fixed bp window for bin/genome-level DisCov
+discov_default_contig_window_percentage = 1  # 1% of contig length for contig-level DisCov
+discov_default_contig_min_window_length = 300  # minimum window length for contig percentage mode

@@ -4225,14 +4225,15 @@ class ProfileSuperclass(object):
 
         self.progress.new('Initializing the profile database superclass')
         self.progress.update('Accessing the auxiliary data file')
-        self.auxiliary_data_path = get_auxiliary_data_path_for_profile_db(self.profile_db_path)
-        if not os.path.exists(self.auxiliary_data_path):
-            self.auxiliary_profile_data_available = False
-        else:
-            self.auxiliary_profile_data_available = True
-            self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path,
-                                                                                         self.p_meta['contigs_db_hash'],
-                                                                                         db_variant=self.p_meta['db_variant'])
+        if not getattr(self, 'quick', False):
+            self.auxiliary_data_path = get_auxiliary_data_path_for_profile_db(self.profile_db_path)
+            if not os.path.exists(self.auxiliary_data_path):
+                self.auxiliary_profile_data_available = False
+            else:
+                self.auxiliary_profile_data_available = True
+                self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path,
+                                                                                             self.p_meta['contigs_db_hash'],
+                                                                                             db_variant=self.p_meta['db_variant'])
 
         if self.collection_name and self.bin_names and len(self.bin_names) == 1 and not skip_consider_gene_dbs:
             self.progress.update('Accessing the genes database')
@@ -4877,7 +4878,7 @@ class ProfileSuperclass(object):
         return coverages_dict
 
 
-    def init_collection_profile(self, collection_name, calculate_Q2Q3_carefully=False):
+    def init_collection_profile(self, collection_name, calculate_Q2Q3_carefully=False, report_discov=False):
         profile_db = ProfileDatabase(self.profile_db_path, quiet=True)
 
         # we only have a self.collections instance if the profile super has been inherited by summary super class.
@@ -4894,11 +4895,14 @@ class ProfileSuperclass(object):
         for bin_id in collection:
             self.collection_profile[bin_id] = {}
 
-        table_names = [] if self.p_meta['blank'] else constants.essential_data_fields_for_anvio_profiles
+        if getattr(self, 'quick', False):
+            table_names = []
+        else:
+            table_names = [] if self.p_meta['blank'] else constants.essential_data_fields_for_anvio_profiles
 
         samples_template = dict([(s, []) for s in self.p_meta['samples']])
 
-        if calculate_Q2Q3_carefully:
+        if calculate_Q2Q3_carefully and not report_discov:
             self.run.warning("The anvi'o sumarizer class is instructed (hopefully by you) to calculate Q2Q3 mean "
                              "coverages carefully. This means, depending on the size of your dataset and the number "
                              "of contigs in your bins this step can take much much longer than usual, since anvi'o "
@@ -4916,7 +4920,8 @@ class ProfileSuperclass(object):
             table_data, _ = profile_db.db.get_view_data(f'{table_name}_splits')
 
             for bin_id in collection:
-                if calculate_Q2Q3_carefully and table_name == 'mean_coverage_Q2Q3':
+                # if we also have to report DisCov, we'll need to call CoverageStats on these arrays later anyway, so we skip it here
+                if calculate_Q2Q3_carefully and table_name == 'mean_coverage_Q2Q3' and not report_discov:
                     self.collection_profile[bin_id][table_name] = {}
                     # we need to do something specific here.
                     for sample_name in samples_template:
@@ -4954,12 +4959,11 @@ class ProfileSuperclass(object):
                     self.collection_profile[bin_id][table_name] = averages
 
         # generating precent recruitment of each bin plus __splits_not_binned__ in each sample:
-        coverage_table_data, _ = profile_db.db.get_view_data('mean_coverage_splits')
-
         self.bin_percent_recruitment_per_sample = {}
-        if self.p_meta['blank']:
+        if self.p_meta['blank'] or getattr(self, 'quick', False):
             pass
         else:
+            coverage_table_data, _ = profile_db.db.get_view_data('mean_coverage_splits')
             for sample in self.p_meta['samples']:
                 percents = {}
                 all_coverages_in_sample = sum([d[sample] for d in list(coverage_table_data.values())])
@@ -5032,7 +5036,8 @@ class DatabasesMetaclass(ProfileSuperclass, ContigsSuperclass, object):
         ContigsSuperclass.__init__(self, self.args, self.run, self.progress)
         ProfileSuperclass.__init__(self, self.args, self.run, self.progress)
 
-        self.init_split_sequences()
+        if not getattr(self, 'quick', False) and not getattr(self, 'light_summary', False):
+            self.init_split_sequences()
 
 
 ####################################################################################################

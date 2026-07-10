@@ -90,8 +90,17 @@ class ArgsTemplateForSummarizerClass:
         self.list_bins = None
         self.debug = None
         self.quick_summary = False
+        self.light_summary = False
         self.init_gene_coverages = False
         self.calculate_Q2Q3_carefully = False
+        self.report_discov = False
+        self.window_length = None
+        self.window_length_as_percentage = None
+        self.min_window_length = None
+        self.foldrange_lower = 0.5
+        self.foldrange_upper = 2.0
+        self.alpha = 0.5
+        self.discov_formula = 'linear'
         self.skip_check_collection_name = False
         self.skip_init_functions = False
         self.cog_data_dir = None
@@ -136,8 +145,17 @@ class SummarizerSuperClass(object):
         self.skip_init_functions = A('skip_init_functions')
         self.init_gene_coverages = A('init_gene_coverages')
         self.calculate_Q2Q3_carefully = A('calculate_Q2Q3_carefully')
+        self.report_discov = A('report_discov')
+        self.discov_window_length = A('window_length')
+        self.discov_window_percentage = A('window_length_as_percentage')
+        self.discov_min_window_length = A('min_window_length')
+        self.discov_foldrange_lower = A('foldrange_lower')
+        self.discov_foldrange_upper = A('foldrange_upper')
+        self.discov_alpha = A('alpha')
+        self.discov_formula = A('discov_formula')
         self.output_directory = A('output_dir')
         self.quick = A('quick_summary')
+        self.light_summary = A('light_summary')
         self.debug = A('debug')
         self.cog_data_dir = A('cog_data_dir')
         self.report_aa_seqs_for_gene_calls = A('report_aa_seqs_for_gene_calls')
@@ -194,6 +212,12 @@ class SummarizerSuperClass(object):
 
             if self.collection_name not in self.collections.collections_dict:
                 raise ConfigError("%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % self.collection_name)
+
+        if self.report_discov:
+            utils.validate_discov_params(self.discov_window_length, self.discov_window_percentage,
+                                         self.discov_min_window_length, self.discov_foldrange_lower,
+                                         self.discov_foldrange_upper, self.discov_alpha, self.discov_formula,
+                                         require_window_param=False)
 
 
     def get_output_file_handle(self, sub_directory=None, prefix='output.txt', overwrite=False, within=None, compress_output=False, add_project_name=False):
@@ -1100,7 +1124,9 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         self.summary = {}
         self.summary_type = 'profile'
         self.debug = False
-        self.quick = False
+        A_local = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.quick = A_local('quick_summary') or False
+        self.light_summary = A_local('light_summary') or False
         self.profile_db_path = None
         self.contigs_db_path = None
         self.output_directory = None
@@ -1124,7 +1150,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
     def init(self):
         # init profile data for colletion.
-        self.collection_dict, self.bins_info_dict = self.init_collection_profile(self.collection_name, calculate_Q2Q3_carefully=self.calculate_Q2Q3_carefully)
+        self.collection_dict, self.bins_info_dict = self.init_collection_profile(self.collection_name, calculate_Q2Q3_carefully=self.calculate_Q2Q3_carefully, report_discov=self.report_discov)
 
         # let bin names known to all
         self.bin_ids = list(self.collection_profile.keys())
@@ -1247,6 +1273,220 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         self.initialized = True
 
 
+    def compute_discov_stats(self):
+        """Compute Distribution of Coverage (DisCov) stats for each bin and each contig.
+
+        Combines per-nucleotide coverage arrays taken from the auxiliary database and calls
+        utils.CoverageStats exactly once per contig and once per bin per sample. Contig arrays
+        are reused to assemble the bin array to avoid multiple reads of the auxiliary DB per split.
+
+        When calculate_Q2Q3_carefully is also True, the bin-level CoverageStats result
+        is additionally used to update self.collection_profile with accurate Q2Q3 mean
+        coverage values.
+
+        Writes two tab-delimited files to the bins_across_samples sub-directory:
+          discov_bins.txt    – one row per bin x sample
+          discov_contigs.txt – one row per contig x sample
+
+        Note that the DisCov parameters are established via self.discov_* attributes in SummarizerSuperClass.
+        """
+
+        if self.p_meta['blank']:
+            self.run.warning("DisCov calculation was requested, but this is a blank profile with "
+                             "no coverage data. Skipping DisCov output.")
+            return
+
+        if not self.auxiliary_profile_data_available:
+            q2q3_str = " and careful Q2Q3 calculation" if self.calculate_Q2Q3_carefully else ""
+            self.run.warning(f"DisCov calculation was requested (--report-discov), but the auxiliary "
+                             f"data file could not be found at '{self.auxiliary_data_path}'. "
+                             f"Skipping DisCov output{q2q3_str}. All other summary output is unaffected.",
+                             header="AUXILIARY DATA NOT FOUND")
+            return
+
+        if self.calculate_Q2Q3_carefully:
+            self.run.warning("Since both --report-discov and --calculate-Q2Q3-carefully were requested, "
+                             "anvi'o will compute careful Q2Q3 mean coverage values and DisCov scores simultaneously, "
+                             "using the same auxiliary coverage data. Depending on the size of your dataset and the number "
+                             "of contigs in your bins this step can take much much longer than usual, since anvi'o "
+                             "will have to do a lot of sorting of very large arrays. But be reassured that you will get the "
+                             "most complete summary possible at the end of this journey.",
+                             header="💀 THINGS WILL TAKE LONGER 💀")
+        else:
+            self.run.warning("Since --report-discov was requested, anvi'o will compute DisCov scores using the "
+                             "coverage data in the auxiliary database. Depending on the size of your dataset and the number "
+                             "of contigs in your bins this step can take much much longer than usual, since anvi'o "
+                             "will have to do a lot of sorting of very large arrays. But at least you will receive EVEN MOAR "
+                             "DATA as part of the summary output.",
+                             header="💀 THINGS WILL TAKE LONGER 💀")
+
+        # Determine effective window parameters for bin- or contig-level stats. When the user has not provided
+        # any window length option, use context-sensitive defaults from constants.py: bins get a
+        # fixed window (works well for large concatenated sequences), while contigs get a
+        # percentage-based window (to accommodate smaller contigs)
+        # If the user specifies either --window-length or --window-length-as-percentage, those
+        # values are applied uniformly to both levels.
+        user_specified_window = self.discov_window_length is not None or self.discov_window_percentage is not None
+        if user_specified_window:
+            bin_wlen = self.discov_window_length
+            bin_wpct = self.discov_window_percentage
+            bin_minlen = self.discov_min_window_length
+            contig_wlen = self.discov_window_length
+            contig_wpct = self.discov_window_percentage
+            contig_minlen = self.discov_min_window_length
+        else: # context-specific defaults
+            bin_wlen = constants.discov_default_bin_window_length
+            bin_wpct = None
+            bin_minlen = 0 # not used when --window-length is set
+            contig_wlen = None
+            contig_wpct = constants.discov_default_contig_window_percentage
+            if self.discov_min_window_length is None: # allow user to modify just this param
+                contig_minlen = constants.discov_default_contig_min_window_length
+            else:
+                contig_minlen = self.discov_min_window_length
+
+        if user_specified_window:
+            self.run.info('DisCov window length', bin_wlen if bin_wlen else f"{bin_wpct}% of sequence")
+            if bin_wpct:
+                self.run.info('Minimum window length', bin_minlen)
+        else:
+            self.run.info('DisCov window length (bins)', f"{bin_wlen} bp")
+            self.run.info('DisCov window length (contigs)', f"{contig_wpct}% of sequence, min {contig_minlen} bp")
+        self.run.info('DisCov fold-range', f"{self.discov_foldrange_lower}x to {self.discov_foldrange_upper}x of median nonzero coverage")
+        self.run.info('DisCov alpha value', self.discov_alpha)
+        self.run.info('DisCov formula', self.discov_formula)
+
+        bin_level_rows = []
+        contig_level_rows = []
+        DISCOV_BINS_OUTPUT='discov_bins.txt'
+        DISCOV_CONTIGS_OUTPUT='discov_contigs.txt'
+
+        self.progress.new('Computing DisCov', progress_total_items=len(self.collection_dict))
+
+        for bin_id in self.collection_dict:
+            self.progress.update(f"'{bin_id}'")
+            self.progress.increment()
+
+            # Group splits by parent contig, preserving within-contig order
+            splits_by_contig = {}
+            for split_name in self.collection_dict[bin_id]:
+                info = self.splits_basic_info[split_name]
+                parent = info['parent']
+                order = info['order_in_parent']
+                splits_by_contig.setdefault(parent, []).append((order, split_name))
+            for contig_name in splits_by_contig:
+                splits_by_contig[contig_name].sort()
+                splits_by_contig[contig_name] = [s for _, s in splits_by_contig[contig_name]]
+
+            sorted_contigs = sorted(splits_by_contig.keys())
+
+            # fetch each split's full coverage dict (all samples) once, outside the sample loop.
+            # self.split_coverage_values.get() runs a live SQLite query every call and returns
+            # {sample_name: array} for all samples at once
+            split_coverages = {}
+            failed_contigs = set()
+            for contig_name in sorted_contigs:
+                for split_name in splits_by_contig[contig_name]:
+                    try:
+                        split_coverages[split_name] = self.split_coverage_values.get(split_name)
+                    except Exception as e:
+                        self.progress.reset()
+                        self.run.warning(f"Anvi'o failed to retrieve the coverage arrays for split '{split_name}' "
+                                         f"in contig '{contig_name}' (bin '{bin_id}') from the auxiliary DB. Here is the "
+                                         f"error, in case it means anything to you: {e}.\n"
+                                         f"This contig will be excluded from contig-level DisCov output, and the bin it "
+                                         f"belongs to will be excluded from bin-level DisCov output (since its coverage "
+                                         f"array would be incomplete). Please investigate why this happened as it could "
+                                         f"be symptomatic of a more serious issue affecting your data.")
+                        failed_contigs.add(contig_name)
+                        break  # no need to fetch remaining splits for this contig
+
+            for sample_name in self.p_meta['samples']:
+                # assemble per-contig arrays from the cached per-split coverage dicts
+                contig_arrays = {}
+                for contig_name in sorted_contigs:
+                    if contig_name in failed_contigs:
+                        continue
+                    arrays = [split_coverages[split_name][sample_name]
+                              for split_name in splits_by_contig[contig_name]]
+                    contig_arrays[contig_name] = numpy.concatenate(arrays)
+
+                if not contig_arrays:
+                    continue
+
+                # Compute contig-level DisCov (one CoverageStats call per contig)
+                for contig_name, contig_array in contig_arrays.items():
+                    c_stats = utils.CoverageStats(contig_array,
+                                                  skip_outliers=True, # we don't need the self.is_outlier attribute
+                                                  discov_window_length=contig_wlen,
+                                                  discov_window_percentage=contig_wpct,
+                                                  discov_min_window_len=contig_minlen,
+                                                  discov_foldrange_lower=self.discov_foldrange_lower,
+                                                  discov_foldrange_upper=self.discov_foldrange_upper,
+                                                  discov_alpha=self.discov_alpha,
+                                                  discov_formula=self.discov_formula)
+                    contig_level_rows.append({'bin_name': bin_id,
+                                              'contig_name': contig_name,
+                                              'sample_name': sample_name,
+                                              'length': len(contig_array),
+                                              'num_windows': c_stats.num_windows,
+                                              'prop_windows_covered': c_stats.prop_win_covered,
+                                              'fold_range_coverage_depth': c_stats.fold_range_coverage_depth,
+                                              'dis_cov': c_stats.discov})
+
+                # Compute bin-level DisCov; reuse contig arrays
+                if failed_contigs: # unless one of the contig lookups failed; we don't want to compute based on partial bins
+                    continue
+                bin_array = numpy.concatenate([contig_arrays[c] for c in sorted_contigs if c in contig_arrays])
+                b_stats = utils.CoverageStats(bin_array,
+                                              skip_outliers=True,
+                                              discov_window_length=bin_wlen,
+                                              discov_window_percentage=bin_wpct,
+                                              discov_min_window_len=bin_minlen,
+                                              discov_foldrange_lower=self.discov_foldrange_lower,
+                                              discov_foldrange_upper=self.discov_foldrange_upper,
+                                              discov_alpha=self.discov_alpha,
+                                              discov_formula=self.discov_formula)
+                bin_level_rows.append({'bin_name': bin_id,
+                                       'sample_name': sample_name,
+                                       'length': len(bin_array),
+                                       'num_windows': b_stats.num_windows,
+                                       'prop_windows_covered': b_stats.prop_win_covered,
+                                       'fold_range_coverage_depth': b_stats.fold_range_coverage_depth,
+                                       'dis_cov': b_stats.discov})
+
+                # When careful Q2Q3 was also requested, extract it from the bin-level stats here (it was skipped
+                # in init_collection_profile) to avoid redundant array concatenation and computation
+                if self.calculate_Q2Q3_carefully:
+                    self.collection_profile[bin_id]['mean_coverage_Q2Q3'][sample_name] = b_stats.mean_Q2Q3
+
+        self.progress.end()
+
+        # Write bin-level output. Integer keys provide stable row order; the key column itself
+        # is suppressed so the file starts directly with the data columns.
+        bin_headers = ['key', 'bin_name', 'sample_name', 'length', 'num_windows',
+                       'prop_windows_covered', 'fold_range_coverage_depth', 'dis_cov']
+        output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix=DISCOV_BINS_OUTPUT)
+        utils.store_dict_as_TAB_delimited_file({i: row for i, row in enumerate(bin_level_rows)},
+                                               None,
+                                               headers=bin_headers,
+                                               file_obj=output_file_obj,
+                                               do_not_write_key_column=True)
+
+        # Write contig-level output
+        contig_headers = ['key', 'bin_name', 'contig_name', 'sample_name', 'length', 'num_windows',
+                          'prop_windows_covered', 'fold_range_coverage_depth', 'dis_cov']
+        output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix=DISCOV_CONTIGS_OUTPUT)
+        utils.store_dict_as_TAB_delimited_file({i: row for i, row in enumerate(contig_level_rows)},
+                                               None,
+                                               headers=contig_headers,
+                                               file_obj=output_file_obj,
+                                               do_not_write_key_column=True)
+
+        self.run.info('DisCov output (bins)', os.path.join(self.output_directory, 'bins_across_samples', DISCOV_BINS_OUTPUT))
+        self.run.info('DisCov output (contigs)', os.path.join(self.output_directory, 'bins_across_samples', DISCOV_CONTIGS_OUTPUT))
+
+
     def process(self):
         if not self.initialized:
             self.init()
@@ -1254,6 +1494,11 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         if not self.output_directory:
             raise ConfigError("It seems the summarizer class have been inherited without an `output_directory` argument :/ Show stopper "
                               "mistake stopped the show. Bye!")
+
+        # if requested, compute DisCov from the coverage arrays in the aux DB. We do this first because it will also re-do Q2Q3
+        # if --calculate-Q2Q3-carefully was used
+        if self.report_discov:
+            self.compute_discov_stats()
 
         # summarize bins:
         self.progress.new("Summarizing ...", progress_total_items=len(self.bin_ids))
@@ -1282,6 +1527,10 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         self.summary['meta']['bins'] = self.get_bins_ordered_by_completeness_and_size()
 
         if not self.quick:
+            self.report_misc_data_files(target_table='layers')
+            self.report_misc_data_files(target_table='items')
+
+        if self.light_summary or not self.quick:
             # generate a TAB-delimited text output file for bin summaries
             summary_of_bins = {}
             properties = ['total_length', 'num_contigs', 'N50', 'GC_content']
@@ -1297,9 +1546,6 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
             output_file_obj = self.get_output_file_handle(prefix='bins_summary.txt')
             utils.store_dict_as_TAB_delimited_file(summary_of_bins, None, headers=['bins'] + properties, file_obj=output_file_obj)
-
-            self.report_misc_data_files(target_table='layers')
-            self.report_misc_data_files(target_table='items')
 
             # save merged matrices for bins x samples
             for table_name in self.summary['collection_profile_items']:
@@ -1356,7 +1602,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
             import json
             print(json.dumps(self.summary, sort_keys=True, indent=4))
 
-        self.index_html = SummaryHTMLOutput(self.summary, r=self.run, p=self.progress).generate(quick=self.quick)
+        self.index_html = SummaryHTMLOutput(self.summary, r=self.run, p=self.progress).generate(quick=self.quick or self.light_summary)
 
 
     def get_bins_ordered_by_completeness_and_size(self):
@@ -1715,7 +1961,7 @@ class Bin:
         # in collections stored in the contigs database, split_names that are not in the
         # oritinal contigs used to generate contigs database *may* end up in the
         # collections table. we gotta make sure we deal with them properly:
-        missing_ids = [split_id for split_id in self.split_names if split_id not in self.summary.split_sequences]
+        missing_ids = [split_id for split_id in self.split_names if split_id not in self.summary.splits_basic_info]
         if len(missing_ids):
             for missing_id in missing_ids:
                 self.split_names.remove(missing_id)
@@ -1818,7 +2064,7 @@ class Bin:
 
 
     def store_profile_data(self):
-        if self.summary.quick:
+        if self.summary.quick or self.summary.light_summary:
             return
 
         self.progress.update('Storing profile data ...')
@@ -1848,9 +2094,6 @@ class Bin:
            up above later makes sense of all to generate files and matrices, as well as
            dictionaries to diplay part of this information in the interface.
         """
-
-        if self.summary.quick:
-            return
 
         info_dict = {}
 
@@ -1923,7 +2166,7 @@ class Bin:
 
 
     def store_gene_level_coverage_stats(self):
-        if self.summary.quick:
+        if self.summary.quick or self.summary.light_summary:
             return
 
         if not self.summary.gene_level_coverage_stats_dict:
@@ -1947,7 +2190,7 @@ class Bin:
 
 
     def store_genes_basic_info(self):
-        if self.summary.quick:
+        if self.summary.quick or self.summary.light_summary:
             return
 
         self.progress.update('Sorting out gene calls ...')
@@ -2027,7 +2270,7 @@ class Bin:
 
 
     def store_sequences_for_hmm_hits(self):
-        if self.summary.quick:
+        if self.summary.quick or self.summary.light_summary:
             return
 
         s = SequencesForHMMHits(self.summary.contigs_db_path, split_names_of_interest=self.split_names, progress=progress_quiet, bin_name=self.bin_id)
@@ -2073,7 +2316,7 @@ class Bin:
         self.bin_info_dict['contig_names'] = self.contig_names
         self.bin_info_dict['num_contigs'] = len(self.contig_names)
 
-        if self.summary.quick or quick:
+        if self.summary.quick or self.summary.light_summary or quick:
             return
 
         self.progress.update('Creating the FASTA file ...')
