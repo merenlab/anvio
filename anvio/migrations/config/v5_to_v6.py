@@ -26,6 +26,8 @@ NEW_METAGENOMICS_QC_RULES = {
     'filtlong':  {"threads": 1, "run": False, "conda_yaml": "", "conda_env": "",
                   "--min-length": None, "--max-length": None, "--target-bases": None,
                   "additional_params": ""},
+    'nanoplot':  {"threads": 2, "run": False, "conda_yaml": "", "conda_env": "",
+                  "additional_params": ""},
     'multiqc':   {"threads": 1, "run": False, "additional_params": ""},
 }
 
@@ -55,9 +57,9 @@ def migrate(config_path):
     config = workflow_object.config
     anvio.QUIET = False
 
-    # v6 adds optional QC rules (Filtlong, FastQC, MultiQC) to the metagenomics workflow. Add
-    # their default blocks to metagenomics configs if they are not already there. Every rule
-    # defaults to `run: False`, so this changes no existing behavior.
+    # v6 adds optional QC rules (Filtlong, NanoPlot, FastQC, MultiQC) to the metagenomics
+    # workflow. Add their default blocks to metagenomics configs if they are not already there.
+    # Every rule defaults to `run: False`, so this changes no existing behavior.
     added_rules = []
     if workflow_name == 'metagenomics':
         for rule, default_block in NEW_METAGENOMICS_QC_RULES.items():

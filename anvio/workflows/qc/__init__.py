@@ -26,6 +26,7 @@ class QCModule(WorkflowSuperClass):
       - Optional gzip of QC'd SR reads
       - Optional FastQC on SR reads
       - Optional Filtlong filtering of LR reads
+      - Optional NanoPlot quality assessment on LR reads
       - Optional MultiQC aggregation of all QC outputs
 
     Subclasses must set before any QC methods are called:
@@ -33,6 +34,7 @@ class QCModule(WorkflowSuperClass):
       - self.dirs_dict: includes "QC_DIR"
       - self.run_qc: bool (SR QC enabled)
       - self.run_filtlong: bool
+      - self.run_nanoplot: bool (LR QC enabled)
       - self.run_multiqc: bool
     """
 
@@ -49,6 +51,7 @@ class QCModule(WorkflowSuperClass):
             'gzip_fastqs',
             'fastqc_sr',
             'filtlong',
+            'nanoplot',
             'multiqc',
         ])
 
@@ -105,6 +108,10 @@ class QCModule(WorkflowSuperClass):
         if self.get_param_value_from_config(['filtlong', 'run']) == True:
             if not self._tool_provided_by_conda('filtlong') and not u.is_program_exists('filtlong', dont_raise=True):
                 missing.append(('filtlong', 'filtlong'))
+
+        if self.get_param_value_from_config(['nanoplot', 'run']) == True:
+            if not self._tool_provided_by_conda('nanoplot') and not u.is_program_exists('NanoPlot', dont_raise=True):
+                missing.append(('NanoPlot', 'nanoplot'))
 
         if self.get_param_value_from_config(['fastqc_sr', 'run']) == True:
             if not u.is_program_exists('fastqc', dont_raise=True):
@@ -201,13 +208,26 @@ class QCModule(WorkflowSuperClass):
             for rs_id in self.get_lr_readset_ids():
                 targets.append(os.path.join(self.dirs_dict["QC_DIR"], f"{rs_id}-FILTERED_LR.fastq.gz"))
 
+        run_nanoplot = self.get_param_value_from_config(['nanoplot', 'run']) == True
+        if run_nanoplot:
+            lr_readset_ids = self.get_lr_readset_ids()
+            if not lr_readset_ids:
+                self.run.warning(
+                    "'nanoplot' is enabled, but there are no long-read samples in your samples-txt "
+                    "for NanoPlot to run on — it will be skipped."
+                )
+            nanoplot_dir = os.path.join(self.dirs_dict["QC_DIR"], "nanoplot")
+            # NanoPlot writes into a per-readset directory (see the nanoplot rule); target the dir.
+            for rs_id in lr_readset_ids:
+                targets.append(os.path.join(nanoplot_dir, rs_id))
+
         if getattr(self, 'run_multiqc', False):
-            if run_fastqc_sr:
+            if run_fastqc_sr or run_nanoplot:
                 targets.append(os.path.join(self.dirs_dict["QC_DIR"], "multiqc", "multiqc_report.html"))
             else:
                 self.run.warning(
-                    "MultiQC is enabled but 'fastqc_sr' is not — MultiQC has no compatible inputs "
-                    "to aggregate and will be skipped."
+                    "MultiQC is enabled but neither 'fastqc_sr' nor 'nanoplot' is — MultiQC has no "
+                    "compatible inputs to aggregate and will be skipped."
                 )
 
         return targets

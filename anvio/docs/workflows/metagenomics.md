@@ -380,10 +380,11 @@ The technology → preset mapping is maintained in `anvio/workflows/lr_technolog
 Beyond the default short-read QC (illumina-utils), the workflow offers several optional QC steps, all disabled by default and enabled per rule in your %(workflow-config)s with `"run": true`:
 
 * `filtlong` — length/quality filtering of long reads with [Filtlong](https://github.com/rrwick/Filtlong) (`--min-length`, `--max-length`, `--target-bases`). When enabled, downstream mapping and assembly use the filtered reads.
+* `nanoplot` — long-read quality assessment with [NanoPlot](https://github.com/wdecoster/NanoPlot) (one report per long-read readset). It runs on the reads that feed downstream — the filtlong-filtered reads when `filtlong` is enabled, otherwise the raw long reads — and needs no sequencing-technology preset.
 * `fastqc_sr` — [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) on quality-controlled short reads.
-* `multiqc` — aggregates FastQC outputs into a single [MultiQC](https://multiqc.info) report.
+* `multiqc` — aggregates the FastQC and NanoPlot (NanoStats) outputs into a single [MultiQC](https://multiqc.info) report.
 
-Because `filtlong` is not shipped with anvi'o, you can point the workflow at an environment that provides it via the rule's `conda_yaml` or `conda_env` parameter (set one, not both), or make sure it is on your `$PATH`.
+Because `filtlong` and `nanoplot` are not shipped with anvi'o, you can point the workflow at an environment that provides each via that rule's `conda_yaml` or `conda_env` parameter (set one, not both), or make sure it is on your `$PATH`.
 
 ### Running binning algorithms
 

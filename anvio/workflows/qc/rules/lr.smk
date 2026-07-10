@@ -1,4 +1,4 @@
-# QC module — long-read QC rules (Filtlong)
+# QC module — long-read QC rules (Filtlong + NanoPlot)
 #
 # Expects the following in the including Snakefile scope:
 #   M           — a QCModule-enabled workflow instance
@@ -9,6 +9,44 @@
 #
 # Tools:
 #   Filtlong — Wick R, GitHub only (https://github.com/rrwick/Filtlong)
+#   NanoPlot — De Coster & Rademakers 2023, PMID 37171891 (https://github.com/wdecoster/NanoPlot)
+
+
+nanoplot_output_dir = os.path.join(dirs_dict["QC_DIR"], "nanoplot")
+
+
+rule nanoplot:
+    """
+    Long-read quality assessment with NanoPlot (one report per readset).
+
+    Runs on the reads that feed downstream — the filtlong-filtered reads when filtlong is
+    enabled, otherwise the raw long reads (via M.get_fastq()). The output is a per-readset
+    directory: NanoPlot writes its report, plots and NanoStats there, and MultiQC (if enabled)
+    aggregates the NanoStats by scanning the parent nanoplot directory. NanoPlot needs no
+    sequencing-technology preset, and must be available on $PATH or via conda_yaml/conda_env.
+    """
+    input:
+        reads=lambda wildcards: M.get_fastq(wildcards.readset)["lr"],
+    output:
+        report_dir=directory(os.path.join(nanoplot_output_dir, "{readset}")),
+    log:
+        rule_log("nanoplot", "{readset}-nanoplot"),
+    wildcard_constraints:
+        readset=LR_RS_RE,
+    conda:
+        w.get_conda_yaml_path(M, "nanoplot")
+    threads: M.T("nanoplot")
+    resources:
+        nodes=M.T("nanoplot"),
+    params:
+        env_prefix=w.get_conda_env_prefix(M, "nanoplot"),
+        reads=lambda wildcards, input: " ".join(input.reads),
+        additional_params=M.get_param_value_from_config(["nanoplot", "additional_params"]),
+    shell:
+        r"""
+        {params.env_prefix} NanoPlot -t {threads} --fastq {params.reads} \
+            -o {output.report_dir} --tsv_stats {params.additional_params} >> {log} 2>&1
+        """
 
 
 rule filtlong:

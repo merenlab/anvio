@@ -44,6 +44,13 @@
             "--target-bases":   {"type": "int",  "default": null},
             "additional_params":{"type": "str",  "default": ""}
         },
+        "nanoplot": {
+            "threads":          {"type": "int",  "default": 2},
+            "run":              {"type": "bool", "default": false},
+            "conda_yaml":       {"type": "str",  "default": ""},
+            "conda_env":        {"type": "str",  "default": ""},
+            "additional_params":{"type": "str",  "default": ""}
+        },
         "multiqc": {
             "threads":          {"type": "int",  "default": 1},
             "run":              {"type": "bool", "default": false},
