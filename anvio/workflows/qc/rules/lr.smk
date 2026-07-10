@@ -17,22 +17,25 @@ nanoplot_output_dir = os.path.join(dirs_dict["QC_DIR"], "nanoplot")
 
 rule nanoplot:
     """
-    Long-read quality assessment with NanoPlot (one report per readset).
+    Long-read quality assessment with NanoPlot (one report per readset per stage).
 
-    Runs on the reads that feed downstream — the filtlong-filtered reads when filtlong is
-    enabled, otherwise the raw long reads (via M.get_fastq()). The output is a per-readset
+    The {stage} wildcard selects which reads to assess: 'raw' for the readset's original long
+    reads, or 'filtered' for the Filtlong output (see M.get_nanoplot_input_files()). Which stages
+    actually run is controlled by the 'run_on_raw' / 'run_on_filtered' flags in the nanoplot config
+    (validated in QCModule.sanity_check_qc_stage_flags). The output is a per-stage, per-readset
     directory: NanoPlot writes its report, plots and NanoStats there, and MultiQC (if enabled)
     aggregates the NanoStats by scanning the parent nanoplot directory. NanoPlot needs no
     sequencing-technology preset, and must be available on $PATH or via conda_yaml/conda_env.
     """
     input:
-        reads=lambda wildcards: M.get_fastq(wildcards.readset)["lr"],
+        reads=lambda wildcards: M.get_nanoplot_input_files(wildcards.readset, wildcards.stage),
     output:
-        report_dir=directory(os.path.join(nanoplot_output_dir, "{readset}")),
+        report_dir=directory(os.path.join(nanoplot_output_dir, "{stage}", "{readset}")),
     log:
-        rule_log("nanoplot", "{readset}-nanoplot"),
+        rule_log("nanoplot", "{stage}-{readset}-nanoplot"),
     wildcard_constraints:
         readset=LR_RS_RE,
+        stage="raw|filtered",
     conda:
         w.get_conda_yaml_path(M, "nanoplot")
     threads: M.T("nanoplot")

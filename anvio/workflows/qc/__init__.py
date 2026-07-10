@@ -26,7 +26,8 @@ class QCModule(WorkflowSuperClass):
       - Optional gzip of QC'd SR reads
       - Optional FastQC on SR reads
       - Optional Filtlong filtering of LR reads
-      - Optional NanoPlot quality assessment on LR reads
+      - Optional NanoPlot quality assessment on LR reads (on the raw and/or filtered reads)
+      - Optional FastQC quality assessment on SR reads (on the raw and/or filtered reads)
       - Optional MultiQC aggregation of all QC outputs
 
     Subclasses must set before any QC methods are called:
@@ -163,28 +164,94 @@ class QCModule(WorkflowSuperClass):
                 f"Affected file(s):\n  {details}"
             )
 
-    def get_fastqc_sr_input_files(self, readset):
-        """Return the short-read FASTQ files FastQC should run on for a readset.
+    def _qc_stages_for(self, tool):
+        """Return the list of QC stages ('raw' and/or 'filtered') enabled for a stats tool.
 
-        When short-read QC is enabled, these are the quality-controlled QUALITY_PASSED_R{1,2} files
-        (with the extension depending on whether gzip_fastqs is on) — depending on them also creates
-        the DAG edge that forces SR QC to finish first. When SR QC is disabled, they are the
-        readset's raw r1/r2 files, so FastQC still has something to report on rather than the
-        workflow failing on missing QUALITY_PASSED inputs.
+        A stats tool (nanoplot / fastqc_sr) can be asked to run on the raw input reads
+        ('run_on_raw'), on the post-filter reads ('run_on_filtered'), or both. The returned
+        list drives both the target-file generation and the per-stage rule wildcards.
+        Assumes sanity_check_qc_stage_flags() has already validated the combination.
         """
-        if self.get_param_value_from_config(['iu_filter_quality_minoche', 'run']) == True:
+        stages = []
+        if self.get_param_value_from_config([tool, 'run_on_raw']) == True:
+            stages.append('raw')
+        if self.get_param_value_from_config([tool, 'run_on_filtered']) == True:
+            stages.append('filtered')
+        return stages
+
+    def get_nanoplot_input_files(self, readset, stage):
+        """Return the long-read FASTQ files NanoPlot should run on for a readset and stage.
+
+        stage='raw'      → the readset's original long-read files.
+        stage='filtered' → the Filtlong output for the readset (requires filtlong to be enabled;
+                           depending on this path also creates the DAG edge that forces filtlong
+                           to finish first).
+        """
+        if stage == 'raw':
+            return self.get_lr_files_for_readset(readset)
+        elif stage == 'filtered':
+            return [os.path.join(self.dirs_dict["QC_DIR"], f"{readset}-FILTERED_LR.fastq.gz")]
+        else:
+            raise ConfigError(f"get_nanoplot_input_files :: unknown stage '{stage}' (expected 'raw' or 'filtered').")
+
+    def get_fastqc_sr_input_files(self, readset, stage):
+        """Return the short-read FASTQ files FastQC should run on for a readset and stage.
+
+        stage='raw'      → the readset's original r1/r2 files.
+        stage='filtered' → the quality-controlled QUALITY_PASSED_R{1,2} files (extension depends on
+                           whether gzip_fastqs is on; requires iu_filter_quality_minoche to be
+                           enabled). Depending on these paths also creates the DAG edge that forces
+                           SR QC to finish first.
+        """
+        if stage == 'raw':
+            d = self.get_sr_files_for_readset(readset)
+            return list(d.get('r1', [])) + list(d.get('r2', []))
+        elif stage == 'filtered':
             ext = '.fastq.gz' if self.get_param_value_from_config(['gzip_fastqs', 'run']) == True else '.fastq'
             qc_dir = self.dirs_dict["QC_DIR"]
             return [os.path.join(qc_dir, f"{readset}-QUALITY_PASSED_R1{ext}"),
                     os.path.join(qc_dir, f"{readset}-QUALITY_PASSED_R2{ext}")]
+        else:
+            raise ConfigError(f"get_fastqc_sr_input_files :: unknown stage '{stage}' (expected 'raw' or 'filtered').")
 
-        # SR QC disabled: run FastQC on the raw short reads instead
-        d = self.get_sr_files_for_readset(readset)
-        return list(d.get('r1', [])) + list(d.get('r2', []))
+    def _check_stage_flags(self, tool, tool_label, filter_rule, filter_label):
+        """Validate the run_on_raw / run_on_filtered combination for one stats tool.
+
+        Only enforced when the stats tool itself is enabled. Raises ConfigError when the tool is
+        asked to do nothing, or asked to run on filtered reads that will never be produced because
+        its matching filter is disabled.
+        """
+        if self.get_param_value_from_config([tool, 'run']) != True:
+            return
+
+        raw = self.get_param_value_from_config([tool, 'run_on_raw']) == True
+        filtered = self.get_param_value_from_config([tool, 'run_on_filtered']) == True
+        filter_on = self.get_param_value_from_config([filter_rule, 'run']) == True
+
+        if not raw and not filtered:
+            raise ConfigError(
+                f"{tool_label} is enabled ('{tool}' → run: true), but both 'run_on_raw' and "
+                f"'run_on_filtered' are set to false — so it has nothing to run on. Set at least one "
+                f"of them to true, or disable {tool_label} altogether."
+            )
+
+        if filtered and not filter_on:
+            raise ConfigError(
+                f"{tool_label} is set to run on filtered reads ('{tool}' → run_on_filtered: true), but "
+                f"{filter_label} ('{filter_rule}' → run) is not enabled, so there will be no filtered reads "
+                f"for {tool_label} to look at. Either enable {filter_label}, or set '{tool}' → "
+                f"run_on_filtered: false and run_on_raw: true to run {tool_label} on the raw reads instead."
+            )
+
+    def sanity_check_qc_stage_flags(self):
+        """Validate the raw/filtered stage flags for every stats tool that supports them."""
+        self._check_stage_flags('nanoplot', 'NanoPlot', 'filtlong', 'Filtlong long-read filtering')
+        self._check_stage_flags('fastqc_sr', 'FastQC', 'iu_filter_quality_minoche', 'illumina-utils short-read quality filtering')
 
     def get_qc_target_files(self):
         """Return the list of all QC target files based on enabled options."""
         self.check_qc_program_dependencies()
+        self.sanity_check_qc_stage_flags()
         targets = []
 
         if getattr(self, 'run_qc', False):
@@ -199,9 +266,10 @@ class QCModule(WorkflowSuperClass):
                     "for FastQC to run on — it will be skipped."
                 )
             fastqc_dir = os.path.join(self.dirs_dict["QC_DIR"], "fastqc")
-            # FastQC writes into a per-readset directory (see the fastqc_sr rule); target the dir.
-            for rs_id in sr_readset_ids:
-                targets.append(os.path.join(fastqc_dir, rs_id))
+            # FastQC writes into a per-stage, per-readset directory (see the fastqc_sr rule); target the dir.
+            for stage in self._qc_stages_for('fastqc_sr'):
+                for rs_id in sr_readset_ids:
+                    targets.append(os.path.join(fastqc_dir, stage, rs_id))
 
         if getattr(self, 'run_filtlong', False):
             self.check_lr_readsets_no_duplicate_names()
@@ -217,9 +285,10 @@ class QCModule(WorkflowSuperClass):
                     "for NanoPlot to run on — it will be skipped."
                 )
             nanoplot_dir = os.path.join(self.dirs_dict["QC_DIR"], "nanoplot")
-            # NanoPlot writes into a per-readset directory (see the nanoplot rule); target the dir.
-            for rs_id in lr_readset_ids:
-                targets.append(os.path.join(nanoplot_dir, rs_id))
+            # NanoPlot writes into a per-stage, per-readset directory (see the nanoplot rule); target the dir.
+            for stage in self._qc_stages_for('nanoplot'):
+                for rs_id in lr_readset_ids:
+                    targets.append(os.path.join(nanoplot_dir, stage, rs_id))
 
         if getattr(self, 'run_multiqc', False):
             if run_fastqc_sr or run_nanoplot:

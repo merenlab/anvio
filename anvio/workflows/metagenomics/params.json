@@ -32,6 +32,8 @@
         "fastqc_sr": {
             "threads":          {"type": "int",  "default": 1},
             "run":              {"type": "bool", "default": false},
+            "run_on_raw":       {"type": "bool", "default": false},
+            "run_on_filtered":  {"type": "bool", "default": false},
             "additional_params":{"type": "str",  "default": ""}
         },
         "filtlong": {
@@ -47,6 +49,8 @@
         "nanoplot": {
             "threads":          {"type": "int",  "default": 2},
             "run":              {"type": "bool", "default": false},
+            "run_on_raw":       {"type": "bool", "default": false},
+            "run_on_filtered":  {"type": "bool", "default": false},
             "conda_yaml":       {"type": "str",  "default": ""},
             "conda_env":        {"type": "str",  "default": ""},
             "additional_params":{"type": "str",  "default": ""}
