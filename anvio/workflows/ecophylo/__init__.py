@@ -242,7 +242,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.bowtie2_additional_params = self.get_param_value_from_config(['run_metagenomics_workflow','bowtie2_additional_params'])
         self.anvi_profile_min_percent_identity = self.get_param_value_from_config(['run_metagenomics_workflow','anvi_profile_min_percent_identity'])
 
-        metagenomics_workflow_snakemake_additional_params_list = self.metagenomics_workflow_snakemake_additional_params.split(' ')
+        metagenomics_workflow_snakemake_additional_params_list = (self.metagenomics_workflow_snakemake_additional_params or '').split(' ')
 
         if self.clusterize_metagenomics_workflow:
             if not self.metagenomics_workflow_snakemake_additional_params:

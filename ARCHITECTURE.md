@@ -97,7 +97,7 @@ The core data model. Each analysis type has its own versioned SQLite database fi
 | `trnaseq` | 2 | `TRNASeqDatabase` | tRNA-seq profiling |
 | `genomestorage` | 7 | (HDF5-based) | Multi-genome storage for pangenomics |
 
-Version numbers live in `anvio/version.py`. Changing them without a corresponding migration script in `anvio/migrations/` will break existing databases.
+Version numbers live in `anvio/version.py`. Changing them without a corresponding migration script in `anvio/migrations/` will break existing databases (see note on implementation consdierations for migration scripts later in this document).
 
 ### 2. CLI Programs (`anvio/cli/`)
 
@@ -672,7 +672,7 @@ Users group splits into "bins" and name groups of bins "collections". Stored in 
 
 2. **The `self` table is a key-value store.** Every database has a `self` table. Access it with `db.get_meta_value('key')` and `db.set_meta_value('key', value)`. It holds DB type, version, creation date, and analysis-specific metadata.
 
-3. **Database version bumps require migration scripts.** Version numbers are in `anvio/version.py`. Any schema change that increments a version needs a migration script in `anvio/migrations/` and must be wired into `anvi-migrate`. Do not increment versions casually.
+3. **Database version bumps require migration scripts.** Version numbers are in `anvio/version.py`. Any schema change that increments a version needs a migration script in `anvio/migrations/` and must be wired into `anvi-migrate`. Do not increment versions casually, and prepare an appropriate migration script if you change the databse version. Extremely important note: try not to import anything from anvi'o API, and NEVER import anything from `anvio.tables`. The sole purpose of migration scripts is to make sure they will remain relevant to upgrade an ancient database step-by-step to its most modern forms. If migration scripts depend on database structures from the code itself, then when the code changes, they no longer can update old databases. Make migration scripts not dependent on anvi'o codebase as much as possible.
 
 4. **`ROWID` prepending.** For tables where the first column is not unique, `db.py` automatically prepends `ROWID as "entry_id"` when reading. This is controlled by `tables.is_table_requires_unique_entry_id(table_name)`. This means some tables get an implicit `entry_id` column on read that doesn't exist in the schema definition.
 

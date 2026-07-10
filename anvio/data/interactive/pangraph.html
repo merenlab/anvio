@@ -375,6 +375,26 @@
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="edge" name="edge" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-1 d-flex align-items-center">
+                        </div>
+                        <div class="col-9 d-flex align-items-center">
+                          Min line width (px)
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style="background-color: #e9ecef;" id="min_line_px" name="min_line_px" value=0.5 aria-label="..." data-toggle="tooltip" data-placement="top" title="Lines never render thinner than this many screen pixels, so they stay crisp at any zoom instead of collapsing into sub-pixel antialiasing. Otherwise lines scale normally with the graph. Set to 0 to disable the floor.">
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-1 d-flex align-items-center">
+                          <div class="form-switch d-flex">
+                            <input class="" type="checkbox" id="flexhighperf" name="flexhighperf" aria-label="..." data-toggle="tooltip" data-placement="top" title="Skips the per-zoom minimum-line-width adjustment for faster pan/zoom on very large graphs. When on, lines scale normally and may collapse into sub-pixel artifacts when the whole graph is fit to the screen.">
+                          </div>
+                        </div>
+                        <div class="col-11 d-flex align-items-center">
+                          High-performance mode (skip min line width, faster pan/zoom)
+                        </div>
+                      </div>
                     </div>
 
                     <span class="settings-secondary-header mb-3 mt-3">Region Labels</span>
@@ -668,6 +688,16 @@
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="num_position" name="num_position" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-1">
+                        </div>
+                        <div class="col-9 d-flex align-items-center">
+                          Position tick font size
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="position_tick_font_size" name="position_tick_font_size" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                     </div>
