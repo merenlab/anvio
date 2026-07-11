@@ -292,10 +292,10 @@ class QCModule(WorkflowSuperClass):
                     "for FastQC to run on — it will be skipped."
                 )
             fastqc_dir = os.path.join(self.dirs_dict["QC_DIR"], "fastqc")
-            # FastQC writes into a per-stage, per-readset directory (see the fastqc_sr rule); target the dir.
+            # FastQC writes into a per-readset, per-stage directory (see the fastqc_sr rule); target the dir.
             for stage in self._qc_stages_for('fastqc_sr'):
                 for rs_id in sr_readset_ids:
-                    targets.append(os.path.join(fastqc_dir, stage, rs_id))
+                    targets.append(os.path.join(fastqc_dir, rs_id, stage))
 
         if getattr(self, 'run_filtlong', False):
             # NB: the duplicate-read-name validation is NOT done here — it runs as the
@@ -313,10 +313,10 @@ class QCModule(WorkflowSuperClass):
                     "for NanoPlot to run on — it will be skipped."
                 )
             nanoplot_dir = os.path.join(self.dirs_dict["QC_DIR"], "nanoplot")
-            # NanoPlot writes into a per-stage, per-readset directory (see the nanoplot rule); target the dir.
+            # NanoPlot writes into a per-readset, per-stage directory (see the nanoplot rule); target the dir.
             for stage in self._qc_stages_for('nanoplot'):
                 for rs_id in lr_readset_ids:
-                    targets.append(os.path.join(nanoplot_dir, stage, rs_id))
+                    targets.append(os.path.join(nanoplot_dir, rs_id, stage))
 
         if getattr(self, 'run_multiqc', False):
             if run_fastqc_sr or run_nanoplot:

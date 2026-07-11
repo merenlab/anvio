@@ -22,17 +22,19 @@ rule nanoplot:
     The {stage} wildcard selects which reads to assess: 'raw' for the readset's original long
     reads, or 'filtered' for the Filtlong output (see M.get_nanoplot_input_files()). Which stages
     actually run is controlled by the 'run_on_raw' / 'run_on_filtered' flags in the nanoplot config
-    (validated in QCModule.sanity_check_qc_stage_flags). The output is a per-stage, per-readset
-    directory: NanoPlot writes its report, plots and NanoStats there, and MultiQC (if enabled)
-    aggregates the NanoStats by scanning the parent nanoplot directory. NanoPlot needs no
+    (validated in QCModule.sanity_check_qc_stage_flags). The output is a per-readset, per-stage
+    directory ({readset}/{stage}): NanoPlot writes its report, plots and NanoStats there, and
+    MultiQC (if enabled) aggregates the NanoStats by scanning the parent nanoplot directory. The
+    {readset}/{stage} nesting (readset first) makes MultiQC name samples '<readset> | <stage>' so
+    a sample's raw and filtered reports sort next to each other. NanoPlot needs no
     sequencing-technology preset, and must be available on $PATH or via conda_yaml/conda_env.
     """
     input:
         reads=lambda wildcards: M.get_nanoplot_input_files(wildcards.readset, wildcards.stage),
     output:
-        report_dir=directory(os.path.join(nanoplot_output_dir, "{stage}", "{readset}")),
+        report_dir=directory(os.path.join(nanoplot_output_dir, "{readset}", "{stage}")),
     log:
-        rule_log("nanoplot", "{stage}-{readset}-nanoplot"),
+        rule_log("nanoplot", "{readset}-{stage}-nanoplot"),
     wildcard_constraints:
         readset=LR_RS_RE,
         stage="raw|filtered",

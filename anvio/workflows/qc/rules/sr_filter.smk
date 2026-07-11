@@ -235,17 +235,19 @@ if run_fastqc_sr:
         M.get_fastqc_sr_input_files()); depending on the filtered paths also creates the DAG edge
         that forces iu_filter_quality_minoche / gzip_fastqs to finish first. Which stages actually
         run is controlled by the 'run_on_raw' / 'run_on_filtered' flags in the fastqc_sr config
-        (validated in QCModule.sanity_check_qc_stage_flags). The output is a per-stage, per-readset
+        (validated in QCModule.sanity_check_qc_stage_flags). The output is a per-readset, per-stage
         directory rather than named files, because FastQC derives report filenames from the input
         basenames (which vary for raw / multi-file readsets); we let it write whatever it produces
-        into {stage}/{readset}/ and MultiQC aggregates by scanning the parent fastqc directory.
+        into {readset}/{stage}/ and MultiQC aggregates by scanning the parent fastqc directory. The
+        {readset}/{stage} nesting (readset first) makes MultiQC name samples '<readset> | <stage>'
+        so a sample's raw and filtered reports sort next to each other.
         """
         input:
             reads=lambda wildcards: M.get_fastqc_sr_input_files(wildcards.readset, wildcards.stage),
         output:
-            report_dir=directory(os.path.join(fastqc_sr_output_dir, "{stage}", "{readset}")),
+            report_dir=directory(os.path.join(fastqc_sr_output_dir, "{readset}", "{stage}")),
         log:
-            rule_log("fastqc_sr", "{stage}-{readset}-fastqc_sr"),
+            rule_log("fastqc_sr", "{readset}-{stage}-fastqc_sr"),
         wildcard_constraints:
             readset=SR_RS_RE,
             stage="raw|filtered",

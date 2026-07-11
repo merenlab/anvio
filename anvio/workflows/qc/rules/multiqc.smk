@@ -19,25 +19,25 @@ def get_multiqc_inputs(wildcards):
 
     if run_fastqc_sr:
         fastqc_dir = os.path.join(dirs_dict["QC_DIR"], "fastqc")
-        # fastqc_sr writes reports into a per-stage, per-readset directory; depend on those directories.
+        # fastqc_sr writes reports into a per-readset, per-stage directory; depend on those directories.
         for stage in M._qc_stages_for("fastqc_sr"):
             for rs in SR_READSETS:
-                inputs.append(os.path.join(fastqc_dir, stage, rs))
+                inputs.append(os.path.join(fastqc_dir, rs, stage))
 
     if run_nanoplot:
         nanoplot_dir = os.path.join(dirs_dict["QC_DIR"], "nanoplot")
-        # nanoplot writes reports (incl. NanoStats) into a per-stage, per-readset directory; depend on them.
+        # nanoplot writes reports (incl. NanoStats) into a per-readset, per-stage directory; depend on them.
         for stage in M._qc_stages_for("nanoplot"):
             for rs in LR_READSETS:
-                inputs.append(os.path.join(nanoplot_dir, stage, rs))
+                inputs.append(os.path.join(nanoplot_dir, rs, stage))
 
     return inputs
 
 
 # get_multiqc_inputs (above) lists specific FILES for Snakemake DAG tracking.
 # _multiqc_input_dirs lists the same sources as DIRECTORIES for the MultiQC CLI.
-# Both must be updated together whenever a new QC tool is added. Passing the per-stage
-# parent (fastqc/ or nanoplot/) lets MultiQC recurse into both raw/ and filtered/ so a
+# Both must be updated together whenever a new QC tool is added. Passing the top-level
+# parent (fastqc/ or nanoplot/) lets MultiQC recurse into every <readset>/<stage> report so a
 # before/after comparison lands in a single report.
 _multiqc_input_dirs = []
 if run_fastqc_sr:
@@ -65,11 +65,15 @@ rule multiqc:
         indirs=" ".join(_multiqc_input_dirs),
         additional_params=M.get_param_value_from_config(["multiqc", "additional_params"]),
     shell:
-        # --dirs/--dirs-depth 2 prefixes each sample name with its <stage>/<readset> directories.
-        # This is essential for the before/after comparison: NanoPlot writes a fixed 'NanoStats.txt'
-        # in every report dir, so without it MultiQC would collapse the raw and filtered reports of
-        # the same readset into one colliding sample. It also gives readable 'raw | S1' / 'filtered | S1'
-        # labels for all tools. Users can still override naming via multiqc additional_params.
+        # --dirs/--dirs-depth 2 prefixes each sample name with its <readset>/<stage> directories,
+        # yielding '<readset> | <stage>' (e.g. 'S1 | raw', 'S1 | filtered'). Two reasons this matters:
+        #   1) NanoPlot writes a fixed 'NanoStats.txt' in every report dir, so without directory
+        #      prefixing MultiQC would collapse a readset's raw and filtered reports into one
+        #      colliding sample.
+        #   2) With the readset first, alphabetical sorting keeps a sample's raw and filtered rows
+        #      next to each other (they'd be split apart if the stage led the name).
+        # Within a sample the rows sort alphabetically, so 'filtered' lands just above 'raw'.
+        # Users can still override naming via multiqc additional_params.
         r"""
         {params.env_prefix} multiqc {params.indirs} --dirs --dirs-depth 2 -o {params.outdir} --force {params.additional_params} >> {log} 2>&1
         """
