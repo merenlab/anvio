@@ -247,10 +247,37 @@ class QCModule(WorkflowSuperClass):
         self._check_stage_flags('nanoplot', 'NanoPlot', 'filtlong', 'Filtlong long-read filtering')
         self._check_stage_flags('fastqc_sr', 'FastQC', 'iu_filter_quality_minoche', 'illumina-utils short-read quality filtering')
 
+    def sanity_check_filtlong_has_filtering(self):
+        """Raise ConfigError if filtlong is enabled but no filtering criteria are given.
+
+        Filtlong is a filter: with no criteria it has nothing to do (it errors out, or at best
+        copies the reads through unchanged), so 'run: true' without any parameters is always a
+        mistake. Accept any of the explicit length/bases params, or a non-empty additional_params
+        (where filtlong's other filters such as --keep_percent / --min_mean_q are passed).
+        """
+        if self.get_param_value_from_config(['filtlong', 'run']) != True:
+            return
+
+        explicit = [self.get_param_value_from_config(['filtlong', k])
+                    for k in ['--min-length', '--max-length', '--target-bases']]
+        additional = self.get_param_value_from_config(['filtlong', 'additional_params'])
+
+        if not any(explicit) and not (additional and str(additional).strip()):
+            raise ConfigError(
+                "You set 'filtlong' → run: true, but you didn't give it anything to filter on. "
+                "Filtlong is a filter, so with no criteria it has nothing to do (it will error out "
+                "or just copy your reads through unchanged). Please set at least one of "
+                "'--min-length', '--max-length', or '--target-bases' in the 'filtlong' section of "
+                "your config — or, for filtlong's other options (e.g. --keep_percent, --min_mean_q), "
+                "put them in 'additional_params'. If you don't actually want to filter your long "
+                "reads, set 'filtlong' → run: false instead."
+            )
+
     def get_qc_target_files(self):
         """Return the list of all QC target files based on enabled options."""
         self.check_qc_program_dependencies()
         self.sanity_check_qc_stage_flags()
+        self.sanity_check_filtlong_has_filtering()
         targets = []
 
         if getattr(self, 'run_qc', False):
