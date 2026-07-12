@@ -60,6 +60,6 @@ In contrast, here is the presence/absence report for the same data:
 
 ### Per-population copy number of functions across metagenomes
 
-When the program that generates this file is run with the `--per-population-copy-number` flag, anvi'o additionally reports the per-population copy number (PPCN) of each function. In this file, the frequency of a function in a given metagenome is divided by the number of populations estimated to be present in that metagenome (which anvi'o estimates from single-copy core genes). This normalization makes the values comparable across metagenomes that describe communities of different sizes.
+When the program that generates this file is run with the `--add-per-population-copy-number` flag, anvi'o additionally reports the per-population copy number (PPCN) of each function. In this file, the frequency of a function in a given metagenome is divided by the number of populations estimated to be present in that metagenome (which anvi'o estimates from single-copy core genes). This normalization makes the values comparable across metagenomes that describe communities of different sizes.
 
 The layout is identical to the frequency file, except that the values are per-population copy numbers rather than raw counts. If anvi'o was unable to estimate the number of populations for a given metagenome, its values in this file will be reported as `NA`.

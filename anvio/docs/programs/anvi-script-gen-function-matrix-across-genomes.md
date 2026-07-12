@@ -27,13 +27,13 @@ You can always learn about which functions are in a given %(contigs-db)s using t
 
 ## Per-population copy number normalization for metagenomic assemblies
 
-If we want to get an idea of differences in functional capacity across different metagenomic assemblies (or long-read sequence metagenomes) but, for some good reasons, we do not have MAGs from these assemblies, or we want to make sure that we make use of all the sequence data we have and not only those reads that are used to reconstruct genomes, we can't just look at the distribution of functions across genomes, because all functions and metabolic pathways will most likely occur nearly everywhere, at least in one population, and population numbers may differ dramatically across samples, and just counting the occurrence of a given function would not provide ecologically meaningful insights. To overcome this, Iva Veseli introduced the [per-population copy number](https://elifesciences.org/reviewed-preprints/89862) normalization. Based on the same principle, adding the flag `--per-population-copy-number` allows you to normalize individual functional annotations within a metagenomic assembly using the SCG-based estimate of population numbers within the sample.
+If we want to get an idea of differences in functional capacity across different metagenomic assemblies (or long-read sequence metagenomes) but, for some good reasons, we do not have MAGs from these assemblies, or we want to make sure that we make use of all the sequence data we have and not only those reads that are used to reconstruct genomes, we can't just look at the distribution of functions across genomes, because all functions and metabolic pathways will most likely occur nearly everywhere, at least in one population, and population numbers may differ dramatically across samples, and just counting the occurrence of a given function would not provide ecologically meaningful insights. To overcome this, Iva Veseli introduced the [per-population copy number](https://elifesciences.org/reviewed-preprints/89862) normalization. Based on the same principle, adding the flag `--add-per-population-copy-number` allows you to normalize individual functional annotations within a metagenomic assembly using the SCG-based estimate of population numbers within the sample.
 
 {{ codestart }}
 anvi-script-gen-function-matrix-across-genomes -e %(external-genomes)s \
                                                --annotation-source COG20_FUNCTION \
                                                --output-file-prefix MY-METAGENOMES \
-                                               --per-population-copy-number
+                                               --add-per-population-copy-number
 {{ codestop }}
 
 Adding the flag generates an additional output file of type %(functions-across-genomes-txt)s:

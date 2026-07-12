@@ -1329,8 +1329,8 @@ D = {
                      "anvi'o will only use the best hit for any gene that has multiple hits by default. But you can turn "
                      "that behavior off explicitly and show anvi'o who is the boss by using this flag."}
                 ),
-    'per-population-copy-number': (
-            ['--per-population-copy-number'],
+    'add-per-population-copy-number': (
+            ['--add-per-population-copy-number'],
             {'default': False,
              'action': 'store_true',
              'help': "Request an additional output matrix that reports the per-population copy number (PPCN) of each "

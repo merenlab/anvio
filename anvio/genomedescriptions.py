@@ -998,7 +998,7 @@ class AggregateFunctions:
         self.functional_occurrence_table_output_path = A('functional_occurrence_table_output')
         self.functional_enrichment_output_path = A('output_file')
         self.qlambda = A('qlambda')
-        self.report_per_population_copy_number = A('per_population_copy_number') or False
+        self.report_per_population_copy_number = A('add_per_population_copy_number') or False
 
         # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
         # these are some primary data structures this class reports
@@ -1562,7 +1562,7 @@ class AggregateFunctions:
 
         Every output matrix keeps its descriptive columns (the internal `key`, the function name, and
         optionally the function accession ids) up front, followed by one column per (meta)genome. When using
-        the flag `--per-population-copy-number`, the program reports an additional matrix in which the
+        the flag `--add-per-population-copy-number`, the program reports an additional matrix in which the
         frequency of each function in a given metagenome is normalized by the number of populations
         estimated for that metagenome (see `_init_num_populations_per_layer`).
         """
