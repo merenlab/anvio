@@ -2769,6 +2769,56 @@ class PangenomeGraphUserInterface {
         });
     }
 
+    // Wire up settings-panel tooltips with Tippy.js (the tooltip engine already
+    // used for node hovers). The markup carries Bootstrap-style
+    // data-toggle="tooltip" + title attributes, but Bootstrap 4 tooltips need
+    // Popper v1 which this view doesn't load, so they never showed. Worse, the
+    // title lives on the input widget, not on the descriptive text label, so
+    // hovering the label showed nothing. Here we make the text label the hover
+    // target while keeping the widget hoverable too, and strip the native title
+    // so the browser doesn't draw a duplicate tooltip.
+    initialize_settings_tooltips() {
+        document.querySelectorAll('#settings-content .col-12.d-flex').forEach(row => {
+            // The descriptive text label for the row (col-9/col-11 for most
+            // settings; col-5 for the per-layer min/max rows).
+            const label = row.querySelector('.col-9, .col-11, .col-5');
+
+            // Read each widget's title, then strip title/data-toggle so no native
+            // browser tooltip (and no stray Bootstrap handler) can double up. Most
+            // widgets carry data-toggle="tooltip"; a few (e.g. the search-hit
+            // color/outline controls) use a bare title attribute — handle both.
+            const items = [...row.querySelectorAll('[data-toggle="tooltip"], [title]')].map(el => {
+                const title = (el.getAttribute('title') || '').trim();
+                el.removeAttribute('title');
+                el.removeAttribute('data-toggle');
+                // Treat empty and the literal "..." placeholder as "no tooltip".
+                return { el, title: (title === '...' ? '' : title) };
+            }).filter(it => it.title);
+
+            if (!items.length) return;
+
+            // The value box (col-2) is the row's primary control; its tooltip is
+            // the one we also surface when hovering the text label. Fall back to
+            // the first real widget (e.g. toggle-only rows with no value box).
+            const primary = items.find(it => it.el.closest('.col-2')) || items[0];
+
+            items.forEach(({ el, title }) => {
+                const on_label = (el === primary.el && label);
+                tippy(on_label ? label : el, {
+                    content: title,
+                    // When there is a label, anchor the tooltip to it (so it
+                    // appears under the cursor on the text) but trigger from both
+                    // the label and the widget.
+                    triggerTarget: on_label ? [label, el] : el,
+                    theme: 'light',
+                    placement: 'top',
+                    arrow: false,
+                    duration: 0,
+                });
+            });
+        });
+    }
+
     // Initialize colpick on static (HTML-declared) color pickers.
     // Per-genome pickers are initialized individually in the genome loop.
     initialize_colorpickers() {
@@ -3523,6 +3573,9 @@ class PangenomeGraphUserInterface {
         // Initialize colpick on all static color pickers (per-genome pickers are
         // initialized individually as they are created in the genome loop above).
         this.initialize_colorpickers();
+
+        // Tooltips for the settings panel (labels + widgets), via Tippy.js.
+        this.initialize_settings_tooltips();
 
         $("#redraw").removeClass("disabled");
         $("#settings-content").removeClass("settings-loading").addClass("settings-loading-cleared");
