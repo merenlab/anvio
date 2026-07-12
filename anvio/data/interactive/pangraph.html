@@ -225,7 +225,7 @@
                           Min number of sequential nodes to group
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="condtr" name="condtr" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Visual width of condensed groups">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="condtr" name="condtr" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Minimum run length for grouping: when a single path has at least this many consecutive nodes, they are collapsed into one group node for a less cluttered view">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -322,7 +322,7 @@
 
                       <div class="col-12 d-flex mb-1 py-1">
                         <div class="col-1 d-flex align-items-center">
-                          <input type="checkbox" id="flexsaturation" name="flexsaturation" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
+                          <input type="checkbox" id="flexsaturation" name="flexsaturation" aria-label="..." data-toggle="tooltip" data-placement="top" title="Draws nodes and edges seen in fewer genomes with lighter, more transparent colors, so common (core) elements stand out from rare (accessory) ones" checked>
                         </div>
                         <div class="col-11 d-flex align-items-center">
                             Fade by genome prevalence (rare nodes and edges appear lighter)
@@ -340,7 +340,7 @@
                           Horizontal node spacing
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="distx" name="distx" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="distx" name="distx" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Horizontal distance between neighboring nodes; larger values stretch the graph out along its length">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -350,7 +350,7 @@
                           Vertical node spacing
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="disty" name="disty" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="disty" name="disty" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Vertical distance between stacked paths; larger values increase the gap between parallel nodes">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -360,7 +360,7 @@
                           Node radius
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="size" name="size" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="size" name="size" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Radius of each node circle, in pixels">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -370,7 +370,7 @@
                           Node border width
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="circ" name="circ" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="circ" name="circ" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Thickness of the outline drawn around each node, in pixels">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -380,7 +380,7 @@
                           Edge width
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="edge" name="edge" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="edge" name="edge" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Base line width of the edges connecting nodes, in pixels">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -548,20 +548,20 @@
                       <div class="col-12 d-flex mb-1">
                         <div class="col-1 d-flex align-items-center">
                           <div class="form-switch d-flex">
-                            <input class="" type="checkbox" id="flexarrow" name="flexarrow" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
+                            <input class="" type="checkbox" id="flexarrow" name="flexarrow" aria-label="..." data-toggle="tooltip" data-placement="top" title="Shows or hides the orientation-arrow overlay that marks each genome's reading direction" checked>
                           </div>
                         </div>
                         <div class="col-9 d-flex align-items-center">
                           Genome orientation arrow height
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="arrow" name="arrow" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="arrow" name="arrow" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Height of the genome orientation-arrow overlay, in pixels">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
                         <div class="col-1 d-flex align-items-center">
                           <div class="form-switch d-flex">
-                            <input class="" type="checkbox" id="flexglobalbackbone" name="flexglobalbackbone" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
+                            <input class="" type="checkbox" id="flexglobalbackbone" name="flexglobalbackbone" aria-label="..." data-toggle="tooltip" data-placement="top" title="Shows or hides the backbone/variable-region overlay that colors conserved versus variable regions" checked>
                           </div>
                         </div>
                         <div class="col-9 d-flex align-items-center">
@@ -617,7 +617,7 @@
 
                       <div class="col-12 d-flex mb-1 py-1">
                         <div class="col-1 d-flex align-items-center">
-                          <input type="checkbox" id="flextree" name="flextree" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">
+                          <input type="checkbox" id="flextree" name="flextree" aria-label="..." data-toggle="tooltip" data-placement="top" title="Shows or hides the phylogenetic tree alongside the graph (available only when the pangenome includes a tree)">
                         </div>
                         <div class="col-11 d-flex align-items-center">
                           Show phylogenetic tree
@@ -630,7 +630,7 @@
                           Tree arm length
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="tree_length" name="tree_length" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="tree_length" name="tree_length" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Radial depth (arm length) of the phylogenetic tree drawn alongside the graph">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -640,7 +640,7 @@
                           Tree distance
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="tree_offset" name="tree_offset" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="tree_offset" name="tree_offset" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Distance between the phylogenetic tree and the graph">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -650,7 +650,7 @@
                           Branch line width
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="tree_thickness" name="tree_thickness" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="tree_thickness" name="tree_thickness" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Thickness of the phylogenetic tree's branch lines, in pixels">
                         </div>
                       </div>
                     </div>
@@ -665,7 +665,7 @@
                           Genome label size
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="label" name="label" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="label" name="label" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Font size of the genome and orientation labels, in pixels">
                         </div>
                       </div>
                     <div class="col-12 d-flex mb-1">
@@ -675,7 +675,7 @@
                           Label distance
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="label_offset" name="label_offset" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="label_offset" name="label_offset" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Distance of the genome labels from the graph">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -685,7 +685,7 @@
                           Search hit marker size
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="search_hit" name="search_hit" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="search_hit" name="search_hit" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Height of the markers drawn on genome tracks to flag search hits">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -695,7 +695,7 @@
                           Inner margin
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="inner_margin" name="inner_margin" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="inner_margin" name="inner_margin" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Blank space reserved at the center of the circular layout, in pixels">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -705,7 +705,7 @@
                           Outer margin
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="outer_margin" name="outer_margin" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="outer_margin" name="outer_margin" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Blank space reserved around the outer edge of the layout, in pixels">
                         </div>
                       </div>
                     <div class="col-12 d-flex mb-1">
@@ -715,7 +715,7 @@
                           Position tick count
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="num_position" name="num_position" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="num_position" name="num_position" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Number of position tick marks drawn around the graph">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -725,7 +725,7 @@
                           Position tick font size
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="position_tick_font_size" name="position_tick_font_size" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="position_tick_font_size" name="position_tick_font_size" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Font size of the position tick labels, in pixels">
                         </div>
                       </div>
                     </div>

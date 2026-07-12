@@ -3087,7 +3087,7 @@ class PangenomeGraphUserInterface {
                 var element = $('<div class="col-12 d-flex mb-1"></div>').append(
                     $('<div class="col-1 d-flex align-items-center"></div>').append(
                         $('<div class="form-switch d-flex"></div>').append(
-                            $('<input class="" type="checkbox" id="flex' + layer + '" name="flex' + layer + '" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip">')
+                            $('<input class="" type="checkbox" id="flex' + layer + '" name="flex' + layer + '" aria-label="..." data-toggle="tooltip" data-placement="top" title="Show or hide this per-path data overlay layer">')
                         )
                     )
                 ).append(
@@ -3096,15 +3096,15 @@ class PangenomeGraphUserInterface {
                     )
                 ).append(
                     $('<div class="d-flex col-2"></div>').append(
-                        $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + layer + '_min" name="' + layer + '_min" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">')
+                        $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + layer + '_min" name="' + layer + '_min" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Lower bound of this layer\'s value-to-color scale; values at or below it map to the low (green) color">')
                     )
                 ).append(
                     $('<div class="d-flex col-2"></div>').append(
-                        $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + layer + '_max" name="' + layer + '_max" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">')
+                        $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + layer + '_max" name="' + layer + '_max" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Upper bound of this layer\'s value-to-color scale; values at or above it map to the high (red) color">')
                     )
                 ).append(
                     $('<div class="d-flex col-2"></div>').append(
-                        $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + layer + '" name="' + layer + '" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">')
+                        $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + layer + '" name="' + layer + '" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Height of this overlay layer\'s track, in pixels">')
                     )
                 );
 
@@ -3190,7 +3190,7 @@ class PangenomeGraphUserInterface {
                 $('<div class="col-12"></div>').append(
                     $('<div class="row align-items-center"></div>').append(
                         $('<div class="col-2 mb-1"></div>').append(
-                            $('<input class="" type="checkbox" id="flex' + annotation_source + '" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+                            $('<input class="" type="checkbox" id="flex' + annotation_source + '" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Include this annotation source when searching functions">')
                         )
                     ).append(  
                         $('<div class="col-8 mb-1"></div>').append(
@@ -3225,7 +3225,7 @@ class PangenomeGraphUserInterface {
             $('<div class="col-12"></div>').append(
                 $('<div class="row align-items-center"></div>').append(
                     $('<div class="col-2 mb-1"></div>').append(
-                        $('<input class="" type="checkbox" id="minposition" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+                        $('<input class="" type="checkbox" id="minposition" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Keep only nodes whose graph position is at least the value entered on the right">')
                     )
                 ).append(  
                     $('<div class="col-8 mb-1"></div>').append(
@@ -3237,7 +3237,7 @@ class PangenomeGraphUserInterface {
                     )  
                 ).append(
                     $('<div class="col-2 mb-1"></div>').append(
-                        $('<input class="" type="checkbox" id="maxposition" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+                        $('<input class="" type="checkbox" id="maxposition" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Keep only nodes whose graph position is at most the value entered on the right">')
                     )
                 ).append( 
                     $('<div class="col-8 mb-1"></div>').append(
@@ -3257,7 +3257,7 @@ class PangenomeGraphUserInterface {
                     $('<div class="col-12"></div>').append(
                         $('<div class="row align-items-center"></div>').append(
                             $('<div class="col-2 mb-1"></div>').append(
-                                $('<input class="" type="checkbox" id="min' + layer + '" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+                                $('<input class="" type="checkbox" id="min' + layer + '" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Keep only nodes whose value for this layer is at least the value entered on the right">')
                             )
                         ).append(  
                             $('<div class="col-8 mb-1"></div>').append(
@@ -3269,7 +3269,7 @@ class PangenomeGraphUserInterface {
                             )  
                         ).append(
                             $('<div class="col-2 mb-1"></div>').append(
-                                $('<input class="" type="checkbox" id="max' + layer + '" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+                                $('<input class="" type="checkbox" id="max' + layer + '" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Keep only nodes whose value for this layer is at most the value entered on the right">')
                             )
                         ).append( 
                             $('<div class="col-8 mb-1"></div>').append(
