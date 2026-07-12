@@ -76,6 +76,7 @@ dependencies = [
     "biopython",
     "reportlab",
     "pymupdf",
+    "pytrf",
     "tomli==2.2.1"
 ]
 
@@ -184,6 +185,7 @@ Contact = "https://anvio.org/people"
 "anvi-import-state"                                 = "anvio.cli.import_state:main"
 "anvi-import-taxonomy-for-genes"                    = "anvio.cli.import_taxonomy_for_genes:main"
 "anvi-import-taxonomy-for-layers"                   = "anvio.cli.import_taxonomy_for_layers:main"
+"anvi-index-table"                                  = "anvio.cli.index_table:main"
 "anvi-init-bam"                                     = "anvio.cli.init_bam:main"
 "anvi-inspect"                                      = "anvio.cli.inspect:main"
 "anvi-integrate-trnaseq"                            = "anvio.cli.integrate_trnaseq:main"
@@ -206,6 +208,7 @@ Contact = "https://anvio.org/people"
 "anvi-reaction-network"                             = "anvio.cli.reaction_network:main"
 "anvi-refine"                                       = "anvio.cli.refine:main"
 "anvi-rename-bins"                                  = "anvio.cli.rename_bins:main"
+"anvi-report-dgrs"                                  = "anvio.cli.report_dgrs:main"
 "anvi-reorient-genomes"                             = "anvio.cli.reorient_genomes:main"
 "anvi-report-circularity"                           = "anvio.cli.report_circularity:main"
 "anvi-report-inversions"                            = "anvio.cli.report_inversions:main"
