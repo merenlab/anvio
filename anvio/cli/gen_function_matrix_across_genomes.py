@@ -17,7 +17,7 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__authors__ = ['meren']
+__authors__ = ['meren', 'jessika-fuessel']
 __requires__ = ['functions', 'external-genomes']
 __can_use__ = ['internal-genomes', 'genomes-storage-db', 'groups-txt']
 __provides__ = ['functions-across-genomes-txt']
@@ -80,6 +80,15 @@ def get_args():
     groupC.add_argument('--min-occurrence', metavar="NUM GENOMES", default=1, help=("The minimum number of occurrence of any "
                                 "given function accross genomes. If you set a value, those functions that occur in less number "
                                 "of genomes will be excluded."), type=int)
+
+    groupD = parser.add_argument_group('PER-POPULATION COPY NUMBER', "If you are working with metagenomic assemblies, the raw frequency of a "
+                                "function will scale with the number of populations in each assembly, which makes it difficult to "
+                                "compare functions across samples of different community sizes. If you are simply looking at "
+                                "presence/absence, mostly everything will be present everywhere when looking at metagenomic "
+                                "assemblies as a whole. To account for this, anvi'o can "
+                                "report an additional matrix in which function frequencies are normalized by the estimated number "
+                                "of populations in each metagenome (an approach known as per-population copy number, or PPCN).")
+    groupD.add_argument(*anvio.A('add-per-population-copy-number'), **anvio.K('add-per-population-copy-number'))
 
     groupE = parser.add_argument_group('GENES', "By default, anvi'o will look for genes in contigs databases that are identified "
                                 "by `pyrodigal-gv`. But if you have generated your contigs databse with external gene calls, or have "
