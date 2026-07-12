@@ -19,6 +19,7 @@ import anvio.db as db
 import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
+import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 import anvio.filesnpaths as filesnpaths
@@ -997,6 +998,7 @@ class AggregateFunctions:
         self.functional_occurrence_table_output_path = A('functional_occurrence_table_output')
         self.functional_enrichment_output_path = A('output_file')
         self.qlambda = A('qlambda')
+        self.report_per_population_copy_number = A('per_population_copy_number') or False
 
         # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
         # these are some primary data structures this class reports
@@ -1045,6 +1047,15 @@ class AggregateFunctions:
         self.layer_names_from_internal_genomes = []
         self.layer_names_from_external_genomes = []
         self.layer_names_from_genomes_storage = []
+
+        # a lookup of the contigs database path for each layer that comes from an internal or external
+        # genome. we keep track of these since they are our only route to the single-copy core genes
+        # that are needed to estimate the number of populations for the per-population copy number output.
+        self.layer_name_to_contigs_db_path = {}
+
+        # this dict will hold the estimated number of populations for each layer when the user asks for
+        # the per-population copy number output through `self.report_per_population_copy_number`.
+        self.num_populations_per_layer = {}
 
         # if there are 'groups' defined through the `layer_groups` variable
         # or through a `self.layer_groups_input_file_path`, this class will
@@ -1120,6 +1131,9 @@ class AggregateFunctions:
             self.run.info(f"Genome names found (n={len(self.layer_names_considered)})", ' '.join(self.layer_names_considered))
             sys.exit()
 
+        if self.report_per_population_copy_number:
+            self._init_num_populations_per_layer()
+
         self._populate_group_dicts() # <-- this has to be called after all genomes are initialized
 
         if self.min_occurrence:
@@ -1182,6 +1196,13 @@ class AggregateFunctions:
 
         if not self.external_genomes_path and not self.internal_genomes_path and not self.genomes_storage_path:
             raise ConfigError("You must provide at least one source of genomes to this class :/")
+
+        if self.report_per_population_copy_number:
+            if self.internal_genomes_path or self.genomes_storage_path or not self.external_genomes_path:
+                raise ConfigError("It seems like you didn't provide an external-genomes file, but instead an "
+                                  "internal-genomes file or a genomes-storage database? No need to normalize those "
+                                  "based on an estimated population number, when you can just count the number of "
+                                  "genomes in your collection rather than relying on an SCG-based estimate.")
 
         if self.min_occurrence and not isinstance(self.min_occurrence, int):
             raise ConfigError("Obviously, --min-occurrence must be an integer.")
@@ -1353,6 +1374,10 @@ class AggregateFunctions:
         for genome_name in g.genomes:
             self.check_layer_names([genome_name])
 
+            # remember where this genome lives on disk so we can later reach its single-copy core genes
+            # if the user has asked for the per-population copy number output.
+            self.layer_name_to_contigs_db_path[genome_name] = g.genomes[genome_name]['contigs_db_path']
+
             gene_functions_in_genome_dict, _, _= g.get_functions_and_sequences_dicts_from_contigs_db(genome_name, requested_source_list=[self.function_annotation_source], return_only_functions=True)
             # reminder, an entry in gene_functions_in_genome_dict looks like this:
             # 2985: {'COG20_PATHWAY': ('COG0073!!!COG0143', 'Aminoacyl-tRNA synthetases', 0)}
@@ -1383,6 +1408,70 @@ class AggregateFunctions:
             genome_name, accession, function = entry['genome_name'], entry['accession'], entry['function']
 
             self.update_combined_functions_dicts(genome_name, accession, function)
+
+
+    def _init_num_populations_per_layer(self):
+        """Estimate the number of populations in each layer from its single-copy core genes.
+
+        This function fills in `self.num_populations_per_layer`, which is later used to turn function
+        frequencies into per-population copy number values. The number of populations for a given
+        metagenome is estimated from its single-copy core gene (SCG) annotations following the same
+        logic as `anvi-display-contigs-stats`: for each domain-specific SCG set, anvi'o takes the mode
+        of the number of hits across all SCGs in the set, and sums these per-domain estimates across all
+        domains of life it has SCGs for (Bacteria, Archaea, and Eukarya).
+
+        A layer whose single-copy core genes are too sparse to yield an estimate will be assigned a
+        population size of zero, which downstream reporting will render as a `NA` value rather than
+        dividing by zero.
+        """
+
+        # this should never happen thanks to the sanity checks, but just to be safe: every layer we are
+        # about to work with must have a contigs database associated with it.
+        layers_without_contigs_db = [layer for layer in self.layer_names_considered if layer not in self.layer_name_to_contigs_db_path]
+        if len(layers_without_contigs_db):
+            raise ConfigError("We are very sorry, it seems anvi'o cannot link your assembly to a contigs-db even "
+                              "though it should. This is most likely a bug, please contact us so we can fix this and "
+                              "you can continue your explorations!")
+
+        genomes_missing_scgs = set([])
+
+        self.progress.new("Estimating the number of populations", progress_total_items=len(self.layer_name_to_contigs_db_path))
+        for layer_name in sorted(self.layer_name_to_contigs_db_path.keys()):
+            self.progress.increment()
+            self.progress.update(layer_name)
+
+            num_genomes_estimator = hmmops.NumGenomesEstimator(self.layer_name_to_contigs_db_path[layer_name])
+
+            # a (meta)genome with no single-copy core gene annotations at all is a show stopper, since there
+            # is no way to estimate its number of populations. we collect these to report them all at once.
+            if not len(num_genomes_estimator.estimates_dict):
+                genomes_missing_scgs.add(layer_name)
+                continue
+
+            # sum the per-domain population estimates across all domains of life anvi'o has SCGs for:
+            num_populations, _ = num_genomes_estimator.num_genomes()
+            self.num_populations_per_layer[layer_name] = num_populations
+        self.progress.end()
+
+        if len(genomes_missing_scgs):
+            raise ConfigError(f"This is very unfortunate, but it seems there are no SCGs to work with here. Are you "
+                              f"sure you annotated them beforehand by running `anvi-run-hmms`? These are the contig-dbs "
+                              f"for which anvi'o found no SCG annotations: {', '.join(sorted(genomes_missing_scgs))}.")
+
+        # a population size of zero means the single-copy core genes were too sparse to yield an estimate, and
+        # the corresponding per-population copy number values will end up as `NA`. we warn the user about these
+        # layers explicitly so the `NA`s in their output do not come as a surprise.
+        layers_with_no_estimate = [layer for layer in self.num_populations_per_layer if not self.num_populations_per_layer[layer]]
+        if len(layers_with_no_estimate):
+            self.run.warning(f"It seems like there are too few SCG annotations for anvi'o to come up with a reliable "
+                             f"population count estimate for these contig-dbs: {', '.join(sorted(layers_with_no_estimate))}. "
+                             f"There is nothing we can do, and anvi'o will fill those columns with NA.")
+
+        # finally, let the user see the population size estimates that will be used for normalization, since
+        # these numbers are central to interpreting (and reproducing) the per-population copy number output.
+        self.run.warning(None, header="NUMBER OF POPULATIONS PER METAGENOME", lc="green")
+        for layer_name in sorted(self.num_populations_per_layer.keys()):
+            self.run.info(layer_name, self.num_populations_per_layer[layer_name])
 
 
     def _populate_group_dicts(self):
@@ -1469,42 +1558,55 @@ class AggregateFunctions:
 
 
     def report_functions_across_genomes(self, output_file_prefix, quiet=False, with_function_accession_ids=False):
-        """Reports text files for functions across genomes data"""
+        """Reports text files for functions across genomes data.
+
+        Every output matrix keeps its descriptive columns (the internal `key`, the function name, and
+        optionally the function accession ids) up front, followed by one column per (meta)genome. When using
+        the flag `--per-population-copy-number`, the program reports an additional matrix in which the
+        frequency of each function in a given metagenome is normalized by the number of populations
+        estimated for that metagenome (see `_init_num_populations_per_layer`).
+        """
 
         output_file_path_for_frequency_view = f"{os.path.abspath(output_file_prefix)}-FREQUENCY.txt"
         output_file_path_for_presence_absence_view = f"{os.path.abspath(output_file_prefix)}-PRESENCE-ABSENCE.txt"
+        output_file_path_for_ppcn_view = f"{os.path.abspath(output_file_prefix)}-PER-POPULATION-COPY-NUMBER.txt"
 
-        filesnpaths.is_output_file_writable(output_file_path_for_frequency_view)
-        filesnpaths.is_output_file_writable(output_file_path_for_presence_absence_view)
+        layer_names = sorted(list(self.layer_names_considered))
 
-        with open(output_file_path_for_frequency_view, 'w') as frequency_output, open(output_file_path_for_presence_absence_view, 'w') as presence_absence_output:
-            layer_names = sorted(list(self.layer_names_considered))
+        # the descriptive columns always come first, so a reader sees what each row is (its key and its
+        # function name, optionally with accession ids) before the per-(meta)genome values that follow.
+        descriptive_column_names = ['key', self.function_annotation_source]
+        if with_function_accession_ids:
+            descriptive_column_names += [f"{self.function_annotation_source}_accession"]
 
-            if with_function_accession_ids:
-                columns_txt = '\t'.join(['key'] + layer_names + [self.function_annotation_source] + [f"{self.function_annotation_source}_accession"]) + '\n'
-            else:
-                columns_txt = '\t'.join(['key'] + layer_names + [self.function_annotation_source]) + '\n'
+        def store_matrix(output_file_path, value_for_layer):
+            """Write a single function-by-(meta)genome matrix, where `value_for_layer(key, layer)` gives each cell."""
+            filesnpaths.is_output_file_writable(output_file_path)
+            with open(output_file_path, 'w') as output:
+                output.write('\t'.join(descriptive_column_names + layer_names) + '\n')
+                for key in self.functions_across_layers_frequency:
+                    function = self.hash_to_function_dict[key][self.function_annotation_source]
+                    descriptive_columns = [key, function]
+                    if with_function_accession_ids:
+                        descriptive_columns += [','.join(sorted(self.function_to_accession_ids_dict[function][self.function_annotation_source]))]
 
-            frequency_output.write(columns_txt)
-            presence_absence_output.write(columns_txt)
+                    output.write('\t'.join(descriptive_columns + [value_for_layer(key, layer) for layer in layer_names]) + '\n')
 
-            for key in self.functions_across_layers_frequency:
-                function = self.hash_to_function_dict[key][self.function_annotation_source]
+        # the frequency and presence/absence dicts are `Counter`s, so a missing layer already resolves to 0.
+        store_matrix(output_file_path_for_frequency_view, lambda key, layer: f"{self.functions_across_layers_frequency[key][layer]}")
+        store_matrix(output_file_path_for_presence_absence_view, lambda key, layer: f"{self.functions_across_layers_presence_absence[key][layer]}")
 
-                frequency_data = [f"{self.functions_across_layers_frequency[key][l] if l in self.functions_across_layers_frequency[key] else 0}" for l in layer_names]
-                presence_absence_data = [f"{self.functions_across_layers_presence_absence[key][l] if l in self.functions_across_layers_presence_absence[key] else 0}" for l in layer_names]
-
-                if with_function_accession_ids:
-                    function_accession = ','.join(self.function_to_accession_ids_dict[function][self.function_annotation_source])
-                    frequency_output.write('\t'.join([key] + frequency_data + [function, function_accession]) + '\n')
-                    presence_absence_output.write('\t'.join([key] + presence_absence_data + [function, function_accession]) + '\n')
-                else:
-                    frequency_output.write('\t'.join([key] + frequency_data + [function]) + '\n')
-                    presence_absence_output.write('\t'.join([key] + presence_absence_data + [function]) + '\n')
+        # per-population copy number is the frequency of a function in a metagenome divided by the number of
+        # populations estimated for that same metagenome. when there is no estimate (i.e., it is zero), the
+        # value is undefined and reported as `NA` rather than dividing by zero.
+        if self.report_per_population_copy_number:
+            store_matrix(output_file_path_for_ppcn_view, lambda key, layer: f"{self.functions_across_layers_frequency[key][layer] / self.num_populations_per_layer[layer]}" if self.num_populations_per_layer[layer] else "NA")
 
         if not quiet:
             self.run.info('Functions across genomes (frequency)', output_file_path_for_frequency_view)
             self.run.info('Functions across genomes (presence/absence)', output_file_path_for_presence_absence_view)
+            if self.report_per_population_copy_number:
+                self.run.info('Functions across genomes (per-population copy number)', output_file_path_for_ppcn_view)
 
 
     def report_functions_per_group_stats(self, output_file_path, skip_functions_in_all_groups=False, quiet=False):
@@ -1545,7 +1647,7 @@ class AggregateFunctions:
 
             d[key_hash] = {}
             d[key_hash]['function'] = function
-            d[key_hash]['accession'] = ','.join(self.function_to_accession_ids_dict[function][self.function_annotation_source])
+            d[key_hash]['accession'] = ','.join(sorted(self.function_to_accession_ids_dict[function][self.function_annotation_source]))
             d[key_hash]['associated_groups'] = ','.join(associated_groups)
 
             for group_name in group_names:

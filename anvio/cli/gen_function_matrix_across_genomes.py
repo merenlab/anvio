@@ -81,6 +81,15 @@ def get_args():
                                 "given function accross genomes. If you set a value, those functions that occur in less number "
                                 "of genomes will be excluded."), type=int)
 
+    groupD = parser.add_argument_group('PER-POPULATION COPY NUMBER', "If you are working with metagenomic assemblies, the raw frequency of a "
+                                "function will scale with the number of populations in each assembly, which makes it difficult to "
+                                "compare functions across samples of different community sizes. If you are simply looking at "
+                                "presence/absence, mostly everything will be present everywhere when looking at metagenomic "
+                                "assemblies as a whole. To account for this, anvi'o can "
+                                "report an additional matrix in which function frequencies are normalized by the estimated number "
+                                "of populations in each metagenome (an approach known as per-population copy number, or PPCN).")
+    groupD.add_argument(*anvio.A('per-population-copy-number'), **anvio.K('per-population-copy-number'))
+
     groupE = parser.add_argument_group('GENES', "By default, anvi'o will look for genes in contigs databases that are identified "
                                 "by `pyrodigal-gv`. But if you have generated your contigs databse with external gene calls, or have "
                                 "otherwise used another gene caller than the default, you can explicitly ask anvi'o to use that "
