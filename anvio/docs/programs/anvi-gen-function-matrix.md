@@ -1,7 +1,7 @@
 Generates TAB-delmited output files for %(functions)s from a single function annotation source across genomes.
 
 {:.notice}
-For a simlar program that reports HMM hits across genomes, see %(anvi-script-gen-hmm-hits-matrix-across-genomes)s.
+For a simlar program that reports HMM hits across genomes, see %(anvi-gen-hmm-hits-matrix)s.
 
 The input genomes for this program can be provided through an %(external-genomes)s, %(internal-genomes)s, %(genomes-storage-db)s, or any combination of these sources.
 
@@ -10,7 +10,7 @@ This program is very similar to %(anvi-display-functions)s, and can also perform
 You can run the program on a set of genomes for a given annotation source:
 
 {{ codestart }}
-anvi-script-gen-function-matrix-across-genomes -e %(external-genomes)s \
+anvi-gen-function-matrix -e %(external-genomes)s \
                                                --annotation-source COG20_FUNCTION \
                                                --output-file-prefix MY-GENOMES
 {{ codestop }}
@@ -30,7 +30,7 @@ You can always learn about which functions are in a given %(contigs-db)s using t
 If we want to get an idea of differences in functional capacity across different metagenomic assemblies (or long-read sequence metagenomes) but, for some good reasons, we do not have MAGs from these assemblies, or we want to make sure that we make use of all the sequence data we have and not only those reads that are used to reconstruct genomes, we can't just look at the distribution of functions across genomes, because all functions and metabolic pathways will most likely occur nearly everywhere, at least in one population, and population numbers may differ dramatically across samples, and just counting the occurrence of a given function would not provide ecologically meaningful insights. To overcome this, Iva Veseli introduced the [per-population copy number](https://elifesciences.org/reviewed-preprints/89862) normalization. Based on the same principle, adding the flag `--add-per-population-copy-number` allows you to normalize individual functional annotations within a metagenomic assembly using the SCG-based estimate of population numbers within the sample.
 
 {{ codestart }}
-anvi-script-gen-function-matrix-across-genomes -e %(external-genomes)s \
+anvi-gen-function-matrix -e %(external-genomes)s \
                                                --annotation-source COG20_FUNCTION \
                                                --output-file-prefix MY-METAGENOMES \
                                                --add-per-population-copy-number
@@ -49,7 +49,7 @@ A per-population copy number is an *average number of copies of a function per p
 Alternatively, you can run it with a %(groups-txt)s that associates sets of genomes with distinct groups,
 
 {{ codestart }}
-anvi-script-gen-function-matrix-across-genomes -i %(internal-genomes)s \
+anvi-gen-function-matrix -i %(internal-genomes)s \
                                                --annotation-source COG20_FUNCTION \
                                                --output-file-prefix MY-GENOMES \
                                                --groups-txt groups.txt
