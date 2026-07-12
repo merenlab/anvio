@@ -1329,6 +1329,23 @@ D = {
                      "anvi'o will only use the best hit for any gene that has multiple hits by default. But you can turn "
                      "that behavior off explicitly and show anvi'o who is the boss by using this flag."}
                 ),
+    'add-per-population-copy-number': (
+            ['--add-per-population-copy-number'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Request an additional output matrix that reports the per-population copy number (PPCN) of each "
+                     "function in every metagenomic assembly (or long-read metagenome). anvi'o divides the frequency of a "
+                     "function in a given assembly by the number of populations estimated to be present in that same "
+                     "assembly (estimated from single-copy core genes: the mode of the number of hits to the single-copy "
+                     "core genes of each domain, summed across Bacteria, Archaea, and Eukarya, just like "
+                     "`anvi-display-contigs-stats` does). This normalization is useful for metagenomic assemblies, where the "
+                     "raw frequency of a function scales with the number of populations in the assembly and is therefore "
+                     "not comparable across samples of vastly different community sizes. It follows the per-population copy "
+                     "number normalization introduced by Iva Veseli (Veseli et al. 2025). It requires that your "
+                     "contigs databases have been annotated with single-copy core genes via `anvi-run-hmms`, and it works "
+                     "only with an external-genomes file (`-e`), since population normalization is meaningful for whole "
+                     "metagenomic assemblies but not for individual genomes or a genomes storage database."}
+                ),
 
     'include-gc-identity-as-function': (
             ['--include-gc-identity-as-function'],
