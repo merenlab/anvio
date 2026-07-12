@@ -50,6 +50,7 @@ def get_args():
     groupC = parser.add_argument_group('OUTPUT', description="Provide a directory path, and anvi'o will generate all your contigs databases for "
                                 "exported loci in it.")
     groupC.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
+    groupC.add_argument(*anvio.A('reset-gene-caller-ids'), **anvio.K('reset-gene-caller-ids'))
 
     return parser.get_args(parser)
 
