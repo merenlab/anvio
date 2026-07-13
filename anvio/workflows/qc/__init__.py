@@ -286,6 +286,12 @@ class QCModule(WorkflowSuperClass):
         if getattr(self, 'run_qc', False):
             targets.append(os.path.join(self.dirs_dict["QC_DIR"], "qc-report.txt"))
 
+        # Whether each stats tool will actually emit any output. A tool that is enabled but has no
+        # matching readsets (or no selected stage) produces nothing — MultiQC must know this so it
+        # does not get scheduled against directories that will never be created (see below).
+        fastqc_will_run = False
+        nanoplot_will_run = False
+
         run_fastqc_sr = self.get_param_value_from_config(['fastqc_sr', 'run']) == True
         if run_fastqc_sr:
             sr_readset_ids = self.get_sr_readset_ids()
@@ -299,6 +305,7 @@ class QCModule(WorkflowSuperClass):
             for stage in self._qc_stages_for('fastqc_sr'):
                 for rs_id in sr_readset_ids:
                     targets.append(os.path.join(fastqc_dir, rs_id, stage))
+                    fastqc_will_run = True
 
         if getattr(self, 'run_filtlong', False):
             # NB: the duplicate-read-name validation is NOT done here — it runs as the
@@ -320,14 +327,19 @@ class QCModule(WorkflowSuperClass):
             for stage in self._qc_stages_for('nanoplot'):
                 for rs_id in lr_readset_ids:
                     targets.append(os.path.join(nanoplot_dir, rs_id, stage))
+                    nanoplot_will_run = True
 
         if getattr(self, 'run_multiqc', False):
-            if run_fastqc_sr or run_nanoplot:
+            # Gate on whether fastqc/nanoplot will actually PRODUCE output, not merely on their
+            # 'run' flags: a tool enabled with no matching readsets emits nothing, and scheduling
+            # MultiQC against those never-created directories would fail the run despite the
+            # "will be skipped" warnings above.
+            if fastqc_will_run or nanoplot_will_run:
                 targets.append(os.path.join(self.dirs_dict["QC_DIR"], "multiqc", "multiqc_report.html"))
             else:
                 self.run.warning(
-                    "MultiQC is enabled but neither 'fastqc_sr' nor 'nanoplot' is — MultiQC has no "
-                    "compatible inputs to aggregate and will be skipped."
+                    "MultiQC is enabled but there are no FastQC or NanoPlot outputs for it to "
+                    "aggregate — MultiQC will be skipped."
                 )
 
         return targets

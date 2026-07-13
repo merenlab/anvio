@@ -39,10 +39,13 @@ def get_multiqc_inputs(wildcards):
 # Both must be updated together whenever a new QC tool is added. Passing the top-level
 # parent (fastqc/ or nanoplot/) lets MultiQC recurse into every <readset>/<stage> report so a
 # before/after comparison lands in a single report.
+# A tool is only listed if it will actually produce output (enabled AND has matching readsets
+# AND at least one selected stage). Passing MultiQC a directory that no rule creates — e.g.
+# nanoplot enabled with no long-read samples — would make the CLI fail on a missing path.
 _multiqc_input_dirs = []
-if run_fastqc_sr:
+if run_fastqc_sr and SR_READSETS and M._qc_stages_for("fastqc_sr"):
     _multiqc_input_dirs.append(os.path.join(dirs_dict["QC_DIR"], "fastqc"))
-if run_nanoplot:
+if run_nanoplot and LR_READSETS and M._qc_stages_for("nanoplot"):
     _multiqc_input_dirs.append(os.path.join(dirs_dict["QC_DIR"], "nanoplot"))
 
 
