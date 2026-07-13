@@ -386,7 +386,41 @@ Beyond the default short-read QC (illumina-utils), the workflow offers several o
 
 For `nanoplot` and `fastqc_sr`, anvi'o validates the stage flags before running: if the tool is enabled you must select at least one stage, and `run_on_filtered` is only allowed when the matching filter (`filtlong` for `nanoplot`, `iu_filter_quality_minoche` for `fastqc_sr`) is enabled — otherwise there would be no filtered reads to look at. In practice, if you enable one of these tools without any filtering, set `run_on_raw: true`.
 
-Because `filtlong`, `nanoplot`, `fastqc_sr`, and `multiqc` are not shipped with anvi'o, you can point the workflow at an environment that provides each via that rule's `conda_yaml` or `conda_env` parameter (set one, not both), or make sure it is on your `$PATH`.
+`filtlong`, `nanoplot`, `fastqc_sr`, and `multiqc` are not shipped inside the anvi'o environment. See [Providing third-party tools via conda](#providing-third-party-tools-via-conda) below for how the workflow gets hold of them (this applies to the assemblers and mappers too).
+
+### Providing third-party tools via conda
+
+Several rules in the metagenomics workflow call programs that anvi'o does **not** bundle in its own environment — the assemblers, mappers, and QC tools:
+
+`bowtie` (Bowtie2) · `minimap2` · `megahit` · `metaspades` · `idba_ud` · `flye` · `filtlong` · `nanoplot` · `fastqc_sr` (FastQC) · `multiqc`
+
+Rather than requiring you to cram all of these into one environment, each of these rules can run inside its own conda environment that anvi'o (through Snakemake) sets up just for that rule. You control this **per rule** with three mutually exclusive options in your %(workflow-config)s:
+
+1. **`use_anvio_conda_yaml`** (boolean, **the default — `true`**). Use the environment file that anvi'o ships for this rule (one curated, version-pinned `.yaml` per tool, living in `anvio/workflows/conda_envs/`). The file is resolved at run time from your installed anvi'o, so your config stays reproducible on any machine — there is no hard-coded path to a repository. This is the recommended option and the reason you usually do not need to install these tools yourself.
+
+2. **`conda_yaml`** — a path to *your own* environment `.yaml` file (for example, a copy of one of anvi'o's that you have customized, or an entirely different recipe). Snakemake builds the environment from it.
+
+3. **`conda_env`** — the name of an environment you have **already created yourself** (e.g. `conda create -n my-flye -c bioconda -c conda-forge flye`). The rule runs the tool via `conda run -n <name> ...`.
+
+When a rule resolves to a conda `.yaml` (either the anvi'o-shipped one or your own `conda_yaml`), anvi'o automatically adds `--use-conda` to the underlying Snakemake command, so Snakemake builds and activates that environment. The first run builds the environment (which takes a little while); later runs reuse the cached environment. Because `conda_env` points at an environment that already exists, it does not need `--use-conda`.
+
+#### These three options are mutually exclusive
+
+Because `use_anvio_conda_yaml` defaults to `true`, if you want to use your own `conda_yaml` or `conda_env` for a rule you must **also set `use_anvio_conda_yaml: false` for that same rule** — otherwise anvi'o stops with a clear error, rather than silently guessing which one you meant. For example, to run Flye from your own named environment:
+
+``` json
+"flye": {
+    "run": true,
+    "use_anvio_conda_yaml": false,
+    "conda_env": "my-flye"
+}
+```
+
+#### Running these tools from your `$PATH` instead
+
+If you would rather manage a tool yourself and have it available on your `$PATH` (the classic behavior), set `use_anvio_conda_yaml: false` for that rule and leave both `conda_yaml` and `conda_env` empty. Anvi'o will then expect the program to be found on your `$PATH`.
+
+Note that whenever a rule is set to be provided by conda (any of the three options above, including the default), anvi'o will **not** pre-check that the program exists on your `$PATH` before starting — Snakemake will provide it. If you switch a tool to `$PATH` mode but it is not actually installed, you will see the failure when that rule runs rather than up front.
 
 ### Running binning algorithms
 
