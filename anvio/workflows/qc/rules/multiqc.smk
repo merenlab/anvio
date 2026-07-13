@@ -13,40 +13,32 @@
 # Tool:
 #   MultiQC — Ewels et al. 2016, PMID 27312411 (https://multiqc.info)
 
+# Single source of the enabled QC producers whose output MultiQC should aggregate. Each entry is
+# (parent_dir, readset_ids, stages). A producer is listed only if it will actually create output
+# (enabled AND has matching readsets AND at least one selected stage) — otherwise MultiQC would be
+# pointed at a directory that no rule creates and fail on the missing path. Both the per-file DAG
+# dependencies (get_multiqc_inputs) and the parent dirs for the MultiQC CLI (_multiqc_input_dirs)
+# are derived from this list, so adding a QC tool means editing one place.
+_qc_producers = []
+if run_fastqc_sr and SR_READSETS and M._qc_stages_for("fastqc_sr"):
+    _qc_producers.append((os.path.join(dirs_dict["QC_DIR"], "fastqc"), SR_READSETS, M._qc_stages_for("fastqc_sr")))
+if run_nanoplot and LR_READSETS and M._qc_stages_for("nanoplot"):
+    _qc_producers.append((os.path.join(dirs_dict["QC_DIR"], "nanoplot"), LR_READSETS, M._qc_stages_for("nanoplot")))
+
+
 def get_multiqc_inputs(wildcards):
-    """Collect all QC output files that MultiQC should aggregate."""
+    """Per-readset, per-stage report directories MultiQC depends on (for Snakemake DAG tracking)."""
     inputs = []
-
-    if run_fastqc_sr:
-        fastqc_dir = os.path.join(dirs_dict["QC_DIR"], "fastqc")
-        # fastqc_sr writes reports into a per-readset, per-stage directory; depend on those directories.
-        for stage in M._qc_stages_for("fastqc_sr"):
-            for rs in SR_READSETS:
-                inputs.append(os.path.join(fastqc_dir, rs, stage))
-
-    if run_nanoplot:
-        nanoplot_dir = os.path.join(dirs_dict["QC_DIR"], "nanoplot")
-        # nanoplot writes reports (incl. NanoStats) into a per-readset, per-stage directory; depend on them.
-        for stage in M._qc_stages_for("nanoplot"):
-            for rs in LR_READSETS:
-                inputs.append(os.path.join(nanoplot_dir, rs, stage))
-
+    for parent_dir, readsets, stages in _qc_producers:
+        for stage in stages:
+            for rs in readsets:
+                inputs.append(os.path.join(parent_dir, rs, stage))
     return inputs
 
 
-# get_multiqc_inputs (above) lists specific FILES for Snakemake DAG tracking.
-# _multiqc_input_dirs lists the same sources as DIRECTORIES for the MultiQC CLI.
-# Both must be updated together whenever a new QC tool is added. Passing the top-level
-# parent (fastqc/ or nanoplot/) lets MultiQC recurse into every <readset>/<stage> report so a
-# before/after comparison lands in a single report.
-# A tool is only listed if it will actually produce output (enabled AND has matching readsets
-# AND at least one selected stage). Passing MultiQC a directory that no rule creates — e.g.
-# nanoplot enabled with no long-read samples — would make the CLI fail on a missing path.
-_multiqc_input_dirs = []
-if run_fastqc_sr and SR_READSETS and M._qc_stages_for("fastqc_sr"):
-    _multiqc_input_dirs.append(os.path.join(dirs_dict["QC_DIR"], "fastqc"))
-if run_nanoplot and LR_READSETS and M._qc_stages_for("nanoplot"):
-    _multiqc_input_dirs.append(os.path.join(dirs_dict["QC_DIR"], "nanoplot"))
+# Parent directories passed to the MultiQC CLI; --dirs-depth 2 makes it recurse into every
+# <readset>/<stage> report so a before/after comparison lands in a single report.
+_multiqc_input_dirs = [parent_dir for parent_dir, _, _ in _qc_producers]
 
 
 rule multiqc:
