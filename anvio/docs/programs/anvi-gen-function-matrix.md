@@ -1,44 +1,45 @@
-Generates TAB-delmited output files for %(functions)s from a single function annotation source across genomes.
+Generates TAB-delmited output files for %(functions)s from a single function annotation source across all %(contigs-db)s files it receives.
 
 {:.notice}
-For a simlar program that reports HMM hits across genomes, see %(anvi-gen-hmm-hits-matrix)s.
+For a simlar program that reports HMM hits instead, see %(anvi-gen-hmm-hits-matrix)s.
 
-The input genomes for this program can be provided through an %(external-genomes)s, %(internal-genomes)s, %(genomes-storage-db)s, or any combination of these sources.
+The input genomes, metagenomes, or loci for this program can be provided through an %(external-genomes)s, %(internal-genomes)s, %(genomes-storage-db)s, or any combination of these sources.
 
-This program is very similar to %(anvi-display-functions)s, and can also perform a functional enrichment analysis on-the-fly if you provide it with an optional %(groups-txt)s file. Unlike, %(anvi-display-functions)s, this program will report TAB-delmited output files for you to further analyze.
-
-You can run the program on a set of genomes for a given annotation source:
-
-{{ codestart }}
-anvi-gen-function-matrix -e %(external-genomes)s \
-                                               --annotation-source COG20_FUNCTION \
-                                               --output-file-prefix MY-GENOMES
-{{ codestop }}
-
-The command above will result in two files in your work directory, both of which will be of type %(functions-across-genomes-txt)s:
-
-* MY-GENOMES-FREQUENCY.txt
-* MY-GENOMES-PRESENCE-ABSENCE.txt
-
-In each of these files, the first columns describe each function (a unique `key`, the function name, and optionally the function accession ids), and the remaining columns hold one value per genome.
+This program is very similar to %(anvi-display-functions)s, and can also perform a functional enrichment analysis on-the-fly if you provide it with an optional %(groups-txt)s file. But unlike, %(anvi-display-functions)s, this program will report TAB-delmited output files for you to further analyze.
 
 {:.notice}
 You can always learn about which functions are in a given %(contigs-db)s using the program %(anvi-db-info)s.
 
-## Per-population copy number normalization for metagenomic assemblies
-
-If we want to get an idea of differences in functional capacity across different metagenomic assemblies (or long-read sequence metagenomes) but, for some good reasons, we do not have MAGs from these assemblies, or we want to make sure that we make use of all the sequence data we have and not only those reads that are used to reconstruct genomes, we can't just look at the distribution of functions across genomes, because all functions and metabolic pathways will most likely occur nearly everywhere, at least in one population, and population numbers may differ dramatically across samples, and just counting the occurrence of a given function would not provide ecologically meaningful insights. To overcome this, Iva Veseli introduced the [per-population copy number](https://elifesciences.org/reviewed-preprints/89862) normalization. Based on the same principle, adding the flag `--add-per-population-copy-number` allows you to normalize individual functional annotations within a metagenomic assembly using the SCG-based estimate of population numbers within the sample.
+You can run the program on a set of %(contigs-db)s files with a specific source of function annotation:
 
 {{ codestart }}
 anvi-gen-function-matrix -e %(external-genomes)s \
-                                               --annotation-source COG20_FUNCTION \
-                                               --output-file-prefix MY-METAGENOMES \
-                                               --add-per-population-copy-number
+                         --annotation-source %(functions)s \
+                         --output-file-prefix MY-GENOMES
 {{ codestop }}
 
-Adding the flag generates an additional output file of type %(functions-across-genomes-txt)s:
+The command above will result in two files in your work directory (`MY-GENOMES-FREQUENCY.txt` and `MY-GENOMES-PRESENCE-ABSENCE.txt`) of type %(functions-across-genomes-txt)s.
 
-* MY-METAGENOMES-PER-POPULATION-COPY-NUMBER.txt
+In each of these files, the first few columns will describe functions (with a unique `key`, the full function name, and optionally the function accession ID), and the remaining columns will hold one value per genome.
+
+These files will report raw frequency and presence/absence of functions across %(contigs-db)s files that you can use for downstream analyses.
+
+## Per-population copy number normalization for metagenomic assemblies
+
+If you want to get an idea of differences in functional capacity across different metagenomic assemblies, but if you do not have MAGs from these assemblies or if you wish to make use of a larger fraction of the sequence data and not only only those reads that are used to reconstruct genomes, looking at the raw frequencies or raw presence/absence data becomes less effective for any downstream analysis as almost all functions and metabolic modules known will likely occur in at least in one population in a given metagenome. Although, normalizing the raw frequencies based on the estimated number of populations in a given environment would make such comparisons across metagenomes much more effective.
+
+Anvi'o includes a means to estimate the number of populations observed in a given assembly using single-copy core genes, which is used in %(anvi-display-contigs-stats)s, and Veseli et al. has previously demonstrated its utility by predicting [per-population copy number](https://doi.org/10.7554/eLife.89862) of metabolic modules observed across samples.
+
+%(anvi-gen-function-matrix)s makes the same principle accessible with for functions via the flag `--add-per-population-copy-number`, which produces an additional output file with normalized copy numbers of the frequency of functions across samples:
+
+{{ codestart }}
+anvi-gen-function-matrix -e %(external-genomes)s \
+                         --annotation-source COG20_FUNCTION \
+                         --output-file-prefix MY-METAGENOMES \
+                         --add-per-population-copy-number
+{{ codestop }}
+
+Adding the flag generates an additional output file, `MY-METAGENOMES-PER-POPULATION-COPY-NUMBER.txt`, of type %(functions-across-genomes-txt)s.
 
 By dividing the frequency of each function in a given metagenomic assembly by the number of populations estimated to be present in that same assembly based on counts of single-copy core genes (SCGs) in each %(contigs-db)s: for each domain-specific SCG set, anvi'o takes the mode of the number of hits across all SCGs, and sums these per-domain estimates across Bacteria, Archaea, and Eukarya.
 
@@ -50,11 +51,9 @@ Alternatively, you can run it with a %(groups-txt)s that associates sets of geno
 
 {{ codestart }}
 anvi-gen-function-matrix -i %(internal-genomes)s \
-                                               --annotation-source COG20_FUNCTION \
-                                               --output-file-prefix MY-GENOMES \
-                                               --groups-txt groups.txt
+                         --annotation-source COG20_FUNCTION \
+                         --output-file-prefix MY-GENOMES \
+                         --groups-txt groups.txt
 {{ codestop }}
 
-which would generate an additional file in your work directory of type %(functional-enrichment-txt)s:
-
-* MY-GENOMES-FUNCTIONAL-ENRICHMENT.txt
+which would generate an additional file in your work directory, `MY-GENOMES-FUNCTIONAL-ENRICHMENT.txt`, of type %(functional-enrichment-txt)s.
