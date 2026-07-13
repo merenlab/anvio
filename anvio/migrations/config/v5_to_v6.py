@@ -22,13 +22,17 @@ progress = terminal.Progress()
 # future migrations are for). They are added only to metagenomics configs, and only when a
 # rule is not already present, so any values the user already set are preserved untouched.
 NEW_METAGENOMICS_QC_RULES = {
-    'fastqc_sr': {"threads": 1, "run": False, "additional_params": ""},
-    'filtlong':  {"threads": 1, "run": False, "conda_yaml": "", "conda_env": "",
-                  "--min-length": None, "--max-length": None, "--target-bases": None,
+    'fastqc_sr': {"threads": 1, "run": False, "run_on_raw": False, "run_on_filtered": False,
+                  "conda_yaml": "", "use_anvio_conda_yaml": True, "conda_env": "",
                   "additional_params": ""},
-    'nanoplot':  {"threads": 2, "run": False, "conda_yaml": "", "conda_env": "",
+    'filtlong':  {"threads": 1, "run": False, "conda_yaml": "", "use_anvio_conda_yaml": True,
+                  "conda_env": "", "--min-length": None, "--max-length": None,
+                  "--target-bases": None, "additional_params": ""},
+    'nanoplot':  {"threads": 2, "run": False, "run_on_raw": False, "run_on_filtered": False,
+                  "conda_yaml": "", "use_anvio_conda_yaml": True, "conda_env": "",
                   "additional_params": ""},
-    'multiqc':   {"threads": 1, "run": False, "additional_params": ""},
+    'multiqc':   {"threads": 1, "run": False, "conda_yaml": "", "use_anvio_conda_yaml": True,
+                  "conda_env": "", "additional_params": ""},
 }
 
 
