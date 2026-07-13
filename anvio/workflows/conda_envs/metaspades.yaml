@@ -1,0 +1,9 @@
+# Standalone conda environment for the 'metaspades' rule (short-read assembly; provides metaspades.py).
+# Point a workflow config at this file via: "metaspades": {"conda_yaml": ".../metaspades.yaml"}
+# and run the workflow with `--use-conda` so Snakemake builds and uses this env.
+name: anvio-metaspades
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - spades=3.15.5

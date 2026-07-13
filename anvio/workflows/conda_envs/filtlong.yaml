@@ -1,0 +1,9 @@
+# Standalone conda environment for the 'filtlong' rule (long-read filtering).
+# Point a workflow config at this file via: "filtlong": {"conda_yaml": ".../filtlong.yaml"}
+# and run the workflow with `--use-conda` so Snakemake builds and uses this env.
+name: anvio-filtlong
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - filtlong=0.2.1

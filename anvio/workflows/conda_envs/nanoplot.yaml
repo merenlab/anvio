@@ -1,0 +1,16 @@
+# Standalone conda environment for the 'nanoplot' rule (long-read QC; provides NanoPlot).
+# Point a workflow config at this file via: "nanoplot": {"conda_yaml": ".../nanoplot.yaml"}
+# and run the workflow with `--use-conda` so Snakemake builds and uses this env.
+#
+# NOTE: NanoPlot 1.42 imports the legacy `kaleido.scopes` API, which python-kaleido >=1.0
+# removed, and an unpinned solve otherwise grabs python 3.14 + kaleido 1.x and crashes on
+# import. We pin python-kaleido to 0.2.1 and hold python back to keep NanoPlot importable.
+# (The conda package is 'python-kaleido', not 'kaleido'.)
+name: anvio-nanoplot
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python <3.13
+  - nanoplot=1.42.0
+  - python-kaleido=0.2.1
