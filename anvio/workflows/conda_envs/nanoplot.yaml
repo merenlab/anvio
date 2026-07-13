@@ -11,6 +11,4 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
-  - python <3.13
-  - nanoplot=1.42.0
-  - python-kaleido=0.2.1
+  - nanoplot
