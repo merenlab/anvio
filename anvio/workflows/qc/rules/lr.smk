@@ -79,6 +79,17 @@ rule check_lr_read_names:
             f.write("no duplicate read names found\n")
 
 
+def filtlong_opt(cli_flag, config_key):
+    """Format a filtlong CLI option from its config value, or '' when unset.
+
+    Config keys use anvi'o dashes (--min-length); the filtlong CLI uses underscores
+    (--min_length). Only None (unset in params.json) or "" (blank) count as unset — a value of
+    0 is a real value and must be passed through, so we do not use plain truthiness here.
+    """
+    val = M.get_param_value_from_config(["filtlong", config_key])
+    return f"{cli_flag} {val}" if val not in (None, "") else ""
+
+
 rule filtlong:
     """
     Filter long reads using Filtlong to remove low-quality or short reads.
@@ -106,19 +117,9 @@ rule filtlong:
     params:
         reads=lambda wildcards, input: " ".join(input.reads),
         env_prefix=w.get_conda_env_prefix(M, "filtlong"),
-        # Config keys use anvi'o dashes (--min-length) but Filtlong CLI requires underscores (--min_length).
-        min_length=(
-            '--min_length ' + str(M.get_param_value_from_config(["filtlong", "--min-length"]))
-            if M.get_param_value_from_config(["filtlong", "--min-length"]) else ''
-        ),
-        max_length=(
-            '--max_length ' + str(M.get_param_value_from_config(["filtlong", "--max-length"]))
-            if M.get_param_value_from_config(["filtlong", "--max-length"]) else ''
-        ),
-        target_bases=(
-            '--target_bases ' + str(M.get_param_value_from_config(["filtlong", "--target-bases"]))
-            if M.get_param_value_from_config(["filtlong", "--target-bases"]) else ''
-        ),
+        min_length=filtlong_opt("--min_length", "--min-length"),
+        max_length=filtlong_opt("--max_length", "--max-length"),
+        target_bases=filtlong_opt("--target_bases", "--target-bases"),
         additional_params=M.get_param_value_from_config(["filtlong", "additional_params"]),
     shell:
         r"""

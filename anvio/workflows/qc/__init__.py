@@ -283,11 +283,14 @@ class QCModule(WorkflowSuperClass):
         if self.get_param_value_from_config(['filtlong', 'run']) != True:
             return
 
+        # a param counts as "set" when it has an actual value — including 0. Only None (unset in
+        # params.json) or "" (blank) mean "not given", so we must not use plain truthiness here.
         explicit = [self.get_param_value_from_config(['filtlong', k])
                     for k in ['--min-length', '--max-length', '--target-bases']]
+        any_explicit = any(v not in (None, "") for v in explicit)
         additional = self.get_param_value_from_config(['filtlong', 'additional_params'])
 
-        if not any(explicit) and not (additional and str(additional).strip()):
+        if not any_explicit and not (additional and str(additional).strip()):
             raise ConfigError(
                 "You set 'filtlong' → run: true, but you didn't give it anything to filter on. "
                 "Filtlong is a filter, so with no criteria it has nothing to do (it will error out "
