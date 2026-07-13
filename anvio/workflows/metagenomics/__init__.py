@@ -690,6 +690,40 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         time in the driver process right before anvi'o kicks off the actual workflow.
         """
         self.warn_untested_lr_tool_versions()
+        self.warn_if_config_presets_superseded()
+
+    def warn_if_config_presets_superseded(self):
+        """Soft heads-up (never fatal) when the 'lr_technology' column overrides config presets.
+
+        When the samples-txt carries the 'lr_technology' column, anvi'o derives the minimap2
+        preset and the Flye read-type flag from the technology token and IGNORES whatever is set
+        under 'minimap2: preset' / the Flye read-type flags in the config. That override is silent,
+        so a user who set those in the config could be surprised. Warn once (only on a real run,
+        via pre_execution_checks) listing which config values will be superseded. Nothing is fatal.
+        """
+        if not (self.has_lr and self.has_lr_technology_column):
+            return
+
+        superseded = []
+        if self.get_param_value_from_config(['minimap2', 'preset']):
+            superseded.append("the 'minimap2: preset' value (long-read mapping)")
+        if not self.references_mode:
+            enabled_flye_flags = [f for f in FLYE_READ_TYPE_FLAGS
+                                  if self.get_param_value_from_config(['flye', f])]
+            if enabled_flye_flags:
+                superseded.append(f"the Flye read-type flag(s) {', '.join(enabled_flye_flags)} "
+                                  f"(long-read assembly)")
+
+        if superseded:
+            self.run.warning(
+                f"Your samples-txt has an 'lr_technology' column, so anvi'o is choosing long-read "
+                f"presets from each sample's technology and will IGNORE the following value(s) you set "
+                f"in your config: {'; '.join(superseded)}. If that is what you want, you can ignore this "
+                f"message. If you meant for the config value(s) to take effect, remove the "
+                f"'lr_technology' column from your samples-txt (so the config drives the presets) — or, "
+                f"if the two simply disagree, fix whichever one is wrong.",
+                header="LR_TECHNOLOGY SUPERSEDES YOUR CONFIG PRESETS", lc="yellow",
+            )
 
     def warn_untested_lr_tool_versions(self):
         """Soft heads-up (never fatal) if installed long-read tool versions are outside anvi'o's
