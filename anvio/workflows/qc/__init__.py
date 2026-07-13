@@ -149,12 +149,26 @@ class QCModule(WorkflowSuperClass):
             opener = gzip.open if path.endswith('.gz') else open
             with opener(path, 'rt') as f:
                 for i, line in enumerate(f):
-                    if i % 4 == 0:
-                        name = line[1:].split()[0]
-                        if name in seen:
-                            problematic.append((path, name))
-                            break
-                        seen.add(name)
+                    if i % 4 != 0:
+                        continue
+                    line = line.strip()
+                    if not line:
+                        # tolerate blank lines (e.g. a trailing newline at end of file)
+                        continue
+                    tokens = line[1:].split()
+                    if not tokens:
+                        # a header line with no read name → malformed FASTQ; fail with a clear
+                        # message rather than an opaque IndexError from indexing an empty split
+                        raise ConfigError(
+                            f"Anvi'o ran into a malformed FASTQ record while checking read names in "
+                            f"'{path}' (readset '{readset}'): the header on line {i + 1} has no read "
+                            f"name. Please make sure this file is valid FASTQ before retrying."
+                        )
+                    name = tokens[0]
+                    if name in seen:
+                        problematic.append((path, name))
+                        break
+                    seen.add(name)
 
         if problematic:
             details = '\n  '.join(f"{p}: first duplicate: '{n}'" for p, n in problematic)
