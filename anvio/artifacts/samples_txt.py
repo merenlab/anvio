@@ -108,6 +108,7 @@ class SamplesTxt:
         # Per-row validations
         self._validate_rows_by_mode()
         self._check_file_existence_and_identical_pairs()
+        self._check_lr_inputs_are_fastq()
         self._warn_on_unconventional_fastq_suffixes()
 
     def as_raw(self, *, absolute_paths: bool = False, base_dir: str | Path | None = None):
@@ -513,6 +514,26 @@ class SamplesTxt:
         if identical:
             raise ConfigError(f"Interesting. Your samples txt contains {terminal.pluralize('sample', len(identical))} "
                               f"({', '.join(sorted(identical))}) where r1 and r2 file paths are identical. Not OK.")
+
+    def _check_lr_inputs_are_fastq(self):
+        # Long reads MUST be FASTQ. anvi'o's long-read steps (NanoPlot, Filtlong, the read-name
+        # check, minimap2) all rely on per-base quality scores, so FASTA long reads are not
+        # supported. Short reads are only soft-warned (see _warn_on_unconventional_fastq_suffixes);
+        # for long reads this is a hard requirement.
+        allowed = (".fastq", ".fastq.gz", ".fq", ".fq.gz")
+        bad = []
+        for sample, info in self._data.items():
+            for p in info.get("lr", []):
+                if p and not p.lower().endswith(allowed):
+                    bad.append((sample, p))
+
+        if bad:
+            details = '\n  '.join(f"[{s}] {p}" for s, p in bad)
+            raise ConfigError(f"Long reads (the 'lr' column) must be FASTQ files ending in one of "
+                              f"'.fastq', '.fastq.gz', '.fq', or '.fq.gz'. Anvi'o's long-read steps "
+                              f"(NanoPlot, Filtlong, read-name checks, and minimap2) rely on FASTQ with "
+                              f"per-base quality scores, so FASTA long reads are not supported. The "
+                              f"following 'lr' path(s) do not look like FASTQ:\n\n  {details}")
 
     def _warn_on_unconventional_fastq_suffixes(self):
         # Check ALL paths (SR and LR). Accept .fastq, .fastq.gz, .fq, .fq.gz

@@ -361,7 +361,7 @@ anvi-run-workflow -w metagenomics \
 
 ### Long-read and mixed read-type support
 
-The metagenomics workflow handles long reads (Oxford Nanopore, PacBio) alongside — or instead of — short reads. To include long reads, add an `lr` column to your %(samples-txt)s pointing to the long-read FASTQ/FASTA files. A single sample can carry both short reads (`r1`/`r2`) and long reads (`lr`); the workflow tracks the two read sets separately and never mixes incompatible read types in assembly or mapping.
+The metagenomics workflow handles long reads (Oxford Nanopore, PacBio) alongside — or instead of — short reads. To include long reads, add an `lr` column to your %(samples-txt)s pointing to the long-read FASTQ files (long reads must be FASTQ, not FASTA — the long-read QC and mapping steps rely on per-base quality scores). A single sample can carry both short reads (`r1`/`r2`) and long reads (`lr`); the workflow tracks the two read sets separately and never mixes incompatible read types in assembly or mapping.
 
 Long reads are assembled with [(meta)Flye](https://github.com/mikolmogorov/Flye) and mapped with [minimap2](https://github.com/lh3/minimap2), while short reads continue to use your chosen short-read assembler and bowtie2.
 

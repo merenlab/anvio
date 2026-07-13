@@ -9,7 +9,7 @@ The only **required** column is `sample` or `name`, which should be a single-wor
 
 The other required columns will depend on the type of sequencing data you have. For example, if you have paired-end Illumina reads, the
 required columns will be `r1` and `r2`, which should point to the FASTQ files for pair one and pair two, respectively. If you have single-end Illumina reads, the only required column will be `r1`.
-If you have long reads, the only required column will be `lr`, which should point to the FASTQ or FASTA file for long reads.
+If you have long reads, the only required column will be `lr`, which should point to the FASTQ file for long reads. Long reads must be FASTQ (`.fastq`, `.fastq.gz`, `.fq`, or `.fq.gz`): anvi'o's long-read steps rely on per-base quality scores, so FASTA long reads are not supported.
 
 {:.notice}
 The paths to FASTQ files can be absolute or relative to the location of the samples-txt file.
