@@ -128,16 +128,8 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         # sanity check for conda env: use AT MOST ONE of conda_yaml / conda_env / use_anvio_conda_yaml
         import anvio.workflows as w
         for tool in ['flye','minimap2','bowtie','megahit','metaspades','idba_ud','filtlong','nanoplot','fastqc_sr','multiqc']:
-            y = self.get_param_value_from_config([tool, 'conda_yaml'])
-            n = self.get_param_value_from_config([tool, 'conda_env'])
-            a = self.get_param_value_from_config([tool, 'use_anvio_conda_yaml']) == True
-            set_opts = []
-            if y and y.strip():
-                set_opts.append('conda_yaml')
-            if n and n.strip():
-                set_opts.append('conda_env')
-            if a:
-                set_opts.append('use_anvio_conda_yaml')
+            set_opts = self._conda_options_set(tool)
+            a = 'use_anvio_conda_yaml' in set_opts
             if len(set_opts) > 1:
                 hint = ""
                 if 'use_anvio_conda_yaml' in set_opts and ('conda_yaml' in set_opts or 'conda_env' in set_opts):
@@ -1027,10 +1019,7 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
             return  # tool not requested
 
         # do we have a conda env/yaml? (explicit yaml, existing env name, or the anvi'o-shipped yaml)
-        has_conda_yaml = self.get_param_value_from_config([tool, 'conda_yaml'])
-        has_conda_env = self.get_param_value_from_config([tool, 'conda_env'])
-        use_anvio_yaml = self.get_param_value_from_config([tool, 'use_anvio_conda_yaml']) == True
-        if has_conda_yaml or has_conda_env or use_anvio_yaml:
+        if self._tool_provided_by_conda(tool):
             return  # conda env/yaml will provide the executable
 
         if not shutil.which(executable):

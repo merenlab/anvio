@@ -89,19 +89,35 @@ class QCModule(WorkflowSuperClass):
             return {'r1': [r1], 'r2': [r2]}
         return self.get_sr_files_for_readset(readset)
 
-    def _tool_provided_by_conda(self, tool):
-        """Whether a tool is supplied via a conda env rather than $PATH.
+    def _conda_options_set(self, tool):
+        """Return the conda-source options set for a tool, as a list of their config-key names.
 
-        True when any of the three conda options is set: 'conda_yaml' (a user YAML path),
-        'conda_env' (an existing env name), or 'use_anvio_conda_yaml' (the env file anvi'o ships).
-        When it is, we must not check for the executable (or its Python modules) on the current
-        $PATH / interpreter — Snakemake will run the rule inside the configured environment. Mirrors
-        the logic in MetagenomicsWorkflow.ensure_tool_in_path_or_conda().
+        The three (mutually exclusive) ways a rule can be given its program via conda:
+        'conda_yaml' (a user YAML path), 'conda_env' (an existing env name), and
+        'use_anvio_conda_yaml' (the env file anvi'o ships). Single source of truth for
+        _tool_provided_by_conda(), MetagenomicsWorkflow.ensure_tool_in_path_or_conda(), and the
+        conda mutual-exclusivity check in MetagenomicsWorkflow.init().
         """
         y = self.get_param_value_from_config([tool, 'conda_yaml'])
         n = self.get_param_value_from_config([tool, 'conda_env'])
         a = self.get_param_value_from_config([tool, 'use_anvio_conda_yaml']) == True
-        return bool((y and y.strip()) or (n and n.strip()) or a)
+        options = []
+        if y and y.strip():
+            options.append('conda_yaml')
+        if n and n.strip():
+            options.append('conda_env')
+        if a:
+            options.append('use_anvio_conda_yaml')
+        return options
+
+    def _tool_provided_by_conda(self, tool):
+        """Whether a tool is supplied via a conda env rather than $PATH.
+
+        True when any conda-source option is set (see _conda_options_set). When it is, we must not
+        check for the executable (or its Python modules) on the current $PATH / interpreter —
+        Snakemake will run the rule inside the configured environment.
+        """
+        return bool(self._conda_options_set(tool))
 
     def check_qc_program_dependencies(self):
         """Raise ConfigError for any program required by an enabled QC tool that is missing.
