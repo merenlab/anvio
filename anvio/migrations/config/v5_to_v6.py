@@ -35,6 +35,13 @@ NEW_METAGENOMICS_QC_RULES = {
                   "conda_env": "", "additional_params": ""},
 }
 
+# v6 also introduced the `use_anvio_conda_yaml` option (default true → use the conda env anvi'o
+# ships) on these pre-existing metagenomics tools. The four QC rules above already carry it in
+# their blocks; this frozen list covers the tools whose blocks already existed in v5. Like the
+# blocks above, this is a snapshot of v6 and must not be updated for later schema changes.
+METAGENOMICS_TOOLS_GAINING_USE_ANVIO_CONDA_YAML = ['megahit', 'metaspades', 'idba_ud',
+                                                   'flye', 'bowtie', 'minimap2']
+
 
 def migrate(config_path):
     if config_path is None:
@@ -65,11 +72,26 @@ def migrate(config_path):
     # workflow. Add their default blocks to metagenomics configs if they are not already there.
     # Every rule defaults to `run: False`, so this changes no existing behavior.
     added_rules = []
+    conda_default_tools = []
     if workflow_name == 'metagenomics':
         for rule, default_block in NEW_METAGENOMICS_QC_RULES.items():
             if rule not in config:
                 config[rule] = dict(default_block)
                 added_rules.append(rule)
+
+        # v6 also added `use_anvio_conda_yaml` (default true) to the pre-existing assembly/mapping
+        # tools. Add it to each tool's existing block if it is not already there — but ONLY when the
+        # user has not set their own `conda_yaml`/`conda_env` for that tool, because those three are
+        # mutually exclusive (see MetagenomicsWorkflow.init). Skipping when a user conda source is set
+        # preserves the tool's v5 behavior instead of turning a working config into an erroring one.
+        for tool in METAGENOMICS_TOOLS_GAINING_USE_ANVIO_CONDA_YAML:
+            block = config.get(tool)
+            if not isinstance(block, dict) or 'use_anvio_conda_yaml' in block:
+                continue
+            if block.get('conda_yaml') or block.get('conda_env'):
+                continue
+            block['use_anvio_conda_yaml'] = True
+            conda_default_tools.append(tool)
 
     # set it to the new version
     config['config_version'] = next_version
@@ -79,14 +101,21 @@ def migrate(config_path):
 
     progress.end()
 
-    if added_rules:
-        message = (f"The config file version is now {next_version}. This upgrade added the following "
-                   f"optional long-read QC rules to your metagenomics config (all disabled by default, "
-                   f"so nothing changes unless you turn them on): {', '.join(added_rules)}. "
-                   f"One related note for long-read users: anvi'o no longer applies a silent default "
-                   f"minimap2 preset or Flye read-type — provide them either via the new `lr_technology` "
-                   f"column in your samples-txt (recommended) or explicitly in this config; your existing "
-                   f"values (if any) were left untouched. See the metagenomics workflow documentation for details.")
+    if added_rules or conda_default_tools:
+        parts = [f"The config file version is now {next_version}."]
+        if added_rules:
+            parts.append(f"This upgrade added the following optional long-read QC rules to your "
+                         f"metagenomics config (all disabled by default, so nothing changes unless you "
+                         f"turn them on): {', '.join(added_rules)}.")
+        if conda_default_tools:
+            parts.append(f"It also set 'use_anvio_conda_yaml: true' (i.e., use the conda environment "
+                         f"anvi'o ships) on these tools that did not already declare their own "
+                         f"'conda_yaml'/'conda_env': {', '.join(conda_default_tools)}.")
+        parts.append("One related note for long-read users: anvi'o no longer applies a silent default "
+                     "minimap2 preset or Flye read-type — provide them either via the new `lr_technology` "
+                     "column in your samples-txt (recommended) or explicitly in this config; your existing "
+                     "values (if any) were left untouched. See the metagenomics workflow documentation for details.")
+        message = ' '.join(parts)
     else:
         message = (f"The config file version is now {next_version}. No rule changes were necessary for the "
                    f"'{workflow_name}' workflow — this was just a version stamp update.")
