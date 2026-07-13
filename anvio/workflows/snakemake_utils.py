@@ -17,6 +17,11 @@ _lr_technology_presets_cache = None
 # advisory version check shells out to '<tool> --version' at most once per process.
 _version_probe_done = set()
 
+# Flye's mutually exclusive read-type flags. Exactly one applies to a given long-read assembly;
+# used both to validate a config-provided flag and to resolve one from an lr_technology token.
+FLYE_READ_TYPE_FLAGS = ["--pacbio-raw", "--pacbio-corr", "--pacbio-hifi",
+                        "--nano-raw", "--nano-corr", "--nano-hq"]
+
 
 def D(debug_message, debug_log_file_path=".SNAKEMAKEDEBUG"):
     """Append a timestamped debug message to a Snakemake debug log."""

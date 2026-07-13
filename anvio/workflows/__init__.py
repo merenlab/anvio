@@ -42,6 +42,7 @@ from anvio.workflows.snakemake_utils import (
     get_valid_lr_technologies as get_valid_lr_technologies,
     get_lr_preset as get_lr_preset,
     warn_if_tool_version_untested as warn_if_tool_version_untested,
+    FLYE_READ_TYPE_FLAGS as FLYE_READ_TYPE_FLAGS,
 )
 
 

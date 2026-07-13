@@ -11,7 +11,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio import utils as u
 from anvio.drivers import driver_modules
-from anvio.workflows import WorkflowSuperClass, get_lr_preset, get_valid_lr_technologies, warn_if_tool_version_untested
+from anvio.workflows import WorkflowSuperClass, get_lr_preset, get_valid_lr_technologies, warn_if_tool_version_untested, FLYE_READ_TYPE_FLAGS
 from anvio.workflows.contigs import ContigsDBWorkflow
 from anvio.workflows.qc import QCModule
 from anvio.workflows.read_recruitment import ReadRecruitmentModule
@@ -662,9 +662,7 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         if not self.get_param_value_from_config(['minimap2', 'preset']):
             missing.append("'minimap2: preset' (e.g. map-ont / map-pb / map-hifi) for long-read mapping")
         if not self.references_mode:
-            flye_flags = ["--pacbio-raw", "--pacbio-corr", "--pacbio-hifi",
-                          "--nano-raw", "--nano-corr", "--nano-hq"]
-            if not any(self.get_param_value_from_config(['flye', f]) for f in flye_flags):
+            if not any(self.get_param_value_from_config(['flye', f]) for f in FLYE_READ_TYPE_FLAGS):
                 missing.append("exactly one Flye read-type flag (e.g. --nano-raw / --pacbio-hifi) "
                                "for long-read assembly")
 
@@ -733,9 +731,7 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
                 return flags.pop()
 
         # No lr_technology tokens for this group: fall back to the config read-type flag.
-        config_flags = ["--pacbio-raw", "--pacbio-corr", "--pacbio-hifi",
-                        "--nano-raw", "--nano-corr", "--nano-hq"]
-        enabled = [f for f in config_flags if self.get_param_value_from_config(['flye', f])]
+        enabled = [f for f in FLYE_READ_TYPE_FLAGS if self.get_param_value_from_config(['flye', f])]
         if len(enabled) == 0:
             raise ConfigError(
                 f"Anvi'o needs a Flye read-type flag to assemble the long reads in group "
