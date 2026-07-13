@@ -320,6 +320,30 @@ class QCModule(WorkflowSuperClass):
                 "reads, set 'filtlong' → run: false instead."
             )
 
+    def qc_producers(self):
+        """Return the QC stats producers whose output MultiQC should aggregate.
+
+        Each entry is (parent_dir, readset_ids, stages) for a stats tool (fastqc_sr / nanoplot)
+        that will ACTUALLY create output: it is enabled, has matching readsets, and has at least
+        one selected stage. A tool that is enabled but produces nothing (no matching readsets, or
+        no selected stage) is omitted — so MultiQC is never pointed at a directory that no rule
+        creates. Single source of truth for get_qc_target_files() (the per-stage report targets
+        and the MultiQC gate) and the multiqc rule (multiqc.smk); adding a QC tool means editing
+        this one place.
+        """
+        producers = []
+        if self.get_param_value_from_config(['fastqc_sr', 'run']) == True:
+            sr = self.get_sr_readset_ids()
+            stages = self._qc_stages_for('fastqc_sr')
+            if sr and stages:
+                producers.append((os.path.join(self.dirs_dict["QC_DIR"], "fastqc"), sr, stages))
+        if self.get_param_value_from_config(['nanoplot', 'run']) == True:
+            lr = self.get_lr_readset_ids()
+            stages = self._qc_stages_for('nanoplot')
+            if lr and stages:
+                producers.append((os.path.join(self.dirs_dict["QC_DIR"], "nanoplot"), lr, stages))
+        return producers
+
     def get_qc_target_files(self):
         """Return the list of all QC target files based on enabled options."""
         self.check_qc_program_dependencies()
@@ -330,26 +354,18 @@ class QCModule(WorkflowSuperClass):
         if getattr(self, 'run_qc', False):
             targets.append(os.path.join(self.dirs_dict["QC_DIR"], "qc-report.txt"))
 
-        # Whether each stats tool will actually emit any output. A tool that is enabled but has no
-        # matching readsets (or no selected stage) produces nothing — MultiQC must know this so it
-        # does not get scheduled against directories that will never be created (see below).
-        fastqc_will_run = False
-        nanoplot_will_run = False
-
-        run_fastqc_sr = self.get_param_value_from_config(['fastqc_sr', 'run']) == True
-        if run_fastqc_sr:
-            sr_readset_ids = self.get_sr_readset_ids()
-            if not sr_readset_ids:
-                self.run.warning(
-                    "'fastqc_sr' is enabled, but there are no short-read samples in your samples-txt "
-                    "for FastQC to run on — it will be skipped."
-                )
-            fastqc_dir = os.path.join(self.dirs_dict["QC_DIR"], "fastqc")
-            # FastQC writes into a per-readset, per-stage directory (see the fastqc_sr rule); target the dir.
-            for stage in self._qc_stages_for('fastqc_sr'):
-                for rs_id in sr_readset_ids:
-                    targets.append(os.path.join(fastqc_dir, rs_id, stage))
-                    fastqc_will_run = True
+        # A stats tool enabled with no matching readsets produces nothing (and is omitted from
+        # qc_producers below); warn so the skip is visible rather than silent.
+        if self.get_param_value_from_config(['fastqc_sr', 'run']) == True and not self.get_sr_readset_ids():
+            self.run.warning(
+                "'fastqc_sr' is enabled, but there are no short-read samples in your samples-txt "
+                "for FastQC to run on — it will be skipped."
+            )
+        if self.get_param_value_from_config(['nanoplot', 'run']) == True and not self.get_lr_readset_ids():
+            self.run.warning(
+                "'nanoplot' is enabled, but there are no long-read samples in your samples-txt "
+                "for NanoPlot to run on — it will be skipped."
+            )
 
         if getattr(self, 'run_filtlong', False):
             # NB: the duplicate-read-name validation is NOT done here — it runs as the
@@ -358,27 +374,18 @@ class QCModule(WorkflowSuperClass):
             for rs_id in self.get_lr_readset_ids():
                 targets.append(self.filtered_lr_path(rs_id))
 
-        run_nanoplot = self.get_param_value_from_config(['nanoplot', 'run']) == True
-        if run_nanoplot:
-            lr_readset_ids = self.get_lr_readset_ids()
-            if not lr_readset_ids:
-                self.run.warning(
-                    "'nanoplot' is enabled, but there are no long-read samples in your samples-txt "
-                    "for NanoPlot to run on — it will be skipped."
-                )
-            nanoplot_dir = os.path.join(self.dirs_dict["QC_DIR"], "nanoplot")
-            # NanoPlot writes into a per-readset, per-stage directory (see the nanoplot rule); target the dir.
-            for stage in self._qc_stages_for('nanoplot'):
-                for rs_id in lr_readset_ids:
-                    targets.append(os.path.join(nanoplot_dir, rs_id, stage))
-                    nanoplot_will_run = True
+        # FastQC / NanoPlot write into a per-readset, per-stage directory (see their rules). Derive
+        # the target dirs from the single producer list so they can't drift from the multiqc rule.
+        producers = self.qc_producers()
+        for parent_dir, readset_ids, stages in producers:
+            for stage in stages:
+                for rs_id in readset_ids:
+                    targets.append(os.path.join(parent_dir, rs_id, stage))
 
         if getattr(self, 'run_multiqc', False):
-            # Gate on whether fastqc/nanoplot will actually PRODUCE output, not merely on their
-            # 'run' flags: a tool enabled with no matching readsets emits nothing, and scheduling
-            # MultiQC against those never-created directories would fail the run despite the
-            # "will be skipped" warnings above.
-            if fastqc_will_run or nanoplot_will_run:
+            # Gate on whether any producer will actually create output (not merely on the 'run'
+            # flags): MultiQC scheduled against a never-created directory would fail the run.
+            if producers:
                 targets.append(os.path.join(self.dirs_dict["QC_DIR"], "multiqc", "multiqc_report.html"))
             else:
                 self.run.warning(

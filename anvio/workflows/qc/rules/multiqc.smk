@@ -5,25 +5,16 @@
 #   dirs_dict     — M.dirs_dict (or equivalent)
 #   rule_log()    — canonical log-path helper
 #   w             — anvio.workflows (imported in parent Snakefile)
-#   SR_READSETS   — list of SR readset ids
-#   LR_READSETS   — list of LR readset ids
-#   run_fastqc_sr — bool: whether fastqc_sr was run
-#   run_nanoplot  — bool: whether nanoplot was run
 #
 # Tool:
 #   MultiQC — Ewels et al. 2016, PMID 27312411 (https://multiqc.info)
 
-# Single source of the enabled QC producers whose output MultiQC should aggregate. Each entry is
-# (parent_dir, readset_ids, stages). A producer is listed only if it will actually create output
-# (enabled AND has matching readsets AND at least one selected stage) — otherwise MultiQC would be
-# pointed at a directory that no rule creates and fail on the missing path. Both the per-file DAG
-# dependencies (get_multiqc_inputs) and the parent dirs for the MultiQC CLI (_multiqc_input_dirs)
-# are derived from this list, so adding a QC tool means editing one place.
-_qc_producers = []
-if run_fastqc_sr and SR_READSETS and M._qc_stages_for("fastqc_sr"):
-    _qc_producers.append((os.path.join(dirs_dict["QC_DIR"], "fastqc"), SR_READSETS, M._qc_stages_for("fastqc_sr")))
-if run_nanoplot and LR_READSETS and M._qc_stages_for("nanoplot"):
-    _qc_producers.append((os.path.join(dirs_dict["QC_DIR"], "nanoplot"), LR_READSETS, M._qc_stages_for("nanoplot")))
+# The enabled QC producers whose output MultiQC should aggregate: (parent_dir, readset_ids,
+# stages), one entry per tool that will actually create output. Computed by QCModule.qc_producers()
+# — the SAME source get_qc_target_files() uses to build its targets and MultiQC gate, so the two
+# can't drift. Both the per-file DAG dependencies (get_multiqc_inputs) and the parent dirs for the
+# MultiQC CLI (_multiqc_input_dirs) are derived from it.
+_qc_producers = M.qc_producers()
 
 
 def get_multiqc_inputs(wildcards):
