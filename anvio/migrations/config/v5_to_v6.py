@@ -36,11 +36,14 @@ NEW_METAGENOMICS_QC_RULES = {
 }
 
 # v6 also introduced the `use_anvio_conda_yaml` option (default true → use the conda env anvi'o
-# ships) on these pre-existing metagenomics tools. The four QC rules above already carry it in
-# their blocks; this frozen list covers the tools whose blocks already existed in v5. Like the
-# blocks above, this is a snapshot of v6 and must not be updated for later schema changes.
-METAGENOMICS_TOOLS_GAINING_USE_ANVIO_CONDA_YAML = ['megahit', 'metaspades', 'idba_ud',
-                                                   'flye', 'bowtie', 'minimap2']
+# ships) on these pre-existing metagenomics tools. New v6 configs get it as `true`, but on a
+# MIGRATED config we set it to `false` on purpose (see the loop below): a working v5 config ran
+# these tools from $PATH, and flipping them to `true` would make Snakemake build conda envs
+# instead — breaking offline/no-conda runs. This frozen list covers the tools whose blocks
+# already existed in v5. Like the blocks above, it is a snapshot of v6 and must not be updated
+# for later schema changes.
+PRE_EXISTING_METAGENOMICS_CONDA_TOOLS = ['megahit', 'metaspades', 'idba_ud',
+                                         'flye', 'bowtie', 'minimap2']
 
 
 def migrate(config_path):
@@ -72,26 +75,29 @@ def migrate(config_path):
     # workflow. Add their default blocks to metagenomics configs if they are not already there.
     # Every rule defaults to `run: False`, so this changes no existing behavior.
     added_rules = []
-    conda_default_tools = []
+    path_pinned_tools = []
     if workflow_name == 'metagenomics':
         for rule, default_block in NEW_METAGENOMICS_QC_RULES.items():
             if rule not in config:
                 config[rule] = dict(default_block)
                 added_rules.append(rule)
 
-        # v6 also added `use_anvio_conda_yaml` (default true) to the pre-existing assembly/mapping
-        # tools. Add it to each tool's existing block if it is not already there — but ONLY when the
-        # user has not set their own `conda_yaml`/`conda_env` for that tool, because those three are
-        # mutually exclusive (see MetagenomicsWorkflow.init). Skipping when a user conda source is set
-        # preserves the tool's v5 behavior instead of turning a working config into an erroring one.
-        for tool in METAGENOMICS_TOOLS_GAINING_USE_ANVIO_CONDA_YAML:
+        # v6 added the `use_anvio_conda_yaml` option to the pre-existing assembly/mapping tools.
+        # On a migrated config we set it to `false` (NOT the v6 default of true): a v5 config that
+        # lacked `conda_yaml`/`conda_env` ran the tool from $PATH, and setting `true` would make
+        # Snakemake build a conda env for it instead (go()/dry_run() add --use-conda, and the $PATH
+        # check is skipped) — turning a working offline/no-conda run into a failing one. `false`
+        # keeps the exact v5 behavior; users can opt into the anvi'o-shipped env by editing it to
+        # true. We only add the key when absent, and skip tools that already declare their own
+        # `conda_yaml`/`conda_env` (those three are mutually exclusive, see MetagenomicsWorkflow.init).
+        for tool in PRE_EXISTING_METAGENOMICS_CONDA_TOOLS:
             block = config.get(tool)
             if not isinstance(block, dict) or 'use_anvio_conda_yaml' in block:
                 continue
             if block.get('conda_yaml') or block.get('conda_env'):
                 continue
-            block['use_anvio_conda_yaml'] = True
-            conda_default_tools.append(tool)
+            block['use_anvio_conda_yaml'] = False
+            path_pinned_tools.append(tool)
 
     # set it to the new version
     config['config_version'] = next_version
@@ -101,16 +107,18 @@ def migrate(config_path):
 
     progress.end()
 
-    if added_rules or conda_default_tools:
+    if added_rules or path_pinned_tools:
         parts = [f"The config file version is now {next_version}."]
         if added_rules:
             parts.append(f"This upgrade added the following optional long-read QC rules to your "
                          f"metagenomics config (all disabled by default, so nothing changes unless you "
                          f"turn them on): {', '.join(added_rules)}.")
-        if conda_default_tools:
-            parts.append(f"It also set 'use_anvio_conda_yaml: true' (i.e., use the conda environment "
-                         f"anvi'o ships) on these tools that did not already declare their own "
-                         f"'conda_yaml'/'conda_env': {', '.join(conda_default_tools)}.")
+        if path_pinned_tools:
+            parts.append(f"It also set 'use_anvio_conda_yaml: false' on these tools that did not "
+                         f"already declare their own 'conda_yaml'/'conda_env', so they keep running "
+                         f"from your $PATH exactly as before: {', '.join(path_pinned_tools)}. If you "
+                         f"would rather have anvi'o build a dedicated conda environment for any of "
+                         f"them, set 'use_anvio_conda_yaml: true' for that tool.")
         parts.append("One related note for long-read users: anvi'o no longer applies a silent default "
                      "minimap2 preset or Flye read-type — provide them either via the new `lr_technology` "
                      "column in your samples-txt (recommended) or explicitly in this config; your existing "
