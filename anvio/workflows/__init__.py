@@ -360,6 +360,14 @@ class WorkflowSuperClass:
             return global_max_threads_value
 
 
+    def pre_execution_checks(self):
+        """Hook for checks/notices that should run only on a real execution.
+
+        Called by go() after the dry-run early return, so it runs once in the driver process and
+        NOT during dry runs or Snakemake DAG rebuilds. Subclasses override; the base is a no-op.
+        """
+        pass
+
     def go(self, skip_dry_run=False):
         """Do the actual running"""
 
@@ -372,6 +380,9 @@ class WorkflowSuperClass:
 
         if self.dry_run_only:
             return
+
+        # real run only (past the dry-run early return): emit any run-time-only notices once
+        self.pre_execution_checks()
 
         workflow_manifest_path = None
         original_manifest_env_var = os.environ.get('ANVIO_WORKFLOW_MANIFEST_PATH')

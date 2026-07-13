@@ -13,6 +13,10 @@ LR_TECHNOLOGY_PRESETS_YAML = os.path.join(os.path.dirname(__file__), 'lr_technol
 # Cache so we parse the YAML at most once per process.
 _lr_technology_presets_cache = None
 
+# Remembers which (tool, executable) pairs we have already version-probed this process, so the
+# advisory version check shells out to '<tool> --version' at most once per process.
+_version_probe_done = set()
+
 
 def D(debug_message, debug_log_file_path=".SNAKEMAKEDEBUG"):
     """Append a timestamped debug message to a Snakemake debug log."""
@@ -131,6 +135,13 @@ def warn_if_tool_version_untested(tool, executable=None, run=None):
 
     executable = executable or tool
     run = run or terminal.Run()
+
+    # probe each (tool, executable) at most once per process (belt-and-suspenders: this is already
+    # invoked only on real runs, but guarantees no repeated subprocess if called more than once)
+    probe_key = (tool, executable)
+    if probe_key in _version_probe_done:
+        return
+    _version_probe_done.add(probe_key)
 
     tested_versions = get_lr_technology_presets()['tools'].get(tool, {}).get('tested_versions', [])
     if not tested_versions:

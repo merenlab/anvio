@@ -650,10 +650,11 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
                     f"which to use, 'ont' covers Oxford Nanopore libraries, 'pb-hifi' is for PacBio "
                     f"HiFi (CCS) reads, and 'pb-clr' is for older PacBio CLR chemistries (RS II / Sequel)."
                 )
-            # soft heads-up if installed tool versions are outside anvi'o's tested set (never fatal)
-            warn_if_tool_version_untested('minimap2', run=self.run)
-            if not self.references_mode and self.get_param_value_from_config(['flye', 'run']):
-                warn_if_tool_version_untested('flye', run=self.run)
+            # NOTE: the soft "untested tool version" heads-up is NOT done here. This method runs from
+            # init(), which the Snakefile re-runs on every snakemake invocation (internal dry run, real
+            # run, and every DAG rebuild), and the version probe shells out to '<tool> --version'. We
+            # instead emit it once, only on a real run, from warn_untested_lr_tool_versions() (invoked
+            # via the pre_execution_checks() hook in WorkflowSuperClass.go()).
             return
 
         # Column absent: presets must be set explicitly in the config (no silent tool defaults).
@@ -678,6 +679,27 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
                 f"{', '.join(sorted(get_valid_lr_technologies()))}) and anvi'o will handle all of these "
                 f"for you."
             )
+
+    def pre_execution_checks(self):
+        """Checks/notices that should run once, only on a real run (not dry runs / DAG rebuilds).
+
+        Invoked from WorkflowSuperClass.go() after the dry-run early return, so it runs a single
+        time in the driver process right before anvi'o kicks off the actual workflow.
+        """
+        self.warn_untested_lr_tool_versions()
+
+    def warn_untested_lr_tool_versions(self):
+        """Soft heads-up (never fatal) if installed long-read tool versions are outside anvi'o's
+        tested set. Only relevant when the 'lr_technology' column drives preset selection; the
+        probe shells out to '<tool> --version', so it is deliberately kept off the init() path
+        (which re-runs on every dry run / DAG rebuild) and out of any DAG-building code.
+        """
+        if not (self.has_lr and self.has_lr_technology_column):
+            return
+
+        warn_if_tool_version_untested('minimap2', run=self.run)
+        if not self.references_mode and self.get_param_value_from_config(['flye', 'run']):
+            warn_if_tool_version_untested('flye', run=self.run)
 
     def get_flye_flag_for_group(self, group_id):
         """Return the single flye read-type flag (e.g. '--nano-raw') for a group's LR reads.
