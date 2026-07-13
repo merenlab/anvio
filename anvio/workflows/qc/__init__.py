@@ -150,10 +150,13 @@ class QCModule(WorkflowSuperClass):
         it at parse time would re-read every long-read file on every dry run and DAG rebuild.
         """
         problematic = []
+        # A readset can have several input files, and filtlong receives all of them together — so a
+        # read name is a duplicate if it repeats ANYWHERE in the readset, not just within one file.
+        # Track `seen` across every file of the readset (not reset per file).
+        seen = set()
         for path in self.get_lr_files_for_readset(readset):
             if not os.path.exists(path):
                 continue
-            seen = set()
             opener = gzip.open if path.endswith('.gz') else open
             with opener(path, 'rt') as f:
                 for i, line in enumerate(f):
