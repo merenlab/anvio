@@ -198,6 +198,11 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         self.init_kraken()
         self.init_references_txt()
 
+        # now that assembly groups exist (init_references_txt -> expand_groups_by_read_type), make
+        # sure every long-read co-assembly group resolves to a single Flye read type. Doing this
+        # here surfaces the error before the DAG is built (see the method for why).
+        self.sanity_check_lr_group_read_types()
+
         # Set the PROFILE databases paths variable:
         for group in self.group_names:
             if self.group_sizes[group] > 1:
@@ -698,6 +703,26 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         warn_if_tool_version_untested('minimap2', run=self.run)
         if not self.references_mode and self.get_param_value_from_config(['flye', 'run']):
             warn_if_tool_version_untested('flye', run=self.run)
+
+    def sanity_check_lr_group_read_types(self):
+        """Fail at init (before the DAG is built) if a long-read co-assembly group is unresolvable.
+
+        get_flye_flag_for_group() already raises the right ConfigError when a group mixes
+        incompatible Flye read types (or has no resolvable read-type flag), but it is normally
+        called from a Snakemake `params` lambda — so without this the error would only surface
+        mid-DAG-build as an opaque InputFunctionException. We call it once per long-read assembly
+        group here so the clean, actionable error fires up front. Only relevant when Flye will
+        actually assemble long reads (assembly mode, LR present, flye enabled).
+        """
+        if self.references_mode or not self.has_lr:
+            return
+        if not self.get_param_value_from_config(['flye', 'run']):
+            return
+
+        for group_id, assembly_type in self.assembly_types.items():
+            if assembly_type == 'LR':
+                # raises a pre-flight ConfigError if this group's read type is unresolvable
+                self.get_flye_flag_for_group(group_id)
 
     def get_flye_flag_for_group(self, group_id):
         """Return the single flye read-type flag (e.g. '--nano-raw') for a group's LR reads.
