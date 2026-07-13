@@ -134,8 +134,8 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
                 hint = ""
                 if 'use_anvio_conda_yaml' in set_opts and ('conda_yaml' in set_opts or 'conda_env' in set_opts):
                     other = 'conda_yaml' if 'conda_yaml' in set_opts else 'conda_env'
-                    hint = (f" Note that 'use_anvio_conda_yaml' defaults to true, so if you want to use your own "
-                            f"'{other}' for '{tool}', you must ALSO set 'use_anvio_conda_yaml': false for this rule.")
+                    hint = (f" To use your own '{other}' for '{tool}', drop 'use_anvio_conda_yaml' (or set it "
+                            f"back to false, which is the default) so only '{other}' remains in effect.")
                 raise ConfigError(f"For '{tool}', please set only one of 'conda_yaml' (a YAML path), "
                                   f"'conda_env' (an existing env name), or 'use_anvio_conda_yaml' (use the "
                                   f"env file anvi'o ships for this rule). You currently have {len(set_opts)} "

@@ -394,33 +394,32 @@ Several rules in the metagenomics workflow call programs that anvi'o does **not*
 
 `bowtie` (Bowtie2) · `minimap2` · `megahit` · `metaspades` · `idba_ud` · `flye` · `filtlong` · `nanoplot` · `fastqc_sr` (FastQC) · `multiqc`
 
-Rather than requiring you to cram all of these into one environment, each of these rules can run inside its own conda environment that anvi'o (through Snakemake) sets up just for that rule. You control this **per rule** with three mutually exclusive options in your %(workflow-config)s:
+**By default, anvi'o expects each enabled tool on your `$PATH`**: it checks that the program exists before starting and stops with a clear error if it does not. Alternatively, so you do not have to install every one of these into a single environment, you can have any rule run inside its own conda environment that anvi'o (through Snakemake) sets up just for that rule. You control this **per rule** in your %(workflow-config)s with three mutually exclusive options, all off by default:
 
-1. **`use_anvio_conda_yaml`** (boolean, **the default — `true`**). Use the environment file that anvi'o ships for this rule (one curated, version-pinned `.yaml` per tool, living in `anvio/workflows/conda_envs/`). The file is resolved at run time from your installed anvi'o, so your config stays reproducible on any machine — there is no hard-coded path to a repository. This is the recommended option and the reason you usually do not need to install these tools yourself.
+1. **`use_anvio_conda_yaml`** (boolean; default `false`). Set it to `true` to use the environment file anvi'o ships for this rule (one curated, version-pinned `.yaml` per tool, living in `anvio/workflows/conda_envs/`). The file is resolved at run time from your installed anvi'o, so your config stays reproducible on any machine — there is no hard-coded path to a repository. This is the easiest way to get a pinned, tested version of a tool without installing anything yourself.
 
 2. **`conda_yaml`** — a path to *your own* environment `.yaml` file (for example, a copy of one of anvi'o's that you have customized, or an entirely different recipe). Snakemake builds the environment from it.
 
 3. **`conda_env`** — the name of an environment you have **already created yourself** (e.g. `conda create -n my-flye -c bioconda -c conda-forge flye`). The rule runs the tool via `conda run -n <name> ...`.
 
-When a rule resolves to a conda `.yaml` (either the anvi'o-shipped one or your own `conda_yaml`), anvi'o automatically adds `--use-conda` to the underlying Snakemake command, so Snakemake builds and activates that environment. The first run builds the environment (which takes a little while); later runs reuse the cached environment. Because `conda_env` points at an environment that already exists, it does not need `--use-conda`.
+When a rule resolves to a conda `.yaml` (the anvi'o-shipped one via `use_anvio_conda_yaml: true`, or your own `conda_yaml`), anvi'o automatically adds `--use-conda` to the underlying Snakemake command, so Snakemake builds and activates that environment. The first run builds the environment (which takes a little while); later runs reuse the cached environment. Because `conda_env` points at an environment that already exists, it does not need `--use-conda`.
 
 #### These three options are mutually exclusive
 
-Because `use_anvio_conda_yaml` defaults to `true`, if you want to use your own `conda_yaml` or `conda_env` for a rule you must **also set `use_anvio_conda_yaml: false` for that same rule** — otherwise anvi'o stops with a clear error, rather than silently guessing which one you meant. For example, to run Flye from your own named environment:
+Set at most one of `use_anvio_conda_yaml: true`, `conda_yaml`, or `conda_env` per rule; if more than one is in effect anvi'o stops with a clear error rather than guessing which one you meant. For example, to run Flye from your own named environment:
 
 ``` json
 "flye": {
     "run": true,
-    "use_anvio_conda_yaml": false,
     "conda_env": "my-flye"
 }
 ```
 
-#### Running these tools from your `$PATH` instead
+#### Running these tools from your `$PATH`
 
-If you would rather manage a tool yourself and have it available on your `$PATH` (the classic behavior), set `use_anvio_conda_yaml: false` for that rule and leave both `conda_yaml` and `conda_env` empty. Anvi'o will then expect the program to be found on your `$PATH`.
+This is the default. With all three conda options off for a rule (`use_anvio_conda_yaml: false` and both `conda_yaml` and `conda_env` empty), anvi'o expects the program on your `$PATH` and checks for it up front.
 
-Note that whenever a rule is set to be provided by conda (any of the three options above, including the default), anvi'o will **not** pre-check that the program exists on your `$PATH` before starting — Snakemake will provide it. If you switch a tool to `$PATH` mode but it is not actually installed, you will see the failure when that rule runs rather than up front.
+Note that whenever a rule *is* set to be provided by conda (any of the three options above), anvi'o will **not** pre-check that the program exists on your `$PATH` — Snakemake will provide it. In that case, if the environment cannot be built or the tool is otherwise unavailable, you will see the failure when that rule runs rather than up front.
 
 ### Running binning algorithms
 

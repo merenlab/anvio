@@ -23,25 +23,25 @@ progress = terminal.Progress()
 # rule is not already present, so any values the user already set are preserved untouched.
 NEW_METAGENOMICS_QC_RULES = {
     'fastqc_sr': {"threads": 1, "run": False, "run_on_raw": False, "run_on_filtered": False,
-                  "conda_yaml": "", "use_anvio_conda_yaml": True, "conda_env": "",
+                  "conda_yaml": "", "use_anvio_conda_yaml": False, "conda_env": "",
                   "additional_params": ""},
-    'filtlong':  {"threads": 1, "run": False, "conda_yaml": "", "use_anvio_conda_yaml": True,
+    'filtlong':  {"threads": 1, "run": False, "conda_yaml": "", "use_anvio_conda_yaml": False,
                   "conda_env": "", "--min-length": None, "--max-length": None,
                   "--target-bases": None, "additional_params": ""},
     'nanoplot':  {"threads": 2, "run": False, "run_on_raw": False, "run_on_filtered": False,
-                  "conda_yaml": "", "use_anvio_conda_yaml": True, "conda_env": "",
+                  "conda_yaml": "", "use_anvio_conda_yaml": False, "conda_env": "",
                   "additional_params": ""},
-    'multiqc':   {"threads": 1, "run": False, "conda_yaml": "", "use_anvio_conda_yaml": True,
+    'multiqc':   {"threads": 1, "run": False, "conda_yaml": "", "use_anvio_conda_yaml": False,
                   "conda_env": "", "additional_params": ""},
 }
 
-# v6 also introduced the `use_anvio_conda_yaml` option (default true → use the conda env anvi'o
-# ships) on these pre-existing metagenomics tools. New v6 configs get it as `true`, but on a
-# MIGRATED config we set it to `false` on purpose (see the loop below): a working v5 config ran
-# these tools from $PATH, and flipping them to `true` would make Snakemake build conda envs
-# instead — breaking offline/no-conda runs. This frozen list covers the tools whose blocks
-# already existed in v5. Like the blocks above, it is a snapshot of v6 and must not be updated
-# for later schema changes.
+# v6 also introduced the `use_anvio_conda_yaml` option on these pre-existing metagenomics tools.
+# Its default is `false` (run the tool from $PATH, as v5 always did); set it to `true` to have
+# anvi'o build/use its shipped conda env for that rule instead. We add the key as `false` on a
+# migrated config so it (a) matches a freshly generated v6 config, and (b) preserves the v5 $PATH
+# behavior — never silently flipping a working offline/no-conda run into one that builds conda
+# envs. This frozen list covers the tools whose blocks already existed in v5. Like the blocks
+# above, it is a snapshot of v6 and must not be updated for later schema changes.
 PRE_EXISTING_METAGENOMICS_CONDA_TOOLS = ['megahit', 'metaspades', 'idba_ud',
                                          'flye', 'bowtie', 'minimap2']
 
@@ -82,14 +82,14 @@ def migrate(config_path):
                 config[rule] = dict(default_block)
                 added_rules.append(rule)
 
-        # v6 added the `use_anvio_conda_yaml` option to the pre-existing assembly/mapping tools.
-        # On a migrated config we set it to `false` (NOT the v6 default of true): a v5 config that
-        # lacked `conda_yaml`/`conda_env` ran the tool from $PATH, and setting `true` would make
-        # Snakemake build a conda env for it instead (go()/dry_run() add --use-conda, and the $PATH
-        # check is skipped) — turning a working offline/no-conda run into a failing one. `false`
-        # keeps the exact v5 behavior; users can opt into the anvi'o-shipped env by editing it to
-        # true. We only add the key when absent, and skip tools that already declare their own
-        # `conda_yaml`/`conda_env` (those three are mutually exclusive, see MetagenomicsWorkflow.init).
+        # v6 added the `use_anvio_conda_yaml` option to the pre-existing assembly/mapping tools; its
+        # default is `false` (run from $PATH, as v5 did). We add the key as `false` on the migrated
+        # config so it matches a freshly generated v6 config and keeps the exact v5 $PATH behavior
+        # (setting `true` would make Snakemake build a conda env instead — go()/dry_run() add
+        # --use-conda and the $PATH check is skipped). Users can opt into the anvi'o-shipped env by
+        # editing it to true. We only add the key when absent, and skip tools that already declare
+        # their own `conda_yaml`/`conda_env` (those three are mutually exclusive, see
+        # MetagenomicsWorkflow.init).
         for tool in PRE_EXISTING_METAGENOMICS_CONDA_TOOLS:
             block = config.get(tool)
             if not isinstance(block, dict) or 'use_anvio_conda_yaml' in block:
