@@ -225,18 +225,26 @@ class SamplesTxt:
             if not include_extras:
                 # Rebuild text without extras using the dict view (simpler than column surgery).
                 d = self.as_dict(include_extras=False, absolute_paths=absolute_paths, base_dir=base_dir)
-                # Make a compact TSV with only the canonical columns
-                header = [self._first_col, "group", "r1", "r2", "lr", "lr_technology"]
+                # Make a compact TSV with only the canonical columns. 'lr_technology' is optional:
+                # only emit it when it was actually present in the source, otherwise a round-trip
+                # (parse a file without it → write → re-parse) would resurrect the column as
+                # "present" and then fail the all-or-nothing validation on blank long-read rows.
+                include_lr_tech = self.has_lr_technology_column
+                header = [self._first_col, "group", "r1", "r2", "lr"]
+                if include_lr_tech:
+                    header.append("lr_technology")
                 lines = ["\t".join(header)]
                 for sample, info in d.items():
-                    lines.append("\t".join([
+                    row = [
                         sample,
                         "" if info.get("group") in (None,) else str(info.get("group")),
                         ",".join(info.get("r1") or []),
                         ",".join(info.get("r2") or []),
                         ",".join(info.get("lr") or []),
-                        info.get("lr_technology") or "",
-                    ]))
+                    ]
+                    if include_lr_tech:
+                        row.append(info.get("lr_technology") or "")
+                    lines.append("\t".join(row))
                 text = "\n".join(lines)
 
         with open(out_path, "w", encoding=encoding) as f:
