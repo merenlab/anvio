@@ -24,27 +24,44 @@ This directory ships one environment file per tool, with a pinned, tested versio
 
 ## How to use
 
-Two options per rule, set under the rule's block in your workflow config:
+Three mutually exclusive options per rule, set under the rule's block in your workflow config.
+Anvi'o raises a ConfigError if you set more than one.
 
-1. **`conda_yaml`** — path to one of these YAML files. Snakemake builds the environment
-   from it. Run the workflow with `--use-conda`:
+1. **`use_anvio_conda_yaml`** (boolean, **the default — `true`**) — use the env file anvi'o ships
+   for this rule (the file in *this* directory). The path is resolved at runtime from the installed
+   anvi'o location, so the config stays reproducible across machines — no hard-coded repo path.
+   This is the recommended option, and because it is the default you usually don't set anything:
 
    ```json
-   "flye":     { "run": true, "conda_yaml": "/path/to/anvio/workflows/conda_envs/flye.yaml" },
-   "nanoplot": { "run": true, "run_on_raw": true, "conda_yaml": ".../conda_envs/nanoplot.yaml" }
+   "flye":     { "run": true },
+   "nanoplot": { "run": true, "run_on_raw": true }
    ```
 
-   ```
-   anvi-run-workflow -w metagenomics -c config.json \
-       --additional-params --use-conda --conda-frontend mamba
+   Anvi'o auto-adds `--use-conda` to the Snakemake command when a rule uses a conda YAML, so you
+   normally don't pass it yourself. The first run builds the env; later runs reuse the cache.
+
+2. **`conda_yaml`** — path to *your own* env YAML (e.g. a customized copy of one of these).
+   Snakemake builds the environment from it. Because this is an explicit path it is machine-specific;
+   prefer `use_anvio_conda_yaml` when you just want the shipped env. Requires
+   `use_anvio_conda_yaml: false`:
+
+   ```json
+   "flye": { "run": true, "use_anvio_conda_yaml": false, "conda_yaml": "/abs/path/to/my-flye.yaml" }
    ```
 
-2. **`conda_env`** — the name of an existing conda environment you have already created
+3. **`conda_env`** — the name of an existing conda environment you have already created
    (e.g. `conda env create -f flye.yaml -n my-flye`). The rule then runs the tool via
-   `conda run -n <name> ...`; no `--use-conda` needed.
+   `conda run -n <name> ...` (no `--use-conda` needed). Requires `use_anvio_conda_yaml: false`:
 
-Set only one of `conda_yaml` / `conda_env` per rule. If neither is set, the tool must be
-on `$PATH` (the legacy behavior).
+   ```json
+   "flye": { "run": true, "use_anvio_conda_yaml": false, "conda_env": "my-flye" }
+   ```
+
+Because `use_anvio_conda_yaml` defaults to `true`, options 2 and 3 require you to ALSO set
+`use_anvio_conda_yaml: false` on the same rule (otherwise anvi'o errors — it won't guess).
+
+To run a tool from your **`$PATH`** instead (the classic behavior), set `use_anvio_conda_yaml: false`
+and leave `conda_yaml` / `conda_env` empty.
 
 ## Notes
 

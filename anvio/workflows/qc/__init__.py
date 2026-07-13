@@ -82,15 +82,18 @@ class QCModule(WorkflowSuperClass):
         return self.get_sr_files_for_readset(readset)
 
     def _tool_provided_by_conda(self, tool):
-        """Whether a tool is supplied via a conda env (conda_yaml or conda_env) rather than $PATH.
+        """Whether a tool is supplied via a conda env rather than $PATH.
 
+        True when any of the three conda options is set: 'conda_yaml' (a user YAML path),
+        'conda_env' (an existing env name), or 'use_anvio_conda_yaml' (the env file anvi'o ships).
         When it is, we must not check for the executable (or its Python modules) on the current
         $PATH / interpreter — Snakemake will run the rule inside the configured environment. Mirrors
         the logic in MetagenomicsWorkflow.ensure_tool_in_path_or_conda().
         """
         y = self.get_param_value_from_config([tool, 'conda_yaml'])
         n = self.get_param_value_from_config([tool, 'conda_env'])
-        return bool((y and y.strip()) or (n and n.strip()))
+        a = self.get_param_value_from_config([tool, 'use_anvio_conda_yaml']) == True
+        return bool((y and y.strip()) or (n and n.strip()) or a)
 
     def check_qc_program_dependencies(self):
         """Raise ConfigError for any program required by an enabled QC tool that is missing.

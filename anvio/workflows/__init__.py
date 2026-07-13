@@ -34,6 +34,7 @@ from anvio.workflows.snakemake_utils import (
     D as D,
     regex_from_ids as regex_from_ids,
     get_conda_yaml_path as get_conda_yaml_path,
+    get_anvio_conda_yaml_path as get_anvio_conda_yaml_path,
     get_conda_env_prefix as get_conda_env_prefix,
     gunzip_file as gunzip_file,
     get_lr_technology_presets as get_lr_technology_presets,
@@ -398,8 +399,12 @@ class WorkflowSuperClass:
             sys.argv.extend(['--log-handler-script',
                              os.path.join(get_path_to_workflows_dir(), 'scripts', 'snakemake_log_handler.py')])
 
-        # if any conda yaml is provided for a rule, then add '--use-conda' to the snakemake command:
-        if any(isinstance(v, dict) and v.get('conda_yaml') for v in (self.config or {}).values()):
+        # if any rule uses a conda YAML (a user 'conda_yaml' path, or the anvi'o-shipped env via
+        # 'use_anvio_conda_yaml'), add '--use-conda' so Snakemake builds/activates it. We key on the
+        # user's config (not merged defaults) so legacy configs without these keys are unaffected.
+        # 'conda_env' does NOT trigger this — it is handled by a `conda run -n` prefix, not --use-conda.
+        if any(isinstance(v, dict) and (v.get('conda_yaml') or v.get('use_anvio_conda_yaml') is True)
+               for v in (self.config or {}).values()):
             sys.argv.append('--use-conda')
 
         if self.additional_params:
@@ -471,8 +476,10 @@ class WorkflowSuperClass:
         args = ['snakemake', '--snakefile', get_workflow_snake_file_path(self.name),
                 '--configfile', self.config_file, '--dryrun', '--quiet']
 
-        # if any conda yaml is provided for a rule, then add '--use-conda' to the snakemake command:
-        if any(isinstance(v, dict) and v.get('conda_yaml') for v in (self.config or {}).values()):
+        # if any rule uses a conda YAML (a user 'conda_yaml' path, or the anvi'o-shipped env via
+        # 'use_anvio_conda_yaml'), add '--use-conda' (see the matching note in the main go() path).
+        if any(isinstance(v, dict) and (v.get('conda_yaml') or v.get('use_anvio_conda_yaml') is True)
+               for v in (self.config or {}).values()):
             args.append('--use-conda')
 
         if self.save_workflow_graph:

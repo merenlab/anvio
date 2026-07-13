@@ -26,8 +26,39 @@ def regex_from_ids(ids):
     return r"(?:{})".format("|".join(re.escape(str(i)) for i in ids)) if ids else r"DO_NOT_MATCH"
 
 
+# Directory holding the per-rule conda environment files anvi'o ships (one <tool>.yaml per
+# rule that wraps a third-party program). See conda_envs/README.md for the full list.
+CONDA_ENVS_DIR = os.path.join(os.path.dirname(__file__), 'conda_envs')
+
+
+def get_anvio_conda_yaml_path(tool):
+    """Return the absolute path to the conda YAML anvi'o ships for a tool, or None if none exists.
+
+    The file name matches the rule/config key (e.g. 'nanoplot' -> conda_envs/nanoplot.yaml). This
+    is resolved at runtime from the installed anvi'o location, so a config using
+    'use_anvio_conda_yaml' stays reproducible across machines (no hard-coded repo path).
+    """
+    path = os.path.join(CONDA_ENVS_DIR, f'{tool}.yaml')
+    return path if os.path.exists(path) else None
+
+
 def get_conda_yaml_path(workflow, tool):
-    """Return the absolute conda YAML path configured for a workflow tool."""
+    """Return the absolute conda YAML path for a workflow tool, or None.
+
+    Precedence (mutual exclusivity is enforced by the workflow sanity checks):
+      1. 'use_anvio_conda_yaml': True  -> the YAML anvi'o ships for this tool (see above);
+      2. 'conda_yaml': <path>          -> that explicit, user-provided path;
+      3. otherwise                     -> None (tool comes from $PATH or an existing conda_env).
+    """
+    if workflow.get_param_value_from_config([tool, 'use_anvio_conda_yaml']) == True:
+        # sanity-checked up front, but stay defensive here since this feeds the conda: directive
+        path = get_anvio_conda_yaml_path(tool)
+        if not path:
+            from anvio.errors import ConfigError
+            raise ConfigError(f"'{tool}' is set to use the anvi'o-shipped conda env file, but anvi'o "
+                              f"does not ship one for this rule (expected '{tool}.yaml' in {CONDA_ENVS_DIR}).")
+        return path
+
     path = workflow.get_param_value_from_config([tool, 'conda_yaml'])
     if not path:
         return None

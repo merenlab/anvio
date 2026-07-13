@@ -125,13 +125,33 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
             if sum(lr_choices) > 1:
                 raise ConfigError("Multiple long-read assemblers are enabled; please enable Flye")
 
-        # sanity check for conda env: use either conda_yaml or conda_env, not both
+        # sanity check for conda env: use AT MOST ONE of conda_yaml / conda_env / use_anvio_conda_yaml
+        import anvio.workflows as w
         for tool in ['flye','minimap2','bowtie','megahit','metaspades','idba_ud','filtlong','nanoplot','fastqc_sr','multiqc']:
             y = self.get_param_value_from_config([tool, 'conda_yaml'])
             n = self.get_param_value_from_config([tool, 'conda_env'])
-            if (y and y.strip()) and (n and n.strip()):
-                raise ConfigError(f"For '{tool}', please set only one of 'conda_yaml' (YAML path) "
-                                  f"or 'conda_env' (existing env name), not both.")
+            a = self.get_param_value_from_config([tool, 'use_anvio_conda_yaml']) == True
+            set_opts = []
+            if y and y.strip():
+                set_opts.append('conda_yaml')
+            if n and n.strip():
+                set_opts.append('conda_env')
+            if a:
+                set_opts.append('use_anvio_conda_yaml')
+            if len(set_opts) > 1:
+                hint = ""
+                if 'use_anvio_conda_yaml' in set_opts and ('conda_yaml' in set_opts or 'conda_env' in set_opts):
+                    other = 'conda_yaml' if 'conda_yaml' in set_opts else 'conda_env'
+                    hint = (f" Note that 'use_anvio_conda_yaml' defaults to true, so if you want to use your own "
+                            f"'{other}' for '{tool}', you must ALSO set 'use_anvio_conda_yaml': false for this rule.")
+                raise ConfigError(f"For '{tool}', please set only one of 'conda_yaml' (a YAML path), "
+                                  f"'conda_env' (an existing env name), or 'use_anvio_conda_yaml' (use the "
+                                  f"env file anvi'o ships for this rule). You currently have {len(set_opts)} "
+                                  f"in effect: {', '.join(set_opts)}.{hint}")
+            if a and not w.get_anvio_conda_yaml_path(tool):
+                raise ConfigError(f"For '{tool}', you set 'use_anvio_conda_yaml: true', but anvi'o does "
+                                  f"not ship a conda env file for this rule. Please use 'conda_yaml' with "
+                                  f"a path to your own env file, or 'conda_env' with an existing env name.")
 
         # Ensure selected assemblers and mapper are available (PATH or conda)
         self.ensure_tool_in_path_or_conda('megahit', 'megahit')
@@ -929,15 +949,16 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         if not self.get_param_value_from_config([tool, 'run']):
             return  # tool not requested
 
-        # do we have a conda env/yaml?
+        # do we have a conda env/yaml? (explicit yaml, existing env name, or the anvi'o-shipped yaml)
         has_conda_yaml = self.get_param_value_from_config([tool, 'conda_yaml'])
         has_conda_env = self.get_param_value_from_config([tool, 'conda_env'])
-        if has_conda_yaml or has_conda_env:
+        use_anvio_yaml = self.get_param_value_from_config([tool, 'use_anvio_conda_yaml']) == True
+        if has_conda_yaml or has_conda_env or use_anvio_yaml:
             return  # conda env/yaml will provide the executable
 
         if not shutil.which(executable):
             raise ConfigError(
                 f"You enabled '{tool}', but '{executable}' was not found in your $PATH. "
                 f"You can either install it, or set a conda environment via "
-                f"'conda_yaml' or 'conda_env' in your config file."
+                f"'conda_yaml', 'conda_env', or 'use_anvio_conda_yaml' in your config file."
             )
