@@ -56,6 +56,15 @@ class QCModule(WorkflowSuperClass):
             'multiqc',
         ])
 
+    def filtered_lr_path(self, readset):
+        """Single source of truth for the Filtlong output path of a long-read readset.
+
+        Used by get_fastq(), get_nanoplot_input_files(), get_qc_target_files(), and the filtlong
+        rule (lr.smk) so the filtered-reads filename can never drift between the rule that writes it
+        and the code that consumes it.
+        """
+        return os.path.join(self.dirs_dict["QC_DIR"], f"{readset}-FILTERED_LR.fastq.gz")
+
     def get_fastq(self, readset, pre_ref_removal=False):
         """Return FASTQ paths for a readset.
 
@@ -65,8 +74,7 @@ class QCModule(WorkflowSuperClass):
         rs = self.readsets_by_id.get(readset)
         if rs['type'] == 'LR':
             if getattr(self, 'run_filtlong', False):
-                path = os.path.join(self.dirs_dict["QC_DIR"], f"{readset}-FILTERED_LR.fastq.gz")
-                return {'lr': [path]}
+                return {'lr': [self.filtered_lr_path(readset)]}
             return {'lr': self.get_lr_files_for_readset(readset)}
         elif rs['type'] == 'SR':
             return self._resolve_sr_path(readset, pre_ref_removal=pre_ref_removal)
@@ -206,7 +214,7 @@ class QCModule(WorkflowSuperClass):
         if stage == 'raw':
             return self.get_lr_files_for_readset(readset)
         elif stage == 'filtered':
-            return [os.path.join(self.dirs_dict["QC_DIR"], f"{readset}-FILTERED_LR.fastq.gz")]
+            return [self.filtered_lr_path(readset)]
         else:
             raise ConfigError(f"get_nanoplot_input_files :: unknown stage '{stage}' (expected 'raw' or 'filtered').")
 
@@ -326,7 +334,7 @@ class QCModule(WorkflowSuperClass):
             # check_lr_read_names rule (which gates filtlong), so full long-read files are not
             # re-scanned at parse time on every dry run / DAG rebuild.
             for rs_id in self.get_lr_readset_ids():
-                targets.append(os.path.join(self.dirs_dict["QC_DIR"], f"{rs_id}-FILTERED_LR.fastq.gz"))
+                targets.append(self.filtered_lr_path(rs_id))
 
         run_nanoplot = self.get_param_value_from_config(['nanoplot', 'run']) == True
         if run_nanoplot:

@@ -92,7 +92,8 @@ rule filtlong:
         reads=lambda wildcards: M.get_lr_files_for_readset(wildcards.readset),
         names_ok=os.path.join(dirs_dict["QC_DIR"], "{readset}-LR_NAMES_OK.flag"),
     output:
-        filtered=os.path.join(dirs_dict["QC_DIR"], "{readset}-FILTERED_LR.fastq.gz"),
+        # the {readset} wildcard passes through the helper as a literal for Snakemake to expand
+        filtered=M.filtered_lr_path("{readset}"),
     log:
         rule_log("filtlong", "{readset}-filtlong"),
     wildcard_constraints:
