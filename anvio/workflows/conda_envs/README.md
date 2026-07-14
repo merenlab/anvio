@@ -65,9 +65,9 @@ To run a tool from your **`$PATH`** — the default — just leave all three off
 
 ## Notes
 
-- `nanoplot.yaml` pins `python-kaleido=0.2.1` and `python <3.13`: NanoPlot 1.42 imports the
-  legacy `kaleido.scopes` API that `python-kaleido >= 1.0` removed, and an unpinned solve
-  otherwise pulls python 3.14 + kaleido 1.x and crashes on import.
+- `nanoplot.yaml` pins only the NanoPlot version and leaves the rest of the dependency tree to
+  the solver, which resolves an importable environment; pinning `python`/`python-kaleido` breaks
+  the solve. See that file's header for details.
 - `flye`/`minimap2` versions track the presets validated in
   `anvio/workflows/lr_technology_presets.yaml`.
 - Still on `$PATH` (no conda hook yet): `samtools`, `krakenuniq`, `centrifuge`, `emapper`.
