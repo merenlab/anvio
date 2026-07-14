@@ -104,6 +104,24 @@ def get_lr_technology_presets():
         # normalize to always have the two sections so callers can index without guarding
         presets.setdefault('tools', {})
         presets.setdefault('technologies', {})
+
+        # Completeness check (dev-facing): every technology token must define a preset for every
+        # tool declared under `tools:`. Token vocabulary is validated against this map elsewhere,
+        # but that only checks membership — without this, a token missing one tool's preset would
+        # silently fall through to the config-flag path (wrong preset, no error). This map is
+        # hand-edited by developers, so we fail loudly here the moment it goes inconsistent.
+        expected_tools = set(presets['tools'].keys())
+        gaps = {tech: sorted(expected_tools - {t for t, v in (tool_map or {}).items() if v})
+                for tech, tool_map in presets['technologies'].items()}
+        gaps = {tech: missing for tech, missing in gaps.items() if missing}
+        if gaps:
+            from anvio.errors import ConfigError
+            details = '; '.join(f"'{tech}' is missing: {', '.join(missing)}" for tech, missing in sorted(gaps.items()))
+            raise ConfigError(f"The long-read technology preset map ({LR_TECHNOLOGY_PRESETS_YAML}) is "
+                              f"incomplete: every technology token must define a preset for each tool "
+                              f"listed under 'tools:' ({', '.join(sorted(expected_tools))}). {details}. "
+                              f"Please add the missing preset(s) to that file.")
+
         _lr_technology_presets_cache = presets
 
     return _lr_technology_presets_cache
