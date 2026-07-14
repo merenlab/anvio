@@ -11,7 +11,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio import utils as u
 from anvio.drivers import driver_modules
-from anvio.workflows import WorkflowSuperClass
+from anvio.workflows import WorkflowSuperClass, get_lr_preset, get_valid_lr_technologies, warn_if_tool_version_untested, FLYE_READ_TYPE_FLAGS
 from anvio.workflows.contigs import ContigsDBWorkflow
 from anvio.workflows.qc import QCModule
 from anvio.workflows.read_recruitment import ReadRecruitmentModule
@@ -96,6 +96,8 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         # quick flags about data composition
         self.has_sr = self.samples_txt.has_any_sr()
         self.has_lr = self.samples_txt.has_any_lr()
+        # whether the (optional) lr_technology column is present; drives preset resolution
+        self.has_lr_technology_column = self.samples_txt.has_lr_technology_column
 
         # for now, single-end short-reads are not compatible with the workflow
         if self.samples_txt.has_any_single_end_sr():
@@ -123,13 +125,25 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
             if sum(lr_choices) > 1:
                 raise ConfigError("Multiple long-read assemblers are enabled; please enable Flye")
 
-        # sanity check for conda env: use either conda_yaml or conda_env, not both
-        for tool in ['flye','minimap2','bowtie','megahit','metaspades','idba_ud']:
-            y = self.get_param_value_from_config([tool, 'conda_yaml'])
-            n = self.get_param_value_from_config([tool, 'conda_env'])
-            if (y and y.strip()) and (n and n.strip()):
-                raise ConfigError(f"For '{tool}', please set only one of 'conda_yaml' (YAML path) "
-                                  f"or 'conda_env' (existing env name), not both.")
+        # sanity check for conda env: use AT MOST ONE of conda_yaml / conda_env / use_anvio_conda_yaml
+        import anvio.workflows as w
+        for tool in ['flye','minimap2','bowtie','megahit','metaspades','idba_ud','filtlong','nanoplot','fastqc','multiqc']:
+            set_opts = self._conda_options_set(tool)
+            a = 'use_anvio_conda_yaml' in set_opts
+            if len(set_opts) > 1:
+                hint = ""
+                if 'use_anvio_conda_yaml' in set_opts and ('conda_yaml' in set_opts or 'conda_env' in set_opts):
+                    other = 'conda_yaml' if 'conda_yaml' in set_opts else 'conda_env'
+                    hint = (f" To use your own '{other}' for '{tool}', drop 'use_anvio_conda_yaml' (or set it "
+                            f"back to false, which is the default) so only '{other}' remains in effect.")
+                raise ConfigError(f"For '{tool}', please set only one of 'conda_yaml' (a YAML path), "
+                                  f"'conda_env' (an existing env name), or 'use_anvio_conda_yaml' (use the "
+                                  f"env file anvi'o ships for this rule). You currently have {len(set_opts)} "
+                                  f"in effect: {', '.join(set_opts)}.{hint}")
+            if a and not w.get_anvio_conda_yaml_path(tool):
+                raise ConfigError(f"For '{tool}', you set 'use_anvio_conda_yaml: true', but anvi'o does "
+                                  f"not ship a conda env file for this rule. Please use 'conda_yaml' with "
+                                  f"a path to your own env file, or 'conda_env' with an existing env name.")
 
         # Ensure selected assemblers and mapper are available (PATH or conda)
         self.ensure_tool_in_path_or_conda('megahit', 'megahit')
@@ -138,15 +152,23 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         self.ensure_tool_in_path_or_conda('flye', 'flye')
         self.ensure_tool_in_path_or_conda('bowtie', 'bowtie2')
         self.ensure_tool_in_path_or_conda('minimap2', 'minimap2')
+        self.ensure_tool_in_path_or_conda('filtlong', 'filtlong')
+        self.ensure_tool_in_path_or_conda('nanoplot', 'NanoPlot')
 
         self.use_scaffold_from_metaspades = self.get_param_value_from_config(['metaspades', 'use_scaffolds'])
         self.use_scaffold_from_idba_ud = self.get_param_value_from_config(['idba_ud', 'use_scaffolds'])
         self.run_qc = self.get_param_value_from_config(['iu_filter_quality_minoche', 'run']) == True
+        self.run_filtlong = self.get_param_value_from_config(['filtlong', 'run']) == True
+        self.run_nanoplot = self.get_param_value_from_config(['nanoplot', 'run']) == True
+        self.run_multiqc = self.get_param_value_from_config(['multiqc', 'run']) == True
         self.run_summary = self.get_param_value_from_config(['anvi_summarize', 'run']) == True
         self.run_split = self.get_param_value_from_config(['anvi_split', 'run']) == True
         self.references_mode = self.get_param_value_from_config('references_mode')
         self.fasta_txt_file = self.get_param_value_from_config('fasta_txt')
         self.profile_databases = {}
+
+        # validate long-read technology tokens / ensure long-read presets are resolvable
+        self.sanity_check_lr_technology_and_presets()
 
         # just some extra checks. TO BE UTLRA-SAFE
         if len(self.sample_names) < 1:
@@ -167,6 +189,11 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
 
         self.init_kraken()
         self.init_references_txt()
+
+        # now that assembly groups exist (init_references_txt -> expand_groups_by_read_type), make
+        # sure every long-read co-assembly group resolves to a single Flye read type. Doing this
+        # here surfaces the error before the DAG is built (see the method for why).
+        self.sanity_check_lr_group_read_types()
 
         # Set the PROFILE databases paths variable:
         for group in self.group_names:
@@ -585,26 +612,196 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         member_readsets = self.assembly_members.get(group_id, [])
         files = []
         for rs_id in member_readsets:
-            files.extend(self.get_lr_files_for_readset(rs_id))
+            # Route through get_fastq (like get_sr_fastqs_for_group does for short reads) so assembly
+            # uses the same reads as mapping: the filtlong-filtered reads when filtlong is enabled,
+            # otherwise the raw long reads.
+            files.extend(self.get_fastq(rs_id)['lr'])
         return files
 
 
-    def get_flye_flag_for_group(self, group_id):
-        """Return the single Flye read-type flag selected in the config.
+    def sanity_check_lr_technology_and_presets(self):
+        """Validate long-read technology tokens and ensure a preset is resolvable for every LR tool.
 
-        The user must enable exactly one of Flye's read-type flags
-        (--pacbio-raw / --pacbio-corr / --pacbio-hifi / --nano-raw / --nano-corr / --nano-hq)
-        in the config; that flag is used for every long-read assembly.
+        Enforces the design contract for long reads:
+          - If the samples-txt provides the 'lr_technology' column, every token must be one anvi'o
+            knows about (the vocabulary lives in the LR technology preset file). Presets are then
+            derived from that column automatically.
+          - If the column is absent, the relevant presets MUST be set explicitly in the config
+            (minimap2 preset for mapping; exactly one Flye read-type flag for assembly). Anvi'o
+            never lets a long-read tool run on its own built-in default, so it fails here — before
+            building a DAG — with an actionable message.
         """
-        flags = ["--pacbio-raw", "--pacbio-corr", "--pacbio-hifi",
-                 "--nano-raw", "--nano-corr", "--nano-hq"]
-        enabled = [f for f in flags if self.get_param_value_from_config(['flye', f])]
+        if not self.has_lr:
+            return
+
+        if self.has_lr_technology_column:
+            # vocabulary check: every long-read readset's token must be one anvi'o recognizes
+            valid = get_valid_lr_technologies()
+            bad = [(rs_id, tech) for rs_id in self.get_lr_readset_ids()
+                   if (tech := self.readsets_by_id.get(rs_id, {}).get('lr_technology')) and tech not in valid]
+            if bad:
+                details = '; '.join(f"'{t}' (readset '{r}')" for r, t in bad)
+                raise ConfigError(
+                    f"Your samples-txt file uses one or more 'lr_technology' values that anvi'o does not "
+                    f"recognize: {details}. Valid values are: {', '.join(sorted(valid))}. If you are unsure "
+                    f"which to use, 'ont' covers Oxford Nanopore libraries, 'pb-hifi' is for PacBio "
+                    f"HiFi (CCS) reads, and 'pb-clr' is for older PacBio CLR chemistries (RS II / Sequel)."
+                )
+            # NOTE: the soft "untested tool version" heads-up is NOT done here. This method runs from
+            # init(), which the Snakefile re-runs on every snakemake invocation (internal dry run, real
+            # run, and every DAG rebuild), and the version probe shells out to '<tool> --version'. We
+            # instead emit it once, only on a real run, from warn_untested_lr_tool_versions() (invoked
+            # via the pre_execution_checks() hook in WorkflowSuperClass.go()).
+            return
+
+        # Column absent: presets must be set explicitly in the config (no silent tool defaults).
+        missing = []
+        if not self.get_param_value_from_config(['minimap2', 'preset']):
+            missing.append("'minimap2: preset' (e.g. map-ont / map-pb / map-hifi) for long-read mapping")
+        if not self.references_mode:
+            if not any(self.get_param_value_from_config(['flye', f]) for f in FLYE_READ_TYPE_FLAGS):
+                missing.append("exactly one Flye read-type flag (e.g. --nano-raw / --pacbio-hifi) "
+                               "for long-read assembly")
+
+        if missing:
+            details = '\n  - '.join(missing)
+            raise ConfigError(
+                f"Your samples-txt file has long-read samples but no 'lr_technology' column, so anvi'o "
+                f"cannot pick long-read presets automatically. In that case you must set them explicitly "
+                f"in your workflow config — anvi'o refuses to fall back to each tool's built-in default. "
+                f"The following are missing:\n  - {details}\n\nThe simplest alternative is to add an "
+                f"'lr_technology' column to your samples-txt (with one of: "
+                f"{', '.join(sorted(get_valid_lr_technologies()))}) and anvi'o will handle all of these "
+                f"for you."
+            )
+
+    def pre_execution_checks(self):
+        """Checks/notices that should run once, only on a real run (not dry runs / DAG rebuilds).
+
+        Invoked from WorkflowSuperClass.go() after the dry-run early return, so it runs a single
+        time in the driver process right before anvi'o kicks off the actual workflow.
+        """
+        self.warn_untested_lr_tool_versions()
+        self.warn_if_config_presets_superseded()
+
+    def warn_if_config_presets_superseded(self):
+        """Soft heads-up (never fatal) when the 'lr_technology' column overrides config presets.
+
+        When the samples-txt carries the 'lr_technology' column, anvi'o derives the minimap2
+        preset and the Flye read-type flag from the technology token and IGNORES whatever is set
+        under 'minimap2: preset' / the Flye read-type flags in the config. That override is silent,
+        so a user who set those in the config could be surprised. Warn once (only on a real run,
+        via pre_execution_checks) listing which config values will be superseded. Nothing is fatal.
+        """
+        if not (self.has_lr and self.has_lr_technology_column):
+            return
+
+        superseded = []
+        if self.get_param_value_from_config(['minimap2', 'preset']):
+            superseded.append("the 'minimap2: preset' value (long-read mapping)")
+        if not self.references_mode:
+            enabled_flye_flags = [f for f in FLYE_READ_TYPE_FLAGS
+                                  if self.get_param_value_from_config(['flye', f])]
+            if enabled_flye_flags:
+                superseded.append(f"the Flye read-type flag(s) {', '.join(enabled_flye_flags)} "
+                                  f"(long-read assembly)")
+
+        if superseded:
+            self.run.warning(
+                f"Your samples-txt has an 'lr_technology' column, so anvi'o is choosing long-read "
+                f"presets from each sample's technology and will IGNORE the following value(s) you set "
+                f"in your config: {'; '.join(superseded)}. If that is what you want, you can ignore this "
+                f"message. If you meant for the config value(s) to take effect, remove the "
+                f"'lr_technology' column from your samples-txt (so the config drives the presets) — or, "
+                f"if the two simply disagree, fix whichever one is wrong.",
+                header="LR_TECHNOLOGY SUPERSEDES YOUR CONFIG PRESETS", lc="yellow",
+            )
+
+    def warn_untested_lr_tool_versions(self):
+        """Soft heads-up (never fatal) if installed long-read tool versions are outside anvi'o's
+        tested set. Only relevant when the 'lr_technology' column drives preset selection; the
+        probe shells out to '<tool> --version', so it is deliberately kept off the init() path
+        (which re-runs on every dry run / DAG rebuild) and out of any DAG-building code.
+
+        A tool provided via conda is skipped: the probe only sees the $PATH binary, which is not
+        the one the rule will run, so warning about it would be misleading (and for the
+        anvi'o-shipped env it is the tested version by construction).
+        """
+        if not (self.has_lr and self.has_lr_technology_column):
+            return
+
+        if not self._tool_provided_by_conda('minimap2'):
+            warn_if_tool_version_untested('minimap2', run=self.run)
+        if not self.references_mode and self.get_param_value_from_config(['flye', 'run']):
+            if not self._tool_provided_by_conda('flye'):
+                warn_if_tool_version_untested('flye', run=self.run)
+
+    def sanity_check_lr_group_read_types(self):
+        """Fail at init (before the DAG is built) if a long-read co-assembly group is unresolvable.
+
+        get_flye_flag_for_group() already raises the right ConfigError when a group mixes
+        incompatible Flye read types (or has no resolvable read-type flag), but it is normally
+        called from a Snakemake `params` lambda — so without this the error would only surface
+        mid-DAG-build as an opaque InputFunctionException. We call it once per long-read assembly
+        group here so the clean, actionable error fires up front. Only relevant when Flye will
+        actually assemble long reads (assembly mode, LR present, flye enabled).
+        """
+        if self.references_mode or not self.has_lr:
+            return
+        if not self.get_param_value_from_config(['flye', 'run']):
+            return
+
+        for group_id, assembly_type in self.assembly_types.items():
+            if assembly_type == 'LR':
+                # raises a pre-flight ConfigError if this group's read type is unresolvable
+                self.get_flye_flag_for_group(group_id)
+
+    def get_flye_flag_for_group(self, group_id):
+        """Return the single flye read-type flag (e.g. '--nano-raw') for a group's LR reads.
+
+        Resolution order, mirroring the other long-read tools:
+          1. If the group's readsets carry 'lr_technology' tokens (samples-txt column present),
+             derive the flye flag from the LR technology preset file. All members of one
+             assembly must map to the same flag (Flye assembles one read type per run), else
+             ConfigError asking the user to split them into separate groups.
+          2. Otherwise, fall back to exactly one of Flye's read-type flags enabled in the
+             config (--pacbio-raw / --pacbio-corr / --pacbio-hifi / --nano-raw / --nano-corr /
+             --nano-hq). Zero or more-than-one is a ConfigError.
+        """
+        member_readsets = self.assembly_members.get(group_id, [])
+        techs = {rs.get('lr_technology') for rs_id in member_readsets
+                 if (rs := self.readsets_by_id.get(rs_id)) and rs.get('lr_technology')}
+
+        if techs:
+            # lr_technology provided: derive the flag from the preset map (tokens already
+            # validated during init()). All members of one assembly must agree on read type.
+            flags = {get_lr_preset(t, 'flye') for t in techs}
+            flags.discard(None)
+            if len(flags) > 1:
+                raise ConfigError(
+                    f"Anvi'o is trying to assemble group '{group_id}' with Flye, but its "
+                    f"samples use incompatible sequencing technologies: {', '.join(sorted(techs))}. "
+                    f"Flye requires a single read type per assembly run. Please split these "
+                    f"samples into separate groups in your samples.txt."
+                )
+            if flags:
+                return flags.pop()
+
+        # No lr_technology tokens for this group: fall back to the config read-type flag.
+        enabled = [f for f in FLYE_READ_TYPE_FLAGS if self.get_param_value_from_config(['flye', f])]
         if len(enabled) == 0:
-            raise ConfigError("flye: please enable exactly one read-type flag in your config (one of "
-                              "--pacbio-raw, --pacbio-corr, --pacbio-hifi, --nano-raw, --nano-corr, --nano-hq).")
+            raise ConfigError(
+                f"Anvi'o needs a Flye read-type flag to assemble the long reads in group "
+                f"'{group_id}', but none is available. Either add an 'lr_technology' column to your "
+                f"samples-txt file (anvi'o will pick the right flag automatically), or enable exactly "
+                f"one of Flye's read-type flags in your config: --pacbio-raw, --pacbio-corr, "
+                f"--pacbio-hifi, --nano-raw, --nano-corr, or --nano-hq."
+            )
         if len(enabled) > 1:
-            raise ConfigError("flye: the read-type flags are mutually exclusive, but you enabled more "
-                              "than one: %s. Please enable exactly one." % ', '.join(enabled))
+            raise ConfigError(
+                f"Flye's read-type flags are mutually exclusive, but your config for group "
+                f"'{group_id}' enables more than one: {', '.join(enabled)}. Please enable exactly one."
+            )
         return enabled[0]
 
 
@@ -827,15 +1024,13 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         if not self.get_param_value_from_config([tool, 'run']):
             return  # tool not requested
 
-        # do we have a conda env/yaml?
-        has_conda_yaml = self.get_param_value_from_config([tool, 'conda_yaml'])
-        has_conda_env = self.get_param_value_from_config([tool, 'conda_env'])
-        if has_conda_yaml or has_conda_env:
+        # do we have a conda env/yaml? (explicit yaml, existing env name, or the anvi'o-shipped yaml)
+        if self._tool_provided_by_conda(tool):
             return  # conda env/yaml will provide the executable
 
         if not shutil.which(executable):
             raise ConfigError(
                 f"You enabled '{tool}', but '{executable}' was not found in your $PATH. "
                 f"You can either install it, or set a conda environment via "
-                f"'conda_yaml' or 'conda_env' in your config file."
+                f"'conda_yaml', 'conda_env', or 'use_anvio_conda_yaml' in your config file."
             )
