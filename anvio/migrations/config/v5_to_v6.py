@@ -122,7 +122,7 @@ def migrate(config_path):
                          f"them, set 'use_anvio_conda_yaml: true' for that tool.")
         parts.append("One related note for long-read users: anvi'o no longer applies a silent default "
                      "minimap2 preset or Flye read-type — provide them either via the new `lr_technology` "
-                     "column in your samples-txt (recommended) or explicitly in this config; your existing "
+                     "column in your samples-txt or explicitly in this config; your existing "
                      "values (if any) were left untouched. See the metagenomics workflow documentation for details.")
         message = ' '.join(parts)
     else:
