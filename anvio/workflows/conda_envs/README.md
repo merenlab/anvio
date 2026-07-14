@@ -19,7 +19,7 @@ This directory ships one environment file per tool, with a pinned, tested versio
 | `flye`          | Flye (`flye`)            | `flye.yaml`         |
 | `filtlong`      | Filtlong (`filtlong`)    | `filtlong.yaml`     |
 | `nanoplot`      | NanoPlot (`NanoPlot`)    | `nanoplot.yaml`     |
-| `fastqc_sr`     | FastQC (`fastqc`)        | `fastqc_sr.yaml`    |
+| `fastqc`        | FastQC (`fastqc`)        | `fastqc.yaml`       |
 | `multiqc`       | MultiQC (`multiqc`)      | `multiqc.yaml`      |
 
 ## How to use

@@ -50,7 +50,7 @@ class QCModule(WorkflowSuperClass):
             'iu_filter_quality_minoche',
             'gen_qc_report',
             'gzip_fastqs',
-            'fastqc_sr',
+            'fastqc',
             'filtlong',
             'nanoplot',
             'multiqc',
@@ -141,9 +141,9 @@ class QCModule(WorkflowSuperClass):
             if not self._tool_provided_by_conda('nanoplot') and not u.is_program_exists('NanoPlot', dont_raise=True):
                 missing.append(('NanoPlot', 'nanoplot'))
 
-        if self.get_param_value_from_config(['fastqc_sr', 'run']) == True:
-            if not self._tool_provided_by_conda('fastqc_sr') and not u.is_program_exists('fastqc', dont_raise=True):
-                missing.append(('fastqc', 'fastqc_sr'))
+        if self.get_param_value_from_config(['fastqc', 'run']) == True:
+            if not self._tool_provided_by_conda('fastqc') and not u.is_program_exists('fastqc', dont_raise=True):
+                missing.append(('fastqc', 'fastqc'))
 
         if self.get_param_value_from_config(['multiqc', 'run']) == True:
             if not self._tool_provided_by_conda('multiqc') and not u.is_program_exists('multiqc', dont_raise=True):
@@ -210,7 +210,7 @@ class QCModule(WorkflowSuperClass):
     def _qc_stages_for(self, tool):
         """Return the list of QC stages ('raw' and/or 'filtered') enabled for a stats tool.
 
-        A stats tool (nanoplot / fastqc_sr) can be asked to run on the raw input reads
+        A stats tool (nanoplot / fastqc) can be asked to run on the raw input reads
         ('run_on_raw'), on the post-filter reads ('run_on_filtered'), or both. The returned
         list drives both the target-file generation and the per-stage rule wildcards.
         Assumes sanity_check_qc_stage_flags() has already validated the combination.
@@ -237,7 +237,7 @@ class QCModule(WorkflowSuperClass):
         else:
             raise ConfigError(f"get_nanoplot_input_files :: unknown stage '{stage}' (expected 'raw' or 'filtered').")
 
-    def get_fastqc_sr_input_files(self, readset, stage):
+    def get_fastqc_input_files(self, readset, stage):
         """Return the short-read FASTQ files FastQC should run on for a readset and stage.
 
         stage='raw'      → the readset's original r1/r2 files.
@@ -255,7 +255,7 @@ class QCModule(WorkflowSuperClass):
             return [os.path.join(qc_dir, f"{readset}-QUALITY_PASSED_R1{ext}"),
                     os.path.join(qc_dir, f"{readset}-QUALITY_PASSED_R2{ext}")]
         else:
-            raise ConfigError(f"get_fastqc_sr_input_files :: unknown stage '{stage}' (expected 'raw' or 'filtered').")
+            raise ConfigError(f"get_fastqc_input_files :: unknown stage '{stage}' (expected 'raw' or 'filtered').")
 
     def _check_stage_flags(self, tool, tool_label, filter_rule, filter_label):
         """Validate the run_on_raw / run_on_filtered combination for one stats tool.
@@ -289,7 +289,7 @@ class QCModule(WorkflowSuperClass):
     def sanity_check_qc_stage_flags(self):
         """Validate the raw/filtered stage flags for every stats tool that supports them."""
         self._check_stage_flags('nanoplot', 'NanoPlot', 'filtlong', 'Filtlong long-read filtering')
-        self._check_stage_flags('fastqc_sr', 'FastQC', 'iu_filter_quality_minoche', 'illumina-utils short-read quality filtering')
+        self._check_stage_flags('fastqc', 'FastQC', 'iu_filter_quality_minoche', 'illumina-utils short-read quality filtering')
 
     def sanity_check_filtlong_has_filtering(self):
         """Raise ConfigError if filtlong is enabled but no filtering criteria are given.
@@ -324,7 +324,7 @@ class QCModule(WorkflowSuperClass):
     def qc_producers(self):
         """Return the QC stats producers whose output MultiQC should aggregate.
 
-        Each entry is (parent_dir, readset_ids, stages) for a stats tool (fastqc_sr / nanoplot)
+        Each entry is (parent_dir, readset_ids, stages) for a stats tool (fastqc / nanoplot)
         that will ACTUALLY create output: it is enabled, has matching readsets, and has at least
         one selected stage. A tool that is enabled but produces nothing (no matching readsets, or
         no selected stage) is omitted — so MultiQC is never pointed at a directory that no rule
@@ -333,9 +333,9 @@ class QCModule(WorkflowSuperClass):
         this one place.
         """
         producers = []
-        if self.get_param_value_from_config(['fastqc_sr', 'run']) == True:
+        if self.get_param_value_from_config(['fastqc', 'run']) == True:
             sr = self.get_sr_readset_ids()
-            stages = self._qc_stages_for('fastqc_sr')
+            stages = self._qc_stages_for('fastqc')
             if sr and stages:
                 producers.append((os.path.join(self.dirs_dict["QC_DIR"], "fastqc"), sr, stages))
         if self.get_param_value_from_config(['nanoplot', 'run']) == True:
@@ -357,9 +357,9 @@ class QCModule(WorkflowSuperClass):
 
         # A stats tool enabled with no matching readsets produces nothing (and is omitted from
         # qc_producers below); warn so the skip is visible rather than silent.
-        if self.get_param_value_from_config(['fastqc_sr', 'run']) == True and not self.get_sr_readset_ids():
+        if self.get_param_value_from_config(['fastqc', 'run']) == True and not self.get_sr_readset_ids():
             self.run.warning(
-                "'fastqc_sr' is enabled, but there are no short-read samples in your samples-txt "
+                "'fastqc' is enabled, but there are no short-read samples in your samples-txt "
                 "for FastQC to run on — it will be skipped."
             )
         if self.get_param_value_from_config(['nanoplot', 'run']) == True and not self.get_lr_readset_ids():

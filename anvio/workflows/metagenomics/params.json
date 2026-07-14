@@ -29,7 +29,7 @@
             "threads": {"type": "int",  "default": 1},
             "run":     {"type": "bool", "default": true}
         },
-        "fastqc_sr": {
+        "fastqc": {
             "threads":          {"type": "int",  "default": 1},
             "run":              {"type": "bool", "default": false},
             "run_on_raw":       {"type": "bool", "default": false},

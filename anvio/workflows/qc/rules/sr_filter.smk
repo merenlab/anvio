@@ -9,7 +9,7 @@
 #   SR_READSETS     — list of SR readset ids
 #   SR_RS_RE        — wildcard constraint regex for SR readsets
 #   run_gzip_fastqs — bool: whether gzip_fastqs is enabled
-#   run_fastqc_sr   — bool: whether fastqc_sr is enabled
+#   run_fastqc   — bool: whether fastqc is enabled
 
 
 rule iu_gen_configs:
@@ -224,17 +224,17 @@ rule gzip_fastqs:
         "gzip {input.fastq} >> {log} 2>&1"
 
 
-fastqc_sr_output_dir = os.path.join(dirs_dict["QC_DIR"], "fastqc")
+fastqc_output_dir = os.path.join(dirs_dict["QC_DIR"], "fastqc")
 
-if run_fastqc_sr:
-    rule fastqc_sr:
+if run_fastqc:
+    rule fastqc:
         """Run FastQC on short reads for MultiQC input (one report per readset per stage).
 
         The {stage} wildcard selects which reads to assess: 'raw' for the readset's original r1/r2
         files, or 'filtered' for the quality-controlled QUALITY_PASSED reads (see
-        M.get_fastqc_sr_input_files()); depending on the filtered paths also creates the DAG edge
+        M.get_fastqc_input_files()); depending on the filtered paths also creates the DAG edge
         that forces iu_filter_quality_minoche / gzip_fastqs to finish first. Which stages actually
-        run is controlled by the 'run_on_raw' / 'run_on_filtered' flags in the fastqc_sr config
+        run is controlled by the 'run_on_raw' / 'run_on_filtered' flags in the fastqc config
         (validated in QCModule.sanity_check_qc_stage_flags). The output is a per-readset, per-stage
         directory rather than named files, because FastQC derives report filenames from the input
         basenames (which vary for raw / multi-file readsets); we let it write whatever it produces
@@ -243,22 +243,22 @@ if run_fastqc_sr:
         so a sample's raw and filtered reports sort next to each other.
         """
         input:
-            reads=lambda wildcards: M.get_fastqc_sr_input_files(wildcards.readset, wildcards.stage),
+            reads=lambda wildcards: M.get_fastqc_input_files(wildcards.readset, wildcards.stage),
         output:
-            report_dir=directory(os.path.join(fastqc_sr_output_dir, "{readset}", "{stage}")),
+            report_dir=directory(os.path.join(fastqc_output_dir, "{readset}", "{stage}")),
         log:
-            rule_log("fastqc_sr", "{readset}-{stage}-fastqc_sr"),
+            rule_log("fastqc", "{readset}-{stage}-fastqc"),
         wildcard_constraints:
             readset=SR_RS_RE,
             stage="raw|filtered",
         conda:
-            w.get_conda_yaml_path(M, "fastqc_sr")
-        threads: M.T("fastqc_sr")
+            w.get_conda_yaml_path(M, "fastqc")
+        threads: M.T("fastqc")
         resources:
-            nodes=M.T("fastqc_sr"),
+            nodes=M.T("fastqc"),
         params:
-            env_prefix=w.get_conda_env_prefix(M, "fastqc_sr"),
-            additional_params=M.get_param_value_from_config(["fastqc_sr", "additional_params"]),
+            env_prefix=w.get_conda_env_prefix(M, "fastqc"),
+            additional_params=M.get_param_value_from_config(["fastqc", "additional_params"]),
         shell:
             r"""
             mkdir -p {output.report_dir}

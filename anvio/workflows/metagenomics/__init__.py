@@ -127,7 +127,7 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
 
         # sanity check for conda env: use AT MOST ONE of conda_yaml / conda_env / use_anvio_conda_yaml
         import anvio.workflows as w
-        for tool in ['flye','minimap2','bowtie','megahit','metaspades','idba_ud','filtlong','nanoplot','fastqc_sr','multiqc']:
+        for tool in ['flye','minimap2','bowtie','megahit','metaspades','idba_ud','filtlong','nanoplot','fastqc','multiqc']:
             set_opts = self._conda_options_set(tool)
             a = 'use_anvio_conda_yaml' in set_opts
             if len(set_opts) > 1:

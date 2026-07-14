@@ -4,7 +4,7 @@
 # statement stays unchanged while rules live in the reusable qc/ module.
 
 # Expose QCModule flags to the multiqc.smk scope
-run_fastqc_sr = M.get_param_value_from_config(["fastqc_sr", "run"]) == True
+run_fastqc = M.get_param_value_from_config(["fastqc", "run"]) == True
 run_filtlong  = M.get_param_value_from_config(["filtlong",  "run"]) == True
 run_nanoplot  = M.get_param_value_from_config(["nanoplot",  "run"]) == True
 
