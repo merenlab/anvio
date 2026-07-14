@@ -120,10 +120,13 @@ rule filtlong:
         min_length=filtlong_opt("--min_length", "--min-length"),
         max_length=filtlong_opt("--max_length", "--max-length"),
         target_bases=filtlong_opt("--target_bases", "--target-bases"),
+        keep_percent=filtlong_opt("--keep_percent", "--keep-percent"),
+        min_mean_q=filtlong_opt("--min_mean_q", "--min-mean-q"),
         additional_params=M.get_param_value_from_config(["filtlong", "additional_params"]),
     shell:
         r"""
         {params.env_prefix} filtlong {params.min_length} {params.max_length} \
-            {params.target_bases} {params.additional_params} \
+            {params.target_bases} {params.keep_percent} {params.min_mean_q} \
+            {params.additional_params} \
             {params.reads} 2>> {log} | gzip > {output.filtered}
         """

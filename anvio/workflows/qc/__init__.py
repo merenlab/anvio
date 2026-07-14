@@ -296,8 +296,8 @@ class QCModule(WorkflowSuperClass):
 
         Filtlong is a filter: with no criteria it has nothing to do (it errors out, or at best
         copies the reads through unchanged), so 'run: true' without any parameters is always a
-        mistake. Accept any of the explicit length/bases params, or a non-empty additional_params
-        (where filtlong's other filters such as --keep_percent / --min_mean_q are passed).
+        mistake. Accept any of the explicit filtering params, or a non-empty additional_params
+        (where filtlong's other filters are passed).
         """
         if self.get_param_value_from_config(['filtlong', 'run']) != True:
             return
@@ -305,7 +305,8 @@ class QCModule(WorkflowSuperClass):
         # a param counts as "set" when it has an actual value — including 0. Only None (unset in
         # params.json) or "" (blank) mean "not given", so we must not use plain truthiness here.
         explicit = [self.get_param_value_from_config(['filtlong', k])
-                    for k in ['--min-length', '--max-length', '--target-bases']]
+                    for k in ['--min-length', '--max-length', '--target-bases',
+                              '--keep-percent', '--min-mean-q']]
         any_explicit = any(v not in (None, "") for v in explicit)
         additional = self.get_param_value_from_config(['filtlong', 'additional_params'])
 
@@ -314,10 +315,10 @@ class QCModule(WorkflowSuperClass):
                 "You set 'filtlong' → run: true, but you didn't give it anything to filter on. "
                 "Filtlong is a filter, so with no criteria it has nothing to do (it will error out "
                 "or just copy your reads through unchanged). Please set at least one of "
-                "'--min-length', '--max-length', or '--target-bases' in the 'filtlong' section of "
-                "your config — or, for filtlong's other options (e.g. --keep_percent, --min_mean_q), "
-                "put them in 'additional_params'. If you don't actually want to filter your long "
-                "reads, set 'filtlong' → run: false instead."
+                "'--min-length', '--max-length', '--target-bases', '--keep-percent', or "
+                "'--min-mean-q' in the 'filtlong' section of your config — or, for filtlong's "
+                "other options, put them in 'additional_params'. If you don't actually want to "
+                "filter your long reads, set 'filtlong' → run: false instead."
             )
 
     def qc_producers(self):

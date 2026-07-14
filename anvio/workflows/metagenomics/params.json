@@ -45,10 +45,12 @@
             "conda_yaml":       {"type": "str",  "default": ""},
             "use_anvio_conda_yaml": {"type": "bool", "default": false},
             "conda_env":        {"type": "str",  "default": ""},
-            "--min-length":     {"type": "int",  "default": null},
-            "--max-length":     {"type": "int",  "default": null},
-            "--target-bases":   {"type": "int",  "default": null},
-            "additional_params":{"type": "str",  "default": ""}
+            "--min-length":     {"type": "int",   "default": null},
+            "--max-length":     {"type": "int",   "default": null},
+            "--target-bases":   {"type": "int",   "default": null},
+            "--keep-percent":   {"type": "float", "default": null},
+            "--min-mean-q":     {"type": "float", "default": null},
+            "additional_params":{"type": "str",   "default": ""}
         },
         "nanoplot": {
             "threads":          {"type": "int",  "default": 2},
