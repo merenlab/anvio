@@ -147,6 +147,7 @@ class PangenomeGraphUserInterface {
         var offset = parseFloat($('#tree_offset')[0].value);
         var tree_thickness = parseFloat($('#tree_thickness')[0].value);
         var text_offset = parseFloat($('#label_offset')[0].value);
+        var position_tick_font_size = parseFloat($('#position_tick_font_size')[0].value);
         
         var core_color = $('#core_color').attr('color');
         var paralog_color = $('#paralog_color').attr('color');
@@ -399,12 +400,12 @@ class PangenomeGraphUserInterface {
                     }
 
                     svg_arrow.push(
-                        $('<text text-anchor="middle" dominant-baseline="middle" transform="rotate(-' + rotate + ' ' + circle_l_x + ' ' + circle_l_y +')" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="white">' + l + '</text>')
+                        $('<text text-anchor="middle" dominant-baseline="middle" transform="rotate(-' + rotate + ' ' + circle_l_x + ' ' + circle_l_y +')" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + position_tick_font_size + '" font-family="sans-serif" fill="white">' + l + '</text>')
                     )
                 } else {
                     var [circle_l_x, circle_l_y] = [(l) * node_distance_x, -(arrow_start + arrow_thickness * 2)]
                     svg_arrow.push(
-                        $('<text text-anchor="middle" dominant-baseline="middle" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="white">' + l + '</text>')
+                        $('<text text-anchor="middle" dominant-baseline="middle" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + position_tick_font_size + '" font-family="sans-serif" fill="white">' + l + '</text>')
                     )
                 }
                 l += steps
@@ -2158,6 +2159,56 @@ class PangenomeGraphUserInterface {
 
         $('#svgbox').empty().html(svg_core[0].outerHTML);
 
+        // Minimum on-screen line width. The graph lives in a huge viewBox that
+        // gets squeezed into the viewport, so at fit-view stroke widths (set in
+        // user units) collapse to sub-pixel widths and render as faint, shimmery
+        // "antialiased garbage". We keep strokes scaling naturally with the graph
+        // (so they stay proportional and look right at every zoom) but never let
+        // a rendered stroke drop below MIN_PX device pixels:
+        //   rendered_px = baseW * realZoom  ->  clamp so it's >= MIN_PX
+        //   => stroke-width attr = max(baseW, MIN_PX / realZoom)
+        // Zoomed in, MIN_PX/realZoom is tiny so widths are natural; zoomed out,
+        // the floor keeps thin lines crisp instead of collapsing.
+        //
+        // Snapshot every strokable element's natural (base) width once per redraw
+        // so the per-zoom pass just reads dataset.baseStroke.
+        this._lineEls = [];
+        document.querySelectorAll('#result [stroke-width]').forEach(el => {
+            const baseW = parseFloat(el.getAttribute('stroke-width'));
+            if (baseW > 0) {
+                el.dataset.baseStroke = baseW;
+                this._lineEls.push(el);
+            }
+        });
+        this._minBaseStroke = this._lineEls.reduce(
+            (m, el) => Math.min(m, parseFloat(el.dataset.baseStroke)), Infinity);
+        this._strokeRegime = null;
+
+        this.apply_stroke_floor = () => {
+            if (!this._lineEls || !this._lineEls.length || !this.panZoomInstance) return;
+            const to_base = () => {
+                // Only touch the DOM when leaving the floor regime, so ordinary
+                // zoomed-in interaction does no per-element work.
+                if (this._strokeRegime === 'base') return;
+                this._lineEls.forEach(el => el.setAttribute('stroke-width', el.dataset.baseStroke));
+                this._strokeRegime = 'base';
+            };
+            // High-performance mode: skip the floor entirely (cheap pan/zoom;
+            // lines may go sub-pixel when fully zoomed out).
+            if ($('#flexhighperf').prop('checked')) { to_base(); return; }
+            const MIN_PX = parseFloat($('#min_line_px')[0].value) || 0;
+            if (MIN_PX <= 0) { to_base(); return; }
+            const realZoom = this.panZoomInstance.getSizes().realZoom;
+            const floor = MIN_PX / realZoom;
+            // Even the thinnest line already renders >= MIN_PX -> nothing to do.
+            if (floor <= this._minBaseStroke) { to_base(); return; }
+            this._lineEls.forEach(el => {
+                const baseW = parseFloat(el.dataset.baseStroke);
+                el.setAttribute('stroke-width', baseW > floor ? baseW : floor);
+            });
+            this._strokeRegime = 'floor';
+        };
+
         this.refresh_region_label_visibility = () => {
             if (!$('#flexregionlabels').prop('checked')) return;
             const realZoom = this.panZoomInstance.getSizes().realZoom;
@@ -2201,7 +2252,7 @@ class PangenomeGraphUserInterface {
             controlIconsEnabled: false,
             minZoom: 0.1,
             maxZoom: 100,
-            onZoom: () => { this.refresh_region_label_visibility(); this._render_bin_visuals(); }
+            onZoom: () => { this.apply_stroke_floor(); this.refresh_region_label_visibility(); this._render_bin_visuals(); }
         });
 
         // Restore pan/zoom from before the redraw (e.g. after a color change).
@@ -2209,6 +2260,9 @@ class PangenomeGraphUserInterface {
             this.panZoomInstance.zoom(savedZoom);
             this.panZoomInstance.pan(savedPan);
         }
+
+        // Apply the min-line-width floor for the initial view.
+        this.apply_stroke_floor();
 
         // Auto-size region labels once on first load.
         //
@@ -2726,6 +2780,8 @@ class PangenomeGraphUserInterface {
 
         // edges
         $('#edge')[0].value = state['edges']['width'];
+        // min line width floor — fall back to the HTML default for older states
+        $('#min_line_px')[0].value = state['edges']['min_line_width_px'] ?? 0.5;
 
         // graph_layout
         const gl = state['graph_layout'];
@@ -2794,6 +2850,7 @@ class PangenomeGraphUserInterface {
         $('#label')[0].value = lbl['font_size'];
         $('#label_offset')[0].value = lbl['offset'];
         $('#num_position')[0].value = lbl['position_tick_count'];
+        $('#position_tick_font_size')[0].value = lbl['position_tick_font_size'] || lbl['font_size'];
 
         // margins
         $('#inner_margin')[0].value = state['margins']['inner'];
@@ -3253,6 +3310,15 @@ class PangenomeGraphUserInterface {
 
         $('#flextree').on("change", this.flextree_change)
         $('#flexsaturation').on("change", () => this.main_draw())
+        // Min line width / high-performance mode only re-clamp existing strokes,
+        // so no redraw is needed -- just re-run the floor pass. Reset the regime
+        // cache first so the pass re-evaluates from scratch.
+        $('#min_line_px, #flexhighperf').on("change", () => {
+            if (this.apply_stroke_floor) {
+                this._strokeRegime = null;
+                this.apply_stroke_floor();
+            }
+        })
         $('#flexregionlabels').on("change", () => this.main_draw())
         $('#region_label_size, #region_label_min_width, #region_label_distance').on("change", () => {
             if (this.panZoomInstance && $('#flexregionlabels').prop('checked')) {
@@ -4468,7 +4534,8 @@ class PangenomeGraphUserInterface {
                 }
             },
             edges: {
-                width: Number($('#edge')[0].value)
+                width: Number($('#edge')[0].value),
+                min_line_width_px: Number($('#min_line_px')[0].value)
             },
             graph_layout: {
                 grouping_enabled: $('#flexcondtr').prop('checked'),
@@ -4508,7 +4575,8 @@ class PangenomeGraphUserInterface {
             labels: {
                 font_size: Number($('#label')[0].value),
                 offset: Number($('#label_offset')[0].value),
-                position_tick_count: Number($('#num_position')[0].value)
+                position_tick_count: Number($('#num_position')[0].value),
+                position_tick_font_size: Number($('#position_tick_font_size')[0].value)
             },
             margins: {
                 inner: Number($('#inner_margin')[0].value),
