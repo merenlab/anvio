@@ -722,13 +722,19 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         tested set. Only relevant when the 'lr_technology' column drives preset selection; the
         probe shells out to '<tool> --version', so it is deliberately kept off the init() path
         (which re-runs on every dry run / DAG rebuild) and out of any DAG-building code.
+
+        A tool provided via conda is skipped: the probe only sees the $PATH binary, which is not
+        the one the rule will run, so warning about it would be misleading (and for the
+        anvi'o-shipped env it is the tested version by construction).
         """
         if not (self.has_lr and self.has_lr_technology_column):
             return
 
-        warn_if_tool_version_untested('minimap2', run=self.run)
+        if not self._tool_provided_by_conda('minimap2'):
+            warn_if_tool_version_untested('minimap2', run=self.run)
         if not self.references_mode and self.get_param_value_from_config(['flye', 'run']):
-            warn_if_tool_version_untested('flye', run=self.run)
+            if not self._tool_provided_by_conda('flye'):
+                warn_if_tool_version_untested('flye', run=self.run)
 
     def sanity_check_lr_group_read_types(self):
         """Fail at init (before the DAG is built) if a long-read co-assembly group is unresolvable.
