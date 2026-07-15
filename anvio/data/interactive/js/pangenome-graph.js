@@ -2869,15 +2869,22 @@ class PangenomeGraphUserInterface {
         $('#size')[0].value = state['nodes']['radius'];
         $('#circ')[0].value = state['nodes']['outline_width'];
         $('#flexsaturation').prop('checked', state['nodes']['fade_by_prevalence']);
-        const tc = state['nodes']['type_colors'];
-        for (const [id, color] of Object.entries({
-            'core_color': tc['core'],
-            'rearranged_color': tc['rearrangement'],
-            'accessory_color': tc['accessory'],
-            'paralog_color': tc['duplication'],
-            'singleton_color': tc['singleton'],
-            'trna_color': tc['rna']
-        })) {
+        const tc = state['nodes']['type_colors'] || {};
+        // [picker id, stored color, default]. Pan-graphs migrated before
+        // `duplication`/`rna` became the canonical type names stored their
+        // colours under the old `multi_copy`/`trna` keys, so fall back to those,
+        // then to the default — a stale state must never crash set_UI_settings
+        // on `color.replace(...)`.
+        const node_color_pickers = [
+            ['core_color',       tc['core'],                                '#BCBCBC'],
+            ['rearranged_color', tc['rearrangement'],                       '#8FF0A4'],
+            ['accessory_color',  tc['accessory'],                           '#DC8ADD'],
+            ['paralog_color',    tc['duplication'] ?? tc['multi_copy'],     '#FFA348'],
+            ['singleton_color',  tc['singleton'],                           '#99C1F1'],
+            ['trna_color',       tc['rna'] ?? tc['trna'],                   '#ECFA28']
+        ];
+        for (const [id, stored, fallback] of node_color_pickers) {
+            const color = stored ?? fallback;
             $('#' + id).css('background-color', color).attr('color', color);
             $('#' + id).colpickSetColor(color.replace('#', ''));
         }

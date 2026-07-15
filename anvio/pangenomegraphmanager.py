@@ -418,18 +418,41 @@ class PangenomeGraphManager():
         num_genomes = len(genome_names)
 
         all_positions = sorted({d['position'][0] for _, d in G.nodes(data=True)})
+
+        def _node_is_core(d):
+            """Whether a node's x-column counts as 'core' -- a backbone column
+            that partitions the region layout.
+
+            By default this is coverage-driven (the node spans every genome in
+            scope). But if the node already carries a per-node ``backbone`` flag
+            (e.g. one computed by an earlier summary / an older engine and stored
+            in its layer data), honour that flag instead: a node deliberately
+            kept OFF the backbone must not re-split a region here just because
+            its coverage happens to reach all genomes. The flag is only present
+            once a prior summary has run, so a fresh generation still falls back
+            to the coverage rule."""
+            backbone = (d.get('layer') or {}).get('backbone')
+            try:
+                if backbone is not None:
+                    return int(float(backbone)) == 1
+            except (TypeError, ValueError):
+                pass
+            return len(d['gene_calls'].keys()) == num_genomes
+
         core_positions = sorted({d['position'][0]
                                  for _, d in G.nodes(data=True)
-                                 if len(d['gene_calls'].keys()) == num_genomes})
+                                 if _node_is_core(d)})
 
-        regions_dict = self._assign_region_ids(core_positions, all_positions, component_id)
+        regions_dict, backbone_region_ids = self._assign_region_ids(
+            core_positions, all_positions, component_id)
 
         nodes_df, regions_info_dict = self._attach_node_regions(G, regions_dict)
 
         regions_summary_rows = []
         for region_id, values_list in sorted(regions_info_dict.items()):
             regions_summary_rows.append(
-                self._summarize_one_region(region_id, values_list, num_genomes))
+                self._summarize_one_region(region_id, values_list, num_genomes,
+                                           region_id in backbone_region_ids))
 
         region_sides_df = pd.DataFrame(regions_summary_rows).set_index('region_id') \
                           if regions_summary_rows else pd.DataFrame()
@@ -449,33 +472,46 @@ class PangenomeGraphManager():
 
     def _assign_region_ids(self, core_positions, all_positions, component_id):
         """Map every x position to a plain per-component region id (``"0"``,
-        ``"1"``, ...).
+        ``"1"``, ...) and report which of those regions are backbone runs.
 
         Walks the integer x columns from ``all_min`` to ``all_max`` and
         partitions them into maximal runs of all-core vs all-non-core
         columns. Each run becomes one region; ids are sequential from 0
         within the component. Cross-component uniqueness is provided by
         the ``component_id`` column carried separately by callers.
+
+        Returns ``(regions_dict, backbone_region_ids)`` where
+        ``backbone_region_ids`` is the set of region_id strings whose columns
+        are core -- i.e. the backbone (BR) regions. The BR/VR label of every
+        region follows directly from this partition, so whatever fed the
+        boundaries (the stored backbone flag when present, else coverage) also
+        determines backbone/variable downstream.
         """
         if not all_positions:
-            return {}
+            return {}, set()
 
         all_min, all_max = min(all_positions), max(all_positions)
 
         if not core_positions:
-            return {pos: "0" for pos in range(all_min, all_max + 1)}
+            # No core columns -> the whole component is a single variable region.
+            return {pos: "0" for pos in range(all_min, all_max + 1)}, set()
 
         core_set = set(core_positions)
         regions_dict = {}
+        backbone_region_ids = set()
         rid = 0
         current_is_core = (all_min in core_set)
+        if current_is_core:
+            backbone_region_ids.add(str(rid))
         for x in range(all_min, all_max + 1):
             is_core = x in core_set
             if is_core != current_is_core:
                 rid += 1
                 current_is_core = is_core
+                if is_core:
+                    backbone_region_ids.add(str(rid))
             regions_dict[x] = str(rid)
-        return regions_dict
+        return regions_dict, backbone_region_ids
 
 
     def _attach_node_regions(self, G, regions_dict):
@@ -504,9 +540,16 @@ class PangenomeGraphManager():
         return nodes_df, regions_info_dict
 
 
-    def _summarize_one_region(self, region_id, values_list, num_genomes):
+    def _summarize_one_region(self, region_id, values_list, num_genomes, is_backbone):
         """Compute one row of the region summary table (BR / VR + the
-        complexity / diversity / expansion / weight metrics)."""
+        complexity / diversity / expansion / weight metrics).
+
+        ``is_backbone`` comes straight from the region-boundary partition
+        (``_assign_region_ids``): a region built from core columns is BR, any
+        other region is VR. The variability metrics below are still computed for
+        display, but no longer decide the BR/VR label -- that follows the
+        boundaries, so whatever fed them (the stored backbone flag when present,
+        else coverage) is what classifies the region."""
         genomes_sets = [item[3] for item in values_list]
         genomes_involved = set(it.chain(*genomes_sets))
         nodes_sets = [item[2] for item in values_list]
@@ -533,7 +576,7 @@ class PangenomeGraphManager():
             complexity += 1
             sum_of_genomes |= set(genome_set)
 
-        if len(genomes_sets) > 1:
+        if len(genomes_sets) > 1 and not is_backbone:
             diversity = (stat.pvariance([1, num_genomes])
                          - stat.pvariance([len(s) for s in genomes_sets]))
             diversity_scaled = (stat.pvariance([1 / num_genomes, 1])
@@ -542,15 +585,8 @@ class PangenomeGraphManager():
             diversity = 0
             diversity_scaled = 0
 
-        if complexity == 0 and min_expansion != 0:
-            region = 'BR'
-            # BR rows zero out the variability metrics by convention.
-            max_expansion = 0
-            min_expansion = 0
-            diversity = 0
-            diversity_scaled = 0
-        else:
-            region = 'VR'
+        # BR/VR follows the region boundaries, not the variability metrics.
+        region = 'BR' if is_backbone else 'VR'
 
         return {
             'region_id': region_id,

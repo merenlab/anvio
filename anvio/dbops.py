@@ -3583,7 +3583,7 @@ class PanGraphSuperclass(PanSuperclass):
 
         self.nodes = pan_graph_db.db.get_table_as_dict(t.pan_graph_nodes_table_name)
         self.edges = pan_graph_db.db.get_table_as_dict(t.pan_graph_edges_table_name)
-        # region_id is plain "0"/"1"/... per component since pangraph_db v7;
+        # region_id is plain "0"/"1"/... per component since pangraph_db v6;
         # uniqueness comes from the (component_id, region_id) pair, so we
         # avoid get_table_as_dict (which would collide on the first column).
         regions_df = pan_graph_db.db.get_table_as_dataframe(t.pan_graph_regions_table_name, error_if_no_data=False)

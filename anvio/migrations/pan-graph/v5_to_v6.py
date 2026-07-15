@@ -4,6 +4,8 @@ import sys
 import json
 import argparse
 
+import networkx as nx
+
 import anvio.dbinfo as dbinfo
 import anvio.terminal as terminal
 
@@ -36,6 +38,26 @@ pan_graph_regions_table_types     = [  'numeric'   ,    'str'   ,     'str'    ,
 # single-component -- component_id is 0 throughout.
 SINGLE_COMPONENT_ID = 0
 
+# The engine renamed several node-type values after v5 was cut, without a
+# version bump, so a v5 database still carries the old names in two places that
+# use *different* spellings for the same concept:
+#   * the `node_type` column of pan_graph_nodes, and
+#   * the `type_colors` keys inside each state's JSON.
+# The v6 renderer only knows the new names, so normalise both here -- otherwise
+# duplication/tRNA nodes render uncoloured and set_UI_settings crashes on the
+# missing colour key. Both maps are applied idempotently (already-renamed
+# values pass through untouched).
+NODE_TYPE_RENAMES = {
+    'paralog': 'duplication',
+    'rearranged': 'rearrangement',
+    'trna': 'rna',
+}
+
+STATE_TYPE_COLOR_KEY_RENAMES = {
+    'multi_copy': 'duplication',
+    'trna': 'rna',
+}
+
 
 def _column_names(pan_graph_db, table_name):
     """Return the column names of an existing SQLite table without reading rows."""
@@ -56,8 +78,10 @@ def _norm_region_id(rid):
 
 
 def _migrate_nodes(pan_graph_db):
-    """v6 adds a `component_id` column to pan_graph_nodes and stores region_id
-    as a plain string. Every v5 db is single-component, so component_id is 0."""
+    """v6 adds a `component_id` column to pan_graph_nodes, stores region_id as a
+    plain string, and normalises legacy node_type values (paralog -> duplication,
+    rearranged -> rearrangement, trna -> rna). Every v5 db is single-component,
+    so component_id is 0."""
     old_columns = _column_names(pan_graph_db, pan_graph_nodes_table_name)
     if 'component_id' in old_columns:
         # Already migrated (e.g. a manual repair) -- skip silently.
@@ -69,6 +93,8 @@ def _migrate_nodes(pan_graph_db):
         carryover = {c: v for c, v in zip(old_columns, row)}
         carryover['component_id'] = SINGLE_COMPONENT_ID
         carryover['region_id'] = _norm_region_id(carryover.get('region_id'))
+        node_type = carryover.get('node_type')
+        carryover['node_type'] = NODE_TYPE_RENAMES.get(node_type, node_type)
         new_rows.append([carryover.get(col) for col in pan_graph_nodes_table_structure])
 
     pan_graph_db._exec(f"DROP TABLE {pan_graph_nodes_table_name}")
@@ -84,24 +110,31 @@ def _migrate_nodes(pan_graph_db):
     )
 
 
-def _edge_orientations(directions_raw):
-    """The v5 `directions` column is a JSON object mapping each genome on the
-    edge to its traversal orientation, 'L' (reverse) or 'R' (forward). Return
-    the set of orientations present (upper-cased); an empty set if the payload
-    is missing or unparseable."""
+def _parse_directions(directions_raw):
+    """The v5 `directions` column is a JSON object mapping each genome crossing
+    the edge to its traversal orientation, 'L' (reverse) or 'R' (forward). The
+    keys are therefore the edge's genome membership. Return a
+    (genomes, orientations) tuple: `genomes` is the sorted list of genome names
+    on the edge and `orientations` is the set of orientations present
+    (upper-cased). Both are empty if the payload is missing or unparseable, and
+    `genomes` is empty for the legacy list/scalar payloads that carried no
+    genome names."""
     if not directions_raw:
-        return set()
+        return [], set()
     try:
         parsed = json.loads(directions_raw)
     except (ValueError, TypeError):
-        return set()
+        return [], set()
     if isinstance(parsed, dict):
-        values = parsed.values()
+        genomes = sorted(str(g) for g in parsed.keys())
+        orientations = {str(v).upper() for v in parsed.values()}
     elif isinstance(parsed, (list, tuple)):
-        values = parsed
+        genomes = []
+        orientations = {str(v).upper() for v in parsed}
     else:
-        values = [parsed]
-    return {str(v).upper() for v in values}
+        genomes = []
+        orientations = {str(parsed).upper()}
+    return genomes, orientations
 
 
 def _migrate_edges(pan_graph_db):
@@ -109,34 +142,71 @@ def _migrate_edges(pan_graph_db):
     with `genomes_json` (the set of genomes crossing the edge) and treats every
     edge as forward source->target.
 
-    Reversed edges -- those the v5 renderer drew reversed, i.e. with no forward
-    ('R') orientation -- cannot be represented in the v6 model and are DROPPED
-    here. Surviving (forward / mixed) edges get an empty genomes_json because a
-    v5 db never stored per-edge genome membership; edge colouring by genome will
-    be blank until the pan-graph is regenerated.
+    A fully reversed edge -- one the v5 renderer drew reversed, i.e. with no
+    forward ('R') orientation -- is traversed target->source in genome order.
+    Since v6 cannot store orientation, such edges are RE-EXPRESSED as forward
+    edges by swapping source and target rather than being dropped: dropping them
+    would strand any node reachable only through a reversed edge, leaving it
+    isolated in the migrated graph. Forward / mixed edges keep their source->
+    target as-is.
 
-    Returns the number of reversed edges removed."""
+    The v6 renderer requires a DAG, but flipping a reversed edge can close a
+    directed cycle against the forward edges. So flipped edges are added on top
+    of the forward graph one at a time, and a flipped edge is CUT only when
+    adding it would actually create a cycle -- the minimum needed to stay
+    acyclic while keeping the rest of each reversed run connected.
+
+    Every surviving edge recovers its genome membership from the keys of the v5
+    `directions` object, so genome-based edge colouring keeps working. (Legacy
+    list/scalar `directions` payloads carried no genome names, so those edges get
+    an empty genomes_json.)
+
+    Returns (flipped_kept, cut) -- reversed edges re-oriented and kept, and
+    reversed edges cut because they would have created a cycle."""
     old_columns = _column_names(pan_graph_db, pan_graph_edges_table_name)
     if 'genomes_json' in old_columns and 'directions' not in old_columns:
         # Already on the target shape.
-        return 0
+        return 0, 0
 
     dir_idx = old_columns.index('directions') if 'directions' in old_columns else None
     rows = pan_graph_db._exec(f"SELECT * FROM {pan_graph_edges_table_name}").fetchall()
 
-    new_rows = []
-    removed = 0
+    # Split into forward/mixed edges (kept source->target) and fully reversed
+    # edges (to be flipped). Each entry is the v6-shaped carryover dict.
+    forward, reversed_edges = [], []
     for row in rows:
-        if dir_idx is not None:
-            orientations = _edge_orientations(row[dir_idx])
-            # A reversed edge has orientations but none of them forward ('R').
-            if orientations and 'R' not in orientations:
-                removed += 1
-                continue
         carryover = {c: v for c, v in zip(old_columns, row)}
-        carryover['genomes_json'] = '[]'
-        # Only emit the v6 structure, dropping the legacy 'directions' column.
-        new_rows.append([carryover.get(col) for col in pan_graph_edges_table_structure])
+        genomes = []
+        is_reversed = False
+        if dir_idx is not None:
+            genomes, orientations = _parse_directions(row[dir_idx])
+            is_reversed = bool(orientations) and 'R' not in orientations
+        carryover['genomes_json'] = json.dumps(genomes)
+        (reversed_edges if is_reversed else forward).append(carryover)
+
+    # Build the forward DAG, then graft flipped reversed edges onto it, cutting
+    # only the ones that would introduce a cycle. `edge_id` order keeps the
+    # choice of which edge to cut deterministic across runs.
+    graph = nx.DiGraph()
+    for e in forward:
+        graph.add_edge(e['source'], e['target'])
+
+    flipped_kept, cut = 0, 0
+    kept_reversed = []
+    for e in sorted(reversed_edges, key=lambda e: e['edge_id']):
+        new_source, new_target = e['target'], e['source']  # flip endpoints
+        # Adding new_source->new_target closes a cycle iff a path already runs
+        # new_target -> ... -> new_source.
+        if new_source in graph and new_target in graph and nx.has_path(graph, new_target, new_source):
+            cut += 1
+            continue
+        graph.add_edge(new_source, new_target)
+        e['source'], e['target'] = new_source, new_target
+        kept_reversed.append(e)
+        flipped_kept += 1
+
+    new_rows = [[e.get(col) for col in pan_graph_edges_table_structure]
+                for e in forward + kept_reversed]
 
     pan_graph_db._exec(f"DROP TABLE {pan_graph_edges_table_name}")
     pan_graph_db.create_table(
@@ -149,7 +219,7 @@ def _migrate_edges(pan_graph_db):
         f"INSERT INTO {pan_graph_edges_table_name} VALUES ({placeholders})",
         new_rows,
     )
-    return removed
+    return flipped_kept, cut
 
 
 def _migrate_regions(pan_graph_db):
@@ -180,6 +250,46 @@ def _migrate_regions(pan_graph_db):
     )
 
 
+def _migrate_states(pan_graph_db):
+    """Rename the legacy node type_colors keys (multi_copy -> duplication,
+    trna -> rna) inside every stored state so the v6 renderer finds a colour for
+    each node type. States are left untouched if they cannot be parsed or carry
+    no type_colors block, and keys that are already on the v6 names pass through.
+
+    Returns the number of states whose type_colors were rewritten."""
+    states = pan_graph_db.get_table_as_dict('states')
+
+    rewritten = 0
+    for state_name, row in states.items():
+        try:
+            state = json.loads(row['content'])
+        except (ValueError, TypeError, KeyError):
+            run.warning(f"Could not parse pan-graph state '{state_name}' -- leaving it untouched.")
+            continue
+
+        nodes_block = state.get('nodes') if isinstance(state, dict) else None
+        type_colors = nodes_block.get('type_colors') if isinstance(nodes_block, dict) else None
+        if not isinstance(type_colors, dict):
+            continue
+
+        changed = False
+        for old_key, new_key in STATE_TYPE_COLOR_KEY_RENAMES.items():
+            if old_key in type_colors:
+                # Don't clobber a v6 key that already exists; just drop the legacy one.
+                type_colors.setdefault(new_key, type_colors[old_key])
+                del type_colors[old_key]
+                changed = True
+
+        if changed:
+            pan_graph_db._exec(
+                "UPDATE states SET content = ? WHERE name = ?",
+                (json.dumps(state, indent=4), state_name),
+            )
+            rewritten += 1
+
+    return rewritten
+
+
 def migrate(db_path):
     if db_path is None:
         raise ConfigError("No database path is given.")
@@ -194,14 +304,17 @@ def migrate(db_path):
 
     progress.new("Migrating")
 
-    progress.update("Rewriting pan_graph_nodes (adding component_id = 0) ...")
+    progress.update("Rewriting pan_graph_nodes (adding component_id = 0; normalising node types) ...")
     _migrate_nodes(pan_graph_db)
 
-    progress.update("Rewriting pan_graph_edges (dropping reversed edges; directions -> genomes_json) ...")
-    reversed_edges_removed = _migrate_edges(pan_graph_db)
+    progress.update("Rewriting pan_graph_edges (flipping reversed edges; directions -> genomes_json) ...")
+    reversed_edges_flipped, reversed_edges_cut = _migrate_edges(pan_graph_db)
 
     progress.update("Rewriting pan_graph_regions (adding component_id = 0) ...")
     _migrate_regions(pan_graph_db)
+
+    progress.update("Renaming legacy node type_colors keys in states ...")
+    _migrate_states(pan_graph_db)
 
     progress.update("Updating version")
     pan_graph_db.remove_meta_key_value_pair('version')
@@ -212,15 +325,23 @@ def migrate(db_path):
 
     progress.end()
 
+    run.info('Reversed edges re-oriented', reversed_edges_flipped)
+    run.info('Reversed edges cut (would have created a cycle)', reversed_edges_cut,
+             mc='red' if reversed_edges_cut else 'green', nl_after=1)
+
     run.warning(
         f"Your pan-graph database is now version {next_version}, but please read this carefully. "
         f"The whole pan-graph has been assigned to a single component (component_id = 0): every "
         f"pan-graph produced by the older (master) engine was already reduced to its single largest "
-        f"connected component, so this is faithful. However, {reversed_edges_removed} reversed "
-        f"edge(s) (edges the old engine traversed in the reverse orientation) were REMOVED during "
-        f"migration, because the new engine has no notion of edge orientation and cannot represent "
-        f"them. Surviving edges also lost their per-edge genome membership (it was never stored in "
-        f"v5), so genome-based edge colouring will be blank. Because the two engine versions differ "
+        f"connected component, so this is faithful. However, {reversed_edges_flipped} reversed "
+        f"edge(s) (edges the old engine traversed in the reverse orientation) were RE-ORIENTED during "
+        f"migration by swapping their endpoints, because the new engine has no notion of edge "
+        f"orientation -- this keeps every node connected instead of stranding nodes that were only "
+        f"reachable in reverse. Of those, {reversed_edges_cut} edge(s) had to be CUT because "
+        f"re-orienting them would have created a cycle (the new engine requires an acyclic graph); the "
+        f"rest of each affected run stays connected. Edges recovered their per-edge genome membership "
+        f"from the old `directions` payload, so genome-based edge colouring still works. Because the "
+        f"two engine versions differ "
         f"substantially, this migrated database is a best-effort, structural upgrade only -- anvi'o "
         f"strongly recommends that you re-run the entire pan-graph generation on your data rather "
         f"than relying on this migrated database for analysis.",
