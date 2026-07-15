@@ -817,10 +817,21 @@ D = {
             ['-m', '--metagenome-mode'],
             {'default': False,
              'action': 'store_true',
-             'help': "[PER-CONTIG ESTIMATION] Treat a given contigs database as an unbinned metagenome rather than "
-                     "treating it as a single genome. Since we don't know which contigs go together, we'll estimate "
-                     "metabolism for each contig independently. Can be resource-intensive (particularly with memory). "
-                     "Not recommended to combine with --matrix-format or --get-raw-data-as-json."}
+             'help': "Treat a given contigs database as an unbinned metagenome rather than "
+                     "treating it as a single genome."}
+                ),
+    'per-contig-estimates': (
+            ['--per-contig-estimates'],
+            {'default': False,
+             'action': 'store_true',
+             'dest': 'metagenome_mode',
+             'help': "Treat each contigs database as an unbinned metagenome rather than treating it as a single "
+                     "genome, and estimate metabolism for each contig independently rather than for the (meta)genome "
+                     "as a whole. Since we don't know which contigs go together, we'll estimate metabolism for each "
+                     "contig independently. This flag is compatible with individual contigs databases, external genomes, "
+                     "or internal genomes input. However, please note that it can be resource-intensive (particularly with "
+                     " memory). It is therefore NOT recommended to combine this flag with --matrix-format or "
+                     "--get-raw-data-as-json when analyzing very large metagenomes."}
                 ),
     'scg-name-for-metagenome-mode': (
             ['-S','--scg-name-for-metagenome-mode'],

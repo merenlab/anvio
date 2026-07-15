@@ -59,15 +59,15 @@ def get_args():
 
     groupI = parser.add_argument_group('INPUT #1 - ESTIMATION ON SINGLE GENOMES OR METAGENOMES',
                                                    "The minimum you must provide this program is a contigs database. In which case "
-                                                   "anvi'o will attempt to estimate metabolism for all contigs in it, assuming that "
+                                                   "anvi'o will attempt to estimate metabolism across all contigs in it, assuming that "
                                                    "the contigs database represents a single genome. If the contigs database is actually "
                                                    "an unbinned metagenome and you want per-contig estimates instead, you can use the "
-                                                   "`--metagenome` flag to explicitly declare that. It is also acceptable to run this "
-                                                   "program on metagenomes without using metagenome mode if you want community-level "
+                                                   "`--per-contig-estimates` flag to explicitly declare that. You can also run this "
+                                                   "program on metagenomes without using per-contig estimates if you want community-level "
                                                    "metabolism estimates (ie, combining information across all contigs from different "
                                                    "populations in the community).")
     groupI.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
-    groupI.add_argument(*anvio.A('metagenome-mode'), **anvio.K('metagenome-mode'))
+    groupI.add_argument(*anvio.A('per-contig-estimates'), **anvio.K('per-contig-estimates'))
 
     groupP = parser.add_argument_group('INPUT #2 - ESTIMATION ON BINS', "If you also provide a profile database AND a collection name, anvi'o will "
                                                    "estimate metabolism separately for each bin in your collection. You can also limit "
@@ -80,9 +80,10 @@ def get_args():
 
     groupM = parser.add_argument_group('INPUT #3 - MULTI-MODE', "If you have multiple contigs databases to work with, you can put them all into a file. "
                                                    "Then anvi'o will run estimation separately on each database and generate a single output file for all. "
-                                                   "There are 3 types of input files to choose from depending on whether you want to treat your DBs as "
-                                                   "single genomes (external), genomes in collections (internal), or unbinned metagenomes (for contig-level "
-                                                   "estimates, i.e. 'metagenome mode') in your contigs DBs.")
+                                                   "There are 2 types of input files to choose from depending on whether you want to treat your DBs as "
+                                                   "individual genomes (external) or genomes in collections (internal). If your contigs databases are actually "
+                                                   "unbinned metagenomes and you want per-contig estimates for each of them, combine either of these "
+                                                   "options with the `--per-contig-estimates` flag described above.")
     groupM.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
     groupM.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
     groupM.add_argument(*anvio.A('metagenomes'), **anvio.K('metagenomes', {'help': "Same format as an external genomes file, but choosing this option "
