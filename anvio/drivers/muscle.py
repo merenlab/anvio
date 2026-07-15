@@ -111,10 +111,11 @@ class Muscle:
             return 5
 
         if output.startswith('muscle v3'):
-            raise ConfigError("The anvi'o MUSCLE driver requires MUSCLE 5, but the installed `muscle` is "
-                              "MUSCLE 3. Please update your environment to include `muscle>=5`. For instance, "
-                              "if you use conda, you can run `conda install -c conda-forge -c bioconda "
-                              "\"muscle>=5\"`.")
+            raise ConfigError("Anvi'o recently started using a newer version of MUSCLE (you know, the "
+                              "sequence alignment software), but your installed version in this environment "
+                              "appears have the old version still :/ You can solve this issue by simply "
+                              "installing MUSCLE v5 or newer. If you are in a conda environment, you can "
+                              "try running the following: `conda install -c conda-forge -c bioconda ""\"muscle>=5\"`.")
 
         raise ConfigError("The anvi'o MUSCLE driver requires MUSCLE 5, but failed to recognize the installed "
                           "MUSCLE version from `muscle -version` output: %s" % output)
