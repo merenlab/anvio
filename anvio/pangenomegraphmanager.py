@@ -557,11 +557,14 @@ class PangenomeGraphManager():
         nodes_sets = [item[2] for item in values_list]
         region_x = [item[0] for item in values_list]
 
+        x_min = min(region_x)
+        x_max = max(region_x)
+
         weight = len(genomes_involved)
         num_gene_clusters = len({n.rsplit('_', 1)[0] for n in nodes_sets})
-        K = len(nodes_sets)
+        num_synteny_gene_clusters = len(nodes_sets)
         genome_occurences = list(it.chain(*genomes_sets))
-        T = len(genome_occurences)
+        num_gene_calls = len(genome_occurences)
 
         counts = Counter(genome_occurences)
         values = [counts.get(g, 0) for g in genomes_involved]
@@ -571,21 +574,25 @@ class PangenomeGraphManager():
         # Complexity = number of genome-sets needed to cover all genomes_involved
         # when consumed smallest-first (proxy for structural variation).
         sum_of_genomes = set()
-        complexity = -1
+        complexity = 0
         for genome_set in sorted(genomes_sets, key=len):
             if set(genome_set).issubset(sum_of_genomes):
                 continue
             complexity += 1
             sum_of_genomes |= set(genome_set)
 
+        complexity_normalized = (complexity - 1) / (num_genomes - 1) if num_genomes > 1 else 0
+
         if len(genomes_sets) > 1 and not is_backbone:
             diversity = (stat.pvariance([1, num_genomes])
                          - stat.pvariance([len(s) for s in genomes_sets]))
-            diversity_scaled = (stat.pvariance([1 / num_genomes, 1])
+            diversity_normalized = (stat.pvariance([1 / num_genomes, 1])
                                 - stat.pvariance([len(s) / num_genomes for s in genomes_sets]))
         else:
             diversity = 0
-            diversity_scaled = 0
+            diversity_normalized = 0
+
+        weight_normalized = weight / num_genomes if num_genomes > 0 else 0
 
         # BR/VR follows the region boundaries, not the variability metrics.
         region = 'BR' if is_backbone else 'VR'
@@ -593,19 +600,19 @@ class PangenomeGraphManager():
         return {
             'region_id': region_id,
             'region': region,
-            'x_min': min(region_x),
-            'x_max': max(region_x),
-            'num_synteny_gene_clusters': K,
+            'x_min': x_min,
+            'x_max': x_max,
+            'num_synteny_gene_clusters': num_synteny_gene_clusters,
             'num_gene_clusters': num_gene_clusters,
-            'num_gene_calls': T,
+            'num_gene_calls': num_gene_calls,
             'max_expansion': max_expansion,
             'min_expansion': min_expansion,
             'complexity': complexity,
-            'complexity_normalized': complexity / num_genomes,
+            'complexity_normalized': complexity_normalized,
             'diversity': diversity,
-            'diversity_normalized': diversity_scaled,
+            'diversity_normalized': diversity_normalized,
             'weight': weight,
-            'weight_normalized': weight / num_genomes,
+            'weight_normalized': weight_normalized,
         }
 
 
