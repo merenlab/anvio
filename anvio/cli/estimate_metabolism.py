@@ -103,7 +103,8 @@ def get_args():
                                                    "metabolism on each bin. You will need to provide the collection name (and optionally, "
                                                    "bin name(s)) -- see INPUT #2 section above. This program will use the most common "
                                                    "annotation (for each annotation source) from each gene cluster. Note that this input "
-                                                   "option is not compatible with the `--add-copy-number` or `--add-coverage` flags.")
+                                                   "option is not compatible with the `--add-coverage` flag, and module copy number is "
+                                                   "not reported for pangenome input.")
     groupN.add_argument('--pan-db', **anvio.K('pan-db', {'required': False}))
     groupN.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage'))
 
@@ -114,7 +115,6 @@ def get_args():
     groupC.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
     groupC.add_argument(*anvio.A('include-zeros'), **anvio.K('include-zeros'))
     groupC.add_argument(*anvio.A('only-complete'), **anvio.K('only-complete'))
-    groupC.add_argument(*anvio.A('add-copy-number'), **anvio.K('add-copy-number'))
     groupC.add_argument(*anvio.A('include-kos-not-in-kofam'), **anvio.K('include-kos-not-in-kofam'))
     groupC.add_argument(*anvio.A('include-nt-KOs'), **anvio.K('include-nt-KOs', {'help': "'No-threshold KOs', or 'nt-KOs' are what we call KEGG Orthlogs "
                                                             "that KEGG does not provide a bit score threshold for. Anvi'o can estimate "

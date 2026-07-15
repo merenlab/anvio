@@ -311,40 +311,9 @@ anvi-estimate-metabolism -c CONTIGS.db \
                          --kegg-data-dir $kegg_data_dir
 SHOW_FILE modules_custom_coverage_modules_custom.txt
 
-
 ## COPY NUMBER TESTS
-INFO "Testing --add-copy-number in long-format output"
+INFO "Generating custom output with copy number headers (including path-level headers)"
 anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
-                         -O copy_num \
-                         --add-copy-number \
-                         --output-modes modules,module_paths,module_steps \
-                         --no-progress \
-                         --kegg-data-dir $kegg_data_dir
-SHOW_FILE copy_num_modules.txt
-SHOW_FILE copy_num_module_paths.txt
-SHOW_FILE copy_num_module_steps.txt
-
-INFO "Testing --add-copy-number in matrix output"
-anvi-estimate-metabolism -e external-genomes.txt \
-                         -O copy_num \
-                         --add-copy-number \
-                         --matrix-format \
-                         --no-progress \
-                         --kegg-data-dir $kegg_data_dir
-SHOW_FILE copy_num-module_pathwise_copy_number-MATRIX.txt
-SHOW_FILE copy_num-module_stepwise_copy_number-MATRIX.txt
-SHOW_FILE copy_num-step_copy_number-MATRIX.txt
-
-INFO "Listing custom output headers with --add-copy-number enabled"
-anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
-                         --add-copy-number \
-                         --list-available-output-headers \
-                         --no-progress \
-                         --kegg-data-dir $kegg_data_dir
-
-INFO "Generating custom output with --add-copy-number enabled (including path-level headers)"
-anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
-                          --add-copy-number \
                           --output-modes modules_custom \
                           -O modules_custom_copynum_path \
                           --custom-output-headers module,path,pathwise_copy_number,num_complete_copies_of_path,stepwise_copy_number,per_step_copy_numbers \
@@ -352,9 +321,8 @@ anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
                          --kegg-data-dir $kegg_data_dir
 SHOW_FILE modules_custom_copynum_path_modules_custom.txt
 
-INFO "Generating custom output with --add-copy-number enabled (including step-level headers)"
+INFO "Generating custom output with copy number headers (including step-level headers)"
 anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
-                          --add-copy-number \
                           --output-modes modules_custom \
                           -O modules_custom_copynum_step \
                           --custom-output-headers module,step,pathwise_copy_number,stepwise_copy_number,per_step_copy_numbers,step_copy_number \
