@@ -824,15 +824,15 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                 missing_taxa = [taxon for taxon in list_of_unique_taxon_names if taxon not in known_taxa]
                 for taxon in missing_taxa:
                     row = {'metagenome_name': metagenome_name, 'taxon': taxon, 'coverage': 0.0, 'taxonomic_level': taxonomic_level}
-                    x = x.append(row, ignore_index=True)
+                    x = pd.concat([x, pd.DataFrame([row])], ignore_index=True)
 
-            DFx = DFx.append(x, ignore_index=True)
+            DFx = pd.concat([DFx, x], ignore_index=True)
 
         DFx.sort_values(by=['metagenome_name', 'taxonomic_level', 'coverage'], ascending=[True, True, False], inplace=True)
 
         DF = pd.DataFrame(columns=['metagenome_name', 'taxon', 'coverage', 'taxonomic_level'])
         for taxonomic_level in constants.levels_of_taxonomy:
-            DF = DF.append(DFx[DFx['taxonomic_level'] == taxonomic_level], ignore_index=True)
+            DF = pd.concat([DF, DFx[DFx['taxonomic_level'] == taxonomic_level]], ignore_index=True)
 
         del DFx
 
