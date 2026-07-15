@@ -232,9 +232,9 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
 
         self.run.info('Mode (what we are estimating metabolism for)', estimation_mode, quiet=self.quiet)
 
-        # a warning for high memory usage with metagenome mode in certain situations
+        # a warning for high memory usage with per-contig estimates in certain situations
         if self.metagenome_mode and (self.matrix_format or self.json_output_file_path):
-            self.run.warning("ALERT! You are running this program in --metagenome-mode, which can have a VERY LARGE "
+            self.run.warning("ALERT! You are running this program with --per-contig-estimates, which can have a VERY LARGE "
                              "memory footprint when used with --matrix-format or --get-raw-data-as-json, since both "
                              "of those options require storing all the per-contig data in memory. You have been warned. "
                              "The OOM-Killer may strike.")
@@ -2106,7 +2106,7 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
                                   "without inputs. :/")
             self.progress.end()
             self.run.info("Num Contigs DBs in file", len(self.database_names))
-            self.run.info('Metagenome Mode', self.metagenome_mode)
+            self.run.info('Per-Contig Estimates', self.metagenome_mode)
 
         self.init_data_from_modules_db()
 
