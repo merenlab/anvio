@@ -1020,7 +1020,7 @@ class StructureSuperclass(object):
         templates = pd.DataFrame(results['templates'])
         templates.insert(0, 'corresponding_gene_call', corresponding_gene_call)
         self.structure_db.entries[t.templates_table_name] = \
-            self.structure_db.entries[t.templates_table_name].append(templates)
+            pd.concat([self.structure_db.entries[t.templates_table_name], templates])
         self.structure_db.store(t.templates_table_name)
 
         # entries that are only added if a structure was modelled
@@ -1030,7 +1030,7 @@ class StructureSuperclass(object):
             models = pd.DataFrame(results['models'])
             models.insert(0, 'corresponding_gene_call', corresponding_gene_call)
             self.structure_db.entries[t.models_table_name] = \
-                self.structure_db.entries[t.models_table_name].append(models)
+                pd.concat([self.structure_db.entries[t.models_table_name], models])
             self.structure_db.store(t.models_table_name)
 
             # pdb file data
@@ -1043,7 +1043,7 @@ class StructureSuperclass(object):
 
             # residue_info
             self.structure_db.entries[t.residue_info_table_name] = \
-                self.structure_db.entries[t.residue_info_table_name].append(structure_info['residue_info'])
+                pd.concat([self.structure_db.entries[t.residue_info_table_name], structure_info['residue_info']])
             self.structure_db.store(t.residue_info_table_name)
 
 
