@@ -50,6 +50,10 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         self.profile_db_path = A('profile_db')
         self.pan_db_path = A('pan_db')
         self.genomes_storage_path = A('genomes_storage')
+        # module copy number is always computed, but it is not meaningful for pangenome bins (which
+        # aggregate gene clusters across genomes rather than enzyme hit counts within one), so we
+        # don't report it for pangenome input.
+        self.report_copy_number = not self.pan_db_path
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
         self.bin_ids_file = A('bin_ids_file')
@@ -66,7 +70,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         # INIT BASE CLASSES
         KeggEstimatorArgs.__init__(self, self.args)
         KeggDataLoader.__init__(self, self.args, self.run, self.progress)
-        KeggEstimationAlgorithms.__init__(self, self.run, self.progress, add_copy_number=self.add_copy_number)
+        KeggEstimationAlgorithms.__init__(self, self.run, self.progress, add_copy_number=self.report_copy_number)
 
         self.name_header = None
         if self.metagenome_mode:
@@ -149,8 +153,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                               "already have a collection of gene clusters in the pan database, please make one first. Then provide "
                               "the collection to this program; you can find the collection name parameter in the INPUT #2 section "
                               "of the `-h` output.")
-        if self.pan_db_path and (self.add_copy_number or self.add_coverage):
-            raise ConfigError("The flags --add-copy-number or --add-coverage do not work for pangenome input.")
+        if self.pan_db_path and self.add_coverage:
+            raise ConfigError("The flag --add-coverage does not work for pangenome input.")
         # required/forbidden with JSON estimation
         if self.store_json_without_estimation and not self.json_output_file_path:
             raise ConfigError("Whoops. You seem to want to store the metabolism dictionary in a JSON file, but you haven't provided the name of that file. "
@@ -267,7 +271,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             # this function will initialize the profile db if necessary, and will create self.coverage_sample_list
             self.add_gene_coverage_to_headers_list()
 
-        if self.add_copy_number:
+        if self.report_copy_number:
             self.available_modes["module_paths"]["headers"].extend(["num_complete_copies_of_path"])
             self.available_modes["module_steps"]["headers"].extend(["step_copy_number"])
             self.available_modes["modules"]["headers"].extend(["pathwise_copy_number", "stepwise_copy_number", "per_step_copy_numbers"])
@@ -1247,8 +1251,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                     value = ",".join(value)
             d[self.modules_unique_id][h] = value
 
-        # add module copy number if requested
-        if self.add_copy_number:
+        # add module copy number
+        if self.report_copy_number:
             # pathwise: we take the maximum copy number of all the paths of highest completeness
             if "pathwise_copy_number" in headers_to_include:
                 d[self.modules_unique_id]["pathwise_copy_number"] = c_dict["pathwise_copy_number"]
@@ -1424,8 +1428,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                                         annotated.append(f"[MISSING {accession}]")
                             d[self.modules_unique_id]["annotated_enzymes_in_path"] = ",".join(annotated)
 
-                        # add path-level redundancy if requested
-                        if self.add_copy_number:
+                        # add path-level redundancy
+                        if self.report_copy_number:
                             d[self.modules_unique_id]["num_complete_copies_of_path"] = c_dict["num_complete_copies_of_all_paths"][p_index]
 
                         self.modules_unique_id += 1
@@ -1444,8 +1448,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                         if "step_completeness" in headers_to_include:
                             d[self.modules_unique_id]["step_completeness"] = 1 if step_dict["complete"] else 0
 
-                        # add step-level redundancy if requested
-                        if self.add_copy_number:
+                        # add step-level redundancy
+                        if self.report_copy_number:
                             d[self.modules_unique_id]["step_copy_number"] = step_dict["copy_number"]
 
                         self.modules_unique_id += 1
@@ -1558,8 +1562,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         """Here we extract and return subsets of data from the superdicts, for matrix formatted output.
 
         The subsets of data that we need are: module completeness scores, module presence/absence, KO hit frequency,
-                                              module top-level step completeness
-        If --add-copy-number was provided, we also need copy numbers for modules and module steps.
+                                              module top-level step completeness, and (except for pangenome input)
+                                              copy numbers for modules and module steps.
 
         Each of these is put into a dictionary (one for modules, one for ko hits, one for module steps) and returned.
 
@@ -1601,7 +1605,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                 mod_completeness_presence_subdict[bin][mnum]["stepwise_completeness"] = c_dict["stepwise_completeness"]
                 mod_completeness_presence_subdict[bin][mnum]["stepwise_is_complete"] = c_dict["stepwise_is_complete"]
 
-                if self.add_copy_number:
+                if self.report_copy_number:
                     if c_dict["num_complete_copies_of_most_complete_paths"]:
                         mod_completeness_presence_subdict[bin][mnum]['pathwise_copy_number'] = max(c_dict["num_complete_copies_of_most_complete_paths"])
                     else:
@@ -1614,7 +1618,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                     steps_subdict[bin][step_key]["step_is_complete"] = step_dict["complete"]
                     # we include step metadata in this dictionary directly (rather than trying to access it out later using a function)
                     steps_subdict[bin][step_key]["step_definition"] = step_dict["step_definition"]
-                    if self.add_copy_number:
+                    if self.report_copy_number:
                         steps_subdict[bin][step_key]["step_copy_number"] = step_dict["copy_number"]
 
         for bin, ko_dict in ko_hits_superdict.items():
@@ -1931,8 +1935,8 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
         # we will find in the metagenomes file
         self.update_available_headers_for_multi()
 
-        self.run.warning("Just so you know, if you used the flags --add-copy-number or --add-coverage, you "
-                         "won't see the possible headers for these data in the list below. If you want to "
+        self.run.warning("Just so you know, if you used the flag --add-coverage, you "
+                         "won't see the possible headers for that data in the list below. If you want to "
                          "include this information in a custom output file and need to know which headers "
                          "you can choose from, you should re-run this command with --list-available-output-headers "
                          "on a SINGLE sample from your input file.")
