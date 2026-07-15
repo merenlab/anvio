@@ -180,9 +180,9 @@ def get_args():
 
     groupF = parser.add_argument_group('LAYOUT & SIMPLIFICATION', "Controls how the graph is compressed and long edges are filtered.")
 
-    groupF.add_argument('--component', default=0, type=int, help = "Which weakly connected component to lay out and summarize. "
-                    "Components are indexed largest-first; the default (0) selects the largest. All components are still persisted "
-                    "in the pan-graph-db.")
+    groupF.add_argument('--component', default='CP_0001', type=str, help = "Which weakly connected component to lay out and summarize. "
+                    "Components are named largest-first as 'CP_0001', 'CP_0002', ...; the default ('CP_0001') selects the largest. All "
+                    "components are still persisted in the pan-graph-db.")
     groupF.add_argument('--region-scope', default='component', choices=['global', 'component'], help = "Scope of the genome-count "
                     "denominator used during region classification (backbone vs. variable) and the normalized region metrics. "
                     "'global' (default) counts genomes across the entire pangenome -- a region is BR only if every genome in "

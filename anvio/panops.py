@@ -130,11 +130,16 @@ class PangenomeGraphSubGraph:
         side, since variable region nodes are not necessarily present in all genomes.
         """
 
-        if self.region_id not in pangraph.regions:
+        # region_id embeds its component since v7 (e.g. "CP_0001_5"), so
+        # pangraph.regions -- keyed by the (component_id, region_id) pair -- can
+        # be looked up without a separate --component argument.
+        region_key = (self.region_id.rsplit('_', 1)[0], self.region_id)
+        if region_key not in pangraph.regions:
+            available = ', '.join(sorted(rid for (_cid, rid) in pangraph.regions))
             raise ConfigError(f"Region ID {self.region_id} was not found in the pangenome graph database. "
-                              f"Available region IDs: {', '.join(str(r) for r in sorted(pangraph.regions))}.")
+                              f"Available region IDs: {available}.")
 
-        region_info = pangraph.regions[self.region_id]
+        region_info = pangraph.regions[region_key]
         region_type = region_info['region_type']
 
         if region_type == 'backbone':
@@ -156,7 +161,7 @@ class PangenomeGraphSubGraph:
             x_max = region_info['x_max']
 
             def is_eligible_backbone_node(data):
-                r = pangraph.regions.get(data['region_id'])
+                r = pangraph.regions.get((data['component_id'], data['region_id']))
                 return r is not None and r['region_type'] == 'backbone' and data['node_type'] != 'rna'
 
             left_candidates = [(node_id, data['node_x']) for node_id, data in pangraph.nodes.items()
@@ -1665,7 +1670,7 @@ class PangenomeGraph():
         self.max_edge_length_filter = A('max_edge_length_filter')
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
         self.groupcompress = A('grouping_compression')
-        self.component = A('component') if A('component') is not None else 0
+        self.component = A('component') if A('component') is not None else 'CP_0001'
         self.region_scope = A('region_scope') or 'global'
         self.load_state = A('load_state')
         self.import_values = A('import_values').split(',') if A('import_values') else []
@@ -1734,10 +1739,11 @@ class PangenomeGraph():
 
         # bounds-check --component against the actual number of weakly connected components
         n_components = sum(1 for _ in nx.weakly_connected_components(self.pangenome_graph.graph))
-        if self.component >= n_components:
-            raise ConfigError(f"You asked for component {self.component}, but the graph only has "
-                              f"{n_components} component(s) (valid indices are 0 to {n_components - 1}). "
-                              f"Pass a smaller value to --component.")
+        valid_components = [f"CP_{i + 1:04d}" for i in range(n_components)]
+        if self.component not in valid_components:
+            raise ConfigError(f"You asked for component '{self.component}', but the graph has "
+                              f"{n_components} component(s), named CP_0001 to CP_{n_components:04d}. "
+                              f"Pass a valid component name to --component.")
 
         # Lay out and summarize EVERY component. self.component is the
         # default *display* component; it no longer gates analysis. Every
@@ -2289,7 +2295,7 @@ class PangenomeGraph():
                 'alignment_summary': json.dumps(data['alignment']),
                 'node_x': data['position'][0],
                 'node_y': data['position'][1],
-                'component_id': int(data.get('component_id', 0)),
+                'component_id': data.get('component_id', 'CP_0001'),
             }
 
             table_for_nodes.add(node_entry)
@@ -2416,7 +2422,7 @@ class PangenomeGraph():
                 'gene_calls': gene_calls,
                 'synteny': synteny,
                 'type': attrs.get('type', ''),
-                'component_id': int(attrs.get('component_id', 0)),
+                'component_id': attrs.get('component_id', 'CP_0001'),
             })
 
         for u, v in G.edges():
@@ -2675,7 +2681,7 @@ class PangenomeGraph():
                 node_b = graph.nodes[syn_b]
 
                 # Guard 1: components must match (cheapest check first).
-                if node_a.get('component_id', 0) != node_b.get('component_id', 0):
+                if node_a.get('component_id', 'CP_0001') != node_b.get('component_id', 'CP_0001'):
                     continue
 
                 # Guard 2: LCA must not be either of the two (in-series).

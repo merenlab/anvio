@@ -2298,11 +2298,12 @@ D = {
                 ),
     'region-id': (
             ['--region-id'],
-            {'metavar': "INT",
+            {'metavar': "REGION_ID",
              'required': False,
-             'help': "A region ID from an anvi'o pangenome graph database. The program will resolve the "
-                     "two boundary nodes (by position) of the region and export the loci between them.",
-             'type': int}
+             'help': "A region ID from an anvi'o pangenome graph database (e.g. 'R_1'). The program will "
+                     "resolve the two boundary nodes (by position) of the region and export the loci "
+                     "between them.",
+             'type': str}
                 ),
     'output-file': (
             ['-o', '--output-file'],

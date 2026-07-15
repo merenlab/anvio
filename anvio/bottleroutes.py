@@ -1708,7 +1708,7 @@ class BottleApplication(Bottle):
             max_edge_length_filter = payload['maxlength']
             gene_cluster_grouping_threshold = payload['condtr']
             groupcompress = payload['groupcompress']
-            component = payload.get('component', 0)
+            component = payload.get('component', 'CP_0001')
 
             self.interactive.rerun_state(gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter, component=component)
             return(json.dumps({'status': 0}))
@@ -1846,7 +1846,7 @@ class BottleApplication(Bottle):
             graph = self.interactive.pangenome_graph.graph
             for gene_cluster_id in data:
                 if gene_cluster_id in graph.nodes:
-                    components[gene_cluster_id] = int(graph.nodes[gene_cluster_id].get('component_id', 0))
+                    components[gene_cluster_id] = graph.nodes[gene_cluster_id].get('component_id', 'CP_0001')
 
             return(json.dumps({'status': 0, 'data': data, 'components': components}))
         except Exception as e:

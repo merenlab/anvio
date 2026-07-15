@@ -576,7 +576,7 @@ def compute_node_types(G, line_to_genome, gene_clusters, scope='global'):
         if scope == 'global':
             nodes_by_group[_parent_gc(n)].append(n)
         else:
-            nodes_by_group[(data.get('component_id', 0), _parent_gc(n))].append(n)
+            nodes_by_group[(data.get('component_id', 'CP_0001'), _parent_gc(n))].append(n)
 
     # Per-group genome denominator for the core/accessory/singleton branch.
     if scope == 'global':
@@ -586,7 +586,7 @@ def compute_node_types(G, line_to_genome, gene_clusters, scope='global'):
     else:
         component_genomes = defaultdict(set)
         for n, data in G.nodes(data=True):
-            cid = data.get('component_id', 0)
+            cid = data.get('component_id', 'CP_0001')
             component_genomes[cid] |= _node_genomes(data)
         def _denom(key):
             cid, _ = key
@@ -729,12 +729,14 @@ def compute_component_ids(G):
     """Assign ``component_id`` per node.
 
     Components are weakly connected components sorted size-descending so
-    ``component_id=0`` is the largest.  Mutates G in place and returns it.
+    ``component_id="CP_0001"`` is the largest.  Component ids are 1-based,
+    zero-padded prefixed strings (``"CP_0001"``, ``"CP_0002"``, ...), mirroring
+    the gene-cluster id convention.  Mutates G in place and returns it.
     """
     components = sorted(nx.weakly_connected_components(G), key=len, reverse=True)
     for idx, comp in enumerate(components):
         for n in comp:
-            G.nodes[n]["component_id"] = idx
+            G.nodes[n]["component_id"] = f"CP_{idx + 1:04d}"
     return G
 
 

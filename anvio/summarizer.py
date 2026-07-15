@@ -915,7 +915,7 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
                 component_id = node.get('component_id')
                 # region_id is plain per-component since v7 -- look up by
                 # the (component_id, region_id) composite key.
-                region_row = (self.regions.get((int(component_id), str(region_id)))
+                region_row = (self.regions.get((str(component_id), str(region_id)))
                               if region_id is not None and component_id is not None
                               else None)
                 region_type = region_row['region_type'] if region_row else ''
@@ -983,7 +983,7 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
                 gene_cluster_id = node.get('gene_cluster_id', '')
                 region_id = node.get('region_id')
                 component_id = node.get('component_id')
-                region_row = (self.regions.get((int(component_id), str(region_id)))
+                region_row = (self.regions.get((str(component_id), str(region_id)))
                               if region_id is not None and component_id is not None
                               else None)
                 region_type = region_row['region_type'] if region_row else ''

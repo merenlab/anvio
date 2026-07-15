@@ -3583,11 +3583,12 @@ class PanGraphSuperclass(PanSuperclass):
 
         self.nodes = pan_graph_db.db.get_table_as_dict(t.pan_graph_nodes_table_name)
         self.edges = pan_graph_db.db.get_table_as_dict(t.pan_graph_edges_table_name)
-        # region_id is plain "0"/"1"/... per component since pangraph_db v6;
+        # region_id is a 1-based prefixed string ("R_1", "R_2", ...) per
+        # component since pangraph_db v7, and component_id is "CP_0001"/"CP_0002"/...;
         # uniqueness comes from the (component_id, region_id) pair, so we
         # avoid get_table_as_dict (which would collide on the first column).
         regions_df = pan_graph_db.db.get_table_as_dataframe(t.pan_graph_regions_table_name, error_if_no_data=False)
-        self.regions = {(int(row['component_id']), str(row['region_id'])): row.to_dict()
+        self.regions = {(str(row['component_id']), str(row['region_id'])): row.to_dict()
                         for _, row in regions_df.iterrows()}
         self.genome_distances = pan_graph_db.db.get_table_as_dict(t.pan_graph_genome_distances_table_name)
         self.states = pan_graph_db.db.get_table_as_dict(t.states_table_name)
@@ -3663,7 +3664,7 @@ class PanGraphSuperclass(PanSuperclass):
         gene_cluster_grouping_threshold = state_dict['graph_layout']['grouping_threshold']
         max_edge_length_filter = state_dict['graph_layout']['max_edge_length']
         groupcompress = state_dict['graph_layout']['group_compression']
-        component = state_dict['graph_layout'].get('component', 0)
+        component = state_dict['graph_layout'].get('component', 'CP_0001')
 
         self.pangenome_graph.layout_all_components(
             gene_cluster_grouping_threshold, groupcompress)
@@ -3672,10 +3673,10 @@ class PanGraphSuperclass(PanSuperclass):
         region_sides_df, _ = self.pangenome_graph.summarize_all_components(
             scope=self.p_meta.get('region_scope', 'global'))
         self._refresh_region_caches(region_sides_df)
-        self.p_meta['component'] = int(component)
+        self.p_meta['component'] = str(component)
 
 
-    def rerun_state(self, gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter, component=0):
+    def rerun_state(self, gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter, component='CP_0001'):
 
         args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
         items_layer_order = TableForLayerOrders(args)
@@ -3699,7 +3700,7 @@ class PanGraphSuperclass(PanSuperclass):
         region_sides_df, _ = self.pangenome_graph.summarize_all_components(
             scope=self.p_meta.get('region_scope', 'global'))
         self._refresh_region_caches(region_sides_df)
-        self.p_meta['component'] = int(component)
+        self.p_meta['component'] = str(component)
 
 
     def _refresh_region_caches(self, region_sides_df):
@@ -3721,7 +3722,7 @@ class PanGraphSuperclass(PanSuperclass):
             x, y = data.get('position', (0, 0))
             nodes_rows.append({
                 'syn_cluster': node,
-                'component_id': int(data.get('component_id', 0)),
+                'component_id': str(data.get('component_id', 'CP_0001')),
                 'region_id': str(rid),
                 'x': x,
                 'y': y,
@@ -3743,7 +3744,7 @@ class PanGraphSuperclass(PanSuperclass):
             ['component_id', 'region_id', 'x_min', 'x_max', 'num_synteny_gene_clusters', 'region']
         ]
         self.region_sides_info = {
-            (int(row['component_id']), str(row['region_id'])): {
+            (str(row['component_id']), str(row['region_id'])): {
                 'x_min': row['x_min'],
                 'x_max': row['x_max'],
                 'num_synteny_gene_clusters': row['num_synteny_gene_clusters'],
@@ -3757,30 +3758,33 @@ class PanGraphSuperclass(PanSuperclass):
         state_dict = json.loads(self.states[self.p_meta['state']]['content'])
         G = self.pangenome_graph.graph
 
-        active_component = int(self.p_meta.get('component', 0))
+        active_component = str(self.p_meta.get('component', 'CP_0001'))
 
         # Only the active component is shipped to the JS. All components
         # were laid out and summarized server-side; the dropdown can still
         # offer the others via meta.components_summary below, and switching
         # triggers another rerun_state that updates self.p_meta['component'].
         nodes = {n: d for n, d in G.nodes(data=True)
-                 if int(d.get('component_id', 0)) == active_component}
+                 if d.get('component_id', 'CP_0001') == active_component}
         edges = {data['name']: {'source': u, 'target': v, **data}
                  for u, v, data in G.edges(data=True)
                  if u in nodes and v in nodes}
 
-        # Per-component region_ids are plain since v7; strip the
-        # (component_id, region_id) tuple key down to just the region_id
-        # for the JS, which never sees a second component at the same time.
+        # Region_ids are per-component prefixed strings ("R_1", ...) since v7;
+        # strip the (component_id, region_id) tuple key down to just the
+        # region_id for the JS, which never sees a second component at once.
         regions = {rid: info
                    for (cid, rid), info in self.region_sides_info.items()
                    if cid == active_component}
 
         components_summary = {}
         for _n, d in G.nodes(data=True):
-            cid = int(d.get('component_id', 0))
+            cid = d.get('component_id', 'CP_0001')
             components_summary[cid] = components_summary.get(cid, 0) + 1
-        components_summary = dict(sorted(components_summary.items()))
+        # Sort by the numeric suffix so CP_0002 precedes CP_0010 (plain string sort
+        # would not).
+        components_summary = dict(sorted(components_summary.items(),
+                                         key=lambda kv: int(kv[0].split('_')[1])))
 
         meta = dict(self.p_meta)
         meta['components_summary'] = components_summary
@@ -3807,7 +3811,7 @@ class PanGraphSuperclass(PanSuperclass):
                 'position': (0, 0),
                 'group': '',
                 'alignment': json.loads(data['alignment_summary']),
-                'component_id': int(data['component_id']),
+                'component_id': str(data['component_id']),
             }
             self.pangenome_graph.graph.add_node(node, **graph_data)
 

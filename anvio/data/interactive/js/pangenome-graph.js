@@ -1083,7 +1083,7 @@ class PangenomeGraphUserInterface {
                             text-anchor="middle" dominant-baseline="middle"
                             x="0" y="0" font-size="1" font-family="sans-serif"
                             fill="#555555" opacity="0.85"
-                            style="display:none">#${rid}</text>`
+                            style="display:none">#${rid.split('_').pop()}</text>`
                     ));
                 } else {
                     var label_x   = x_mid * node_distance_x;
@@ -1101,7 +1101,7 @@ class PangenomeGraphUserInterface {
                             text-anchor="middle" dominant-baseline="middle"
                             x="${label_x}" y="0" font-size="1" font-family="sans-serif"
                             fill="#555555" opacity="0.85"
-                            style="display:none">#${rid}</text>`
+                            style="display:none">#${rid.split('_').pop()}</text>`
                     ));
                 }
             }
@@ -1485,7 +1485,7 @@ class PangenomeGraphUserInterface {
         new_settings_dict['condtr'] = parseInt($('#condtr')[0].value);
         new_settings_dict['maxlength'] = parseInt($('#maxlength')[0].value);
         new_settings_dict['groupcompress'] = parseFloat($('#groupcompress')[0].value);
-        new_settings_dict['component'] = parseInt($('#component_select').val());
+        new_settings_dict['component'] = $('#component_select').val();
 
         if (JSON.stringify(this.settings_dict) !== JSON.stringify(new_settings_dict)) {
             this.rerun_JSON(new_settings_dict);
@@ -3009,29 +3009,31 @@ class PangenomeGraphUserInterface {
 
     // Build the Component dropdown from meta.components_summary, which the
     // server fills with {cid: node_count} for the WHOLE graph (not just the
-    // active component, which is the only one in this.nodes). The currently
-    // active component (settings_dict['component'], defaulting to 0) is
-    // preselected; meta.component (set by load_state / rerun_state) wins
-    // if settings_dict hasn't been seeded yet.
+    // active component, which is the only one in this.nodes). Component ids are
+    // prefixed strings ("C_1", "C_2", ...). The currently active component
+    // (settings_dict['component'], defaulting to "C_1") is preselected;
+    // meta.component (set by load_state / rerun_state) wins if settings_dict
+    // hasn't been seeded yet.
     populate_component_select() {
         const summary = (this.data && this.data['meta'] && this.data['meta']['components_summary']) || {};
+        // Sort by the numeric suffix so C_2 precedes C_10 (plain string sort would not).
         const ids = Object.keys(summary)
-                          .map(k => parseInt(k))
-                          .sort((a, b) => a - b);
+                          .sort((a, b) => parseInt(a.split('_')[1]) - parseInt(b.split('_')[1]));
 
         let current;
         if (this.settings_dict && this.settings_dict['component'] !== undefined) {
             current = this.settings_dict['component'];
         } else if (this.data && this.data['meta'] && this.data['meta']['component'] !== undefined) {
-            current = parseInt(this.data['meta']['component']);
+            current = this.data['meta']['component'];
         } else {
-            current = 0;
+            current = 'CP_0001';
         }
 
         const $sel = $('#component_select');
         $sel.empty();
         for (const cid of ids) {
-            const opt = $('<option>').attr('value', cid).text(`Component ${cid} (${summary[cid]} nodes)`);
+            // Value is the real id (CP_0001); label shows the friendly number ("Component 1").
+            const opt = $('<option>').attr('value', cid).text(`Component ${parseInt(cid.split('_')[1])} (${summary[cid]} nodes)`);
             if (cid === current) opt.attr('selected', 'selected');
             $sel.append(opt);
         }
@@ -3556,7 +3558,7 @@ class PangenomeGraphUserInterface {
         this.settings_dict['condtr'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['grouping_threshold']))
         this.settings_dict['maxlength'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['max_edge_length']))
         this.settings_dict['groupcompress'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['group_compression']))
-        this.settings_dict['component'] = parseInt($('#component_select').val()) || 0
+        this.settings_dict['component'] = $('#component_select').val() || 'CP_0001'
         this.settings_dict['state'] = JSON.parse(JSON.stringify(this.data['meta']['state']))
 
         // Delegated handlers for amino acid conservation checkboxes in the alignment modal
@@ -4315,9 +4317,9 @@ class PangenomeGraphUserInterface {
     // The component currently shipped to the client (only its nodes are in
     // this.data['nodes']).
     _active_component() {
-        const v = parseInt($('#component_select').val());
-        if (!isNaN(v)) return v;
-        return parseInt(this.data['meta']['component'] || 0) || 0;
+        const v = $('#component_select').val();
+        if (v) return v;
+        return this.data['meta']['component'] || 'CP_0001';
     }
 
     // Component id for a matched node: the server-provided one for function
@@ -4388,14 +4390,16 @@ class PangenomeGraphUserInterface {
         this.show_search_toast(this._format_component_breakdown(all_ids.length, per_component, other, active_comp));
     }
 
-    // "17 hits: 12 in component 0 (current), 4 in component 5, 1 in component 8"
+    // "17 hits: 12 in component 1 (current), 4 in component 5, 1 in component 8"
     _format_component_breakdown(total, per_component, other, active_comp) {
         if (total === 0) return 'No synteny gene clusters matched.';
+        // active component first, then by numeric suffix so CP_0002 precedes CP_0010.
+        const suffix = c => parseInt(String(c).split('_')[1]);
         const comps = Object.keys(per_component)
-            .map(Number)
-            .sort((a, b) => (a === active_comp ? -1 : b === active_comp ? 1 : a - b));
+            .sort((a, b) => (a === active_comp ? -1 : b === active_comp ? 1 : suffix(a) - suffix(b)));
+        // Show the friendly component number ("component 5"), matching the dropdown.
         const parts = comps.map(c =>
-            `${per_component[c]} in component ${c}${c === active_comp ? ' (current)' : ''}`);
+            `${per_component[c]} in component ${suffix(c)}${c === active_comp ? ' (current)' : ''}`);
         if (other) parts.push(`${other} in other component(s)`);
         return `${total} hit${total === 1 ? '' : 's'}: ` + parts.join(', ');
     }

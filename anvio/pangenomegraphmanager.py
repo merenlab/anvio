@@ -124,7 +124,7 @@ class PangenomeGraphManager():
             'group': '',
             'layer': {},
             'alignment': '',
-            'component_id': 0,
+            'component_id': '',
         }
         self.edge_standard_attributes = {
             'name': '',
@@ -353,7 +353,8 @@ class PangenomeGraphManager():
 
         region_dfs = []
         backbone_by_node = {}
-        for cid in range(n_components):
+        for i in range(n_components):
+            cid = f"CP_{i + 1:04d}"
             region_sides_df, nodes_df, _ = self.summarize(component_id=cid, scope=scope)
             if region_sides_df.empty:
                 continue
@@ -371,22 +372,22 @@ class PangenomeGraphManager():
         return all_region_sides_df, backbone_by_node
 
 
-    def summarize(self, component_id=0, scope='global'):
+    def summarize(self, component_id='CP_0001', scope='global'):
         """Compute region-level summaries for one weakly connected component.
 
         The component is selected by the ``component_id`` attribute set on
-        every node (see Task 3 in HANDOFF.md): ``component_id=0`` is the
-        largest. ``region_id`` is plain ``"0"``, ``"1"``, ... per component;
-        cross-component uniqueness is provided by the ``component_id``
-        column attached to ``region_sides_df`` and stored alongside on each
-        region row in the DB.
+        every node (see Task 3 in HANDOFF.md): ``component_id="CP_0001"`` is the
+        largest. ``region_id`` embeds its component and a 1-based index
+        (``"CP_0001_1"``, ``"CP_0001_2"``, ...), so it is globally unique on its
+        own; the ``component_id`` column is still attached to ``region_sides_df``
+        and stored alongside on each region row in the DB.
 
         Returns ``(region_sides_df, nodes_df, gene_calls_df)``. All three may
         be empty DataFrames if the requested component is empty or contains
         no nodes whose x-position falls inside any region span.
         """
         nodes_in_component = [n for n, d in self.graph.nodes(data=True)
-                              if d.get('component_id', 0) == component_id]
+                              if d.get('component_id', 'CP_0001') == component_id]
         if not nodes_in_component:
             self.run.info_single(f"Component {component_id} is empty — nothing to summarize.")
             return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
@@ -471,14 +472,15 @@ class PangenomeGraphManager():
 
 
     def _assign_region_ids(self, core_positions, all_positions, component_id):
-        """Map every x position to a plain per-component region id (``"0"``,
-        ``"1"``, ...) and report which of those regions are backbone runs.
+        """Map every x position to a region id that embeds its component and a
+        1-based index (``"CP_0001_1"``, ``"CP_0001_2"``, ...) and report which
+        of those regions are backbone runs.
 
         Walks the integer x columns from ``all_min`` to ``all_max`` and
         partitions them into maximal runs of all-core vs all-non-core
-        columns. Each run becomes one region; ids are sequential from 0
-        within the component. Cross-component uniqueness is provided by
-        the ``component_id`` column carried separately by callers.
+        columns. Each run becomes one region; the index is sequential from 1
+        within the component and the ``component_id`` is prefixed so the id is
+        globally unique on its own.
 
         Returns ``(regions_dict, backbone_region_ids)`` where
         ``backbone_region_ids`` is the set of region_id strings whose columns
@@ -494,23 +496,23 @@ class PangenomeGraphManager():
 
         if not core_positions:
             # No core columns -> the whole component is a single variable region.
-            return {pos: "0" for pos in range(all_min, all_max + 1)}, set()
+            return {pos: f"{component_id}_1" for pos in range(all_min, all_max + 1)}, set()
 
         core_set = set(core_positions)
         regions_dict = {}
         backbone_region_ids = set()
-        rid = 0
+        rid = 1
         current_is_core = (all_min in core_set)
         if current_is_core:
-            backbone_region_ids.add(str(rid))
+            backbone_region_ids.add(f"{component_id}_{rid}")
         for x in range(all_min, all_max + 1):
             is_core = x in core_set
             if is_core != current_is_core:
                 rid += 1
                 current_is_core = is_core
                 if is_core:
-                    backbone_region_ids.add(str(rid))
-            regions_dict[x] = str(rid)
+                    backbone_region_ids.add(f"{component_id}_{rid}")
+            regions_dict[x] = f"{component_id}_{rid}"
         return regions_dict, backbone_region_ids
 
 
