@@ -17,7 +17,10 @@ from anvio.metabolism.constants import STRAY_KO_ANVIO_SUFFIX
 class KeggEstimationAlgorithms:
     """Core estimation algorithms for KEGG metabolism."""
 
-    def __init__(self, run=terminal.Run(), progress=terminal.Progress(), add_copy_number=False):
+    def __init__(self, run=terminal.Run(), progress=terminal.Progress(), add_copy_number=True):
+        """Note: the add_copy_number parameter indicates whether the process calling this function will be
+        reporting copy numbers in its output. Here it is used to control whether or not a particular warning
+        related to the copy number calculation is displayed."""
         self.run = run
         self.progress = progress
         self.add_copy_number = add_copy_number
@@ -1444,7 +1447,7 @@ class KeggEstimationAlgorithms:
 
 
     def get_dereplicated_enzyme_hits_for_step_in_module(self, meta_dict_for_mnum, step_to_focus_on, mnum,
-                                                       add_copy_number=False):
+                                                       add_copy_number=True):
         """This function returns a dictionary of enzyme accessions matched to the number of hits, with duplicate hits to the
         same gene removed, for the provided step in a metabolic pathway.
 
