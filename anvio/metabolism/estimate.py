@@ -2308,9 +2308,9 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
                                "module_stepwise_presence" : "stepwise_is_complete",
                                "module_pathwise_copy_number": "pathwise_copy_number",
                                "module_stepwise_copy_number": "stepwise_copy_number",
-                               "step_copy_number": "step_copy_number"
                                }
-        module_step_matrix_stats = {"step_completeness" : "step_is_complete"}
+        module_step_matrix_stats = {"step_completeness" : "step_is_complete",
+                                    "step_copy_number": "step_copy_number"}
 
         # all samples/bins have the same modules in the dict so we can pull the item list from the first pair
         first_sample = list(module_superdict_multi.keys())[0]
