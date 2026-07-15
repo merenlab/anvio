@@ -189,7 +189,7 @@
     },
     "minimap2": {
         "threads": 3,
-        "preset": "map-ont",
+        "preset": "",
         "additional_params": "--secondary-seq",
         "conda_yaml": "",
         "conda_env": ""
@@ -342,6 +342,6 @@
         "LOGS_DIR": "00_LOGS-references-mode-one-sample"
     },
     "max_threads": "",
-    "config_version": "5",
+    "config_version": "6",
     "workflow_name": "metagenomics"
 }

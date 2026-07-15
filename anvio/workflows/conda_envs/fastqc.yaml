@@ -1,0 +1,9 @@
+# Standalone conda environment for the 'fastqc' rule (short-read QC; provides fastqc).
+# Point a workflow config at this file via: "fastqc": {"conda_yaml": ".../fastqc.yaml"}
+# and run the workflow with `--use-conda` so Snakemake builds and uses this env.
+name: anvio-fastqc
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - fastqc=0.12.1

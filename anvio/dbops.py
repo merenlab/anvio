@@ -4717,7 +4717,7 @@ class ProfileSuperclass(object):
         return coverages_dict
 
 
-    def init_collection_profile(self, collection_name, calculate_Q2Q3_carefully=False):
+    def init_collection_profile(self, collection_name, calculate_Q2Q3_carefully=False, report_discov=False):
         profile_db = ProfileDatabase(self.profile_db_path, quiet=True)
 
         # we only have a self.collections instance if the profile super has been inherited by summary super class.
@@ -4741,7 +4741,7 @@ class ProfileSuperclass(object):
 
         samples_template = dict([(s, []) for s in self.p_meta['samples']])
 
-        if calculate_Q2Q3_carefully:
+        if calculate_Q2Q3_carefully and not report_discov:
             self.run.warning("The anvi'o sumarizer class is instructed (hopefully by you) to calculate Q2Q3 mean "
                              "coverages carefully. This means, depending on the size of your dataset and the number "
                              "of contigs in your bins this step can take much much longer than usual, since anvi'o "
@@ -4759,7 +4759,8 @@ class ProfileSuperclass(object):
             table_data, _ = profile_db.db.get_view_data(f'{table_name}_splits')
 
             for bin_id in collection:
-                if calculate_Q2Q3_carefully and table_name == 'mean_coverage_Q2Q3':
+                # if we also have to report DisCov, we'll need to call CoverageStats on these arrays later anyway, so we skip it here
+                if calculate_Q2Q3_carefully and table_name == 'mean_coverage_Q2Q3' and not report_discov:
                     self.collection_profile[bin_id][table_name] = {}
                     # we need to do something specific here.
                     for sample_name in samples_template:

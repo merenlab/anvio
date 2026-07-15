@@ -1329,6 +1329,23 @@ D = {
                      "anvi'o will only use the best hit for any gene that has multiple hits by default. But you can turn "
                      "that behavior off explicitly and show anvi'o who is the boss by using this flag."}
                 ),
+    'add-per-population-copy-number': (
+            ['--add-per-population-copy-number'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Request an additional output matrix that reports the per-population copy number (PPCN) of each "
+                     "function in every metagenomic assembly (or long-read metagenome). anvi'o divides the frequency of a "
+                     "function in a given assembly by the number of populations estimated to be present in that same "
+                     "assembly (estimated from single-copy core genes: the mode of the number of hits to the single-copy "
+                     "core genes of each domain, summed across Bacteria, Archaea, and Eukarya, just like "
+                     "`anvi-display-contigs-stats` does). This normalization is useful for metagenomic assemblies, where the "
+                     "raw frequency of a function scales with the number of populations in the assembly and is therefore "
+                     "not comparable across samples of vastly different community sizes. It follows the per-population copy "
+                     "number normalization introduced by Iva Veseli (Veseli et al. 2025). It requires that your "
+                     "contigs databases have been annotated with single-copy core genes via `anvi-run-hmms`, and it works "
+                     "only with an external-genomes file (`-e`), since population normalization is meaningful for whole "
+                     "metagenomic assemblies but not for individual genomes or a genomes storage database."}
+                ),
 
     'include-gc-identity-as-function': (
             ['--include-gc-identity-as-function'],
@@ -2923,6 +2940,17 @@ D = {
                      "for your final summary of everything). Please see https://github.com/merenlab/anvio/pull/2366 for "
                      "details."}
                 ),
+    'report-discov': (
+            ['--report-discov'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Compute the Distribution of Coverage (DisCov) metric for each bin and each contig within each bin. "
+                     "DisCov combines a spread score S (proportion of windows with at least some coverage) "
+                     "and an evenness score E (proportion of covered bases within a fold-range of the median nonzero "
+                     "coverage). Requires access to the auxiliary data file (AUXILIARY-DATA.db). Results are written to "
+                     "'bins_across_samples/discov_bins.txt' (one row per bin x sample) and "
+                     "'bins_across_samples/discov_contigs.txt' (one row per contig x sample)."}
+                ),
     'reformat-contig-names': (
             ['--reformat-contig-names'],
             {'default': False,
@@ -4195,7 +4223,77 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Use this flag to report all C/R estimates, from all domains."}
-    )
+    ),
+    'window-length': (
+            ['--window-length'],
+            {'default': None,
+             'type': int,
+             'metavar': 'INTEGER',
+             'help': "How long to make the windows for computing the spread metric: S = # windows with coverage / # windows."}
+    ),
+    'window-length-as-percentage': (
+            ['--window-length-as-percentage'],
+            {'default': None,
+             'type': int,
+             'metavar': 'INTEGER',
+             'help': "With this option you can set the window length for the spread metric (S) dynamically as a percentage "
+                     "of a given input sequence length. This works well when your input sequences (contigs or genomes) have "
+                     "a wide size distribution and you don't have a one-size-fits-all window length to use. For instance, if "
+                     "you want the window size to be 5%% of the contig length, you would use `--window-length-as-percentage 5`. "
+                     "You may want to consider also specifying a reasonable minimum window length with the --min-window-length "
+                     "parameter."}
+    ),
+    'min-window-length': (
+            ['--min-window-length'],
+            {'default': None,
+             'type': int,
+             'metavar': 'INTEGER',
+             'help': "Use with --window-length-as-percentage to ensure that percentage-based window lengths never fall below this value."}
+    ),
+    'foldrange-lower': (
+            ['--foldrange-lower'],
+            {'default': 0.5,
+             'type': float,
+             'metavar': 'FLOAT',
+             'help': "When computing evenness of coverage depth (E), count any bases with coverage OVER this value * the "
+                     "median nonzero coverage. In typical use-cases, this value will be the inverse of --foldrange-upper. "
+                     "The default is '%(default)s'."}
+    ),
+    'foldrange-upper': (
+            ['--foldrange-upper'],
+            {'default': 2.0,
+             'type': float,
+             'metavar': 'FLOAT',
+             'help': "When computing evenness of coverage depth (E), count any bases with coverage UNDER this value * the "
+                     "median nonzero coverage. In typical use-cases, this value will be the inverse of --foldrange-lower. "
+                     "The default is '%(default)s'."}
+    ),
+    'alpha': (
+            ['--alpha'],
+            {'default': 0.5,
+             'type': float,
+             'metavar': 'FLOAT',
+             'help': "How much to weight S over E in the DisCov score. Should be a value in the range [0,1]. The default "
+                     "is '%(default)s'."}
+    ),
+    'discov-formula': (
+            ['--discov-formula'],
+            {'default': 'linear',
+             'type': str,
+             'metavar': 'STRING',
+             'help': "Which formula to use when combining S and E into the DisCov score. Options are 'linear' "
+                     "(DisCov = αS + (1-α)E) and 'geometric' (DisCov = S^α * E^(1-α)). The default is '%(default)s'."}
+    ),
+    'gen-window-level-output': (
+            ['--gen-window-level-output'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Generate an additional output file with per-window coverage statistics. For each window used to "
+                     "compute the DisCov metric, the output includes the window's start/stop positions in the "
+                     "sequence, its length, whether it has any coverage, and the number of bases within the fold-range "
+                     "of the median nonzero coverage. The file is named after the main output file with '-WINDOWS' "
+                     "inserted before the extension. Not compatible with --gene-mode or --report-minimal."}
+    ),
 }
 
 # two functions that works with the dictionary above.

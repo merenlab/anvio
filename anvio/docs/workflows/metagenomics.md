@@ -359,6 +359,68 @@ anvi-run-workflow -w metagenomics \
                   -c config-references-mode.json
 ```
 
+### Long-read and mixed read-type support
+
+The metagenomics workflow handles long reads (Oxford Nanopore, PacBio) alongside — or instead of — short reads. To include long reads, add an `lr` column to your %(samples-txt)s pointing to the long-read FASTQ files (long reads must be FASTQ, not FASTA — the long-read QC and mapping steps rely on per-base quality scores). A single sample can carry both short reads (`r1`/`r2`) and long reads (`lr`); the workflow tracks the two read sets separately and never mixes incompatible read types in assembly or mapping.
+
+Long reads are assembled with [(meta)Flye](https://github.com/mikolmogorov/Flye) and mapped with [minimap2](https://github.com/lh3/minimap2), while short reads continue to use your chosen short-read assembler and bowtie2.
+
+#### Choosing long-read presets: the `lr_technology` column vs. the config
+
+Each long-read tool needs a technology-appropriate preset: a read-type flag for Flye (e.g. `--nano-raw`) and a mapping preset for minimap2 (e.g. `map-ont`). There are two ways to provide these, and **anvi'o will never run these tools on their built-in defaults**: if it cannot determine a preset, it stops before building the workflow with a message telling you exactly what to set.
+
+1. **Recommended — the `lr_technology` column in your %(samples-txt)s.** If you declare the sequencing technology per sample (e.g. `ont`, `pb-hifi`; see the %(samples-txt)s documentation for the full list), anvi'o automatically selects the correct preset for every long-read tool. When the column is present it is all-or-nothing: every long-read sample must have a value, and short-read-only samples leave it blank. Samples in the same co-assembly `group` must use technologies that map to the same Flye read type, otherwise anvi'o asks you to split them into separate groups.
+
+2. **The config file.** If you omit the `lr_technology` column, you must set the presets explicitly in your %(workflow-config)s: `minimap2`'s `preset`, and exactly one of Flye's read-type flags (`--nano-raw`, `--pacbio-hifi`, …).
+
+The technology → preset mapping is maintained in `anvio/workflows/lr_technology_presets.yaml`, which also records the tool versions each preset was validated against; if you have an untested version installed, anvi'o prints a non-fatal heads-up but proceeds.
+
+#### Long-read quality control
+
+Beyond the default short-read QC (illumina-utils), the workflow offers several optional QC steps, all disabled by default and enabled per rule in your %(workflow-config)s with `"run": true`:
+
+* `filtlong` — length/quality filtering of long reads with [Filtlong](https://github.com/rrwick/Filtlong) (`--min-length`, `--max-length`, `--target-bases`, `--keep-percent`, `--min-mean-q`). `--min-length`/`--max-length` are hard length thresholds, while `--target-bases`, `--keep-percent`, and `--min-mean-q` filter against the read set's own length/quality distribution. When enabled, downstream mapping and assembly use the filtered reads. Because Filtlong is a filter, anvi'o requires at least one filtering criterion when it is enabled — set one of the parameters above, or pass another Filtlong option via `additional_params`; otherwise anvi'o stops with an error.
+* `nanoplot` — long-read quality assessment with [NanoPlot](https://github.com/wdecoster/NanoPlot) (one report per long-read readset per stage). It needs no sequencing-technology preset. Two independent flags control which reads it assesses: `run_on_raw` (the original reads) and `run_on_filtered` (the `filtlong` output). Both default to `false`, so when you enable `nanoplot` you must set at least one of them to `true`; set both to get a before/after comparison of your filtering.
+* `fastqc` — [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) on short reads (one report per short-read readset per stage). Like `nanoplot`, it takes `run_on_raw` (the original reads) and `run_on_filtered` (the illumina-utils `QUALITY_PASSED` reads), both defaulting to `false`.
+* `multiqc` — aggregates the FastQC and NanoPlot (NanoStats) outputs into a single [MultiQC](https://multiqc.info) report. Samples are labelled `<readset> | <stage>` (e.g. `S1 | raw`, `S1 | filtered`) so that when both stages are produced, a sample's raw and filtered rows sort next to each other rather than being split into separate `raw`/`filtered` blocks.
+
+For `nanoplot` and `fastqc`, anvi'o validates the stage flags before running: if the tool is enabled you must select at least one stage, and `run_on_filtered` is only allowed when the matching filter (`filtlong` for `nanoplot`, `iu_filter_quality_minoche` for `fastqc`) is enabled — otherwise there would be no filtered reads to look at. In practice, if you enable one of these tools without any filtering, set `run_on_raw: true`.
+
+`filtlong`, `nanoplot`, `fastqc`, and `multiqc` are not shipped inside the anvi'o environment. See [Providing third-party tools via conda](#providing-third-party-tools-via-conda) below for how the workflow gets hold of them (this applies to the assemblers and mappers too).
+
+### Providing third-party tools via conda
+
+Several rules in the metagenomics workflow call programs that anvi'o does **not** bundle in its own environment — the assemblers, mappers, and QC tools:
+
+`bowtie` (Bowtie2) · `minimap2` · `megahit` · `metaspades` · `idba_ud` · `flye` · `filtlong` · `nanoplot` · `fastqc` (FastQC) · `multiqc`
+
+**By default, anvi'o expects each enabled tool on your `$PATH`**: it checks that the program exists before starting and stops with a clear error if it does not. Alternatively, so you do not have to install every one of these into a single environment, you can have any rule run inside its own conda environment that anvi'o (through Snakemake) sets up just for that rule. You control this **per rule** in your %(workflow-config)s with three mutually exclusive options, all off by default:
+
+1. **`use_anvio_conda_yaml`** (boolean; default `false`). Set it to `true` to use the environment file anvi'o ships for this rule (one curated, version-pinned `.yaml` per tool, living in `anvio/workflows/conda_envs/`). The file is resolved at run time from your installed anvi'o, so your config stays reproducible on any machine — there is no hard-coded path to a repository. This is the easiest way to get a pinned, tested version of a tool without installing anything yourself.
+
+2. **`conda_yaml`** — a path to *your own* environment `.yaml` file (for example, a copy of one of anvi'o's that you have customized, or an entirely different recipe). Snakemake builds the environment from it.
+
+3. **`conda_env`** — the name of an environment you have **already created yourself** (e.g. `conda create -n my-flye -c bioconda -c conda-forge flye`). The rule runs the tool via `conda run -n <name> ...`.
+
+When a rule resolves to a conda `.yaml` (the anvi'o-shipped one via `use_anvio_conda_yaml: true`, or your own `conda_yaml`), anvi'o automatically adds `--use-conda` to the underlying Snakemake command, so Snakemake builds and activates that environment. The first run builds the environment (which takes a little while); later runs reuse the cached environment. Because `conda_env` points at an environment that already exists, it does not need `--use-conda`.
+
+#### These three options are mutually exclusive
+
+Set at most one of `use_anvio_conda_yaml: true`, `conda_yaml`, or `conda_env` per rule; if more than one is in effect anvi'o stops with a clear error rather than guessing which one you meant. For example, to run Flye from your own named environment:
+
+``` json
+"flye": {
+    "run": true,
+    "conda_env": "my-flye"
+}
+```
+
+#### Running these tools from your `$PATH`
+
+This is the default. With all three conda options off for a rule (`use_anvio_conda_yaml: false` and both `conda_yaml` and `conda_env` empty), anvi'o expects the program on your `$PATH` and checks for it up front.
+
+Note that whenever a rule *is* set to be provided by conda (any of the three options above), anvi'o will **not** pre-check that the program exists on your `$PATH` — Snakemake will provide it. In that case, if the environment cannot be built or the tool is otherwise unavailable, you will see the failure when that rule runs rather than up front.
+
 ### Running binning algorithms
 
 If you wish to utilize automatic binning algorithms, you can use %(anvi-cluster-contigs)s as part of your metagenomics workflow. You can run one or more binning algorithms, and resulting %(collection)ss would be automatically imported into your merged profile database/s.

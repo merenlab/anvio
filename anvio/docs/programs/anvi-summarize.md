@@ -67,6 +67,43 @@ anvi-summarize -g %(genomes-storage-db)s \
                -C %(collection)s
 {{ codestop }}
 
+### Computing DisCov statistics
+
+When summarizing a profile database, you can optionally compute the Distribution of Coverage (DisCov) score for each bin and each contig within each bin. See %(discov-stats)s for a full description of the metric and its parameters.
+
+To enable DisCov computation, use the `--report-discov` flag:
+
+{{ codestart }}
+anvi-summarize -c %(contigs-db)s \
+               -p %(profile-db)s \
+               -o MY_SUMMARY \
+               -C %(collection)s \
+               --report-discov
+{{ codestop }}
+
+This requires access to the auxiliary data file (`AUXILIARY-DATA.db`) in the same directory as the profile database and produces two additional output files under `bins_across_samples/`:
+
+* `discov_bins.txt` — one row per bin × sample
+* `discov_contigs.txt` — one row per contig × sample
+
+You can adjust how DisCov is computed using the following parameters. When neither `--window-length` nor `--window-length-as-percentage` is specified, anvi'o applies context-sensitive defaults: a fixed 1,000 bp window for bins, and a percentage-based window (1%% of contig length, minimum 300 bp) for individual contigs.
+
+**Window sizing for S**
+
+* `--window-length INT` — use a fixed window size in bp for all sequences (bins and contigs)
+* `--window-length-as-percentage FLOAT` — set window length as a percentage of each sequence's length
+* `--min-window-length INT` — minimum window length floor for percentage mode
+
+**Fold-range for E**
+
+* `--foldrange-lower FLOAT` — lower bound of the coverage fold-range (default: 0.5)
+* `--foldrange-upper FLOAT` — upper bound of the coverage fold-range (default: 2.0)
+
+**Combining S and E**
+
+* `--alpha FLOAT` — weight of S relative to E, in [0, 1] (default: 0.5)
+* `--discov-formula STRING` — `linear` (DisCov = αS + (1-α)E) or `geometric` (DisCov = S^α × E^(1-α)) (default: `linear`)
+
 ### Other notes
 
 If you are unsure what collections are in your database, you can run this program with the flag `--list-collections` or by running %(anvi-show-collections-and-bins)s.
