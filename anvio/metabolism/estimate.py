@@ -1982,10 +1982,6 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
                                 if acc not in self.ko_dict:
                                     self.ko_dict[acc] = {'definition': func_def}
 
-        # metagenome mode must be off
-        if self.metagenome_mode:
-            self.metagenome_mode = False
-
         self.databases = copy.deepcopy(g.genomes)
         if self.external_genomes_file:
             self.database_names = copy.deepcopy(g.external_genome_names)
