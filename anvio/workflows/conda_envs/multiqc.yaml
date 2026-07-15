@@ -1,0 +1,9 @@
+# Standalone conda environment for the 'multiqc' rule (aggregates FastQC/NanoPlot reports).
+# Point a workflow config at this file via: "multiqc": {"conda_yaml": ".../multiqc.yaml"}
+# and run the workflow with `--use-conda` so Snakemake builds and uses this env.
+name: anvio-multiqc
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - multiqc=1.21
