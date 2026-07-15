@@ -61,13 +61,13 @@ anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
                          --kegg-data-dir $kegg_data_dir
 SHOW_FILE single_contigs_db_modules.txt
 
-INFO "Estimating metabolism using metagenome mode"
+INFO "Estimating metabolism using per-contig estimates"
 anvi-estimate-metabolism -c CONTIGS.db \
-                         --metagenome-mode \
-                         -O metagenome_mode \
+                         --per-contig-estimates \
+                         -O per_contig_estimates \
                          --no-progress \
                          --kegg-data-dir $kegg_data_dir
-SHOW_FILE metagenome_mode_modules.txt
+SHOW_FILE per_contig_estimates_modules.txt
 
 INFO "Estimating metabolism on a collection"
 anvi-estimate-metabolism -c CONTIGS.db \
@@ -112,8 +112,17 @@ anvi-estimate-metabolism -i internal-genomes.txt \
                          --kegg-data-dir $kegg_data_dir
 SHOW_FILE internal_modules.txt
 
-INFO "Estimating metabolism on metagenomes file"
-anvi-estimate-metabolism -M metagenomes.txt \
+INFO "Estimating metabolism on internal genomes with --per-contig-estimates"
+anvi-estimate-metabolism -i internal-genomes.txt \
+                         --per-contig-estimates \
+                         -O internal_per_contig \
+                         --no-progress \
+                         --kegg-data-dir $kegg_data_dir
+SHOW_FILE internal_per_contig_modules.txt
+
+INFO "Estimating metabolism on a genomes file with --per-contig-estimates"
+anvi-estimate-metabolism -e metagenomes.txt \
+                         --per-contig-estimates \
                          -O metagenomes \
                          --no-progress \
                          --kegg-data-dir $kegg_data_dir
@@ -280,10 +289,10 @@ anvi-estimate-metabolism -c CONTIGS.db \
 SHOW_FILE collection_coverage_modules.txt
 SHOW_FILE collection_coverage_hits.txt
 
-INFO "Testing --add-coverage for metagenome mode"
+INFO "Testing --add-coverage for per-contig estimates"
 anvi-estimate-metabolism -c CONTIGS.db \
                          -p PROFILE.db \
-                         --metagenome-mode \
+                         --per-contig-estimates \
                          -O metagenome_coverage \
                          --add-coverage \
                          --output-modes modules,hits \
