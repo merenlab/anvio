@@ -4398,8 +4398,6 @@ class PangenomeGraphUserInterface {
 
         // highlight the in-view hits right away
         if (has_results) this.highlight_search();
-
-        this.show_search_toast(this._format_component_breakdown(all_ids.length, per_component, other, active_comp));
     }
 
     // "17 hits: 12 in component 1 (current), 4 in component 5, 1 in component 8"
@@ -4414,14 +4412,6 @@ class PangenomeGraphUserInterface {
             `${per_component[c]} in component ${suffix(c)}${c === active_comp ? ' (current)' : ''}`);
         if (other) parts.push(`${other} in other component(s)`);
         return `${total} hit${total === 1 ? '' : 's'}: ` + parts.join(', ');
-    }
-
-    show_search_toast(message) {
-        $('#searchtoastbody').text(message);
-        const el = document.getElementById('searchtoast');
-        if (el && window.bootstrap && bootstrap.Toast) {
-            bootstrap.Toast.getOrCreateInstance(el).show();
-        }
     }
 
     render_search_results() {
