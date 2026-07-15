@@ -150,8 +150,16 @@ class Pyrodigal_gv:
         # for each worker process as if memory prices are not increasing but decreasing
         # (did you see that? did you see what capitalism did to memory prices? I saw it
         # on the train this morning and that's why I decided to fix this).
+        # NOTE: We use `imap` and NOT `imap_unordered` on purpose. `imap` yields results in
+        # the same order as the input `data` (i.e. FASTA order), which makes the assignment of
+        # `gene_callers_id` below fully deterministic regardless of how many threads finish in
+        # what order. With `imap_unordered` the ids would depend on thread completion order, so
+        # the very same FASTA could yield different gene caller ids between a single-threaded and
+        # a multi-threaded run, breaking reproducibility (see issue #2551). Parallelism is not
+        # affected: all threads still predict genes concurrently, `imap` only reorders the
+        # completed results before handing them to this loop.
         with multiprocessing.pool.ThreadPool(self.num_threads) as pool:
-            for contig_name, predicted_genes in pool.imap_unordered(predict, data):
+            for contig_name, predicted_genes in pool.imap(predict, data):
                 num_contigs_processed += 1
                 self.progress.increment()
 
