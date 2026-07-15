@@ -2036,8 +2036,15 @@ class PangenomeGraphUserInterface {
                     ring_el.setAttribute('pointer-events', 'none');
                     deferred_ring_els.push(ring_el);
                 } else {
-                    const x1 = rx_min * L.node_distance_x;
-                    const x2 = (rx_max + 1) * L.node_distance_x;
+                    // Linear places a node at position p at p * node_distance_x
+                    // (its cell is centered there). Circular instead routes every
+                    // x through circle_transform(), which bakes in a +0.5 so the
+                    // node sits at the center of the [p, p+1] wedge -- which is
+                    // why the [rx_min, rx_max+1] span is correct in circular but
+                    // half a cell to the right of the nodes in linear. Center the
+                    // linear span on the node cells to match.
+                    const x1 = (rx_min - 0.5) * L.node_distance_x;
+                    const x2 = (rx_max + 0.5) * L.node_distance_x;
 
                     // Background fill
                     const bg_rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -2124,7 +2131,9 @@ class PangenomeGraphUserInterface {
                             label_el.setAttribute('y', ly);
                         }
                     } else {
-                        const lx = run_x_mid * L.node_distance_x;
+                        // -0.5 to match the linear span centering above (the
+                        // circular label keeps the +0.5 baked into circle_transform).
+                        const lx = (run_x_mid - 0.5) * L.node_distance_x;
                         const ly = -label_r;
 
                         if (orientation === 'radial') {
@@ -4123,8 +4132,11 @@ class PangenomeGraphUserInterface {
         this._last_bin_functions = response['functions'] || {};
         this._last_bin_name = `region_${rid}`;
 
-        const title = `A summary of functions for ${sgc_ids.length} synteny gene clusters in region #${rid}`;
-        showPangraphFunctionsSummaryTableDialog(title, buildFunctionsContent(response, {...this.get_pangraph_gc_config(), binName: `Region #${rid}`}));
+        // rid is the full region id (e.g. "CP_0001_5"); show just the region
+        // number ("#5"), matching the on-graph region labels.
+        const region_num = rid.split('_').pop();
+        const title = `A summary of functions for ${sgc_ids.length} synteny gene clusters in region #${region_num}`;
+        showPangraphFunctionsSummaryTableDialog(title, buildFunctionsContent(response, {...this.get_pangraph_gc_config(), binName: `Region #${region_num}`}));
         setTimeout(() => setupItemTableFiltering(this._last_gene_clusters), 100);
     }
 
@@ -4137,7 +4149,7 @@ class PangenomeGraphUserInterface {
         this._last_bin_name = `region_${rid}`;
 
         showFastaOptionsDialog(
-            `Download sequences from region #${rid} as FASTA`,
+            `Download sequences from region #${rid.split('_').pop()} as FASTA`,
             buildFastaOptionsHTML({})
         );
     }
@@ -4523,6 +4535,7 @@ class PangenomeGraphUserInterface {
             const el = document.getElementById(svg_id);
             if (!el) continue;
             let marker;
+            let occluder = null;
             if (el.tagName.toLowerCase() === 'circle') {
                 // concentric ring hugging the node's outer edge. cx/cy are fixed,
                 // but the radius and stroke-width are (re)computed by
@@ -4534,16 +4547,31 @@ class PangenomeGraphUserInterface {
                 marker.setAttribute('cy', el.getAttribute('cy'));
                 marker.dataset.nodeId = svg_id;
             } else {
-                // group node: trace its boundary in the highlight color
+                // group node: stroke a copy of its boundary, then lay an opaque
+                // clone of the group ON TOP of that stroke (occluder). The clone
+                // hides the stroke everywhere up to the group's border outer
+                // edge, so only an `outline`-wide band beyond the border shows --
+                // the outline grows strictly outward, matching the circle rings.
                 const d = el.getAttribute('d');
                 if (!d) continue;
                 marker = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 marker.setAttribute('d', d);
+                marker.dataset.nodeId = svg_id;      // refresh reads the border width
+                marker.dataset.groupOutline = '1';
+                occluder = el.cloneNode(true);
+                occluder.removeAttribute('id');       // avoid duplicate ids
+                occluder.setAttribute('pointer-events', 'none');
+                // apply_stroke_floor() re-floors the group's border on zoom, so
+                // keep the occluder's border in sync (refresh_search_outline)
+                // -- otherwise it would stop covering the border exactly.
+                occluder.dataset.occluderFor = svg_id;
             }
             marker.setAttribute('fill', 'none');
             marker.setAttribute('stroke', highlight_color);
             marker.setAttribute('pointer-events', 'none');
             grp.appendChild(marker);
+            // occluder must paint AFTER (on top of) the outline stroke.
+            if (occluder) grp.appendChild(occluder);
         }
         vp.appendChild(grp);
         this.refresh_search_outline();
@@ -4579,8 +4607,21 @@ class PangenomeGraphUserInterface {
             marker.setAttribute('r', r + sw / 2 + outline / 2);
             marker.setAttribute('stroke-width', outline);
         });
-        grp.querySelectorAll('path').forEach(marker => {
-            marker.setAttribute('stroke-width', outline);
+        // Only the group-outline paths (not the opaque occluder clones laid on
+        // top of them). The stroke straddles the group's boundary; its inner
+        // half plus everything up to the border's outer edge (sw/2 beyond the
+        // boundary) is hidden by the occluder, so widening by sw + 2*outline
+        // leaves an `outline`-wide band starting at the border's outer edge.
+        grp.querySelectorAll('path[data-group-outline]').forEach(marker => {
+            const node = document.getElementById(marker.dataset.nodeId);
+            const sw = node ? (parseFloat(node.getAttribute('stroke-width')) || 0) : 0;
+            marker.setAttribute('stroke-width', sw + 2 * outline);
+        });
+        // Keep each occluder's border matched to its group's current (floored)
+        // border so it always covers exactly up to the border's outer edge.
+        grp.querySelectorAll('[data-occluder-for]').forEach(occ => {
+            const node = document.getElementById(occ.dataset.occluderFor);
+            if (node) occ.setAttribute('stroke-width', node.getAttribute('stroke-width'));
         });
     }
 
