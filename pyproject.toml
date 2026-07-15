@@ -76,7 +76,8 @@ dependencies = [
     "biopython",
     "reportlab",
     "pymupdf",
-    "tomli==2.2.1"
+    "tomli==2.2.1",
+    "pyyaml"
 ]
 
 [project.urls]
