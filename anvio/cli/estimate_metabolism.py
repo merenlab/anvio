@@ -14,7 +14,7 @@ __version__ = anvio.__version__
 __authors__ = ['ivagljiva']
 __requires__ = ["contigs-db", "kegg-data", "kegg-functions"]
 __can_use__ = ["profile-db", "collection", "bin", "external-genomes", "internal-genomes",
-               "metagenomes", "user-modules-data", "enzymes-txt", "pan-db", "genomes-storage-db"]
+               "user-modules-data", "enzymes-txt", "pan-db", "genomes-storage-db"]
 __provides__ = ["kegg-metabolism", "user-metabolism"]
 __description__ = "Reconstructs metabolic pathways and estimates pathway completeness for a given set of contigs"
 
@@ -24,7 +24,7 @@ def main():
     args = get_args()
 
     try:
-        if args.metagenomes or args.external_genomes or args.internal_genomes:
+        if args.external_genomes or args.internal_genomes:
             m = KeggMetabolismEstimatorMulti(args)
         else:
             m = KeggMetabolismEstimator(args)
@@ -86,9 +86,6 @@ def get_args():
                                                    "options with the `--per-contig-estimates` flag described above.")
     groupM.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
     groupM.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
-    groupM.add_argument(*anvio.A('metagenomes'), **anvio.K('metagenomes', {'help': "Same format as an external genomes file, but choosing this option "
-                                                                                "ensures each DB in the input file is analyzed "
-                                                                                "with 'metagenome mode' for per-contig estimates."}))
 
     groupX = parser.add_argument_group('INPUT #4 - ESTIMATION ON A LIST OF ENZYMES',
                                                    "If all you have is a list of enzymes, you can use them to estimate metabolism "

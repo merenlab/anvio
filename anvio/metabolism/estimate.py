@@ -13,7 +13,7 @@ import anvio.ccollections as ccollections
 
 from anvio.dbinfo import DBInfo
 from anvio.errors import ConfigError
-from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
+from anvio.genomedescriptions import GenomeDescriptions
 
 from anvio.metabolism.modulesdb import ModulesDatabase
 from anvio.metabolism.algorithms import KeggEstimationAlgorithms
@@ -1793,11 +1793,9 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
         self.databases = None
 
         # INPUT SANITY CHECKS
-        if (self.external_genomes_file and (self.internal_genomes_file or self.metagenomes_file)) \
-            or (self.internal_genomes_file and (self.external_genomes_file or self.metagenomes_file)) \
-            or (self.metagenomes_file and (self.external_genomes_file or self.internal_genomes_file)):
-                raise ConfigError("Multiple file inputs were provided. Please choose only one at a time to make "
-                                  "things easier on everybody.")
+        if self.external_genomes_file and self.internal_genomes_file:
+            raise ConfigError("Multiple file inputs were provided. Please choose only one at a time to make "
+                              "things easier on everybody.")
 
         if args.estimate_from_json or args.store_json_without_estimation or args.get_raw_data_as_json:
             raise ConfigError("You've provided some JSON parameters. We are sorry to say that these parameters don't "
@@ -1822,7 +1820,7 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
                 filesnpaths.is_output_file_writable(matrix_output_file, ok_if_exists=False)
 
         # set name header
-        if self.metagenomes_file:
+        if self.metagenome_mode:
             self.name_header = 'contig_name'
         elif self.external_genomes_file:
             self.name_header = 'genome_name'
@@ -1950,48 +1948,6 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
             self.run.info(header, f"{desc_str} [{type_str} {mode_str}]")
 
 ######### DRIVER ESTIMATION FUNCTIONS -- MULTI #########
-
-    def init_metagenomes(self):
-        """This function parses the input metagenomes file and adjusts class attributes as needed"""
-
-        g = MetagenomeDescriptions(self.args, run=self.run, progress=self.progress, enforce_single_profiles=False)
-        g.load_metagenome_descriptions(skip_functions=(not self.matrix_format))
-
-        # sanity check that all dbs are properly annotated with required sources
-        for src in self.annotation_sources_to_use:
-            bad_metagenomes = [v['name'] for v in g.metagenomes.values() if not v['gene_function_sources'] or src not in v['gene_function_sources']]
-            if len(bad_metagenomes):
-                bad_metagenomes_txt = [f"'{bad}'" for bad in bad_metagenomes]
-                n = len(bad_metagenomes)
-                it_or_them = P('it', n, alt='them')
-                raise ConfigError(f"Bad news :/ It seems {n} of your {P('metagenome', len(g.metagenomes))} "
-                                  f"{P('is', n, alt='are')} lacking any function annotations for "
-                                  f"`{src}`. This means you either need to annotate {it_or_them} by running the appropriate "
-                                  f"annotation program on {it_or_them}, import functional annotations into {it_or_them} from this source using "
-                                  f"`anvi-import-functions`, or remove {it_or_them} from your internal and/or external genomes files "
-                                  f"before re-running `anvi-estimate-metabolism. Here is the list of offenders: "
-                                  f"{', '.join(bad_metagenomes_txt)}.")
-
-        if self.matrix_format:
-            for name in g.metagenomes:
-                gene_functions_in_genome_dict, _, _= g.get_functions_and_sequences_dicts_from_contigs_db(name, requested_source_list=self.annotation_sources_to_use, return_only_functions=True)
-                # reminder, an entry in gene_functions_in_genome_dict looks like this:
-                # 4264: {'KOfam': None, 'COG20_FUNCTION': None, 'UpxZ': ('PF06603.14', 'UpxZ', 3.5e-53)}
-                for gcid, func_dict in gene_functions_in_genome_dict.items():
-                    for source, func_tuple in func_dict.items():
-                        if func_tuple:
-                            acc_string, func_def, evalue = func_tuple
-                            for acc in acc_string.split('!!!'):
-                                if acc not in self.ko_dict:
-                                    self.ko_dict[acc] = {'definition': func_def}
-
-        # enforce metagenome mode
-        if not self.metagenome_mode:
-            self.metagenome_mode = True
-
-        self.databases = copy.deepcopy(g.metagenomes)
-        self.database_names = copy.deepcopy(g.metagenome_names)
-
 
     def init_external_internal_genomes(self):
         """This function parses the input internal/external genomes file and adjusts class attributes as needed"""
@@ -2135,11 +2091,7 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
         if not self.databases:
             self.progress.new("Initializing contigs DBs")
             self.progress.update("...")
-            if self.metagenomes_file:
-                self.progress.reset()
-                self.run.info("Metagenomes file", self.metagenomes_file)
-                self.init_metagenomes()
-            elif self.external_genomes_file:
+            if self.external_genomes_file:
                 self.progress.reset()
                 self.run.info("External genomes file", self.external_genomes_file)
                 self.init_external_internal_genomes()

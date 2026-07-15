@@ -72,7 +72,6 @@ class KeggEstimatorArgs():
         self.no_comments = True if A('no_comments') else False
         self.external_genomes_file = A('external_genomes') or None
         self.internal_genomes_file = A('internal_genomes') or None
-        self.metagenomes_file = A('metagenomes') or None
         self.kegg_data_dir = A('kegg_data_dir')
 
         self.modules_unique_id = None
