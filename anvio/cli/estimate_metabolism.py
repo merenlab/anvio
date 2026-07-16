@@ -139,8 +139,9 @@ def get_args():
                                              "only works with a single contigs database (`-c`) representing one (meta)genome or with "
                                              "an external-genomes file (`-e`) containing many (meta)genomes, since population "
                                              "normalization is only meaningful for a whole assembly. In long-format output, this flag "
-                                             "adds two columns (pathwise and stepwise PPCN); in matrix-format output, it adds three "
-                                             "additional matrix files (population totals + pathwise and stepwise PPCN)."}))
+                                             "adds two columns (pathwise and stepwise PPCN); in matrix-format output, it adds two "
+                                             "additional matrix files. For multi-mode input, a third matrix containing the population "
+                                             "estimates for each input database will also be generated."}))
 
     groupL = parser.add_argument_group('OUTPUT - LONG-FORMAT OPTIONS', "Parameters for controlling long-format output (the default).")
     groupL.add_argument(*anvio.A('output-modes'), **anvio.K('output-modes'))
