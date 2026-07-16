@@ -2030,6 +2030,63 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
             self.database_names = copy.deepcopy(g.internal_genome_names)
 
 
+    def init_num_populations_per_layer(self):
+        """Estimates the number of populations for each genome in self.databases.
+
+        This is used to normalize module copy number into per-population copy number (PPCN) when
+        `--add-per-population-copy-number` is requested (only ever called for external-genomes input, since that
+        flag is forbidden with internal-genomes and --per-contig-estimates).
+
+        Fills in `self.num_populations_per_layer`, a dict mapping genome name to its estimated population count.
+        Reports the per-genome, per-domain, and total estimates to the terminal, and writes them to a dedicated
+        output file (`<prefix>-POPULATION-ESTIMATES.txt`) so the numbers used for normalization are reproducible.
+        """
+
+        self.num_populations_per_layer = {}
+        per_domain_totals_per_layer = {}
+        all_domains = set([])
+        genomes_with_no_estimate = []
+
+        num_genomes = len(self.database_names)
+        self.progress.new("Estimating population sizes for contigs DBs", progress_total_items=num_genomes)
+        for i, genome_name in enumerate(sorted(self.database_names)):
+            self.progress.update(f"Estimating the number of populations [{i + 1} of {num_genomes}] {genome_name}")
+
+            contigs_db_path = self.databases[genome_name]['contigs_db_path']
+            num_populations, per_domain_totals = self.get_num_populations_for_contigs_db(contigs_db_path)
+
+            self.num_populations_per_layer[genome_name] = num_populations
+            per_domain_totals_per_layer[genome_name] = per_domain_totals
+            all_domains.update(per_domain_totals.keys())
+
+            if not num_populations:
+                genomes_with_no_estimate.append(genome_name)
+        self.progress.end()
+
+        if len(genomes_with_no_estimate):
+            self.run.warning(f"It seems like there are too few single-copy core gene annotations for anvi'o to come "
+                             f"up with a reliable population count estimate for these contigs databases: "
+                             f"{', '.join(sorted(genomes_with_no_estimate))}. There is nothing we can do, and anvi'o "
+                             f"will report per-population copy number as NA for them.")
+
+        self.run.warning(None, header="NUMBER OF POPULATIONS PER (META)GENOME", lc="green")
+        for i,genome_name in enumerate(sorted(self.num_populations_per_layer.keys())):
+            self.run.info(genome_name, self.num_populations_per_layer[genome_name], nl_after=0 if i < num_genomes - 1 else 1)
+
+        # write per-genome, per-domain, and total population estimates to a dedicated output file
+        sorted_domains = sorted(all_domains)
+        population_estimates_file_path = f"{self.output_file_prefix}-POPULATION-ESTIMATES.txt"
+        filesnpaths.is_output_file_writable(population_estimates_file_path)
+        with open(population_estimates_file_path, 'w') as output:
+            output.write('\t'.join(['genome_name'] + sorted_domains + ['total']) + '\n')
+            for genome_name in sorted(self.num_populations_per_layer.keys()):
+                row = [genome_name]
+                row += [str(per_domain_totals_per_layer[genome_name].get(domain, 0)) for domain in sorted_domains]
+                row.append(str(self.num_populations_per_layer[genome_name]))
+                output.write('\t'.join(row) + '\n')
+        self.run.info('Population estimates for per-population copy number', population_estimates_file_path)
+
+
     def get_args_for_single_estimator(self, db_name):
         """Returns args formatted for an instance of KeggMetabolismEstimator that will work on a contigs DB. Very tricksy.
 
@@ -2144,6 +2201,9 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
             self.progress.end()
             self.run.info("Num Contigs DBs in file", len(self.database_names))
             self.run.info('Per-Contig Estimates', self.metagenome_mode)
+
+            if self.add_per_population_copy_number:
+                self.init_num_populations_per_layer()
 
         self.init_data_from_modules_db()
 
