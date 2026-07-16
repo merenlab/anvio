@@ -11,7 +11,7 @@ from anvio.metabolism.estimate import KeggMetabolismEstimator, KeggMetabolismEst
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__authors__ = ['ivagljiva']
+__authors__ = ['ivagljiva', 'jessika-fuessel']
 __requires__ = ["contigs-db", "kegg-data", "kegg-functions"]
 __can_use__ = ["profile-db", "collection", "bin", "external-genomes", "internal-genomes",
                "user-modules-data", "enzymes-txt", "pan-db", "genomes-storage-db"]
