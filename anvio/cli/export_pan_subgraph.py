@@ -43,8 +43,10 @@ def get_args():
 
     groupB = parser.add_argument_group('SUBGRAPH COORDINATES', description="This is where you describe the loci that you wish anvi'o to export. "
                                        "Users will typically learn which nodes or region IDs they are interested in by visualizing the pangenome graph "
-                                       "in anvi'o using the program `anvi-display-pan-graph`. Provide either --graph-nodes or --region-id (not both).")
+                                       "in anvi'o using the program `anvi-display-pan-graph`. Provide either --graph-nodes, or "
+                                       "--component-id together with --region-id (not both approaches at once).")
     groupB.add_argument(*anvio.A('graph-nodes'), **anvio.K('graph-nodes'))
+    groupB.add_argument(*anvio.A('component-id'), **anvio.K('component-id'))
     groupB.add_argument(*anvio.A('region-id'), **anvio.K('region-id'))
 
     groupC = parser.add_argument_group('OUTPUT', description="Provide a directory path, and anvi'o will generate all your contigs databases for "

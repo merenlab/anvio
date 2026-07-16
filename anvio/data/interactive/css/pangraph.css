@@ -154,20 +154,25 @@
     font-size: 14px;
   }
 
+  /* Pin the panel to the viewport so it (and the sidebar nav inside it) stays
+   * put when the page scrolls. main.css has position:absolute which would
+   * scroll with the document. The `left` transition for open/close still
+   * works under position:fixed. */
   #panel-left {
+    position: fixed !important;
     z-index: 2;
     transition: left 0.3s ease-out;
   }
 
   #panel-left.panel-closed {
-    left: -490px;
+    left: -560px;
   }
 
   /* Override main.css fixed positioning so #sidebar moves with the panel during animation */
   #sidebar {
     position: relative !important;
     min-width: unset !important;
-    width: 490px !important;
+    width: 560px !important;
     height: 100vh !important;
     overflow: hidden !important;
   }
@@ -192,7 +197,7 @@
   }
 
   .toggle-panel-left-pos {
-    left: 490px;
+    left: 560px;
   }
 
   #toggle-panel-top{
