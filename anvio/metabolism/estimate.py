@@ -1658,6 +1658,10 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                         mod_completeness_presence_subdict[bin][mnum]['pathwise_copy_number'] = 'NA'
                     mod_completeness_presence_subdict[bin][mnum]['stepwise_copy_number'] = c_dict["stepwise_copy_number"]
 
+                if self.add_per_population_copy_number:
+                    mod_completeness_presence_subdict[bin][mnum]['pathwise_ppcn'] = c_dict["pathwise_ppcn"]
+                    mod_completeness_presence_subdict[bin][mnum]['stepwise_ppcn'] = c_dict["stepwise_ppcn"]
+
                 for step_id, step_dict in c_dict["top_level_step_info"].items():
                     step_key = mnum + "_" + f"{step_id:02d}"
                     steps_subdict[bin][step_key] = {}
@@ -2381,6 +2385,10 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
                                "module_pathwise_copy_number": "pathwise_copy_number",
                                "module_stepwise_copy_number": "stepwise_copy_number",
                                }
+        if self.add_per_population_copy_number:
+            module_matrix_stats["module_pathwise_ppcn"] = "pathwise_ppcn"
+            module_matrix_stats["module_stepwise_ppcn"] = "stepwise_ppcn"
+
         module_step_matrix_stats = {"step_completeness" : "step_is_complete",
                                     "step_copy_number": "step_copy_number"}
 
