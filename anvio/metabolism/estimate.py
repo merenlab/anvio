@@ -155,6 +155,20 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                               "of the `-h` output.")
         if self.pan_db_path and self.add_coverage:
             raise ConfigError("The flag --add-coverage does not work for pangenome input.")
+        # required/forbidden with per-population copy number
+        if self.add_per_population_copy_number:
+            if self.pan_db_path or self.enzymes_of_interest_df is not None or self.estimate_from_json:
+                raise ConfigError("The flag --add-per-population-copy-number only works when your input is a contigs "
+                                  "database representing a single (meta)genome. It does not work with a pangenome, "
+                                  "an enzymes-txt file, or JSON input.")
+            if self.metagenome_mode:
+                raise ConfigError("The flag --add-per-population-copy-number does not work with --per-contig-estimates. "
+                                  "Per-population copy number is a whole-(meta)genome statistic and cannot be computed "
+                                  "for an individual contig.")
+            if self.collection_name or self.bin_id or self.bin_ids_file:
+                raise ConfigError("The flag --add-per-population-copy-number does not work when estimating metabolism for "
+                                  "a bin or a collection of bins. It requires a whole contigs database representing a "
+                                  "single (meta)genome.")
         # required/forbidden with JSON estimation
         if self.store_json_without_estimation and not self.json_output_file_path:
             raise ConfigError("Whoops. You seem to want to store the metabolism dictionary in a JSON file, but you haven't provided the name of that file. "
@@ -1803,6 +1817,16 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
 
         if self.only_user_modules and not self.user_input_dir:
             raise ConfigError("You can only use the flag --only-user-modules if you provide a --user-modules directory.")
+
+        if self.add_per_population_copy_number:
+            if self.internal_genomes_file:
+                raise ConfigError("The flag --add-per-population-copy-number does not work with an internal-genomes file. "
+                                  "It requires a whole contigs database representing a single (meta)genome, so it only "
+                                  "works with a single contigs database (`-c`) or an external-genomes file (`-e`).")
+            if self.metagenome_mode:
+                raise ConfigError("The flag --add-per-population-copy-number does not work with --per-contig-estimates. "
+                                  "Per-population copy number is a whole-(meta)genome statistic and cannot be computed "
+                                  "for an individual contig.")
 
         # OUTPUT SANITY CHECKS
         if self.matrix_format and self.long_format_mode:
