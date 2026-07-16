@@ -1037,6 +1037,11 @@ class KeggEstimationAlgorithms:
         for mod in metabolism_dict_for_list_of_splits.keys():
             self.compute_module_redundancy_for_bin(mod, metabolism_dict_for_list_of_splits)
 
+        # normalize module copy number into per-population copy number, now that copy number is finalized
+        if self.add_per_population_copy_number:
+            for mod in metabolism_dict_for_list_of_splits.keys():
+                self.compute_per_population_copy_number_for_bin(mod, metabolism_dict_for_list_of_splits)
+
 
         # notify user of the modules that gave some fishy results -- but only for genome mode because it's too wordy otherwise
         if not quiet and genome_mode:
@@ -1579,6 +1584,41 @@ class KeggEstimationAlgorithms:
 
         module_stepwise_copy_num = min(all_step_copy_nums)
         meta_dict_for_bin[mnum]["stepwise_copy_number"] = module_stepwise_copy_num
+
+
+    def compute_per_population_copy_number_for_bin(self, mnum, meta_dict_for_bin):
+        """This function computes the per-population copy number (PPCN) of the specified module, for both the
+        pathwise and stepwise module copy number.
+
+        PPCN normalizes module copy number by `self.num_populations`, the estimated number of populations in the
+        (meta)genome (see `KeggDataLoader.get_num_populations_for_contigs_db`), so that copy number becomes
+        comparable across (meta)genome assemblies representing communities of different sizes. This function should
+        only be called when `self.add_per_population_copy_number` is True, and only after module copy number has
+        been finalized for the bin (ie, after any adjustments for modules defined by other modules).
+
+        PARAMETERS
+        ==========
+        mnum : string
+            module number to work on
+        meta_dict_for_bin : dictionary of dictionaries
+            metabolism completeness dict for the current bin, to be modified in-place
+
+        NEW KEYS ADDED TO METABOLISM COMPLETENESS DICT
+        =======
+        "pathwise_ppcn"      per-population copy number, computed from the pathwise module copy number
+        "stepwise_ppcn"      per-population copy number, computed from the stepwise module copy number
+        """
+
+        if not self.num_populations:
+            meta_dict_for_bin[mnum]["pathwise_ppcn"] = 'NA'
+            meta_dict_for_bin[mnum]["stepwise_ppcn"] = 'NA'
+            return
+
+        pathwise_copy_number = meta_dict_for_bin[mnum]["pathwise_copy_number"]
+        meta_dict_for_bin[mnum]["pathwise_ppcn"] = pathwise_copy_number / self.num_populations if pathwise_copy_number != 'NA' else 'NA'
+
+        stepwise_copy_number = meta_dict_for_bin[mnum]["stepwise_copy_number"]
+        meta_dict_for_bin[mnum]["stepwise_ppcn"] = stepwise_copy_number / self.num_populations if stepwise_copy_number is not None else 'NA'
 
 
 ## STATIC FUNCTIONS
