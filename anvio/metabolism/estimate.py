@@ -323,6 +323,17 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                                                        'mode_type': 'modules',
                                                        'description': "Number of copies of each top-level step in the module (the minimum of these is the stepwise module copy number)"
                                                        }
+
+        if self.add_per_population_copy_number:
+            self.available_modes["modules"]["headers"].extend(["pathwise_ppcn", "stepwise_ppcn"])
+            self.available_headers["pathwise_ppcn"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Pathwise per-population copy number (PPCN): pathwise module copy number divided by the estimated number of populations in the (meta)genome"
+                                                       }
+            self.available_headers["stepwise_ppcn"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Stepwise per-population copy number (PPCN): stepwise module copy number divided by the estimated number of populations in the (meta)genome"
+                                                       }
         # HEADERS SANITY CHECK
         if self.custom_output_headers:
             if anvio.DEBUG:
