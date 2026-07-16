@@ -2123,6 +2123,11 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
         args.user_modules = self.user_input_dir or None
         args.only_user_modules = self.only_user_modules
 
+        if self.add_per_population_copy_number:
+            # pass down the value we already computed in init_num_populations_per_layer() so the single
+            # estimator doesn't redundantly recompute (and re-report) it for this contigs-db
+            args.num_populations = self.num_populations_per_layer[db_name]
+
         self.update_available_headers_for_multi()
 
         if anvio.DEBUG:
