@@ -2007,6 +2007,9 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
                                   f"before re-running `anvi-estimate-metabolism. Here is the list of offenders: "
                                   f"{', '.join(bad_genomes_txt)}.")
 
+        if self.add_per_population_copy_number:
+            self.check_scg_hmms_are_present(g.genomes)
+
         if self.matrix_format:
             for genome_name in g.genomes:
                 gene_functions_in_genome_dict, _, _= g.get_functions_and_sequences_dicts_from_contigs_db(genome_name, requested_source_list=self.annotation_sources_to_use, return_only_functions=True)
