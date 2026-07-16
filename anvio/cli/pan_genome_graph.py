@@ -52,10 +52,10 @@ def get_args():
 
     groupB = parser.add_argument_group('OPTIONAL (BUT RECOMMENDED)DIAMOND USE', "Additional parameters controlling the "
                     "gene-endpoint fusion engine with scores coming from diamond. The additional parameters rarely need tuning; "
-                    "defaults work well for most datasets. Gene to gene minbit scores from diamond can be added to the the gene to gene ranking "
-                    "ranking calculated within the tool to increase accuracy of the fusions of gene endpoints into super-nodes. If you don't "
-                    "specify a DIAMOND search-results file, the tool will run on gene-cluster membership alone: every cross-genome "
-                    "pair within a gene cluster becomes an unweighted edge and the `minbit` ranking component is dropped.")
+                    "defaults work well for most datasets. Adding diamond min-bit scores can increase accuracy of the gene "
+                    "endpoints fusions into super-nodes. If you want to use a DIAMOND search-results file, the tool will "
+                    "run on the pangenome gene-cluster membership alone and every cross-genome pair within a gene cluster "
+                    "becomes an unweighted edge and the `minbit` ranking component is dropped.")
 
     groupB.add_argument(*anvio.A('diamond-search-results'), **anvio.K('diamond-search-results', {'required': False,
                     'help': "A DIAMOND tabular (outfmt 6) search-results file used to SCORE and WEIGHT the gene-cluster-derived edges."
@@ -65,16 +65,17 @@ def get_args():
                     "the classic behavior exactly). If omitted, the tool runs on gene-cluster membership alone: every cross-genome pair "
                     "within a gene cluster becomes an unweighted edge and the `minbit` ranking component is dropped."}))
     groupB.add_argument('--minbit-floor', default=0.0, type=float, help = "Edges with minbit below this value are dropped "
-                    "before ranking. Applied to the reciprocal-averaged minbit of each undirected cross-genome pair, AFTER pass 2 "
-                    "of DIAMOND parsing has built the directed-pair dictionary. Use this for ranking quality control. For a memory-"
-                    "oriented filter that drops rows DURING pass 2 see --minbit-prefilter.")
-    groupB.add_argument('--minbit-prefilter', default=0.0, type=float, help = "Row-level minbit prefilter applied DURING pass 2 of "
-                    "DIAMOND parsing: rows whose directed minbit (bit_score / min(self_bit_u, self_bit_v)) is below this value are "
-                    "dropped before they enter the directed-pair dictionary. Cuts pass-2 memory in proportion to how aggressive the "
-                    "threshold is -- the dictionary holds all surviving cross-genome directed pairs and can be tens of GB for large "
+                    "before ranking. Applied to the reciprocal-averaged minbit of each undirected cross-genome pair, this applies after"
+                    "DIAMOND parsing has built the directed-pair dictionary. Use this for ranking quality control. This filter is analogous"
+                    "to support-, decision- and uniqueness-floor filters running in the engine. If you are concerned about your enormous list"
+                    "of DIAMOND hits, consider using the --minbit-prefilter parameter to reduce the dataset size before ranking.")
+    groupB.add_argument('--minbit-prefilter', default=0.0, type=float, help = "Row-level minbit prefilter. Rows whose directed minbit "
+                    "(bit_score / min(self_bit_u, self_bit_v)) is below this value are dropped before they enter the directed-pair dictionary. "
+                    "The dictionary holds all surviving cross-genome directed pairs and can be tens of GB for large "
                     "pangenomes (e.g., 50+ genomes), which is the most common cause of OOM kills during the engine's parsing phase. "
-                    "Distinct from --minbit-floor, which gates AFTER reciprocal-average and is for ranking quality. 0 disables the "
-                    "prefilter (default). Must be in [0.0, 1.0].")
+                    "Distinct from --minbit-floor, which gates after reciprocal-average and is for ranking quality. 0 disables the "
+                    "prefilter (default). Must be in [0.0, 1.0]. If you don't know which parameter is the correct one and you don't have OOM problems"
+                    "use --minbit-floor.")
 
     groupC = parser.add_argument_group('OUTPUT', "Where the resulting pan-graph-db should be written. If you don't specify a path, "
                                 "anvi'o will write the database into the current working directory using the project name as the "
@@ -99,8 +100,8 @@ def get_args():
                     "(LCA) and the lowest common descendant (LCD), where they exist, to each of the two "
                     "nodes. If either |dist_a - dist_b| exceeds this value the merge is rejected. This "
                     "blocks topologically lopsided merges where one candidate sits much deeper/shallower "
-                    "than the other relative to the shared ancestor or descendant. Default -1 disables the "
-                    "check. When only one of LCA or LCD exists, only that side's check applies; pairs with "
+                    "than the other relative to the shared ancestor or descendant. -1 disables the check."
+                    "When only one of LCA or LCD exists, only that side's check applies; pairs with "
                     "neither (extremely rare on a connected DAG) are not rejected by this guard.")
     groupD.add_argument('--no-include-non-coding-genes', default=False, action='store_true',
                     help = "Drop non-coding gene calls (rRNA, tRNA, etc.) from the graph. By default (no flag), "
@@ -120,16 +121,17 @@ def get_args():
                     "windows (left/right of each endpoint) must contain for an edge to be kept. Must be 0..--locality-window. "
                     "0 disables the filter; --locality-window requires a fully populated window on both sides of both endpoints. "
                     "Edges whose any flanking window is shorter than this are trashed before orientation scoring and fusion.")
-    groupE.add_argument('--min-line-pair-hits', default=50, type=int, help = "Orientation-side gate. Minimum number of DIAMOND hits "
+    groupE.add_argument('--min-line-pair-hits', default=100, type=int, help = "Orientation-side gate. Minimum number of DIAMOND hits "
                     "between two contig lines required to consider them for orientation scoring. Line pairs with fewer hits do not "
-                    "contribute to the orientation labeling (no same/flip decision is made). Has NO direct effect on fusion -- for a "
+                    "contribute to the orientation labeling (no same/flip decision is made). Has NO direct effect on fusions for a "
                     "fusion-side hard cutoff that prevents under-supported line pairs from being fused at all, see "
                     "--fusion-min-line-pair-hits.")
-    groupE.add_argument('--fusion-min-line-pair-hits', default=0, type=int, help = "Fusion-side hard cutoff. Line pairs with fewer than "
+    groupE.add_argument('--fusion-min-line-pair-hits', default=100, type=int, help = "Fusion-side hard cutoff. Line pairs with fewer than "
                     "this many edges are dropped from the ranking pool entirely and NEVER fused (alongside the existing "
                     "same-genome-conflict and transitive-cycle guards). Independent of --min-line-pair-hits, which only gates "
                     "orientation labeling: set this above 0 if you want under-supported line pairs to be excluded from fusion "
-                    "regardless of how the ranking otherwise scores them. 0 disables the cutoff (default).")
+                    "regardless of how the ranking otherwise scores them. A potential usecase is plasmids in the dataset. "
+                    "0 disables the cutoff.")
     groupE.add_argument('--orientation-tie-threshold', default=0.35, type=float, help = "Score margin under which a line-pair orientation "
                     "call is considered a tie and demoted (see --orientation-demotion-strategy).")
     groupE.add_argument('--min-orientation-score', default=0.5, type=float, help = "Minimum orientation score for a line pair to be "
@@ -140,7 +142,7 @@ def get_args():
     groupE.add_argument('--ranking-components', default='minbit,decision,support,uniqueness', type=str, help = "Comma-separated list "
                     "of components used to rank edges before fusion (any subset of minbit, decision, support, uniqueness). "
                     "'uniqueness' (opt-in; not in the default) is min(uniqueness(u), uniqueness(v)) where uniqueness(g) = "
-                    "partner_genomes(g) / hit_count(g) -- the number of distinct genomes among g's cross-genome DIAMOND partners "
+                    "partner_genomes(g) / hit_count(g). The number of distinct genomes among g's cross-genome DIAMOND partners "
                     "divided by the total partner count (gated by GC in panmode). Any single-copy gene scores 1.0 regardless of "
                     "how core it is; multi-copy GCs score below 1.0; capped at 1.0 by construction. NOTE: `minbit` requires "
                     "`--diamond-search-results`; when no DIAMOND file is provided it is silently dropped from this list (edges are "
@@ -167,7 +169,7 @@ def get_args():
                     "--min-line-pair-hits=0). Pair-level failure: no fwd-vs-rev preference exists at the pair level, so this "
                     "score replaces the missing decision component in the ranking.")
     groupE.add_argument('--decision-boundary-score', default=0.0, type=float, help = "Decision score assigned to edges in "
-                    "confidently labeled pairs (same/flip) whose specific edge couldn't be scored by the locality scan -- "
+                    "confidently labeled pairs (same/flip) whose specific edge couldn't be scored by the locality scan, "
                     "typically because one or both endpoint genes sit at contig boundaries (empty flanking window) or because "
                     "--min-window-completeness dropped the edge upstream. Per-edge failure on an otherwise good pair: setting "
                     "this above 0.0 keeps contig-end edges in well-oriented pairs from being zeroed out in the ranking.")
@@ -177,19 +179,19 @@ def get_args():
     groupE.add_argument('--fusion-top-bucket-k', default=1, type=int, help = "Number of top-ranked edges sampled per fusion step "
                     "(Prim-style frontier growth with stochastic top-K bucketing).")
     groupE.add_argument('--fusion-seed', default=42, type=int, help = "Random seed for the stochastic top-K fusion sampler.")
+    groupE.add_argument('--region-scope', default='component', choices=['global', 'component'], help = "Scope of what is considered "
+                    "present in all genomes during region classification (backbone vs. variable) and the normalized region metrics. "
+                    "'global' (default) counts genomes across the entire pangenome -- a region is BR only if every genome in "
+                    "the pangenome reaches it. 'component' counts only the genomes present in the current weakly-connected "
+                    "component -- a region is BR relative to the genomes that actually appear in its component, which treats "
+                    "each component as an independent sub-pangenome. With 'component' a 1-genome component is trivially classified "
+                    "as backbone; pick 'global' if that's not the intent.")
 
     groupF = parser.add_argument_group('LAYOUT & SIMPLIFICATION', "Controls how the graph is compressed and long edges are filtered.")
 
     groupF.add_argument('--component', default='CP_0001', type=str, help = "Which weakly connected component to lay out and summarize. "
                     "Components are named largest-first as 'CP_0001', 'CP_0002', ...; the default ('CP_0001') selects the largest. All "
                     "components are still persisted in the pan-graph-db.")
-    groupF.add_argument('--region-scope', default='component', choices=['global', 'component'], help = "Scope of the genome-count "
-                    "denominator used during region classification (backbone vs. variable) and the normalized region metrics. "
-                    "'global' (default) counts genomes across the entire pangenome -- a region is BR only if every genome in "
-                    "the pangenome reaches it. 'component' counts only the genomes present in the current weakly-connected "
-                    "component -- a region is BR relative to the genomes that actually appear in its component, which treats "
-                    "each component as an independent sub-pangenome. With 'component' a 1-genome component is trivially classified "
-                    "as backbone; pick 'global' if that's not the intent.")
     groupF.add_argument('--gene-cluster-grouping-threshold', default=-1, type=int, help = "Compress linear chains of nodes of "
                     "this length or longer into groups (-1 disables grouping; useful to simplify long conserved runs).")
     groupF.add_argument('--grouping-compression', default=1.0, type=float, help = "Compression factor for grouped chains "
