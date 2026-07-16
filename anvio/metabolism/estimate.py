@@ -264,7 +264,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             # if self.num_populations was already provided (eg, pre-computed by KeggMetabolismEstimatorMulti for
             # this contigs-db), we don't need to estimate or report it again here.
             if self.add_per_population_copy_number and self.num_populations is None:
-                self.num_populations, per_domain_totals = self.get_num_populations_for_contigs_db(self.contigs_db_path)
+                self.num_populations, per_domain_totals = self.get_num_populations_for_contigs_db(self.contigs_db_path, run=self.run)
                 self.run.warning(None, header="NUMBER OF POPULATIONS ESTIMATED FROM SINGLE-COPY CORE GENES", lc="green")
                 for domain, count in per_domain_totals.items():
                     self.run.info(domain, count)

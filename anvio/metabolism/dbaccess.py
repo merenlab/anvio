@@ -602,7 +602,7 @@ class KeggDataLoader(KeggContext):
         return enzyme_cluster_split_contig
 
 
-    def get_num_populations_for_contigs_db(self, contigs_db_path):
+    def get_num_populations_for_contigs_db(self, contigs_db_path, run=run_quiet):
         """Estimates the number of populations in a (meta)genome from its single-copy core genes.
 
         This value is used to normalize module copy number into per-population copy number (PPCN) when
@@ -615,6 +615,11 @@ class KeggDataLoader(KeggContext):
         ==========
         contigs_db_path : str
             path to the contigs database to estimate the population count for
+        run : anvio.terminal.Run
+            used only for warnings that `hmmops.NumGenomesEstimator`/`SequencesForHMMHits` may emit (eg about
+            ambiguous multi-source SCG hits). Defaults to a quiet Run so that looping over many genomes (as
+            KeggMetabolismEstimatorMulti does) doesn't repeat the same warning once per genome; a single-contigs-db
+            caller should pass its own `self.run` so the user actually sees these warnings.
 
         RETURNS
         =======
@@ -627,7 +632,10 @@ class KeggDataLoader(KeggContext):
             that domain's single-copy core genes alone. Summing these values gives `num_populations`.
         """
 
-        num_genomes_estimator = hmmops.NumGenomesEstimator(contigs_db_path, run=self.run, progress=self.progress)
+        # NumGenomesEstimator (via SequencesForHMMHits) opens its own progress tracker internally, so we always
+        # hand it a quiet one here to avoid conflicting with a progress tracker the caller may already have open.
+        # `run`, on the other hand, is caller-controlled (see docstring above).
+        num_genomes_estimator = hmmops.NumGenomesEstimator(contigs_db_path, run=run, progress=progress_quiet)
 
         if not len(num_genomes_estimator.estimates_dict):
             raise ConfigError(f"You requested per-population copy number normalization with "
