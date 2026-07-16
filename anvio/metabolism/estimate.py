@@ -260,6 +260,20 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             from anvio.dbops import ContigsDatabase # <- import here to avoid circular import
             contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
             self.contigs_db_project_name = contigs_db.meta['project_name']
+
+            # if self.num_populations was already provided (eg, pre-computed by KeggMetabolismEstimatorMulti for
+            # this contigs-db), we don't need to estimate or report it again here.
+            if self.add_per_population_copy_number and self.num_populations is None:
+                self.num_populations, per_domain_totals = self.get_num_populations_for_contigs_db(self.contigs_db_path)
+                self.run.warning(None, header="NUMBER OF POPULATIONS ESTIMATED FROM SINGLE-COPY CORE GENES", lc="green")
+                for domain, count in per_domain_totals.items():
+                    self.run.info(domain, count)
+                self.run.info("Total number of populations", self.num_populations)
+                if not self.num_populations:
+                    self.run.warning("It seems like there are too few single-copy core gene annotations in this "
+                                     "contigs database for anvi'o to come up with a reliable population count "
+                                     "estimate. There is nothing we can do about this, and the per-population copy "
+                                     "number values will be reported as NA.")
         elif self.enzymes_txt:
             self.contigs_db_project_name = os.path.basename(self.enzymes_txt).replace(".", "_")
         elif self.enzymes_of_interest_df is not None:
