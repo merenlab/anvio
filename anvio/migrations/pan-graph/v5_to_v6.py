@@ -301,8 +301,8 @@ def migrate(db_path):
             f"not the required version, {current_version}, so this script cannot upgrade the database.")
     else:
          raise ConfigError(
-            f"Due to major changes in the pan-graph engine, migrating your pangenome-graph-db is not supported."
-            f"We therefore kindly ask you to re-run the pan genome graph generation on your data instead.")
+            "Due to major changes in the pan-graph engine, migrating your pangenome-graph-db is not supported."
+            "We therefore kindly ask you to re-run the pan genome graph generation on your data instead.")
 
     pan_graph_db = pan_graph_db_info.load_db()
 
