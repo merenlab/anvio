@@ -63,6 +63,7 @@ class KeggEstimatorArgs():
         self.exclude_zero_modules = False if A('include_zeros') else True
         self.only_complete = True if A('only_complete') else False
         self.add_coverage = True if A('add_coverage') else False
+        self.add_per_population_copy_number = True if A('add_per_population_copy_number') else False
         self.exclude_kos_no_threshold = False if A('include_kos_not_in_kofam') else True
         self.include_stray_kos = True if A('include_nt_KOs') or A('include_stray_kos') else False # quick fix for backward compatability
         self.include_nt_KOs = True if A('include_nt_KOs') or A('include_stray_kos') else False # quick fix for backward compatability

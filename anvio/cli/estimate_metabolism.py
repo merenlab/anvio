@@ -124,6 +124,23 @@ def get_args():
                                                             "annotate with `anvi-run-kegg-kofams --include-nt-KOs`."}))
     groupC.add_argument(*anvio.A('ignore-unknown-KOs'), **anvio.K('ignore-unknown-KOs'))
     groupC.add_argument(*anvio.A('exclude-dashed-reactions'), **anvio.K('exclude-dashed-reactions'))
+    groupC.add_argument(*anvio.A('add-per-population-copy-number'), **anvio.K('add-per-population-copy-number',
+                                    {'help': "Request an additional statistic that reports the per-population copy number (PPCN) "
+                                             "of each metabolic module in your metagenome assembly (for both pathwise and stepwise module "
+                                             "copy number). anvi'o divides the module copy number by the number of populations "
+                                             "estimated to be present in that same assembly (estimated from single-copy core "
+                                             "genes: the mode of the number of hits to the single-copy core genes of each domain, "
+                                             "summed across Bacteria, Archaea, and Eukarya, just like `anvi-display-contigs-stats` "
+                                             "does). This normalization is useful for metagenomic assemblies, where the raw module "
+                                             "copy number scales with the number of populations in the assembly and is therefore "
+                                             "not comparable across samples of vastly different community sizes. For more details "
+                                             "about this method, please see Veseli et al. 2025. This flag requires that your contigs "
+                                             "database(s) have been annotated with single-copy core genes via `anvi-run-hmms`. It "
+                                             "only works with a single contigs database (`-c`) representing one (meta)genome or with "
+                                             "an external-genomes file (`-e`) containing many (meta)genomes, since population "
+                                             "normalization is only meaningful for a whole assembly. In long-format output, this flag "
+                                             "adds two columns (pathwise and stepwise PPCN); in matrix-format output, it adds three "
+                                             "additional matrix files (population totals + pathwise and stepwise PPCN)."}))
 
     groupL = parser.add_argument_group('OUTPUT - LONG-FORMAT OPTIONS', "Parameters for controlling long-format output (the default).")
     groupL.add_argument(*anvio.A('output-modes'), **anvio.K('output-modes'))
