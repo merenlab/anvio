@@ -1305,6 +1305,13 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                     step_copy_numbers.append(str(c_dict["top_level_step_info"][step]["copy_number"]))
                 d[self.modules_unique_id]["per_step_copy_numbers"] = ",".join(step_copy_numbers)
 
+        # add per-population copy number
+        if self.add_per_population_copy_number:
+            if "pathwise_ppcn" in headers_to_include:
+                d[self.modules_unique_id]["pathwise_ppcn"] = c_dict["pathwise_ppcn"]
+            if "stepwise_ppcn" in headers_to_include:
+                d[self.modules_unique_id]["stepwise_ppcn"] = c_dict["stepwise_ppcn"]
+
         # add coverage if requested
         if self.add_coverage:
             for s in self.coverage_sample_list:
