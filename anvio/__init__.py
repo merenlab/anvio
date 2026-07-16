@@ -2300,10 +2300,19 @@ D = {
             ['--region-id'],
             {'metavar': "REGION_ID",
              'required': False,
-             'help': "A region ID from an anvi'o pangenome graph database (e.g. 'R_1'). The program will "
-                     "resolve the two boundary nodes (by position) of the region and export the loci "
-                     "between them.",
-             'type': str}
+             'help': "The number of a region within a component of an anvi'o pangenome graph database "
+                     "(e.g. '5' for the fifth region). Must be used together with `--component-id`. The "
+                     "program will resolve the two boundary nodes (by position) of the region and export "
+                     "the loci between them.",
+             'type': int}
+                ),
+    'component-id': (
+            ['--component-id'],
+            {'metavar': "COMPONENT_ID",
+             'required': False,
+             'help': "The number of a component in an anvi'o pangenome graph database (e.g. '1' for the "
+                     "first/largest component). Used together with `--region-id` to identify a region.",
+             'type': int}
                 ),
     'output-file': (
             ['-o', '--output-file'],

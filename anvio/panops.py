@@ -84,10 +84,12 @@ class PangenomeGraphSubGraph:
         >>> subgraph = PangenomeGraphSubGraph(args)
         >>> subgraph.export()
 
-    Alternatively, a region ID can be provided instead of graph nodes, in which case the two boundary
-    nodes of the region (min/max x position) are resolved automatically:
+    Alternatively, a region can be identified by its component and region numbers instead of graph
+    nodes, in which case the two boundary nodes of the region (min/max x position) are resolved
+    automatically. The numbers are the plain user-facing values (e.g. component 1, region 5); the
+    class translates them into the internal name strings ('CP_0001_5'):
 
-        >>> args = argparse.Namespace(pan_graph_db="PATH/TO/PAN-GRAPH.db", region_id=3, output_dir="OUTPUT_DIR")
+        >>> args = argparse.Namespace(pan_graph_db="PATH/TO/PAN-GRAPH.db", component_id=1, region_id=5, output_dir="OUTPUT_DIR")
 
     A client of this class is the program `anvi-export-pan-subgraph`
     """
@@ -100,15 +102,37 @@ class PangenomeGraphSubGraph:
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.pan_graph_db_path = A('pan_graph_db')
         self.graph_nodes = A('graph_nodes').split(',') if A('graph_nodes') else None
-        self.region_id = A('region_id')
         self.output_dir = A('output_dir')
         self.external_genomes_file_path = A('external_genomes')
 
+        # the user gives region coordinates as plain numbers (e.g. `--component-id 1 --region-id 5`),
+        # but internally the pangenome graph db keys everything on the padded name strings
+        # ('CP_0001', 'CP_0001_5'). we translate here once and let the rest of the class keep
+        # speaking names -- so `self.region_id` below is the full name, not the raw user number.
+        region_id = A('region_id')
+        component_id = A('component_id')
+        self.region_id = None
+
+        if region_id is not None or component_id is not None:
+            if region_id is None or component_id is None:
+                raise ConfigError("When you identify a region by its coordinates you must provide BOTH "
+                                  "`--component-id` and `--region-id`, each as a plain number "
+                                  "(e.g. `--component-id 1 --region-id 5`) :/")
+            try:
+                component_num = int(component_id)
+                region_num = int(region_id)
+            except (ValueError, TypeError):
+                raise ConfigError(f"`--component-id` and `--region-id` must be plain integers "
+                                  f"(e.g. `--component-id 1 --region-id 5`). You provided component-id "
+                                  f"'{component_id}' and region-id '{region_id}', which anvi'o cannot make sense of :/")
+            self.region_id = f"CP_{component_num:04d}_{region_num}"
+
         if not self.graph_nodes and self.region_id is None:
-            raise ConfigError("This program is useless without either `--graph-nodes` or `--region-id` :/")
+            raise ConfigError("This program is useless without either `--graph-nodes`, or `--component-id` "
+                              "together with `--region-id` :/")
 
         if self.graph_nodes and self.region_id is not None:
-            raise ConfigError("Please provide either `--graph-nodes` or `--region-id`, not both.")
+            raise ConfigError("Please provide either `--graph-nodes`, or `--component-id`/`--region-id`, not both.")
 
         if not self.pan_graph_db_path:
             raise ConfigError("Please send a pangenome graph database")
@@ -130,14 +154,16 @@ class PangenomeGraphSubGraph:
         side, since variable region nodes are not necessarily present in all genomes.
         """
 
-        # region_id embeds its component since v7 (e.g. "CP_0001_5"), so
-        # pangraph.regions -- keyed by the (component_id, region_id) pair -- can
-        # be looked up without a separate --component argument.
+        # self.region_id is the internal name ('CP_0001_5'), built in __init__ from the
+        # numeric --component-id/--region-id the user provided. pangraph.regions is keyed
+        # by the (component_id, region_id) name pair, so we look it up directly.
         region_key = (self.region_id.rsplit('_', 1)[0], self.region_id)
         if region_key not in pangraph.regions:
-            available = ', '.join(sorted(rid for (_cid, rid) in pangraph.regions))
-            raise ConfigError(f"Region ID {self.region_id} was not found in the pangenome graph database. "
-                              f"Available region IDs: {available}.")
+            # report what's available back in the plain-number vocabulary the user typed in
+            available = ', '.join(f"--component-id {int(cid.split('_')[-1])} --region-id {rid.rsplit('_', 1)[-1]}"
+                                  for (cid, rid) in sorted(pangraph.regions))
+            raise ConfigError(f"The region you requested ({self.region_id}) was not found in the pangenome "
+                              f"graph database. Available regions are: {available}.")
 
         region_info = pangraph.regions[region_key]
         region_type = region_info['region_type']
