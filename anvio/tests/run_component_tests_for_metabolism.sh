@@ -340,6 +340,45 @@ anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
 SHOW_FILE modules_custom_copynum_step_modules_custom.txt
 
 
+## PER-POPULATION COPY NUMBER (PPCN) TESTS
+INFO "Estimating metabolism with --add-per-population-copy-number on a single contigs database"
+anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
+                         --add-per-population-copy-number \
+                         -O ppcn_single \
+                         --no-progress \
+                         --kegg-data-dir $kegg_data_dir
+SHOW_FILE ppcn_single_modules.txt
+
+INFO "Estimating metabolism with --add-per-population-copy-number on external genomes"
+anvi-estimate-metabolism -e external-genomes.txt \
+                         --add-per-population-copy-number \
+                         -O ppcn_external \
+                         --no-progress \
+                         --kegg-data-dir $kegg_data_dir
+SHOW_FILE ppcn_external_modules.txt
+SHOW_FILE ppcn_external-POPULATION-ESTIMATES.txt
+
+INFO "Generating matrix output with --add-per-population-copy-number on external genomes"
+anvi-estimate-metabolism -e external-genomes.txt \
+                         --add-per-population-copy-number \
+                         --matrix-format \
+                         -O ppcn_matrix \
+                         --no-progress \
+                         --kegg-data-dir $kegg_data_dir
+SHOW_FILE ppcn_matrix-module_pathwise_ppcn-MATRIX.txt
+SHOW_FILE ppcn_matrix-module_stepwise_ppcn-MATRIX.txt
+
+INFO "Generating custom output with PPCN headers"
+anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
+                          --add-per-population-copy-number \
+                          --output-modes modules_custom \
+                          -O modules_custom_ppcn \
+                          --custom-output-headers module,pathwise_copy_number,pathwise_ppcn,stepwise_copy_number,stepwise_ppcn \
+                          --no-progress \
+                         --kegg-data-dir $kegg_data_dir
+SHOW_FILE modules_custom_ppcn_modules_custom.txt
+
+
 ## ENZYMES TXT TESTS
 INFO "Testing enzymes txt input (no coverage/detection)"
 anvi-estimate-metabolism --enzymes-txt minimal_enzymes_input.txt \
