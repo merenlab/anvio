@@ -4429,12 +4429,16 @@ class PangenomeGraphUserInterface {
         // Per-component breakdown message
         let summary = `<div class="mt-2 mb-1"><strong>${this._format_component_breakdown(total, per_component, other, active_comp)}</strong></div>`;
 
-        // Buttons to jump to other components that contain hits
-        const other_comps = Object.keys(per_component).map(Number).filter(c => c !== active_comp).sort((a, b) => a - b);
+        // Buttons to jump to other components that contain hits. per_component is
+        // keyed by the real component id ('CP_0001'), which is what switch_to_component
+        // needs to set the select -- so keep the id in data-component and only show the
+        // friendly number (last segment) in the label.
+        const suffix = c => parseInt(String(c).split('_').pop());
+        const other_comps = Object.keys(per_component).filter(c => c !== active_comp).sort((a, b) => suffix(a) - suffix(b));
         if (other_comps.length) {
             summary += `<div class="mb-2" style="font-size:0.85em;">Jump to: `;
             summary += other_comps.map(c =>
-                `<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 me-1 pangraph-search-goto" data-component="${c}">component ${c} (${per_component[c]})</button>`
+                `<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 me-1 pangraph-search-goto" data-component="${c}">component ${suffix(c)} (${per_component[c]})</button>`
             ).join('');
             summary += `</div>`;
         }
