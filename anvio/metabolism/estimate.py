@@ -238,7 +238,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             else:
                 estimation_mode = "Individual contigs within a collection in a metagenome"
         elif self.metagenome_mode:
-            estimation_mode = "Individual contigs in a metagenome"
+            estimation_mode = "Individual contigs in a (meta)genome"
         elif self.enzymes_of_interest_df is not None:
             estimation_mode = "List of enzymes"
         elif self.pan_db_path:
