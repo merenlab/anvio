@@ -3027,7 +3027,7 @@ class PangenomeGraphUserInterface {
         const summary = (this.data && this.data['meta'] && this.data['meta']['components_summary']) || {};
         // Sort by the numeric suffix so C_2 precedes C_10 (plain string sort would not).
         const ids = Object.keys(summary)
-                          .sort((a, b) => parseInt(a.split('_')[1]) - parseInt(b.split('_')[1]));
+                          .sort((a, b) => parseInt(a.split('_').pop()) - parseInt(b.split('_').pop()));
 
         let current;
         if (this.settings_dict && this.settings_dict['component'] !== undefined) {
@@ -3042,7 +3042,7 @@ class PangenomeGraphUserInterface {
         $sel.empty();
         for (const cid of ids) {
             // Value is the real id (CP_0001); label shows the friendly number ("Component 1").
-            const opt = $('<option>').attr('value', cid).text(`Component ${parseInt(cid.split('_')[1])} (${summary[cid]} nodes)`);
+            const opt = $('<option>').attr('value', cid).text(`Component ${parseInt(cid.split('_').pop())} (${summary[cid]} nodes)`);
             if (cid === current) opt.attr('selected', 'selected');
             $sel.append(opt);
         }
@@ -4404,7 +4404,7 @@ class PangenomeGraphUserInterface {
     _format_component_breakdown(total, per_component, other, active_comp) {
         if (total === 0) return 'No synteny gene clusters matched.';
         // active component first, then by numeric suffix so CP_0002 precedes CP_0010.
-        const suffix = c => parseInt(String(c).split('_')[1]);
+        const suffix = c => parseInt(String(c).split('_').pop());
         const comps = Object.keys(per_component)
             .sort((a, b) => (a === active_comp ? -1 : b === active_comp ? 1 : suffix(a) - suffix(b)));
         // Show the friendly component number ("component 5"), matching the dropdown.
