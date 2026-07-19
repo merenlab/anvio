@@ -310,13 +310,16 @@ templates_table_name       = 'templates'
 templates_table_structure  = ['corresponding_gene_call' , 'pdb_id' , 'chain_id' , 'proper_percent_similarity', 'percent_similarity', 'align_fraction']
 templates_table_types      = ['integer'                 , 'text'   , 'text'     , 'real',                      'real',               'real']
 
+# the MODELLER-specific score columns (molpdf, GA341_score, DOPE_score) are left NULL for structures
+# predicted with ColabFold, whose native model-level metrics (mean_plddt, ptm) are stored instead
 models_table_name       = 'models'
-models_table_structure  = ['corresponding_gene_call' , 'molpdf' , 'GA341_score' , 'DOPE_score' , 'picked_as_best']
-models_table_types      = ['integer'                 , 'real'   , 'real'        , 'real'       , 'integer']
+models_table_structure  = ['corresponding_gene_call' , 'molpdf' , 'GA341_score' , 'DOPE_score' , 'mean_plddt' , 'ptm'  , 'picked_as_best']
+models_table_types      = ['integer'                 , 'real'   , 'real'        , 'real'       , 'real'       , 'real' , 'integer']
 
+# `plddt` holds the per-residue ColabFold confidence (NULL for MODELLER/external structures)
 residue_info_table_name       = 'residue_info'
-residue_info_table_structure  = ['corresponding_gene_call', 'codon_order_in_gene', 'contact_numbers', 'codon', 'amino_acid', 'codon_number', 'sec_struct' , 'rel_solvent_acc' , 'phi'  , 'psi'  , 'NH_O_1_index' , 'NH_O_1_energy' , 'O_NH_1_index' , 'O_NH_1_energy' , 'NH_O_2_index' , 'NH_O_2_energy' , 'O_NH_2_index' , 'O_NH_2_energy']
-residue_info_table_types      = [        'integer'        ,        'integer'     ,   'text'          , 'text',  'text',       'integer',      'text'       , 'real'            , 'real' , 'real' , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real']
+residue_info_table_structure  = ['corresponding_gene_call', 'codon_order_in_gene', 'contact_numbers', 'codon', 'amino_acid', 'codon_number', 'sec_struct' , 'rel_solvent_acc' , 'phi'  , 'psi'  , 'plddt' , 'NH_O_1_index' , 'NH_O_1_energy' , 'O_NH_1_index' , 'O_NH_1_energy' , 'NH_O_2_index' , 'NH_O_2_energy' , 'O_NH_2_index' , 'O_NH_2_energy']
+residue_info_table_types      = [        'integer'        ,        'integer'     ,   'text'          , 'text',  'text',       'integer',      'text'       , 'real'            , 'real' , 'real' , 'real'  , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real']
 
 ####################################################################################################
 #
