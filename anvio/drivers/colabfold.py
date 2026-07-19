@@ -1,0 +1,238 @@
+"""Interface to ColabFold (AlphaFold2 protein structure prediction).
+
+ColabFold exposes two command-line programs:
+
+    - colabfold_search : CPU-heavy multiple sequence alignment (MSA) generation against a
+                         local database. Produces `.a3m` files.
+    - colabfold_batch  : the predictor. In online mode it generates the MSA using the public
+                         MMseqs2 server AND predicts the structure in one call. Given a
+                         directory of `.a3m` files it skips the MSA and only predicts.
+
+So the MSA step runs either online (public server) or locally (colabfold_search against a
+downloaded database). This driver handles both. ColabFold is not assumed to be on the $PATH:
+if the user provides a conda environment name, every command is prefixed with
+`conda run -n <NAME>`; otherwise the colabfold programs are expected to be directly callable
+(e.g. on the $PATH).
+
+This driver is a thin wrapper around the two programs. Locating and parsing the per-gene output
+files (best model PDB and confidence scores) happens in anvio.structureops, which orchestrates
+a single batched run over all genes of interest.
+"""
+
+import os
+import glob
+
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError
+
+
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__authors__ = ['Florian_Trigodet']
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+class ColabFold:
+    def __init__(self, args, run=run, progress=progress, skip_sanity_check=False):
+        self.run = run
+        self.progress = progress
+        self.args = args
+
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ and args.__dict__[x] is not None else None
+        null = lambda x: x
+
+        self.conda_env = A('colabfold_conda_env', str)
+        self.use_msa_server = A('colabfold_msa_server', bool)
+        self.local_db = A('colabfold_db', null)
+        self.num_models = A('num_models', int)
+        self.num_recycle = A('num_recycle', int)
+        self.amber = A('amber', bool)
+        self.additional_params = A('colabfold_additional_parameters', str)
+
+        # anvi'o's --num-threads is authoritative: it is always forwarded to the colabfold programs,
+        # overriding their own defaults (e.g. colabfold_search defaults to 64 threads). So if the user
+        # leaves anvi'o's default of 1, colabfold_search is run with a single thread too.
+        self.num_threads = A('num_threads', int)
+
+        self.citation = ("ColabFold: Mirdita et al. 2022 (doi:10.1038/s41592-022-01488-1); "
+                         "AlphaFold2: Jumper et al. 2021 (doi:10.1038/s41586-021-03819-2)")
+        self.web = "https://github.com/sokrypton/ColabFold"
+
+        # every colabfold command is run inside the user's conda environment. when no environment
+        # name is given, the programs are expected to be directly available (e.g. on the $PATH).
+        self.command_prefix = ['conda', 'run', '--no-capture-output', '-n', self.conda_env] if self.conda_env else []
+
+        # the MSA is generated either locally (colabfold_search against self.local_db) or online
+        # (colabfold_batch queries the public MMseqs2 server)
+        self.msa_source = 'local' if self.local_db else 'server'
+
+        self.search_program = 'colabfold_search'
+        self.batch_program = 'colabfold_batch'
+
+        if not skip_sanity_check:
+            self.sanity_check()
+
+
+    def sanity_check(self):
+        if self.local_db and self.use_msa_server:
+            raise ConfigError("You asked ColabFold to use both a local database (--colabfold-db) and the "
+                              "public MSA server (--colabfold-msa-server) for the MSA step. Please pick only one.")
+
+        if not self.local_db and not self.use_msa_server:
+            raise ConfigError("ColabFold needs to know how to generate the multiple sequence alignment (MSA). "
+                              "Please use either --colabfold-msa-server to query the public MMseqs2 server (fine "
+                              "for a handful of sequences), or --colabfold-db to point to a local ColabFold "
+                              "database directory (recommended for many sequences).")
+
+        if self.local_db:
+            if not filesnpaths.is_file_exists(self.local_db, dont_raise=True) or not os.path.isdir(self.local_db):
+                raise ConfigError("The ColabFold database path you provided with --colabfold-db does not seem to be a "
+                                  "directory that exists: '%s'. This should be the directory you set up with ColabFold's "
+                                  "`setup_databases.sh` script." % self.local_db)
+
+        self.check_program(self.batch_program)
+        if self.msa_source == 'local':
+            self.check_program(self.search_program)
+
+
+    def check_program(self, program):
+        """Confirm a colabfold program is callable (inside the conda env, if one was given)"""
+
+        log_file_path = filesnpaths.get_temp_file_path()
+
+        try:
+            ret_val = utils.run_command(self.command_prefix + [program, '--help'], log_file_path)
+        except ConfigError:
+            ret_val = -1
+
+        if ret_val != 0:
+            env_msg = (" inside the conda environment '%s'" % self.conda_env) if self.conda_env else \
+                      (". Since you did not provide a --colabfold-conda-env, anvi'o looked for it on your $PATH")
+            raise ConfigError("Anvi'o could not run ColabFold's '%s' program%s. If ColabFold is installed in a conda "
+                              "environment, provide its name with --colabfold-conda-env so anvi'o can run it via "
+                              "`conda run -n <NAME>`. The command anvi'o tried to run is in this log file, in case it "
+                              "helps: %s" % (program, env_msg, log_file_path))
+
+        os.remove(log_file_path) if filesnpaths.is_file_exists(log_file_path, dont_raise=True) else None
+
+
+    def run_search(self, fasta_path, msa_dir, log_file_path):
+        """Generate MSAs locally with colabfold_search. Produces .a3m files in msa_dir.
+
+        Kept as a distinct step so a future PR can expose an --only-msa / --only-predict checkpoint.
+        """
+
+        cmd_line = self.command_prefix + [self.search_program, fasta_path, self.local_db, msa_dir]
+
+        if self.num_threads is not None:
+            cmd_line += ['--threads', str(self.num_threads)]
+
+        self.run.info('ColabFold MSA source', 'local database (%s)' % self.local_db)
+        self.run.info('ColabFold search cmd', ' '.join([str(x) for x in cmd_line]), quiet=(not anvio.DEBUG))
+
+        self.progress.new('ColabFold')
+        self.progress.update('Generating MSAs locally with %s (this is CPU-heavy) ...' % self.search_program)
+        ret_val = utils.run_command(cmd_line, log_file_path)
+        self.progress.end()
+
+        if ret_val != 0 or not len(glob.glob(os.path.join(msa_dir, '*.a3m'))):
+            raise ConfigError("Something went wrong while ColabFold was generating MSAs with '%s'. Please take a look at "
+                              "the log file to find out what happened: %s" % (self.search_program, log_file_path))
+
+        return msa_dir
+
+
+    def run_batch(self, input_path, out_dir, log_file_path):
+        """Run colabfold_batch to predict structures.
+
+        When self.msa_source is 'server', input_path is the query FASTA and the MSA is generated on the
+        fly via the public server. When it is 'local', input_path is the directory of .a3m files
+        produced by run_search.
+        """
+
+        # colabfold_batch has no threads flag: the prediction is GPU-bound and manages its own device
+        # parallelism. The only case where a CPU thread count matters is a CPU-only run, which respects
+        # OMP_NUM_THREADS, so we set it via `env` (it has no effect when a GPU is used).
+        thread_env = ['env', 'OMP_NUM_THREADS=%d' % self.num_threads] if self.num_threads is not None else []
+
+        cmd_line = self.command_prefix + thread_env + [self.batch_program, input_path, out_dir]
+
+        if self.msa_source == 'server':
+            cmd_line += ['--msa-mode', 'mmseqs2_uniref_env']
+
+        if self.num_models is not None:
+            cmd_line += ['--num-models', str(self.num_models)]
+
+        if self.num_recycle is not None:
+            cmd_line += ['--num-recycle', str(self.num_recycle)]
+
+        if self.amber:
+            cmd_line += ['--amber', '--num-relax', '1']
+
+        if self.additional_params:
+            cmd_line += self.additional_params.split()
+
+        self.run.info('ColabFold predict cmd', ' '.join([str(x) for x in cmd_line]), quiet=(not anvio.DEBUG))
+
+        self.progress.new('ColabFold')
+        self.progress.update('Predicting structures with %s (this is GPU-heavy) ...' % self.batch_program)
+        ret_val = utils.run_command(cmd_line, log_file_path)
+        self.progress.end()
+
+        if ret_val != 0:
+            raise ConfigError("Something went wrong while ColabFold was predicting structures with '%s'. Please take a "
+                              "look at the log file to find out what happened: %s" % (self.batch_program, log_file_path))
+
+        return out_dir
+
+
+    def process(self, fasta_path, out_dir):
+        """Run ColabFold end-to-end over a (multi-sequence) FASTA and return the results directory.
+
+        Per-gene output parsing is done by the caller (anvio.structureops) via get_output_paths.
+        """
+
+        filesnpaths.gen_output_directory(out_dir, delete_if_exists=False, dont_warn=True)
+        log_file_path = os.path.join(out_dir, '00_log.txt')
+
+        self.run.info('Log file path', log_file_path)
+
+        if self.msa_source == 'local':
+            msa_dir = os.path.join(out_dir, 'msas')
+            self.run_search(fasta_path, msa_dir, log_file_path)
+            self.run_batch(msa_dir, out_dir, log_file_path)
+        else:
+            self.run_batch(fasta_path, out_dir, log_file_path)
+
+        return out_dir
+
+
+    def get_output_paths(self, out_dir, jobname):
+        """Locate the best-model PDB and its scores JSON for a given jobname in a results directory.
+
+        ColabFold names the best model `rank_001` and writes a relaxed variant when --amber is used.
+        Returns a (pdb_path, scores_path) tuple, or (None, None) if the prediction is not found.
+        """
+
+        tag = 'relaxed' if self.amber else 'unrelaxed'
+
+        pdb_hits = sorted(glob.glob(os.path.join(out_dir, '%s_%s_rank_001_*.pdb' % (jobname, tag))))
+        if not pdb_hits:
+            # fall back to the unrelaxed model in case relaxation was skipped for this query
+            pdb_hits = sorted(glob.glob(os.path.join(out_dir, '%s_unrelaxed_rank_001_*.pdb' % jobname)))
+
+        scores_hits = sorted(glob.glob(os.path.join(out_dir, '%s_scores_rank_001_*.json' % jobname)))
+
+        pdb_path = pdb_hits[0] if pdb_hits else None
+        scores_path = scores_hits[0] if scores_hits else None
+
+        return pdb_path, scores_path
