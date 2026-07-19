@@ -182,8 +182,10 @@ def get_args():
                         side-chains at the cost of longer runtime.""")
     groupC.add_argument("--colabfold-additional-parameters", type=str, default=None, metavar='CMD LINE PARAMS', help =
                         """Additional parameters to pass verbatim to `colabfold_batch`, for anything not exposed
-                        as a dedicated flag above. For example: --colabfold-additional-parameters "--num-seeds 2
-                        --use-dropout". Anvi'o does not validate these, so use with care.""")
+                        as a dedicated flag above. Because the value itself begins with dashes, you must attach
+                        it with an equals sign so it is not mistaken for anvi'o's own flags, e.g.
+                        --colabfold-additional-parameters="--num-seeds 2 --use-dropout". Anvi'o does not validate
+                        these, so use with care.""")
 
     groupImport = parser.add_argument_group('IMPORT STRUCTURES', 'Instead of predicting structures, import '
                                             'pre-computed ones. This bypasses the --engine choice entirely.')
