@@ -13,6 +13,21 @@ make_structure_db() {
                                 --num-threads 2 \
                                 --num-models 1
 }
+# Predict structures with ColabFold instead of MODELLER. This is NOT part of the default routines
+# because it requires ColabFold to be installed (pass its conda env with --colabfold-conda-env) and,
+# for a real run, a GPU and either internet access (--colabfold-msa-server) or a local ColabFold
+# database (--colabfold-db). Invoke it manually when you want to exercise the ColabFold engine.
+make_structure_db_colabfold() {
+    anvi-gen-structure-database -c test-output/one_contig_five_genes.db \
+                                --engine colabfold \
+                                --colabfold-msa-server \
+                                --skip-DSSP \
+                                --gene-caller-ids 2 \
+                                --num-models 1 \
+                                --dump-dir test-output/RAW_COLABFOLD_OUTPUT \
+                                --output-db-path test-output/STRUCTURE_COLABFOLD.db \
+                                --debug
+}
 gen_var_profile1() {
     anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
                                  -c test-output/one_contig_five_genes.db \
