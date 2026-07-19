@@ -103,6 +103,8 @@ class ColabFold:
         if self.msa_source == 'local':
             self.check_program(self.search_program)
 
+        self.check_gpu()
+
 
     def check_program(self, program):
         """Confirm a colabfold program is callable (inside the conda env, if one was given)"""
@@ -123,6 +125,77 @@ class ColabFold:
                               "helps: %s" % (program, env_msg, log_file_path))
 
         os.remove(log_file_path) if filesnpaths.is_file_exists(log_file_path, dont_raise=True) else None
+
+
+    def check_gpu(self):
+        """Best-effort, pre-run check of whether ColabFold will see a GPU, so the user is not surprised
+        by a slow CPU-only run.
+
+        We ask the JAX runtime (the same one colabfold_batch uses) which devices it can see. This is a
+        best-effort check: if we can't run it (e.g. JAX is not importable from the python we reach), we
+        say so and rely on the post-run log check (see report_gpu_usage_from_log) instead. It never
+        raises.
+        """
+
+        # a one-liner that asks JAX what devices it sees and prints a token we can parse
+        probe = ("import jax; "
+                 "devices = jax.devices(); "
+                 "gpus = [d for d in devices if d.platform != 'cpu']; "
+                 "print('ANVIO_GPU_CHECK|%d|%s' % (len(gpus), ','.join(sorted({d.platform for d in devices}))))")
+
+        try:
+            output = utils.run_command_and_get_output(self.command_prefix + ['python', '-c', probe], raise_on_error=False)
+        except Exception:
+            output = ''
+
+        token = None
+        for line in (output or '').splitlines():
+            if line.startswith('ANVIO_GPU_CHECK|'):
+                token = line.strip()
+                break
+
+        if token is None:
+            self.run.warning("Anvi'o could not check ahead of time whether ColabFold will use a GPU (it was not able "
+                             "to query the JAX runtime that ColabFold uses). No worries: the structure prediction will "
+                             "still run, and anvi'o will tell you at the end whether a GPU or the CPU was actually "
+                             "used.", header="GPU CHECK: COULD NOT DETERMINE", lc="yellow")
+            return
+
+        _, num_gpus, platforms = token.split('|')
+
+        if int(num_gpus) > 0:
+            self.run.info_single("ColabFold's runtime sees %s GPU device(s) (%s), so the structure prediction should "
+                                 "run on the GPU. Nice." % (num_gpus, platforms), mc='green', nl_before=1, nl_after=1)
+        else:
+            self.run.warning("ColabFold's runtime does not see a GPU, so the structure prediction will run on the CPU. "
+                             "This works, but it is *much* slower -- a single protein can take many minutes. If you do "
+                             "have a GPU, make sure ColabFold (and its JAX installation) can see it before running. "
+                             "Press CTRL+C now if you would like to stop.", header="GPU CHECK: NO GPU DETECTED")
+
+
+    def report_gpu_usage_from_log(self, log_file_path):
+        """After a run, report from ColabFold's own log whether it used a GPU or fell back to the CPU.
+
+        ColabFold logs `no GPU detected, will be using CPU` when it falls back to the CPU; the absence
+        of that message means it used the GPU. This is best-effort and never raises.
+        """
+
+        if not filesnpaths.is_file_exists(log_file_path, dont_raise=True):
+            return
+
+        try:
+            with open(log_file_path) as log_file:
+                log_content = log_file.read().lower()
+        except Exception:
+            return
+
+        if 'no gpu detected' in log_content:
+            self.run.warning("Heads up: ColabFold reported that no GPU was detected, so this run used the CPU. That is "
+                             "why it may have been slow. If you expected a GPU to be used, check that ColabFold and its "
+                             "JAX installation can see your GPU.", header="COLABFOLD USED THE CPU")
+        else:
+            self.run.info_single("ColabFold did not report falling back to the CPU, so the GPU was used for this run.",
+                                 mc='green', nl_before=1, nl_after=1)
 
 
     def run_search(self, fasta_path, msa_dir, log_file_path):
@@ -212,6 +285,9 @@ class ColabFold:
             self.run_batch(msa_dir, out_dir, log_file_path)
         else:
             self.run_batch(fasta_path, out_dir, log_file_path)
+
+        # report from ColabFold's own log whether it used the GPU or fell back to the CPU
+        self.report_gpu_usage_from_log(log_file_path)
 
         return out_dir
 

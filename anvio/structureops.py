@@ -546,8 +546,10 @@ class StructureSuperclass(object):
             MODELLER.MODELLER(self.args, filesnpaths.get_temp_file_path(), check_db_only=True)
         elif self.run_mode == 'colabfold':
             # instantiating the driver validates the conda env / ColabFold programs and the MSA source
-            # choice, so we do it up front (once) and reuse it during the batched run
-            self.colabfold = colabfold.ColabFold(self.args, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
+            # choice, so we do it up front (once) and reuse it during the batched run. We pass our own
+            # run/progress (not quiet ones) so the user sees the driver's messages -- notably the GPU
+            # check and the ColabFold prediction progress.
+            self.colabfold = colabfold.ColabFold(self.args, run=self.run, progress=self.progress)
             self.run.info_single("Anvi'o is set up to predict structures with ColabFold using the %s MSA source"
                                  % self.colabfold.msa_source, nl_after=1, nl_before=1, mc='green')
         elif self.run_mode == 'external':
