@@ -24,6 +24,28 @@ new_columns = {
 }
 
 
+def determine_engine(structure_db):
+    """Figure out whether a pre-v3 database was made with MODELLER or from external structures.
+
+    A pre-v3 database is either a MODELLER run or an import of external structures (ColabFold did not
+    exist before v3, so it is never a possibility here). External structures were stored through a code
+    path that filled every MODELLER-specific value with a null/zero placeholder: the self table stores
+    `scoring_method` as NULL, and every row in the `templates` table has `pdb_id = 'none'`. A real
+    MODELLER run always has a scoring method and at least one genuine template, so the two are cleanly
+    distinguishable.
+    """
+
+    scoring_method = structure_db.get_meta_value('scoring_method', try_as_type_int=False, return_none_if_not_in_table=True)
+
+    distinct_template_ids = structure_db.get_single_column_from_table('templates', 'pdb_id', unique=True)
+    all_templates_are_none = all(pdb_id == 'none' for pdb_id in distinct_template_ids) if distinct_template_ids else True
+
+    if scoring_method is None and all_templates_are_none:
+        return 'external'
+    else:
+        return 'modeller'
+
+
 def migrate(db_path):
     if db_path is None:
         raise ConfigError("No database path is given.")
@@ -38,15 +60,16 @@ def migrate(db_path):
 
     progress.new("Migrating structure database to v%s" % next_version)
 
+    progress.update("Recording the structure-prediction engine")
+    # figure out whether these structures came from MODELLER or from external structures BEFORE we add
+    # the new columns, so the detection only sees the original (pre-v3) schema
+    engine = determine_engine(structure_db)
+    structure_db.set_meta_value('engine', engine)
+
     progress.update("Adding new columns for ColabFold confidence metrics")
     for table_name, columns in new_columns.items():
         for column_name, column_type in columns:
             structure_db._exec('''ALTER TABLE %s ADD COLUMN %s %s''' % (table_name, column_name, column_type))
-
-    progress.update("Recording the structure-prediction engine")
-    # all pre-v3 databases were created with MODELLER (external structures were also stored through
-    # the MODELLER code path), so we tag them as such
-    structure_db.set_meta_value('engine', 'modeller')
 
     progress.update("Updating the version")
     structure_db.remove_meta_key_value_pair('version')
@@ -56,8 +79,9 @@ def migrate(db_path):
     progress.end()
 
     run.info_single("Your structure db is now version %s. It gained a few columns to store ColabFold "
-                    "confidence metrics, and now records which engine was used to predict its "
-                    "structures." % next_version, nl_after=1, nl_before=1, mc='green')
+                    "confidence metrics, and now records which engine was used to make its structures "
+                    "(anvi'o determined this database's engine to be '%s')." % (next_version, engine),
+                    nl_after=1, nl_before=1, mc='green')
 
 
 if __name__ == '__main__':
