@@ -356,6 +356,99 @@ class Mapper:
         return drawn
 
 
+    def map_enzymes_txt_kos(
+        self,
+        enzymes_txt: str,
+        output_dir: str,
+        pathway_numbers: Iterable[str] = None,
+        color_hexcode: str = '#2ca02c',
+        draw_maps_lacking_kos: bool = False
+    ) -> Dict[str, bool]:
+        """
+        Draw pathway maps highlighting KOs present in an enzymes text file.
+
+        The enzymes text file is a tab-delimited file in the format accepted by
+        'anvi-reaction-network --enzymes-txt' and 'anvi-estimate-metabolism --enzymes-txt'. KO IDs
+        are read directly from the rows where 'source' is 'KOfam', so no reference databases are
+        required. This allows pathway maps to be drawn directly from a custom enzyme list.
+
+        Parameters
+        ==========
+        enzymes_txt : str
+            Path to a tab-delimited enzymes file with the required columns 'gene_id',
+            'enzyme_accession', and 'source'. KO IDs are taken from rows where 'source' is 'KOfam'.
+
+        output_dir : str
+            Path to the output directory in which pathway map PDF files are drawn.
+
+        pathway_numbers : Iterable[str], None
+            Regex patterns to match the ID numbers of the drawn pathway maps. The default of None
+            draws all available pathway maps in the KEGG data directory.
+
+        color_hexcode : str, '#2ca02c'
+            Color for reactions containing KOs from the enzymes file. Can also be 'original'.
+
+        draw_maps_lacking_kos : bool, False
+            If False, only draw maps containing any of the KOs in the enzymes file.
+
+        Returns
+        =======
+        Dict[str, bool]
+            Keys are pathway numbers. Values are True if the map was drawn, False if not.
+        """
+        filesnpaths.is_file_tab_delimited(enzymes_txt)
+
+        self.progress.new("Loading KO data from the enzymes text file")
+        self.progress.update("...")
+
+        enzymes_df = pd.read_csv(enzymes_txt, sep='\t')
+        required_columns = {'gene_id', 'enzyme_accession', 'source'}
+        missing_columns = required_columns - set(enzymes_df.columns)
+        if missing_columns:
+            self.progress.end()
+            raise ConfigError(
+                f"The enzymes text file at '{enzymes_txt}' is missing the following required "
+                f"columns: {', '.join(sorted(missing_columns))}. The file must contain at least "
+                f"'gene_id', 'enzyme_accession', and 'source' columns, as described by the "
+                f"enzymes-txt artifact documentation."
+            )
+
+        # Blank cells are read by pandas as NaN, so drop them to keep the KO count accurate and to
+        # ensure the empty-input check below fires when no real accessions are present.
+        ko_ids = set(
+            enzymes_df.loc[enzymes_df['source'] == 'KOfam', 'enzyme_accession'].dropna()
+        )
+
+        self.progress.end()
+
+        if not ko_ids:
+            present_sources = sorted(enzymes_df['source'].astype(str).unique())
+            if present_sources:
+                sources_str = ', '.join(f"'{source}'" for source in present_sources)
+                sources_statement = f"Sources present in the file: {sources_str}."
+            else:
+                sources_statement = "In fact, the file does not contain any data rows."
+            raise ConfigError(
+                f"No KOfam annotations were found in the enzymes text file at '{enzymes_txt}' "
+                f"(the value in the 'source' column must be 'KOfam'), so there is nothing to draw. "
+                f"{sources_statement}"
+            )
+
+        self.run.info("KOs found in enzymes text file", len(ko_ids))
+
+        drawn = self._map_kos_fixed_colors(
+            ko_ids,
+            output_dir,
+            pathway_numbers=pathway_numbers,
+            color_hexcode=color_hexcode,
+            draw_maps_lacking_kos=draw_maps_lacking_kos
+        )
+        count = sum(drawn.values()) if drawn else 0
+        self.run.info("Number of maps drawn", count)
+
+        return drawn
+
+
     def map_genomes_storage_genome_kos(
         self,
         genomes_storage_db: str,
