@@ -839,28 +839,31 @@ class StructureSuperclass(object):
                              "gene." % corresponding_gene_call)
             return structure_info
 
-        structure_info['results'] = self.create_results_dict_for_colabfold_structure(corresponding_gene_call, pdb_path, scores_path)
+        # parse the scores JSON once here and pass the dict to both consumers below
+        scores = self.read_colabfold_scores(scores_path)
+
+        structure_info['results'] = self.create_results_dict_for_colabfold_structure(corresponding_gene_call, pdb_path, scores)
         structure_info['has_structure'] = True
 
         residue_info = self.get_gene_contribution_to_residue_info_table(
             corresponding_gene_call=corresponding_gene_call,
             pdb_filepath=pdb_path,
         )
-        structure_info['residue_info'] = self.add_plddt_to_residue_info(residue_info, scores_path)
+        structure_info['residue_info'] = self.add_plddt_to_residue_info(residue_info, scores)
 
         return structure_info
 
 
-    def create_results_dict_for_colabfold_structure(self, corresponding_gene_call, pdb_path, scores_path):
+    def create_results_dict_for_colabfold_structure(self, corresponding_gene_call, pdb_path, scores):
         """Build a results dict (mirroring the MODELLER/external contract) for a ColabFold structure
 
         ColabFold reports confidence with per-residue pLDDT and model-level pTM instead of MODELLER's
         DOPE/GA341/molpdf scores. Here we record the model-level metrics; per-residue pLDDT is added to
-        the residue_info table separately (see add_plddt_to_residue_info).
+        the residue_info table separately (see add_plddt_to_residue_info). `scores` is the parsed
+        ColabFold scores dict (or None if it was missing).
         """
 
         mean_plddt, ptm = None, None
-        scores = self.read_colabfold_scores(scores_path)
         if scores is not None:
             plddt = scores.get('plddt', [])
             if len(plddt):
@@ -878,10 +881,12 @@ class StructureSuperclass(object):
         }
 
 
-    def add_plddt_to_residue_info(self, residue_info, scores_path):
-        """Attach ColabFold's per-residue pLDDT to the residue_info dataframe, aligned by codon_order_in_gene"""
+    def add_plddt_to_residue_info(self, residue_info, scores):
+        """Attach ColabFold's per-residue pLDDT to the residue_info dataframe, aligned by codon_order_in_gene
 
-        scores = self.read_colabfold_scores(scores_path)
+        `scores` is the parsed ColabFold scores dict (or None if it was missing).
+        """
+
         if scores is None:
             return residue_info
 
