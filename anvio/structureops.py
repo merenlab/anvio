@@ -528,12 +528,6 @@ class StructureSuperclass(object):
             self.run.warning("It was requested that amino acid residue annotation with DSSP be skipped. A bold move only "
                              "an expert could justify... Anvi'o's respect for you increases slightly.")
 
-        if self.run_mode == 'colabfold':
-            self.run.warning("Anvi'o will use 'ColabFold' by Mirdita et al. (DOI: 10.1038/s41592-022-01488-1), which "
-                             "in turn builds on 'AlphaFold2' by Jumper et al. (DOI: 10.1038/s41586-021-03819-2), to "
-                             "predict protein structures. If you publish your findings, please do not forget to properly "
-                             "credit their work.", lc='green', header="CITATION")
-
         if self.run_mode == 'modeller':
             # Perform a rather extensive check on whether the MODELLER executable is going to work. We
             # do this here so we can initiate MODELLER.MODELLER with lazy_init so it does not do this
@@ -550,6 +544,9 @@ class StructureSuperclass(object):
             # run/progress (not quiet ones) so the user sees the driver's messages -- notably the GPU
             # check and the ColabFold prediction progress.
             self.colabfold = colabfold.ColabFold(self.args, run=self.run, progress=self.progress)
+            self.run.warning("Anvi'o will use ColabFold to predict protein structures. If you publish your findings, "
+                             "please do not forget to properly credit the work behind it -- %s" % self.colabfold.citation,
+                             lc='green', header="CITATION")
             self.run.info_single("Anvi'o is set up to predict structures with ColabFold using the %s MSA source"
                                  % self.colabfold.msa_source, nl_after=1, nl_before=1, mc='green')
         elif self.run_mode == 'external':
