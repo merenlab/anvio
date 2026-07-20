@@ -810,6 +810,16 @@ class StructureSuperclass(object):
                               "there is nothing to do. Please check the ColabFold log file in the output directory to "
                               "find out what happened. Bye :'(")
 
+        # clean up temporary files, unless the user is debugging. The query FASTA always lives in a temp
+        # directory; the ColabFold output directory is temporary only when the user did not ask to keep
+        # it with --dump-dir
+        if not anvio.DEBUG:
+            fasta_tmp_dir = os.path.dirname(fasta_path)
+            if filesnpaths.is_file_exists(fasta_tmp_dir, dont_raise=True):
+                shutil.rmtree(fasta_tmp_dir, ignore_errors=True)
+            if not self.full_modeller_output and filesnpaths.is_file_exists(out_dir, dont_raise=True):
+                shutil.rmtree(out_dir, ignore_errors=True)
+
         self.structure_db.disconnect()
         self.run.info("Structure database", self.structure_db_path)
 
