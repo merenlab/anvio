@@ -1188,7 +1188,7 @@ class StructureSuperclass(object):
                     "codon":               [],
                     "amino_acid":          []}
 
-        last_codon = nt_sequence[:-3]
+        last_codon = nt_sequence[-3:]
         if last_codon in ['TAA', 'TAG', 'TGA']:
             gene_length_in_codons = len(nt_sequence)//3 - 1 # subtract 1 because it's the stop codon
         else:
