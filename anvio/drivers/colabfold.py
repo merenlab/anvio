@@ -83,6 +83,10 @@ class ColabFold:
 
 
     def sanity_check(self):
+        if self.num_models is not None and not (1 <= self.num_models <= 5):
+            raise ConfigError("ColabFold can predict between 1 and 5 models per protein, but you asked for %d with "
+                              "--num-models. Please pick a value in that range." % self.num_models)
+
         if self.local_db and self.use_msa_server:
             raise ConfigError("You asked ColabFold to use both a local database (--colabfold-db) and the "
                               "public MSA server (--colabfold-msa-server) for the MSA step. Please pick only one.")
