@@ -214,7 +214,8 @@ class ColabFold:
 
         self.progress.new('ColabFold')
         self.progress.update('Generating MSAs locally with %s (this is CPU-heavy) ...' % self.search_program)
-        ret_val = utils.run_command(cmd_line, log_file_path)
+        # append so we don't clobber a log the prediction step will also write to (see process())
+        ret_val = utils.run_command(cmd_line, log_file_path, remove_log_file_if_exists=False)
         self.progress.end()
 
         if ret_val != 0 or not len(glob.glob(os.path.join(msa_dir, '*.a3m'))):
@@ -258,7 +259,8 @@ class ColabFold:
 
         self.progress.new('ColabFold')
         self.progress.update('Predicting structures with %s (this is GPU-heavy) ...' % self.batch_program)
-        ret_val = utils.run_command(cmd_line, log_file_path)
+        # append so we don't clobber the MSA step's log (both steps share one log; see process())
+        ret_val = utils.run_command(cmd_line, log_file_path, remove_log_file_if_exists=False)
         self.progress.end()
 
         if ret_val != 0:
@@ -276,6 +278,12 @@ class ColabFold:
 
         filesnpaths.gen_output_directory(out_dir, delete_if_exists=False, dont_warn=True)
         log_file_path = os.path.join(out_dir, '00_log.txt')
+
+        # the MSA and prediction steps both append to this single log (each writing its own command
+        # header + output), so we start it fresh here in case a previous run left one behind (e.g.
+        # when reusing a --dump-dir)
+        if filesnpaths.is_file_exists(log_file_path, dont_raise=True):
+            os.remove(log_file_path)
 
         self.run.info('Log file path', log_file_path)
 
