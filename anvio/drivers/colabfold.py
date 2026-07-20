@@ -21,6 +21,7 @@ a single batched run over all genes of interest.
 
 import os
 import glob
+import shlex
 
 import anvio
 import anvio.utils as utils
@@ -257,7 +258,8 @@ class ColabFold:
             cmd_line += ['--amber', '--num-relax', '1']
 
         if self.additional_params:
-            cmd_line += self.additional_params.split()
+            # shlex.split (not str.split) so quoted values with spaces, e.g. paths, survive intact
+            cmd_line += shlex.split(self.additional_params)
 
         self.run.info('ColabFold predict cmd', ' '.join([str(x) for x in cmd_line]), quiet=(not anvio.DEBUG))
 
