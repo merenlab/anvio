@@ -15,9 +15,11 @@ cp ${files}/mock_data_for_pangenomics/*.db ${output_dir}/
 cp ${files}/mock_data_for_pangenomics/external-genomes.txt ${output_dir}/
 cp ${files}/example_description.md ${output_dir}/
 cp ${files}/mock_data_for_pangenomics/group-information.txt ${output_dir}/pan-group-information.txt
+cp ${files}/data/input_files/minimal_enzymes_input.txt ${output_dir}/
 awk -F'\t' 'NR==1 {print $0} NR>1 {$1=$1".db"; print $0}' OFS='\t' \
 ${output_dir}/pan-group-information.txt > ${output_dir}/contigs-db-group-information.txt
 cd ${output_dir}/
+mkdir enzymes_txt_kos
 mkdir contigs_db_kos
 mkdir contigs_dbs_kos_count
 mkdir pan_db_kos_genome_count_emphasize_shared
@@ -63,6 +65,15 @@ args+=( "--no-progress" )
 anvi-reaction-network "${args[@]}"
 
 pathway_numbers=( "00010" "01100" "01200" )
+
+INFO "Testing mapping KOs from an enzymes text file"
+args=()
+args+=( "--enzymes-txt" "minimal_enzymes_input.txt" )
+args+=( "--output-dir" ${output_dir}/enzymes_txt_kos )
+args+=( "--ko" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
 
 INFO "Testing mapping KOs from a genomic contigs database"
 args=()

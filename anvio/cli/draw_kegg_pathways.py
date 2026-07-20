@@ -24,7 +24,8 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = VERSION
 __requires__ = ['kegg-data']
-__can_use__ = ['contigs-db', 'external-genomes', 'pan-db', 'genomes-storage-db', 'reaction-network']
+__can_use__ = ['contigs-db', 'external-genomes', 'pan-db',
+               'genomes-storage-db', 'reaction-network', 'enzymes-txt']
 __provides__ = ['kegg-pathway-map']
 __description__ = DESCRIPTION
 
@@ -32,11 +33,22 @@ __description__ = DESCRIPTION
 def get_args() -> Namespace:
     parser = ArgumentParser(description=DESCRIPTION)
 
+    groupTXT = parser.add_argument_group(
+        "ENZYMES TEXT FILE",
+        "Display KO data from a tab-delimited enzymes text file. This allows pathway maps to be "
+        "drawn directly from a custom enzyme list."
+    )
+    groupTXT.add_argument(*A('enzymes-txt'), **K('enzymes-txt', {'help':
+        "Path to a tab-delimited enzymes text file with the required columns 'gene_id', "
+        "'enzyme_accession', and 'source'. KO IDs are extracted from the rows where 'source' is "
+        "'KOfam' and used to highlight reactions in pathway maps. Use '--ko' to activate KO "
+        "drawing when using this option."
+    }))
+
     groupJSON = parser.add_argument_group(
         "REACTION NETWORK JSON",
         "Display KO data from a reaction network JSON file produced by 'anvi-reaction-network "
-        "--enzymes-txt' or 'anvi-get-metabolic-model-file'. This bypasses the need for a contigs "
-        "database and allows pathway maps to be drawn from any custom enzyme list."
+        "--enzymes-txt' or 'anvi-get-metabolic-model-file'."
     )
     groupJSON.add_argument(
         '--reaction-network-json', type=str, metavar='FILE', help=
@@ -350,6 +362,24 @@ def map_json_network_ko_data(args: Namespace, mapper: Mapper) -> None:
         draw_maps_lacking_kos=args.draw_bare_maps
     )
 
+def map_enzymes_txt_ko_data(args: Namespace, mapper: Mapper) -> None:
+    """Draw KO data from an enzymes text file."""
+    map_enzymes_txt_kos = mapper.map_enzymes_txt_kos
+
+    if args.set_color is None or args.set_color is True:
+        pass
+    else:
+        map_enzymes_txt_kos = functools.partial(
+            map_enzymes_txt_kos, color_hexcode=args.set_color
+        )
+
+    map_enzymes_txt_kos(
+        args.enzymes_txt,
+        args.output_dir,
+        pathway_numbers=args.pathway_numbers,
+        draw_maps_lacking_kos=args.draw_bare_maps
+    )
+
 def map_single_contigs_db_ko_data(args: Namespace, mapper: Mapper) -> None:
     """Draw KO data from a single contigs database source in the absence of a colormap."""
     map_contigs_database_kos = mapper.map_contigs_database_kos
@@ -595,6 +625,10 @@ def main() -> None:
                         categorize_files=args.categorize_files)
         performed = False
 
+        if args.enzymes_txt is not None and args.ko is True:
+            map_enzymes_txt_ko_data(args, mapper)
+            performed = True
+
         if args.reaction_network_json is not None and args.ko is True:
             map_json_network_ko_data(args, mapper)
             performed = True
@@ -625,8 +659,8 @@ def main() -> None:
         if not performed:
             raise ConfigError(
                 "No task was performed! The minimum requirements are a data source (such as "
-                "`--reaction-network-json`, `--contigs-dbs`, or `--pan-db`) and a data type to "
-                "draw, such as `--ko`."
+                "`--enzymes-txt`, `--reaction-network-json`, `--contigs-dbs`, or `--pan-db`) and a "
+                "data type to draw, such as `--ko`."
             )
 
     except ConfigError as e:

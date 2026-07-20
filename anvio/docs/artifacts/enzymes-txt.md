@@ -1,6 +1,6 @@
 This artifact is a TAB-delimited file that describes a set of enzymes.
 
-The user can generate this file to define an arbitrary set of enzymes that they want to estimate metabolism on, using the program %(anvi-estimate-metabolism)s.
+The user can generate this file to define an arbitrary set of enzymes that they want to estimate metabolism on, using the program %(anvi-estimate-metabolism)s. The file can be used to draw KEGG pathway maps highlighting its KOfam annotations with %(anvi-draw-kegg-pathways)s and to build a metabolic reaction network with %(anvi-reaction-network)s.
 
 
 ## Minimal file format
