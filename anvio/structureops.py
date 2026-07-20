@@ -539,11 +539,17 @@ class StructureSuperclass(object):
             # Check and populate modeller databases if required
             MODELLER.MODELLER(self.args, filesnpaths.get_temp_file_path(), check_db_only=True)
         elif self.run_mode == 'colabfold':
+            # refuse to overwrite an existing --dump-dir (it is where ColabFold's raw output will go)
+            if self.full_modeller_output and filesnpaths.is_file_exists(self.full_modeller_output, dont_raise=True):
+                raise ConfigError("The --dump-dir you provided ('%s') already exists. Anvi'o will not overwrite it. "
+                                  "Please provide a path that does not exist yet." % self.full_modeller_output)
+
             # instantiating the driver validates the conda env / ColabFold programs and the MSA source
             # choice, so we do it up front (once) and reuse it during the batched run. We pass our own
             # run/progress (not quiet ones) so the user sees the driver's messages -- notably the GPU
             # check and the ColabFold prediction progress.
             self.colabfold = colabfold.ColabFold(self.args, run=self.run, progress=self.progress)
+
             self.run.warning("Anvi'o will use ColabFold to predict protein structures. If you publish your findings, "
                              "please do not forget to properly credit the work behind it -- %s" % self.colabfold.citation,
                              lc='green', header="CITATION")
