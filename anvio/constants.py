@@ -66,6 +66,8 @@ default_scgs_for_taxonomy = ['Ribosomal_L1',
 default_hmm_source_for_scg_taxonomy = set(["Bacteria_71"])
 
 default_trna_taxonomy_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/TRNA_TAXONOMY')
+
+default_user_annotation_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/USER_ANNOTATION')
 default_anticodons_for_taxonomy = ['AAA', 'AAC', 'AAG', 'AAT', 'ACA', 'ACC', 'ACG', 'ACT', 'AGA', 'AGC',
                                    'AGG', 'AGT', 'ATA', 'ATC', 'ATG', 'ATT', 'CAA', 'CAC', 'CAG', 'CAT',
                                    'CCA', 'CCC', 'CCG', 'CCT', 'CGA', 'CGC', 'CGG', 'CGT', 'CTC', 'CTG',
