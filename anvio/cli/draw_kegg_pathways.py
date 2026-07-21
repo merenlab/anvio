@@ -10,6 +10,7 @@ import pandas as pd
 
 from argparse import Namespace
 
+import anvio.utils as utils
 import anvio.filesnpaths as filesnpaths
 
 from anvio.keggmapping import Mapper
@@ -24,7 +25,8 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = VERSION
 __requires__ = ['kegg-data']
-__can_use__ = ['contigs-db', 'external-genomes', 'pan-db', 'genomes-storage-db', 'reaction-network']
+__can_use__ = ['contigs-db', 'external-genomes', 'pan-db',
+               'genomes-storage-db', 'reaction-network', 'enzymes-txt']
 __provides__ = ['kegg-pathway-map']
 __description__ = DESCRIPTION
 
@@ -32,11 +34,26 @@ __description__ = DESCRIPTION
 def get_args() -> Namespace:
     parser = ArgumentParser(description=DESCRIPTION)
 
+    groupTXT = parser.add_argument_group(
+        "ENZYMES TEXT FILE",
+        "Display KO data from a tab-delimited enzymes text file. This allows pathway maps to be "
+        "drawn directly from a custom enzyme list."
+    )
+    groupTXT.add_argument(*A('enzymes-txt'), **K('enzymes-txt', {'help':
+        "Path to a tab-delimited enzymes text file with the required columns 'gene_id', "
+        "'enzyme_accession', and 'source'. KO IDs are extracted from the rows where 'source' is "
+        "'KOfam' and used to highlight reactions in pathway maps. Use '--ko' to activate KO "
+        "drawing when using this option. To compare KOs from multiple origins (e.g., different "
+        "genomes or samples) in the same maps, include an additional 'sample' column assigning "
+        "each row to a sample of origin. When this column is present, reactions are compared "
+        "across samples exactly as they are across multiple contigs databases (see '--contigs-dbs' "
+        "and the COLOR, GROUPS, and OUTPUT options)."
+    }))
+
     groupJSON = parser.add_argument_group(
         "REACTION NETWORK JSON",
         "Display KO data from a reaction network JSON file produced by 'anvi-reaction-network "
-        "--enzymes-txt' or 'anvi-get-metabolic-model-file'. This bypasses the need for a contigs "
-        "database and allows pathway maps to be drawn from any custom enzyme list."
+        "--enzymes-txt' or 'anvi-get-metabolic-model-file'."
     )
     groupJSON.add_argument(
         '--reaction-network-json', type=str, metavar='FILE', help=
@@ -91,9 +108,11 @@ def get_args() -> Namespace:
     groupGROUP.add_argument(
         *A('groups-txt'), **K('groups-txt', {'help':
         "A tab-delimited text file specifying which group each item belongs to. Items may be "
-        "contigs database files, if provided with '--contigs-dbs', or the names of genomes in a "
-        "pangenomic database, if provided with '--pan-db'. The first column can have any header, "
-        "e.g., 'contigs_db', 'pan_genome', or 'source'. The second column, headed 'group', must "
+        "contigs database files, if provided with '--contigs-dbs', the names of genomes in a "
+        "pangenomic database, if provided with '--pan-db', or the names of samples in the 'sample' "
+        "column of an enzymes text file, if provided with '--enzymes-txt'. The first column can "
+        "have any header, e.g., 'contigs_db', 'pan_genome', 'sample', or 'source'. The second "
+        "column, headed 'group', must "
         "contain the group name for each item. Each item can only be associated with a single "
         "group. It is recommended that group names be single words without fancy characters, such "
         "as 'HIGH_TEMPERATURE' or 'LOW_FITNESS' rather than 'my group #1' or 'IS-THIS-OK?'. The "
@@ -350,6 +369,170 @@ def map_json_network_ko_data(args: Namespace, mapper: Mapper) -> None:
         draw_maps_lacking_kos=args.draw_bare_maps
     )
 
+def enzymes_txt_has_sample_column(enzymes_txt: str) -> bool:
+    """Return True if an enzymes text file has a 'sample' column,
+    activating multi-sample drawing."""
+    filesnpaths.is_file_tab_delimited(enzymes_txt)
+    columns = utils.get_columns_of_TAB_delim_file(enzymes_txt, include_first_column=True)
+    return 'sample' in columns
+
+def map_enzymes_txt_ko_data(args: Namespace, mapper: Mapper) -> None:
+    """Draw KO data from an enzymes text file lacking a 'sample' column, using a single color."""
+    # Flags that only make sense when comparing KOs across multiple samples require a 'sample'
+    # column. Rather than silently ignoring them, tell the user what is missing. Note that
+    # '--draw-individual-files' and '--draw-grid' are 'nargs' arguments that default to None and
+    # become an empty list when used as bare flags, and '--group-threshold' can legitimately be 0,
+    # so presence is tested with 'is not None'.
+    used_multi_sample_args: list = []
+    if args.groups_txt is not None:
+        used_multi_sample_args.append('--groups-txt')
+    if args.group_threshold is not None:
+        used_multi_sample_args.append('--group-threshold')
+    if args.draw_individual_files is not None:
+        used_multi_sample_args.append('--draw-individual-files')
+    if args.draw_grid is not None:
+        used_multi_sample_args.append('--draw-grid')
+    if args.colormap is not None:
+        used_multi_sample_args.append('--colormap')
+    if args.colormap_scheme is not None:
+        used_multi_sample_args.append('--colormap-scheme')
+    if args.reverse_overlay:
+        used_multi_sample_args.append('--reverse-overlay')
+    if args.group_colormap is not None:
+        used_multi_sample_args.append('--group-colormap')
+    if args.group_reverse_overlay:
+        used_multi_sample_args.append('--group-reverse-overlay')
+
+    if used_multi_sample_args:
+        message = ', '.join(f"'{flag}'" for flag in used_multi_sample_args)
+        raise ConfigError(
+            f"The following arguments only apply when comparing KOs across multiple samples, but "
+            f"the enzymes text file, '{args.enzymes_txt}', does not have a 'sample' column to "
+            f"define samples of origin: {message}. Either add a 'sample' column to the enzymes "
+            f"text file assigning each row to a sample, or remove these arguments."
+        )
+
+    map_enzymes_txt_kos = mapper.map_enzymes_txt_kos
+
+    if args.set_color is None or args.set_color is True:
+        pass
+    else:
+        map_enzymes_txt_kos = functools.partial(
+            map_enzymes_txt_kos, color_hexcode=args.set_color
+        )
+
+    map_enzymes_txt_kos(
+        args.enzymes_txt,
+        args.output_dir,
+        pathway_numbers=args.pathway_numbers,
+        draw_maps_lacking_kos=args.draw_bare_maps
+    )
+
+def map_multiple_enzymes_txt_samples_ko_data(args: Namespace, mapper: Mapper) -> None:
+    """Draw KO data across the samples defined in an enzymes text file's 'sample' column."""
+    map_enzymes_txt_samples_kos = mapper.map_enzymes_txt_samples_kos
+
+    if args.draw_individual_files is None:
+        pass
+    elif len(args.draw_individual_files) == 0:
+        # Draw maps for all samples or groups.
+        map_enzymes_txt_samples_kos = functools.partial(
+            map_enzymes_txt_samples_kos, draw_individual_files=True
+        )
+    else:
+        # Draw maps for select samples or groups.
+        map_enzymes_txt_samples_kos = functools.partial(
+            map_enzymes_txt_samples_kos, draw_individual_files=args.draw_individual_files
+        )
+
+    if args.draw_grid is None:
+        pass
+    elif len(args.draw_grid) == 0:
+        # Draw a grid of maps including all samples or all groups.
+        map_enzymes_txt_samples_kos = functools.partial(
+            map_enzymes_txt_samples_kos, draw_grid=True
+        )
+    else:
+        # Include select samples or select groups.
+        map_enzymes_txt_samples_kos = functools.partial(
+            map_enzymes_txt_samples_kos, draw_grid=args.draw_grid
+        )
+
+    assert not ((args.set_color is not None) and (args.colormap is not None))
+
+    if args.colormap is None:
+        # Dynamically color reactions by sample or group in unified maps using the default colormap.
+        pass
+    elif len(args.colormap) == 1:
+        # Use the provided colormap name.
+        map_enzymes_txt_samples_kos = functools.partial(
+            map_enzymes_txt_samples_kos, colormap=args.colormap[0]
+        )
+    else:
+        # Use the provided colormap name and limits.
+        assert len(args.colormap) == 3
+        min_limit = float(args.colormap[1])
+        max_limit = float(args.colormap[2])
+        map_enzymes_txt_samples_kos = functools.partial(
+            map_enzymes_txt_samples_kos,
+            colormap=args.colormap[0],
+            colormap_limits=(min_limit, max_limit)
+        )
+
+    if args.colormap_scheme is None:
+        # The scheme is determined automatically by the number of samples or groups.
+        pass
+    else:
+        map_enzymes_txt_samples_kos = functools.partial(
+            map_enzymes_txt_samples_kos, colormap_scheme=args.colormap_scheme
+        )
+
+    if args.set_color is None:
+        # Dynamically color reactions in unified maps by number of samples or groups.
+        pass
+    elif args.set_color is True:
+        # Color reactions in unified maps the default static color.
+        map_enzymes_txt_samples_kos = functools.partial(
+            map_enzymes_txt_samples_kos, colormap=False
+        )
+    else:
+        # Use the provided color or the original map colors.
+        map_enzymes_txt_samples_kos = functools.partial(
+            map_enzymes_txt_samples_kos, colormap=False, color_hexcode=args.set_color
+        )
+
+    if args.groups_txt:
+        if args.group_colormap is None:
+            # Dynamically color reactions by sample in individual group maps using the default
+            # colormap.
+            pass
+        elif len(args.group_colormap) == 1:
+            # Use the provided group colormap name.
+            map_enzymes_txt_samples_kos = functools.partial(
+                map_enzymes_txt_samples_kos, group_colormap=args.group_colormap[0]
+            )
+        else:
+            # Use the provided group colormap name and limits.
+            assert len(args.group_colormap) == 3
+            min_limit = float(args.group_colormap[1])
+            max_limit = float(args.group_colormap[2])
+            map_enzymes_txt_samples_kos = functools.partial(
+                map_enzymes_txt_samples_kos,
+                group_colormap=args.group_colormap[0],
+                group_colormap_limits=(min_limit, max_limit)
+            )
+
+    map_enzymes_txt_samples_kos(
+        args.enzymes_txt,
+        args.output_dir,
+        groups_txt=args.groups_txt,
+        group_threshold=args.group_threshold,
+        pathway_numbers=args.pathway_numbers,
+        reverse_overlay=args.reverse_overlay,
+        group_reverse_overlay=args.group_reverse_overlay,
+        draw_maps_lacking_kos=args.draw_bare_maps
+    )
+
 def map_single_contigs_db_ko_data(args: Namespace, mapper: Mapper) -> None:
     """Draw KO data from a single contigs database source in the absence of a colormap."""
     map_contigs_database_kos = mapper.map_contigs_database_kos
@@ -595,6 +778,13 @@ def main() -> None:
                         categorize_files=args.categorize_files)
         performed = False
 
+        if args.enzymes_txt is not None and args.ko is True:
+            if enzymes_txt_has_sample_column(args.enzymes_txt):
+                map_multiple_enzymes_txt_samples_ko_data(args, mapper)
+            else:
+                map_enzymes_txt_ko_data(args, mapper)
+            performed = True
+
         if args.reaction_network_json is not None and args.ko is True:
             map_json_network_ko_data(args, mapper)
             performed = True
@@ -625,8 +815,8 @@ def main() -> None:
         if not performed:
             raise ConfigError(
                 "No task was performed! The minimum requirements are a data source (such as "
-                "`--reaction-network-json`, `--contigs-dbs`, or `--pan-db`) and a data type to "
-                "draw, such as `--ko`."
+                "`--enzymes-txt`, `--reaction-network-json`, `--contigs-dbs`, or `--pan-db`) and a "
+                "data type to draw, such as `--ko`."
             )
 
     except ConfigError as e:

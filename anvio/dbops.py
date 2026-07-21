@@ -58,8 +58,7 @@ from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
 
-from anvio.pangenomegraphmaster import PangenomeGraphManager
-from anvio.topologicallayout import TopologicalLayout
+from anvio.pangenomegraphmanager import PangenomeGraphManager
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -2120,7 +2119,13 @@ class PanSuperclass(object):
 
             for genome_name in gene_clusters_dict[gene_cluster_name]:
                 sequences[gene_cluster_name][genome_name] = {}
+                # non-coding gene calls (tRNA/rRNA) live in the pan-graph but
+                # have no entry in genomes-storage; skip them so the rest of
+                # the cluster still returns a usable dict.
+                known_gids = self.genomes_storage.gene_info.get(genome_name, {}) if no_sequence_GCs_are_OK else None
                 for gene_callers_id in gene_clusters_dict[gene_cluster_name][genome_name]:
+                    if known_gids is not None and gene_callers_id not in known_gids:
+                        continue
                     sequence = self.genomes_storage.get_gene_sequence(genome_name, gene_callers_id, report_DNA_sequences=report_DNA_sequences)
 
                     if not skip_alignments and self.gene_clusters_gene_alignments_available:
@@ -2724,12 +2729,21 @@ class PanSuperclass(object):
             return
 
         # FIXME WE HAVE TO STORE AVAILABLE FUNCTIONS IN GENOMES STORAGE ATTRs!!!! THIS IS RIDICULOUS
+        # Non-coding gene calls (tRNAs, rRNAs) live in CONTIGS.db but have no
+        # amino-acid sequence and are therefore absent from genomes-storage.
+        # In the synteny pan-graph workflow these gids do appear in
+        # `self.gene_clusters[...]`, so skip any gid not in `gene_info` rather
+        # than crashing on the lookup. For the classic pan workflow every gid
+        # in `self.gene_clusters` has an AA sequence and the check is a no-op.
         self.gene_clusters_function_sources.clear()
         for gene_cluster_id in self.gene_clusters:
             self.gene_clusters_functions_dict[gene_cluster_id] = {}
             for genome_name in self.genome_names:
                 self.gene_clusters_functions_dict[gene_cluster_id][genome_name] = {}
+                known_gids = self.genomes_storage.gene_info.get(genome_name, {})
                 for gene_callers_id in self.gene_clusters[gene_cluster_id][genome_name]:
+                    if gene_callers_id not in known_gids:
+                        continue
                     functions = self.genomes_storage.get_gene_functions(genome_name, gene_callers_id)
                     self.gene_clusters_functions_dict[gene_cluster_id][genome_name][gene_callers_id] = functions
 
@@ -2744,7 +2758,8 @@ class PanSuperclass(object):
                                  "https://github.com/merenlab/anvio/issues/1196", nl_after=1, mc='green')
             for gene_cluster_id in self.gene_clusters:
                 for genome_name in self.genome_names:
-                    for gene_callers_id in self.gene_clusters[gene_cluster_id][genome_name]:
+                    # only tag gids we actually stored functions for above
+                    for gene_callers_id in self.gene_clusters_functions_dict[gene_cluster_id][genome_name]:
                         self.gene_clusters_functions_dict[gene_cluster_id][genome_name][gene_callers_id]['IDENTITY'] = '%s|||%s' % (gene_cluster_id, gene_cluster_id)
             self.gene_clusters_function_sources.update(['IDENTITY'])
 
@@ -3568,7 +3583,13 @@ class PanGraphSuperclass(PanSuperclass):
 
         self.nodes = pan_graph_db.db.get_table_as_dict(t.pan_graph_nodes_table_name)
         self.edges = pan_graph_db.db.get_table_as_dict(t.pan_graph_edges_table_name)
-        self.regions = pan_graph_db.db.get_table_as_dict(t.pan_graph_regions_table_name)
+        # region_id is a 1-based prefixed string ("R_1", "R_2", ...) per
+        # component since pangraph_db v7, and component_id is "CP_0001"/"CP_0002"/...;
+        # uniqueness comes from the (component_id, region_id) pair, so we
+        # avoid get_table_as_dict (which would collide on the first column).
+        regions_df = pan_graph_db.db.get_table_as_dataframe(t.pan_graph_regions_table_name, error_if_no_data=False)
+        self.regions = {(str(row['component_id']), str(row['region_id'])): row.to_dict()
+                        for _, row in regions_df.iterrows()}
         self.genome_distances = pan_graph_db.db.get_table_as_dict(t.pan_graph_genome_distances_table_name)
         self.states = pan_graph_db.db.get_table_as_dict(t.states_table_name)
 
@@ -3643,24 +3664,19 @@ class PanGraphSuperclass(PanSuperclass):
         gene_cluster_grouping_threshold = state_dict['graph_layout']['grouping_threshold']
         max_edge_length_filter = state_dict['graph_layout']['max_edge_length']
         groupcompress = state_dict['graph_layout']['group_compression']
+        component = state_dict['graph_layout'].get('component', 'CP_0001')
 
-        node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(
-            F=self.pangenome_graph.graph,
-            gene_cluster_grouping_threshold=gene_cluster_grouping_threshold,
-            groupcompress=groupcompress,
-        )
-
-        self.pangenome_graph.set_edge_positions(edge_positions)
-        self.pangenome_graph.set_node_positions(node_positions)
-        self.pangenome_graph.set_node_groups(node_groups)
+        self.pangenome_graph.layout_all_components(
+            gene_cluster_grouping_threshold, groupcompress)
         self.pangenome_graph.cut_edges(max_edge_length_filter)
 
-        region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize()
-        self.synteny_gene_cluster_summary_info = pd.merge(nodes_df.reset_index(drop=False), region_sides_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster').to_dict(orient='index')
-        self.region_sides_info = region_sides_df.reset_index()[['region_id', 'x_min', 'x_max', 'num_synteny_gene_clusters', 'region']].set_index('region_id').to_dict(orient='index')
+        region_sides_df, _ = self.pangenome_graph.summarize_all_components(
+            scope=self.p_meta.get('region_scope', 'global'))
+        self._refresh_region_caches(region_sides_df)
+        self.p_meta['component'] = str(component)
 
 
-    def rerun_state(self, gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter):
+    def rerun_state(self, gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter, component='CP_0001'):
 
         args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
         items_layer_order = TableForLayerOrders(args)
@@ -3677,30 +3693,108 @@ class PanGraphSuperclass(PanSuperclass):
             # No layer order exists - keep current newick (likely empty)
             pass
 
-        node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(
-            F=self.pangenome_graph.graph,
-            gene_cluster_grouping_threshold=gene_cluster_grouping_threshold,
-            groupcompress=groupcompress,
-        )
-
-        self.pangenome_graph.set_edge_positions(edge_positions)
-        self.pangenome_graph.set_node_positions(node_positions)
-        self.pangenome_graph.set_node_groups(node_groups)
+        self.pangenome_graph.layout_all_components(
+            gene_cluster_grouping_threshold, groupcompress)
         self.pangenome_graph.cut_edges(max_edge_length_filter)
 
-        region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize()
-        self.synteny_gene_cluster_summary_info = pd.merge(nodes_df.reset_index(drop=False), region_sides_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster').to_dict(orient='index')
-        self.region_sides_info = region_sides_df.reset_index()[['region_id', 'x_min', 'x_max', 'num_synteny_gene_clusters', 'region']].set_index('region_id').to_dict(orient='index')
+        region_sides_df, _ = self.pangenome_graph.summarize_all_components(
+            scope=self.p_meta.get('region_scope', 'global'))
+        self._refresh_region_caches(region_sides_df)
+        self.p_meta['component'] = str(component)
+
+
+    def _refresh_region_caches(self, region_sides_df):
+        """Rebuild ``synteny_gene_cluster_summary_info`` and
+        ``region_sides_info`` from a freshly-computed all-components
+        ``region_sides_df``. Keyed by ``(component_id, region_id)`` so the
+        plain per-component region_ids don't collide across components.
+        """
+        if region_sides_df is None or region_sides_df.empty:
+            self.synteny_gene_cluster_summary_info = {}
+            self.region_sides_info = {}
+            return
+
+        nodes_rows = []
+        for node, data in self.pangenome_graph.graph.nodes(data=True):
+            rid = data.get('region_id')
+            if rid is None or rid == '':
+                continue
+            x, y = data.get('position', (0, 0))
+            nodes_rows.append({
+                'syn_cluster': node,
+                'component_id': str(data.get('component_id', 'CP_0001')),
+                'region_id': str(rid),
+                'x': x,
+                'y': y,
+            })
+
+        if nodes_rows:
+            nodes_df = pd.DataFrame(nodes_rows)
+            merged = pd.merge(
+                nodes_df,
+                region_sides_df.reset_index(),
+                how="left",
+                on=["component_id", "region_id"],
+            ).set_index('syn_cluster')
+            self.synteny_gene_cluster_summary_info = merged.to_dict(orient='index')
+        else:
+            self.synteny_gene_cluster_summary_info = {}
+
+        region_view = region_sides_df.reset_index()[
+            ['component_id', 'region_id', 'x_min', 'x_max', 'num_synteny_gene_clusters', 'region']
+        ]
+        self.region_sides_info = {
+            (str(row['component_id']), str(row['region_id'])): {
+                'x_min': row['x_min'],
+                'x_max': row['x_max'],
+                'num_synteny_gene_clusters': row['num_synteny_gene_clusters'],
+                'region': row['region'],
+            }
+            for _, row in region_view.iterrows()
+        }
 
     def get_json(self):
 
         state_dict = json.loads(self.states[self.p_meta['state']]['content'])
+        G = self.pangenome_graph.graph
+
+        active_component = str(self.p_meta.get('component', 'CP_0001'))
+
+        # Only the active component is shipped to the JS. All components
+        # were laid out and summarized server-side; the dropdown can still
+        # offer the others via meta.components_summary below, and switching
+        # triggers another rerun_state that updates self.p_meta['component'].
+        nodes = {n: d for n, d in G.nodes(data=True)
+                 if d.get('component_id', 'CP_0001') == active_component}
+        edges = {data['name']: {'source': u, 'target': v, **data}
+                 for u, v, data in G.edges(data=True)
+                 if u in nodes and v in nodes}
+
+        # Region_ids are per-component prefixed strings ("R_1", ...) since v7;
+        # strip the (component_id, region_id) tuple key down to just the
+        # region_id for the JS, which never sees a second component at once.
+        regions = {rid: info
+                   for (cid, rid), info in self.region_sides_info.items()
+                   if cid == active_component}
+
+        components_summary = {}
+        for _n, d in G.nodes(data=True):
+            cid = d.get('component_id', 'CP_0001')
+            components_summary[cid] = components_summary.get(cid, 0) + 1
+        # Sort by the numeric suffix so CP_0002 precedes CP_0010 (plain string sort
+        # would not).
+        components_summary = dict(sorted(components_summary.items(),
+                                         key=lambda kv: int(kv[0].split('_')[1])))
+
+        meta = dict(self.p_meta)
+        meta['components_summary'] = components_summary
+
         export_dict = {
-            'meta': self.p_meta,
+            'meta': meta,
             'states': state_dict,
-            'nodes': dict(self.pangenome_graph.graph.nodes(data=True)),
-            'edges': {data['name']: {'source': edge_i, 'target': edge_j, **data} for edge_i, edge_j, data in self.pangenome_graph.graph.edges(data=True)},
-            'regions': self.region_sides_info
+            'nodes': nodes,
+            'edges': edges,
+            'regions': regions,
         }
 
         return export_dict
@@ -3716,14 +3810,15 @@ class PanGraphSuperclass(PanSuperclass):
                 'layer': self.items_additional_data_dict[node],
                 'position': (0, 0),
                 'group': '',
-                'alignment': json.loads(data['alignment_summary'])
+                'alignment': json.loads(data['alignment_summary']),
+                'component_id': str(data['component_id']),
             }
             self.pangenome_graph.graph.add_node(node, **graph_data)
 
         for edge, data in self.edges.items():
             graph_data = {
                 'weight': data['weight'],
-                'directions': json.loads(data['directions']),
+                'genomes': json.loads(data['genomes_json']),
                 'name': edge,
                 'active': True,
                 'route': [],

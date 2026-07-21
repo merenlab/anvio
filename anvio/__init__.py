@@ -2273,17 +2273,32 @@ D = {
              'type': str,
              'help': "Directory path for output files"}
                 ),
-    'pan-graph-yaml': (
-            ['--pan-graph-yaml'],
-            {'metavar': 'YAML',
-             'type': str,
-             'help': "A yaml file containing raw gene cluster order for testing the anvi'o pan graph."}
-                ),
     'pan-graph-db': (
             ['-p', '--pan-graph-db'],
             {'metavar': "PAN_GRAPH_DB",
              'required': True,
              'help': "Anvi'o pangenome graph database."}
+                ),
+    'diamond-search-results': (
+            ['-d', '--diamond-search-results'],
+            {'metavar': 'TSV',
+             'type': str,
+             'help': "Path to anvi-pan-genome's diamond-search-results.txt "
+                     "(the fully-expanded, 12-column DIAMOND fmt 6 file; NOT "
+                     "the .unique version). The pan-graph engine consumes "
+                     "this to build cross-genome AAI edges."}
+                ),
+    'tables-dir': (
+            ['--tables-dir'],
+            {'metavar': 'DIR',
+             'default': None,
+             'type': str,
+             'help': "Optional directory to dump intermediate tables "
+                     "(lines.txt, edges.tsv, genome_map.tsv, "
+                     "orientation.tsv, ranking.tsv) produced by the pan-graph "
+                     "engine. These artifacts are not required by anvi'o "
+                     "downstream consumers; they are for inspection only. If "
+                     "unset, no tables are written."}
                 ),
     'graph-nodes': (
             ['--graph-nodes'],
@@ -2294,10 +2309,20 @@ D = {
                 ),
     'region-id': (
             ['--region-id'],
-            {'metavar': "INT",
+            {'metavar': "REGION_ID",
              'required': False,
-             'help': "A region ID from an anvi'o pangenome graph database. The program will resolve the "
-                     "two boundary nodes (by position) of the region and export the loci between them.",
+             'help': "The number of a region within a component of an anvi'o pangenome graph database "
+                     "(e.g. '5' for the fifth region). Must be used together with `--component-id`. The "
+                     "program will resolve the two boundary nodes (by position) of the region and export "
+                     "the loci between them.",
+             'type': int}
+                ),
+    'component-id': (
+            ['--component-id'],
+            {'metavar': "COMPONENT_ID",
+             'required': False,
+             'help': "The number of a component in an anvi'o pangenome graph database (e.g. '1' for the "
+                     "first/largest component). Used together with `--region-id` to identify a region.",
              'type': int}
                 ),
     'output-file': (
