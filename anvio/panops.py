@@ -1656,17 +1656,35 @@ class PangenomeGraph():
             self.pan_super = dbops.PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
             self.pan_super.init_gene_clusters()
 
-            # --genome-names must be a subset of the pan-db's genome list:
-            # the pan-graph is computed downstream of the pan, so the focus
-            # set can only narrow what the pan already knows about.
-            if A('genome_names'):
+            # The genome names selected for the pan-graph must match the pan-db's
+            # genome names EXACTLY -- same set, both directions. The pan's gene
+            # clusters are what define the graph's nodes and edges, so the two
+            # genome sets have to line up one-to-one. In particular, a genome in
+            # the pan-graph that the pan never saw has no gene-cluster assignments,
+            # so every one of its genes collapses into a single `GC_UNKNOWN`
+            # super-node bucket -- which detonates the remerge step (an O(k^2) pass
+            # over that one bucket) and corrupts the graph. Run the pan-graph with
+            # the same `--genome-names` used to build the pan-db.
+            if self.genome_names:
                 pan_genomes = set(self.pan_super.genome_names)
-                absent = sorted(set(self.genome_names) - pan_genomes)
-                if absent:
-                    head = ', '.join(absent[:3]) + ('...' if len(absent) > 3 else '')
-                    raise ConfigError(f"{len(absent)} name(s) in `--genome-names` are not "
-                                      f"in the pan-db's genome list (the pan-graph must be "
-                                      f"a subset of the pan's genomes): {head} :/")
+                graph_genomes = set(self.genome_names)
+                extra = sorted(graph_genomes - pan_genomes)
+                missing = sorted(pan_genomes - graph_genomes)
+                if extra or missing:
+                    fmt = lambda names: ', '.join(names[:5]) + ('...' if len(names) > 5 else '')
+                    problems = []
+                    if extra:
+                        problems.append(f"{len(extra)} in the pan-graph but not the pan-db ({fmt(extra)})")
+                    if missing:
+                        problems.append(f"{len(missing)} in the pan-db but not the pan-graph ({fmt(missing)})")
+                    raise ConfigError(
+                        f"The genome names selected for the pan-graph ({len(graph_genomes)}) do not match "
+                        f"the pan-db's genome names ({len(pan_genomes)}), and they must -- the pan's gene "
+                        f"clusters are what define the graph's nodes and edges. Mismatch: "
+                        f"{'; '.join(problems)}. In particular, a genome in the pan-graph that the pan-db "
+                        f"never saw has no gene clusters, so all of its genes collapse into one `GC_UNKNOWN` "
+                        f"node group and the remerge step runs for hours. Run `anvi-pan-genome-graph` with "
+                        f"the same `--genome-names` you used to build the pan-db :/")
 
         if self.genomes_storage:
             if filesnpaths.is_file_exists(self.genomes_storage, dont_raise=False):
