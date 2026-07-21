@@ -86,6 +86,8 @@ anvi-draw-kegg-pathways --enzymes-txt /path/to/enzymes.txt \
                         -o output_maps/
 {{ codestop }}
 
+Enzymes from more than one origin, such as multiple genomes or samples, can also be compared on the same maps by adding a `sample` column to the %(enzymes-txt)s. Because this works just like comparing multiple contigs databases, it is described further below, under [Compare samples in an enzymes text file](#compare-samples-in-an-enzymes-text-file).
+
 ### Reaction network JSON file
 
 Pathway maps can be drawn from a reaction network JSON file produced by %(anvi-reaction-network)s or %(anvi-get-metabolic-model-file)s. This is especially useful with custom enzyme lists — for example, annotations from transcriptomic or proteomic data, or predicted gene content of a last common ancestor.
@@ -267,6 +269,30 @@ anvi-draw-kegg-pathways --external-genomes %(external-genomes)s \
 Continuing with the comparison of *Enterococcus* species, the `Folate biosynthesis` map from above shows, on the left side, that all *faecalis* genomes have the pathway for molybdenum cofactor (MoCo) biosynthesis, unlike any *faecium* genomes. A molybdenum requirement in *faecalis* but not *faecium* is supported by the annotation of a molybdate transporter in all *faecalis* genomes and no *faecium* genomes, as seen in an `ABC transporters` map grid -- in the map of "all" groups, it is the top transporter colored blue in the first column.
 
 ![ABC transporter group maps using two group thresholds](../../images/anvi-draw-kegg-pathways/kos_db_group_grid.png)
+
+### Compare samples in an enzymes text file
+
+The %(enzymes-txt)s introduced above can compare KOs across origins in the same way as multiple contigs databases, without any anvi'o database. Add a `sample` column that assigns each row to its sample of origin, where a sample can be, for example, a genome (e.g., *E. coli* versus *K. pneumoniae*), a metagenome, or a transcriptomic or proteomic sample. KOs are still read from the rows where the `source` column is `KOfam`, and every such row must have a sample value.
+
+When the `sample` column is present, reactions are compared across samples just as they are across contigs databases: they are colored by the sample or by the number of samples in which they occur, a `colorbar.pdf` key is written, and all of the same coloring and output options apply, including `--colormap`, `--colormap-scheme`, `--reverse-overlay`, `--draw-individual-files`, and `--draw-grid`.
+
+{{ codestart }}
+anvi-draw-kegg-pathways --enzymes-txt /path/to/enzymes.txt \
+                        --ko \
+                        --draw-grid \
+                        --draw-individual-files \
+                        -o output_dir
+{{ codestop }}
+
+Samples can be grouped with a %(groups-txt)s file, like contigs databases. The file has the same format, but the items in its first column must be the sample names from the `sample` column. As with contigs databases, `--group-threshold` must accompany `--groups-txt`.
+
+{{ codestart }}
+anvi-draw-kegg-pathways --enzymes-txt /path/to/enzymes.txt \
+                        --ko \
+                        --groups-txt %(groups-txt)s \
+                        --group-threshold 0.5 \
+                        -o output_dir
+{{ codestop }}
 
 ### Pangenomic database
 

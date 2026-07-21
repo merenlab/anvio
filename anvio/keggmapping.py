@@ -449,6 +449,399 @@ class Mapper:
         return drawn
 
 
+    def map_enzymes_txt_samples_kos(
+        self,
+        enzymes_txt: str,
+        output_dir: str,
+        groups_txt: str = None,
+        group_threshold: float = None,
+        pathway_numbers: Iterable[str] = None,
+        draw_individual_files: Union[Iterable[str], bool] = False,
+        draw_grid: Union[Iterable[str], bool] = False,
+        colormap: Union[bool, str, mcolors.Colormap] = True,
+        colormap_limits: Tuple[float, float] = None,
+        colormap_scheme: Literal['by_count', 'by_membership'] = None,
+        reverse_overlay: bool = False,
+        color_hexcode: str = '#2ca02c',
+        group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
+        group_colormap_limits: Tuple[float, float] = (0.1, 0.9),
+        group_reverse_overlay: bool = False,
+        draw_maps_lacking_kos: bool = False
+    ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
+        """
+        Draw pathway maps, highlighting KOs across samples (representing, for example, genomes or
+        metagenomes) or groups of samples (representing, for example, taxa or geographical groups)
+        defined in an enzymes text file.
+
+        The enzymes text file is a tab-delimited file in the format accepted by
+        'anvi-reaction-network --enzymes-txt' and 'anvi-estimate-metabolism --enzymes-txt', with an
+        additional 'sample' column that assigns each row to a sample of origin. KO IDs are read
+        directly from the rows where 'source' is 'KOfam', so no reference databases are required.
+        A reaction on a map is defined by one or more KOs. The presence/absence of any of these KOs
+        in a sample translates in the map to the presence/absence of the reaction in the sample.
+
+        In global and overview maps, reaction lines are colored. In standard maps, reaction boxes or
+        lines are colored.
+
+        Parameters
+        ==========
+        enzymes_txt : str
+            Path to a tab-delimited enzymes file with the required columns 'gene_id',
+            'enzyme_accession', 'source', and 'sample'. KO IDs are taken from rows where 'source' is
+            'KOfam', and the 'sample' column assigns each of these KOs to a sample of origin.
+
+        output_dir : str
+            Path to the output directory in which pathway map and colorbar PDF files are drawn. The
+            directory is created if it does not exist.
+
+        groups_txt : str, None
+            A tab-delimited text file specifying which group each sample belongs to. The first
+            column, which can have any header, contains sample names, those found in the 'sample'
+            column of the enzymes text file. The second column, which must be headed 'group',
+            contains group names, which are recommended to be single words without fancy characters,
+            such as 'HIGH_TEMPERATURE' or 'LOW_FITNESS' rather than 'my group #1' or 'IS-THIS-OK?'.
+            Each sample can only be associated with a single group. The 'group_threshold' argument
+            must also be used for the groups to take effect, assigning colors based on group
+            membership and drawing individual files ('draw_individual_files') and map grids
+            ('draw_grid') for groups rather than individual samples.
+
+        group_threshold : float, None
+            The proportion of samples in a group containing data of interest for the group to be
+            represented in terms of presence/absence in a map feature. Here is a concrete example.
+            Say each sample represents a genome, and the 'groups_txt' argument, which must be used
+            with this argument, groups these genomes by their species, 'A', 'B', and 'C'. You wish
+            to understand the distribution of metabolic capabilities across the 3 species from KO
+            annotations of genes. Reaction colors are assigned based on the groups rather than
+            individual samples containing the reaction. Thresholds between 0 and 1 can be set to
+            define group membership: a threshold of 0.0 would mean that ANY sample in the group can
+            contain the reaction via KOs for the reaction to be considered present in the group; a
+            threshold of 0.75 means at least 75% of the samples in the group must contain the
+            reaction for it to be present; a threshold of 1.0 means that ALL samples in the group
+            must contain the reaction for it to be present. In our example, set the threshold to
+            0.5. Reaction J on a map corresponds to KO X, and Reaction K on a map corresponds to KOs
+            Y and Z. 90% of species A genomes, 50% of species B genomes, and 10% of species C
+            genomes contain KO X, so Reaction J would be colored to indicate that it is represented
+            in species A and B. 0% of species A genomes, 15% of species B genomes, and 40% of
+            species C genomes contain KO Y and KO Z, so Reaction K would not be colored.
+
+        pathway_numbers : Iterable[str], None
+            Regex patterns to match the ID numbers of the drawn pathway maps. The default of None
+            draws all available pathway maps in the KEGG data directory.
+
+        draw_individual_files : Union[Iterable[str], bool], False
+            First consider the case where groups are not defined by 'groups_txt'. If the
+            'draw_individual_files' argument is not False, draw map files for individual samples. If
+            True, draw maps for all of the samples. Alternatively, the argument can accept the names
+            of a subset of samples to only draw maps for those samples.
+
+            Consider the case where groups are defined by 'groups_txt'. If the
+            'draw_individual_files' argument is not False, draw map files for individual groups
+            showing membership of reactions in the samples defining the group. If True, draw maps
+            for all of the groups. Alternatively, the argument can accept a subset of group names to
+            only draw maps for those groups. Maps are always colored by sample count, never
+            explicitly by membership, allowing maps for different groups to be compared in terms of
+            the same colors.
+
+        draw_grid : Union[Iterable[str], bool], False
+            First consider the case where groups are not defined by 'groups_txt'. If the 'draw_grid'
+            argument is not False, draw a paneled grid file for each pathway map showing the unified
+            map of samples alongside maps for individual samples. If True, include all of the
+            samples in the grid. Alternatively, the argument can accept the names of a subset of
+            samples to only draw individual maps in the grid for those samples.
+
+            Consider the case where groups are defined by 'groups_txt'. If the 'draw_grid' argument
+            is not False, draw a paneled grid file for each pathway map showing the unified map of
+            groups alongside maps for individual groups that color reactions by count of occurrence
+            in samples of the group. If True, include all of the groups in the grid. Alternatively,
+            the argument can accept a subset of group names to only draw individual maps in the grid
+            for those groups. Individual maps are always colored by sample count, never explicitly
+            by membership, allowing the comparison of maps for different groups in terms of the same
+            colors.
+
+        colormap : Union[bool, str, matplotlib.colors.Colormap], True
+            Reactions are dynamically colored to reflect the samples (or groups of samples)
+            containing the reaction, unless the argument value is False. False overrides dynamic
+            coloring via a colormap with the argument provided to 'color_hexcode', so that reactions
+            represented by KOs in samples are assigned predetermined colors.
+
+            The default argument value of True automatically assigns a colormap given the
+            'colormap_scheme' parameter. The scheme, 'by_count', uses by default the sequential
+            colormap, 'plasma_r', which spans yellow (fewer samples or groups) to blue-violet (more
+            samples or groups). This accentuates reactions that are shared rather than unshared
+            across samples/groups. In contrast, a colormap spanning dark to light, such as 'plasma',
+            is better for drawing attention to unshared reactions. The scheme, 'by_membership', uses
+            by default the qualitative colormap, 'tab10'; it contains distinct colors suitable for
+            clearly differentiating the samples/groups containing reactions.
+
+            The name of a Matplotlib Colormap or a Colormap object itself can also be provided to be
+            used in lieu of the default. See the following webpage for named colormaps:
+            https://matplotlib.org/stable/users/explain/colors/colormaps.html#classes-of-colormaps
+
+        colormap_limits : Tuple[float, float], None
+            Limit the fraction of the 'colormap' used in dynamically selecting colors. The first
+            value is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.9)
+            limits color selection to 70% of the colormap, trimming the bottom 20% and top 10%. By
+            default, for the colormap scheme, 'by_count', the colormap is 'plasma_r', and the limits
+            are set to (0.1, 0.9). By default, for the scheme, 'by_membership', the colormap is
+            qualititative ('tab10'), and limits are set to (0.0, 1.0).
+
+        colormap_scheme : Literal['by_count', 'by_membership'], None
+            There are two ways of dynamically coloring reactions by inclusion in samples or groups
+            of samples: by count, or explicitly by sample/group or combination of samples/groups.
+            Given the default argument value of None, with 4 or more samples/groups, reactions are
+            colored by count, and with 2 or 3, explicitly by membership. In coloring by count, the
+            colormap should be sequential, such that the color of a reaction changes 'smoothly' with
+            the count. In contrast, coloring by sample/group means reaction color is determined by
+            membership in a sample/group or combination of samples/groups, so a qualitative colormap
+            can be suitable for clearly differentiating each.
+
+        reverse_overlay : bool, False
+            By default, with False, reactions in more samples or groups of samples are drawn on top
+            of those in fewer samples/groups. With True, the opposite applies; especially in global
+            maps with a non-default colormap spanning dark to light, this accentuates unshared
+            rather than shared parts of a pathway.
+
+        color_hexcode : str, '#2ca02c'
+            This is the color, by default green, for reactions containing sample KOs. Alternatively
+            to a color hex code, the string, 'original', can be provided to use the original color
+            scheme of the reference map.
+
+            For this argument to be used in coloring unified maps showing KO membership in all
+            samples, overriding dynamic coloring based on sample/group membership with static
+            coloring based on presence/absence in any sample, the 'colormap' argument must be set to
+            False.
+
+            This argument is used in coloring map files for individual samples
+            ('draw_individual_files'), regardless of the value of 'colormap'.
+
+        group_colormap : Union[str, mcolors.Colormap], 'plasma_r'
+            This parameter is similar in effect to 'colormap', but only applies to drawing files for
+            individual groups ('draw_individual_files') and panels for individual groups in map
+            grids ('draw_grid'). These maps for individual groups show reaction membership in the
+            samples of the group. They are always colored dynamically by count, i.e., the number of
+            samples in the group containing the reaction. Like 'colormap', this parameter can take
+            the name of a Matplotlib Colormap or a Colormap object itself. The default group
+            colormap is 'plasma_r', the same as the default 'colormap' with a 'colormap_scheme' of
+            'by_count'.
+
+        group_colormap_limits : Tuple[float, float], (0.1, 0.9)
+            This parameter is similar in effect to 'colormap_limits', but only applies to drawing
+            files for individual groups and panels for individual groups in map grids (also see
+            'group_colormap'). Like 'colormap_limits', this parameter takes a lower and upper cutoff
+            for the proportion of the group colormap to use. The default group limits of (0.1, 0.9)
+            are the same as the default 'colormap_limits'.
+
+        group_reverse_overlay : bool, False
+            This parameter is similar in effect to 'reverse_overlay', but only applies to drawing
+            files for individual groups and panels for individual groups in map grids (also see
+            'group_colormap'). If True, these maps for individual groups draw reactions found in
+            fewer of the group's samples on top of reactions found in more of the group's samples,
+            the opposite of the default drawing order.
+
+        draw_maps_lacking_kos : bool, False
+            If False, by default, only draw maps containing any of the select KOs. If True, draw
+            maps regardless, meaning that nothing may be colored.
+
+        Returns
+        =======
+        Dict[Literal['unified', 'individual', 'grid'], Dict]
+            Keys in the outer dictionary are different types of files that can be drawn. 'unified'
+            maps show data from all samples or groups of samples. 'individual' maps show data from
+            individual samples or groups. 'grid' images show both unified and individual maps.
+
+            'unified' and 'grid' values are Dict[str, bool]. Keys are pathway numbers. Values are
+            True if the map was drawn; False if the map was not drawn, because it did not contain
+            any of the select KOs and 'draw_maps_lacking_kos' was False.
+
+            'individual' values are Dict[str, Dict[str, bool]]. Keys in the outer dictionary here
+            are sample names or group names. Keys in the inner dictionary are pathway numbers.
+            Values in the inner dictionary are True if the map was drawn; False if the map was not
+            drawn because it did not contain any of the select KOs and 'draw_maps_lacking_kos' was
+            False.
+        """
+        # This method is similar to 'map_pan_database_kos' and 'map_contigs_databases_kos', treating
+        # the samples defined in an enzymes text file like genomes in a pangenome.
+
+        self.progress.new("Loading KO data from the enzymes text file")
+        self.progress.update("...")
+
+        filesnpaths.is_file_tab_delimited(enzymes_txt)
+        # Read the 'sample' column as strings so that numeric sample IDs (e.g., 1, 2, 3) are not
+        # coerced to floats ('1.0') when the column also contains blank cells.
+        enzymes_df = pd.read_csv(enzymes_txt, sep='\t', dtype={'sample': str})
+
+        required_columns = {'gene_id', 'enzyme_accession', 'source', 'sample'}
+        missing_columns = required_columns - set(enzymes_df.columns)
+        if missing_columns:
+            self.progress.end()
+            raise ConfigError(
+                f"The enzymes text file at '{enzymes_txt}' is missing the following columns "
+                f"required to draw maps across samples: {', '.join(sorted(missing_columns))}. "
+                f"Drawing maps across samples requires the 'gene_id', 'enzyme_accession', "
+                f"'source', and 'sample' columns."
+            )
+
+        # The samples are every non-blank value in the 'sample' column, regardless of annotation
+        # source. This mirrors how the pangenome and multiple-contigs-database methods count a
+        # source (a genome or database) whether or not it contains any KOs, so group membership
+        # thresholds and colorbar scales stay correct even when a sample's enzymes come only from
+        # non-KOfam sources.
+        sample_column = enzymes_df['sample']
+        blank_in_column = sample_column.isna() | (sample_column.astype(str).str.strip() == '')
+        all_sample_names: List[str] = sorted(set(sample_column[~blank_in_column]))
+        all_sample_names_set: Set[str] = set(all_sample_names)
+
+        # KO drawing uses only the KOfam rows with an actual accession. Blank accessions are read by
+        # pandas as NaN and are dropped so they neither inflate KO counts nor break the empty-input
+        # check below.
+        kofam_df = enzymes_df[enzymes_df['source'] == 'KOfam'].dropna(subset=['enzyme_accession'])
+
+        # Every KOfam row must name the sample it came from, since the sample is the origin used to
+        # color reactions. Refuse to silently drop KOs with an unknown origin.
+        blank_sample = (
+            kofam_df['sample'].isna() | (kofam_df['sample'].astype(str).str.strip() == '')
+        )
+        if blank_sample.any():
+            blank_gene_ids = kofam_df.loc[blank_sample, 'gene_id'].astype(str).tolist()
+            self.progress.end()
+            raise ConfigError(
+                f"The 'sample' column of the enzymes text file at '{enzymes_txt}' must contain a "
+                f"value in every KOfam row, since the sample identifies the origin used to color "
+                f"reactions across samples. However, {len(blank_gene_ids)} KOfam "
+                f"{'rows have' if len(blank_gene_ids) > 1 else 'row has'} a blank 'sample' value, "
+                f"including the following gene {'IDs' if len(blank_gene_ids) > 1 else 'ID'}: "
+                f"{', '.join(blank_gene_ids[:5])}. Either fill in the sample for these rows, or "
+                f"remove the 'sample' column entirely to draw a single map from all KOs."
+            )
+
+        # Find which samples contain each KO, and which KOs are in each sample. Initialize an entry
+        # for every sample so that samples lacking KOfam annotations still contribute (empty)
+        # individual maps and factor into sample counts.
+        ko_sample_names_sets: Dict[str, Set[str]] = {}
+        sample_kos_sets: Dict[str, Set[str]] = {
+            sample_name: set() for sample_name in all_sample_names
+        }
+        for sample_name, ko_id in zip(kofam_df['sample'], kofam_df['enzyme_accession']):
+            ko_sample_names_sets.setdefault(ko_id, set()).add(sample_name)
+            sample_kos_sets[sample_name].add(ko_id)
+        ko_sample_names: Dict[str, List[str]] = {
+            ko_id: sorted(sample_names) for ko_id, sample_names in ko_sample_names_sets.items()
+        }
+        sample_kos: Dict[str, List[str]] = {
+            sample_name: sorted(ko_ids) for sample_name, ko_ids in sample_kos_sets.items()
+        }
+
+        self.progress.end()
+
+        if not ko_sample_names:
+            present_sources = sorted(enzymes_df['source'].astype(str).unique())
+            if present_sources:
+                sources_str = ', '.join(f"'{source}'" for source in present_sources)
+                sources_statement = f"Sources present in the file: {sources_str}."
+            else:
+                sources_statement = "In fact, the file does not contain any data rows."
+            raise ConfigError(
+                f"No KOfam annotations were found in the enzymes text file at '{enzymes_txt}' "
+                f"(the value in the 'source' column must be 'KOfam'), so there is nothing to draw. "
+                f"{sources_statement}"
+            )
+
+        self.run.info("KOfam KOs found in enzymes text file", len(ko_sample_names))
+        self.run.info("Samples found in enzymes text file", len(all_sample_names))
+
+        # Load groups.
+        if (
+            (groups_txt is None and group_threshold is not None) or
+            (groups_txt is not None and group_threshold is None)
+        ):
+            raise ConfigError(
+                "To group samples, arguments to both 'groups_txt' and 'group_threshold' must be "
+                "provided."
+            )
+
+        if groups_txt is None:
+            source_group = None
+            group_sources = None
+            group_samples = None
+            sample_group = None
+        else:
+            if not 0 <= group_threshold <= 1:
+                raise ConfigError(
+                    f"'group_threshold' must be a number between 0 and 1, not {group_threshold}"
+                )
+
+            source_group, group_sources = utils.get_groups_txt_file_as_dict(
+                groups_txt, run=self.run, progress=self.progress
+            )
+            # Check that groups include all samples. Relate groups and sample names.
+            group_samples: Dict[str, List[str]] = {}
+            sample_group: Dict[str, str] = {}
+            ungrouped_samples: List[str] = []
+            for sample_name in all_sample_names:
+                try:
+                    group = source_group[sample_name]
+                except KeyError:
+                    ungrouped_samples.append(sample_name)
+                    continue
+
+                try:
+                    group_samples[group].append(sample_name)
+                except KeyError:
+                    group_samples[group] = [sample_name]
+                sample_group[sample_name] = group
+
+            if ungrouped_samples:
+                message = ', '.join([f"'{sample_name}'" for sample_name in ungrouped_samples])
+                raise ConfigError(
+                    "The following samples in the enzymes text file were not found in the groups "
+                    f"provided by 'groups_txt': {message}"
+                )
+
+            # Order groups by their appearance in the groups-txt file, which determines the order in
+            # which colors are assigned to groups and their combinations in the drawn maps.
+            group_samples = {
+                group: group_samples[group]
+                for group in group_sources
+                if group in group_samples
+            }
+
+            # Report samples in 'groups_txt' that are not among the enzymes text file samples.
+            missing_sources: List[str] = []
+            for source in source_group:
+                if source not in all_sample_names_set:
+                    missing_sources.append(source)
+            if missing_sources:
+                message = ', '.join([f"'{source}'" for source in missing_sources])
+                self.run.warning(
+                    "The following samples were grouped in 'groups_txt' but are not found among "
+                    f"the samples in the enzymes text file, and so will not factor into maps: "
+                    f"{message}"
+                )
+
+        return self._map_kos_across_categories(
+            ko_sample_names,
+            sample_kos,
+            all_sample_names,
+            output_dir,
+            'sample',
+            source_group=sample_group,
+            group_sources=group_samples,
+            group_threshold=group_threshold,
+            pathway_numbers=pathway_numbers,
+            draw_individual_files=draw_individual_files,
+            draw_grid=draw_grid,
+            colormap=colormap,
+            colormap_limits=colormap_limits,
+            colormap_scheme=colormap_scheme,
+            reverse_overlay=reverse_overlay,
+            color_hexcode=color_hexcode,
+            group_colormap=group_colormap,
+            group_colormap_limits=group_colormap_limits,
+            group_reverse_overlay=group_reverse_overlay,
+            draw_maps_lacking_kos=draw_maps_lacking_kos
+        )
+
+
     def map_genomes_storage_genome_kos(
         self,
         genomes_storage_db: str,
@@ -740,7 +1133,8 @@ class Mapper:
             the map was not drawn because it did not contain any of the select KOs and
             'draw_maps_lacking_kos' was False.
         """
-        # This method is similar to 'map_pan_database_kos'.
+        # This method loads KO membership from contigs databases and hands off the drawing of
+        # unified, individual, and grid maps to '_map_kos_across_categories'.
 
         self.progress.new("Loading metadata from contigs databases")
         self.progress.update("...")
@@ -770,57 +1164,60 @@ class Mapper:
                 "must be provided."
             )
 
-        group_project_names: Dict[str, List[str]] = {}
-        project_name_group: Dict[str, str] = {}
-        if groups_txt is None:
-            source_group = None
-            group_sources = None
-            categories = contigs_dbs
-        else:
+        source_group: Dict[str, str] = None
+        group_sources: Dict[str, List[str]] = None
+        if groups_txt is not None:
             if not 0 <= group_threshold <= 1:
                 raise ConfigError(
                     f"'group_threshold' must be a number between 0 and 1, not {group_threshold}"
                 )
 
-            source_group, group_sources = utils.get_groups_txt_file_as_dict(
+            # Match groups-txt entries, which may be relative paths, to the input databases by
+            # absolute path, and relate groups to project names.
+            groups_txt_source_group, groups_txt_group_sources = utils.get_groups_txt_file_as_dict(
                 groups_txt, run=self.run, progress=self.progress
             )
-            categories = list(group_sources)
+            source_abspath_group = {
+                os.path.abspath(source): group
+                for source, group in groups_txt_source_group.items()
+            }
+            source_group = {}
+            group_sources = {}
+            ungrouped_contigs_dbs: List[str] = []
+            for contigs_db in contigs_dbs:
+                try:
+                    group = source_abspath_group[os.path.abspath(contigs_db)]
+                except KeyError:
+                    ungrouped_contigs_dbs.append(contigs_db)
+                    continue
 
-            # Check that groups include all contigs databases. Relate groups and project names.
-            if groups_txt is not None:
-                source_abspath_group = {
-                    os.path.abspath(source): group for source, group in source_group.items()
-                }
-                ungrouped_contigs_dbs: List[str] = []
-                for contigs_db in contigs_dbs:
-                    contigs_db_abspath = os.path.abspath(contigs_db)
-                    try:
-                        group = source_abspath_group[contigs_db_abspath]
-                    except KeyError:
-                        ungrouped_contigs_dbs.append(contigs_db)
-                        continue
+                project_name = contigs_db_project_name[contigs_db]
+                source_group[project_name] = group
+                try:
+                    group_sources[group].append(project_name)
+                except KeyError:
+                    group_sources[group] = [project_name]
 
-                    project_name = contigs_db_project_name[contigs_db]
-                    try:
-                        group_project_names[group].append(project_name)
-                    except KeyError:
-                        group_project_names[group] = [project_name]
-                    project_name_group[project_name] = group
+            if ungrouped_contigs_dbs:
+                message = ', '.join([f"'{contigs_db}'" for contigs_db in ungrouped_contigs_dbs])
+                raise ConfigError(
+                    "The following 'contigs_dbs' were not found in the groups provided by "
+                    f"'groups_txt': {message}"
+                )
 
-                if ungrouped_contigs_dbs:
-                    message = ', '.join([f"'{contigs_db}'" for contigs_db in ungrouped_contigs_dbs])
-                    raise ConfigError(
-                        "The following 'contigs_dbs' were not found in the groups provided by "
-                        f"'groups_txt': {message}"
-                    )
+            # Order groups by their appearance in the groups-txt file, which determines the order in
+            # which colors are assigned to groups and their combinations in the drawn maps.
+            group_sources = {
+                group: group_sources[group]
+                for group in groups_txt_group_sources
+                if group in group_sources
+            }
 
             # Report contigs databases in 'groups_txt' that are not among the input databases.
-            missing_sources: List[str] = []
             contigs_db_abspaths = [os.path.abspath(contigs_db) for contigs_db in contigs_dbs]
-            for source in source_group:
-                source_abspath = os.path.abspath(source)
-                if source_abspath not in contigs_db_abspaths:
+            missing_sources: List[str] = []
+            for source in groups_txt_source_group:
+                if os.path.abspath(source) not in contigs_db_abspaths:
                     missing_sources.append(source)
             if missing_sources:
                 message = ', '.join([f"'{source}'" for source in missing_sources])
@@ -829,538 +1226,52 @@ class Mapper:
                     f"found among input 'contigs_dbs', and so will not factor into maps: {message}"
                 )
 
-        # If individual files are requested to be drawn for a subset of contigs databases or groups,
-        # check that the names are valid.
-        if not isinstance(draw_individual_files, bool):
-            if groups_txt is None:
-                unrecognized_project_names: List[str] = []
-                for project_name in draw_individual_files:
-                    if project_name not in project_name_contigs_db:
-                        unrecognized_project_names.append(project_name)
-                if unrecognized_project_names:
-                    message = ', '.join([f"'{name}'" for name in unrecognized_project_names])
-                    raise ConfigError(
-                        "Individual maps were requested for a subset of contigs databases, but the "
-                        "following project names were not recognized as corresponding to any of "
-                        f"the input contigs databases: {message}"
-                    )
-            else:
-                unrecognized_groups: List[str] = []
-                for group in draw_individual_files:
-                    if group not in group_sources:
-                        unrecognized_groups.append(group)
-                if unrecognized_groups:
-                    message = ', '.join([f"'{group}'" for group in unrecognized_groups])
-                    raise ConfigError(
-                        "Individual maps were requested for a subset of contigs database groups, "
-                        "but the following group names were not among those provided in "
-                        f"'groups_txt': {message}"
-                    )
-
-        # If individual maps in grids are requested to be drawn for a subset of contigs databases or
-        # groups, check that the names are valid.
-        if not isinstance(draw_grid, bool):
-            if groups_txt is None:
-                unrecognized_project_names: List[str] = []
-                for project_name in draw_grid:
-                    if project_name not in project_name_contigs_db:
-                        unrecognized_project_names.append(project_name)
-                if unrecognized_project_names:
-                    message = ', '.join([f"'{name}'" for name in unrecognized_project_names])
-                    raise ConfigError(
-                        "Individual maps in grids were requested for a subset of contigs "
-                        "databases, but the following project names were not recognized as "
-                        f"corresponding to any of the input contigs databases: {message}"
-                    )
-            else:
-                unrecognized_groups: List[str] = []
-                for group in draw_grid:
-                    if group not in group_sources:
-                        unrecognized_groups.append(group)
-                if unrecognized_groups:
-                    message = ', '.join([f"'{group}'" for group in unrecognized_groups])
-                    raise ConfigError(
-                        "Individual maps in grids were requested for a subset of contigs database "
-                        "groups, but the following group names were not among those provided in "
-                        f"'groups_txt': {message}"
-                    )
-
-        self.progress.new("Setting map colors")
-        self.progress.update("...")
-
-        # Set the colormap scheme.
-        ignore_groups = False
-        if colormap is False:
-            scheme = 'static'
-            if groups_txt is not None:
-                ignore_groups = True
-        else:
-            if colormap_scheme is None:
-                if len(categories) < 4:
-                    scheme = 'by_membership'
-                else:
-                    scheme = 'by_count'
-            elif colormap_scheme == 'by_count':
-                scheme = 'by_count'
-            elif colormap_scheme == 'by_membership':
-                scheme = 'by_membership'
-            else:
-                raise AssertionError
-
-        # Set the colormap.
-        if colormap is True:
-            if scheme == 'by_count':
-                cmap = plt.colormaps['plasma_r']
-                if colormap_limits is None:
-                    colormap_limits = (0.1, 0.9)
-            elif scheme == 'by_membership':
-                cmap = plt.colormaps['tab10']
-                if colormap_limits is None:
-                    colormap_limits = (0.0, 1.0)
-            else:
-                raise AssertionError
-        elif colormap is False:
-            cmap = None
-        elif isinstance(colormap, str):
-            cmap = plt.colormaps[colormap]
-            if colormap_limits is None:
-                colormap_limits = (0.0, 1.0)
-        elif isinstance(colormap, mcolors.Colormap):
-            cmap = colormap
-            if colormap_limits is None:
-                colormap_limits = (0.0, 1.0)
-        else:
-            raise AssertionError
-
-        # Set how the colormap is sampled.
-        if cmap is None:
-            sampling = None
-        else:
-            if cmap.name in qualitative_colormaps + repeating_colormaps:
-                sampling = 'in_order'
-            else:
-                sampling = 'even'
-
-        # Trim the colormap.
-        if cmap is not None and colormap_limits is not None and colormap_limits != (0.0, 1.0):
-            lower_limit = colormap_limits[0]
-            upper_limit = colormap_limits[1]
-            assert 0.0 <= lower_limit <= upper_limit <= 1.0
-            cmap = mcolors.LinearSegmentedColormap.from_list(
-                f'trunc({cmap.name},{lower_limit:.2f},{upper_limit:.2f})',
-                cmap(range(int(lower_limit * cmap.N), math.ceil(upper_limit * cmap.N)))
-            )
-
-        # Set and trim the colormap for individual group maps.
-        group_cmap = None
-        poor_colormap = False
-        if (
-            groups_txt is not None and
-            (draw_individual_files is not False or draw_grid is not False)
-        ):
-            if isinstance(group_colormap, str):
-                group_cmap = plt.colormaps[group_colormap]
-            elif isinstance(group_colormap, mcolors.Colormap):
-                group_cmap = group_colormap
-            else:
-                raise AssertionError
-
-            if group_cmap.name in qualitative_colormaps + repeating_colormaps:
-                poor_colormap = True
-
-            if group_colormap_limits != (0.0, 1.0):
-                lower_limit = group_colormap_limits[0]
-                upper_limit = group_colormap_limits[1]
-                assert 0.0 <= lower_limit <= upper_limit <= 1.0
-                group_cmap = mcolors.LinearSegmentedColormap.from_list(
-                    f'trunc({group_cmap.name},{lower_limit:.2f},{upper_limit:.2f})',
-                    group_cmap(range(
-                        int(lower_limit * group_cmap.N), math.ceil(upper_limit * group_cmap.N)
-                    ))
-                )
-
-        self.progress.end()
-
-        if ignore_groups:
-            self.run.warning(
-                "Groups were provided by 'groups_txt', but these will be ignored, since 'colormap' "
-                "was set to False, and dynamic coloring based on KO membership in groups will be "
-                "overridden by static coloring based on KO presence/absence in any contigs "
-                "database."
-            )
-
-        if poor_colormap:
-            self.run.warning(
-                f"The group colormap, '{cmap.name}', that was provided to color individual group "
-                "maps is not especially useful for displaying the count of contigs databases. We "
-                "recommend a sequential colormap like 'plasma' instead."
-            )
-
         self.progress.new("Loading KO data from contigs databases")
         self.progress.update("...")
 
-        # Find which contigs databases contain each KO.
-        ko_project_names: Dict[str, List[str]] = {}
+        # Find which contigs databases contain each KO, and which KOs are in each database.
+        ko_membership: Dict[str, List[str]] = {}
+        source_kos: Dict[str, List[str]] = {}
         for project_name, contigs_db in project_name_contigs_db.items():
             cdb = ContigsDatabase(contigs_db)
-            for ko_id in cdb.db.get_single_column_from_table(
+            ko_ids = cdb.db.get_single_column_from_table(
                 'gene_functions',
                 'accession',
                 unique=True,
                 where_clause='source = "KOfam"'
-            ):
+            )
+            source_kos[project_name] = ko_ids
+            for ko_id in ko_ids:
                 try:
-                    ko_project_names[ko_id].append(project_name)
+                    ko_membership[ko_id].append(project_name)
                 except KeyError:
-                    ko_project_names[ko_id] = [project_name]
+                    ko_membership[ko_id] = [project_name]
 
         self.progress.end()
 
-        # Find the numeric IDs of the maps to draw.
-        pathway_numbers = self._find_maps(output_dir, 'kos', patterns=pathway_numbers)
-
-        filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
-
-        drawn: Dict[Literal['unified', 'individual', 'grid'], Dict] = {
-            'unified': {},
-            'individual': {},
-            'grid': {}
-        }
-
-        self.progress.new("Drawing 'unified' map incorporating data from all contigs databases")
-
-        exceeds_colors: Tuple[int, int] = None
-        if scheme == 'static':
-            # Draw unified maps of all contigs databases with static reaction colors.
-            for pathway_number in pathway_numbers:
-                self.progress.update(pathway_number)
-                if color_hexcode == 'original':
-                    drawn['unified'][pathway_number] = self._draw_map_kos_original_color(
-                        pathway_number,
-                        ko_project_names,
-                        output_dir,
-                        draw_map_lacking_kos=draw_maps_lacking_kos
-                    )
-                else:
-                    drawn['unified'][pathway_number] = self._draw_map_kos_single_color(
-                        pathway_number,
-                        ko_project_names,
-                        color_hexcode,
-                        output_dir,
-                        draw_map_lacking_kos=draw_maps_lacking_kos
-                    )
-        else:
-            # Draw unified maps with dynamic coloring by membership in contigs databases or groups.
-            assert cmap is not None
-            color_priority: Dict[str, float] = {}
-            if scheme == 'by_count':
-                # Sample the colormap for colors representing each possible number of contigs
-                # databases or groups. Lower color values correspond to fewer databases/groups.
-                if sampling == 'in_order':
-                    if len(categories) == 1:
-                        sample_points = range(1, 2)
-                    else:
-                        sample_points = range(len(categories))
-                elif sampling == 'even':
-                    if len(categories) == 1:
-                        sample_points = np.linspace(1, 1, 1)
-                    else:
-                        sample_points = np.linspace(0, 1, len(categories))
-                else:
-                    raise AssertionError
-
-                if len(categories) > cmap.N:
-                    exceeds_colors = (cmap.N, len(categories))
-
-                for sample_point in sample_points:
-                    if reverse_overlay:
-                        color_priority[mcolors.rgb2hex(cmap(sample_point))] = 1 - sample_point
-                    else:
-                        color_priority[mcolors.rgb2hex(cmap(sample_point))] = sample_point
-                category_combos = None
-            elif scheme == 'by_membership':
-                # Sample the colormap for colors representing the different contigs databases or
-                # groups and their combinations. Lower color values correspond to fewer
-                # databases/groups.
-                category_combos = []
-                for category_count in range(1, len(categories) + 1):
-                    if groups_txt is None:
-                        category_combos += list(
-                            combinations(project_name_contigs_db, category_count)
-                        )
-                    else:
-                        category_combos += list(combinations(categories, category_count))
-
-                if sampling == 'in_order':
-                    sample_points = range(len(category_combos))
-                elif sampling == 'even':
-                    sample_points = np.linspace(0, 1, len(category_combos))
-                else:
-                    raise AssertionError
-
-                if len(category_combos) > cmap.N:
-                    exceeds_colors = (cmap.N, len(category_combos))
-
-                for sample_point in sample_points:
-                    if reverse_overlay:
-                        color_priority[
-                            mcolors.rgb2hex(cmap(sample_point))
-                        ] = 1 - sample_point / cmap.N
-                    else:
-                        color_priority[
-                            mcolors.rgb2hex(cmap(sample_point))
-                        ] = (sample_point + 1) / cmap.N
-            else:
-                raise AssertionError
-
-            # Draw a colorbar in a separate file.
-            _draw_colorbar = self.colorbar_drawer.draw
-            if scheme == 'by_count':
-                _draw_colorbar = functools.partial(
-                    _draw_colorbar,
-                    color_labels=range(1, len(categories) + 1),
-                    label='database count' if groups_txt is None else 'group count'
-                )
-            elif scheme == 'by_membership':
-                _draw_colorbar = functools.partial(
-                    _draw_colorbar,
-                    color_labels=[', '.join(combo) for combo in category_combos],
-                    label='databases' if groups_txt is None else 'groups'
-                )
-            _draw_colorbar(
-                color_priority, os.path.join(output_dir, 'colorbar.pdf')
-            )
-
-            for pathway_number in pathway_numbers:
-                self.progress.update(pathway_number)
-                drawn['unified'][pathway_number] = self._draw_map_kos_membership(
-                    pathway_number,
-                    ko_project_names,
-                    color_priority,
-                    output_dir,
-                    category_combos=category_combos,
-                    group_sources=None if groups_txt is None else group_project_names,
-                    group_threshold=None if groups_txt is None else group_threshold,
-                    draw_map_lacking_kos=draw_maps_lacking_kos
-                )
-
-        self.progress.end()
-
-        if exceeds_colors:
-            self.run.warning(
-                f"There were fewer distinct colors available in the colormap ({exceeds_colors[0]}) "
-                f"than were needed ({exceeds_colors[1]}), so some colors were repeated in use."
-            )
-
-        if draw_individual_files is False and draw_grid is False:
-            # Our work here is done.
-            count = sum(drawn['unified'].values()) if drawn['unified'] else 0
-            self.run.info("Number of maps drawn", count)
-
-            return drawn
-
-        # Determine the individual maps to draw.
-        if draw_individual_files == True:
-            if groups_txt is None:
-                draw_files_categories = list(project_name_contigs_db)
-            else:
-                draw_files_categories = list(group_sources)
-        elif draw_individual_files == False:
-            draw_files_categories = []
-        else:
-            draw_files_categories = draw_individual_files
-        seen = set()
-        draw_files_categories = [
-            category for category in list(draw_files_categories)
-            if not (category in seen or seen.add(category))
-        ]
-
-        # Determine the map grids to draw.
-        if draw_grid == True:
-            if groups_txt is None:
-                draw_grid_categories = list(project_name_contigs_db)
-            else:
-                draw_grid_categories = list(group_sources)
-        elif draw_grid == False:
-            draw_grid_categories = []
-        else:
-            draw_grid_categories = draw_grid
-        seen = set()
-        draw_grid_categories = [
-            category for category in list(draw_grid_categories)
-            if not (category in seen or seen.add(category))
-        ]
-
-        seen = set()
-        draw_categories = [
-            category for category in draw_files_categories + draw_grid_categories
-            if not (category in seen or seen.add(category))
-        ]
-
-        # Gather information needed to draw individual maps for groups, either as separate files or
-        # in map grids. Determine map colors.
-        group_ko_project_names: Dict[str, Dict[str, List[str]]] = {}
-        group_color_priority: Dict[str, Dict[str, float]] = {}
-        if groups_txt is not None:
-            # Determine KO membership among each group's contigs databases.
-            for ko_id, project_names in ko_project_names.items():
-                for project_name in project_names:
-                    group = project_name_group[project_name]
-                    if group not in draw_categories:
-                        continue
-
-                    try:
-                        # Use 'inner_' to distinguish from variable 'ko_project_names'.
-                        inner_ko_project_names = group_ko_project_names[group]
-                    except KeyError:
-                        group_ko_project_names[group] = inner_ko_project_names = {}
-                    try:
-                        inner_project_names = inner_ko_project_names[ko_id]
-                    except KeyError:
-                        inner_ko_project_names[ko_id] = inner_project_names = []
-                    inner_project_names.append(project_name)
-
-            # For each group, sample the group colormap for colors representing all contigs
-            # databases in the group. Lower color values correspond to fewer databases.
-            assert group_cmap is not None
-            for group, inner_ko_project_names in group_ko_project_names.items():
-                project_names = group_project_names[group]
-                if len(project_names) == 1:
-                    sample_points = np.linspace(1, 1, 1)
-                else:
-                    sample_points = np.linspace(0, 1, len(project_names))
-
-                if len(project_names) > group_cmap.N:
-                    self.run.warning(
-                        "There were fewer distinct colors available in the group colormap "
-                        f"({group_cmap.N}) than were needed ({len(project_names)}) for drawing "
-                        f"individual maps for group '{group}', so some colors were repeated in "
-                        "use."
-                    )
-
-                group_color_priority[group] = inner_color_priority = {}
-                for sample_point in sample_points:
-                    if group_reverse_overlay:
-                        inner_color_priority[
-                            mcolors.rgb2hex(group_cmap(sample_point))
-                        ] = 1 - sample_point
-                    else:
-                        inner_color_priority[
-                            mcolors.rgb2hex(group_cmap(sample_point))
-                        ] = sample_point
-
-        # Draw individual database or group maps needed as final outputs or for grids.
-        for category in draw_categories:
-            if groups_txt is None:
-                project_name = category
-                self.progress.new(f"Drawing maps for contigs database '{project_name}'")
-                self.progress.update("...")
-                progress = self.progress
-                self.progress = terminal.Progress(verbose=False)
-                run = self.run
-                self.run = terminal.Run(verbose=False)
-                drawn['individual'][project_name] = self.map_contigs_database_kos(
-                    project_name_contigs_db[project_name],
-                    os.path.join(output_dir, project_name),
-                    pathway_numbers=pathway_numbers,
-                    color_hexcode=color_hexcode,
-                    draw_maps_lacking_kos=draw_maps_lacking_kos
-                )
-                self.progress = progress
-                self.run = run
-                self.progress.end()
-            else:
-                group = category
-                self.progress.new(f"Drawing maps for contigs database group '{group}'")
-                self.progress.update("...")
-                progress = self.progress
-                self.progress = terminal.Progress(verbose=False)
-                run = self.run
-                self.run = terminal.Run(verbose=False)
-
-                group_output_dir = os.path.join(output_dir, group)
-                filesnpaths.gen_output_directory(
-                    group_output_dir, progress=self.progress, run=self.run
-                )
-
-                self.colorbar_drawer.draw(
-                    group_color_priority[group],
-                    os.path.join(output_dir, group, 'colorbar.pdf'),
-                    color_labels=range(1, len(group_sources[group]) + 1),
-                    label='database count'
-                )
-
-                drawn_group: Dict[str, bool] = {}
-                for pathway_number in pathway_numbers:
-                    drawn_group[pathway_number] = self._draw_map_kos_membership(
-                        pathway_number,
-                        group_ko_project_names[group],
-                        group_color_priority[group],
-                        group_output_dir,
-                        draw_map_lacking_kos=draw_maps_lacking_kos
-                    )
-                drawn['individual'][group] = drawn_group
-
-                self.progress = progress
-                self.run = run
-                self.progress.end()
-
-        if draw_grid == False:
-            # Our work here is done.
-            if groups_txt is None:
-                category_message = "contigs databases"
-            else:
-                category_message = "groups"
-
-            count = sum(drawn['unified'].values()) if drawn['unified'] else 0
-            self.run.info(
-                f"Number of 'unified' maps drawn incorporating data from all {category_message}",
-                count
-            )
-
-            if not drawn['individual']:
-                count = 0
-            else:
-                count = sum([sum(d.values()) if d else 0 for d in drawn['individual'].values()])
-            self.run.info(f"Number of maps drawn for individual {category_message}", count)
-
-            return drawn
-
-        self._draw_map_grids(
-            pathway_numbers,
-            draw_categories,
-            draw_grid_categories,
-            draw_files_categories,
+        return self._map_kos_across_categories(
+            ko_membership,
+            source_kos,
+            list(project_name_contigs_db),
             output_dir,
-            drawn,
+            'contigs database',
+            source_group=source_group,
             group_sources=group_sources,
-            group_color_priority=group_color_priority,
-            check_maps_lacking_kos=not draw_maps_lacking_kos,
-            source_type='contigs database'
+            group_threshold=group_threshold,
+            pathway_numbers=pathway_numbers,
+            draw_individual_files=draw_individual_files,
+            draw_grid=draw_grid,
+            colormap=colormap,
+            colormap_limits=colormap_limits,
+            colormap_scheme=colormap_scheme,
+            reverse_overlay=reverse_overlay,
+            color_hexcode=color_hexcode,
+            group_colormap=group_colormap,
+            group_colormap_limits=group_colormap_limits,
+            group_reverse_overlay=group_reverse_overlay,
+            draw_maps_lacking_kos=draw_maps_lacking_kos
         )
 
-        # Our work here is done.
-        if groups_txt is None:
-            category_message = "contigs databases"
-        else:
-            category_message = "groups"
-
-        count = sum(drawn['unified'].values()) if drawn['unified'] else 0
-        self.run.info(
-            f"Number of 'unified' maps drawn incorporating data from all {category_message}", count
-        )
-
-        if draw_individual_files:
-            if not drawn['individual']:
-                count = 0
-            else:
-                count = sum([sum(d.values()) if d else 0 for d in drawn['individual'].values()])
-            self.run.info(f"Number of maps drawn for individual {category_message}", count)
-
-        count = sum(drawn['grid'].values()) if drawn['grid'] else 0
-        self.run.info("Number of map grids drawn", count)
-
-        return drawn
 
     def map_pan_database_kos(
         self,
@@ -1585,7 +1496,8 @@ class Mapper:
             the inner dictionary are True if the map was drawn; False if the map was not drawn
             because it did not contain any of the select KOs and 'draw_maps_lacking_kos' was False.
         """
-        # This method is similar to 'map_contigs_databases_kos'.
+        # This method loads consensus-KO membership from a pangenome and hands off the drawing
+        # of unified, individual, and grid maps to '_map_kos_across_categories'.
 
         self.progress.new("Loading metadata from pan database")
         self.progress.update("...")
@@ -1645,51 +1557,53 @@ class Mapper:
                 "provided."
             )
 
-        if groups_txt is None:
-            source_group = None
-            group_sources = None
-            categories = all_genome_names
-            group_genomes = None
-            genome_group = None
-        else:
+        source_group: Dict[str, str] = None
+        group_sources: Dict[str, List[str]] = None
+        if groups_txt is not None:
             if not 0 <= group_threshold <= 1:
                 raise ConfigError(
                     f"'group_threshold' must be a number between 0 and 1, not {group_threshold}"
                 )
 
-            source_group, group_sources = utils.get_groups_txt_file_as_dict(
+            groups_txt_source_group, groups_txt_group_sources = utils.get_groups_txt_file_as_dict(
                 groups_txt, run=self.run, progress=self.progress
             )
-            categories = list(group_sources)
 
-            # Check that groups include pan genome names. Relate groups and genome names.
-            group_genomes: Dict[str, List[str]] = {}
-            genome_group: Dict[str, str] = {}
-            if groups_txt is not None:
-                ungrouped_genomes: List[str] = []
-                for genome_name in all_genome_names:
-                    try:
-                        group = source_group[genome_name]
-                    except KeyError:
-                        ungrouped_genomes.append(genome_name)
-                        continue
+            # Check that groups include the pan genomes. Relate groups and genome names.
+            source_group = {}
+            group_sources = {}
+            ungrouped_genomes: List[str] = []
+            for genome_name in all_genome_names:
+                try:
+                    group = groups_txt_source_group[genome_name]
+                except KeyError:
+                    ungrouped_genomes.append(genome_name)
+                    continue
 
-                    try:
-                        group_genomes[group].append(genome_name)
-                    except KeyError:
-                        group_genomes[group] = [genome_name]
-                    genome_group[genome_name] = group
+                source_group[genome_name] = group
+                try:
+                    group_sources[group].append(genome_name)
+                except KeyError:
+                    group_sources[group] = [genome_name]
 
-                if ungrouped_genomes:
-                    message = ', '.join([f"'{genome_name}'" for genome_name in ungrouped_genomes])
-                    raise ConfigError(
-                        "The following 'pan_db' genomes were not found in the groups provided by "
-                        f"'groups_txt': {message}"
-                    )
+            if ungrouped_genomes:
+                message = ', '.join([f"'{genome_name}'" for genome_name in ungrouped_genomes])
+                raise ConfigError(
+                    "The following 'pan_db' genomes were not found in the groups provided by "
+                    f"'groups_txt': {message}"
+                )
+
+            # Order groups by their appearance in the groups-txt file, which determines the order in
+            # which colors are assigned to groups and their combinations in the drawn maps.
+            group_sources = {
+                group: group_sources[group]
+                for group in groups_txt_group_sources
+                if group in group_sources
+            }
 
             # Report genomes in 'groups_txt' that are not in the pan database.
             missing_sources: List[str] = []
-            for source in source_group:
+            for source in groups_txt_source_group:
                 if source not in all_genome_names:
                     missing_sources.append(source)
             if missing_sources:
@@ -1699,60 +1613,203 @@ class Mapper:
                     f"'pan_db' genomes, and so will not factor into maps: {message}"
                 )
 
-        # If individual files are requested to be drawn for a subset of genomes or groups, check
+        self.progress.new("Loading consensus KO data from pan database")
+        self.progress.update("...")
+
+        # Load gene cluster data.
+        progress = self.progress
+        self.progress = terminal.Progress(verbose=False)
+        run = self.run
+        self.run = terminal.Run(verbose=False)
+        args = Namespace()
+        args.pan_db = pan_db
+        args.genomes_storage = genomes_storage_db
+        args.consensus_threshold = consensus_threshold
+        args.discard_ties = discard_ties
+        pan_super = PanSuperclass(args, r=self.run, p=self.progress)
+        pan_super.init_gene_clusters()
+        pan_super.init_gene_clusters_functions()
+        pan_super.init_gene_clusters_functions_summary_dict()
+        gene_clusters: Dict[str, Dict[str, List[int]]] = pan_super.gene_clusters
+        gene_clusters_functions_summary_dict: Dict = pan_super.gene_clusters_functions_summary_dict
+        self.progress = progress
+        self.run = run
+
+        # Find clusters with consensus KO annotations.
+        consensus_cluster_kos: Dict[str, str] = {}
+        for cluster_id, gene_cluster_functions_data in gene_clusters_functions_summary_dict.items():
+            gene_cluster_ko_data = gene_cluster_functions_data['KOfam']
+            if gene_cluster_ko_data == {'function': None, 'accession': None}:
+                continue
+            consensus_cluster_kos[cluster_id] = gene_cluster_ko_data['accession']
+
+        # More than one gene cluster can be represented by the same consensus KO. Find which
+        # genomes contribute genes to clusters represented by each consensus KO, and which consensus
+        # KOs are in each genome.
+        consensus_ko_genomes: Dict[str, List[str]] = {}
+        genome_consensus_kos: Dict[str, List[str]] = {}
+        for cluster_id, ko_id in consensus_cluster_kos.items():
+            for genome_name, gcids in gene_clusters[cluster_id].items():
+                if not gcids:
+                    continue
+                try:
+                    consensus_ko_genomes[ko_id].append(genome_name)
+                except KeyError:
+                    consensus_ko_genomes[ko_id] = [genome_name]
+                try:
+                    genome_consensus_kos[genome_name].append(ko_id)
+                except KeyError:
+                    genome_consensus_kos[genome_name] = [ko_id]
+        for ko_id, ko_genome_names in consensus_ko_genomes.items():
+            consensus_ko_genomes[ko_id] = list(set(ko_genome_names))
+
+        self.progress.end()
+
+        # Give every genome a KO list, so that a genome lacking consensus KOs still gets an (empty)
+        # individual map rather than raising a KeyError.
+        source_kos: Dict[str, List[str]] = {
+            genome_name: genome_consensus_kos.get(genome_name, [])
+            for genome_name in all_genome_names
+        }
+
+        return self._map_kos_across_categories(
+            consensus_ko_genomes,
+            source_kos,
+            all_genome_names,
+            output_dir,
+            'pangenome',
+            source_group=source_group,
+            group_sources=group_sources,
+            group_threshold=group_threshold,
+            pathway_numbers=pathway_numbers,
+            draw_individual_files=draw_individual_files,
+            draw_grid=draw_grid,
+            colormap=colormap,
+            colormap_limits=colormap_limits,
+            colormap_scheme=colormap_scheme,
+            reverse_overlay=reverse_overlay,
+            color_hexcode=color_hexcode,
+            group_colormap=group_colormap,
+            group_colormap_limits=group_colormap_limits,
+            group_reverse_overlay=group_reverse_overlay,
+            draw_maps_lacking_kos=draw_maps_lacking_kos
+        )
+
+    def _map_kos_across_categories(
+        self,
+        ko_membership: Dict[str, List[str]],
+        source_kos: Dict[str, List[str]],
+        all_sources: List[str],
+        output_dir: str,
+        source_type: Literal['contigs database', 'pangenome', 'sample'],
+        source_group: Dict[str, str] = None,
+        group_sources: Dict[str, List[str]] = None,
+        group_threshold: float = None,
+        pathway_numbers: Iterable[str] = None,
+        draw_individual_files: Union[Iterable[str], bool] = False,
+        draw_grid: Union[Iterable[str], bool] = False,
+        colormap: Union[bool, str, mcolors.Colormap] = True,
+        colormap_limits: Tuple[float, float] = None,
+        colormap_scheme: Literal['by_count', 'by_membership'] = None,
+        reverse_overlay: bool = False,
+        color_hexcode: str = '#2ca02c',
+        group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
+        group_colormap_limits: Tuple[float, float] = (0.1, 0.9),
+        group_reverse_overlay: bool = False,
+        draw_maps_lacking_kos: bool = False
+    ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
+        """
+        Draw pathway maps highlighting KOs across categories of "sources" (enzymes txt samples,
+        pangenome genomes, or contigs databases) or across groups of sources.
+
+        This is the shared drawing engine behind the public methods 'map_contigs_databases_kos',
+        'map_pan_database_kos', and 'map_enzymes_txt_samples_kos'. Each of those methods loads KO
+        membership from its own data source, then delegates the color assignment and drawing of
+        unified, individual, and grid maps here. The kind of source only affects terminology.
+
+        Parameters
+        ==========
+        ko_membership : Dict[str, List[str]]
+            Keys are KO IDs. Values are lists of the names of the sources (contigs databases,
+            genomes, or samples) containing the KO.
+
+        source_kos : Dict[str, List[str]]
+            Keys are source names, values are lists of the KO IDs in the source. Used to draw
+            individual maps for ungrouped sources. There must be an entry for every name in
+            'all_sources' (an empty list for a source lacking KOs).
+
+        all_sources : List[str]
+            The names of all sources, in the order used to assign colors. This is the full set of
+            sources regardless of whether each contains any KOs.
+
+        output_dir : str
+            Path to the output directory in which pathway map and colorbar PDF files are drawn. The
+            directory is created if it does not exist.
+
+        source_type : Literal['contigs database', 'pangenome', 'sample']
+            The kind of source, used only to phrase terminal messages and colorbar labels.
+
+        source_group : Dict[str, str], None
+            Keys are source names, values are group names. None if sources are not grouped. When
+            provided, 'group_sources' and 'group_threshold' must also be provided.
+
+        group_sources : Dict[str, List[str]], None
+            Keys are group names, values are lists of the source names in the group. None if sources
+            are not grouped.
+
+        group_threshold : float, None
+            The proportion of a group's sources that must contain a reaction's KOs for the reaction
+            to be considered present in the group. None if sources are not grouped.
+
+        Notes
+        =====
+        The remaining parameters ('pathway_numbers', 'draw_individual_files', 'draw_grid',
+        'colormap', 'colormap_limits', 'colormap_scheme', 'reverse_overlay', 'color_hexcode',
+        'group_colormap', 'group_colormap_limits', 'group_reverse_overlay', 'draw_maps_lacking_kos')
+        have the same meaning as in the public methods that call this one.
+        """
+        grouped = group_sources is not None
+        assert (source_group is not None) == grouped
+        assert (group_threshold is not None) == grouped
+
+        # Terminology used in messages and colorbar labels, keyed by source type.
+        singular, plural, count_label, members_label, group_phrase = {
+            'contigs database': (
+                'contigs database', 'contigs databases', 'database count', 'databases',
+                'contigs database group'
+            ),
+            'pangenome': ('genome', 'genomes', 'genome count', 'genomes', 'group'),
+            'sample': ('sample', 'samples', 'sample count', 'samples', 'sample group')
+        }[source_type]
+
+        all_sources_set = set(all_sources)
+        categories = list(all_sources) if not grouped else list(group_sources)
+
+        # If individual files or grid panels are requested for a subset of sources or groups, check
         # that the names are valid.
-        if not isinstance(draw_individual_files, bool):
-            if groups_txt is None:
-                unrecognized_genome_names: List[str] = []
-                for genome_name in draw_individual_files:
-                    if genome_name not in all_genome_names:
-                        unrecognized_genome_names.append(genome_name)
-                if unrecognized_genome_names:
-                    message = ', '.join([f"'{name}'" for name in unrecognized_genome_names])
+        for request, request_phrase in (
+            (draw_individual_files, "Individual maps"),
+            (draw_grid, "Individual maps in grids")
+        ):
+            if isinstance(request, bool):
+                continue
+            if not grouped:
+                unrecognized = [name for name in request if name not in all_sources_set]
+                if unrecognized:
+                    message = ', '.join(f"'{name}'" for name in unrecognized)
                     raise ConfigError(
-                        "Individual maps were requested for a subset of genomes, but the following "
-                        "genome names were not recognized as corresponding to any of those in the "
-                        f"pan database: {message}"
-                    )
-            else:
-                unrecognized_groups: List[str] = []
-                for group in draw_individual_files:
-                    if group not in group_sources:
-                        unrecognized_groups.append(group)
-                if unrecognized_groups:
-                    message = ', '.join([f"'{group}'" for group in unrecognized_groups])
-                    raise ConfigError(
-                        "Individual maps were requested for a subset of genome groups, but the "
-                        "following group names were not among those provided in 'groups_txt': "
+                        f"{request_phrase} were requested for a subset of {plural}, but the "
+                        f"following names were not recognized as any of the provided {plural}: "
                         f"{message}"
                     )
-
-        # If individual maps in grids are requested to be drawn for a subset of genomes or groups,
-        # check that the names are valid.
-        if not isinstance(draw_grid, bool):
-            if groups_txt is None:
-                unrecognized_genome_names: List[str] = []
-                for genome_name in draw_grid:
-                    if genome_name not in all_genome_names:
-                        unrecognized_genome_names.append(genome_name)
-                if unrecognized_genome_names:
-                    message = ', '.join([f"'{name}'" for name in unrecognized_genome_names])
-                    raise ConfigError(
-                        "Individual maps in grids were requested for a subset of genomes, but the "
-                        "following genome names were not recognized as corresponding to any of "
-                        f"those in the pan database: {message}"
-                    )
             else:
-                unrecognized_groups: List[str] = []
-                for group in draw_grid:
-                    if group not in group_sources:
-                        unrecognized_groups.append(group)
-                if unrecognized_groups:
-                    message = ', '.join([f"'{group}'" for group in unrecognized_groups])
+                unrecognized = [group for group in request if group not in group_sources]
+                if unrecognized:
+                    message = ', '.join(f"'{group}'" for group in unrecognized)
                     raise ConfigError(
-                        "Individual maps in grids were requested for a subset of genome groups, "
-                        "but the following group names were not among those provided in "
-                        f"'groups_txt': {message}"
+                        f"{request_phrase} were requested for a subset of {singular} groups, but "
+                        f"the following group names were not among those provided in the groups "
+                        f"file: {message}"
                     )
 
         self.progress.new("Setting map colors")
@@ -1762,7 +1819,7 @@ class Mapper:
         ignore_groups = False
         if colormap is False:
             scheme = 'static'
-            if groups_txt is not None:
+            if grouped:
                 ignore_groups = True
         else:
             if colormap_scheme is None:
@@ -1824,10 +1881,7 @@ class Mapper:
         # Set and trim the colormap for individual group maps.
         group_cmap = None
         poor_colormap = False
-        if (
-            groups_txt is not None and
-            (draw_individual_files is not False or draw_grid is not False)
-        ):
+        if grouped and (draw_individual_files is not False or draw_grid is not False):
             if isinstance(group_colormap, str):
                 group_cmap = plt.colormaps[group_colormap]
             elif isinstance(group_colormap, mcolors.Colormap):
@@ -1853,69 +1907,17 @@ class Mapper:
 
         if ignore_groups:
             self.run.warning(
-                "Groups were provided by 'groups_txt', but these will be ignored, since 'colormap' "
-                "was set to False, and dynamic coloring based on KO membership in groups will be "
-                "overridden by static coloring based on KO presence/absence in any genome."
+                "Groups were provided, but these will be ignored, since 'colormap' was set to "
+                "False, and dynamic coloring based on KO membership in groups will be overridden by "
+                f"static coloring based on KO presence/absence in any {singular}."
             )
 
         if poor_colormap:
             self.run.warning(
-                f"The group colormap, '{cmap.name}', that was provided to color individual group "
-                "maps is not especially useful for displaying the count of genomes. We recommend a "
-                "sequential colormap like 'plasma' instead."
+                f"The group colormap, '{group_cmap.name}', that was provided to color individual "
+                f"group maps is not especially useful for displaying the count of {plural}. We "
+                "recommend a sequential colormap like 'plasma' instead."
             )
-
-        self.progress.new("Loading consensus KO data from pan database")
-        self.progress.update("...")
-
-        # Load gene cluster data.
-        progress = self.progress
-        self.progress = terminal.Progress(verbose=False)
-        run = self.run
-        self.run = terminal.Run(verbose=False)
-        args = Namespace()
-        args.pan_db = pan_db
-        args.genomes_storage = genomes_storage_db
-        args.consensus_threshold = consensus_threshold
-        args.discard_ties = discard_ties
-        pan_super = PanSuperclass(args, r=self.run, p=self.progress)
-        pan_super.init_gene_clusters()
-        pan_super.init_gene_clusters_functions()
-        pan_super.init_gene_clusters_functions_summary_dict()
-        gene_clusters: Dict[str, Dict[str, List[int]]] = pan_super.gene_clusters
-        gene_clusters_functions_summary_dict: Dict = pan_super.gene_clusters_functions_summary_dict
-        self.progress = progress
-        self.run = run
-
-        # Find clusters with consensus KO annotations.
-        consensus_cluster_kos: Dict[str, str] = {}
-        for cluster_id, gene_cluster_functions_data in gene_clusters_functions_summary_dict.items():
-            gene_cluster_ko_data = gene_cluster_functions_data['KOfam']
-            if gene_cluster_ko_data == {'function': None, 'accession': None}:
-                continue
-            consensus_cluster_kos[cluster_id] = gene_cluster_ko_data['accession']
-        unique_consensus_kos: Set[str] = set(consensus_cluster_kos.values())
-
-        # More than one gene cluster can be represented by the same consensus KO. Find which
-        # genomes contribute genes to clusters represented by each consensus KO.
-        consensus_ko_genomes: Dict[str, List[str]] = {}
-        genome_consensus_kos: Dict[str, List[str]] = {}
-        for cluster_id, ko_id in consensus_cluster_kos.items():
-            for genome_name, gcids in gene_clusters[cluster_id].items():
-                if not gcids:
-                    continue
-                try:
-                    consensus_ko_genomes[ko_id].append(genome_name)
-                except KeyError:
-                    consensus_ko_genomes[ko_id] = [genome_name]
-                try:
-                    genome_consensus_kos[genome_name].append(ko_id)
-                except KeyError:
-                    genome_consensus_kos[genome_name] = [ko_id]
-        for ko_id, ko_genome_names in consensus_ko_genomes.items():
-            consensus_ko_genomes[ko_id] = list(set(ko_genome_names))
-
-        self.progress.end()
 
         # Find the numeric IDs of the maps to draw.
         pathway_numbers = self._find_maps(output_dir, 'kos', patterns=pathway_numbers)
@@ -1928,35 +1930,35 @@ class Mapper:
             'grid': {}
         }
 
-        self.progress.new("Drawing 'unified' map incorporating data from all genomes")
+        self.progress.new(f"Drawing 'unified' map incorporating data from all {plural}")
 
         exceeds_colors: Tuple[int, int] = None
         if scheme == 'static':
-            # Draw unified maps of all genomes with static reaction colors.
+            # Draw unified maps of all sources with static reaction colors.
             for pathway_number in pathway_numbers:
                 self.progress.update(pathway_number)
                 if color_hexcode == 'original':
                     drawn['unified'][pathway_number] = self._draw_map_kos_original_color(
                         pathway_number,
-                        unique_consensus_kos,
+                        ko_membership,
                         output_dir,
                         draw_map_lacking_kos=draw_maps_lacking_kos
                     )
                 else:
                     drawn['unified'][pathway_number] = self._draw_map_kos_single_color(
                         pathway_number,
-                        unique_consensus_kos,
+                        ko_membership,
                         color_hexcode,
                         output_dir,
                         draw_map_lacking_kos=draw_maps_lacking_kos
                     )
         else:
-            # Draw unified maps with dynamic coloring by membership in genomes or groups.
+            # Draw unified maps with dynamic coloring by membership in sources or groups.
             assert cmap is not None
             color_priority: Dict[str, float] = {}
             if scheme == 'by_count':
-                # Sample the colormap for colors representing each possible number of genomes or
-                # groups. Lower color values correspond to fewer genomes/groups.
+                # Sample the colormap for colors representing each possible number of sources or
+                # groups. Lower color values correspond to fewer sources/groups.
                 if sampling == 'in_order':
                     if len(categories) == 1:
                         sample_points = range(1, 2)
@@ -1980,14 +1982,12 @@ class Mapper:
                         color_priority[mcolors.rgb2hex(cmap(sample_point))] = sample_point
                 category_combos = None
             elif scheme == 'by_membership':
-                # Sample the colormap for colors representing the different genomes or groups and
-                # their combinations. Lower color values correspond to fewer genomes/groups.
+                # Sample the colormap for colors representing the different sources or groups and
+                # their combinations. Lower color values correspond to fewer sources/groups.
                 category_combos = []
                 for category_count in range(1, len(categories) + 1):
-                    if groups_txt is None:
-                        category_combos += list(
-                            combinations(all_genome_names, category_count)
-                        )
+                    if not grouped:
+                        category_combos += list(combinations(all_sources, category_count))
                     else:
                         category_combos += list(combinations(categories, category_count))
 
@@ -2019,13 +2019,13 @@ class Mapper:
                 _draw_colorbar = functools.partial(
                     _draw_colorbar,
                     color_labels=range(1, len(categories) + 1),
-                    label='genome count' if groups_txt is None else 'group count'
+                    label=count_label if not grouped else 'group count'
                 )
             elif scheme == 'by_membership':
                 _draw_colorbar = functools.partial(
                     _draw_colorbar,
                     color_labels=[', '.join(combo) for combo in category_combos],
-                    label='genomes' if groups_txt is None else 'groups'
+                    label=members_label if not grouped else 'groups'
                 )
             _draw_colorbar(
                 color_priority, os.path.join(output_dir, 'colorbar.pdf')
@@ -2035,12 +2035,12 @@ class Mapper:
                 self.progress.update(pathway_number)
                 drawn['unified'][pathway_number] = self._draw_map_kos_membership(
                     pathway_number,
-                    consensus_ko_genomes,
+                    ko_membership,
                     color_priority,
                     output_dir,
                     category_combos=category_combos,
-                    group_sources=None if groups_txt is None else group_genomes,
-                    group_threshold=None if groups_txt is None else group_threshold,
+                    group_sources=group_sources,
+                    group_threshold=group_threshold,
                     draw_map_lacking_kos=draw_maps_lacking_kos
                 )
 
@@ -2061,10 +2061,7 @@ class Mapper:
 
         # Determine the individual maps to draw.
         if draw_individual_files == True:
-            if groups_txt is None:
-                draw_files_categories = all_genome_names
-            else:
-                draw_files_categories = list(group_sources)
+            draw_files_categories = list(all_sources) if not grouped else list(group_sources)
         elif draw_individual_files == False:
             draw_files_categories = []
         else:
@@ -2077,10 +2074,7 @@ class Mapper:
 
         # Determine the map grids to draw.
         if draw_grid == True:
-            if groups_txt is None:
-                draw_grid_categories = all_genome_names
-            else:
-                draw_grid_categories = list(group_sources)
+            draw_grid_categories = list(all_sources) if not grouped else list(group_sources)
         elif draw_grid == False:
             draw_grid_categories = []
         else:
@@ -2099,43 +2093,43 @@ class Mapper:
 
         # Gather information needed to draw individual maps for groups, either as separate files or
         # in map grids. Determine map colors.
-        group_consensus_ko_genomes: Dict[str, Dict[str, List[str]]] = {}
+        group_ko_membership: Dict[str, Dict[str, List[str]]] = {}
         group_color_priority: Dict[str, Dict[str, float]] = {}
-        if groups_txt is not None:
-            # Determine consensus KO membership among each group's genomes.
-            for ko_id, genome_names in consensus_ko_genomes.items():
-                for genome_name in genome_names:
+        if grouped:
+            # Determine KO membership among each group's sources.
+            for ko_id, source_names in ko_membership.items():
+                for source_name in source_names:
                     try:
-                        group = genome_group[genome_name]
+                        group = source_group[source_name]
                     except KeyError:
-                        # 'groups_txt' is not require to contain every pan genome.
+                        # 'group_sources' is not required to contain every source.
                         continue
 
                     try:
-                        # Use 'inner_' to distinguish from variable 'consensus_ko_genomes'.
-                        inner_consensus_ko_genomes = group_consensus_ko_genomes[group]
+                        # Use 'inner_' to distinguish from variable 'ko_membership'.
+                        inner_ko_membership = group_ko_membership[group]
                     except KeyError:
-                        group_consensus_ko_genomes[group] = inner_consensus_ko_genomes = {}
+                        group_ko_membership[group] = inner_ko_membership = {}
                     try:
-                        inner_genome_names = inner_consensus_ko_genomes[ko_id]
+                        inner_source_names = inner_ko_membership[ko_id]
                     except KeyError:
-                        inner_consensus_ko_genomes[ko_id] = inner_genome_names = []
-                    inner_genome_names.append(genome_name)
+                        inner_ko_membership[ko_id] = inner_source_names = []
+                    inner_source_names.append(source_name)
 
-            # For each group, sample the group colormap for colors representing all genomes in the
-            # group. Lower color values correspond to fewer genomes.
+            # For each group, sample the group colormap for colors representing all sources in the
+            # group. Lower color values correspond to fewer sources.
             assert group_cmap is not None
-            for group, inner_consensus_ko_genomes in group_consensus_ko_genomes.items():
-                genome_names = group_genomes[group]
-                if len(genome_names) == 1:
+            for group, inner_ko_membership in group_ko_membership.items():
+                source_names = group_sources[group]
+                if len(source_names) == 1:
                     sample_points = np.linspace(1, 1, 1)
                 else:
-                    sample_points = np.linspace(0, 1, len(genome_names))
+                    sample_points = np.linspace(0, 1, len(source_names))
 
-                if len(genome_names) > group_cmap.N:
+                if len(source_names) > group_cmap.N:
                     self.run.warning(
                         "There were fewer distinct colors available in the group colormap "
-                        f"({group_cmap.N}) than were needed ({len(genome_names)}) for drawing "
+                        f"({group_cmap.N}) than were needed ({len(source_names)}) for drawing "
                         f"individual maps for group '{group}', so some colors were repeated in "
                         "use."
                     )
@@ -2151,30 +2145,29 @@ class Mapper:
                             mcolors.rgb2hex(group_cmap(sample_point))
                         ] = sample_point
 
-        # Draw individual genome or group maps needed as final outputs or for grids.
+        # Draw individual source or group maps needed as final outputs or for grids.
         for category in draw_categories:
             drawn_category: Dict[str, bool] = {}
-            if groups_txt is None:
-                genome_name = category
-                self.progress.new(f"Drawing maps for genome '{genome_name}'")
+            if not grouped:
+                self.progress.new(f"Drawing maps for {singular} '{category}'")
                 self.progress.update("...")
                 progress = self.progress
                 self.progress = terminal.Progress(verbose=False)
                 run = self.run
                 self.run = terminal.Run(verbose=False)
 
-                group_output_dir = os.path.join(output_dir, genome_name)
+                category_output_dir = os.path.join(output_dir, category)
                 filesnpaths.gen_output_directory(
-                    group_output_dir, progress=self.progress, run=self.run
+                    category_output_dir, progress=self.progress, run=self.run
                 )
 
                 for pathway_number in pathway_numbers:
-                    ko_ids = genome_consensus_kos[genome_name]
+                    ko_ids = source_kos[category]
                     if color_hexcode == 'original':
                         drawn_category[pathway_number] = self._draw_map_kos_original_color(
                             pathway_number,
                             ko_ids,
-                            os.path.join(output_dir, genome_name),
+                            category_output_dir,
                             draw_map_lacking_kos=draw_maps_lacking_kos
                         )
                     else:
@@ -2182,7 +2175,7 @@ class Mapper:
                             pathway_number,
                             ko_ids,
                             color_hexcode,
-                            os.path.join(output_dir, genome_name),
+                            category_output_dir,
                             draw_map_lacking_kos=draw_maps_lacking_kos
                         )
 
@@ -2191,7 +2184,7 @@ class Mapper:
                 self.progress.end()
             else:
                 group = category
-                self.progress.new(f"Drawing maps for group '{group}'")
+                self.progress.new(f"Drawing maps for {group_phrase} '{group}'")
                 self.progress.update("...")
                 progress = self.progress
                 self.progress = terminal.Progress(verbose=False)
@@ -2206,16 +2199,16 @@ class Mapper:
                 self.colorbar_drawer.draw(
                     group_color_priority[group],
                     os.path.join(output_dir, group, 'colorbar.pdf'),
-                    color_labels=range(1, len(group_genomes[group]) + 1),
-                    label='genome count'
+                    color_labels=range(1, len(group_sources[group]) + 1),
+                    label=count_label
                 )
 
-                inner_consensus_ko_genomes = group_consensus_ko_genomes[group]
+                inner_ko_membership = group_ko_membership[group]
                 inner_color_priority = group_color_priority[group]
                 for pathway_number in pathway_numbers:
                     drawn_category[pathway_number] = self._draw_map_kos_membership(
                         pathway_number,
-                        inner_consensus_ko_genomes,
+                        inner_ko_membership,
                         inner_color_priority,
                         group_output_dir,
                         draw_map_lacking_kos=draw_maps_lacking_kos
@@ -2228,10 +2221,7 @@ class Mapper:
 
         if draw_grid == False:
             # Our work here is done.
-            if groups_txt is None:
-                category_message = "genomes"
-            else:
-                category_message = "groups"
+            category_message = plural if not grouped else "groups"
 
             count = sum(drawn['unified'].values()) if drawn['unified'] else 0
             self.run.info(
@@ -2254,17 +2244,14 @@ class Mapper:
             draw_files_categories,
             output_dir,
             drawn,
-            group_sources=group_genomes,
+            group_sources=group_sources,
             group_color_priority=group_color_priority,
             check_maps_lacking_kos=not draw_maps_lacking_kos,
-            source_type='pangenome'
+            source_type=source_type
         )
 
         # Our work here is done.
-        if groups_txt is None:
-            category_message = "genomes"
-        else:
-            category_message = "groups"
+        category_message = plural if not grouped else "groups"
 
         count = sum(drawn['unified'].values()) if drawn['unified'] else 0
         self.run.info(
@@ -3165,7 +3152,7 @@ class Mapper:
             If True, check for "empty" individual map files that are needed to complete the map grid
             and draw them as temporary files, deleting them at after map grids are drawn.
 
-        source_type : Literal['contigs database', 'pangenome', 'unknown'], 'unknown'
+        source_type : Literal['contigs database', 'pangenome', 'sample', 'unknown'], 'unknown'
             The type of data sources being used
         """
         self.progress.new("Drawing map grid")
@@ -3229,6 +3216,8 @@ class Mapper:
                 label = 'genome count'
             elif source_type == 'contigs database':
                 label = 'database count'
+            elif source_type == 'sample':
+                label = 'sample count'
             else:
                 label = 'source count'
             for group in draw_categories:

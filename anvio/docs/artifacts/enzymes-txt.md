@@ -41,3 +41,20 @@ If these columns are included, you can use the `--add-coverage` flag with %(anvi
 |aca:ACP_1744|K02626|KOfam|4.522875816993464|0.7790055248618785|
 |aco:Amico_1604|K00606|KOfam|2.63953488372093|0.8063380281690141|
 |ade:Adeh_0623|K02669|KOfam|2.011764705882353|0.6639344262295082|
+
+## Assigning enzymes to samples
+
+If the enzymes in the file come from more than one origin (for example, different genomes such as *E. coli* and *K. pneumoniae*, or different metagenomic/transcriptomic/proteomic samples such as `Sample_1`, `Sample_2`, and `Sample_3`), you can add an optional `sample` column that assigns each row to a sample of origin.
+
+This column is currently used by %(anvi-draw-kegg-pathways)s: when a `sample` column is present, that program compares the KOfam annotations across samples on the pathway maps, coloring reactions by the sample or number of samples in which they occur, exactly as it does when comparing multiple %(contigs-db)s files or the genomes of a %(pan-db)s. Samples can also be grouped with a %(groups-txt)s file. When the `sample` column is absent, all KOfam annotations are instead drawn in a single color.
+
+Every KOfam row must have a value in the `sample` column, since the sample identifies the origin used to color reactions.
+
+## Example with samples
+
+|**gene_id**|**enzyme_accession**|**source**|**sample**|
+|:--|:--|:--|:--|
+|aad:TC41_3038|K02886|KOfam|Sample_1|
+|aca:ACP_1744|K02626|KOfam|Sample_1|
+|aco:Amico_1604|K00606|KOfam|Sample_2|
+|ade:Adeh_0623|K02669|KOfam|Sample_3|
