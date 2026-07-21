@@ -738,59 +738,76 @@ function get_model_info_table_html(model_data) {
 
     var geneModelHtml = '';
 
-    /* TEMPLATES */
-    geneModelHtml += '<div class="widget">'
-    geneModelHtml += '<span class="settings-header"><h4>Templates Used</h4></span>'
-    geneModelHtml += '<table class="table table-sm table-responsive" id="model_info_table"><tbody>';
-
-    var header = '<tr>';
-    for (const col_name of Object.keys(templates[0])) {
-        header += '<td><label class="col-md-4 settings-label">' + col_name + '</label></td>';
+    /* PREDICTION ENGINE */
+    var engine_labels = {'modeller': 'MODELLER', 'colabfold': 'ColabFold', 'external': 'External'};
+    var engine = model_data['engine'];
+    if (engine) {
+        geneModelHtml += '<div class="widget">'
+        geneModelHtml += '<span class="settings-header"><h4>Prediction engine</h4></span>'
+        geneModelHtml += '<p>' + (engine_labels[engine] || engine) + '</p>';
+        geneModelHtml += "</div>";
     }
-    header += '</tr>';
-    geneModelHtml += header;
 
-    for (var i = 0; i < Object.keys(templates).length; i++) {
-        var row = templates[i];
-        var tr = '<tr>';
+    /* TEMPLATES */
+    // template-free engines (ColabFold) and external structures report no templates
+    if (Object.keys(templates).length > 0) {
+        geneModelHtml += '<div class="widget">'
+        geneModelHtml += '<span class="settings-header"><h4>Templates Used</h4></span>'
+        geneModelHtml += '<table class="table table-sm table-responsive" id="model_info_table"><tbody>';
 
-        for (const [col_name, value] of Object.entries(row)) {
-            if (col_name == 'PDB') {
-                formatted_value = '<a href="https://www.rcsb.org/structure/' + value + '" target=_"blank">' + value.toUpperCase() + '</a>'
-            } else if (col_name == '%Identity') {
-                formatted_value = Number(value).toFixed(2);
-            } else if (col_name == 'Align fraction') {
-                formatted_value = Number(value).toFixed(3);
-            } else {
-                formatted_value = value
+        var header = '<tr>';
+        for (const col_name of Object.keys(templates[0])) {
+            header += '<td><label class="col-md-4 settings-label">' + col_name + '</label></td>';
+        }
+        header += '</tr>';
+        geneModelHtml += header;
+
+        for (var i = 0; i < Object.keys(templates).length; i++) {
+            var row = templates[i];
+            var tr = '<tr>';
+
+            for (const [col_name, value] of Object.entries(row)) {
+                if (col_name == 'PDB') {
+                    formatted_value = '<a href="https://www.rcsb.org/structure/' + value + '" target=_"blank">' + value.toUpperCase() + '</a>'
+                } else if (col_name == '%Identity') {
+                    formatted_value = Number(value).toFixed(2);
+                } else if (col_name == 'Align fraction') {
+                    formatted_value = Number(value).toFixed(3);
+                } else {
+                    formatted_value = value
+                }
+                tr += '<td>' + formatted_value + '</td>'
             }
-            tr += '<td>' + formatted_value + '</td>'
+
+            tr += '</tr>'
+            geneModelHtml += tr;
         }
 
-        tr += '</tr>'
-        geneModelHtml += tr;
+        geneModelHtml += "</tbody></table></div>";
     }
-
-    geneModelHtml += "</tbody></table></div>";
 
     /* MODELS */
-    geneModelHtml += '<div class="widget">'
-    geneModelHtml += '<span class="settings-header"><h4>Model Scores</h4></span>'
-    geneModelHtml += '<table class="table table-sm table-responsive" id="model_info_table"><tbody>';
+    // external structures carry no model scores
+    if (models) {
+        geneModelHtml += '<div class="widget">'
+        geneModelHtml += '<span class="settings-header"><h4>Model Scores</h4></span>'
+        geneModelHtml += '<table class="table table-sm table-responsive" id="model_info_table"><tbody>';
 
-    var header = '<tr>';
-    var row = '<tr>';
-    for (const [col_name, value] of Object.entries(models)) {
-        header += '<td><label class="col-md-4 settings-label">' + col_name + '</label></td>';
-        row += '<td>' + Number(value).toFixed(2) + '</td>';
+        var header = '<tr>';
+        var row = '<tr>';
+        for (const [col_name, value] of Object.entries(models)) {
+            header += '<td><label class="col-md-4 settings-label">' + col_name + '</label></td>';
+            row += '<td>' + Number(value).toFixed(2) + '</td>';
+        }
+        header += '</tr>';
+        row += '</tr>';
+
+        geneModelHtml += header;
+        geneModelHtml += row;
+
+        geneModelHtml += "</tbody></table></div>";
     }
-    header += '</tr>';
-    row += '</tr>';
 
-    geneModelHtml += header;
-    geneModelHtml += row;
-
-    geneModelHtml += "</tbody></table></div>";
     return geneModelHtml;
 }
 
@@ -1094,8 +1111,16 @@ function create_ui() {
                 size_legend[engine] = {};
             }
 
+            // residue_info columns that also have a column_info entry are added below with a
+            // friendly title, so we skip them here to avoid listing the same variable twice
+            let column_info_color_names = new Set(
+                column_info
+                    .filter((item) => (item['as_view'] | item['as_filter']) && item['data_type'] != 'text')
+                    .map((item) => item['name'])
+            );
+
             for (const [info_name, types] of Object.entries(residue_info_types)) {
-                if (types["dtype"] != "object") {
+                if (types["dtype"] != "object" && !column_info_color_names.has(info_name)) {
                     // Ok this is some type of numerical data form. We can include it
                     $('#backbone_color_variable').append(`<option value="${info_name}">${info_name}</item>`);
                     $('#surface_color_variable').append(`<option value="${info_name}">${info_name}</item>`);
