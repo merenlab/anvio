@@ -13,13 +13,18 @@ make_structure_db() {
                                 --num-threads 2 \
                                 --num-models 1
 }
-# Predict structures with ColabFold instead of MODELLER. This is NOT part of the default routines
-# because it requires ColabFold to be installed (pass its conda env with --colabfold-conda-env) and,
-# for a real run, a GPU and either internet access (--colabfold-msa-server) or a local ColabFold
-# database (--colabfold-db). Invoke it manually when you want to exercise the ColabFold engine.
+# Predict structures with ColabFold instead of MODELLER. This is opt-in: it only runs when the
+# COLABFOLD_CONDA_ENV environment variable names a conda environment in which ColabFold is installed
+# (anvi'o runs every ColabFold command via `conda run -n $COLABFOLD_CONDA_ENV`). A real run also needs
+# internet access (we use --colabfold-msa-server) and is slow without a GPU (~10 min per protein on a
+# CPU). When COLABFOLD_CONDA_ENV is unset, the ColabFold parts of the routines are simply skipped.
+#
+# For example, to exercise the ColabFold engine end-to-end:
+#     COLABFOLD_CONDA_ENV=colabfold bash run_component_tests_for_SCVs_SAAVs_structure.sh new
 make_structure_db_colabfold() {
     anvi-gen-structure-database -c test-output/one_contig_five_genes.db \
                                 --engine colabfold \
+                                --colabfold-conda-env "$COLABFOLD_CONDA_ENV" \
                                 --colabfold-msa-server \
                                 --skip-DSSP \
                                 --gene-caller-ids 2 \
@@ -66,6 +71,13 @@ display_structure3() {
               --gene-caller-ids 2,4 \
               --debug
 }
+display_structure_colabfold() {
+    anvi-display-structure -p test-output/SAMPLES-MERGED/PROFILE.db \
+              -c test-output/one_contig_five_genes.db \
+              -s test-output/STRUCTURE_COLABFOLD.db \
+              --gene-caller-ids 2 \
+              --debug
+}
 
 make_routine() {
     INFO "anvi-gen-structure-database with DSSP"
@@ -91,6 +103,14 @@ gene_callers_id	path
 4	test-output/exported_pdbs/gene_4.pdb
 EOF
     anvi-update-structure-database -s test-output/EXTERNAL_STRUCTURE.db --external-structures external_structures -c test-output/one_contig_five_genes.db --rerun --debug
+
+    # ColabFold is only exercised when the user points the test at a conda environment in which
+    # ColabFold is installed (see make_structure_db_colabfold above). Otherwise it is skipped.
+    if [ -n "$COLABFOLD_CONDA_ENV" ]
+    then
+        INFO "anvi-gen-structure-database with ColabFold (conda env: $COLABFOLD_CONDA_ENV)"
+        make_structure_db_colabfold
+    fi
 }
 
 display_routine() {
@@ -108,6 +128,15 @@ display_routine() {
 
     INFO "anvi-display-structure with external structure database"
     display_structure3
+
+    # display the ColabFold structures whenever they were generated (i.e. the ColabFold engine was
+    # exercised in a `new`/`make` run). Displaying needs neither ColabFold nor a conda env, so we gate
+    # on the database existing rather than on COLABFOLD_CONDA_ENV.
+    if [ -f "test-output/STRUCTURE_COLABFOLD.db" ]
+    then
+        INFO "anvi-display-structure with ColabFold structure database"
+        display_structure_colabfold
+    fi
 }
 
 
@@ -121,6 +150,13 @@ then
         'new'     : generate short reads, map them to the contig, gen contigs.db, make structure db, profile varability, open interactive.
         'make'    : make structure db, profile varability, open interactive.
         'display' : profile varability, open interactive.
+
+        To additionally exercise the ColabFold engine, set the COLABFOLD_CONDA_ENV environment
+        variable to the name of a conda environment in which ColabFold is installed, e.g.:
+
+            COLABFOLD_CONDA_ENV=colabfold bash run_component_tests_for_SCVs_SAAVs_structure.sh new
+
+        This requires internet access and is slow without a GPU (~10 min per protein on a CPU).
         "
         exit -1
 fi
@@ -196,6 +232,8 @@ then
     rm -rf test-output/EXTERNAL_STRUCTURE.db
     rm -rf test-output/RAW_MODELLER_OUTPUT
     rm -rf test-output/exported_pdbs
+    rm -rf test-output/STRUCTURE_COLABFOLD.db
+    rm -rf test-output/RAW_COLABFOLD_OUTPUT
 
     make_routine
     display_routine
