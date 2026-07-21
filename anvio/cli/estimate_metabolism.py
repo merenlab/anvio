@@ -11,10 +11,10 @@ from anvio.metabolism.estimate import KeggMetabolismEstimator, KeggMetabolismEst
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__authors__ = ['ivagljiva']
+__authors__ = ['ivagljiva', 'jessika-fuessel']
 __requires__ = ["contigs-db", "kegg-data", "kegg-functions"]
 __can_use__ = ["profile-db", "collection", "bin", "external-genomes", "internal-genomes",
-               "metagenomes", "user-modules-data", "enzymes-txt", "pan-db", "genomes-storage-db"]
+               "user-modules-data", "enzymes-txt", "pan-db", "genomes-storage-db"]
 __provides__ = ["kegg-metabolism", "user-metabolism"]
 __description__ = "Reconstructs metabolic pathways and estimates pathway completeness for a given set of contigs"
 
@@ -24,7 +24,7 @@ def main():
     args = get_args()
 
     try:
-        if args.metagenomes or args.external_genomes or args.internal_genomes:
+        if args.external_genomes or args.internal_genomes:
             m = KeggMetabolismEstimatorMulti(args)
         else:
             m = KeggMetabolismEstimator(args)
@@ -59,15 +59,15 @@ def get_args():
 
     groupI = parser.add_argument_group('INPUT #1 - ESTIMATION ON SINGLE GENOMES OR METAGENOMES',
                                                    "The minimum you must provide this program is a contigs database. In which case "
-                                                   "anvi'o will attempt to estimate metabolism for all contigs in it, assuming that "
+                                                   "anvi'o will attempt to estimate metabolism across all contigs in it, assuming that "
                                                    "the contigs database represents a single genome. If the contigs database is actually "
                                                    "an unbinned metagenome and you want per-contig estimates instead, you can use the "
-                                                   "`--metagenome` flag to explicitly declare that. It is also acceptable to run this "
-                                                   "program on metagenomes without using metagenome mode if you want community-level "
+                                                   "`--per-contig-estimates` flag to explicitly declare that. You can also run this "
+                                                   "program on metagenomes without using per-contig estimates if you want community-level "
                                                    "metabolism estimates (ie, combining information across all contigs from different "
                                                    "populations in the community).")
     groupI.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
-    groupI.add_argument(*anvio.A('metagenome-mode'), **anvio.K('metagenome-mode'))
+    groupI.add_argument(*anvio.A('per-contig-estimates'), **anvio.K('per-contig-estimates'))
 
     groupP = parser.add_argument_group('INPUT #2 - ESTIMATION ON BINS', "If you also provide a profile database AND a collection name, anvi'o will "
                                                    "estimate metabolism separately for each bin in your collection. You can also limit "
@@ -80,14 +80,12 @@ def get_args():
 
     groupM = parser.add_argument_group('INPUT #3 - MULTI-MODE', "If you have multiple contigs databases to work with, you can put them all into a file. "
                                                    "Then anvi'o will run estimation separately on each database and generate a single output file for all. "
-                                                   "There are 3 types of input files to choose from depending on whether you want to treat your DBs as "
-                                                   "single genomes (external), genomes in collections (internal), or unbinned metagenomes (for contig-level "
-                                                   "estimates, i.e. 'metagenome mode') in your contigs DBs.")
+                                                   "There are 2 types of input files to choose from depending on whether you want to treat your DBs as "
+                                                   "individual genomes (external) or genomes in collections (internal). If your contigs databases are actually "
+                                                   "unbinned metagenomes and you want per-contig estimates for each of them, combine either of these "
+                                                   "options with the `--per-contig-estimates` flag described above.")
     groupM.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
     groupM.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
-    groupM.add_argument(*anvio.A('metagenomes'), **anvio.K('metagenomes', {'help': "Same format as an external genomes file, but choosing this option "
-                                                                                "ensures each DB in the input file is analyzed "
-                                                                                "with 'metagenome mode' for per-contig estimates."}))
 
     groupX = parser.add_argument_group('INPUT #4 - ESTIMATION ON A LIST OF ENZYMES',
                                                    "If all you have is a list of enzymes, you can use them to estimate metabolism "
@@ -103,7 +101,8 @@ def get_args():
                                                    "metabolism on each bin. You will need to provide the collection name (and optionally, "
                                                    "bin name(s)) -- see INPUT #2 section above. This program will use the most common "
                                                    "annotation (for each annotation source) from each gene cluster. Note that this input "
-                                                   "option is not compatible with the `--add-copy-number` or `--add-coverage` flags.")
+                                                   "option is not compatible with the `--add-coverage` flag, and module copy number is "
+                                                   "not reported for pangenome input.")
     groupN.add_argument('--pan-db', **anvio.K('pan-db', {'required': False}))
     groupN.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage'))
 
@@ -114,7 +113,6 @@ def get_args():
     groupC.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
     groupC.add_argument(*anvio.A('include-zeros'), **anvio.K('include-zeros'))
     groupC.add_argument(*anvio.A('only-complete'), **anvio.K('only-complete'))
-    groupC.add_argument(*anvio.A('add-copy-number'), **anvio.K('add-copy-number'))
     groupC.add_argument(*anvio.A('include-kos-not-in-kofam'), **anvio.K('include-kos-not-in-kofam'))
     groupC.add_argument(*anvio.A('include-nt-KOs'), **anvio.K('include-nt-KOs', {'help': "'No-threshold KOs', or 'nt-KOs' are what we call KEGG Orthlogs "
                                                             "that KEGG does not provide a bit score threshold for. Anvi'o can estimate "
@@ -126,6 +124,24 @@ def get_args():
                                                             "annotate with `anvi-run-kegg-kofams --include-nt-KOs`."}))
     groupC.add_argument(*anvio.A('ignore-unknown-KOs'), **anvio.K('ignore-unknown-KOs'))
     groupC.add_argument(*anvio.A('exclude-dashed-reactions'), **anvio.K('exclude-dashed-reactions'))
+    groupC.add_argument(*anvio.A('add-per-population-copy-number'), **anvio.K('add-per-population-copy-number',
+                                    {'help': "Request an additional statistic that reports the per-population copy number (PPCN) "
+                                             "of each metabolic module in your metagenome assembly (for both pathwise and stepwise module "
+                                             "copy number). anvi'o divides the module copy number by the number of populations "
+                                             "estimated to be present in that same assembly (estimated from single-copy core "
+                                             "genes: the mode of the number of hits to the single-copy core genes of each domain, "
+                                             "summed across Bacteria, Archaea, and Eukarya, just like `anvi-display-contigs-stats` "
+                                             "does). This normalization is useful for metagenomic assemblies, where the raw module "
+                                             "copy number scales with the number of populations in the assembly and is therefore "
+                                             "not comparable across samples of vastly different community sizes. For more details "
+                                             "about this method, please see Veseli et al. 2025. This flag requires that your contigs "
+                                             "database(s) have been annotated with single-copy core genes via `anvi-run-hmms`. It "
+                                             "only works with a single contigs database (`-c`) representing one (meta)genome or with "
+                                             "an external-genomes file (`-e`) containing many (meta)genomes, since population "
+                                             "normalization is only meaningful for a whole assembly. In long-format output, this flag "
+                                             "adds two columns (pathwise and stepwise PPCN); in matrix-format output, it adds two "
+                                             "additional matrix files. For multi-mode input, a third matrix containing the population "
+                                             "estimates for each input database will also be generated."}))
 
     groupL = parser.add_argument_group('OUTPUT - LONG-FORMAT OPTIONS', "Parameters for controlling long-format output (the default).")
     groupL.add_argument(*anvio.A('output-modes'), **anvio.K('output-modes'))

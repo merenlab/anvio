@@ -9,6 +9,7 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
+import anvio.hmmops as hmmops
 
 from anvio.dbinfo import DBInfo
 from anvio.errors import ConfigError
@@ -63,7 +64,10 @@ class KeggEstimatorArgs():
         self.exclude_zero_modules = False if A('include_zeros') else True
         self.only_complete = True if A('only_complete') else False
         self.add_coverage = True if A('add_coverage') else False
-        self.add_copy_number = True if A('add_copy_number') else False
+        self.add_per_population_copy_number = True if A('add_per_population_copy_number') else False
+        # not a CLI flag: this is set on the args object by KeggMetabolismEstimatorMulti to pass a pre-computed
+        # population estimate down to a single estimator, so it doesn't need to recompute it (see get_num_populations_for_contigs_db())
+        self.num_populations = A('num_populations')
         self.exclude_kos_no_threshold = False if A('include_kos_not_in_kofam') else True
         self.include_stray_kos = True if A('include_nt_KOs') or A('include_stray_kos') else False # quick fix for backward compatability
         self.include_nt_KOs = True if A('include_nt_KOs') or A('include_stray_kos') else False # quick fix for backward compatability
@@ -73,7 +77,6 @@ class KeggEstimatorArgs():
         self.no_comments = True if A('no_comments') else False
         self.external_genomes_file = A('external_genomes') or None
         self.internal_genomes_file = A('internal_genomes') or None
-        self.metagenomes_file = A('metagenomes') or None
         self.kegg_data_dir = A('kegg_data_dir')
 
         self.modules_unique_id = None
@@ -597,3 +600,80 @@ class KeggDataLoader(KeggContext):
                         enzyme_cluster_split_contig.append((acc,cluster_id,"NA","NA"))
 
         return enzyme_cluster_split_contig
+
+
+    def get_num_populations_for_contigs_db(self, contigs_db_path, run=run_quiet):
+        """Estimates the number of populations in a (meta)genome from its single-copy core genes.
+
+        This value is used to normalize module copy number into per-population copy number (PPCN) when
+        `--add-per-population-copy-number` is requested. The estimate is the mode of the number of hits to the
+        single-copy core genes of each domain, summed across Bacteria, Archaea, and Eukarya, just like
+        `anvi-display-contigs-stats` does (see `hmmops.NumGenomesEstimator`). Requires that the contigs database
+        has been annotated with single-copy core genes via `anvi-run-hmms`.
+
+        PARAMETERS
+        ==========
+        contigs_db_path : str
+            path to the contigs database to estimate the population count for
+        run : anvio.terminal.Run
+            used only for warnings that `hmmops.NumGenomesEstimator`/`SequencesForHMMHits` may emit (eg about
+            ambiguous multi-source SCG hits). Defaults to a quiet Run so that looping over many genomes (as
+            KeggMetabolismEstimatorMulti does) doesn't repeat the same warning once per genome; a single-contigs-db
+            caller should pass its own `self.run` so the user actually sees these warnings.
+
+        RETURNS
+        =======
+        num_populations : int
+            the estimated number of populations in this (meta)genome. This will be 0 if the single-copy core gene
+            annotations were too sparse to yield a reliable estimate (in which case, per-population copy number
+            values for this (meta)genome should be reported as NA rather than dividing by zero).
+        per_domain_totals : dict
+            maps domain name (eg, 'Bacteria', 'Archaea', 'Eukarya') to the estimated number of populations from
+            that domain's single-copy core genes alone. Summing these values gives `num_populations`.
+        """
+
+        # NumGenomesEstimator (via SequencesForHMMHits) opens its own progress tracker internally, so we always
+        # hand it a quiet one here to avoid conflicting with a progress tracker the caller may already have open.
+        # `run`, on the other hand, is caller-controlled (see docstring above).
+        num_genomes_estimator = hmmops.NumGenomesEstimator(contigs_db_path, run=run, progress=progress_quiet)
+
+        if not len(num_genomes_estimator.estimates_dict):
+            raise ConfigError(f"You requested per-population copy number normalization with "
+                              f"`--add-per-population-copy-number`, but there are no single-copy core gene "
+                              f"annotations in the contigs database at '{contigs_db_path}'. Please run "
+                              f"`anvi-run-hmms` on this database first.")
+
+        num_populations, _ = num_genomes_estimator.num_genomes()
+
+        return num_populations, num_genomes_estimator.per_domain_totals
+
+
+    def check_scg_hmms_are_present(self, genomes_dict):
+        """Raises a ConfigError listing every genome missing single-copy core gene HMM annotations.
+
+        This is a cheap presence check for 'singlecopy' type hmm hits in the `hmm_hits_info` metadata table,
+        and is meant to be called by multi-mode estimators when initializing external genomes so that users
+        can be warned about missing annotations before any metabolism estimation work starts.
+
+        PARAMETERS
+        ==========
+        genomes_dict : dict
+            maps genome name to a dict containing (at least) a 'contigs_db_path' key, eg GenomeDescriptions.genomes
+        """
+
+        from anvio.dbops import ContigsDatabase # <- import here to avoid circular import
+
+        genomes_missing_scgs = []
+        for genome_name, genome_info in genomes_dict.items():
+            contigs_db = ContigsDatabase(genome_info['contigs_db_path'], run=run_quiet, progress=progress_quiet)
+            hmm_hits_info = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
+            contigs_db.disconnect()
+
+            if not any(info['search_type'] == 'singlecopy' for info in hmm_hits_info.values()):
+                genomes_missing_scgs.append(genome_name)
+
+        if len(genomes_missing_scgs):
+            raise ConfigError(f"You requested per-population copy number normalization with "
+                              f"`--add-per-population-copy-number`, but the following contigs databases are missing "
+                              f"single-copy core gene HMM annotations: {', '.join(sorted(genomes_missing_scgs))}. "
+                              f"Please run `anvi-run-hmms` on them first.")
