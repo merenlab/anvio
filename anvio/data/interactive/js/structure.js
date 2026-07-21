@@ -1112,7 +1112,9 @@ function create_ui() {
             }
 
             // residue_info columns that also have a column_info entry are added below with a
-            // friendly title, so we skip them here to avoid listing the same variable twice
+            // friendly title, so we skip them here to avoid listing the same variable twice. This
+            // predicate must stay identical to the column_info coloring loop below (same `|`) so
+            // the set contains exactly the columns that loop adds.
             let column_info_color_names = new Set(
                 column_info
                     .filter((item) => (item['as_view'] | item['as_filter']) && item['data_type'] != 'text')
