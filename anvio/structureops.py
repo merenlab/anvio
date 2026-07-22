@@ -522,7 +522,7 @@ class StructureSuperclass(object):
             'num_models': A('num_models', null),
             'num_recycle': A('num_recycle', null),
             'amber': A('amber', bool),
-            'colabfold_msa_source': 'local' if A('colabfold_db', null) else 'server',
+            'colabfold_msa_source': msa_source,
             'colabfold_additional_parameters': A('colabfold_additional_parameters', null),
         }
 
