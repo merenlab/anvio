@@ -88,7 +88,7 @@ def get_args():
 
     groupD.add_argument('--min-contig-chain', default=5, type=int, help = "Skip contigs with fewer than this many genes "
                     "(filters very short/fragmented contigs).")
-    groupD.add_argument('--max-contigs-per-component', default=-1, type=int, help = "Cap on how many contigs (lines) "
+    groupD.add_argument('--max-contigs-per-component', default=1, type=int, help = "Cap on how many contigs (lines) "
                     "from a SINGLE genome are allowed to share one weakly-connected COMPONENT of the graph. During "
                     "fusion, a fuse that would union two components in a way that puts more than this many contigs from "
                     "any one genome into a single component is rejected (reason: `max-contigs-per-component`); the "
@@ -137,7 +137,7 @@ def get_args():
                     "lines can still fuse when `--decision-floor` is 0.0 and `--ranking-mean` is arithmetic (a zeroed component only "
                     "lowers the arithmetic mean; under geometric mean it drives the whole score to 0). To hard-drop such edges, raise "
                     "`--decision-floor` above 0.")
-    groupE.add_argument('--min-line-pair-hits', default=100, type=int, help = "Orientation-side gate. Minimum number of edges (DIAMOND "
+    groupE.add_argument('--min-line-pair-hits', default=50, type=int, help = "Orientation-side gate. Minimum number of edges (DIAMOND "
                     "hits) between two contig lines required for the pair to receive a same/flip orientation label. SOFT gate -- it "
                     "does NOT prevent fusion: a pair with fewer hits simply gets NO orientation label, which only makes its edges take "
                     "`--decision-tie-score` (default 0.0) as their `decision` ranking component. The edges are NOT removed from the "
@@ -146,7 +146,7 @@ def get_args():
                     "other components (under geometric mean a zeroed component drives the whole score to 0, excluding the edge unless "
                     "`--min-ranking-score` is also 0). To HARD-BLOCK under-supported line pairs from fusing use "
                     "`--fusion-min-line-pair-hits`; to require a non-zero decision score raise `--decision-floor`.")
-    groupE.add_argument('--fusion-min-line-pair-hits', default=100, type=int, help = "Fusion-side hard cutoff. Line pairs with fewer than "
+    groupE.add_argument('--fusion-min-line-pair-hits', default=0, type=int, help = "Fusion-side hard cutoff. Line pairs with fewer than "
                     "this many edges are dropped from the ranking pool entirely and NEVER fused (alongside the existing "
                     "same-genome-conflict and transitive-cycle guards). Independent of --min-line-pair-hits, which only gates "
                     "orientation labeling: set this above 0 if you want under-supported line pairs to be excluded from fusion "
