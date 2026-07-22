@@ -800,10 +800,21 @@ class StructureSuperclass(object):
         out_dir = self.dump_dir or filesnpaths.get_temp_directory_path()
         filesnpaths.gen_output_directory(out_dir, delete_if_exists=False, dont_warn=True)
 
-        # the query FASTA is part of the checkpoint (so --only-predict can regenerate it and compare),
-        # so it lives inside out_dir rather than a throwaway temp directory
-        fasta_path = os.path.join(out_dir, 'genes_of_interest.fa')
+        if self.only_predict:
+            # regenerate the query FASTA into a throwaway temp file used *only* to validate against the
+            # checkpoint: prediction itself reads the .a3m directory, not this FASTA, and a mismatch must
+            # leave the existing checkpoint (its own FASTA + MSAs) untouched
+            fasta_path = os.path.join(filesnpaths.get_temp_directory_path(), 'genes_of_interest.fa')
+        else:
+            # the query FASTA is part of the checkpoint (so --only-predict can regenerate and compare it),
+            # so for --only-msa / full runs it lives inside out_dir
+            fasta_path = os.path.join(out_dir, 'genes_of_interest.fa')
+
         clean_genes = self.export_clean_genes_to_fasta(genes_of_interest, fasta_path)
+
+        if self.only_predict:
+            # make sure this checkpoint was built from exactly these sequences before predicting
+            self.load_and_validate_colabfold_checkpoint(out_dir, fasta_path)
 
         if self.only_msa:
             # generate the MSAs locally, record the checkpoint, and stop. No database is produced.
@@ -815,11 +826,8 @@ class StructureSuperclass(object):
                                  "database; it defaults to STRUCTURE.db)." % out_dir, nl_before=1, nl_after=1, mc='green')
             return
 
-        if self.only_predict:
-            # make sure this checkpoint was built from exactly these sequences before predicting
-            self.load_and_validate_colabfold_checkpoint(out_dir, fasta_path)
-
-        # run ColabFold (a full run does MSA + prediction; --only-predict skips straight to prediction)
+        # run ColabFold (a full run does MSA + prediction; --only-predict skips straight to prediction,
+        # so its fasta_path is ignored by the driver -- run_batch reads the checkpoint's .a3m directory)
         self.colabfold.process(fasta_path, out_dir)
 
         # parse each gene's output and store it
