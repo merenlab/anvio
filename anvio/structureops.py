@@ -961,7 +961,10 @@ class StructureSuperclass(object):
                               (out_dir, manifest.get('contigs_db_hash'), self.contigs_db_hash))
 
         # the authoritative guard: the sequences to predict must be byte-identical to those the MSAs were
-        # generated from
+        # generated from. This rests on export_clean_genes_to_fasta being fully deterministic for a given
+        # contigs-db -- i.e. get_sequences_for_gene_callers_ids and skip_gene_if_not_clean must always
+        # produce the same clean-gene set and byte order. If a future change makes either of those
+        # non-deterministic or dependent on args not captured by the checkpoint, resume will break here.
         if manifest.get('query_fasta_hash') != utils.get_file_md5(fasta_path):
             raise ConfigError("The genes and sequences --only-predict is about to work on do not match the ones the MSA "
                               "checkpoint in '%s' was built from. This usually means the genes of interest changed, the "
