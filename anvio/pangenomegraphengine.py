@@ -373,13 +373,16 @@ def _uf_find(parent, x):
 
 def _add_line_to_graph(G, line_idx, lines, line_names, flip,
                        super_of_gene, uf_parent, wcc_uf_parent,
-                       in_g_lines, in_g_flip):
+                       in_g_lines, in_g_flip, line_to_genome, wcc_genome_count):
     """Add a line's gene-order chain to G in the chosen orientation. The
     newly added line is its own weakly-connected component on entry; the
     per-line WCC union-find (``wcc_uf_parent``) gets a fresh root entry so
     later fuses can track which lines belong to the same WCC and the
     different-components guard can short-circuit cross-WCC contractions
-    between established components."""
+    between established components. The fresh WCC's per-genome contig tally
+    (``wcc_genome_count``) is seeded with this line's genome so the
+    max-contigs-per-component cap in :py:func:`_fuse_genes` can be enforced
+    on later unions."""
     tokens = lines[line_idx]
     name = line_names[line_idx]
     seq = list(reversed(tokens)) if flip else list(tokens)
@@ -393,18 +396,24 @@ def _add_line_to_graph(G, line_idx, lines, line_names, flip,
     in_g_lines.add(line_idx)
     in_g_flip[line_idx] = flip
     wcc_uf_parent[line_idx] = line_idx
+    wcc_genome_count[line_idx] = Counter({line_to_genome[name]: 1})
 
 
 def _fuse_genes(G, u, v, w, score, mean, label,
                 super_of_gene, uf_parent, wcc_uf_parent, line_idx_by_name,
-                rejected_edges, line_to_genome):
+                rejected_edges, line_to_genome,
+                wcc_genome_count, max_contigs_per_component):
     """Try to contract the super-nodes containing ``u`` and ``v``.
 
     Records ``transitive-cycle`` in ``rejected_edges`` if the contraction
-    would break the DAG, or ``same-genome-conflict`` if it would pull two
-    genes from the same genome into one super-node.  No-op when the two
+    would break the DAG, ``same-genome-conflict`` if it would pull two
+    genes from the same genome into one super-node, or
+    ``max-contigs-per-component`` if unioning the two endpoints' WCCs would
+    put more than ``max_contigs_per_component`` contigs (lines) from any
+    single genome into one weakly-connected component.  No-op when the two
     genes are already in the same super-node. On a successful contraction
-    the two endpoints' lines are unioned in ``wcc_uf_parent`` so the
+    the two endpoints' lines are unioned in ``wcc_uf_parent`` (and their
+    per-genome contig tallies merged in ``wcc_genome_count``) so the
     different-components guard in :py:meth:`_build_pangenome_graph` sees
     them as the same WCC for subsequent fuses.
     """
@@ -422,6 +431,33 @@ def _fuse_genes(G, u, v, w, score, mean, label,
     if a_genomes & b_genomes:
         rejected_edges.append((u, v, mean, "same-genome-conflict"))
         return
+
+    # WCC roots of the two endpoints' lines. Computed up-front so the
+    # max-contigs-per-component cap can veto the fuse *before* G is mutated,
+    # then reused for the union bookkeeping after the contraction.
+    li_u = line_idx_by_name.get(u.rsplit(":", 1)[0]) if ":" in u else None
+    li_v = line_idx_by_name.get(v.rsplit(":", 1)[0]) if ":" in v else None
+    root_u = _uf_find(wcc_uf_parent, li_u) if li_u is not None else None
+    root_v = _uf_find(wcc_uf_parent, li_v) if li_v is not None else None
+
+    # max-contigs-per-component gate. Every component growth -- a new line
+    # joining (single-in-graph / tie-commit branches) and the rare
+    # tie-line bridging of two established components -- passes through this
+    # union, so gating here covers them all. Each existing component already
+    # holds <= the cap per genome (invariant maintained by this very check),
+    # so an overflow can only arise for a genome present in BOTH sides;
+    # iterate the smaller tally and test against the larger. A value < 1
+    # (e.g. the -1 default) disables the cap.
+    if (max_contigs_per_component is not None and max_contigs_per_component > 0
+            and root_u is not None and root_v is not None and root_u != root_v):
+        cu = wcc_genome_count.get(root_u, {})
+        cv = wcc_genome_count.get(root_v, {})
+        small, large = (cv, cu) if len(cv) <= len(cu) else (cu, cv)
+        for genome, n in small.items():
+            if large.get(genome, 0) + n > max_contigs_per_component:
+                rejected_edges.append((u, v, mean, "max-contigs-per-component"))
+                return
+
     merged_lines = a_attrs.get("lines", set()) | b_attrs.get("lines", set())
     merged_genes = a_attrs.get("genes", set()) | b_attrs.get("genes", set())
     fuse_log = (a_attrs.get("fuses", []) + b_attrs.get("fuses", [])
@@ -435,21 +471,23 @@ def _fuse_genes(G, u, v, w, score, mean, label,
     uf_parent[B] = A
 
     # WCC union: the contraction connected the two endpoints' lines, so
-    # they (and anything previously in their WCCs) now share one WCC.
-    li_u = line_idx_by_name.get(u.rsplit(":", 1)[0]) if ":" in u else None
-    li_v = line_idx_by_name.get(v.rsplit(":", 1)[0]) if ":" in v else None
-    if li_u is not None and li_v is not None:
-        root_u = _uf_find(wcc_uf_parent, li_u)
-        root_v = _uf_find(wcc_uf_parent, li_v)
-        if root_u != root_v:
-            wcc_uf_parent[root_v] = root_u
+    # they (and anything previously in their WCCs) now share one WCC. Merge
+    # the per-genome contig tallies into the surviving root so the cap above
+    # stays accurate for later unions.
+    if root_u is not None and root_v is not None and root_u != root_v:
+        wcc_uf_parent[root_v] = root_u
+        target = wcc_genome_count.setdefault(root_u, Counter())
+        source = wcc_genome_count.pop(root_v, None)
+        if source:
+            target.update(source)
 
 
 def _try_commit_tie_line(li, lines, line_names, anchors, pending_merges, G,
                          super_of_gene, uf_parent, wcc_uf_parent,
                          line_idx_by_name,
                          in_g_lines, in_g_flip, rejected_edges,
-                         line_to_genome):
+                         line_to_genome, wcc_genome_count,
+                         max_contigs_per_component):
     """Commit a tie-only line if it has >=2 anchors with distinct
     line-positions AND distinct graph topological positions."""
     li_anchors = anchors[li]
@@ -472,12 +510,14 @@ def _try_commit_tie_line(li, lines, line_names, anchors, pending_merges, G,
             flip = (line_order != graph_order)
             _add_line_to_graph(G, li, lines, line_names, flip,
                                super_of_gene, uf_parent, wcc_uf_parent,
-                               in_g_lines, in_g_flip)
+                               in_g_lines, in_g_flip, line_to_genome,
+                               wcc_genome_count)
             for (u, v, w, score, mean, label) in pending_merges[li]:
                 _fuse_genes(G, u, v, w, score, mean, label,
                             super_of_gene, uf_parent, wcc_uf_parent,
                             line_idx_by_name, rejected_edges,
-                            line_to_genome)
+                            line_to_genome, wcc_genome_count,
+                            max_contigs_per_component)
             return True
     return False
 
@@ -874,6 +914,10 @@ class PangenomeGraphEngine():
 
         # Filtering.
         self.min_contig_chain = A('min_contig_chain')
+        # Cap on how many contigs (lines) from a single genome may share one
+        # weakly-connected component. -1 (default) disables the cap; see
+        # _fuse_genes / _build_pangenome_graph.
+        self.max_contigs_per_component = A('max_contigs_per_component')
         # Include non-coding (RNA, etc.) gene calls in the graph as
         # singleton super-nodes.  Default-on so behavior matches the
         # historical graph (where these tokens already appeared as
@@ -918,6 +962,13 @@ class PangenomeGraphEngine():
 
         if int(self.locality_window or 0) < 1:
             raise ConfigError("`--locality-window` must be >= 1 :/")
+
+        if self.max_contigs_per_component is not None:
+            mcpc = int(self.max_contigs_per_component)
+            if mcpc == 0 or mcpc < -1:
+                raise ConfigError("`--max-contigs-per-component` must be -1 (unlimited, the default) or a "
+                                  f"positive integer (got {mcpc}). It caps how many contigs from a single "
+                                  f"genome may share one weakly-connected component of the graph :/")
 
         mwc = int(self.min_window_completeness or 0)
         if mwc < 0 or mwc > int(self.locality_window):
@@ -1625,6 +1676,8 @@ class PangenomeGraphEngine():
         rng = random.Random(int(self.fusion_seed) if self.fusion_seed is not None else None)
         top_k = max(1, int(self.fusion_top_bucket_k))
         min_score = float(self.min_ranking_score or 0.0)
+        max_contigs = (int(self.max_contigs_per_component)
+                       if self.max_contigs_per_component is not None else -1)
 
         G = nx.DiGraph()
         super_of_gene = {}
@@ -1637,6 +1690,10 @@ class PangenomeGraphEngine():
         # components (seed and single-in-graph fuses still merge across WCCs
         # because that's how new lines join the graph).
         wcc_uf_parent = {}
+        # Per-WCC-root tally of contigs (lines) per genome, kept in lock-step
+        # with wcc_uf_parent: seeded in _add_line_to_graph, merged on every
+        # union in _fuse_genes. Consumed by the max-contigs-per-component cap.
+        wcc_genome_count = {}
         in_g_lines = set()
         in_g_flip = {}
         anchors = defaultdict(list)
@@ -1712,7 +1769,7 @@ class PangenomeGraphEngine():
                 _fuse_genes(G, u, v, w, score, mean, label,
                             super_of_gene, uf_parent, wcc_uf_parent,
                             line_idx_by_name, rejected_edges,
-                            line_to_genome)
+                            line_to_genome, wcc_genome_count, max_contigs)
             elif u_in_g or v_in_g:
                 if u_in_g:
                     off_li, off_gene, in_li, in_gene = li_v, v, li_u, u
@@ -1723,11 +1780,12 @@ class PangenomeGraphEngine():
                     off_flip = in_g_flip[in_li] ^ (label == "flip")
                     _add_line_to_graph(G, off_li, lines, line_names, off_flip,
                                        super_of_gene, uf_parent, wcc_uf_parent,
-                                       in_g_lines, in_g_flip)
+                                       in_g_lines, in_g_flip, line_to_genome,
+                                       wcc_genome_count)
                     _fuse_genes(G, u, v, w, score, mean, label,
                                 super_of_gene, uf_parent, wcc_uf_parent,
                                 line_idx_by_name, rejected_edges,
-                                line_to_genome)
+                                line_to_genome, wcc_genome_count, max_contigs)
                 else:
                     off_tok = off_gene.rsplit(":", 1)[1]
                     try:
@@ -1747,7 +1805,8 @@ class PangenomeGraphEngine():
                                             wcc_uf_parent, line_idx_by_name,
                                             in_g_lines, in_g_flip,
                                             rejected_edges,
-                                            line_to_genome):
+                                            line_to_genome, wcc_genome_count,
+                                            max_contigs):
                         anchors.pop(off_li, None)
                         pending_merges.pop(off_li, None)
             else:
@@ -1755,14 +1814,16 @@ class PangenomeGraphEngine():
                 fv = True if label == "flip" else False
                 _add_line_to_graph(G, li_u, lines, line_names, fu,
                                    super_of_gene, uf_parent, wcc_uf_parent,
-                                   in_g_lines, in_g_flip)
+                                   in_g_lines, in_g_flip, line_to_genome,
+                                   wcc_genome_count)
                 _add_line_to_graph(G, li_v, lines, line_names, fv,
                                    super_of_gene, uf_parent, wcc_uf_parent,
-                                   in_g_lines, in_g_flip)
+                                   in_g_lines, in_g_flip, line_to_genome,
+                                   wcc_genome_count)
                 _fuse_genes(G, u, v, w, score, mean, label,
                             super_of_gene, uf_parent, wcc_uf_parent,
                             line_idx_by_name, rejected_edges,
-                            line_to_genome)
+                            line_to_genome, wcc_genome_count, max_contigs)
 
         self.progress.end()
 
@@ -1778,7 +1839,9 @@ class PangenomeGraphEngine():
                                uf_parent=uf_parent,
                                wcc_uf_parent=wcc_uf_parent,
                                in_g_lines=in_g_lines,
-                               in_g_flip=in_g_flip)
+                               in_g_flip=in_g_flip,
+                               line_to_genome=line_to_genome,
+                               wcc_genome_count=wcc_genome_count)
             # The merges that would have anchored this line never fired;
             # record them so the rejection summary stays honest, but tag
             # them as orphan rather than insufficient-anchors.

@@ -1708,6 +1708,7 @@ class PangenomeGraph():
 
         # ANVI'O FLAGS
         self.min_contig_chain = A('min_contig_chain')
+        self.max_contigs_per_component = A('max_contigs_per_component') if A('max_contigs_per_component') is not None else -1
         self.no_include_non_coding_genes = bool(A('no_include_non_coding_genes'))
         self.no_remerge = bool(A('no_remerge'))
         self.remerge_max_length = A('remerge_max_length') if A('remerge_max_length') is not None else -1
@@ -1873,6 +1874,8 @@ class PangenomeGraph():
         else:
             self.run.info("Focused genomes (--genome-names)", 'all (no focus)')
         self.run.info("Minimum number of genes per contig", self.min_contig_chain)
+        self.run.info("Max contigs per genome per component",
+                      'unlimited' if self.max_contigs_per_component < 0 else self.max_contigs_per_component)
         self.run.info("Remove non-coding genes", self.no_include_non_coding_genes)
         self.run.info("Skip remerge step", self.no_remerge)
         self.run.info("Remerge LCA/LCD-asymmetry cap",
@@ -2178,6 +2181,7 @@ class PangenomeGraph():
             'gene_function_sources': ','.join(self.functional_annotation_sources_available),
             # pangenome graph engine parameters
             'min_contig_chain': self.min_contig_chain,
+            'max_contigs_per_component': self.max_contigs_per_component,
             'no_include_non_coding_genes': self.no_include_non_coding_genes,
             'no_remerge': self.no_remerge,
             'remerge_max_length': self.remerge_max_length,

@@ -88,6 +88,17 @@ def get_args():
 
     groupD.add_argument('--min-contig-chain', default=5, type=int, help = "Skip contigs with fewer than this many genes "
                     "(filters very short/fragmented contigs).")
+    groupD.add_argument('--max-contigs-per-component', default=-1, type=int, help = "Cap on how many contigs (lines) "
+                    "from a SINGLE genome are allowed to share one weakly-connected COMPONENT of the graph. During "
+                    "fusion, a fuse that would union two components in a way that puts more than this many contigs from "
+                    "any one genome into a single component is rejected (reason: `max-contigs-per-component`); the "
+                    "excess contig is not dropped -- it stays free to join a different component that lacks its genome, "
+                    "or ends up as its own component. -1 (default) disables the cap and preserves the classic behavior "
+                    "where a genome may thread arbitrarily many of its contigs through one component. Set it to 1 for "
+                    "CLOSED/complete genomes, where each genome should contribute at most one contig per replicon and a "
+                    "second one signals a spurious cross-replicon fusion. WARNING: a low cap will fragment DRAFT "
+                    "genomes, since a fragmented chromosome legitimately spreads many contigs across the same "
+                    "component; each excess contig then becomes a separate component. Must be -1 or a positive integer.")
     groupD.add_argument('--no-remerge', default=False, action='store_true',
                     help = "Skip the post-engine remerge pass. By default (no flag), anvi'o walks every parent "
                     "gene cluster that produced multiple synteny clusters and merges pairs that look like "
@@ -118,14 +129,23 @@ def get_args():
     groupE.add_argument('--locality-window', default=10, type=int, help = "Flanking window size (in genes) on each side of a candidate "
                     "line pair, used to decide whether two contigs are co-oriented or flipped.")
     groupE.add_argument('--min-window-completeness', default=0, type=int, help = "Minimum number of genes that each of the four flanking "
-                    "windows (left/right of each endpoint) must contain for an edge to be kept. Must be 0..--locality-window. "
-                    "0 disables the filter; --locality-window requires a fully populated window on both sides of both endpoints. "
-                    "Edges whose any flanking window is shorter than this are trashed before orientation scoring and fusion.")
-    groupE.add_argument('--min-line-pair-hits', default=100, type=int, help = "Orientation-side gate. Minimum number of DIAMOND hits "
-                    "between two contig lines required to consider them for orientation scoring. Line pairs with fewer hits do not "
-                    "contribute to the orientation labeling (no same/flip decision is made). Has NO direct effect on fusions for a "
-                    "fusion-side hard cutoff that prevents under-supported line pairs from being fused at all, see "
-                    "--fusion-min-line-pair-hits.")
+                    "windows (left/right of each endpoint) must contain for an edge to CONTRIBUTE TO ORIENTATION SCORING. Must be "
+                    "0..--locality-window (0 disables the filter). SOFT gate -- it does NOT prevent fusion: an edge whose any flanking "
+                    "window is shorter than this is dropped from the orientation/locality scan only, NOT from the fusion pool. Its "
+                    "`decision` ranking component instead falls back to `--decision-boundary-score` (if its line pair still receives a "
+                    "same/flip label) or `--decision-tie-score` (if not), both 0.0 by default. Because the edge survives, the two "
+                    "lines can still fuse when `--decision-floor` is 0.0 and `--ranking-mean` is arithmetic (a zeroed component only "
+                    "lowers the arithmetic mean; under geometric mean it drives the whole score to 0). To hard-drop such edges, raise "
+                    "`--decision-floor` above 0.")
+    groupE.add_argument('--min-line-pair-hits', default=100, type=int, help = "Orientation-side gate. Minimum number of edges (DIAMOND "
+                    "hits) between two contig lines required for the pair to receive a same/flip orientation label. SOFT gate -- it "
+                    "does NOT prevent fusion: a pair with fewer hits simply gets NO orientation label, which only makes its edges take "
+                    "`--decision-tie-score` (default 0.0) as their `decision` ranking component. The edges are NOT removed from the "
+                    "fusion pool, so such a pair can still fuse: with `--decision-floor 0.0` the zeroed decision passes the floor, and "
+                    "under `--ranking-mean arithmetic` the combined score can still clear `--min-ranking-score` on the strength of the "
+                    "other components (under geometric mean a zeroed component drives the whole score to 0, excluding the edge unless "
+                    "`--min-ranking-score` is also 0). To HARD-BLOCK under-supported line pairs from fusing use "
+                    "`--fusion-min-line-pair-hits`; to require a non-zero decision score raise `--decision-floor`.")
     groupE.add_argument('--fusion-min-line-pair-hits', default=100, type=int, help = "Fusion-side hard cutoff. Line pairs with fewer than "
                     "this many edges are dropped from the ranking pool entirely and NEVER fused (alongside the existing "
                     "same-genome-conflict and transitive-cycle guards). Independent of --min-line-pair-hits, which only gates "
@@ -133,9 +153,15 @@ def get_args():
                     "regardless of how the ranking otherwise scores them. A potential usecase is plasmids in the dataset. "
                     "0 disables the cutoff.")
     groupE.add_argument('--orientation-tie-threshold', default=0.35, type=float, help = "Score margin under which a line-pair orientation "
-                    "call is considered a tie and demoted (see --orientation-demotion-strategy).")
-    groupE.add_argument('--min-orientation-score', default=0.5, type=float, help = "Minimum orientation score for a line pair to be "
-                    "accepted; pairs below this are dropped.")
+                    "call is treated as a tie and demoted (see --orientation-demotion-strategy). SOFT -- it does NOT prevent fusion: a "
+                    "tied/demoted pair simply loses its same/flip label, so its edges fall back to `--decision-tie-score` (default 0.0) "
+                    "for the `decision` ranking component instead of being removed from the fusion pool. As with `--min-line-pair-hits`, "
+                    "such edges can still fuse when `--decision-floor` is 0.0 and `--ranking-mean` is arithmetic.")
+    groupE.add_argument('--min-orientation-score', default=0.5, type=float, help = "Minimum orientation score for a line pair to receive "
+                    "a same/flip label. SOFT -- it does NOT prevent fusion: pairs below this are dropped from ORIENTATION LABELING "
+                    "only, not from the fusion pool. Their edges fall back to `--decision-tie-score` (default 0.0) for the `decision` "
+                    "ranking component, so with `--decision-floor 0.0` and `--ranking-mean arithmetic` they can still fuse on the "
+                    "strength of the other components. Use `--fusion-min-line-pair-hits`, or raise `--decision-floor`, for a hard cutoff.")
     groupE.add_argument('--orientation-demotion-strategy', default='slimmest-margin',
                     choices=['slimmest-margin', 'fewest-edges'], help = "How to break ties when committing line-pair "
                     "orientations during the spanning-tree walk.")
@@ -165,14 +191,20 @@ def get_args():
                     "endpoints have at most ~2 partners per genome. Use this to exclude edges anchored on promiscuous genes "
                     "(transposases, mobile elements, etc.) regardless of how uniqueness is weighted in --ranking-components.")
     groupE.add_argument('--decision-tie-score', default=0.0, type=float, help = "Decision score assigned to edges whose "
-                    "line pair has no orientation label (tie, weak, or demoted by the odd-cycle resolver; also under-hits when "
-                    "--min-line-pair-hits=0). Pair-level failure: no fwd-vs-rev preference exists at the pair level, so this "
-                    "score replaces the missing decision component in the ranking.")
+                    "line pair has NO orientation label -- i.e. pairs that are tied (`--orientation-tie-threshold`), too weak "
+                    "(`--min-orientation-score`), under-supported (`--min-line-pair-hits`), or demoted by the odd-cycle resolver. "
+                    "Pair-level fallback: no fwd-vs-rev preference exists, so this value replaces the missing `decision` component "
+                    "in the ranking. It defaults to 0.0, which zeroes the decision component WITHOUT removing the edge -- so with "
+                    "`--decision-floor 0.0` and `--ranking-mean arithmetic` the pair can still fuse (under geometric mean a 0 here "
+                    "drives the whole score to 0). Set it above 0 to let unlabeled pairs contribute a non-zero decision score.")
     groupE.add_argument('--decision-boundary-score', default=0.0, type=float, help = "Decision score assigned to edges in "
                     "confidently labeled pairs (same/flip) whose specific edge couldn't be scored by the locality scan, "
                     "typically because one or both endpoint genes sit at contig boundaries (empty flanking window) or because "
-                    "--min-window-completeness dropped the edge upstream. Per-edge failure on an otherwise good pair: setting "
-                    "this above 0.0 keeps contig-end edges in well-oriented pairs from being zeroed out in the ranking.")
+                    "--min-window-completeness dropped the edge from the orientation scan. Per-edge fallback on an otherwise good "
+                    "pair: it defaults to 0.0, which zeroes that edge's `decision` component WITHOUT removing the edge, so with "
+                    "`--decision-floor 0.0` and `--ranking-mean arithmetic` the edge can still fuse on the strength of the other "
+                    "components. Set it above 0.0 to keep such contig-end edges in well-oriented pairs from being zeroed out in "
+                    "the ranking.")
     groupE.add_argument('--min-ranking-score', default=0.1, type=float, help = "Edges whose combined ranking score (the mean of "
                     "--ranking-components) is below this value are skipped during fusion. Independent of --minbit-floor, which gates "
                     "on raw minbit; this gates on the aggregated score.")
