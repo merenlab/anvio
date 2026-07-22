@@ -851,13 +851,28 @@ class StructureSuperclass(object):
                               "there is nothing to do. Please check the ColabFold log file in the output directory to "
                               "find out what happened. Bye :'(")
 
-        # clean up the ColabFold output directory (which now also holds the query FASTA) only when it was
-        # a temporary one -- i.e. when no --dump-dir was given -- and we are not debugging
-        if not anvio.DEBUG and not self.dump_dir and filesnpaths.is_file_exists(out_dir, dont_raise=True):
-            shutil.rmtree(out_dir, ignore_errors=True)
+        # clean up, unless the user is debugging. When no --dump-dir was given, out_dir is a temporary
+        # directory we own, so we remove it. When --dump-dir was given we leave it in place (the user
+        # asked to keep the raw output), but for --only-predict the query FASTA we regenerated lives in
+        # its own temp directory that we should still tidy up.
+        if not anvio.DEBUG:
+            if not self.dump_dir and filesnpaths.is_file_exists(out_dir, dont_raise=True):
+                shutil.rmtree(out_dir, ignore_errors=True)
+            elif self.only_predict and filesnpaths.is_file_exists(os.path.dirname(fasta_path), dont_raise=True):
+                shutil.rmtree(os.path.dirname(fasta_path), ignore_errors=True)
 
         self.structure_db.disconnect()
         self.run.info("Structure database", self.structure_db_path)
+
+        # we never delete a --dump-dir ourselves (the user asked to keep the raw output, and for the
+        # checkpoint flow they may still want the MSAs), but once the database is built its contents are
+        # no longer needed, so let the user know they can remove it if they like
+        if self.dump_dir:
+            self.run.info_single("Anvi'o kept the raw ColabFold output%s in '%s'. It is not needed now that the "
+                                 "structure database is built, so feel free to delete it if you want the space back "
+                                 "(anvi'o will not remove it for you)."
+                                 % (" (including the MSA checkpoint)" if self.only_predict else "", self.dump_dir),
+                                 nl_before=1, mc='yellow')
 
 
     def export_clean_genes_to_fasta(self, genes_of_interest, fasta_path):
