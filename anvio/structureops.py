@@ -513,6 +513,11 @@ class StructureSuperclass(object):
         A = lambda x, t: t(self.args.__dict__[x]) if x in self.args.__dict__ and self.args.__dict__[x] is not None else None
         null = lambda x: x
 
+        # --only-predict resumes from an --only-msa checkpoint, whose MSAs are always generated locally
+        # (the public server cannot be split), so the source is 'local' even though --colabfold-db is
+        # not re-supplied at prediction time
+        msa_source = 'local' if (A('colabfold_db', null) or self.only_predict) else 'server'
+
         return {
             'num_models': A('num_models', null),
             'num_recycle': A('num_recycle', null),
