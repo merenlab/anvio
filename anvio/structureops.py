@@ -806,8 +806,8 @@ class StructureSuperclass(object):
             self.write_colabfold_checkpoint_manifest(out_dir, clean_genes, fasta_path)
             self.run.info_single("The MSA step is done. Anvi'o wrote the multiple sequence alignments and a checkpoint "
                                  "manifest to '%s'. To predict structures from them, re-run this exact command with "
-                                 "--only-predict instead of --only-msa (and add -o for the output structure database)."
-                                 % out_dir, nl_before=1, nl_after=1, mc='green')
+                                 "--only-predict instead of --only-msa (optionally with -o to name the output structure "
+                                 "database; it defaults to STRUCTURE.db)." % out_dir, nl_before=1, nl_after=1, mc='green')
             return
 
         if self.only_predict:

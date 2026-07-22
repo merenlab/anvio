@@ -199,8 +199,8 @@ def get_args():
                         --only-msa run wrote to --dump-dir, then build the structure database. You must provide the
                         SAME --contigs-db and genes of interest as the --only-msa run: anvi'o verifies that the
                         sequences match the checkpoint before predicting, and refuses to continue if they do not.
-                        Requires --dump-dir (pointing at the --only-msa output) and -o. Mutually exclusive with
-                        --only-msa.""")
+                        Requires --dump-dir (pointing at the --only-msa output); the structure database goes to -o
+                        (default STRUCTURE.db). Mutually exclusive with --only-msa.""")
 
     groupImport = parser.add_argument_group('IMPORT STRUCTURES', 'Instead of predicting structures, import '
                                             'pre-computed ones. This bypasses the --engine choice entirely.')
