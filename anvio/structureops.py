@@ -2,6 +2,8 @@
 """Classes to make sense of genes and variability within the context of protein structure"""
 
 import os
+import sys
+import glob
 import json
 import time
 import numpy as np
@@ -34,6 +36,7 @@ import anvio.drivers.colabfold as colabfold
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.dbops import ContigsSuperclass
+from anvio.version import structure_db_version
 
 J = lambda x, y: os.path.join(x, y)
 
@@ -329,6 +332,10 @@ class StructureSuperclass(object):
         exist
     """
 
+    # name of the manifest file an --only-msa run writes into --dump-dir, and that an --only-predict
+    # run reads back to verify it is resuming from the right MSAs (see run_colabfold_batch)
+    COLABFOLD_CHECKPOINT_FILENAME = 'colabfold_checkpoint.json'
+
     def __init__(self, args, create=False, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.create = create
@@ -343,7 +350,11 @@ class StructureSuperclass(object):
         self.external_structures_path = A('external_structures', null)
         self.modeller_executable = A('modeller_executable', null)
         self.list_modeller_params = A('list_modeller_params', null)
-        self.full_modeller_output = A('dump_dir', null)
+
+        # --dump-dir is the directory where the raw, unabridged output of whichever prediction engine
+        # is in use is kept (MODELLER's per-gene output, or ColabFold's raw run). For the ColabFold
+        # checkpoint flags it doubles as the on-disk handoff between --only-msa and --only-predict.
+        self.dump_dir = A('dump_dir', null)
 
         # self.run_mode is determined further below, once the structure db is available (for updates,
         # the engine is read back from the db). self.engine records which prediction engine produced
@@ -359,6 +370,11 @@ class StructureSuperclass(object):
         self.gene_caller_ids = A('gene_caller_ids', null)
         self.rerun_genes = A('rerun_genes', null)
 
+        # ColabFold checkpoint flags (see run_colabfold_batch). --only-msa generates the MSAs and stops
+        # without producing a structure database; --only-predict resumes from those MSAs to build one.
+        self.only_msa = A('only_msa', bool)
+        self.only_predict = A('only_predict', bool)
+
         utils.is_contigs_db(self.contigs_db_path)
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
         self.contigs_db_hash = contigs_db.meta['contigs_db_hash']
@@ -367,7 +383,9 @@ class StructureSuperclass(object):
         # init ContigsSuperClass
         self.contigs_super = ContigsSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
 
-        if self.create:
+        # --only-msa stops after the MSA step and never produces a structure database, so it neither
+        # requires nor creates one. Every other mode sets up the structure db here.
+        if self.create and not self.only_msa:
             # check database output
             if not self.structure_db_path:
                 self.structure_db_path = "STRUCTURE.db"
@@ -378,9 +396,9 @@ class StructureSuperclass(object):
 
             filesnpaths.is_output_file_writable(self.structure_db_path)
 
-
-        # init StructureDatabase
-        self.structure_db = StructureDatabase(self.structure_db_path, self.contigs_db_hash, create_new=create)
+        # init StructureDatabase (skipped for --only-msa, which produces no database)
+        self.structure_db = None if self.only_msa else \
+            StructureDatabase(self.structure_db_path, self.contigs_db_hash, create_new=create)
 
         # determine the engine and the resulting run mode
         if self.create:
@@ -407,6 +425,13 @@ class StructureSuperclass(object):
 
             self.run_mode = 'external' if self.external_structures_path else 'modeller'
 
+        # the checkpoint flags only make sense for ColabFold, which is the only engine with a splittable
+        # MSA / prediction pipeline
+        if (self.only_msa or self.only_predict) and self.run_mode != 'colabfold':
+            raise ConfigError("--only-msa and --only-predict are specific to the ColabFold engine: they split "
+                              "ColabFold's MSA and prediction steps into a resumable checkpoint. Please add "
+                              "'--engine colabfold', or drop these flags.")
+
         if self.list_modeller_params:
             params_dict = self.structure_db.get_run_params_dict()
             for param, value in params_dict.items():
@@ -420,7 +445,7 @@ class StructureSuperclass(object):
         self.colabfold_params = self.get_colabfold_params() if self.run_mode == 'colabfold' else None
         self.skip_DSSP = A('skip_DSSP', bool)
 
-        if self.create:
+        if self.create and not self.only_msa:
             self.structure_db.db.set_meta_value('engine', self.engine)
             self.structure_db.store_modeller_params(self.modeller_params)
             if self.colabfold_params is not None:
@@ -488,11 +513,16 @@ class StructureSuperclass(object):
         A = lambda x, t: t(self.args.__dict__[x]) if x in self.args.__dict__ and self.args.__dict__[x] is not None else None
         null = lambda x: x
 
+        # --only-predict resumes from an --only-msa checkpoint, whose MSAs are always generated locally
+        # (the public server cannot be split), so the source is 'local' even though --colabfold-db is
+        # not re-supplied at prediction time
+        msa_source = 'local' if (A('colabfold_db', null) or self.only_predict) else 'server'
+
         return {
             'num_models': A('num_models', null),
             'num_recycle': A('num_recycle', null),
             'amber': A('amber', bool),
-            'colabfold_msa_source': 'local' if A('colabfold_db', null) else 'server',
+            'colabfold_msa_source': msa_source,
             'colabfold_additional_parameters': A('colabfold_additional_parameters', null),
         }
 
@@ -551,10 +581,25 @@ class StructureSuperclass(object):
                                       "build (binarization or DIAMOND makedb) did not complete. Please take a look at "
                                       "the binarize_database / diamond makedb output above for clues." % db_file)
         elif self.run_mode == 'colabfold':
-            # refuse to overwrite an existing --dump-dir (it is where ColabFold's raw output will go)
-            if self.full_modeller_output and filesnpaths.is_file_exists(self.full_modeller_output, dont_raise=True):
-                raise ConfigError("The --dump-dir you provided ('%s') already exists. Anvi'o will not overwrite it. "
-                                  "Please provide a path that does not exist yet." % self.full_modeller_output)
+            # for the checkpoint flags, --dump-dir is the on-disk handoff between the two steps, so it
+            # is required: --only-msa writes the MSAs there, --only-predict reads them back from there
+            if (self.only_msa or self.only_predict) and not self.dump_dir:
+                raise ConfigError("--only-msa and --only-predict use --dump-dir as the on-disk checkpoint that "
+                                  "connects the MSA and prediction steps, so you must provide one. For --only-msa "
+                                  "it is where anvi'o writes the MSAs; for --only-predict it is where anvi'o reads "
+                                  "them back from.")
+
+            if self.only_predict:
+                # --only-predict must resume from an existing checkpoint directory
+                if not filesnpaths.is_file_exists(self.dump_dir, dont_raise=True):
+                    raise ConfigError("The --dump-dir you provided ('%s') does not exist. --only-predict resumes from "
+                                      "the MSA checkpoint that an earlier --only-msa run wrote there, so the directory "
+                                      "must already exist." % self.dump_dir)
+            else:
+                # a full run or --only-msa writes fresh ColabFold output; refuse to overwrite an existing dir
+                if self.dump_dir and filesnpaths.is_file_exists(self.dump_dir, dont_raise=True):
+                    raise ConfigError("The --dump-dir you provided ('%s') already exists. Anvi'o will not overwrite it. "
+                                      "Please provide a path that does not exist yet." % self.dump_dir)
 
             # instantiating the driver validates the conda env / ColabFold programs and the MSA source
             # choice, so we do it up front (once) and reuse it during the batched run. We pass our own
@@ -570,7 +615,7 @@ class StructureSuperclass(object):
         elif self.run_mode == 'external':
             self.run.info_single("Anvi'o will attempt to generate a database using external structures", nl_after=1, nl_before=1, mc='green')
 
-            if self.full_modeller_output:
+            if self.dump_dir:
                 raise ConfigError("No sense providing a --dump-dir when --external-structures are provided.")
 
             self.external_structures = ExternalStructuresFile(path=self.external_structures_path, contigs_db_path=self.contigs_db_path)
@@ -693,19 +738,19 @@ class StructureSuperclass(object):
             self.run.info('modeller_executable', self.modeller_executable)
             for param, value in self.modeller_params.items():
                 self.run.info(param, value)
-            self.run.info('dump_dir', self.full_modeller_output, nl_after=1)
+            self.run.info('dump_dir', self.dump_dir, nl_after=1)
 
         if self.run_mode == 'colabfold':
             self.run.warning('', header='ColabFold parameters', nl_after=0, lc='green')
             for param, value in self.colabfold_params.items():
                 self.run.info(param, value)
-            self.run.info('dump_dir', self.full_modeller_output, nl_after=1)
+            self.run.info('dump_dir', self.dump_dir, nl_after=1)
 
         if not anvio.DEBUG:
             self.run.warning("Do you want live info about how the modelling procedure is going for "
                              "each gene? Then restart this process with the --debug flag", lc='yellow')
 
-        if self.run_mode == 'modeller' and not self.full_modeller_output:
+        if self.run_mode == 'modeller' and not self.dump_dir:
             self.run.warning("When this finishes, do you want a potentially massive folder that "
                              "contains a murder of unorganized data in volumes that far exceed what "
                              "you could possibly want? Perfect, then restart this process and "
@@ -751,41 +796,51 @@ class StructureSuperclass(object):
         Unlike MODELLER (one process per gene), ColabFold is run once over a multi-sequence FASTA. The
         predictor batches internally and reuses the compiled model across sequences, which is far more
         efficient on a GPU. Per-gene output files are then located, parsed, and stored.
+
+        The optional checkpoint flags split this into two resumable steps: --only-msa runs only the
+        (CPU-heavy, local) MSA step and stops, and --only-predict resumes from those MSAs to run the
+        (GPU-heavy) prediction step and build the database. Genes are sorted so the query FASTA is
+        byte-identical across the two runs, which is how --only-predict confirms it is resuming from the
+        right MSAs (see load_and_validate_colabfold_checkpoint).
         """
 
-        genes_of_interest = list(genes_of_interest)
+        # sort so the FASTA is deterministic: its content hash is the checkpoint's integrity guard
+        genes_of_interest = sorted(genes_of_interest)
 
-        # export all genes of interest to a single amino acid FASTA; the header of each sequence is its
-        # gene caller id, which becomes the ColabFold 'jobname' and thus the prefix of its output files
-        self.progress.new('ColabFold')
-        self.progress.update('Preparing amino acid sequences ...')
-        _, aa_sequences = self.contigs_super.get_sequences_for_gene_callers_ids(genes_of_interest, report_aa_sequences=True)
-        self.progress.end()
+        # ColabFold writes its output files here. For --only-msa / --only-predict this is the (required,
+        # already-validated) --dump-dir checkpoint; for a full run it is --dump-dir if given, else a
+        # temporary directory.
+        out_dir = self.dump_dir or filesnpaths.get_temp_directory_path()
+        filesnpaths.gen_output_directory(out_dir, delete_if_exists=False, dont_warn=True)
 
-        fasta_path = os.path.join(filesnpaths.get_temp_directory_path(), 'genes_of_interest.fa')
+        if self.only_predict:
+            # regenerate the query FASTA into a throwaway temp file used *only* to validate against the
+            # checkpoint: prediction itself reads the .a3m directory, not this FASTA, and a mismatch must
+            # leave the existing checkpoint (its own FASTA + MSAs) untouched
+            fasta_path = os.path.join(filesnpaths.get_temp_directory_path(), 'genes_of_interest.fa')
+        else:
+            # the query FASTA is part of the checkpoint (so --only-predict can regenerate and compare it),
+            # so for --only-msa / full runs it lives inside out_dir
+            fasta_path = os.path.join(out_dir, 'genes_of_interest.fa')
 
-        clean_genes = []
-        with open(fasta_path, 'w') as fasta:
-            for gene in genes_of_interest:
-                sequence = aa_sequences[gene]['aa_sequence']
-                if not sequence:
-                    self.run.warning("Anvi'o could not find an amino acid sequence for gene ID %d, so it will be "
-                                     "skipped." % gene)
-                    continue
-                if self.skip_gene_if_not_clean(gene, sequence=sequence):
-                    continue
-                fasta.write('>%d\n%s\n' % (gene, sequence))
-                clean_genes.append(gene)
+        clean_genes = self.export_clean_genes_to_fasta(genes_of_interest, fasta_path)
 
-        if not clean_genes:
-            raise ConfigError("None of your genes of interest passed anvi'o's 'clean gene' checks, so there is nothing "
-                              "for ColabFold to predict. Bye :'(")
+        if self.only_predict:
+            # make sure this checkpoint was built from exactly these sequences before predicting
+            self.load_and_validate_colabfold_checkpoint(out_dir, fasta_path)
 
-        # ColabFold writes its output files here. If the user provided a --dump-dir we use it so they
-        # can inspect the raw ColabFold output, otherwise a temporary directory is used
-        out_dir = self.full_modeller_output or filesnpaths.get_temp_directory_path()
+        if self.only_msa:
+            # generate the MSAs locally, record the checkpoint, and stop. No database is produced.
+            self.colabfold.process(fasta_path, out_dir)
+            self.write_colabfold_checkpoint_manifest(out_dir, clean_genes, fasta_path)
+            self.run.info_single("The MSA step is done. Anvi'o wrote the multiple sequence alignments and a checkpoint "
+                                 "manifest to '%s'. To predict structures from them, re-run this exact command with "
+                                 "--only-predict instead of --only-msa (optionally with -o to name the output structure "
+                                 "database; it defaults to STRUCTURE.db)." % out_dir, nl_before=1, nl_after=1, mc='green')
+            return
 
-        # run ColabFold end-to-end (MSA + prediction) over all clean genes at once
+        # run ColabFold (a full run does MSA + prediction; --only-predict skips straight to prediction,
+        # so its fasta_path is ignored by the driver -- run_batch reads the checkpoint's .a3m directory)
         self.colabfold.process(fasta_path, out_dir)
 
         # parse each gene's output and store it
@@ -822,18 +877,134 @@ class StructureSuperclass(object):
                               "there is nothing to do. Please check the ColabFold log file in the output directory to "
                               "find out what happened. Bye :'(")
 
-        # clean up temporary files, unless the user is debugging. The query FASTA always lives in a temp
-        # directory; the ColabFold output directory is temporary only when the user did not ask to keep
-        # it with --dump-dir
+        # clean up, unless the user is debugging. When no --dump-dir was given, out_dir is a temporary
+        # directory we own, so we remove it. When --dump-dir was given we leave it in place (the user
+        # asked to keep the raw output), but for --only-predict the query FASTA we regenerated lives in
+        # its own temp directory that we should still tidy up.
         if not anvio.DEBUG:
-            fasta_tmp_dir = os.path.dirname(fasta_path)
-            if filesnpaths.is_file_exists(fasta_tmp_dir, dont_raise=True):
-                shutil.rmtree(fasta_tmp_dir, ignore_errors=True)
-            if not self.full_modeller_output and filesnpaths.is_file_exists(out_dir, dont_raise=True):
+            if not self.dump_dir and filesnpaths.is_file_exists(out_dir, dont_raise=True):
                 shutil.rmtree(out_dir, ignore_errors=True)
+            elif self.only_predict and filesnpaths.is_file_exists(os.path.dirname(fasta_path), dont_raise=True):
+                shutil.rmtree(os.path.dirname(fasta_path), ignore_errors=True)
 
         self.structure_db.disconnect()
         self.run.info("Structure database", self.structure_db_path)
+
+        # we never delete a --dump-dir ourselves (the user asked to keep the raw output, and for the
+        # checkpoint flow they may still want the MSAs), but once the database is built its contents are
+        # no longer needed, so let the user know they can remove it if they like
+        if self.dump_dir:
+            self.run.info_single("Anvi'o kept the raw ColabFold output%s in '%s'. It is not needed now that the "
+                                 "structure database is built, so feel free to delete it if you want the space back "
+                                 "(anvi'o will not remove it for you)."
+                                 % (" (including the MSA checkpoint)" if self.only_predict else "", self.dump_dir),
+                                 nl_before=1, mc='yellow')
+
+
+    def export_clean_genes_to_fasta(self, genes_of_interest, fasta_path):
+        """Write the amino-acid FASTA of 'clean' genes of interest for ColabFold and return the list of
+        gene caller ids actually written.
+
+        Each FASTA header is a gene caller id, which becomes the ColabFold 'jobname' (and thus the prefix
+        of that gene's output files). This is shared by the full run, --only-msa, and --only-predict, so
+        all three produce an identical FASTA for the same inputs.
+        """
+
+        self.progress.new('ColabFold')
+        self.progress.update('Preparing amino acid sequences ...')
+        _, aa_sequences = self.contigs_super.get_sequences_for_gene_callers_ids(genes_of_interest, report_aa_sequences=True)
+        self.progress.end()
+
+        clean_genes = []
+        with open(fasta_path, 'w') as fasta:
+            for gene in genes_of_interest:
+                sequence = aa_sequences[gene]['aa_sequence']
+                if not sequence:
+                    self.run.warning("Anvi'o could not find an amino acid sequence for gene ID %d, so it will be "
+                                     "skipped." % gene)
+                    continue
+                if self.skip_gene_if_not_clean(gene, sequence=sequence):
+                    continue
+                fasta.write('>%d\n%s\n' % (gene, sequence))
+                clean_genes.append(gene)
+
+        if not clean_genes:
+            raise ConfigError("None of your genes of interest passed anvi'o's 'clean gene' checks, so there is nothing "
+                              "for ColabFold to predict. Bye :'(")
+
+        return clean_genes
+
+
+    def write_colabfold_checkpoint_manifest(self, out_dir, clean_genes, fasta_path):
+        """Write the --only-msa checkpoint manifest into out_dir.
+
+        The manifest lets a later --only-predict run confirm it is resuming from the right MSAs. Its
+        integrity guard is query_fasta_hash: --only-predict regenerates the FASTA from its own inputs and
+        refuses to continue unless the hash matches. The rest of the fields are diagnostics.
+        """
+
+        manifest = {
+            'anvio_version': anvio.__version__,
+            'structure_db_version': structure_db_version,
+            'contigs_db_hash': self.contigs_db_hash,
+            'clean_genes': sorted(clean_genes),
+            'query_fasta_hash': utils.get_file_md5(fasta_path),
+            'msa_source': 'local',
+            'colabfold_db': self.args.__dict__.get('colabfold_db'),
+            'num_threads': self.num_threads,
+            'created_at': datetime.datetime.now().isoformat(),
+            'command_line': ' '.join(sys.argv),
+        }
+
+        manifest_path = os.path.join(out_dir, self.COLABFOLD_CHECKPOINT_FILENAME)
+        with open(manifest_path, 'w') as manifest_file:
+            json.dump(manifest, manifest_file, indent=2)
+
+
+    def load_and_validate_colabfold_checkpoint(self, out_dir, fasta_path):
+        """Verify that an --only-predict run is resuming from a checkpoint built from exactly its inputs.
+
+        fasta_path is the FASTA just regenerated from the current --contigs-db and genes of interest.
+        Raises ConfigError (with no override) on any mismatch, since predicting against MSAs that belong
+        to different sequences would silently produce structures glued to the wrong genes.
+        """
+
+        manifest_path = os.path.join(out_dir, self.COLABFOLD_CHECKPOINT_FILENAME)
+        if not filesnpaths.is_file_exists(manifest_path, dont_raise=True):
+            raise ConfigError("Anvi'o could not find a ColabFold MSA checkpoint (a '%s' file) in the --dump-dir you "
+                              "provided ('%s'). --only-predict resumes from the MSAs that an earlier --only-msa run "
+                              "wrote there, so you need to run that step first." %
+                              (self.COLABFOLD_CHECKPOINT_FILENAME, out_dir))
+
+        with open(manifest_path) as manifest_file:
+            manifest = json.load(manifest_file)
+
+        # friendly, specific check first: is this even the same contigs database?
+        if manifest.get('contigs_db_hash') != self.contigs_db_hash:
+            raise ConfigError("The contigs database you gave --only-predict does not match the one the MSA checkpoint "
+                              "in '%s' was built from (checkpoint hash '%s', yours '%s'). --only-predict must be run "
+                              "with the same --contigs-db as the --only-msa step." %
+                              (out_dir, manifest.get('contigs_db_hash'), self.contigs_db_hash))
+
+        # the authoritative guard: the sequences to predict must be byte-identical to those the MSAs were
+        # generated from. This rests on export_clean_genes_to_fasta being fully deterministic for a given
+        # contigs-db -- i.e. get_sequences_for_gene_callers_ids and skip_gene_if_not_clean must always
+        # produce the same clean-gene set and byte order. If a future change makes either of those
+        # non-deterministic or dependent on args not captured by the checkpoint, resume will break here.
+        if manifest.get('query_fasta_hash') != utils.get_file_md5(fasta_path):
+            raise ConfigError("The genes and sequences --only-predict is about to work on do not match the ones the MSA "
+                              "checkpoint in '%s' was built from. This usually means the genes of interest changed, the "
+                              "genes were re-called, or the contigs database was edited between the --only-msa and "
+                              "--only-predict steps. Because ColabFold's MSAs are tied to the exact sequences they were "
+                              "generated from, anvi'o will not predict structures against a mismatched checkpoint. If "
+                              "your input really has changed, re-run --only-msa to regenerate the MSAs." % out_dir)
+
+        # finally, make sure the MSAs are actually present
+        msa_dir = os.path.join(out_dir, 'msas')
+        if not os.path.isdir(msa_dir) or not len(glob.glob(os.path.join(msa_dir, '*.a3m'))):
+            raise ConfigError("The MSA checkpoint in '%s' does not contain any MSA (.a3m) files under a 'msas/' "
+                              "subdirectory. The --only-msa step may not have finished successfully. Please re-run it "
+                              "before --only-predict." % out_dir)
 
 
     def process_colabfold_gene(self, corresponding_gene_call, out_dir):
@@ -1257,15 +1428,15 @@ class StructureSuperclass(object):
 
 
     def dump_raw_results(self, structure_info):
-        """Dump all raw modeller output into output_gene_dir if self.full_modeller_output"""
+        """Dump all raw modeller output into output_gene_dir if a --dump-dir (self.dump_dir) was given"""
 
-        if not self.full_modeller_output:
+        if not self.dump_dir:
             return
 
         if 'results' not in structure_info:
             return
 
-        output_gene_dir = os.path.join(self.full_modeller_output, structure_info['results']['corresponding_gene_call'])
+        output_gene_dir = os.path.join(self.dump_dir, structure_info['results']['corresponding_gene_call'])
         shutil.move(structure_info['results']['directory'], output_gene_dir)
 
 

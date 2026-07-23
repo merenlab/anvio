@@ -10,7 +10,7 @@ make_structure_db() {
                                 --very-fast \
                                 --debug \
                                 --alignment-fraction-cutoff 0.7 \
-                                --num-threads 2 \
+                                $thread_controller \
                                 --num-models 1
 }
 # Predict structures with ColabFold instead of MODELLER. This is opt-in: it only runs when the
@@ -31,7 +31,57 @@ make_structure_db_colabfold() {
                                 --num-models 1 \
                                 --dump-dir test-output/RAW_COLABFOLD_OUTPUT \
                                 --output-db-path test-output/STRUCTURE_COLABFOLD.db \
+                                $thread_controller \
                                 --debug
+}
+# Exercise the --only-msa / --only-predict checkpoint that splits a ColabFold run into its (local,
+# CPU-heavy) MSA step and its (GPU-heavy) prediction step. This is a further opt-in on top of
+# COLABFOLD_CONDA_ENV: it also needs a *local* ColabFold database, because the MSA step cannot be split
+# out when using the public MSA server. Point COLABFOLD_DB at the directory you set up with ColabFold's
+# `setup_databases.sh`. When COLABFOLD_DB is unset, this routine is skipped.
+#
+# For example:
+#     COLABFOLD_CONDA_ENV=colabfold COLABFOLD_DB=/path/to/colabfold_db \
+#         bash run_component_tests_for_SCVs_SAAVs_structure.sh new
+make_structure_db_colabfold_checkpoint() {
+    # step 1: MSA only. Produces the .a3m files + a checkpoint manifest in --dump-dir, and no db.
+    anvi-gen-structure-database -c test-output/one_contig_five_genes.db \
+                                --engine colabfold \
+                                --colabfold-conda-env "$COLABFOLD_CONDA_ENV" \
+                                --colabfold-db "$COLABFOLD_DB" \
+                                --skip-DSSP \
+                                --gene-caller-ids 2 \
+                                --num-models 1 \
+                                --dump-dir test-output/COLABFOLD_CHECKPOINT \
+                                --only-msa \
+                                $thread_controller \
+                                --debug
+
+    for expected in test-output/COLABFOLD_CHECKPOINT/genes_of_interest.fa \
+                    test-output/COLABFOLD_CHECKPOINT/colabfold_checkpoint.json
+    do
+        if [ ! -f "$expected" ]; then echo "FAIL: --only-msa did not produce $expected"; exit 1; fi
+    done
+    if ! ls test-output/COLABFOLD_CHECKPOINT/msas/*.a3m >/dev/null 2>&1
+    then echo "FAIL: --only-msa did not produce any MSA (.a3m) files"; exit 1; fi
+    if [ -f "test-output/STRUCTURE_COLABFOLD_CHECKPOINT.db" ]
+    then echo "FAIL: --only-msa should not have produced a structure database"; exit 1; fi
+
+    # step 2: predict only, resuming from the checkpoint written above. Same contigs-db + genes.
+    anvi-gen-structure-database -c test-output/one_contig_five_genes.db \
+                                --engine colabfold \
+                                --colabfold-conda-env "$COLABFOLD_CONDA_ENV" \
+                                --skip-DSSP \
+                                --gene-caller-ids 2 \
+                                --num-models 1 \
+                                --dump-dir test-output/COLABFOLD_CHECKPOINT \
+                                --only-predict \
+                                --output-db-path test-output/STRUCTURE_COLABFOLD_CHECKPOINT.db \
+                                $thread_controller \
+                                --debug
+
+    if [ ! -f "test-output/STRUCTURE_COLABFOLD_CHECKPOINT.db" ]
+    then echo "FAIL: --only-predict did not produce the structure database"; exit 1; fi
 }
 gen_var_profile1() {
     anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
@@ -110,6 +160,14 @@ EOF
     then
         INFO "anvi-gen-structure-database with ColabFold (conda env: $COLABFOLD_CONDA_ENV)"
         make_structure_db_colabfold
+
+        # exercise the --only-msa / --only-predict checkpoint only when a local ColabFold database is
+        # also available (the MSA step cannot be split out when using the public server)
+        if [ -n "$COLABFOLD_DB" ]
+        then
+            INFO "anvi-gen-structure-database ColabFold --only-msa / --only-predict checkpoint (local db: $COLABFOLD_DB)"
+            make_structure_db_colabfold_checkpoint
+        fi
     fi
 }
 
@@ -151,22 +209,43 @@ then
         'make'    : make structure db, profile varability, open interactive.
         'display' : profile varability, open interactive.
 
+        You can pass the number of threads as an optional second argument (defaults to 1), e.g.:
+
+            bash run_component_tests_for_SCVs_SAAVs_structure.sh new 8
+
         To additionally exercise the ColabFold engine, set the COLABFOLD_CONDA_ENV environment
         variable to the name of a conda environment in which ColabFold is installed, e.g.:
 
             COLABFOLD_CONDA_ENV=colabfold bash run_component_tests_for_SCVs_SAAVs_structure.sh new
 
         This requires internet access and is slow without a GPU (~10 min per protein on a CPU).
+
+        To also exercise the --only-msa / --only-predict checkpoint, additionally set COLABFOLD_DB to
+        the local ColabFold database directory you set up with ColabFold's setup_databases.sh, e.g.:
+
+            COLABFOLD_CONDA_ENV=colabfold COLABFOLD_DB=/path/to/colabfold_db \\
+                bash run_component_tests_for_SCVs_SAAVs_structure.sh new
         "
         exit -1
 fi
 
-if [ $# -gt 1  ]
+if [ $# -gt 2  ]
 then
       echo "
-        This scripts expect only one argument ('new', or 'continue').
+        This script expects at most two arguments: the mode ('new', 'make', or 'display') and,
+        optionally, the number of threads to use (defaults to 1).
         "
         exit -1
+fi
+
+# optional second argument: how many threads the anvi-gen-structure-database steps should use. When it
+# is omitted the commands run single-threaded (see 00.sh for the same pattern in other component
+# tests). Threading mostly helps the MODELLER runs and ColabFold's (CPU-heavy) MSA step.
+if [ -z "$2" ]
+then
+    thread_controller=""
+else
+    thread_controller="--num-threads $2"
 fi
 
 if [ $1 = "new"  ]
@@ -234,6 +313,8 @@ then
     rm -rf test-output/exported_pdbs
     rm -rf test-output/STRUCTURE_COLABFOLD.db
     rm -rf test-output/RAW_COLABFOLD_OUTPUT
+    rm -rf test-output/STRUCTURE_COLABFOLD_CHECKPOINT.db
+    rm -rf test-output/COLABFOLD_CHECKPOINT
 
     make_routine
     display_routine

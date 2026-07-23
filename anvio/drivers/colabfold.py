@@ -59,6 +59,11 @@ class ColabFold:
         self.amber = A('amber', bool)
         self.additional_params = A('colabfold_additional_parameters', str)
 
+        # checkpoint flags that split the run into its MSA (colabfold_search) and prediction
+        # (colabfold_batch) halves. Only one may be set (see sanity_check).
+        self.only_msa = A('only_msa', bool)
+        self.only_predict = A('only_predict', bool)
+
         # anvi'o's --num-threads is authoritative: it is always forwarded to the colabfold programs,
         # overriding their own defaults (e.g. colabfold_search defaults to 64 threads). So if the user
         # leaves anvi'o's default of 1, colabfold_search is run with a single thread too.
@@ -76,6 +81,12 @@ class ColabFold:
         # (colabfold_batch queries the public MMseqs2 server)
         self.msa_source = 'local' if self.local_db else 'server'
 
+        # --only-predict resumes from a directory of .a3m files an earlier --only-msa run produced, so
+        # its prediction is always fed a local MSA directory regardless of whether an MSA source was
+        # given on the command line
+        if self.only_predict:
+            self.msa_source = 'local'
+
         self.search_program = 'colabfold_search'
         self.batch_program = 'colabfold_batch'
 
@@ -88,6 +99,21 @@ class ColabFold:
             raise ConfigError("ColabFold can predict between 1 and 5 models per protein, but you asked for %d with "
                               "--num-models. Please pick a value in that range." % self.num_models)
 
+        if self.only_msa and self.only_predict:
+            raise ConfigError("You asked for both --only-msa and --only-predict, but these are the two halves of a "
+                              "single split ColabFold run and are mutually exclusive. Run --only-msa first (it "
+                              "generates the MSAs on, say, a CPU node), then --only-predict (it predicts structures "
+                              "from those MSAs on a GPU node).")
+
+        # --only-predict resumes from a local MSA checkpoint on disk: it needs only the predictor (and a
+        # GPU), not an MSA source, since the MSAs already exist.
+        if self.only_predict:
+            self.check_program(self.batch_program)
+            self.check_gpu()
+            return
+
+        # from here on, the MSA step will run (either as part of a full run, or standalone with
+        # --only-msa), so an MSA source is required
         if self.local_db and self.use_msa_server:
             raise ConfigError("You asked ColabFold to use both a local database (--colabfold-db) and the "
                               "public MSA server (--colabfold-msa-server) for the MSA step. Please pick only one.")
@@ -98,17 +124,24 @@ class ColabFold:
                               "for a handful of sequences), or --colabfold-db to point to a local ColabFold "
                               "database directory (recommended for many sequences).")
 
+        if self.only_msa and self.msa_source != 'local':
+            raise ConfigError("--only-msa splits the ColabFold run at the MSA step, which anvi'o only runs locally "
+                              "(with colabfold_search against --colabfold-db). It cannot be combined with "
+                              "--colabfold-msa-server, because the public server generates the MSA and predicts the "
+                              "structure in a single step that cannot be split. Please provide a local ColabFold "
+                              "database with --colabfold-db instead.")
+
         if self.local_db:
             if not filesnpaths.is_file_exists(self.local_db, dont_raise=True) or not os.path.isdir(self.local_db):
                 raise ConfigError("The ColabFold database path you provided with --colabfold-db does not seem to be a "
                                   "directory that exists: '%s'. This should be the directory you set up with ColabFold's "
                                   "`setup_databases.sh` script." % self.local_db)
-
-        self.check_program(self.batch_program)
-        if self.msa_source == 'local':
             self.check_program(self.search_program)
 
-        self.check_gpu()
+        # --only-msa stops after the MSA step, so it needs neither the predictor nor a GPU
+        if not self.only_msa:
+            self.check_program(self.batch_program)
+            self.check_gpu()
 
 
     def check_program(self, program):
@@ -284,17 +317,26 @@ class ColabFold:
 
         filesnpaths.gen_output_directory(out_dir, delete_if_exists=False, dont_warn=True)
         log_file_path = os.path.join(out_dir, '00_log.txt')
+        msa_dir = os.path.join(out_dir, 'msas')
 
         # the MSA and prediction steps both append to this single log (each writing its own command
         # header + output), so we start it fresh here in case a previous run left one behind (e.g.
-        # when reusing a --dump-dir)
-        if filesnpaths.is_file_exists(log_file_path, dont_raise=True):
+        # when reusing a --dump-dir). --only-predict is the exception: it resumes an --only-msa run, so
+        # we keep that run's MSA log and append the prediction log to it for a complete record.
+        if not self.only_predict and filesnpaths.is_file_exists(log_file_path, dont_raise=True):
             os.remove(log_file_path)
 
         self.run.info('Log file path', log_file_path)
 
-        if self.msa_source == 'local':
-            msa_dir = os.path.join(out_dir, 'msas')
+        if self.only_msa:
+            # generate the MSAs locally and stop; --only-predict will resume from this directory
+            self.run_search(fasta_path, msa_dir, log_file_path)
+            return out_dir
+
+        if self.only_predict:
+            # the MSAs were produced by an earlier --only-msa run; skip straight to prediction
+            self.run_batch(msa_dir, out_dir, log_file_path)
+        elif self.msa_source == 'local':
             self.run_search(fasta_path, msa_dir, log_file_path)
             self.run_batch(msa_dir, out_dir, log_file_path)
         else:

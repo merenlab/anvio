@@ -186,6 +186,21 @@ def get_args():
                         it with an equals sign so it is not mistaken for anvi'o's own flags, e.g.
                         --colabfold-additional-parameters="--num-seeds 2 --use-dropout". Anvi'o does not validate
                         these, so use with care.""")
+    groupC.add_argument("--only-msa", action='store_true', help =
+                        """Run only ColabFold's multiple sequence alignment (MSA) step and stop, writing the MSAs
+                        and a small checkpoint manifest into --dump-dir. This creates a resumable checkpoint so
+                        you can run the CPU-heavy MSA step and the GPU-heavy prediction step separately (e.g. on
+                        different cluster nodes). This only works with a local ColabFold database (--colabfold-db):
+                        the public MSA server (--colabfold-msa-server) generates the MSA and predicts the structure
+                        in a single step that cannot be split. No structure database is produced in this mode; you
+                        finish the job later with --only-predict. Requires --dump-dir.""")
+    groupC.add_argument("--only-predict", action='store_true', help =
+                        """Skip the MSA step and predict structures from an MSA checkpoint that an earlier
+                        --only-msa run wrote to --dump-dir, then build the structure database. You must provide the
+                        SAME --contigs-db and genes of interest as the --only-msa run: anvi'o verifies that the
+                        sequences match the checkpoint before predicting, and refuses to continue if they do not.
+                        Requires --dump-dir (pointing at the --only-msa output); the structure database goes to -o
+                        (default STRUCTURE.db). Mutually exclusive with --only-msa.""")
 
     groupImport = parser.add_argument_group('IMPORT STRUCTURES', 'Instead of predicting structures, import '
                                             'pre-computed ones. This bypasses the --engine choice entirely.')
