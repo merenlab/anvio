@@ -10,7 +10,7 @@ make_structure_db() {
                                 --very-fast \
                                 --debug \
                                 --alignment-fraction-cutoff 0.7 \
-                                --num-threads 2 \
+                                $thread_controller \
                                 --num-models 1
 }
 # Predict structures with ColabFold instead of MODELLER. This is opt-in: it only runs when the
@@ -31,6 +31,7 @@ make_structure_db_colabfold() {
                                 --num-models 1 \
                                 --dump-dir test-output/RAW_COLABFOLD_OUTPUT \
                                 --output-db-path test-output/STRUCTURE_COLABFOLD.db \
+                                $thread_controller \
                                 --debug
 }
 # Exercise the --only-msa / --only-predict checkpoint that splits a ColabFold run into its (local,
@@ -53,6 +54,7 @@ make_structure_db_colabfold_checkpoint() {
                                 --num-models 1 \
                                 --dump-dir test-output/COLABFOLD_CHECKPOINT \
                                 --only-msa \
+                                $thread_controller \
                                 --debug
 
     for expected in test-output/COLABFOLD_CHECKPOINT/genes_of_interest.fa \
@@ -75,6 +77,7 @@ make_structure_db_colabfold_checkpoint() {
                                 --dump-dir test-output/COLABFOLD_CHECKPOINT \
                                 --only-predict \
                                 --output-db-path test-output/STRUCTURE_COLABFOLD_CHECKPOINT.db \
+                                $thread_controller \
                                 --debug
 
     if [ ! -f "test-output/STRUCTURE_COLABFOLD_CHECKPOINT.db" ]
@@ -206,6 +209,10 @@ then
         'make'    : make structure db, profile varability, open interactive.
         'display' : profile varability, open interactive.
 
+        You can pass the number of threads as an optional second argument (defaults to 1), e.g.:
+
+            bash run_component_tests_for_SCVs_SAAVs_structure.sh new 8
+
         To additionally exercise the ColabFold engine, set the COLABFOLD_CONDA_ENV environment
         variable to the name of a conda environment in which ColabFold is installed, e.g.:
 
@@ -222,12 +229,23 @@ then
         exit -1
 fi
 
-if [ $# -gt 1  ]
+if [ $# -gt 2  ]
 then
       echo "
-        This scripts expect only one argument ('new', or 'continue').
+        This script expects at most two arguments: the mode ('new', 'make', or 'display') and,
+        optionally, the number of threads to use (defaults to 1).
         "
         exit -1
+fi
+
+# optional second argument: how many threads the anvi-gen-structure-database steps should use. When it
+# is omitted the commands run single-threaded (see 00.sh for the same pattern in other component
+# tests). Threading mostly helps the MODELLER runs and ColabFold's (CPU-heavy) MSA step.
+if [ -z "$2" ]
+then
+    thread_controller=""
+else
+    thread_controller="--num-threads $2"
 fi
 
 if [ $1 = "new"  ]
