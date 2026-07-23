@@ -83,6 +83,47 @@ make_structure_db_colabfold_checkpoint() {
     if [ ! -f "test-output/STRUCTURE_COLABFOLD_CHECKPOINT.db" ]
     then echo "FAIL: --only-predict did not produce the structure database"; exit 1; fi
 }
+# Add a new gene to a ColabFold structure database with anvi-update-structure-database. The scientific
+# parameters are read back from the database; only the machine-specific ones are re-supplied. This db
+# was built with the public MSA server (see make_structure_db_colabfold), so we re-supply
+# --colabfold-msa-server to match. Gene 4 is not yet in the db, so this exercises the 'add' path.
+update_structure_db_colabfold() {
+    anvi-update-structure-database -c test-output/one_contig_five_genes.db \
+                                   -s test-output/STRUCTURE_COLABFOLD.db \
+                                   --colabfold-conda-env "$COLABFOLD_CONDA_ENV" \
+                                   --colabfold-msa-server \
+                                   --gene-caller-ids 4 \
+                                   $thread_controller \
+                                   --debug
+}
+# Add a new gene to the local-sourced ColabFold checkpoint database using the same --only-msa /
+# --only-predict split as creation. The db was built against a local ColabFold database, so we re-supply
+# --colabfold-db for the (local) MSA step. Gene 4 is not yet in the db, so this exercises the 'add' path.
+update_structure_db_colabfold_checkpoint() {
+    # step 1: MSA only for the new gene. Produces .a3m files + a checkpoint manifest, adds nothing to the db.
+    anvi-update-structure-database -c test-output/one_contig_five_genes.db \
+                                   -s test-output/STRUCTURE_COLABFOLD_CHECKPOINT.db \
+                                   --colabfold-conda-env "$COLABFOLD_CONDA_ENV" \
+                                   --colabfold-db "$COLABFOLD_DB" \
+                                   --gene-caller-ids 4 \
+                                   --dump-dir test-output/COLABFOLD_CHECKPOINT_UPDATE \
+                                   --only-msa \
+                                   $thread_controller \
+                                   --debug
+
+    if ! ls test-output/COLABFOLD_CHECKPOINT_UPDATE/msas/*.a3m >/dev/null 2>&1
+    then echo "FAIL: --only-msa (update) did not produce any MSA (.a3m) files"; exit 1; fi
+
+    # step 2: predict only, resuming from the checkpoint above, and add the new gene to the db.
+    anvi-update-structure-database -c test-output/one_contig_five_genes.db \
+                                   -s test-output/STRUCTURE_COLABFOLD_CHECKPOINT.db \
+                                   --colabfold-conda-env "$COLABFOLD_CONDA_ENV" \
+                                   --gene-caller-ids 4 \
+                                   --dump-dir test-output/COLABFOLD_CHECKPOINT_UPDATE \
+                                   --only-predict \
+                                   $thread_controller \
+                                   --debug
+}
 gen_var_profile1() {
     anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
                                  -c test-output/one_contig_five_genes.db \
@@ -161,12 +202,18 @@ EOF
         INFO "anvi-gen-structure-database with ColabFold (conda env: $COLABFOLD_CONDA_ENV)"
         make_structure_db_colabfold
 
+        INFO "anvi-update-structure-database with ColabFold"
+        update_structure_db_colabfold
+
         # exercise the --only-msa / --only-predict checkpoint only when a local ColabFold database is
         # also available (the MSA step cannot be split out when using the public server)
         if [ -n "$COLABFOLD_DB" ]
         then
             INFO "anvi-gen-structure-database ColabFold --only-msa / --only-predict checkpoint (local db: $COLABFOLD_DB)"
             make_structure_db_colabfold_checkpoint
+
+            INFO "anvi-update-structure-database ColabFold --only-msa / --only-predict checkpoint (local db: $COLABFOLD_DB)"
+            update_structure_db_colabfold_checkpoint
         fi
     fi
 }
@@ -315,6 +362,7 @@ then
     rm -rf test-output/RAW_COLABFOLD_OUTPUT
     rm -rf test-output/STRUCTURE_COLABFOLD_CHECKPOINT.db
     rm -rf test-output/COLABFOLD_CHECKPOINT
+    rm -rf test-output/COLABFOLD_CHECKPOINT_UPDATE
 
     make_routine
     display_routine
