@@ -443,6 +443,10 @@ class StructureSuperclass(object):
             # ColabFold parameters only make sense when updating a ColabFold database. Flag them clearly
             # rather than silently ignoring them (e.g. if the user aimed a ColabFold command at a MODELLER db)
             if self.run_mode != 'colabfold' and (A('colabfold_conda_env', null) or A('colabfold_db', null) or A('colabfold_msa_server', bool)):
+                if self.external_structures_path:
+                    raise ConfigError("You provided ColabFold parameters, but you also passed --external-structures, "
+                                      "which imports pre-computed structures and bypasses ColabFold (and any prediction "
+                                      "engine) entirely. Please drop the ColabFold parameters.")
                 raise ConfigError("You provided ColabFold parameters, but this structure database was created with the "
                                   "'%s' engine, not ColabFold. Anvi'o updates a database with the same engine it was "
                                   "created with, so these parameters do not apply here." % self.engine)
@@ -450,10 +454,14 @@ class StructureSuperclass(object):
         # the checkpoint flags only make sense for ColabFold, which is the only engine with a splittable
         # MSA / prediction pipeline
         if (self.only_msa or self.only_predict) and self.run_mode != 'colabfold':
-            engine_hint = ("this structure database was created with the '%s' engine, not ColabFold" % self.engine) \
-                          if not self.create else "please add '--engine colabfold', or drop these flags"
+            if self.external_structures_path:
+                reason = "you also passed --external-structures, which imports pre-computed structures and bypasses ColabFold entirely"
+            elif not self.create:
+                reason = "this structure database was created with the '%s' engine, not ColabFold" % self.engine
+            else:
+                reason = "please add '--engine colabfold', or drop these flags"
             raise ConfigError("--only-msa and --only-predict are specific to the ColabFold engine: they split "
-                              "ColabFold's MSA and prediction steps into a resumable checkpoint. But %s." % engine_hint)
+                              "ColabFold's MSA and prediction steps into a resumable checkpoint. But %s." % reason)
 
         if self.list_modeller_params:
             params_dict = self.structure_db.get_colabfold_run_params_dict() if self.engine == 'colabfold' \
