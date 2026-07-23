@@ -565,8 +565,21 @@ class StructureSuperclass(object):
             self.modeller_executable = self.args.modeller_executable
             self.run.info_single("Anvi'o found the MODELLER executable %s, so will use it" % self.modeller_executable, nl_after=1, nl_before=1, mc='green')
 
-            # Check and populate modeller databases if required
+            # Check and populate modeller databases if required. This builds the databases once, in
+            # the main thread, so that the parallel workers spawned later find them ready and never
+            # race to build them concurrently.
             MODELLER.MODELLER(self.args, filesnpaths.get_temp_file_path(), check_db_only=True)
+
+            # Verify the pre-build above actually left a complete database in place. If a build step
+            # (binarization or DIAMOND makedb) failed silently, surface it here as a clear error
+            # instead of letting the parallel workers re-enter the build and fail obscurely.
+            modeller_database = self.modeller_params['modeller_database']
+            for db_file in [J(constants.default_modeller_database_dir, modeller_database + ext) for ext in ['.bin', '.dmnd']]:
+                if not os.path.exists(db_file):
+                    raise ConfigError("Anvi'o tried to set up the MODELLER database before modelling structures, but "
+                                      "the expected file '%s' is not there afterwards. This usually means the database "
+                                      "build (binarization or DIAMOND makedb) did not complete. Please take a look at "
+                                      "the binarize_database / diamond makedb output above for clues." % db_file)
         elif self.run_mode == 'colabfold':
             # for the checkpoint flags, --dump-dir is the on-disk handoff between the two steps, so it
             # is required: --only-msa writes the MSAs there, --only-predict reads them back from there
