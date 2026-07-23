@@ -109,6 +109,23 @@ class StructureDatabase(object):
         return run_params_dict
 
 
+    def get_colabfold_run_params_dict(self):
+        """Return the ColabFold run parameters that were stored during the creation of this DB.
+
+        These mirror the scientific-provenance parameters written by StructureSuperclass.get_colabfold_params.
+        The machine-specific parameters (conda env, local database path, MSA-server flag) are intentionally
+        not stored, so they are absent here and must be re-supplied on the command line during an update.
+        """
+
+        return {
+            'num_models': self.db.get_meta_value('num_models', try_as_type_int=True),
+            'num_recycle': self.db.get_meta_value('num_recycle', try_as_type_int=True, return_none_if_not_in_table=True),
+            'amber': bool(self.db.get_meta_value('amber', try_as_type_int=True)),
+            'colabfold_msa_source': self.db.get_meta_value('colabfold_msa_source', try_as_type_int=False),
+            'colabfold_additional_parameters': self.db.get_meta_value('colabfold_additional_parameters', try_as_type_int=False, return_none_if_not_in_table=True),
+        }
+
+
     def get_genes_with_structure(self):
         """Returns set of gene caller ids that have a structure in the DB, queried from self table"""
 
@@ -396,8 +413,11 @@ class StructureSuperclass(object):
 
             filesnpaths.is_output_file_writable(self.structure_db_path)
 
-        # init StructureDatabase (skipped for --only-msa, which produces no database)
-        self.structure_db = None if self.only_msa else \
+        # init StructureDatabase. In create mode, --only-msa produces no database, so none is opened.
+        # In update mode the database already exists and we always open it, even for --only-msa, because
+        # we need to read back the engine and run parameters it was created with (--only-msa still writes
+        # nothing to it: run_colabfold_batch returns before the storing step).
+        self.structure_db = None if (self.create and self.only_msa) else \
             StructureDatabase(self.structure_db_path, self.contigs_db_hash, create_new=create)
 
         # determine the engine and the resulting run mode
@@ -415,25 +435,29 @@ class StructureSuperclass(object):
                 self.run_mode = 'modeller'
             self.engine = self.run_mode
         else:
-            # updating an existing db: honor whatever engine it was created with
+            # updating an existing db: honor whatever engine it was created with (unless the user is
+            # importing external structures, which bypasses the prediction engine entirely)
             self.engine = self.structure_db.db.get_meta_value('engine', return_none_if_not_in_table=True) or 'modeller'
+            self.run_mode = 'external' if self.external_structures_path else self.engine
 
-            if self.engine == 'colabfold':
-                raise ConfigError("This structure database was created with the ColabFold engine. Updating ColabFold "
-                                  "structure databases (adding or re-running genes) is not supported yet. Please create "
-                                  "a new database with anvi-gen-structure-database instead.")
-
-            self.run_mode = 'external' if self.external_structures_path else 'modeller'
+            # ColabFold parameters only make sense when updating a ColabFold database. Flag them clearly
+            # rather than silently ignoring them (e.g. if the user aimed a ColabFold command at a MODELLER db)
+            if self.run_mode != 'colabfold' and (A('colabfold_conda_env', null) or A('colabfold_db', null) or A('colabfold_msa_server', bool)):
+                raise ConfigError("You provided ColabFold parameters, but this structure database was created with the "
+                                  "'%s' engine, not ColabFold. Anvi'o updates a database with the same engine it was "
+                                  "created with, so these parameters do not apply here." % self.engine)
 
         # the checkpoint flags only make sense for ColabFold, which is the only engine with a splittable
         # MSA / prediction pipeline
         if (self.only_msa or self.only_predict) and self.run_mode != 'colabfold':
+            engine_hint = ("this structure database was created with the '%s' engine, not ColabFold" % self.engine) \
+                          if not self.create else "please add '--engine colabfold', or drop these flags"
             raise ConfigError("--only-msa and --only-predict are specific to the ColabFold engine: they split "
-                              "ColabFold's MSA and prediction steps into a resumable checkpoint. Please add "
-                              "'--engine colabfold', or drop these flags.")
+                              "ColabFold's MSA and prediction steps into a resumable checkpoint. But %s." % engine_hint)
 
         if self.list_modeller_params:
-            params_dict = self.structure_db.get_run_params_dict()
+            params_dict = self.structure_db.get_colabfold_run_params_dict() if self.engine == 'colabfold' \
+                          else self.structure_db.get_run_params_dict()
             for param, value in params_dict.items():
                 self.run.info(param, value)
             import sys; sys.exit()
@@ -508,15 +532,30 @@ class StructureSuperclass(object):
 
         The conda environment name and local database path are intentionally not stored: they are
         machine-specific and not part of the scientific provenance of the structures.
+
+        Notes
+        =====
+        - If self.create=False, the scientific parameters accessed by this function are first restored
+          from the database into self.args via self.set_prior_colabfold_params (mirroring how
+          get_modeller_params relies on self.set_prior_modeller_params).
         """
+
+        if not self.create:
+            # updating an existing db: restore the scientific params it was created with, and reconcile
+            # the machine-specific MSA source the user supplied on the command line with the stored one
+            self.set_prior_colabfold_params()
 
         A = lambda x, t: t(self.args.__dict__[x]) if x in self.args.__dict__ and self.args.__dict__[x] is not None else None
         null = lambda x: x
 
-        # --only-predict resumes from an --only-msa checkpoint, whose MSAs are always generated locally
-        # (the public server cannot be split), so the source is 'local' even though --colabfold-db is
-        # not re-supplied at prediction time
-        msa_source = 'local' if (A('colabfold_db', null) or self.only_predict) else 'server'
+        if not self.create:
+            # the MSA source was fixed when the db was created; it is authoritative on update
+            msa_source = self.structure_db.db.get_meta_value('colabfold_msa_source', try_as_type_int=False)
+        else:
+            # --only-predict resumes from an --only-msa checkpoint, whose MSAs are always generated
+            # locally (the public server cannot be split), so the source is 'local' even though
+            # --colabfold-db is not re-supplied at prediction time
+            msa_source = 'local' if (A('colabfold_db', null) or self.only_predict) else 'server'
 
         return {
             'num_models': A('num_models', null),
@@ -539,6 +578,55 @@ class StructureSuperclass(object):
         run_params_dict = self.structure_db.get_run_params_dict()
         for param, value in run_params_dict.items():
             setattr(self.args, param, value)
+
+
+    def set_prior_colabfold_params(self):
+        """Restore the ColabFold run parameters from the database into self.args, and reconcile the
+        machine-specific MSA source the user supplied on the command line with the one stored in the db.
+
+        Like set_prior_modeller_params, this keeps an update consistent with how the database was
+        created: the scientific parameters (num_models, num_recycle, amber, additional parameters) come
+        from the db. The MSA source location, however, is machine-specific and was not stored, so the
+        user must re-supply it on the command line -- and anvi'o refuses to switch the source (local vs.
+        server) an existing database was built with, since that would mix provenance within one db.
+        """
+
+        run_params_dict = self.structure_db.get_colabfold_run_params_dict()
+        stored_source = run_params_dict.pop('colabfold_msa_source')
+
+        for param, value in run_params_dict.items():
+            setattr(self.args, param, value)
+
+        A = lambda x, t: t(self.args.__dict__[x]) if x in self.args.__dict__ and self.args.__dict__[x] is not None else None
+        null = lambda x: x
+
+        # --only-predict resumes from a local MSA checkpoint on disk regardless of how the db was built,
+        # so it needs no MSA source and there is nothing to reconcile here
+        if self.only_predict:
+            return
+
+        user_local_db = A('colabfold_db', null)
+        user_msa_server = A('colabfold_msa_server', bool)
+
+        if stored_source == 'local':
+            if user_msa_server:
+                raise ConfigError("This structure database was created by generating the MSA step locally (with a "
+                                  "local ColabFold database), but you asked to update it with the public MSA server "
+                                  "(--colabfold-msa-server). Anvi'o will not mix MSA sources within a single database. "
+                                  "Please update it with --colabfold-db pointing to a local ColabFold database instead.")
+            if not user_local_db:
+                raise ConfigError("This structure database was created by generating the MSA step locally, so updating "
+                                  "it also requires a local ColabFold database. The database path is machine-specific "
+                                  "and is not stored in the structure database, so you must provide it now with "
+                                  "--colabfold-db (the directory you set up with ColabFold's `setup_databases.sh`).")
+        else:
+            # stored_source == 'server'
+            if user_local_db:
+                raise ConfigError("This structure database was created using the public MSA server, but you provided a "
+                                  "local ColabFold database (--colabfold-db) to update it. Anvi'o will not mix MSA "
+                                  "sources within a single database. Please update it with --colabfold-msa-server instead.")
+            # the source is fixed by the db, so anvi'o sets the server flag for the user
+            self.args.colabfold_msa_server = True
 
 
     def sanity_check(self):
