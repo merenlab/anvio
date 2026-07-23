@@ -115,7 +115,7 @@ class Diamond:
         if not os.path.exists(expected_output):
             raise ConfigError("Something went wrong while anvi'o was trying to build a DIAMOND search database: the "
                               "expected output file '%s' is not there after running `%s`. Please take a look at the "
-                              "log file '%s' for clues about what may have gone wrong." \
+                              "log file '%s' for clues about what may have gone wrong."
                                     % (expected_output, ' '.join([str(x) for x in cmd_line]), self.run.log_file_path))
 
         self.run.info('Command line', ' '.join([str(x) for x in cmd_line]), quiet=True)
