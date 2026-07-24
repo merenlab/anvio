@@ -2153,8 +2153,10 @@ class PanSuperclass(object):
         Returns
         =======
         representative_sequences : dict
-            A dictionary of the form `{gene_cluster_name: {'sequence': <aligned AA sequence with gaps>}}`.
-            Strip the gap characters if you want the raw amino acid sequence.
+            A dictionary of the form
+            `{gene_cluster_name: {'align_sequence': <aligned AA sequence with gaps>, 'genome_name': <str>, 'gene_callers_id': <int>}}`,
+            where 'genome_name' and 'gene_callers_id' identify the source gene the representative was
+            picked from. Strip the gap characters from 'align_sequence' if you want the raw amino acid sequence.
         """
 
         if gene_clusters_dict and gene_cluster_names:
@@ -2196,13 +2198,20 @@ class PanSuperclass(object):
                     is_partial = self.genomes_storage.is_partial_gene_call(genome_name, gene_callers_id)
 
                     sequence_entries.append({
-                        'sequence': sequence,
+                        'align_sequence': sequence,
                         'length': len(aa_sequence),
                         'gap_count': sequence.count('-'),
-                        'is_partial': bool(is_partial)
+                        'is_partial': bool(is_partial),
+                        'genome_name': genome_name,
+                        'gene_callers_id': gene_callers_id
                     })
 
-            representative_sequences[gene_cluster_name] = {'sequence': utils.get_representative_sequence_from_gene_cluster(sequence_entries)}
+            representative_entry = utils.get_representative_sequence_from_gene_cluster(sequence_entries)
+            representative_sequences[gene_cluster_name] = {
+                'align_sequence': representative_entry['align_sequence'],
+                'genome_name': representative_entry['genome_name'],
+                'gene_callers_id': representative_entry['gene_callers_id']
+            }
 
         self.progress.end()
 
@@ -2224,7 +2233,7 @@ class PanSuperclass(object):
 
         output_file = open(output_file_path, 'w')
         for gene_cluster_name in representative_sequences:
-            sequence = representative_sequences[gene_cluster_name]['sequence'].replace('-', '')
+            sequence = representative_sequences[gene_cluster_name]['align_sequence'].replace('-', '')
             output_file.write('>%s\n%s\n' % (gene_cluster_name, sequence))
         output_file.close()
 

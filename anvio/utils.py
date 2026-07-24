@@ -1465,17 +1465,21 @@ def get_representative_sequence_from_gene_cluster(sequence_entries):
     Parameters
     ==========
     sequence_entries : list of dict
-        One dict per gene in the cluster, each with the following keys:
-          'sequence'   : str, the ALIGNED amino acid sequence (i.e., with gap characters).
-          'length'     : int, the ungapped amino acid sequence length.
-          'gap_count'  : int, the number of gap characters in 'sequence'.
-          'is_partial' : bool, whether the gene call is partial.
+        One dict per gene in the cluster, each with AT LEAST the following keys:
+          'align_sequence' : str, the ALIGNED amino acid sequence (i.e., with gap characters).
+          'length'         : int, the ungapped amino acid sequence length.
+          'gap_count'      : int, the number of gap characters in 'align_sequence'.
+          'is_partial'     : bool, whether the gene call is partial.
+        Any additional keys (e.g., 'genome_name', 'gene_callers_id') are ignored by the
+        selection logic but preserved, since the winning entry is returned as-is.
 
     Returns
     =======
-    representative_sequence : str
-        The aligned amino acid sequence (still with gaps) selected as the representative. Callers
-        that want the raw sequence should strip the gap characters themselves.
+    representative_entry : dict
+        The winning entry from `sequence_entries`, returned unchanged. Its 'align_sequence' value is
+        the aligned amino acid sequence (still with gaps); callers that want the raw sequence should
+        strip the gap characters themselves. Any identity keys the caller included (e.g.,
+        'genome_name', 'gene_callers_id') are carried through untouched.
     """
 
     if not len(sequence_entries):
@@ -1484,7 +1488,7 @@ def get_representative_sequence_from_gene_cluster(sequence_entries):
 
     # short-circuit: single-member cluster
     if len(sequence_entries) == 1:
-        return sequence_entries[0]['sequence']
+        return sequence_entries[0]
 
     # compute median length excluding partials if possible
     non_partial_lengths = [e['length'] for e in sequence_entries if not e['is_partial']]
@@ -1519,25 +1523,26 @@ def get_representative_sequence_from_gene_cluster(sequence_entries):
         for other in entries:
             if other is entry:
                 continue
-            sim = pairwise_similarity(entry['sequence'], other['sequence'])
+            sim = pairwise_similarity(entry['align_sequence'], other['align_sequence'])
             total += (1 - sim)
         return total / (len(entries) - 1)
 
-    # rank candidates by average distance, then gaps, then length (longer preferred)
+    # rank candidates by average distance, then gaps, then length (longer preferred). The trailing
+    # index is a deterministic tiebreaker that also keeps the sort from ever comparing the entries.
     ranked = []
-    for entry in filtered_entries:
+    for idx, entry in enumerate(filtered_entries):
         avg_dist = average_distance(entry, filtered_entries)
-        ranked.append((avg_dist, entry['gap_count'], -entry['length'], entry['is_partial'], entry['sequence']))
+        ranked.append((avg_dist, entry['gap_count'], -entry['length'], entry['is_partial'], entry['align_sequence'], idx))
 
     ranked.sort()
 
     # prefer non-partial medoid if available
-    for _, _, _, is_partial, seq in ranked:
+    for _, _, _, is_partial, _, idx in ranked:
         if not is_partial:
-            return seq
+            return filtered_entries[idx]
 
     # all sequences are partial
-    return ranked[0][4]
+    return filtered_entries[ranked[0][5]]
 
 
 def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], expected_number_of_fields=None, separator='\t'):
