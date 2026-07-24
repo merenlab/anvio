@@ -426,8 +426,15 @@ class StructureInputSource(object):
         raise NotImplementedError
 
 
-    def enumerate_candidate_proteins(self, genes_of_interest_path=None, gene_caller_ids=None, raise_if_none=False):
-        """Return the set of protein_ids to attempt structures for."""
+    def enumerate_candidate_proteins(self, existing_proteins=None, raise_if_none=False):
+        """Return the set of protein_ids to attempt structures for.
+
+        Each source reads its own selection flags from self.args. On update, `existing_proteins` is the
+        proteins-table dataframe of the structure database being updated: a source that mints surrogate
+        protein_ids uses it to reuse the ids already assigned to proteins it recognizes (and mint fresh
+        ids only for genuinely new ones), which is what keeps update/--rerun idempotent. Sources whose
+        protein_id is an identity mapping (e.g. contigs-db) ignore it.
+        """
         raise NotImplementedError
 
 
@@ -495,7 +502,13 @@ class ContigsDBSource(StructureInputSource):
                 'gene_cluster_id': None}
 
 
-    def enumerate_candidate_proteins(self, genes_of_interest_path=None, gene_caller_ids=None, raise_if_none=False):
+    def enumerate_candidate_proteins(self, existing_proteins=None, raise_if_none=False):
+        # a contigs-db protein_id is the gene caller id itself (identity), so there is nothing to
+        # reconcile against an existing structure db: existing_proteins is intentionally ignored.
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        genes_of_interest_path = A('genes_of_interest')
+        gene_caller_ids = A('gene_caller_ids')
+
         genes_of_interest = None
 
         # identify the gene caller ids of all genes available
@@ -973,8 +986,11 @@ class StructureSuperclass(object):
             genes_of_interest = self.external_structures.content['gene_callers_id']
             return genes_of_interest
 
-        # every other mode enumerates the proteins of interest through the input source (contigs-db today)
-        genes_of_interest = self.input_source.enumerate_candidate_proteins(genes_of_interest_path, gene_caller_ids, raise_if_none=raise_if_none)
+        # every other mode enumerates the proteins of interest through the input source. On update, the
+        # existing proteins table lets a source with surrogate protein_ids (e.g. pangenome) reuse the ids
+        # it already assigned rather than minting fresh, colliding ones.
+        existing_proteins = None if self.create else self.structure_db.get_proteins_dataframe()
+        genes_of_interest = self.input_source.enumerate_candidate_proteins(existing_proteins=existing_proteins, raise_if_none=raise_if_none)
 
         # Finally, raise warning if number of genes is greater than 20 FIXME determine average time
         # per gene and describe here
