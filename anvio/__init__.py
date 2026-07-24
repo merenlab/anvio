@@ -1928,6 +1928,20 @@ D = {
              'help': "If/when there are more than one gene clusters to report, put each gene cluster into a "
                      "separate FASTA file."}
                 ),
+    'representative-sequences': (
+            ['--representative-sequences'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Instead of reporting every gene sequence in each gene cluster, report a single "
+                     "representative amino acid sequence per gene cluster. Anvi'o picks the representative "
+                     "using a medoid-based strategy: it discards length outliers, prefers complete "
+                     "(non-partial) gene calls, and selects the sequence that is most similar to the others "
+                     "in the cluster. The resulting FASTA uses gene cluster names as deflines and contains "
+                     "no gap characters, so it is ready to be fed to protein structure predictors such as "
+                     "ColabFold. This flag requires a pangenome for which gene alignments were computed "
+                     "(i.e., not created with `--skip-alignments`), and cannot be combined with "
+                     "`--concatenate-gene-clusters` or `--report-DNA-sequences`."}
+                ),
     'bin-id': (
             ['-b', '--bin-id'],
             {'metavar': 'BIN_NAME',

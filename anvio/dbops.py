@@ -2139,6 +2139,102 @@ class PanSuperclass(object):
         return sequences
 
 
+    def get_gene_cluster_representative_sequences(self, gene_clusters_dict=None, gene_cluster_names=set([])):
+        """Return a single representative amino acid sequence per gene cluster.
+
+        For each gene cluster this recovers the aligned amino acid sequences of its member genes and
+        hands them to `utils.get_representative_sequence_from_gene_cluster` to pick a medoid-like
+        representative. This is the exact same selection logic anvi'o uses internally when it builds a
+        structural pangenome (see `anvio.panops.Pangenome.get_gene_cluster_representative_sequences`).
+
+        You can call this function either with a `gene_clusters_dict`, or with a `gene_cluster_names`
+        set (see `get_sequences_for_gene_clusters` for the reasoning behind this design).
+
+        Returns
+        =======
+        representative_sequences : dict
+            A dictionary of the form `{gene_cluster_name: {'sequence': <aligned AA sequence with gaps>}}`.
+            Strip the gap characters if you want the raw amino acid sequence.
+        """
+
+        if gene_clusters_dict and gene_cluster_names:
+            raise ConfigError("get_gene_cluster_representative_sequences is speaking: You can call this function either "
+                              "with a `gene_clusters_dict`, or with a `gene_cluster_names` set, but not both.")
+
+        if not self.genomes_storage_is_available:
+            raise ConfigError("You are asking anvi'o for gene cluster representative sequences, but there is no genomes "
+                              "storage available to recover the amino acid sequences from :/")
+
+        if not self.gene_clusters_gene_alignments_available:
+            raise ConfigError("Anvi'o can't pick representative sequences for your gene clusters because the gene "
+                              "alignments were not computed for this pangenome (it was most likely created with the "
+                              "flag `--skip-alignments`). The representative-picking strategy relies on the aligned "
+                              "sequences to find the one that best represents each gene cluster, so there is nothing "
+                              "anvi'o can do here without them. Sorry :/")
+
+        if gene_clusters_dict is None:
+            if not self.gene_clusters_initialized:
+                self.init_gene_clusters()
+            gene_clusters_dict = self.gene_clusters
+
+        if not gene_cluster_names:
+            gene_cluster_names = set(list(gene_clusters_dict.keys()))
+
+        representative_sequences = {}
+
+        self.progress.new('Picking gene cluster representatives', progress_total_items=len(gene_cluster_names))
+        for gene_cluster_name in gene_cluster_names:
+            self.progress.increment()
+            self.progress.update("processing '%s' ..." % gene_cluster_name)
+
+            sequence_entries = []
+            for genome_name in gene_clusters_dict[gene_cluster_name]:
+                for gene_callers_id in gene_clusters_dict[gene_cluster_name][genome_name]:
+                    aa_sequence = self.genomes_storage.get_gene_sequence(genome_name, gene_callers_id)
+                    alignment_summary = self.gene_clusters_gene_alignments[genome_name][gene_callers_id]
+                    sequence = utils.restore_alignment(aa_sequence, alignment_summary)
+                    is_partial = self.genomes_storage.is_partial_gene_call(genome_name, gene_callers_id)
+
+                    sequence_entries.append({
+                        'sequence': sequence,
+                        'length': len(aa_sequence),
+                        'gap_count': sequence.count('-'),
+                        'is_partial': bool(is_partial)
+                    })
+
+            representative_sequences[gene_cluster_name] = {'sequence': utils.get_representative_sequence_from_gene_cluster(sequence_entries)}
+
+        self.progress.end()
+
+        return representative_sequences
+
+
+    def write_gene_cluster_representative_sequences_to_file(self, gene_clusters_dict=None, gene_cluster_names=set([]), output_file_path=None):
+        """Write one representative amino acid sequence per gene cluster to a FASTA file.
+
+        The FASTA deflines are the gene cluster names, and the sequences are reported WITHOUT gap
+        characters, so the output is ready to be fed to protein structure predictors such as ColabFold.
+        """
+
+        if output_file_path:
+            filesnpaths.is_output_file_writable(output_file_path)
+
+        representative_sequences = self.get_gene_cluster_representative_sequences(gene_clusters_dict=gene_clusters_dict,
+                                                                                 gene_cluster_names=gene_cluster_names)
+
+        output_file = open(output_file_path, 'w')
+        for gene_cluster_name in representative_sequences:
+            sequence = representative_sequences[gene_cluster_name]['sequence'].replace('-', '')
+            output_file.write('>%s\n%s\n' % (gene_cluster_name, sequence))
+        output_file.close()
+
+        if len(representative_sequences) == 1:
+            self.run.info('Gene cluster name', list(representative_sequences.keys())[0])
+        self.run.info('Sequence type', 'Amino acid (gene cluster representatives)')
+        self.run.info('Num representative sequences reported', len(representative_sequences))
+        self.run.info('Output FASTA file', output_file_path, mc='green', nl_after=1)
+
+
     def compute_AAI_for_gene_cluster(self, gene_cluster):
         """Simple AAI calculator for sequences in a gene cluster"""
 
