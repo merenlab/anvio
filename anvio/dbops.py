@@ -2388,7 +2388,7 @@ class PanSuperclass(object):
 
                 progress.update("Processing '" + gene_cluster_name + "'")
 
-                aligned_sequences = aligner(run=silent_run).run_stdin(sequences_list=sequences_to_align)
+                aligned_sequences = aligner(run=silent_run).run_default(sequences_list=sequences_to_align)
 
                 for genome_name in aligned_sequences:
                     gene_caller_id = get_first_key(sequences_dict[gene_cluster_name][genome_name])
