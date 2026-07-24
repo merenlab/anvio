@@ -1193,6 +1193,19 @@ class VariabilitySuper(VariabilityFilter, object):
         self.progress.update('Reading the structure database ...')
         structure_db = structureops.StructureDatabase(self.structure_db_path)
 
+        # variability is computed against a single contigs database, so overlaying it onto a structure db
+        # only makes sense when that db was built from the same contigs database. A pangenome (or other)
+        # structure db keys its structures on surrogate protein_ids that are not the gene caller ids of any
+        # one contigs db, so the merge below would be meaningless. Refuse it clearly.
+        if structure_db.input_type != 'contigs_db':
+            structure_db.disconnect()
+            self.progress.end()
+            raise ConfigError("The structure database you provided was built from a '%s' input, not a single contigs "
+                              "database. Anvi'o can only overlay per-residue variability onto a structure database whose "
+                              "structures correspond to the genes of the contigs database your variability was computed "
+                              "from. Structure databases built from a pangenome (or other non-contigs inputs) are not "
+                              "compatible with the variability overlay." % structure_db.input_type)
+
         self.structure_residue_info = structure_db.get_residue_info_for_all()
 
         # the structure database keys residue info on `protein_id`. For a contigs-db-derived structure db
