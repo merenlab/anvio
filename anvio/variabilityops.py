@@ -1195,6 +1195,11 @@ class VariabilitySuper(VariabilityFilter, object):
 
         self.structure_residue_info = structure_db.get_residue_info_for_all()
 
+        # the structure database keys residue info on `protein_id`. For a contigs-db-derived structure db
+        # that value is the gene caller id, which is variability's `corresponding_gene_call`. We rename it
+        # here so the rest of the variability code (merges, column bookkeeping) works unchanged.
+        self.structure_residue_info.rename(columns={'protein_id': 'corresponding_gene_call'}, inplace=True)
+
         self.genes_with_structure = set(self.structure_residue_info["corresponding_gene_call"].unique())
         # genes_included = genes_of_interest, unless genes_of_interest weren't specified. then
         # it equals all genes in self.data. I don't overwrite self.genes_of_interest because a
@@ -1896,7 +1901,7 @@ class VariabilitySuper(VariabilityFilter, object):
         C = {'text': str, 'real': float, 'integer': int}
 
         # append columns that are not redundant
-        redundant_columns = ['entry_id', 'corresponding_gene_call', 'codon_order_in_gene', 'aa', 'amino_acid', 'codon', 'codon_number']
+        redundant_columns = ['entry_id', 'protein_id', 'corresponding_gene_call', 'codon_order_in_gene', 'aa', 'amino_acid', 'codon', 'codon_number']
         self.columns_to_report['structural'].extend([(x, C[y])
                                                      for x, y in zip(t.residue_info_table_structure, t.residue_info_table_types)
                                                      if x not in redundant_columns

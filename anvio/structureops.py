@@ -47,7 +47,7 @@ warnings.simplefilter(action='ignore', category=PDBConstructionWarning)
 class StructureDatabase(object):
     """Structure database operations"""
 
-    def __init__(self, file_path, db_hash=None, create_new=False, ignore_hash=False, run=terminal.Run(), progress=terminal.Progress(), quiet=False):
+    def __init__(self, file_path, db_hash=None, create_new=False, ignore_hash=False, input_type='contigs_db', run=terminal.Run(), progress=terminal.Progress(), quiet=False):
         self.db_type = 'structure'
         self.db_hash = str(db_hash)
         self.version = anvio.__structure__version__
@@ -56,6 +56,15 @@ class StructureDatabase(object):
         self.run = run
         self.progress = progress
         self.create_new = create_new
+
+        # the kind of input the proteins in this db come from ('contigs_db', 'pangenome', 'fasta'). It is
+        # supplied by the input source at creation time and stored in the self table; on open it is read
+        # back (see below). It governs how the contigs-db linkage is interpreted (see check_hash).
+        self.input_type = input_type
+
+        # provenance for each queried protein (protein_id -> spec dict), registered by the run and flushed
+        # to the `proteins` table by persist_proteins().
+        self.protein_specs = {}
 
         if not db_hash and create_new:
             raise ConfigError("You cannot create a Structure DB without supplying a DB hash.")
@@ -69,12 +78,13 @@ class StructureDatabase(object):
             self.genes_queried = set([])
         else:
             self.db_hash = str(self.db.get_meta_value('contigs_db_hash'))
+            self.input_type = self.db.get_meta_value('input_type', try_as_type_int=False, return_none_if_not_in_table=True) or 'contigs_db'
             self.genes_with_structure = self.get_genes_with_structure()
             self.genes_without_structure = self.get_genes_without_structure()
             self.genes_queried = self.get_genes_queried()
 
             if not len(self.genes_queried):
-                raise ConfigError("Interesting... This structure database has no gene caller ids. Anvi'o is"
+                raise ConfigError("Interesting... This structure database has no proteins in it. Anvi'o is "
                                   "not sure how you managed that. please send a report to the "
                                   "developers. Thank you.")
 
@@ -127,49 +137,83 @@ class StructureDatabase(object):
 
 
     def get_genes_with_structure(self):
-        """Returns set of gene caller ids that have a structure in the DB, queried from self table"""
+        """Returns the set of protein ids that have a structure in the DB, queried from the proteins table"""
 
-        return set([int(x) for x in self.db.get_meta_value('genes_with_structure', try_as_type_int=False).split(',') if not x == ''])
+        return set(self.db.get_single_column_from_table(t.proteins_table_name, 'protein_id', where_clause="has_structure = 1"))
 
 
     def get_genes_without_structure(self):
-        """Returns set of gene caller ids that failed to generate a structure, queried from self table"""
+        """Returns the set of protein ids that failed to generate a structure, queried from the proteins table"""
 
-        return set([int(x) for x in self.db.get_meta_value('genes_without_structure', try_as_type_int=False).split(',') if not x == ''])
+        return set(self.db.get_single_column_from_table(t.proteins_table_name, 'protein_id', where_clause="has_structure = 0"))
 
 
     def get_genes_queried(self):
-        """Returns set of all gene caller ids that structures were attempted for, regardless of success or failure
+        """Returns the set of all protein ids structures were attempted for, regardless of success or failure
 
-        Queried from self table
-
-        Notes
-        =====
-        - FIXME This inefficiency could pose problems in 2030 when we have structure dbs with
-          millions of structures
+        Every row in the proteins table is a protein that was queried, so this is simply the full set of
+        protein ids in that table.
         """
 
-        return self.get_genes_with_structure() | self.get_genes_without_structure()
+        return set(self.db.get_single_column_from_table(t.proteins_table_name, 'protein_id'))
 
 
-    def update_genes_with_and_without_structure(self):
-        """Writes genes_queried, genes_with_structure, and genes_without_structure entries in self table"""
+    def register_protein(self, spec):
+        """Record the provenance of a queried protein so it can be flushed to the proteins table
 
-        self.db.set_meta_value('genes_queried', ",".join(str(g) for g in self.genes_queried))
-        self.db.set_meta_value('genes_with_structure', ",".join(str(g) for g in self.genes_with_structure))
-        self.db.set_meta_value('genes_without_structure', ",".join(str(g) for g in self.genes_without_structure))
+        `spec` is a dict as returned by a StructureInputSource: keys protein_id, input_type, source_key,
+        gene_callers_id, genome_name, gene_cluster_id.
+        """
+
+        self.protein_specs[spec['protein_id']] = spec
+
+
+    def persist_proteins(self):
+        """Write a row per queried protein into the proteins table (create if new, overwrite if present)
+
+        has_structure is derived from the in-memory genes_with_structure set. Rows are written with INSERT
+        OR REPLACE keyed on the unique protein_id, so buffered flushes and --rerun re-writes are idempotent.
+        """
+
+        entries = []
+        for protein_id, spec in self.protein_specs.items():
+            entries.append((protein_id,
+                            spec['input_type'],
+                            spec.get('genome_name'),
+                            spec.get('gene_callers_id'),
+                            spec.get('gene_cluster_id'),
+                            spec['source_key'],
+                            1 if protein_id in self.genes_with_structure else 0))
+
+        if entries:
+            self.db._exec_many('''INSERT OR REPLACE INTO %s VALUES (%s)''' %
+                               (t.proteins_table_name, ','.join(['?'] * len(t.proteins_table_structure))), entries)
+
+
+    def get_proteins_dataframe(self):
+        """Return the full proteins table as a dataframe (provenance of every queried protein)"""
+
+        return self.db.get_table_as_dataframe(t.proteins_table_name)
 
 
     def create_tables(self):
         self.db.set_meta_value('db_type', self.db_type)
         self.db.set_meta_value('contigs_db_hash', self.db_hash)
+        self.db.set_meta_value('input_type', self.input_type)
         self.db.set_meta_value('creation_date', time.time())
 
         self.db.create_table(t.pdb_data_table_name, t.pdb_data_table_structure, t.pdb_data_table_types)
         self.db.create_table(t.templates_table_name, t.templates_table_structure, t.templates_table_types)
         self.db.create_table(t.models_table_name, t.models_table_structure, t.models_table_types)
         self.db.create_table(t.residue_info_table_name, t.residue_info_table_structure, t.residue_info_table_types)
+        self.db.create_table(t.proteins_table_name, t.proteins_table_structure, t.proteins_table_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
+
+        # protein_id is the surrogate key shared across the four structure tables and the proteins table.
+        # db.create_table cannot declare a primary key, so uniqueness (which INSERT OR REPLACE in
+        # persist_proteins relies on) is enforced with an explicit index. The v3->v4 migration creates an
+        # identical index so migrated and freshly-made databases behave the same.
+        self.db._exec('''CREATE UNIQUE INDEX IF NOT EXISTS proteins_protein_id_idx ON %s(protein_id)''' % t.proteins_table_name)
 
 
     def store_modeller_params(self, modeller_params):
@@ -195,6 +239,11 @@ class StructureDatabase(object):
 
 
     def check_hash(self):
+        # for a contigs-db input the db is linked to its contigs database through contigs_db_hash. Future
+        # input types (e.g. pangenome) will link through their own hash; that branch will go here.
+        if self.input_type != 'contigs_db':
+            return
+
         actual_db_hash = str(self.db.get_meta_value('contigs_db_hash'))
         if self.db_hash != actual_db_hash:
             raise ConfigError('The hash value inside Structure Database "%s" does not match with Contigs Database hash "%s",\
@@ -218,48 +267,50 @@ class StructureDatabase(object):
             raise ConfigError("store :: rows_data must be either a list of tuples or a pandas dataframe.")
 
 
-    def remove_gene(self, corresponding_gene_call, remove_from_self=True):
+    def remove_gene(self, protein_id, remove_from_self=True):
         """Remove a gene from the structure database"""
 
         # Remove from tables
         self.db.remove_some_rows_from_table(
             t.residue_info_table_name,
-            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+            where_clause="protein_id = %d" % protein_id,
         )
         self.db.remove_some_rows_from_table(
             t.templates_table_name,
-            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+            where_clause="protein_id = %d" % protein_id,
         )
         self.db.remove_some_rows_from_table(
             t.models_table_name,
-            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+            where_clause="protein_id = %d" % protein_id,
         )
 
         if remove_from_self:
-            # Remove from self entries
-            self.genes_queried.remove(corresponding_gene_call)
-            self.genes_with_structure.remove(corresponding_gene_call)
-            self.update_genes_with_and_without_structure()
+            # Remove from the in-memory sets and drop the protein's row from the proteins table
+            self.genes_queried.discard(protein_id)
+            self.genes_with_structure.discard(protein_id)
+            self.genes_without_structure.discard(protein_id)
+            self.protein_specs.pop(protein_id, None)
+            self.db.remove_some_rows_from_table(t.proteins_table_name, where_clause="protein_id = %d" % protein_id)
 
 
-    def get_pdb_content(self, corresponding_gene_call):
+    def get_pdb_content(self, protein_id):
         """Returns the file content (as a string) of a pdb for a given gene"""
 
-        if not corresponding_gene_call in self.genes_with_structure:
-            raise ConfigError('The gene caller id {} was not found in the structure database :('.format(corresponding_gene_call))
+        if not protein_id in self.genes_with_structure:
+            raise ConfigError('The gene caller id {} was not found in the structure database :('.format(protein_id))
 
         return self.db.get_single_column_from_table(
             t.pdb_data_table_name,
             'pdb_content',
-            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+            where_clause="protein_id = %d" % protein_id,
         )[0].decode('utf-8')
 
 
-    def export_pdb_content(self, corresponding_gene_call, filepath, ok_if_exists=False):
+    def export_pdb_content(self, protein_id, filepath, ok_if_exists=False):
         """Export the pdb of a gene to a filepath"""
 
         if filesnpaths.is_output_file_writable(filepath, ok_if_exists=ok_if_exists):
-            pdb_content = self.get_pdb_content(corresponding_gene_call)
+            pdb_content = self.get_pdb_content(protein_id)
             with open(filepath, 'w') as f:
                 f.write(pdb_content)
 
@@ -279,13 +330,13 @@ class StructureDatabase(object):
         self.run.info('PDB file output', output_dir)
 
 
-    def get_structure(self, corresponding_gene_call):
+    def get_structure(self, protein_id):
         """Return a anvio.structureops.Structure object for a given gene"""
 
-        return Structure(self.export_pdb_content(corresponding_gene_call, filesnpaths.get_temp_file_path()))
+        return Structure(self.export_pdb_content(protein_id, filesnpaths.get_temp_file_path()))
 
 
-    def get_residue_info_for_gene(self, corresponding_gene_call, drop_null=True):
+    def get_residue_info_for_gene(self, protein_id, drop_null=True):
         """Get residue info for gene as a dataframe
 
         Parameters
@@ -296,7 +347,7 @@ class StructureDatabase(object):
 
         return self.db.get_table_as_dataframe(
             table_name=t.residue_info_table_name,
-            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+            where_clause="protein_id = %d" % protein_id,
             drop_if_null=drop_null,
         )
 
@@ -316,12 +367,12 @@ class StructureDatabase(object):
         )
 
 
-    def get_template_info_for_gene(self, corresponding_gene_call):
+    def get_template_info_for_gene(self, protein_id):
         """Get template info for gene as a dataframe"""
 
         return self.db.get_table_as_dataframe(
             table_name=t.templates_table_name,
-            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+            where_clause="protein_id = %d" % protein_id,
         )
 
 
@@ -335,6 +386,184 @@ class StructureDatabase(object):
 
     def disconnect(self):
         self.db.disconnect()
+
+
+class StructureInputSource(object):
+    """Base class describing a source of proteins to predict (or import) structures for.
+
+    A structure database keys everything on an integer `protein_id`. How that surrogate id maps back to
+    a real-world protein is entirely the source's business, recorded per protein in the `proteins` table.
+    A source knows how to validate its input, enumerate the proteins of interest, describe each protein's
+    provenance (a "protein spec" dict), and hand back the amino-acid / nucleotide sequences anvi'o needs
+    to model and annotate a structure.
+
+    Only ContigsDBSource is implemented today. New input types (e.g. pangenome, fasta) subclass this and
+    are dispatched in StructureSuperclass.__init__. A subclass must set `input_type` and implement every
+    method below.
+
+    A protein spec is a plain dict with the keys: 'protein_id' (int), 'input_type' (str), 'source_key'
+    (str, a stable human-readable handle), and the nullable natural-identity fields 'gene_callers_id'
+    (int), 'genome_name' (str) and 'gene_cluster_id' (str). Only the fields relevant to a given input
+    type are populated.
+    """
+
+    input_type = None
+
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+
+    @property
+    def hash(self):
+        """A hash uniquely identifying the input; stored in the structure db to link the two."""
+        raise NotImplementedError
+
+
+    def get_self_provenance(self):
+        """Return the dict of self-table meta keys (including `input_type`) to stamp into the structure db."""
+        raise NotImplementedError
+
+
+    def enumerate_candidate_proteins(self, genes_of_interest_path=None, gene_caller_ids=None, raise_if_none=False):
+        """Return the set of protein_ids to attempt structures for."""
+        raise NotImplementedError
+
+
+    def get_protein_spec(self, protein_id):
+        """Return the provenance dict for a protein_id (see the class docstring for its keys)."""
+        raise NotImplementedError
+
+
+    def write_amino_acid_fasta(self, protein_id, output_file_path, simple_headers=True):
+        """Write a single protein's amino-acid sequence to a FASTA file (used by the MODELLER path)."""
+        raise NotImplementedError
+
+
+    def get_amino_acid_sequences(self, protein_ids):
+        """Return {protein_id: amino_acid_sequence_string} for a collection of protein_ids."""
+        raise NotImplementedError
+
+
+    def get_nucleotide_sequence(self, protein_id):
+        """Return the nucleotide sequence string for a single protein (used for residue annotation)."""
+        raise NotImplementedError
+
+
+class ContigsDBSource(StructureInputSource):
+    """A structure input source backed by a single contigs database.
+
+    Proteins are the contigs-db gene calls, so the surrogate `protein_id` is simply the gene caller id
+    (an identity mapping). This is what keeps everything downstream that joins on the integer key -- most
+    notably the variability overlay -- working unchanged.
+    """
+
+    input_type = 'contigs_db'
+
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        StructureInputSource.__init__(self, args, run=run, progress=progress)
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.contigs_db_path = A('contigs_db')
+
+        utils.is_contigs_db(self.contigs_db_path)
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+        self.contigs_db_hash = contigs_db.meta['contigs_db_hash']
+        contigs_db.disconnect()
+
+        # the contigs superclass is kept quiet; the source's own run/progress are used for user-facing messages
+        self.contigs_super = ContigsSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+
+
+    @property
+    def hash(self):
+        return self.contigs_db_hash
+
+
+    def get_self_provenance(self):
+        return {'input_type': self.input_type, 'contigs_db_hash': self.contigs_db_hash}
+
+
+    def get_protein_spec(self, protein_id):
+        # for a contigs-db input the protein_id IS the gene caller id
+        return {'protein_id': protein_id,
+                'input_type': self.input_type,
+                'source_key': str(protein_id),
+                'gene_callers_id': protein_id,
+                'genome_name': None,
+                'gene_cluster_id': None}
+
+
+    def enumerate_candidate_proteins(self, genes_of_interest_path=None, gene_caller_ids=None, raise_if_none=False):
+        genes_of_interest = None
+
+        # identify the gene caller ids of all genes available
+        genes_in_contigs_database = set(self.contigs_super.genes_in_contigs_dict.keys())
+
+        if not genes_in_contigs_database:
+            raise ConfigError("This contigs database does not contain any identified genes...")
+
+        # settling genes of interest
+        if genes_of_interest_path and gene_caller_ids:
+            raise ConfigError("You can't provide a gene caller id from the command line, and a list of gene caller ids "
+                              "as a file at the same time, obviously.")
+
+        if gene_caller_ids:
+            gene_caller_ids = set([x.strip() for x in gene_caller_ids.split(',')])
+
+            genes_of_interest = []
+            for gene in gene_caller_ids:
+                try:
+                    genes_of_interest.append(int(gene))
+                except:
+                    raise ConfigError("Anvi'o does not like your gene caller id '%s'..." % str(gene))
+
+            genes_of_interest = set(genes_of_interest)
+
+        elif genes_of_interest_path:
+            filesnpaths.is_file_tab_delimited(genes_of_interest_path, expected_number_of_fields=1)
+
+            try:
+                genes_of_interest = set([int(s.strip()) for s in open(genes_of_interest_path).readlines()])
+            except ValueError:
+                raise ConfigError("Well. Anvi'o was working on your genes of interest ... and ... those gene IDs did not "
+                                  "look like anvi'o gene caller ids :/ Anvi'o is now sad.")
+
+        if not genes_of_interest:
+            if raise_if_none:
+                raise ConfigError("You gotta supply some genes of interest.")
+
+            # no genes of interest are specified. Assuming all, which could be innumerable--raise warning
+            genes_of_interest = genes_in_contigs_database
+            self.run.warning("You did not specify any genes of interest, so anvi'o will assume all of them are of interest.")
+
+        # Check for genes that do not appear in the contigs database
+        bad_gene_caller_ids = [g for g in genes_of_interest if g not in genes_in_contigs_database]
+        if bad_gene_caller_ids:
+            raise ConfigError(("This gene caller id you provided is" if len(bad_gene_caller_ids) == 1 else
+                               "These gene caller ids you provided are") + " not known to this contigs database: {}.\
+                               You have only 2 lives left. 2 more mistakes, and anvi'o will automatically uninstall \
+                               itself. Yes, seriously :(".format(", ".join([str(x) for x in bad_gene_caller_ids])))
+
+        return genes_of_interest
+
+
+    def write_amino_acid_fasta(self, protein_id, output_file_path, simple_headers=True):
+        self.contigs_super.get_sequences_for_gene_callers_ids([protein_id],
+                                                              output_file_path=output_file_path,
+                                                              report_aa_sequences=True,
+                                                              simple_headers=simple_headers)
+
+
+    def get_amino_acid_sequences(self, protein_ids):
+        _, aa_sequences = self.contigs_super.get_sequences_for_gene_callers_ids(list(protein_ids), report_aa_sequences=True)
+        return {protein_id: aa_sequences[protein_id]['aa_sequence'] for protein_id in protein_ids}
+
+
+    def get_nucleotide_sequence(self, protein_id):
+        _, gene_sequences = self.contigs_super.get_sequences_for_gene_callers_ids([protein_id])
+        return gene_sequences[protein_id]['sequence']
 
 
 class StructureSuperclass(object):
@@ -392,13 +621,16 @@ class StructureSuperclass(object):
         self.only_msa = A('only_msa', bool)
         self.only_predict = A('only_predict', bool)
 
-        utils.is_contigs_db(self.contigs_db_path)
-        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
-        self.contigs_db_hash = contigs_db.meta['contigs_db_hash']
-        contigs_db.disconnect()
+        # the input source owns everything about where the proteins to model come from: validating the
+        # input, enumerating proteins, per-protein provenance, and fetching sequences. contigs-db is the
+        # only implemented source today.
+        # future: dispatch on args (e.g. a --pan-db / --fasta flag) to PangenomeSource / FastaSource here.
+        self.input_source = ContigsDBSource(self.args, run=self.run, progress=self.progress)
+        self.contigs_db_hash = self.input_source.hash
 
-        # init ContigsSuperClass
-        self.contigs_super = ContigsSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+        # thin alias so the external-structures path and residue-identity annotation can reach the contigs
+        # superclass directly; all other sequence access goes through self.input_source.
+        self.contigs_super = self.input_source.contigs_super
 
         # --only-msa stops after the MSA step and never produces a structure database, so it neither
         # requires nor creates one. Every other mode sets up the structure db here.
@@ -418,7 +650,7 @@ class StructureSuperclass(object):
         # we need to read back the engine and run parameters it was created with (--only-msa still writes
         # nothing to it: run_colabfold_batch returns before the storing step).
         self.structure_db = None if (self.create and self.only_msa) else \
-            StructureDatabase(self.structure_db_path, self.contigs_db_hash, create_new=create)
+            StructureDatabase(self.structure_db_path, self.contigs_db_hash, create_new=create, input_type=self.input_source.input_type)
 
         # determine the engine and the resulting run mode
         if self.create:
@@ -741,53 +973,8 @@ class StructureSuperclass(object):
             genes_of_interest = self.external_structures.content['gene_callers_id']
             return genes_of_interest
 
-        # identify the gene caller ids of all genes available
-        genes_in_contigs_database = set(self.contigs_super.genes_in_contigs_dict.keys())
-
-        if not genes_in_contigs_database:
-            raise ConfigError("This contigs database does not contain any identified genes...")
-
-        # settling genes of interest
-        if genes_of_interest_path and gene_caller_ids:
-            raise ConfigError("You can't provide a gene caller id from the command line, and a list of gene caller ids "
-                              "as a file at the same time, obviously.")
-
-        if gene_caller_ids:
-            gene_caller_ids = set([x.strip() for x in gene_caller_ids.split(',')])
-
-            genes_of_interest = []
-            for gene in gene_caller_ids:
-                try:
-                    genes_of_interest.append(int(gene))
-                except:
-                    raise ConfigError("Anvi'o does not like your gene caller id '%s'..." % str(gene))
-
-            genes_of_interest = set(genes_of_interest)
-
-        elif genes_of_interest_path:
-            filesnpaths.is_file_tab_delimited(genes_of_interest_path, expected_number_of_fields=1)
-
-            try:
-                genes_of_interest = set([int(s.strip()) for s in open(genes_of_interest_path).readlines()])
-            except ValueError:
-                raise ConfigError("Well. Anvi'o was working on your genes of interest ... and ... those gene IDs did not "
-                                  "look like anvi'o gene caller ids :/ Anvi'o is now sad.")
-
-        if not genes_of_interest:
-            if raise_if_none:
-                raise ConfigError("You gotta supply some genes of interest.")
-
-            # no genes of interest are specified. Assuming all, which could be innumerable--raise warning
-            genes_of_interest = genes_in_contigs_database
-            self.run.warning("You did not specify any genes of interest, so anvi'o will assume all of them are of interest.")
-
-        # Check for genes that do not appear in the contigs database
-        bad_gene_caller_ids = [g for g in genes_of_interest if g not in genes_in_contigs_database]
-        if bad_gene_caller_ids:
-            raise ConfigError(("This gene caller id you provided is" if len(bad_gene_caller_ids) == 1 else
-                               "These gene caller ids you provided are") + " not known to this contigs database: {}.\
-                               You have only 2 lives left. 2 more mistakes, and anvi'o will automatically uninstall \
-                               itself. Yes, seriously :(".format(", ".join([str(x) for x in bad_gene_caller_ids])))
+        # every other mode enumerates the proteins of interest through the input source (contigs-db today)
+        genes_of_interest = self.input_source.enumerate_candidate_proteins(genes_of_interest_path, gene_caller_ids, raise_if_none=raise_if_none)
 
         # Finally, raise warning if number of genes is greater than 20 FIXME determine average time
         # per gene and describe here
@@ -803,8 +990,8 @@ class StructureSuperclass(object):
     def worker(self, available_index_queue, output_queue):
         while True:
             try:
-                corresponding_gene_call = available_index_queue.get(True)
-                structure_info = self.process_gene(corresponding_gene_call)
+                protein_id = available_index_queue.get(True)
+                structure_info = self.process_gene(protein_id)
                 output_queue.put(structure_info)
             except Exception as e:
                 # This thread encountered an error. We send the error back to the main thread which
@@ -947,6 +1134,7 @@ class StructureSuperclass(object):
             self.progress.update('Processing gene %d ...' % gene)
 
             self.structure_db.genes_queried.add(gene)
+            self.structure_db.register_protein(self.input_source.get_protein_spec(gene))
 
             structure_info = self.process_colabfold_gene(gene, out_dir)
             self.store_gene(structure_info)
@@ -957,7 +1145,7 @@ class StructureSuperclass(object):
             else:
                 self.structure_db.genes_without_structure.add(gene)
 
-            self.structure_db.update_genes_with_and_without_structure()
+            self.structure_db.persist_proteins()
         self.progress.end()
 
         # genes that were skipped for not being 'clean' were still attempted, so record them as queried
@@ -966,7 +1154,8 @@ class StructureSuperclass(object):
             if gene not in clean_genes:
                 self.structure_db.genes_queried.add(gene)
                 self.structure_db.genes_without_structure.add(gene)
-        self.structure_db.update_genes_with_and_without_structure()
+                self.structure_db.register_protein(self.input_source.get_protein_spec(gene))
+        self.structure_db.persist_proteins()
 
         if not num_with_structure:
             raise ConfigError("Well this is really sad. ColabFold did not produce a structure for any of your genes, so "
@@ -1008,13 +1197,13 @@ class StructureSuperclass(object):
 
         self.progress.new('ColabFold')
         self.progress.update('Preparing amino acid sequences ...')
-        _, aa_sequences = self.contigs_super.get_sequences_for_gene_callers_ids(genes_of_interest, report_aa_sequences=True)
+        aa_sequences = self.input_source.get_amino_acid_sequences(genes_of_interest)
         self.progress.end()
 
         clean_genes = []
         with open(fasta_path, 'w') as fasta:
             for gene in genes_of_interest:
-                sequence = aa_sequences[gene]['aa_sequence']
+                sequence = aa_sequences[gene]
                 if not sequence:
                     self.run.warning("Anvi'o could not find an amino acid sequence for gene ID %d, so it will be "
                                      "skipped." % gene)
@@ -1103,29 +1292,29 @@ class StructureSuperclass(object):
                               "before --only-predict." % out_dir)
 
 
-    def process_colabfold_gene(self, corresponding_gene_call, out_dir):
+    def process_colabfold_gene(self, protein_id, out_dir):
         """Locate and parse a single gene's ColabFold output into a structure_info dict"""
 
         structure_info = {
-            'corresponding_gene_call': corresponding_gene_call,
+            'protein_id': protein_id,
             'has_structure': False,
         }
 
-        pdb_path, scores_path = self.colabfold.get_output_paths(out_dir, str(corresponding_gene_call))
+        pdb_path, scores_path = self.colabfold.get_output_paths(out_dir, str(protein_id))
 
         if not pdb_path:
             self.run.warning("ColabFold did not produce a structure for gene ID %d. Anvi'o will move on to the next "
-                             "gene." % corresponding_gene_call)
+                             "gene." % protein_id)
             return structure_info
 
         # parse the scores JSON once here and pass the dict to both consumers below
         scores = self.read_colabfold_scores(scores_path)
 
-        structure_info['results'] = self.create_results_dict_for_colabfold_structure(corresponding_gene_call, pdb_path, scores)
+        structure_info['results'] = self.create_results_dict_for_colabfold_structure(protein_id, pdb_path, scores)
         structure_info['has_structure'] = True
 
         residue_info = self.get_gene_contribution_to_residue_info_table(
-            corresponding_gene_call=corresponding_gene_call,
+            protein_id=protein_id,
             pdb_filepath=pdb_path,
         )
         structure_info['residue_info'] = self.add_plddt_to_residue_info(residue_info, scores)
@@ -1133,7 +1322,7 @@ class StructureSuperclass(object):
         return structure_info
 
 
-    def create_results_dict_for_colabfold_structure(self, corresponding_gene_call, pdb_path, scores):
+    def create_results_dict_for_colabfold_structure(self, protein_id, pdb_path, scores):
         """Build a results dict (mirroring the MODELLER/external contract) for a ColabFold structure
 
         ColabFold reports confidence with per-residue pLDDT and model-level pTM instead of MODELLER's
@@ -1153,7 +1342,7 @@ class StructureSuperclass(object):
         return {
             'templates': {'pdb_id': ['none'], 'chain_id': ['none'], 'proper_percent_similarity': [0], 'percent_similarity': [0], 'align_fraction': [0]},
             'models': {'mean_plddt': [mean_plddt], 'ptm': [ptm], 'picked_as_best': [True]},
-            'corresponding_gene_call': corresponding_gene_call,
+            'protein_id': protein_id,
             'structure_exists': True,
             'best_model_path': pdb_path,
             'best_score': mean_plddt,
@@ -1226,20 +1415,21 @@ class StructureSuperclass(object):
                     # If thread returns an exception, we raise it and kill the main thread.
                     raise structure_info
 
-                corresponding_gene_call = structure_info['corresponding_gene_call']
+                protein_id = structure_info['protein_id']
 
                 # Add it to the storage buffer
                 structure_infos.append(structure_info)
 
                 num_tried += 1
-                self.structure_db.genes_queried.add(corresponding_gene_call)
+                self.structure_db.genes_queried.add(protein_id)
+                self.structure_db.register_protein(self.input_source.get_protein_spec(protein_id))
 
                 if structure_info['has_structure']:
                     num_with_structure += 1
-                    self.structure_db.genes_with_structure.add(corresponding_gene_call)
+                    self.structure_db.genes_with_structure.add(protein_id)
                 else:
                     num_without_structure += 1
-                    self.structure_db.genes_without_structure.add(corresponding_gene_call)
+                    self.structure_db.genes_without_structure.add(protein_id)
 
                 if mem_tracker.measure():
                     mem_usage = mem_tracker.get_last()
@@ -1259,7 +1449,7 @@ class StructureSuperclass(object):
                     structure_infos = []
 
                     # Update self table
-                    self.structure_db.update_genes_with_and_without_structure()
+                    self.structure_db.persist_proteins()
 
                     self.progress.update(msg)
 
@@ -1286,7 +1476,7 @@ class StructureSuperclass(object):
         structure_infos = []
 
         # Update self table
-        self.structure_db.update_genes_with_and_without_structure()
+        self.structure_db.persist_proteins()
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
@@ -1313,8 +1503,8 @@ class StructureSuperclass(object):
         self.progress.update(msg)
 
         try:
-            for corresponding_gene_call in genes_of_interest:
-                structure_info = self.process_gene(corresponding_gene_call)
+            for protein_id in genes_of_interest:
+                structure_info = self.process_gene(protein_id)
                 num_tried += 1
 
                 self.progress.increment(num_tried)
@@ -1329,18 +1519,19 @@ class StructureSuperclass(object):
 
                 self.dump_raw_results(structure_info)
 
-                self.structure_db.genes_queried.add(corresponding_gene_call)
+                self.structure_db.genes_queried.add(protein_id)
+                self.structure_db.register_protein(self.input_source.get_protein_spec(protein_id))
 
                 if structure_info['has_structure']:
                     num_with_structure += 1
-                    self.structure_db.genes_with_structure.add(corresponding_gene_call)
+                    self.structure_db.genes_with_structure.add(protein_id)
                 else:
                     num_without_structure += 1
-                    self.structure_db.genes_without_structure.add(corresponding_gene_call)
+                    self.structure_db.genes_without_structure.add(protein_id)
 
                 # We update self.table every gene because there is no GIL cost with single thread and it
                 # allows user to CTRL+C and still have a valid DB
-                self.structure_db.update_genes_with_and_without_structure()
+                self.structure_db.persist_proteins()
         except KeyboardInterrupt:
             self.run.info_single("Anvi'o received SIGINT, terminating all processes...", nl_before=2)
 
@@ -1358,9 +1549,9 @@ class StructureSuperclass(object):
         return '│ PROCESSED: %d/%d │ STRUCTURES: %d │ MEMORY: 🧠  %s (%s) │'
 
 
-    def process_gene(self, corresponding_gene_call):
+    def process_gene(self, protein_id):
         structure_info = {
-            'corresponding_gene_call': corresponding_gene_call,
+            'protein_id': protein_id,
             'has_structure': False,
         }
 
@@ -1369,10 +1560,7 @@ class StructureSuperclass(object):
 
             # Export sequence
             target_fasta_path = filesnpaths.get_temp_file_path()
-            self.contigs_super.get_sequences_for_gene_callers_ids([corresponding_gene_call],
-                                                                  output_file_path=target_fasta_path,
-                                                                  report_aa_sequences=True,
-                                                                  simple_headers=True)
+            self.input_source.write_amino_acid_fasta(protein_id, target_fasta_path, simple_headers=True)
 
             try:
                 filesnpaths.is_file_fasta_formatted(target_fasta_path)
@@ -1382,10 +1570,10 @@ class StructureSuperclass(object):
                                  "occassionally happens has not been investigated, but if it is any consolation, "
                                  "it is not your fault. You may want to try again, and maybe it will work. Or "
                                  "maybe it will not. Regardless, at this time anvi'o cannot model the gene. "
-                                 "Here is the temporary fasta file path: %s " % (corresponding_gene_call, target_fasta_path))
+                                 "Here is the temporary fasta file path: %s " % (protein_id, target_fasta_path))
                 return structure_info
 
-            if self.skip_gene_if_not_clean(corresponding_gene_call, fasta_path=target_fasta_path):
+            if self.skip_gene_if_not_clean(protein_id, fasta_path=target_fasta_path):
                 return structure_info
 
             # Model structure
@@ -1393,31 +1581,31 @@ class StructureSuperclass(object):
 
         elif self.run_mode == 'external':
 
-            structure = self.external_structures.get_structure(corresponding_gene_call)
-            if self.skip_gene_if_not_clean(corresponding_gene_call, sequence=structure.get_sequence()):
+            structure = self.external_structures.get_structure(protein_id)
+            if self.skip_gene_if_not_clean(protein_id, sequence=structure.get_sequence()):
                 return structure_info
 
-            structure_info['results'] = self.create_results_dict_for_external_structure(corresponding_gene_call)
+            structure_info['results'] = self.create_results_dict_for_external_structure(protein_id)
 
         # Annotate residues
         if structure_info['results']['structure_exists']:
             structure_info['has_structure'] = True
 
             structure_info['residue_info'] = self.get_gene_contribution_to_residue_info_table(
-                corresponding_gene_call=corresponding_gene_call,
+                protein_id=protein_id,
                 pdb_filepath=structure_info['results']['best_model_path'],
             )
 
         return structure_info
 
 
-    def create_results_dict_for_external_structure(self, corresponding_gene_call):
+    def create_results_dict_for_external_structure(self, protein_id):
         return {
             'templates': {'pdb_id': ['none'], 'chain_id': ['none'], 'proper_percent_similarity': [0], 'percent_similarity': [0], 'align_fraction': [0]},
             'models': {'molpdf': [0], 'GA341_score': [0], 'DOPE_score': [0], 'picked_as_best': [True]},
-            'corresponding_gene_call': corresponding_gene_call,
+            'protein_id': protein_id,
             'structure_exists': True,
-            'best_model_path': self.external_structures.get_path(corresponding_gene_call),
+            'best_model_path': self.external_structures.get_path(protein_id),
             'best_score': None,
             'scoring_method': self.modeller_params['scoring_method'],
             'percent_cutoff': self.modeller_params['percent_cutoff'],
@@ -1427,12 +1615,12 @@ class StructureSuperclass(object):
         }
 
 
-    def skip_gene_if_not_clean(self, corresponding_gene_call, fasta_path=None, sequence=None):
+    def skip_gene_if_not_clean(self, protein_id, fasta_path=None, sequence=None):
         """Do not try modelling gene if it is not clean
 
         Parameters
         ==========
-        corresponding_gene_call : int
+        protein_id : int
             What is the gene callers id?
         fasta_path : str, None
             Provide either the path to the amino acid fasta
@@ -1455,30 +1643,29 @@ class StructureSuperclass(object):
         except ConfigError as error:
             self.run.warning("You wanted to model a structure for gene ID %d, but it is not what anvi'o "
                              "considers a 'clean gene'. Anvi'o will move onto the next gene. Here is the "
-                             "error that was raised: \"%s\"" % (corresponding_gene_call, error.e))
+                             "error that was raised: \"%s\"" % (protein_id, error.e))
             return True
 
 
-    def get_gene_contribution_to_residue_info_table(self, corresponding_gene_call, pdb_filepath):
+    def get_gene_contribution_to_residue_info_table(self, protein_id, pdb_filepath):
         results = [
             self.dssp.run(pdb_filepath, dont_run=self.skip_DSSP, drop=['aa']),
             self.run_contact_map_annotation(pdb_filepath),
-            self.run_residue_identity_annotation(corresponding_gene_call, pdb_filepath),
+            self.run_residue_identity_annotation(protein_id, pdb_filepath),
         ]
         residue_annotation_for_gene = pd.concat(results, axis=1, sort=True)
 
-        # add corresponding_gene_call and codon_order_in_gene as 0th and 1st columns
-        residue_annotation_for_gene.insert(0, "corresponding_gene_call", corresponding_gene_call)
+        # add protein_id and codon_order_in_gene as 0th and 1st columns
+        residue_annotation_for_gene.insert(0, "protein_id", protein_id)
         residue_annotation_for_gene.insert(1, "codon_order_in_gene", residue_annotation_for_gene.index)
 
         return residue_annotation_for_gene
 
 
-    def run_residue_identity_annotation(self, corresponding_gene_call, pdb_filepath):
+    def run_residue_identity_annotation(self, protein_id, pdb_filepath):
         """A small routine to return a data frame containing codon numbers, codons, and amino acids"""
 
-        nt_sequence = self.contigs_super.get_sequences_for_gene_callers_ids([corresponding_gene_call])
-        nt_sequence = nt_sequence[1][corresponding_gene_call]['sequence']
+        nt_sequence = self.input_source.get_nucleotide_sequence(protein_id)
 
         seq_dict = {"codon_order_in_gene": [],
                     "codon_number":        [],
@@ -1532,7 +1719,10 @@ class StructureSuperclass(object):
         if 'results' not in structure_info:
             return
 
-        output_gene_dir = os.path.join(self.dump_dir, structure_info['results']['corresponding_gene_call'])
+        # the subdirectory is named after the protein (== gene caller id for a contigs-db input). We use
+        # the structure_info key rather than the prediction engine's own results key, which is engine
+        # specific (e.g. MODELLER derives it from the FASTA defline).
+        output_gene_dir = os.path.join(self.dump_dir, str(structure_info['protein_id']))
         shutil.move(structure_info['results']['directory'], output_gene_dir)
 
 
@@ -1543,17 +1733,17 @@ class StructureSuperclass(object):
             # There is nothing to store
             return
 
-        corresponding_gene_call = structure_info["corresponding_gene_call"]
+        protein_id = structure_info["protein_id"]
         results = structure_info['results']
 
         # If the gene is present in the database, remove it first
-        if corresponding_gene_call in self.structure_db.genes_with_structure:
+        if protein_id in self.structure_db.genes_with_structure:
             # We do not remove the gene from self because that is handled in _run
-            self.structure_db.remove_gene(corresponding_gene_call, remove_from_self=False)
+            self.structure_db.remove_gene(protein_id, remove_from_self=False)
 
         # templates is always added, even when structure was not modelled
         templates = pd.DataFrame(results['templates'])
-        templates.insert(0, 'corresponding_gene_call', corresponding_gene_call)
+        templates.insert(0, 'protein_id', protein_id)
         self.structure_db.entries[t.templates_table_name] = \
             pd.concat([self.structure_db.entries[t.templates_table_name], templates])
         self.structure_db.store(t.templates_table_name)
@@ -1564,7 +1754,7 @@ class StructureSuperclass(object):
             # models. Different engines populate different score columns (MODELLER: molpdf/GA341/DOPE;
             # ColabFold: mean_plddt/ptm), so any column the engine did not produce is filled with NULL
             models = pd.DataFrame(results['models'])
-            models.insert(0, 'corresponding_gene_call', corresponding_gene_call)
+            models.insert(0, 'protein_id', protein_id)
             for column in t.models_table_structure:
                 if column not in models.columns:
                     models[column] = None
@@ -1576,7 +1766,7 @@ class StructureSuperclass(object):
             pdb_file = open(results['best_model_path'], 'rb')
             pdb_contents = pdb_file.read()
             pdb_file.close()
-            pdb_table_entry = (corresponding_gene_call, pdb_contents)
+            pdb_table_entry = (protein_id, pdb_contents)
             self.structure_db.entries[t.pdb_data_table_name].append(pdb_table_entry)
             self.structure_db.store(t.pdb_data_table_name)
 
