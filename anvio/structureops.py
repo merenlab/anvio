@@ -35,7 +35,7 @@ import anvio.drivers.MODELLER as MODELLER
 import anvio.drivers.colabfold as colabfold
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.dbops import ContigsSuperclass
+from anvio.dbops import ContigsSuperclass, PanSuperclass
 from anvio.version import structure_db_version
 
 J = lambda x, y: os.path.join(x, y)
@@ -426,8 +426,15 @@ class StructureInputSource(object):
         raise NotImplementedError
 
 
-    def enumerate_candidate_proteins(self, genes_of_interest_path=None, gene_caller_ids=None, raise_if_none=False):
-        """Return the set of protein_ids to attempt structures for."""
+    def enumerate_candidate_proteins(self, existing_proteins=None, raise_if_none=False):
+        """Return the set of protein_ids to attempt structures for.
+
+        Each source reads its own selection flags from self.args. On update, `existing_proteins` is the
+        proteins-table dataframe of the structure database being updated: a source that mints surrogate
+        protein_ids uses it to reuse the ids already assigned to proteins it recognizes (and mint fresh
+        ids only for genuinely new ones), which is what keeps update/--rerun idempotent. Sources whose
+        protein_id is an identity mapping (e.g. contigs-db) ignore it.
+        """
         raise NotImplementedError
 
 
@@ -495,7 +502,13 @@ class ContigsDBSource(StructureInputSource):
                 'gene_cluster_id': None}
 
 
-    def enumerate_candidate_proteins(self, genes_of_interest_path=None, gene_caller_ids=None, raise_if_none=False):
+    def enumerate_candidate_proteins(self, existing_proteins=None, raise_if_none=False):
+        # a contigs-db protein_id is the gene caller id itself (identity), so there is nothing to
+        # reconcile against an existing structure db: existing_proteins is intentionally ignored.
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        genes_of_interest_path = A('genes_of_interest')
+        gene_caller_ids = A('gene_caller_ids')
+
         genes_of_interest = None
 
         # identify the gene caller ids of all genes available
@@ -566,6 +579,204 @@ class ContigsDBSource(StructureInputSource):
         return gene_sequences[protein_id]['sequence']
 
 
+class PangenomeSource(StructureInputSource):
+    """A structure input source backed by a pangenome (a pan database + its genomes storage).
+
+    A pangenome gene is identified by a (genome_name, gene_callers_id) pair that is only unique *within* a
+    genome, so -- unlike the contigs-db source -- the gene caller id cannot double as the structure
+    database's protein_id. This source therefore mints a fresh surrogate integer protein_id per selected
+    protein and records the real provenance (genome_name, gene_callers_id, gene_cluster_id) in the
+    proteins table. Amino-acid and nucleotide sequences are fetched from the genomes storage.
+
+    Two selection modes (set on the command line):
+      - all members (default): every gene of every selected gene cluster becomes a protein.
+      - representative (--select-representative): a single medoid-like representative gene is picked per
+        gene cluster (see utils.get_representative_sequence_from_gene_cluster). The representative is a
+        real gene from the cluster, so it still resolves to a concrete (genome_name, gene_callers_id).
+
+    On update, protein_ids are reconciled against the existing proteins table by the natural key
+    (genome_name, gene_callers_id) -- which is populated in *both* modes -- so re-running or adding
+    clusters never re-mints or reshuffles ids already in the database.
+    """
+
+    input_type = 'pangenome'
+
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        StructureInputSource.__init__(self, args, run=run, progress=progress)
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.pan_db_path = A('pan_db')
+        self.genomes_storage_path = A('genomes_storage')
+        self.select_representative = A('select_representative')
+        self.gene_cluster_ids = A('gene_cluster_ids')
+        self.gene_clusters_of_interest_path = A('gene_clusters_of_interest')
+
+        if not self.pan_db_path:
+            raise ConfigError("A pangenome input requires a pan database (--pan-db).")
+        utils.is_pan_db(self.pan_db_path)
+
+        if not self.genomes_storage_path:
+            raise ConfigError("A pangenome input requires the genomes storage (--genomes-storage / -g) that goes with "
+                              "your pan database. The pan database only stores gene-cluster membership; the amino acid "
+                              "and nucleotide sequences anvi'o needs to model structures live in the genomes storage.")
+        utils.is_genome_storage(self.genomes_storage_path)
+
+        # PanSuperclass reads gene-cluster membership from the pan db and sequences from the genomes storage.
+        # It is kept quiet; the source's own run/progress carry the user-facing messages.
+        self.pan_super = PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+        self.pan_super.init_gene_clusters()
+
+        if not self.pan_super.genomes_storage_is_available:
+            raise ConfigError("Anvi'o could not access the genomes storage for this pangenome, so it cannot recover the "
+                              "sequences it needs. Please double-check your --genomes-storage.")
+
+        if self.select_representative and not self.pan_super.gene_clusters_gene_alignments_available:
+            raise ConfigError("You asked for one representative gene per gene cluster (--select-representative), but this "
+                              "pangenome was created without gene-cluster alignments (most likely with --skip-alignments). "
+                              "The representative is picked from the aligned sequences, so there is nothing anvi'o can do "
+                              "without them. Either recompute the pangenome with alignments, or drop --select-representative "
+                              "to model every gene in each cluster.")
+
+        # surrogate protein_id -> provenance dict, filled by enumerate_candidate_proteins
+        self.protein_map = {}
+
+
+    @property
+    def hash(self):
+        # the genomes storage is where the sequences come from, so its hash identifies the input's provenance
+        return self.pan_super.p_meta['genomes_storage_hash']
+
+
+    def get_self_provenance(self):
+        return {'input_type': self.input_type, 'contigs_db_hash': self.hash}
+
+
+    def _selected_gene_cluster_names(self):
+        """Resolve the gene clusters of interest from the command line (or fall back to all of them)."""
+        all_gene_clusters = set(self.pan_super.gene_clusters.keys())
+
+        if self.gene_cluster_ids and self.gene_clusters_of_interest_path:
+            raise ConfigError("You can't provide gene cluster ids on the command line (--gene-cluster-ids) and a file of "
+                              "gene cluster ids (--gene-clusters-of-interest) at the same time. Pick one.")
+
+        gene_clusters_of_interest = None
+        if self.gene_cluster_ids:
+            gene_clusters_of_interest = set([x.strip() for x in self.gene_cluster_ids.split(',') if x.strip()])
+        elif self.gene_clusters_of_interest_path:
+            filesnpaths.is_file_tab_delimited(self.gene_clusters_of_interest_path, expected_number_of_fields=1)
+            gene_clusters_of_interest = set([s.strip() for s in open(self.gene_clusters_of_interest_path).readlines() if s.strip()])
+
+        if not gene_clusters_of_interest:
+            gene_clusters_of_interest = all_gene_clusters
+            self.run.warning("You did not specify any gene clusters of interest, so anvi'o will assume all %d of them are "
+                             "of interest." % len(all_gene_clusters))
+
+        bad = [gc for gc in gene_clusters_of_interest if gc not in all_gene_clusters]
+        if bad:
+            raise ConfigError("%d of the gene cluster ids you provided are not known to this pangenome. Here are a few: %s."
+                              % (len(bad), ", ".join(map(str, bad[:5]))))
+
+        return gene_clusters_of_interest
+
+
+    def _target_genes(self, gene_cluster_names):
+        """Return the list of (genome_name, gene_callers_id, gene_cluster_id) triples to model, per mode."""
+        targets = []
+        if self.select_representative:
+            reps = self.pan_super.get_gene_cluster_representative_sequences(gene_cluster_names=set(gene_cluster_names))
+            for gc_id, rep in reps.items():
+                targets.append((rep['genome_name'], rep['gene_callers_id'], gc_id))
+        else:
+            for gc_id in gene_cluster_names:
+                for genome_name in self.pan_super.gene_clusters[gc_id]:
+                    for gene_callers_id in self.pan_super.gene_clusters[gc_id][genome_name]:
+                        targets.append((genome_name, gene_callers_id, gc_id))
+        return targets
+
+
+    def enumerate_candidate_proteins(self, existing_proteins=None, raise_if_none=False):
+        if raise_if_none and not (self.gene_cluster_ids or self.gene_clusters_of_interest_path):
+            raise ConfigError("You gotta supply some gene clusters of interest (--gene-cluster-ids or "
+                              "--gene-clusters-of-interest) when updating a pangenome structure database.")
+
+        gene_cluster_names = self._selected_gene_cluster_names()
+        targets = self._target_genes(gene_cluster_names)
+
+        if not targets:
+            raise ConfigError("Anvi'o could not find any genes to model for the gene clusters you selected. That is "
+                              "unexpected -- are these gene clusters empty?")
+
+        # On update, reconcile surrogate ids against the existing db by natural key so add/--rerun reuse the
+        # ids already assigned (and mint fresh, non-colliding ids only for genuinely new proteins).
+        natural_key_to_id = {}
+        next_id = 0
+        if existing_proteins is not None and len(existing_proteins):
+            for _, row in existing_proteins.iterrows():
+                natural_key_to_id[(row['genome_name'], int(row['gene_callers_id']))] = int(row['protein_id'])
+            next_id = max(natural_key_to_id.values()) + 1
+
+        self.protein_map = {}
+        protein_ids = set()
+        seen_natural_keys = set()
+        for genome_name, gene_callers_id, gc_id in targets:
+            natural_key = (genome_name, int(gene_callers_id))
+
+            # the same gene can appear under more than one selected cluster only in pathological input;
+            # keep the first occurrence so a gene maps to exactly one protein_id
+            if natural_key in seen_natural_keys:
+                continue
+            seen_natural_keys.add(natural_key)
+
+            if natural_key in natural_key_to_id:
+                protein_id = natural_key_to_id[natural_key]
+            else:
+                protein_id = next_id
+                next_id += 1
+
+            self.protein_map[protein_id] = {
+                'genome_name': genome_name,
+                'gene_callers_id': int(gene_callers_id),
+                'gene_cluster_id': gc_id,
+                'source_key': '%s:%s:%d' % (gc_id, genome_name, int(gene_callers_id)),
+            }
+            protein_ids.add(protein_id)
+
+        return protein_ids
+
+
+    def get_protein_spec(self, protein_id):
+        info = self.protein_map[protein_id]
+        return {'protein_id': protein_id,
+                'input_type': self.input_type,
+                'source_key': info['source_key'],
+                'gene_callers_id': info['gene_callers_id'],
+                'genome_name': info['genome_name'],
+                'gene_cluster_id': info['gene_cluster_id']}
+
+
+    def _aa_sequence(self, protein_id):
+        info = self.protein_map[protein_id]
+        return self.pan_super.genomes_storage.get_gene_sequence(info['genome_name'], info['gene_callers_id'],
+                                                                report_DNA_sequences=False)
+
+
+    def write_amino_acid_fasta(self, protein_id, output_file_path, simple_headers=True):
+        sequence = self._aa_sequence(protein_id)
+        header = '%d' % protein_id if simple_headers else self.protein_map[protein_id]['source_key']
+        with open(output_file_path, 'w') as f:
+            f.write('>%s\n%s\n' % (header, sequence))
+
+
+    def get_amino_acid_sequences(self, protein_ids):
+        return {protein_id: self._aa_sequence(protein_id) for protein_id in protein_ids}
+
+
+    def get_nucleotide_sequence(self, protein_id):
+        info = self.protein_map[protein_id]
+        return self.pan_super.genomes_storage.get_gene_sequence(info['genome_name'], info['gene_callers_id'],
+                                                                report_DNA_sequences=True)
+
+
 class StructureSuperclass(object):
     """Structure operations
 
@@ -622,15 +833,26 @@ class StructureSuperclass(object):
         self.only_predict = A('only_predict', bool)
 
         # the input source owns everything about where the proteins to model come from: validating the
-        # input, enumerating proteins, per-protein provenance, and fetching sequences. contigs-db is the
-        # only implemented source today.
-        # future: dispatch on args (e.g. a --pan-db / --fasta flag) to PangenomeSource / FastaSource here.
-        self.input_source = ContigsDBSource(self.args, run=self.run, progress=self.progress)
+        # input, enumerating proteins, per-protein provenance, and fetching sequences. The source is picked
+        # from the arguments: a pangenome (--pan-db) uses PangenomeSource, otherwise it is a contigs db.
+        self.pan_db_path = A('pan_db', null)
+
+        if self.pan_db_path:
+            if self.external_structures_path:
+                raise ConfigError("You provided a pangenome (--pan-db) together with --external-structures. These are "
+                                  "mutually exclusive: a structure database is built either by predicting structures for "
+                                  "the genes of a pangenome, or by importing pre-computed structures for a single contigs "
+                                  "database, not both.")
+            self.input_source = PangenomeSource(self.args, run=self.run, progress=self.progress)
+        else:
+            self.input_source = ContigsDBSource(self.args, run=self.run, progress=self.progress)
+
         self.contigs_db_hash = self.input_source.hash
 
         # thin alias so the external-structures path and residue-identity annotation can reach the contigs
-        # superclass directly; all other sequence access goes through self.input_source.
-        self.contigs_super = self.input_source.contigs_super
+        # superclass directly; all other sequence access goes through self.input_source. It is None for
+        # input types (e.g. pangenome) that are not backed by a single contigs database.
+        self.contigs_super = getattr(self.input_source, 'contigs_super', None)
 
         # --only-msa stops after the MSA step and never produces a structure database, so it neither
         # requires nor creates one. Every other mode sets up the structure db here.
@@ -973,8 +1195,11 @@ class StructureSuperclass(object):
             genes_of_interest = self.external_structures.content['gene_callers_id']
             return genes_of_interest
 
-        # every other mode enumerates the proteins of interest through the input source (contigs-db today)
-        genes_of_interest = self.input_source.enumerate_candidate_proteins(genes_of_interest_path, gene_caller_ids, raise_if_none=raise_if_none)
+        # every other mode enumerates the proteins of interest through the input source. On update, the
+        # existing proteins table lets a source with surrogate protein_ids (e.g. pangenome) reuse the ids
+        # it already assigned rather than minting fresh, colliding ones.
+        existing_proteins = None if self.create else self.structure_db.get_proteins_dataframe()
+        genes_of_interest = self.input_source.enumerate_candidate_proteins(existing_proteins=existing_proteins, raise_if_none=raise_if_none)
 
         # Finally, raise warning if number of genes is greater than 20 FIXME determine average time
         # per gene and describe here
@@ -1006,13 +1231,22 @@ class StructureSuperclass(object):
         """Calls either run_multi_thread or run_single_thread"""
 
         self.run.warning('', header='General info', nl_after=0, lc='green')
-        self.run.info('contigs_db', self.contigs_db_path)
-        self.run.info('contigs_db_hash', self.contigs_db_hash)
+        self.run.info('input_type', self.input_source.input_type)
+        if self.input_source.input_type == 'pangenome':
+            self.run.info('pan_db', self.pan_db_path)
+            self.run.info('genomes_storage', self.input_source.genomes_storage_path)
+            self.run.info('genomes_storage_hash', self.contigs_db_hash)
+            self.run.info('gene_cluster_ids', self.input_source.gene_cluster_ids)
+            self.run.info('gene_clusters_of_interest', self.input_source.gene_clusters_of_interest_path)
+            self.run.info('select_representative', self.input_source.select_representative)
+        else:
+            self.run.info('contigs_db', self.contigs_db_path)
+            self.run.info('contigs_db_hash', self.contigs_db_hash)
+            self.run.info('genes_of_interest', self.genes_of_interest_path)
+            self.run.info('gene_caller_ids', self.gene_caller_ids)
         self.run.info('structure_db_path', self.structure_db_path)
         self.run.info('num_threads', self.num_threads)
         self.run.info('write_buffer_size', self.write_buffer_size)
-        self.run.info('genes_of_interest', self.genes_of_interest_path)
-        self.run.info('gene_caller_ids', self.gene_caller_ids)
         self.run.info('skip_DSSP', self.skip_DSSP)
         self.run.info('run_mode', self.run_mode)
 

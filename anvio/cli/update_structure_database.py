@@ -54,10 +54,17 @@ def get_args():
                                        'machine-specific and so must be provided again here.')
     groupE = parser.add_argument_group('EXTRA', 'Everything else.')
 
-    groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    # --pan-db is declared without its usual '-p' short flag, mirroring anvi-gen-structure-database (where
+    # '-p' is taken by MODELLER's --percent-cutoff), so the two programs share the same spelling.
+    groupD.add_argument('--pan-db', **anvio.K('pan-db', {'required': False}))
+    groupD.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
     groupD.add_argument(*anvio.A('structure-db'), **anvio.K('structure-db'))
     groupG.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
     groupG.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
+    groupG.add_argument(*anvio.A('gene-clusters-of-interest'), **anvio.K('gene-clusters-of-interest'))
+    groupG.add_argument(*anvio.A('gene-cluster-ids'), **anvio.K('gene-cluster-ids'))
+    groupG.add_argument(*anvio.A('select-representative'), **anvio.K('select-representative'))
     groupG.add_argument(*anvio.A('external-structures'), **anvio.K('external-structures'))
     groupO.add_argument(*anvio.A('dump-dir'), **anvio.K('dump-dir'))
     groupM.add_argument('--list-modeller-params', action='store_true', help='Since you are updating an existing DB, modeller params are set in '

@@ -1921,6 +1921,32 @@ D = {
             {'metavar': 'FILE_PATH',
              'help': "Text file for gene clusters (each line should contain be a unique gene cluster id)."}
                 ),
+    'gene-cluster-ids': (
+            ['--gene-cluster-ids'],
+            {'metavar': 'GENE_CLUSTER_IDS',
+             'type': str,
+             'help': "Gene cluster ids to focus on. Multiple of them can be declared, separated by a comma "
+                     "(e.g., --gene-cluster-ids GC_00000001,GC_00000002). This is the gene-cluster analogue of "
+                     "--gene-caller-ids. If you declare nothing, anvi'o may assume all of them, depending on the "
+                     "program."}
+                ),
+    'gene-clusters-of-interest': (
+            ['--gene-clusters-of-interest'],
+            {'metavar': 'FILE',
+             'help': "A file with anvi'o gene cluster ids. There should be only one column in the file, and each "
+                     "line should correspond to a unique gene cluster id (without a column header). This is the "
+                     "gene-cluster analogue of --genes-of-interest."}
+                ),
+    'select-representative': (
+            ['--select-representative'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Instead of selecting every gene in each gene cluster of interest, select a single "
+                     "representative gene per gene cluster. Anvi'o picks the representative using a medoid-based "
+                     "strategy over the aligned amino acid sequences (it discards length outliers and prefers "
+                     "complete gene calls), so this requires a pangenome for which gene-cluster alignments were "
+                     "computed. The representative is a real gene from the cluster (not a consensus sequence)."}
+                ),
     'split-output-per-gene-cluster': (
             ['--split-output-per-gene-cluster'],
             {'default': False,

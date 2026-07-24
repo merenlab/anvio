@@ -49,8 +49,14 @@ def main():
 def get_args():
     parser = ArgumentParser(description=__description__)
 
-    groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
-    groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first. Provide '
+                                       'EITHER a contigs database (structures for its genes) OR a pangenome (--pan-db '
+                                       'plus its --genomes-storage; structures for the genes of your gene clusters).')
+    groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    # --pan-db is declared without its usual '-p' short flag here because '-p' is already taken by
+    # MODELLER's --percent-cutoff in this program.
+    groupD.add_argument('--pan-db', **anvio.K('pan-db', {'required': False}))
+    groupD.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
     groupD.add_argument("--pdb-db", type=str, default=None, help =
                         """By default, this program accesses the structure files it needs from an
                         internal anvi'o database that can be set up with anvi-setup-pdb-database. If
@@ -59,9 +65,13 @@ def get_args():
                         created a database and b) it exists in a custom location. In this case,
                         please provide that path here. Otherwise we vibing.""")
 
-    groupG = parser.add_argument_group('GENES', 'Specifying which genes you want structures for.')
+    groupG = parser.add_argument_group('GENES', 'Specifying which genes you want structures for. The first two options '
+                                       'apply to a contigs-db input; the last three apply to a pangenome input.')
     groupG.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
     groupG.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
+    groupG.add_argument(*anvio.A('gene-clusters-of-interest'), **anvio.K('gene-clusters-of-interest'))
+    groupG.add_argument(*anvio.A('gene-cluster-ids'), **anvio.K('gene-cluster-ids'))
+    groupG.add_argument(*anvio.A('select-representative'), **anvio.K('select-representative'))
 
     groupO = parser.add_argument_group('OUTPUT', 'Output file and output style.')
     groupO.add_argument(*anvio.A('output-db-path'), **anvio.K('output-db-path'))
