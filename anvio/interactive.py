@@ -2326,7 +2326,7 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
             models = structure_db.db.get_table_as_dataframe(
                 'models',
                 columns_of_interest=['GA341_score', 'DOPE_score', 'molpdf', 'picked_as_best'],
-                where_clause='corresponding_gene_call = %d' % gene_callers_id,
+                where_clause='protein_id = %d' % gene_callers_id,
             ).rename(columns={
                 'DOPE_score': 'DOPE',
                 'GA341_score': 'GA341',
@@ -2337,7 +2337,7 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
             templates = structure_db.db.get_table_as_dataframe(
                 'templates',
                 columns_of_interest=['pdb_id', 'chain_id', 'percent_similarity', 'align_fraction'],
-                where_clause='corresponding_gene_call = %d' % gene_callers_id,
+                where_clause='protein_id = %d' % gene_callers_id,
             ).rename(columns={
                 'pdb_id': 'PDB',
                 'chain_id': 'Chain',
@@ -2350,7 +2350,7 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
             models = structure_db.db.get_table_as_dataframe(
                 'models',
                 columns_of_interest=['mean_plddt', 'ptm', 'picked_as_best'],
-                where_clause='corresponding_gene_call = %d' % gene_callers_id,
+                where_clause='protein_id = %d' % gene_callers_id,
             ).rename(columns={
                 'mean_plddt': 'Mean pLDDT',
                 'ptm': 'pTM',
@@ -3088,7 +3088,7 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
         from_contigs_db = self.amino_acid_additional_data.get_gene_dataframe(gene_callers_id)
 
         residue_info = from_structure_db.merge(from_contigs_db, 'left', on='codon_order_in_gene')
-        residue_info.drop(['entry_id', 'corresponding_gene_call', 'codon_order_in_gene'], axis=1, inplace=True)
+        residue_info.drop(['entry_id', 'protein_id', 'codon_order_in_gene'], axis=1, inplace=True)
 
         residue_info_types = residue_info.drop('codon_number', axis=1).aggregate([numpy.min, numpy.max, numpy.dtype]).T
         residue_info_types['dtype'] = residue_info_types['dtype'].astype(str)
