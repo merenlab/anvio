@@ -30,7 +30,7 @@ anvi-get-sequences-for-gene-clusters -g %(genomes-storage-db)s \
                                      -o %(genes-fasta)s
 {{ codestop }}
 
-Anvi'o picks the representative using a medoid-based strategy: it discards length outliers, prefers complete (non-partial) gene calls, and selects the sequence that is most similar to the others in the gene cluster. The resulting %(fasta)s uses the gene cluster names as deflines and contains no gap characters, so it is ready to be fed to protein structure predictors such as ColabFold.
+Anvi'o picks the representative using a medoid-based strategy: it discards length outliers, prefers complete (non-partial) gene calls, and selects the sequence that is most similar to the others in the gene cluster. The resulting %(fasta)s uses the gene cluster names as deflines and contains no gap characters.
 
 This flag requires a pangenome for which gene alignments were computed (i.e., **not** created with `--skip-alignments`), and it cannot be combined with `--concatenate-gene-clusters` or `--report-DNA-sequences`. It honors all the same selection and filtering options described below, as well as `--split-output-per-gene-cluster`.
 

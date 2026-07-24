@@ -1937,8 +1937,7 @@ D = {
                      "using a medoid-based strategy: it discards length outliers, prefers complete "
                      "(non-partial) gene calls, and selects the sequence that is most similar to the others "
                      "in the cluster. The resulting FASTA uses gene cluster names as deflines and contains "
-                     "no gap characters, so it is ready to be fed to protein structure predictors such as "
-                     "ColabFold. This flag requires a pangenome for which gene alignments were computed "
+                     "no gap characters. This flag requires a pangenome for which gene alignments were computed "
                      "(i.e., not created with `--skip-alignments`), and cannot be combined with "
                      "`--concatenate-gene-clusters` or `--report-DNA-sequences`."}
                 ),

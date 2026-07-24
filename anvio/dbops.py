@@ -2213,7 +2213,7 @@ class PanSuperclass(object):
         """Write one representative amino acid sequence per gene cluster to a FASTA file.
 
         The FASTA deflines are the gene cluster names, and the sequences are reported WITHOUT gap
-        characters, so the output is ready to be fed to protein structure predictors such as ColabFold.
+        characters.
         """
 
         if output_file_path:
