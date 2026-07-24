@@ -47,7 +47,7 @@ warnings.simplefilter(action='ignore', category=PDBConstructionWarning)
 class StructureDatabase(object):
     """Structure database operations"""
 
-    def __init__(self, file_path, db_hash=None, create_new=False, ignore_hash=False, run=terminal.Run(), progress=terminal.Progress(), quiet=False):
+    def __init__(self, file_path, db_hash=None, create_new=False, ignore_hash=False, input_type='contigs_db', run=terminal.Run(), progress=terminal.Progress(), quiet=False):
         self.db_type = 'structure'
         self.db_hash = str(db_hash)
         self.version = anvio.__structure__version__
@@ -56,6 +56,15 @@ class StructureDatabase(object):
         self.run = run
         self.progress = progress
         self.create_new = create_new
+
+        # the kind of input the proteins in this db come from ('contigs_db', 'pangenome', 'fasta'). It is
+        # supplied by the input source at creation time and stored in the self table; on open it is read
+        # back (see below). It governs how the contigs-db linkage is interpreted (see check_hash).
+        self.input_type = input_type
+
+        # provenance for each queried protein (protein_id -> spec dict), registered by the run and flushed
+        # to the `proteins` table by persist_proteins().
+        self.protein_specs = {}
 
         if not db_hash and create_new:
             raise ConfigError("You cannot create a Structure DB without supplying a DB hash.")
@@ -69,12 +78,13 @@ class StructureDatabase(object):
             self.genes_queried = set([])
         else:
             self.db_hash = str(self.db.get_meta_value('contigs_db_hash'))
+            self.input_type = self.db.get_meta_value('input_type', try_as_type_int=False, return_none_if_not_in_table=True) or 'contigs_db'
             self.genes_with_structure = self.get_genes_with_structure()
             self.genes_without_structure = self.get_genes_without_structure()
             self.genes_queried = self.get_genes_queried()
 
             if not len(self.genes_queried):
-                raise ConfigError("Interesting... This structure database has no gene caller ids. Anvi'o is"
+                raise ConfigError("Interesting... This structure database has no proteins in it. Anvi'o is "
                                   "not sure how you managed that. please send a report to the "
                                   "developers. Thank you.")
 
@@ -127,49 +137,83 @@ class StructureDatabase(object):
 
 
     def get_genes_with_structure(self):
-        """Returns set of gene caller ids that have a structure in the DB, queried from self table"""
+        """Returns the set of protein ids that have a structure in the DB, queried from the proteins table"""
 
-        return set([int(x) for x in self.db.get_meta_value('genes_with_structure', try_as_type_int=False).split(',') if not x == ''])
+        return set(self.db.get_single_column_from_table(t.proteins_table_name, 'protein_id', where_clause="has_structure = 1"))
 
 
     def get_genes_without_structure(self):
-        """Returns set of gene caller ids that failed to generate a structure, queried from self table"""
+        """Returns the set of protein ids that failed to generate a structure, queried from the proteins table"""
 
-        return set([int(x) for x in self.db.get_meta_value('genes_without_structure', try_as_type_int=False).split(',') if not x == ''])
+        return set(self.db.get_single_column_from_table(t.proteins_table_name, 'protein_id', where_clause="has_structure = 0"))
 
 
     def get_genes_queried(self):
-        """Returns set of all gene caller ids that structures were attempted for, regardless of success or failure
+        """Returns the set of all protein ids structures were attempted for, regardless of success or failure
 
-        Queried from self table
-
-        Notes
-        =====
-        - FIXME This inefficiency could pose problems in 2030 when we have structure dbs with
-          millions of structures
+        Every row in the proteins table is a protein that was queried, so this is simply the full set of
+        protein ids in that table.
         """
 
-        return self.get_genes_with_structure() | self.get_genes_without_structure()
+        return set(self.db.get_single_column_from_table(t.proteins_table_name, 'protein_id'))
 
 
-    def update_genes_with_and_without_structure(self):
-        """Writes genes_queried, genes_with_structure, and genes_without_structure entries in self table"""
+    def register_protein(self, spec):
+        """Record the provenance of a queried protein so it can be flushed to the proteins table
 
-        self.db.set_meta_value('genes_queried', ",".join(str(g) for g in self.genes_queried))
-        self.db.set_meta_value('genes_with_structure', ",".join(str(g) for g in self.genes_with_structure))
-        self.db.set_meta_value('genes_without_structure', ",".join(str(g) for g in self.genes_without_structure))
+        `spec` is a dict as returned by a StructureInputSource: keys protein_id, input_type, source_key,
+        gene_callers_id, genome_name, gene_cluster_id.
+        """
+
+        self.protein_specs[spec['protein_id']] = spec
+
+
+    def persist_proteins(self):
+        """Write a row per queried protein into the proteins table (create if new, overwrite if present)
+
+        has_structure is derived from the in-memory genes_with_structure set. Rows are written with INSERT
+        OR REPLACE keyed on the unique protein_id, so buffered flushes and --rerun re-writes are idempotent.
+        """
+
+        entries = []
+        for protein_id, spec in self.protein_specs.items():
+            entries.append((protein_id,
+                            spec['input_type'],
+                            spec.get('genome_name'),
+                            spec.get('gene_callers_id'),
+                            spec.get('gene_cluster_id'),
+                            spec['source_key'],
+                            1 if protein_id in self.genes_with_structure else 0))
+
+        if entries:
+            self.db._exec_many('''INSERT OR REPLACE INTO %s VALUES (%s)''' %
+                               (t.proteins_table_name, ','.join(['?'] * len(t.proteins_table_structure))), entries)
+
+
+    def get_proteins_dataframe(self):
+        """Return the full proteins table as a dataframe (provenance of every queried protein)"""
+
+        return self.db.get_table_as_dataframe(t.proteins_table_name)
 
 
     def create_tables(self):
         self.db.set_meta_value('db_type', self.db_type)
         self.db.set_meta_value('contigs_db_hash', self.db_hash)
+        self.db.set_meta_value('input_type', self.input_type)
         self.db.set_meta_value('creation_date', time.time())
 
         self.db.create_table(t.pdb_data_table_name, t.pdb_data_table_structure, t.pdb_data_table_types)
         self.db.create_table(t.templates_table_name, t.templates_table_structure, t.templates_table_types)
         self.db.create_table(t.models_table_name, t.models_table_structure, t.models_table_types)
         self.db.create_table(t.residue_info_table_name, t.residue_info_table_structure, t.residue_info_table_types)
+        self.db.create_table(t.proteins_table_name, t.proteins_table_structure, t.proteins_table_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
+
+        # protein_id is the surrogate key shared across the four structure tables and the proteins table.
+        # db.create_table cannot declare a primary key, so uniqueness (which INSERT OR REPLACE in
+        # persist_proteins relies on) is enforced with an explicit index. The v3->v4 migration creates an
+        # identical index so migrated and freshly-made databases behave the same.
+        self.db._exec('''CREATE UNIQUE INDEX IF NOT EXISTS proteins_protein_id_idx ON %s(protein_id)''' % t.proteins_table_name)
 
 
     def store_modeller_params(self, modeller_params):
@@ -195,6 +239,11 @@ class StructureDatabase(object):
 
 
     def check_hash(self):
+        # for a contigs-db input the db is linked to its contigs database through contigs_db_hash. Future
+        # input types (e.g. pangenome) will link through their own hash; that branch will go here.
+        if self.input_type != 'contigs_db':
+            return
+
         actual_db_hash = str(self.db.get_meta_value('contigs_db_hash'))
         if self.db_hash != actual_db_hash:
             raise ConfigError('The hash value inside Structure Database "%s" does not match with Contigs Database hash "%s",\
@@ -218,48 +267,50 @@ class StructureDatabase(object):
             raise ConfigError("store :: rows_data must be either a list of tuples or a pandas dataframe.")
 
 
-    def remove_gene(self, corresponding_gene_call, remove_from_self=True):
+    def remove_gene(self, protein_id, remove_from_self=True):
         """Remove a gene from the structure database"""
 
         # Remove from tables
         self.db.remove_some_rows_from_table(
             t.residue_info_table_name,
-            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+            where_clause="protein_id = %d" % protein_id,
         )
         self.db.remove_some_rows_from_table(
             t.templates_table_name,
-            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+            where_clause="protein_id = %d" % protein_id,
         )
         self.db.remove_some_rows_from_table(
             t.models_table_name,
-            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+            where_clause="protein_id = %d" % protein_id,
         )
 
         if remove_from_self:
-            # Remove from self entries
-            self.genes_queried.remove(corresponding_gene_call)
-            self.genes_with_structure.remove(corresponding_gene_call)
-            self.update_genes_with_and_without_structure()
+            # Remove from the in-memory sets and drop the protein's row from the proteins table
+            self.genes_queried.discard(protein_id)
+            self.genes_with_structure.discard(protein_id)
+            self.genes_without_structure.discard(protein_id)
+            self.protein_specs.pop(protein_id, None)
+            self.db.remove_some_rows_from_table(t.proteins_table_name, where_clause="protein_id = %d" % protein_id)
 
 
-    def get_pdb_content(self, corresponding_gene_call):
+    def get_pdb_content(self, protein_id):
         """Returns the file content (as a string) of a pdb for a given gene"""
 
-        if not corresponding_gene_call in self.genes_with_structure:
-            raise ConfigError('The gene caller id {} was not found in the structure database :('.format(corresponding_gene_call))
+        if not protein_id in self.genes_with_structure:
+            raise ConfigError('The gene caller id {} was not found in the structure database :('.format(protein_id))
 
         return self.db.get_single_column_from_table(
             t.pdb_data_table_name,
             'pdb_content',
-            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+            where_clause="protein_id = %d" % protein_id,
         )[0].decode('utf-8')
 
 
-    def export_pdb_content(self, corresponding_gene_call, filepath, ok_if_exists=False):
+    def export_pdb_content(self, protein_id, filepath, ok_if_exists=False):
         """Export the pdb of a gene to a filepath"""
 
         if filesnpaths.is_output_file_writable(filepath, ok_if_exists=ok_if_exists):
-            pdb_content = self.get_pdb_content(corresponding_gene_call)
+            pdb_content = self.get_pdb_content(protein_id)
             with open(filepath, 'w') as f:
                 f.write(pdb_content)
 
@@ -279,13 +330,13 @@ class StructureDatabase(object):
         self.run.info('PDB file output', output_dir)
 
 
-    def get_structure(self, corresponding_gene_call):
+    def get_structure(self, protein_id):
         """Return a anvio.structureops.Structure object for a given gene"""
 
-        return Structure(self.export_pdb_content(corresponding_gene_call, filesnpaths.get_temp_file_path()))
+        return Structure(self.export_pdb_content(protein_id, filesnpaths.get_temp_file_path()))
 
 
-    def get_residue_info_for_gene(self, corresponding_gene_call, drop_null=True):
+    def get_residue_info_for_gene(self, protein_id, drop_null=True):
         """Get residue info for gene as a dataframe
 
         Parameters
@@ -296,7 +347,7 @@ class StructureDatabase(object):
 
         return self.db.get_table_as_dataframe(
             table_name=t.residue_info_table_name,
-            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+            where_clause="protein_id = %d" % protein_id,
             drop_if_null=drop_null,
         )
 
@@ -316,12 +367,12 @@ class StructureDatabase(object):
         )
 
 
-    def get_template_info_for_gene(self, corresponding_gene_call):
+    def get_template_info_for_gene(self, protein_id):
         """Get template info for gene as a dataframe"""
 
         return self.db.get_table_as_dataframe(
             table_name=t.templates_table_name,
-            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+            where_clause="protein_id = %d" % protein_id,
         )
 
 
