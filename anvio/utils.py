@@ -1447,6 +1447,104 @@ def restore_alignment(sequence, alignment_summary, from_aa_alignment_summary_to_
         return alignment
 
 
+def get_representative_sequence_from_gene_cluster(sequence_entries):
+    """Select a single representative amino acid sequence for a gene cluster.
+
+    This is the shared implementation behind `anvio.dbops.PanSuperclass.get_gene_cluster_representative_sequences`
+    (the user-facing path, reached via `anvi-get-sequences-for-gene-clusters --representative-sequences`).
+    It is deliberately kept as a standalone function so that anvi'o's structural-pangenome build path can
+    reuse the exact same selection logic and both routes pick representatives identically.
+
+    Strategy
+    ========
+    1) exclude length outliers using the median length of non-partial genes (fall back to all genes).
+    2) compute a medoid based on pairwise similarity of the aligned sequences.
+    3) prefer non-partial genes; if all are partial, fall back to the best partial medoid.
+    4) if only one sequence exists, return it.
+
+    Parameters
+    ==========
+    sequence_entries : list of dict
+        One dict per gene in the cluster, each with AT LEAST the following keys:
+          'align_sequence' : str, the ALIGNED amino acid sequence (i.e., with gap characters).
+          'length'         : int, the ungapped amino acid sequence length.
+          'gap_count'      : int, the number of gap characters in 'align_sequence'.
+          'is_partial'     : bool, whether the gene call is partial.
+        Any additional keys (e.g., 'genome_name', 'gene_callers_id') are ignored by the
+        selection logic but preserved, since the winning entry is returned as-is.
+
+    Returns
+    =======
+    representative_entry : dict
+        The winning entry from `sequence_entries`, returned unchanged. Its 'align_sequence' value is
+        the aligned amino acid sequence (still with gaps); callers that want the raw sequence should
+        strip the gap characters themselves. Any identity keys the caller included (e.g.,
+        'genome_name', 'gene_callers_id') are carried through untouched.
+    """
+
+    if not len(sequence_entries):
+        raise ConfigError("get_representative_sequence_from_gene_cluster :: was called with an empty list of "
+                          "sequence entries, which should never happen.")
+
+    # short-circuit: single-member cluster
+    if len(sequence_entries) == 1:
+        return sequence_entries[0]
+
+    # compute median length excluding partials if possible
+    non_partial_lengths = [e['length'] for e in sequence_entries if not e['is_partial']]
+    lengths_for_median = non_partial_lengths if len(non_partial_lengths) else [e['length'] for e in sequence_entries]
+    median_length = np.median(lengths_for_median) if len(lengths_for_median) else 0
+
+    # exclude length outliers (+/-20% of median). If everything is excluded, fall back to all.
+    filtered_entries = sequence_entries
+    if median_length:
+        lower, upper = 0.8 * median_length, 1.2 * median_length
+        filtered_entries = [e for e in sequence_entries if lower <= e['length'] <= upper]
+        if not len(filtered_entries):
+            filtered_entries = sequence_entries
+
+    # compute pairwise similarities (identity over aligned positions without gaps)
+    def pairwise_similarity(seq_a, seq_b):
+        matches, positions = 0, 0
+        for aa, bb in zip(seq_a, seq_b):
+            if aa == '-' or bb == '-':
+                continue
+            positions += 1
+            if aa == bb:
+                matches += 1
+        if positions == 0:
+            return 0
+        return matches / positions
+
+    def average_distance(entry, entries):
+        if len(entries) == 1:
+            return 0
+        total = 0
+        for other in entries:
+            if other is entry:
+                continue
+            sim = pairwise_similarity(entry['align_sequence'], other['align_sequence'])
+            total += (1 - sim)
+        return total / (len(entries) - 1)
+
+    # rank candidates by average distance, then gaps, then length (longer preferred). The trailing
+    # index is a deterministic tiebreaker that also keeps the sort from ever comparing the entries.
+    ranked = []
+    for idx, entry in enumerate(filtered_entries):
+        avg_dist = average_distance(entry, filtered_entries)
+        ranked.append((avg_dist, entry['gap_count'], -entry['length'], entry['is_partial'], entry['align_sequence'], idx))
+
+    ranked.sort()
+
+    # prefer non-partial medoid if available
+    for _, _, _, is_partial, _, idx in ranked:
+        if not is_partial:
+            return filtered_entries[idx]
+
+    # all sequences are partial
+    return filtered_entries[ranked[0][5]]
+
+
 def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], expected_number_of_fields=None, separator='\t'):
     """Returns a dictionary where keys are the column indices, and items are the list of entries
     found in that that column"""
