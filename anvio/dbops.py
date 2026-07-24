@@ -2144,8 +2144,8 @@ class PanSuperclass(object):
 
         For each gene cluster this recovers the aligned amino acid sequences of its member genes and
         hands them to `utils.get_representative_sequence_from_gene_cluster` to pick a medoid-like
-        representative. This is the exact same selection logic anvi'o uses internally when it builds a
-        structural pangenome (see `anvio.panops.Pangenome.get_gene_cluster_representative_sequences`).
+        representative. The selection logic lives in that shared utils function so that anvi'o's
+        structural-pangenome build path can reuse it and pick representatives identically.
 
         You can call this function either with a `gene_clusters_dict`, or with a `gene_cluster_names`
         set (see `get_sequences_for_gene_clusters` for the reasoning behind this design).

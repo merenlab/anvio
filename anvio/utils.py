@@ -1450,10 +1450,10 @@ def restore_alignment(sequence, alignment_summary, from_aa_alignment_summary_to_
 def get_representative_sequence_from_gene_cluster(sequence_entries):
     """Select a single representative amino acid sequence for a gene cluster.
 
-    This is the shared implementation used both while a structural pangenome is being computed
-    (`anvio.panops.Pangenome.get_gene_cluster_representative_sequences`) and when a user asks
-    for representatives from an existing pan database (`anvio.dbops.PanSuperclass.get_gene_cluster_representative_sequences`),
-    so that both code paths pick representatives identically.
+    This is the shared implementation behind `anvio.dbops.PanSuperclass.get_gene_cluster_representative_sequences`
+    (the user-facing path, reached via `anvi-get-sequences-for-gene-clusters --representative-sequences`).
+    It is deliberately kept as a standalone function so that anvi'o's structural-pangenome build path can
+    reuse the exact same selection logic and both routes pick representatives identically.
 
     Strategy
     ========
