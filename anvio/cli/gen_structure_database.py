@@ -20,12 +20,12 @@ __resources__ = [("A conceptual tutorial on the structural biology capabilities 
                   "http://merenlab.org/2018/09/04/structural-biology-with-anvio/"),
                  ("A practical tutorial section in the infant gut tutorial",
                   "http://merenlab.org/tutorials/infant-gut/#chapter-vii-linking-genomic-heterogeneity-to-protein-structures")]
-__requires__ = ['contigs-db']
-__can_use__ = ['pdb-db', 'genes-of-interest-txt']
+__requires__ = ['contigs-db', 'pan-db', 'genomes-storage-db']
+__can_use__ = ['pdb-db', 'genes-of-interest-txt', 'external-structures']
 __provides__ = ['structure-db']
-__description__ = ("Creates a database of protein structures. Predict protein structures for genes in "
-                   "your contigs database using either template-based homology modelling (MODELLER) or "
-                   "AlphaFold2 (ColabFold), or import pre-computed PDB structures you already have.")
+__description__ = ("Creates a database of protein structures. Predict protein structures for the genes of a "
+                   "contigs database or a pangenome using either template-based homology modelling (MODELLER) "
+                   "or AlphaFold2 (ColabFold), or import pre-computed PDB structures you already have.")
 
 
 @terminal.time_program
