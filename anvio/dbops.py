@@ -2185,7 +2185,9 @@ class PanSuperclass(object):
         representative_sequences = {}
 
         self.progress.new('Picking gene cluster representatives', progress_total_items=len(gene_cluster_names))
-        for gene_cluster_name in gene_cluster_names:
+        # sort so the returned dict order (and thus any FASTA written from it) is deterministic across
+        # processes; gene_cluster_names is a set, whose iteration order varies run-to-run
+        for gene_cluster_name in sorted(gene_cluster_names):
             self.progress.increment()
             self.progress.update("processing '%s' ..." % gene_cluster_name)
 
