@@ -107,6 +107,17 @@ anvi-gen-structure-database -c %(contigs-db)s \
                             -o STRUCTURE.db
 {{ codestop }}
 
+You can also import structures for a pangenome, by pointing at a %(pan-db)s and its %(genomes-storage-db)s instead of a %(contigs-db)s:
+
+{{ codestart }}
+anvi-gen-structure-database --pan-db %(pan-db)s \
+                            -g %(genomes-storage-db)s \
+                            --external-structures %(external-structures)s \
+                            -o STRUCTURE.db
+{{ codestop }}
+
+The %(external-structures)s file format differs slightly between the two (a pangenome file names the genome each gene comes from); see %(external-structures)s for both layouts.
+
 {:.notice}
 Please avoid using any MODELLER-specific parameters when using this mode, as they will be silently ignored.
 
