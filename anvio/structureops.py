@@ -397,9 +397,11 @@ class StructureInputSource(object):
     provenance (a "protein spec" dict), and hand back the amino-acid / nucleotide sequences anvi'o needs
     to model and annotate a structure.
 
-    Only ContigsDBSource is implemented today. New input types (e.g. pangenome, fasta) subclass this and
-    are dispatched in StructureSuperclass.__init__. A subclass must set `input_type` and implement every
-    method below.
+    Two sources exist: ContigsDBSource (a single contigs database) and PangenomeSource (a pan database
+    plus its genomes storage); they are dispatched in StructureSuperclass.__init__. A subclass sets
+    `input_type` and implements the abstract methods below; the external-structures hooks
+    (accepted_external_formats / load_external_rows) are only needed to support importing pre-computed
+    structures for that input type.
 
     A protein spec is a plain dict with the keys: 'protein_id' (int), 'input_type' (str), 'source_key'
     (str, a stable human-readable handle), and the nullable natural-identity fields 'gene_callers_id'
@@ -1295,16 +1297,17 @@ class StructureSuperclass(object):
             if self.dump_dir:
                 raise ConfigError("No sense providing a --dump-dir when --external-structures are provided.")
 
-            # the file is parsed and validated against whatever input source is active (contigs-db or
-            # pangenome); it hands its rows to the source, which will mint protein_ids at enumerate time
-            self.external_structures = ExternalStructuresFile(path=self.external_structures_path, input_source=self.input_source)
+            # constructed purely for its side effects: it parses and validates the file against whatever
+            # input source is active (contigs-db or pangenome) and hands its rows to that source, which
+            # mints protein_ids from them at enumerate time. The object itself is not needed afterwards.
+            ExternalStructuresFile(path=self.external_structures_path, input_source=self.input_source)
 
 
     def get_genes_of_interest(self, genes_of_interest_path=None, gene_caller_ids=None, raise_if_none=False):
-        """Nabs the genes of interest based on genes_of_interest_path, gene_caller_ids, and self.external_structures
+        """Nab the proteins of interest for this run.
 
-        If no genes of interest are provided through either genes_of_interest_path,
-        gene_caller_ids, or self.external_structures, all will be assumed
+        In external-structures mode the file (already parsed in sanity_check) is the selection. Otherwise
+        the input source enumerates them from its own selection flags; if none are given, all are assumed.
 
         Parameters
         ==========
@@ -3045,6 +3048,11 @@ class ExternalStructuresFile(object):
 
         filesnpaths.is_file_tab_delimited(self.path)
         self.content = pd.read_csv(self.path, sep='\t')
+
+        if not len(self.content):
+            raise ConfigError("Your external-structures file ('%s') has a header but no rows, so there are no "
+                              "structures to import and nothing for anvi'o to do. Please add at least one structure "
+                              "to it, or drop --external-structures." % self.path)
 
         self.format = self._detect_format()
         accepted = input_source.accepted_external_formats()
