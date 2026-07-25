@@ -172,4 +172,97 @@ if ! diff -u proteins_before_rerun.tsv proteins_after_rerun.tsv; then
 fi
 echo "  OK: rerun left the proteins table identical (idempotent)"
 
+# ===================================================================================================
+# TEST 4 -- external structures (by-gene) create: import pre-computed PDBs for a pangenome
+# ===================================================================================================
+# A round-trip: export the structures we just modelled, then re-import them as *external* structures via
+# the new by-gene format (genome_name, gene_callers_id, path). Because these PDBs were modelled from the
+# exact genomes-storage sequences, they pass anvi'o's PDB-vs-genomes-storage integrity check by
+# construction. anvi'o must derive each gene's gene_cluster_id from the pangenome (not in the file).
+INFO "Exporting the modelled structures so we can feed them back as external structures"
+anvi-export-structures -s STRUCTURE_PAN_ALL.db -o EXPORTED_ALL
+
+NUM_EXPORTED=$(sqlite3 STRUCTURE_PAN_ALL.db "SELECT COUNT(*) FROM proteins WHERE has_structure=1;")
+INFO "  exported $NUM_EXPORTED structures"
+
+# build a by-gene external-structures file pointing at the exported PDBs (gene_<protein_id>.pdb)
+{ echo -e "genome_name\tgene_callers_id\tpath"
+  sqlite3 -separator $'\t' STRUCTURE_PAN_ALL.db \
+      "SELECT genome_name, gene_callers_id, protein_id FROM proteins WHERE has_structure=1 ORDER BY protein_id;" \
+      | awk -F'\t' '{print $1"\t"$2"\tEXPORTED_ALL/gene_"$3".pdb"}'
+} > ext_by_gene.txt
+cat ext_by_gene.txt
+
+INFO "anvi-gen-structure-database from a pangenome with EXTERNAL structures (by-gene format)"
+anvi-gen-structure-database --pan-db TEST-PAN.db -g TEST-GENOMES.db \
+                            --external-structures ext_by_gene.txt \
+                            --debug \
+                            -o STRUCTURE_EXT_GENE.db
+
+assert_eq "$(input_type_of STRUCTURE_EXT_GENE.db)" "pangenome" \
+          "external pangenome db records input_type=pangenome"
+assert_eq "$(proteins_count STRUCTURE_EXT_GENE.db)" "$NUM_EXPORTED" \
+          "one protein per external-structures row"
+assert_eq "$(structures_count STRUCTURE_EXT_GENE.db)" "$NUM_EXPORTED" \
+          "every imported external structure is stored"
+assert_eq "$(proteins_fully_provenanced STRUCTURE_EXT_GENE.db)" "$NUM_EXPORTED" \
+          "every imported protein carries full provenance (gene_cluster_id derived from the pan)"
+
+# the provenance recorded on import (genome, gene_callers_id, and the DERIVED gene_cluster_id) must
+# match the source db these PDBs came from
+sqlite3 -separator $'\t' STRUCTURE_PAN_ALL.db \
+    "SELECT genome_name, gene_callers_id, gene_cluster_id FROM proteins WHERE has_structure=1 ORDER BY genome_name, gene_callers_id;" > prov_source.tsv
+sqlite3 -separator $'\t' STRUCTURE_EXT_GENE.db \
+    "SELECT genome_name, gene_callers_id, gene_cluster_id FROM proteins ORDER BY genome_name, gene_callers_id;" > prov_external.tsv
+if ! diff -u prov_source.tsv prov_external.tsv; then
+    echo ""
+    echo "ASSERTION FAILED: imported external provenance (incl. derived gene_cluster_id) does not match the source"
+    exit 1
+fi
+echo "  OK: imported provenance (incl. auto-derived gene_cluster_id) matches the predicted db"
+
+# ===================================================================================================
+# TEST 5 -- external structures update: adding rows reconciles ids by natural key (idempotent)
+# ===================================================================================================
+# Create a db from only GC_A's external structures, then ADD GC_B's. The GC_A ids must not move -- the
+# same natural-key reconciliation that governs the predict-update path must govern external-update too.
+INFO "Building per-cluster external-structures files from the exported PDBs"
+{ echo -e "genome_name\tgene_callers_id\tpath"
+  sqlite3 -separator $'\t' STRUCTURE_PAN_ALL.db \
+      "SELECT genome_name, gene_callers_id, protein_id FROM proteins WHERE has_structure=1 AND gene_cluster_id='$GC_A' ORDER BY protein_id;" \
+      | awk -F'\t' '{print $1"\t"$2"\tEXPORTED_ALL/gene_"$3".pdb"}'
+} > ext_gene_A.txt
+{ echo -e "genome_name\tgene_callers_id\tpath"
+  sqlite3 -separator $'\t' STRUCTURE_PAN_ALL.db \
+      "SELECT genome_name, gene_callers_id, protein_id FROM proteins WHERE has_structure=1 AND gene_cluster_id='$GC_B' ORDER BY protein_id;" \
+      | awk -F'\t' '{print $1"\t"$2"\tEXPORTED_ALL/gene_"$3".pdb"}'
+} > ext_gene_B.txt
+
+N_A=$(($(wc -l < ext_gene_A.txt) - 1))
+N_B=$(($(wc -l < ext_gene_B.txt) - 1))
+
+INFO "External create from GC_A structures only"
+anvi-gen-structure-database --pan-db TEST-PAN.db -g TEST-GENOMES.db \
+                            --external-structures ext_gene_A.txt --debug \
+                            -o STRUCTURE_EXT_UPD.db
+assert_eq "$(proteins_count STRUCTURE_EXT_UPD.db)" "$N_A" \
+          "external create imports GC_A structures"
+
+proteins_map STRUCTURE_EXT_UPD.db > ext_before_add.tsv
+
+INFO "anvi-update-structure-database: ADD GC_B external structures"
+anvi-update-structure-database --pan-db TEST-PAN.db -g TEST-GENOMES.db \
+                               -s STRUCTURE_EXT_UPD.db \
+                               --external-structures ext_gene_B.txt --debug
+assert_eq "$(proteins_count STRUCTURE_EXT_UPD.db)" "$((N_A + N_B))" \
+          "external update appends GC_B structures"
+
+proteins_map STRUCTURE_EXT_UPD.db | head -n $N_A > ext_after_add_head.tsv
+if ! diff -u ext_before_add.tsv ext_after_add_head.tsv; then
+    echo ""
+    echo "ASSERTION FAILED: external update re-minted or reshuffled existing protein_ids"
+    exit 1
+fi
+echo "  OK: external update left the pre-existing protein_id mapping unchanged (idempotent)"
+
 INFO "All pangenome structure-database assertions passed."
