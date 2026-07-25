@@ -397,9 +397,11 @@ class StructureInputSource(object):
     provenance (a "protein spec" dict), and hand back the amino-acid / nucleotide sequences anvi'o needs
     to model and annotate a structure.
 
-    Only ContigsDBSource is implemented today. New input types (e.g. pangenome, fasta) subclass this and
-    are dispatched in StructureSuperclass.__init__. A subclass must set `input_type` and implement every
-    method below.
+    Two sources exist: ContigsDBSource (a single contigs database) and PangenomeSource (a pan database
+    plus its genomes storage); they are dispatched in StructureSuperclass.__init__. A subclass sets
+    `input_type` and implements the abstract methods below; the external-structures hooks
+    (accepted_external_formats / load_external_rows) are only needed to support importing pre-computed
+    structures for that input type.
 
     A protein spec is a plain dict with the keys: 'protein_id' (int), 'input_type' (str), 'source_key'
     (str, a stable human-readable handle), and the nullable natural-identity fields 'gene_callers_id'
@@ -414,11 +416,59 @@ class StructureInputSource(object):
         self.run = run
         self.progress = progress
 
+        # populated only when structures are imported from an external-structures file (see
+        # load_external_rows / enumerate_candidate_proteins). external_rows holds the parsed, validated
+        # rows; external_path_map maps a minted protein_id to the PDB path to import for it.
+        self.external_rows = None
+        self.external_path_map = {}
+
 
     @property
     def hash(self):
         """A hash uniquely identifying the input; stored in the structure db to link the two."""
         raise NotImplementedError
+
+
+    def accepted_external_formats(self):
+        """Return the external-structures header layouts this source accepts (see ExternalStructuresFile)."""
+        raise NotImplementedError
+
+
+    def load_external_rows(self, external_format, content_df):
+        """Validate an external-structures file's rows against this input and stash them on the source.
+
+        Called once (from ExternalStructuresFile) before protein_ids are minted, so it must validate
+        natural-key existence only -- it must NOT call get_amino_acid_sequences, which needs the
+        protein_map that enumerate_candidate_proteins fills in later.
+        """
+        raise NotImplementedError
+
+
+    def get_external_structure_path(self, protein_id):
+        """Return the PDB path to import for a protein_id (external-structures mode only)."""
+        return self.external_path_map[protein_id]
+
+
+    def check_external_integrity(self, protein_ids):
+        """Verify each imported PDB's sequence matches this source's amino-acid sequence for that protein.
+
+        Source-agnostic: the reference sequences come from get_amino_acid_sequences, so it works for any
+        input type. Must run AFTER enumerate_candidate_proteins has populated the protein_map (that is
+        what get_amino_acid_sequences relies on for a pangenome).
+        """
+        reference_sequences = self.get_amino_acid_sequences(protein_ids)
+
+        self.progress.new('External structures', progress_total_items=len(protein_ids))
+        for protein_id in protein_ids:
+            self.progress.increment()
+            path = self.get_external_structure_path(protein_id)
+            structure_sequence = Structure(path).get_sequence()
+            if structure_sequence != reference_sequences[protein_id]:
+                self.progress.end()
+                raise ConfigError("The structure you provided at '%s' does not match the amino acid sequence anvi'o "
+                                  "has for this protein. The sequence in the structure file must be identical to the "
+                                  "sequence of the gene it is a structure for. This is a show stopper :/" % path)
+        self.progress.end()
 
 
     def get_self_provenance(self):
@@ -502,7 +552,36 @@ class ContigsDBSource(StructureInputSource):
                 'gene_cluster_id': None}
 
 
+    def accepted_external_formats(self):
+        return ['contigs']
+
+
+    def load_external_rows(self, external_format, content_df):
+        # a contigs-db external-structures file lists gene caller ids; validate each exists in the contigs
+        # database (a non-coding gene with no amino-acid sequence is caught later by check_external_integrity)
+        genes_in_contigs_database = set(self.contigs_super.genes_in_contigs_dict.keys())
+
+        rows = []
+        for _, row in content_df.iterrows():
+            gene_callers_id = int(row['gene_callers_id'])
+            if gene_callers_id not in genes_in_contigs_database:
+                raise ConfigError("The gene caller id '%d' in your external-structures file is not known to this "
+                                  "contigs database." % gene_callers_id)
+            rows.append({'gene_callers_id': gene_callers_id, 'path': row['path']})
+
+        self.external_rows = rows
+
+
     def enumerate_candidate_proteins(self, existing_proteins=None, raise_if_none=False):
+        # external-structures mode: the file itself is the selection, and the protein_id is the gene
+        # caller id (identity), so there is nothing to reconcile against an existing structure db.
+        if self.external_rows is not None:
+            genes_of_interest = set()
+            for row in self.external_rows:
+                self.external_path_map[row['gene_callers_id']] = row['path']
+                genes_of_interest.add(row['gene_callers_id'])
+            return genes_of_interest
+
         # a contigs-db protein_id is the gene caller id itself (identity), so there is nothing to
         # reconcile against an existing structure db: existing_proteins is intentionally ignored.
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
@@ -701,20 +780,41 @@ class PangenomeSource(StructureInputSource):
         return targets
 
 
-    def enumerate_candidate_proteins(self, existing_proteins=None, raise_if_none=False):
-        if raise_if_none and not (self.gene_cluster_ids or self.gene_clusters_of_interest_path):
-            raise ConfigError("You gotta supply some gene clusters of interest (--gene-cluster-ids or "
-                              "--gene-clusters-of-interest) when updating a pangenome structure database.")
+    def accepted_external_formats(self):
+        return ['pangenome_gene']
 
-        gene_cluster_names = self._selected_gene_cluster_names()
-        targets = self._target_genes(gene_cluster_names)
 
-        if not targets:
-            raise ConfigError("Anvi'o could not find any genes to model for the gene clusters you selected. That is "
-                              "unexpected -- are these gene clusters empty?")
+    def load_external_rows(self, external_format, content_df):
+        # a pangenome external-structures file lists (genome_name, gene_callers_id); validate each gene
+        # exists in the genomes storage and DERIVE its gene cluster from the pangenome (the cluster is not
+        # in the file). Runs before ids are minted, so it validates by natural key -- never by sequence.
+        rows = []
+        for _, row in content_df.iterrows():
+            genome_name = str(row['genome_name'])
+            gene_callers_id = int(row['gene_callers_id'])
 
-        # On update, reconcile surrogate ids against the existing db by natural key so add/--rerun reuse the
-        # ids already assigned (and mint fresh, non-colliding ids only for genuinely new proteins).
+            self.pan_super.genomes_storage.is_known_genome(genome_name)
+            self.pan_super.genomes_storage.is_known_gene_call(genome_name, gene_callers_id)
+
+            gc_id = self.pan_super.gene_callers_id_to_gene_cluster.get(genome_name, {}).get(gene_callers_id)
+            if gc_id is None:
+                raise ConfigError("Gene caller id '%d' of genome '%s' (from your external-structures file) is not part "
+                                  "of any gene cluster in this pangenome, so anvi'o cannot associate a structure with it "
+                                  "here." % (gene_callers_id, genome_name))
+
+            rows.append((genome_name, gene_callers_id, gc_id, row['path']))
+
+        self.external_rows = rows
+
+
+    def _mint_protein_ids(self, targets, existing_proteins, paths_by_natural_key=None):
+        """Assign a surrogate protein_id to each (genome_name, gene_callers_id, gene_cluster_id) target.
+
+        On update, `existing_proteins` (the proteins-table dataframe) seeds the natural-key -> id map so
+        proteins already in the db keep their id and only new ones get fresh, non-colliding ids -- this is
+        what keeps add/--rerun idempotent. When `paths_by_natural_key` is given (external-structures mode),
+        each protein's PDB path is recorded in external_path_map so it can be imported later.
+        """
         natural_key_to_id = {}
         next_id = 0
         if existing_proteins is not None and len(existing_proteins):
@@ -746,9 +846,36 @@ class PangenomeSource(StructureInputSource):
                 'gene_cluster_id': gc_id,
                 'source_key': '%s:%s:%d' % (gc_id, genome_name, int(gene_callers_id)),
             }
+            if paths_by_natural_key is not None:
+                self.external_path_map[protein_id] = paths_by_natural_key[natural_key]
+
             protein_ids.add(protein_id)
 
         return protein_ids
+
+
+    def enumerate_candidate_proteins(self, existing_proteins=None, raise_if_none=False):
+        # external-structures mode: the file is the selection. Restrict targets to its rows, remember each
+        # row's PDB path, and mint ids by the same natural-key reconciliation as the predict path.
+        if self.external_rows is not None:
+            targets = [(genome_name, gene_callers_id, gc_id)
+                       for genome_name, gene_callers_id, gc_id, _ in self.external_rows]
+            paths_by_natural_key = {(genome_name, int(gene_callers_id)): path
+                                    for genome_name, gene_callers_id, _, path in self.external_rows}
+            return self._mint_protein_ids(targets, existing_proteins, paths_by_natural_key=paths_by_natural_key)
+
+        if raise_if_none and not (self.gene_cluster_ids or self.gene_clusters_of_interest_path):
+            raise ConfigError("You gotta supply some gene clusters of interest (--gene-cluster-ids or "
+                              "--gene-clusters-of-interest) when updating a pangenome structure database.")
+
+        gene_cluster_names = self._selected_gene_cluster_names()
+        targets = self._target_genes(gene_cluster_names)
+
+        if not targets:
+            raise ConfigError("Anvi'o could not find any genes to model for the gene clusters you selected. That is "
+                              "unexpected -- are these gene clusters empty?")
+
+        return self._mint_protein_ids(targets, existing_proteins)
 
 
     def get_protein_spec(self, protein_id):
@@ -845,11 +972,6 @@ class StructureSuperclass(object):
         self.pan_db_path = A('pan_db', null)
 
         if self.pan_db_path:
-            if self.external_structures_path:
-                raise ConfigError("You provided a pangenome (--pan-db) together with --external-structures. These are "
-                                  "mutually exclusive: a structure database is built either by predicting structures for "
-                                  "the genes of a pangenome, or by importing pre-computed structures for a single contigs "
-                                  "database, not both.")
             self.input_source = PangenomeSource(self.args, run=self.run, progress=self.progress)
         else:
             self.input_source = ContigsDBSource(self.args, run=self.run, progress=self.progress)
@@ -1175,14 +1297,17 @@ class StructureSuperclass(object):
             if self.dump_dir:
                 raise ConfigError("No sense providing a --dump-dir when --external-structures are provided.")
 
-            self.external_structures = ExternalStructuresFile(path=self.external_structures_path, contigs_db_path=self.contigs_db_path)
+            # constructed purely for its side effects: it parses and validates the file against whatever
+            # input source is active (contigs-db or pangenome) and hands its rows to that source, which
+            # mints protein_ids from them at enumerate time. The object itself is not needed afterwards.
+            ExternalStructuresFile(path=self.external_structures_path, input_source=self.input_source)
 
 
     def get_genes_of_interest(self, genes_of_interest_path=None, gene_caller_ids=None, raise_if_none=False):
-        """Nabs the genes of interest based on genes_of_interest_path, gene_caller_ids, and self.external_structures
+        """Nab the proteins of interest for this run.
 
-        If no genes of interest are provided through either genes_of_interest_path,
-        gene_caller_ids, or self.external_structures, all will be assumed
+        In external-structures mode the file (already parsed in sanity_check) is the selection. Otherwise
+        the input source enumerates them from its own selection flags; if none are given, all are assumed.
 
         Parameters
         ==========
@@ -1193,13 +1318,23 @@ class StructureSuperclass(object):
         genes_of_interest = None
 
         if self.run_mode == 'external':
-            if genes_of_interest_path or gene_caller_ids:
-                raise ConfigError("You can't provide a --gene-caller-ids or --genes-of-interest concurrently with --external-structures. "
-                                  "If you are trying to create a database from a subset of structures in your external structures file, "
-                                  "please instead create an external structures file containing only those structures and use that instead."
-                                  "Sorry for the inconvenience.")
+            # the external-structures file is itself the selection; it must not be combined with any
+            # gene/gene-cluster selection flag (of either input type)
+            A = lambda x: self.args.__dict__.get(x)
+            if genes_of_interest_path or gene_caller_ids or A('gene_cluster_ids') or \
+               A('gene_clusters_of_interest') or A('select_representative'):
+                raise ConfigError("You can't combine --external-structures with a gene or gene-cluster selection "
+                                  "(--gene-caller-ids / --genes-of-interest / --gene-cluster-ids / "
+                                  "--gene-clusters-of-interest / --select-representative). The external-structures file "
+                                  "is itself the selection: put exactly the structures you want into it.")
 
-            genes_of_interest = self.external_structures.content['gene_callers_id']
+            # the source already parsed the file (in sanity_check) and stashed its rows; enumerate mints
+            # the protein_ids (reconciling against the existing db on update) and records each PDB path
+            existing_proteins = None if self.create else self.structure_db.get_proteins_dataframe()
+            genes_of_interest = self.input_source.enumerate_candidate_proteins(existing_proteins=existing_proteins,
+                                                                               raise_if_none=raise_if_none)
+            # every imported PDB's sequence must match the sequence anvi'o has for that protein
+            self.input_source.check_external_integrity(genes_of_interest)
             return genes_of_interest
 
         # every other mode enumerates the proteins of interest through the input source. On update, the
@@ -1822,7 +1957,7 @@ class StructureSuperclass(object):
 
         elif self.run_mode == 'external':
 
-            structure = self.external_structures.get_structure(protein_id)
+            structure = Structure(self.input_source.get_external_structure_path(protein_id))
             if self.skip_gene_if_not_clean(protein_id, sequence=structure.get_sequence()):
                 return structure_info
 
@@ -1846,7 +1981,7 @@ class StructureSuperclass(object):
             'models': {'molpdf': [0], 'GA341_score': [0], 'DOPE_score': [0], 'picked_as_best': [True]},
             'protein_id': protein_id,
             'structure_exists': True,
-            'best_model_path': self.external_structures.get_path(protein_id),
+            'best_model_path': self.input_source.get_external_structure_path(protein_id),
             'best_score': None,
             'scoring_method': self.modeller_params['scoring_method'],
             'percent_cutoff': self.modeller_params['percent_cutoff'],
@@ -2887,128 +3022,85 @@ class Structure(object):
 
 
 class ExternalStructuresFile(object):
-    def __init__(self, path, contigs_db_path, lazy=False, p=terminal.Progress(), r=terminal.Run()):
-        """Check the integrity of an external structures file and provide contents as the attribute self.content
+    """Parse and validate a user-provided external-structures file for a given input source.
 
-        Parameters
-        ==========
-        contigs_db_path : str, None
-            The path to the corresponding contigs database.
-        lazy : bool, False
-            If false, each structure file will be opened and the sequence therein will be explicitly compared to
-            the amino acid of the gene callers id found in the contigs database. If True, only superficial checks
-            will be carried out, like making sure the file is tab-delimited and that all files pointed to actually
-            exist.
-        """
+    The file lists pre-computed structure (PDB) files to import instead of predicting structures. Its
+    header determines the format, and the format must be one the input source accepts:
+      - contigs-db:  gene_callers_id, path
+      - pangenome:   genome_name, gene_callers_id, path
 
+    This class is source-agnostic: it parses the TSV, auto-detects the format, checks for duplicates and
+    that every path exists, then hands the rows to the input source. The source validates natural-key
+    existence (and later mints protein_ids and checks each PDB's sequence via check_external_integrity).
+    This class reads no database itself.
+    """
+
+    # header layout -> ordered column names (the last column is always 'path'; the rest are the row's key)
+    FORMAT_HEADERS = {
+        'contigs':        ['gene_callers_id', 'path'],
+        'pangenome_gene': ['genome_name', 'gene_callers_id', 'path'],
+    }
+
+    def __init__(self, path, input_source, p=terminal.Progress(), r=terminal.Run()):
         self.run, self.progress = r, p
-
         self.path = path
-        self.contigs_db_path = contigs_db_path
+        self.input_source = input_source
 
-        utils.is_contigs_db(self.contigs_db_path)
         filesnpaths.is_file_tab_delimited(self.path)
-
         self.content = pd.read_csv(self.path, sep='\t')
 
-        self.is_header_ok()
+        if not len(self.content):
+            raise ConfigError("Your external-structures file ('%s') has a header but no rows, so there are no "
+                              "structures to import and nothing for anvi'o to do. Please add at least one structure "
+                              "to it, or drop --external-structures." % self.path)
+
+        self.format = self._detect_format()
+        accepted = input_source.accepted_external_formats()
+        if self.format not in accepted:
+            raise ConfigError("Your external-structures file is in the '%s' format, but a '%s' input expects one of "
+                              "these header layouts: %s. Please provide a file whose header matches your input type."
+                              % (self.format, input_source.input_type,
+                                 '; '.join('[%s]' % ', '.join(self.FORMAT_HEADERS[f]) for f in accepted)))
+
         self.is_duplicates()
-        self.is_gene_caller_ids_ok()
         self.is_files_exist()
-        if not lazy:
-            self.test_integrity()
+
+        # hand the validated rows to the source: it checks natural-key existence and stashes them for
+        # protein_id minting (see the source's load_external_rows / enumerate_candidate_proteins)
+        input_source.load_external_rows(self.format, self.content)
 
 
-    def get_structure(self, gene_callers_id):
-        """Return Structure object for given gene callers id"""
+    def _detect_format(self):
+        headers = list(self.content.columns)
+        for external_format, expected in self.FORMAT_HEADERS.items():
+            if headers == expected:
+                return external_format
 
-        path = self.get_path(gene_callers_id)
-        return Structure(path)
-
-
-    def get_path(self, gene_callers_id):
-        """Return Structure object for given gene callers id"""
-
-        result = self.content.loc[self.content['gene_callers_id'] == gene_callers_id, 'path']
-        if result.empty:
-            raise ConfigError(f"Structure.get_path :: Can't find gene callers id '{gene_callers_id}'.")
-        return result.iloc[0]
+        accepted = '; '.join('[%s]' % ', '.join(cols) for cols in self.FORMAT_HEADERS.values())
+        raise FilesNPathsError("Anvi'o could not recognize the header of your external-structures file. Its columns "
+                               "were '%s', but they must exactly match one of these layouts: %s."
+                               % (', '.join(str(h) for h in headers), accepted))
 
 
-    def is_header_ok(self):
-        headers_proper = ['gene_callers_id', 'path']
-        with open(self.path, 'r') as input_file:
-            headers = input_file.readline().strip().split('\t')
-            missing_headers = [h for h in headers_proper if h not in headers]
-
-            if len(headers) != 2:
-                raise FilesNPathsError("Your external structures file does not contain the right number of columns :/ Here are "
-                                       "what the header columns should be called, in this order: '%s'." % ', '.join(headers_proper))
-
-            if len(missing_headers):
-                raise FilesNPathsError("Your external structures file has the wrong headers. They should be: '%s', not '%s'." % (', '.join(headers_proper), ', '.join(headers)))
-
-        return True
+    def _key_columns(self):
+        # every column but 'path' identifies a row (the natural key for this format)
+        return [c for c in self.FORMAT_HEADERS[self.format] if c != 'path']
 
 
     def is_duplicates(self):
-        counts = self.content['gene_callers_id'].value_counts()
+        key_columns = self._key_columns()
+        counts = self.content.groupby(key_columns).size()
         multiple = counts[counts > 1].index.tolist()
         if len(multiple):
-            raise FilesNPathsError(f"Only one structure can be assigned to each gene callers id. But the following genes are present "
-                                   f"multiple times in your external structures file: {multiple}")
+            raise FilesNPathsError("Only one structure can be assigned to each %s. But the following are present multiple "
+                                   "times in your external-structures file: %s" % (' + '.join(key_columns), multiple))
 
 
     def is_files_exist(self):
         """Check that all files pointed to in the file actually exist"""
         for _, row in self.content.iterrows():
-            gene_callers_id, path = row['gene_callers_id'], row['path']
-            if not filesnpaths.is_file_exists(path, dont_raise=True):
-                raise FilesNPathsError(f"This is kind of an issue. Your external structures file points to the following path: {path}. "
-                                       f"for gene callers id {gene_callers_id}. Well that path is not a file :\\")
+            if not filesnpaths.is_file_exists(row['path'], dont_raise=True):
+                raise FilesNPathsError("Your external-structures file points to '%s', but that path is not a file :\\"
+                                       % row['path'])
 
-        return True
-
-
-    def is_gene_caller_ids_ok(self):
-        """Returns True if all gene_callers_ids in external structures file are in the contigs database and are coding"""
-
-        contigs_db = db.DB(self.contigs_db_path, client_version=None, ignore_version=True)
-        table = contigs_db.get_table_as_dataframe('gene_amino_acid_sequences')
-        genes_in_contigs_db_with_aa_seqs = table.loc[table['sequence'] != '', 'gene_callers_id'].tolist()
-        missing_in_contigs = [x for x in self.content['gene_callers_id'] if x not in genes_in_contigs_db_with_aa_seqs]
-
-        if len(missing_in_contigs):
-            raise ConfigError(f"Some gene caller ids in your external structures file are either missing from your contigs database "
-                              f"or are non-coding (they have no corresponding amino acid sequence). This is a show stopper. "
-                              f"Here are the gene caller ids: {missing_in_contigs}")
-
-
-    def test_integrity(self):
-        """Parse the sequence contents of each PDB and ensure it matches the sequences in the contigs database"""
-
-        # Fetch the amino acid sequences found in contigs database
-        contigs_db = db.DB(self.contigs_db_path, client_version=None, ignore_version=True)
-        table = contigs_db.get_table_as_dataframe('gene_amino_acid_sequences')
-        amino_acid_sequences = dict(zip(table['gene_callers_id'], table['sequence']))
-
-        self.progress.new('External structures', progress_total_items=self.content.shape[0])
-        self.progress.update('Testing personal integrity')
-
-        for _, row in self.content.iterrows():
-            gene_callers_id, path = row['gene_callers_id'], row['path']
-            s = Structure(path)
-            aa_seq_structure = s.get_sequence()
-            aa_seq_contigs = amino_acid_sequences[gene_callers_id]
-
-            if aa_seq_structure != aa_seq_contigs:
-                self.progress.end()
-                raise ConfigError(f"The sequence in the structure for gene callers id {gene_callers_id} ({path}) does not match the sequence "
-                                  f"found for this gene in the contigs database. Here is the sequence found in the structure: {aa_seq_structure}. "
-                                  f"And here is the sequence in the contigs database that anvi'o was expecting: {aa_seq_contigs}.")
-
-            self.progress.increment()
-            self.progress.update(self.progress.msg)
-
-        self.progress.end()
         return True
