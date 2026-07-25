@@ -768,6 +768,13 @@ class PangenomeSource(StructureInputSource):
                 for genome_name in self.pan_super.gene_clusters[gc_id]:
                     for gene_callers_id in self.pan_super.gene_clusters[gc_id][genome_name]:
                         targets.append((genome_name, gene_callers_id, gc_id))
+
+        # sort into a deterministic, process-independent order before surrogate protein_ids are minted
+        # from this order in enumerate_candidate_proteins. Both branches above iterate a set of gene
+        # cluster names, whose order varies run-to-run (str hash randomization); without this, the same
+        # gene gets a different protein_id each run, which breaks the ColabFold --only-msa/--only-predict
+        # checkpoint (its FASTA-hash guard assumes a byte-identical regenerated FASTA).
+        targets.sort(key=lambda t: (t[2], t[0], int(t[1])))
         return targets
 
 
