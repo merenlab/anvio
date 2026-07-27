@@ -1579,6 +1579,20 @@ function showPymolWindow() {
     $('#pymol_export_page').modal('show');
 }
 
+function showSaveVariantDataWindow() {
+    $('#store_var_success, #store_var_failure').hide();
+    $('#modSaveVariantData').modal('show');
+}
+
+function showRenderImagesWindow() {
+    $('#modRenderImages').modal('show');
+}
+
+function showExportPdbWindow() {
+    $('#store_pdb_success, #store_pdb_failure').hide();
+    $('#modExportPdb').modal('show');
+}
+
 function gen_pymol_script_html(script) {
     var pymol_script_html = `
     <div class="modal-body">

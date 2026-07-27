@@ -51,7 +51,6 @@
                   <li role="presentation" class="nav-item"><a class="nav-link active" href="#tab_main" aria-controls="main" role="tab" data-toggle="tab">Main</a></li>
                   <li role="presentation" class="nav-item"><a class="nav-link" href="#tab_filters" aria-controls="filters" role="tab" data-toggle="tab">Filters</a></li>
                   <li role="presentation" class="nav-item"><a class="nav-link" href="#tab_views" aria-controls="views" role="tab" data-toggle="tab">Views</a></li>
-                  <li role="presentation" class="nav-item"><a class="nav-link" href="#tab_output" aria-controls="output" role="tab" data-toggle="tab">Output</a></li>
                   <li role="presentation" class="nav-item ml-auto"><button type="button" class="btn btn-primary btn-sm" onclick="create_ngl_views(fetch_variability=true);">Redraw</button></li>
                 </ul>
                 <div class="tab-content">
@@ -410,73 +409,104 @@
                             </div>
                         </div>
                     </div>
-                    <div id="tab_output" role="tabpanel" class="tab-pane fade">
-                        <span class="settings-header mb-3 mt-3">Save Variant Data</span>
-                        <div class="widget">
-                            <div class="alert alert-info" role="alert">Store sequence variant data for the current view</div>
-                            <div class="col-md-12 mt-3">
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-5 settings-label" for="scale">Filename</label>  
-                                    <div class="col-md-7"><input type="input" id="var_output_path" value="variability.txt"></div>
-                                </div>
-                            </div>
-                            <button type="button" class="btn btn-primary mt-3" onclick="store_variability();" style="width: 100%;">Generate tabular data for current view</button>
-                            <div class="clearfix"></div>
-                            <div class="alert alert-success mt-3" role="alert" style="display: none;" id="store_var_success"></div>
-                            <div class="alert alert-danger mt-3" role="alert" style="display: none;" id="store_var_failure"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SAVE VARIANT DATA -->
+        <div class="modal fade" id="modSaveVariantData">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Save Variant Data</h4>
+                        <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="alert alert-info" role="alert">Store sequence variant data for the current view</div>
+                        <div class="col-md-12 d-flex mt-3">
+                            <label class="col-md-5 settings-label" for="var_output_path">Filename</label>
+                            <div class="col-md-7"><input type="input" id="var_output_path" value="variability.txt"></div>
                         </div>
-                        <span class="settings-header mb-3 mt-3">Render Images</span>
-                        <div class="widget">
-                            <div class="alert alert-info" role="alert">Create merged and/or single sample PNG images of current view</div>
-                            <div class="col-md-12 mt-3">
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-5 settings-label" for="scale">Output Zip File</label>  
-                                    <div class="col-md-7"><input type="input" id="zip_name" value="structure-summary"></div>
-                                </div>
-                            </div>
-                            <div class="col-md-12 mt-3">
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-8 settings-label" for="scale">Scale</label>  
-                                    <div class="col-md-4"><input type="input" id="scale" value="5" size="4"></div>
-                                </div>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-8 settings-label" for="transparent">Transparent</label>  
-                                    <div class="col-md-4"><input type="checkbox" id="transparent" checked="checked"></div>
-                                </div>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-8 settings-label" for="trim">Trim</label>  
-                                    <div class="col-md-4"><input type="checkbox" id="trim" checked="checked"></div>
-                                </div>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-8 settings-label" for="antialias">Antialiasing</label>  
-                                    <div class="col-md-4"><input type="checkbox" id="antialias" checked="checked"></div>
-                                </div>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-8 settings-label" for="merged_view_only">Merged view only</label>  
-                                    <div class="col-md-4"><input type="checkbox" id="merged_view_only" checked="checked"></div>
-                                </div>
-                            </div>
-                            <button type="button" class="btn btn-primary mt-3" onclick="generate_summary();" style="width: 100%;">Generate static image directory</button>
+                        <div class="alert alert-success mt-3" role="alert" style="display: none;" id="store_var_success"></div>
+                        <div class="alert alert-danger mt-3" role="alert" style="display: none;" id="store_var_failure"></div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" onclick="store_variability();">Generate tabular data</button>
+                        <button class="btn btn-outline-danger" data-dismiss="modal" type="button">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RENDER IMAGES -->
+        <div class="modal fade" id="modRenderImages">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Render Images</h4>
+                        <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="alert alert-info" role="alert">Create merged and/or single sample PNG images of current view</div>
+                        <div class="col-md-12 d-flex mt-3">
+                            <label class="col-md-5 settings-label" for="zip_name">Output Zip File</label>
+                            <div class="col-md-7"><input type="input" id="zip_name" value="structure-summary"></div>
                         </div>
-                        <span class="settings-header mb-3 mt-3">Export PDB</span>
-                        <div class="widget">
-                            <div class="alert alert-info" role="alert">Export a PDB file of the structure</div>
-                            <div class="col-md-12 d-flex mt-3">
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-5 settings-label" for="scale">Filename</label>  
-                                    <div class="col-md-7"><input type="input" id="pdb_output_path" value="structure.pdb"></div>
-                                </div>
-                            </div>
-                            <button type="button" class="btn btn-primary mt-3" onclick="store_structure_as_pdb('#pdb_output_path', '#store_pdb_success', '#store_pdb_failure');" style="width: 100%;">Generate PDB file for current structure</button>
-                            <div class="clearfix"></div>
-                            <div class="alert alert-success mt-3" role="alert" style="display: none;" id="store_pdb_success"></div>
-                            <div class="alert alert-danger mt-3" role="alert" style="display: none;" id="store_pdb_failure"></div>
+                        <div class="col-md-12 d-flex">
+                            <label class="col-md-8 settings-label" for="scale">Scale</label>
+                            <div class="col-md-4"><input type="input" id="scale" value="5" size="4"></div>
                         </div>
-                        <span class="settings-header mb-3 mt-3">Generate in PyMOL</span>
-                        <div class="widget">
-                            <div class="alert alert-info" role="alert">Produce script to replicate sequence variant visualization in PyMOL</div>
-                            <button type="button" class="btn btn-primary mt-3" onclick="showPymolWindow();" style="width: 100%;">Generate script</button>
+                        <div class="col-md-12 d-flex">
+                            <label class="col-md-8 settings-label" for="transparent">Transparent</label>
+                            <div class="col-md-4"><input type="checkbox" id="transparent" checked="checked"></div>
                         </div>
+                        <div class="col-md-12 d-flex">
+                            <label class="col-md-8 settings-label" for="trim">Trim</label>
+                            <div class="col-md-4"><input type="checkbox" id="trim" checked="checked"></div>
+                        </div>
+                        <div class="col-md-12 d-flex">
+                            <label class="col-md-8 settings-label" for="antialias">Antialiasing</label>
+                            <div class="col-md-4"><input type="checkbox" id="antialias" checked="checked"></div>
+                        </div>
+                        <div class="col-md-12 d-flex">
+                            <label class="col-md-8 settings-label" for="merged_view_only">Merged view only</label>
+                            <div class="col-md-4"><input type="checkbox" id="merged_view_only" checked="checked"></div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" onclick="generate_summary();">Generate static image directory</button>
+                        <button class="btn btn-outline-danger" data-dismiss="modal" type="button">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- EXPORT PDB -->
+        <div class="modal fade" id="modExportPdb">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Export PDB</h4>
+                        <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="alert alert-info" role="alert">Export a PDB file of the structure</div>
+                        <div class="col-md-12 d-flex mt-3">
+                            <label class="col-md-5 settings-label" for="pdb_output_path">Filename</label>
+                            <div class="col-md-7"><input type="input" id="pdb_output_path" value="structure.pdb"></div>
+                        </div>
+                        <div class="alert alert-success mt-3" role="alert" style="display: none;" id="store_pdb_success"></div>
+                        <div class="alert alert-danger mt-3" role="alert" style="display: none;" id="store_pdb_failure"></div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" onclick="store_structure_as_pdb('#pdb_output_path', '#store_pdb_success', '#store_pdb_failure');">Generate PDB file</button>
+                        <button class="btn btn-outline-danger" data-dismiss="modal" type="button">Close</button>
                     </div>
                 </div>
             </div>
