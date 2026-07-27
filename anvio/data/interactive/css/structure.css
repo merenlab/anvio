@@ -1,33 +1,35 @@
+@import url('main.css');
+
 body {
-    background-color: white;
+    background-color: var(--solid-white);
 }
 
 .slider-selection {
-    background: linear-gradient(to bottom, #235989, #ffffff, #235989);
+    background: linear-gradient(to bottom, var(--primary-800), var(--solid-white), var(--primary-800));
 }
 
 .slider.slider-horizontal .slider-track-high {
-    background: linear-gradient(to bottom, #b8cad9, #ffffff, #b8cad9);
+    background: linear-gradient(to bottom, var(--primary-300), var(--solid-white), var(--primary-300));
 }
 
 .slider.slider-horizontal .slider-track-low {
-    background: linear-gradient(to bottom, #b8cad9, #ffffff, #b8cad9);
+    background: linear-gradient(to bottom, var(--primary-300), var(--solid-white), var(--primary-300));
 }
 
 .slider-handle {
     position: absolute;
-    top: 3;
+    top: 3px;
     width: 12px;
     height: 12px;
-    background-color: #337ab7;
-    border: 1px solid #333;
+    background-color: var(--primary-600);
+    border: 1px solid var(--black);
 }
 
 .widget {
-    background-color: #f9f9f99e;
+    background-color: var(--secondary-50);
     margin: 5px 0px;
     padding: 8px 15px;
-    border: 1px solid #e4e4e4;
+    border: 1px solid var(--border);
 }
 
 .slider {
@@ -99,33 +101,10 @@ body {
    margin: 0 !important;
 }
 
-.nav>li>a {
-    padding: 10px 10px;
 }
 
-
-.colorpicker:hover {
-    border: 2px solid;
-    border-color: #555;
 }
 
-.colorpicker {
-    display: inline-block;
-    background-color: #FFF;
-    border: 1px solid;
-    border-color: #000;
-    width: 16px;
-    height: 16px;
-    margin: 4px;
-}
-
-.settings-header {
-    font-variant: small-caps;
-    font-size: 1.2em;
-    border-bottom: 1px #969696 solid;
-    display: block;
-    margin-bottom: 5px;
-    margin-top: 12px;
 }
 
 #model_info_table {
