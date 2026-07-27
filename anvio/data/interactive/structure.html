@@ -26,6 +26,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.js"></script>
     <script type="text/javascript" src="./node_modules/toastr/build/toastr.min.js" onerror='alertDependencyError("toastr")'></script>
     <script type="text/javascript" src="js/constants.js"></script>
+    <script type="text/javascript" src="js/animations.js"></script>
     <script type="text/javascript" src="js/structure.js"></script>
 </head>
 
@@ -35,10 +36,17 @@
             <div class="loader"></div>loading...
         </div>
     </div>
-    <div class="container-fluid parent-container">
-        <div id="ngl-tooltip" class="ngl-tooltip"></div>
-        <div class="row">
-            <div class="col-md-4 sidebar">
+    <div id="ngl-tooltip" class="ngl-tooltip"></div>
+    <div id="wrapper">
+        <div id="toggle-panel-left" class="toggle-panel-left-pos" onclick="toggleLeftPanel();">
+            <span id="toggle-panel-left-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);"><u>S</u>ETTINGS</span>
+        </div>
+        <div id="panel-center">
+            <div id="ngl-container" class="d-flex"></div>
+        </div>
+        <!-- LEFT MENU -->
+        <div id="panel-left">
+            <div id="sidebar">
                 <ul class="nav nav-tabs" role="tablist">
                   <li role="presentation" class="nav-item"><a class="nav-link active" href="#tab_main" aria-controls="main" role="tab" data-toggle="tab">Main</a></li>
                   <li role="presentation" class="nav-item"><a class="nav-link" href="#tab_filters" aria-controls="filters" role="tab" data-toggle="tab">Filters</a></li>
@@ -470,11 +478,6 @@
                             <button type="button" class="btn btn-primary mt-3" onclick="showPymolWindow();" style="width: 100%;">Generate script</button>
                         </div>
                     </div>
-                </div>
-            </div>
-            <div class="col-md-8 ngl-container-wrapper">
-                <div id="ngl-container" class="d-flex">
-
                 </div>
             </div>
         </div>

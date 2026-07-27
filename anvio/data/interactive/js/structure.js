@@ -76,11 +76,37 @@ $(document).ready(function() {
         $(this).colpickSetColor(this.value);
     });
 
-    window.addEventListener( "resize", function( event ){
-        for (let group in stages) {
-            stages[group].handleResize();
+    window.addEventListener("resize", resize_all_stages, false);
+
+    // the settings panel floats over the viewers, so they have to be told to
+    // resize once it has finished sliding. transitionend fires per property and
+    // bubbles from descendants, hence both guards.
+    let panel = document.getElementById('panel-left');
+    panel.addEventListener('transitionend', function(ev) {
+        if (ev.target !== panel || ev.propertyName !== 'left') return;
+        $('#ngl-container').css('pointer-events', '');
+        resize_all_stages();
+    });
+
+    // keep a viewer from swallowing the drag while the panel is in motion. The
+    // timeout mirrors the fallback in toggleLeftPanel(), so a click that starts
+    // no transition cannot leave the viewers unclickable.
+    $('#toggle-panel-left').on('click', function() {
+        $('#ngl-container').css('pointer-events', 'none');
+        setTimeout(function() { $('#ngl-container').css('pointer-events', ''); }, 400);
+    });
+
+    $(document).on('keydown', function(ev) {
+        if ((/^(?:input|select|textarea|button)$/i).test(ev.target.nodeName)) return;
+
+        if (ev.keyCode === 83) { // S toggles the settings panel, as in anvi-interactive
+            $('#toggle-panel-left').trigger('click');
         }
-    }, false );
+
+        if (ev.keyCode === 82) { // R redraws, mirroring D for draw in anvi-interactive
+            create_ngl_views(fetch_variability=true);
+        }
+    });
 
     $('#gene_callers_id_list').on('change', function(ev) {
         $.when({}).then(load_protein).then(load_gene_function_info).then(load_model_info).then(() => {
@@ -189,6 +215,12 @@ function load_sample_group_widget(category, trigger_create_ngl_views=true) {
 
     if (trigger_create_ngl_views) {
         create_ngl_views();
+    }
+}
+
+function resize_all_stages() {
+    for (let group in stages) {
+        stages[group].handleResize();
     }
 }
 

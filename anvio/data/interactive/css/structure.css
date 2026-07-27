@@ -48,12 +48,6 @@ body {
     margin-left: -6px;
 }
 
-.ngl-container-wrapper {
-    height: 100%;
-    display: block;
-    background: var(--bg-color);
-}
-
 .ngl-inner {
     height: calc(100% - 10px);
     width: calc(100% - 10px);
@@ -61,10 +55,15 @@ body {
     margin-right: 10px;
 }
 
+/* centred over its own viewer: the settings panel floats above the canvas, so a
+   corner-anchored title would sit behind it */
 .ngl-group-title {
     position: absolute;
+    top: 0px;
+    left: 0px;
+    right: 0px;
+    text-align: center;
     color: var(--primary-600);
-    margin: 2px;
     padding: 4px;
     font-weight: bold;
 }
@@ -94,13 +93,6 @@ body {
 #engine_list label {
     margin-left: 4px;
     margin-right: 12px;
-}
-
-.sidebar {
-    height: 100vh;
-    overflow-y: scroll;
-    border-right: 1px solid var(--border);
-    box-shadow: 0px 0px 10px 2px rgba(200,200,200,0.75);
 }
 
 .table-group-checkbox {
@@ -214,14 +206,27 @@ body {
     color: rgb(230, 230, 230) !important;
 }
 
+/* fills #panel-center so the viewers take the whole window, including the space
+   the settings panel floats over once it slides away */
 #ngl-container {
     height: 100%;
-    width: 66%;
-    position: fixed;
-    overflow-x: scroll;
+    width: 100%;
+    overflow-x: hidden;
+    background: var(--bg-color);
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: space-between;
     align-content: space-around;
     text-align: center;
+}
+
+/* the panel slides over the viewers, so it needs to win the stacking order */
+#panel-left {
+    z-index: 10;
+}
+
+/* each viewer cell is the positioning context for its own group title and
+   fullscreen button, which would otherwise anchor to the window */
+#ngl-container > div {
+    position: relative;
 }
