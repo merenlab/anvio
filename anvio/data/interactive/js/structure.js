@@ -743,7 +743,7 @@ function get_model_info_table_html(model_data) {
     var engine = model_data['engine'];
     if (engine) {
         geneModelHtml += '<div class="widget">'
-        geneModelHtml += '<span class="settings-header"><h4>Prediction engine</h4></span>'
+        geneModelHtml += '<span class="settings-secondary-header">Prediction engine</span>'
         geneModelHtml += '<p>' + (engine_labels[engine] || engine) + '</p>';
         geneModelHtml += "</div>";
     }
@@ -752,7 +752,7 @@ function get_model_info_table_html(model_data) {
     // template-free engines (ColabFold) and external structures report no templates
     if (Object.keys(templates).length > 0) {
         geneModelHtml += '<div class="widget">'
-        geneModelHtml += '<span class="settings-header"><h4>Templates Used</h4></span>'
+        geneModelHtml += '<span class="settings-secondary-header">Templates Used</span>'
         geneModelHtml += '<table class="table table-sm table-responsive" id="model_info_table"><tbody>';
 
         var header = '<tr>';
@@ -790,7 +790,7 @@ function get_model_info_table_html(model_data) {
     // external structures carry no model scores
     if (models) {
         geneModelHtml += '<div class="widget">'
-        geneModelHtml += '<span class="settings-header"><h4>Model Scores</h4></span>'
+        geneModelHtml += '<span class="settings-secondary-header">Model Scores</span>'
         geneModelHtml += '<table class="table table-sm table-responsive" id="model_info_table"><tbody>';
 
         var header = '<tr>';
@@ -1152,7 +1152,7 @@ function create_ui() {
 
                     $(container).append(`
                         <div class="widget" data-column="${item['name']}" data-controller="${item['as_filter']}">
-                            <span class="settings-header"><h5>${item['title']}</h5></span><br />
+                            <span class="settings-secondary-header">${item['title']}</span><br />
                             <svg id="histogram_${item['name']}" width="100%" height="30" style="position: relative; top: 6;" viewBox="0 0 200 30" preserveAspectRatio="none"></svg>
                             <input id="${item['name']}"
                                     type="${item['data_type']}"
@@ -1175,7 +1175,7 @@ function create_ui() {
 
                     $(container).append(`
                         <div class="widget" data-column="${item['name']}" data-controller="${item['as_filter']}">
-                            <span class="settings-header"><h5>${item['title']}</h5></span><br />
+                            <span class="settings-secondary-header">${item['title']}</span><br />
                             <div class="ml-3 d-flex">
                             ${item['choices'].map((choice) => { return `
                                 <div>
