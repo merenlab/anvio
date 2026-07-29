@@ -1193,7 +1193,25 @@ class VariabilitySuper(VariabilityFilter, object):
         self.progress.update('Reading the structure database ...')
         structure_db = structureops.StructureDatabase(self.structure_db_path)
 
+        # variability is computed against a single contigs database, so overlaying it onto a structure db
+        # only makes sense when that db was built from the same contigs database. A pangenome (or other)
+        # structure db keys its structures on surrogate protein_ids that are not the gene caller ids of any
+        # one contigs db, so the merge below would be meaningless. Refuse it clearly.
+        if structure_db.input_type != 'contigs_db':
+            structure_db.disconnect()
+            self.progress.end()
+            raise ConfigError("The structure database you provided was built from a '%s' input, not a single contigs "
+                              "database. Anvi'o can only overlay per-residue variability onto a structure database whose "
+                              "structures correspond to the genes of the contigs database your variability was computed "
+                              "from. Structure databases built from a pangenome (or other non-contigs inputs) are not "
+                              "compatible with the variability overlay." % structure_db.input_type)
+
         self.structure_residue_info = structure_db.get_residue_info_for_all()
+
+        # the structure database keys residue info on `protein_id`. For a contigs-db-derived structure db
+        # that value is the gene caller id, which is variability's `corresponding_gene_call`. We rename it
+        # here so the rest of the variability code (merges, column bookkeeping) works unchanged.
+        self.structure_residue_info.rename(columns={'protein_id': 'corresponding_gene_call'}, inplace=True)
 
         self.genes_with_structure = set(self.structure_residue_info["corresponding_gene_call"].unique())
         # genes_included = genes_of_interest, unless genes_of_interest weren't specified. then
@@ -1896,7 +1914,7 @@ class VariabilitySuper(VariabilityFilter, object):
         C = {'text': str, 'real': float, 'integer': int}
 
         # append columns that are not redundant
-        redundant_columns = ['entry_id', 'corresponding_gene_call', 'codon_order_in_gene', 'aa', 'amino_acid', 'codon', 'codon_number']
+        redundant_columns = ['entry_id', 'protein_id', 'corresponding_gene_call', 'codon_order_in_gene', 'aa', 'amino_acid', 'codon', 'codon_number']
         self.columns_to_report['structural'].extend([(x, C[y])
                                                      for x, y in zip(t.residue_info_table_structure, t.residue_info_table_types)
                                                      if x not in redundant_columns

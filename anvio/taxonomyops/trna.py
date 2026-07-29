@@ -144,6 +144,32 @@ class SanityCheck(object):
             filesnpaths.is_output_file_writable(self.per_anticodon_output_file) if self.per_anticodon_output_file else None
 
             ###########################################################
+            # tree output, which is relevant to both estimator classes
+            ###########################################################
+            if self.__class__.__name__ in ['TRNATaxonomyEstimatorSingle', 'TRNATaxonomyEstimatorMulti']:
+                if self.tree_output_level and not self.tree_output:
+                    raise ConfigError(f"You asked anvi'o to not show anything deeper than '{self.tree_output_level}' in the tree "
+                                      f"output, but you didn't actually ask for a tree output :/ Perhaps you meant to add the "
+                                      f"flag `--tree-output` to your command? Or perhaps you were looking for the parameter "
+                                      f"`--taxonomic-level`, which is a completely different thing?")
+
+                if self.tree_output_level and self.tree_output_level not in constants.levels_of_taxonomy:
+                    raise ConfigError(f"The taxonomic level '{self.tree_output_level}' is not a level anvi'o knows about. Here is the "
+                                      f"list of taxonomic levels anvi'o recognizes: {', '.join(constants.levels_of_taxonomy)}.")
+
+                if self.tree_output and anvio.QUIET:
+                    raise ConfigError("You asked anvi'o for a tree output, and then you asked it to be quiet. But the tree is the "
+                                      "only thing `--tree-output` produces, so these two flags together mean 'please do all this "
+                                      "work and then show me nothing', which anvi'o refuses to believe is what you meant. Please "
+                                      "remove one of them and try again (and if you were after a file rather than a display, the "
+                                      "parameter you want is `--output-file`).")
+
+                if self.tree_output and anvio.AS_MARKDOWN:
+                    raise ConfigError("The flag `--as-markdown` will not do anything good to a tree since the characters anvi'o "
+                                      "uses to draw one do not survive markdown rendering :/ Please pick either `--tree-output` "
+                                      "or `--as-markdown`.")
+
+            ###########################################################
             # PopulateContigsDatabaseWithTRNATaxonomy
             ###########################################################
             if self.__class__.__name__ in ['PopulateContigsDatabaseWithTRNATaxonomy']:
@@ -326,6 +352,8 @@ class TRNATaxonomyArgs(object):
         self.user_taxonomic_level = A('taxonomic_level')
         self.matrix_format = A('matrix_format')
         self.raw_output = A('raw_output')
+        self.tree_output = A('tree_output')
+        self.tree_output_level = A('tree_output_level')
 
         if format_args_for_single_estimator:
             # so you're here to get an args instance to fool a single estimator class.
@@ -336,6 +364,11 @@ class TRNATaxonomyArgs(object):
             self.output_file_prefix = None
             self.matrix_format = None
             self.raw_output = None
+
+            # NOTE: both of these must be nullified together, otherwise the sanity check that makes
+            # sure `--tree-output-level` is not used without `--tree-output` will complain.
+            self.tree_output = None
+            self.tree_output_level = None
 
         self.skip_sanity_check = A('skip_sanity_check')
 

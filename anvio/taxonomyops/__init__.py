@@ -49,8 +49,254 @@ __email__ = "a.murat.eren@gmail.com"
 run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 pp = terminal.pretty_print
+P = terminal.pluralize
 
 HASH = lambda d: str(hashlib.sha224(''.join([str(d[level]) for level in constants.levels_of_taxonomy]).encode('utf-8')).hexdigest()[0:8])
+
+
+class TaxonomyTree(object):
+    """Summarize a bunch of taxonomy entries as a hierarchical tree of text for the terminal.
+
+    This has nothing to do with phylogenetic trees or newick strings though. This is a display
+    display class that simply organizes taxon names into a dendrogram (although it would have
+    been amazing to benefit from a real tree like the GTDB tree to organize things better, which
+    can be a future attempt).
+
+    The tree is meant to be displayed on the terminal. See the documentation for anvi-estimate-scg-taxonomy
+    for an example output (and if you change this class please consider updating that file and
+    others under the docs folder).
+
+    Counts are cumulative: the number reported for a node is the number of entries that were
+    assigned to that taxon or to anything below it. When an entry's lineage stops before
+    `max_taxonomic_level` is reached, it is placed in an explicit `Unknown_*` node at the level
+    where it ran out of names (see `constants.levels_of_taxonomy_unknown`) rather than quietly
+    dropped, so the counts of a node's children always add up to the count of the node itself.
+
+    Parameters
+    ==========
+    entries : list or dict
+        Taxonomy entries to summarize. Either a list of dictionaries, or a dictionary of
+        dictionaries (in which case only its values are considered, and the keys are ignored).
+        Each entry must include the keys in `constants.levels_of_taxonomy`, and their values
+        must either be a taxon name or None. Both dictionaries anvi'o taxonomy estimator classes
+        pass around fit the bill: the one that comes out of the function
+        `get_print_friendly_items_taxonomy_super_dict`, and the per-metagenome dictionaries that
+        come out of `get_print_friendly_scg_taxonomy_super_dict_multi`.
+    max_taxonomic_level : str
+        The deepest taxonomic level to show in the tree. Must be one of
+        `constants.levels_of_taxonomy`. Everything below it is ignored.
+    coverage_key : str
+        An optional key in each entry that points to a coverage value to accumulate for each node
+        in addition to the counts. The value it points to can either be a number, or a dictionary
+        of numbers (as in `{sample_name: coverage}`), in which case anvi'o will sum them (and skip
+        those that are None, which is a thing that happens when a bin has no items with taxonomy).
+    root_name : str
+        The name to display for the root of the tree, which is the parent of all domains. The
+        default, None, means anvi'o will call it `All <unit>` -- as in `All SCGs` -- which is
+        usually exactly right, and saves the caller from having to say the same thing twice.
+    use_unicode : bool
+        Whether to use fancy box-drawing characters to draw the tree. The default, None, means
+        anvi'o will ask `terminal.stdout_supports_unicode()`, which is what you want unless you
+        need this class to produce predictable output no matter where it is running.
+    unit : str
+        What the entries are, in plural, so the root of the tree and the legend can name them.
+        Since the same tree may be summarizing SCGs, anticodons, bins, or genomes depending on
+        who is calling, only the caller knows this.
+    """
+
+    def __init__(self, entries, max_taxonomic_level='t_genus', coverage_key=None, root_name=None, use_unicode=None, unit='items', run=terminal.Run()):
+        self.run = run
+
+        self.entries = list(entries.values()) if isinstance(entries, dict) else entries
+        self.max_taxonomic_level = max_taxonomic_level
+        self.coverage_key = coverage_key
+        self.unit = unit
+
+        # the root of a taxonomy tree is not a taxon, it is everything -- so rather than making up
+        # a name for it (it used to say `Life`, which was both grandiose and wrong the moment the
+        # thing being counted was bins), we simply name it after what is being counted.
+        self.root_name = root_name if root_name else f"All {self.unit}"
+
+        self.use_unicode = terminal.stdout_supports_unicode() if use_unicode is None else use_unicode
+
+        self.sanity_check()
+
+        # the levels we will actually descend into, which is everything down to (and including)
+        # the deepest level the user is interested in
+        self.levels_of_taxonomy = constants.levels_of_taxonomy[:constants.levels_of_taxonomy.index(self.max_taxonomic_level) + 1]
+
+        self.root = self.get_blank_node(self.root_name)
+
+        self.build()
+
+
+    def sanity_check(self):
+        if self.max_taxonomic_level not in constants.levels_of_taxonomy:
+            raise ConfigError(f"TaxonomyTree :: '{self.max_taxonomic_level}' is not a taxonomic level anvi'o knows "
+                              f"about :/ Here are the ones that are OK to use: {', '.join(constants.levels_of_taxonomy)}.")
+
+        if not isinstance(self.entries, list):
+            raise ConfigError("TaxonomyTree :: The taxonomy entries you sent here should either be a list of "
+                              "dictionaries, or a dictionary of dictionaries, but what anvi'o got was of type "
+                              f"'{type(self.entries).__name__}' :/ If you are not a programmer and seeing this "
+                              f"error, please let a programmer know since this should never happen.")
+
+        for entry in self.entries:
+            if not isinstance(entry, dict):
+                raise ConfigError("TaxonomyTree :: At least one of the taxonomy entries you sent here was not a "
+                                  f"dictionary, but something of type '{type(entry).__name__}'. Anvi'o is confuse.")
+
+            missing_levels = [level for level in constants.levels_of_taxonomy if level not in entry]
+            if missing_levels:
+                raise ConfigError(f"TaxonomyTree :: At least one of your taxonomy entries is missing the following "
+                                  f"{P('key', len(missing_levels))}: {', '.join(missing_levels)}. Every entry that "
+                                  f"comes here must describe every single taxonomic level anvi'o knows about (even "
+                                  f"if the value for some of them is None).")
+
+            if self.coverage_key and self.coverage_key not in entry:
+                raise ConfigError(f"TaxonomyTree :: You asked anvi'o to summarize coverages using the key "
+                                  f"'{self.coverage_key}', but at least one of your taxonomy entries does not have "
+                                  f"it :/")
+
+
+    def get_blank_node(self, name):
+        """Returns a brand new node. Nodes are simple dictionaries around here."""
+
+        return {'name': name, 'count': 0, 'coverage': 0.0, 'children': {}}
+
+
+    def get_coverage_for_entry(self, entry):
+        """Recover a single coverage value from a given entry.
+
+        Depending on who is calling, the value under `self.coverage_key` is either a single number,
+        or a dictionary of coverages per sample (in which case they are summed). Values that are
+        None are skipped, since anvi'o assigns None coverages to bins that have no items with
+        taxonomy.
+        """
+
+        if not self.coverage_key:
+            return 0.0
+
+        coverage = entry[self.coverage_key]
+
+        if coverage is None:
+            return 0.0
+        elif isinstance(coverage, dict):
+            return sum([c for c in coverage.values() if c is not None])
+        else:
+            return coverage
+
+
+    def build(self):
+        """Turn `self.entries` into a tree of nodes that hangs from `self.root`"""
+
+        for entry in self.entries:
+            coverage = self.get_coverage_for_entry(entry)
+
+            node = self.root
+            node['count'] += 1
+            node['coverage'] += coverage
+
+            for level in self.levels_of_taxonomy:
+                taxon = entry[level]
+
+                # anvi'o taxonomy dictionaries use None for levels that could not be resolved, but
+                # since some of them are shaped by pandas on their way here, we also make sure we
+                # are not looking at a NaN or an empty string.
+                if taxon is None or taxon != taxon or not str(taxon).strip():
+                    taxon = constants.levels_of_taxonomy_unknown[level]
+
+                    if taxon not in node['children']:
+                        node['children'][taxon] = self.get_blank_node(taxon)
+
+                    node = node['children'][taxon]
+                    node['count'] += 1
+                    node['coverage'] += coverage
+
+                    # this entry has run out of names, and there is no point in going deeper
+                    break
+
+                taxon = str(taxon)
+
+                if taxon not in node['children']:
+                    node['children'][taxon] = self.get_blank_node(taxon)
+
+                node = node['children'][taxon]
+                node['count'] += 1
+                node['coverage'] += coverage
+
+
+    def get_node_label(self, node):
+        if self.coverage_key:
+            annotation = f"({pp(node['count'])}; {node['coverage']:.1f}X)"
+        else:
+            annotation = f"({pp(node['count'])})"
+
+        return f"{node['name']} {terminal.c(annotation, 'gray')}"
+
+
+    def get_sorted_children(self, node):
+        """Children of a node, most abundant first, ties broken alphabetically"""
+
+        if self.coverage_key:
+            return sorted(node['children'].values(), key=lambda n: (-n['coverage'], -n['count'], n['name'].lower()))
+        else:
+            return sorted(node['children'].values(), key=lambda n: (-n['count'], n['name'].lower()))
+
+
+    def get_tree_lines(self):
+        """Returns the tree as a list of lines, ready to be printed"""
+
+        if self.use_unicode:
+            # so things look preTTTTy.
+            last_connector, connector, spine = "└── ", "├── ", "│   "
+        else:
+            # these kinds of stuff will end up in slurm logs
+            last_connector, connector, spine = "`-- ", "|-- ", "|   "
+
+        lines = []
+
+        def add_node(node, prefix="", is_last=True, is_root=False):
+            if is_root:
+                lines.append(self.get_node_label(node))
+            else:
+                lines.append(prefix + (last_connector if is_last else connector) + self.get_node_label(node))
+
+            # children of the root sit flush against the left margin; everyone else is indented
+            # under their parent, with a spine dropped down whenever the parent still has siblings
+            # below it.
+            next_prefix = prefix if is_root else prefix + ("    " if is_last else spine)
+
+            children = self.get_sorted_children(node)
+
+            for i, child in enumerate(children):
+                add_node(child, next_prefix, i == len(children) - 1)
+
+        add_node(self.root, is_root=True)
+
+        return lines
+
+
+    def print_tree(self):
+        """Print the tree, along with a legend that explains what its numbers mean"""
+
+        if not len(self.entries):
+            self.run.info_single("No taxonomy to show here :/", nl_after=1)
+            return
+
+        levels = ' → '.join([level[2:] for level in self.levels_of_taxonomy])
+        legend = (f"Each node below shows the number of {self.unit} that were assigned to that taxon or to "
+                  f"anything under it, and the tree goes as deep as {levels}.")
+
+        if self.coverage_key:
+            legend += (" The X value that follows each count is the total coverage of everything under that node, "
+                       "summed across all samples (per-sample coverages are only available in output files).")
+
+        self.run.info_single(legend, nl_before=1, nl_after=1, level=0)
+
+        print('\n'.join(self.get_tree_lines()))
+        print('')
+
 
 class TerminologyHelper(object):
     def __init__(self):
@@ -649,7 +895,10 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
         if self.update_profile_db_with_taxonomy:
             self.add_taxonomy_as_additional_layer_data(items_taxonomy_super_dict)
 
-        self.print_items_taxonomy_super_dict(items_taxonomy_super_dict)
+        if self.tree_output:
+            self.print_items_taxonomy_tree(items_taxonomy_super_dict)
+        else:
+            self.print_items_taxonomy_super_dict(items_taxonomy_super_dict)
 
         if self.output_file_path:
             self.store_items_taxonomy_super_dict(items_taxonomy_super_dict)
@@ -738,6 +987,42 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
             table = sorted(table, key=lambda x: (int(x[1]), int(x[2])), reverse=True)
 
         anvio.TABULATE(table, header)
+
+
+    def print_items_taxonomy_tree(self, items_taxonomy_super_dict):
+        """Display taxonomy as a hierarchical tree rather than a table.
+
+        This is what happens instead of `print_items_taxonomy_super_dict` when the user asks for
+        `--tree-output`. The two functions consume the exact same data, and differ only in how they
+        show it. See the class `TaxonomyTree` for the details of the display itself.
+        """
+
+        self.progress.reset()
+
+        if self.collection_name:
+            self.run.warning(None, header='Taxa in collection "%s"' % self.collection_name, lc="green")
+            unit = 'bins'
+        elif self.metagenome_mode:
+            self.run.warning(None, header='Taxa in metagenome "%s"' % self.contigs_db_project_name, lc="green")
+
+            # in metagenome mode everything in this tree is a copy of a single item -- the one anvi'o
+            # was told to use, or the most frequent one it settled on by itself. by the time we are
+            # here that choice has already been made, so we can be specific about it rather than
+            # implying that the tree covers every item in the contigs database.
+            unit = f"{self.item_name_for_metagenome_mode} copies" if self.item_name_for_metagenome_mode else self._ITEMS
+        else:
+            self.run.warning(None, header='Taxa in "%s"' % self.contigs_db_project_name, lc="green")
+            unit = 'genomes'
+
+        d = self.get_print_friendly_items_taxonomy_super_dict(items_taxonomy_super_dict)
+
+        taxonomy_tree = TaxonomyTree(d,
+                                     max_taxonomic_level=self.tree_output_level or 't_genus',
+                                     coverage_key='coverages' if self.compute_item_coverages else None,
+                                     unit=unit,
+                                     run=self.run)
+
+        taxonomy_tree.print_tree()
 
 
     def store_items_taxonomy_super_dict(self, items_taxonomy_super_dict):

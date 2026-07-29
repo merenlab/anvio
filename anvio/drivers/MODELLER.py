@@ -644,8 +644,11 @@ class MODELLER:
         self.copy_script_to_directory(script_name)
 
         input_pir_path = J(self.database_dir, self.modeller_database + '.pir')
-        fasta_path = J(self.database_dir, self.modeller_database + '.fa')
-        dmnd_path = J(self.database_dir, self.modeller_database)
+
+        # use a process-unique intermediate FASTA so that concurrent gen-structure-database workers
+        # never read or delete one another's file (a shared path here previously raised
+        # FileNotFoundError when one worker removed the FASTA while another was still reading it)
+        fasta_path = filesnpaths.get_temp_file_path()
 
         command = [self.executable,
                    script_name,
@@ -667,14 +670,24 @@ class MODELLER:
         fasta.close()
         temp.close()
 
+        # build the DIAMOND db under a process-unique base in the same directory as the final db,
+        # then move it into place with an atomic (same-filesystem) rename so that any other process
+        # only ever observes a complete .dmnd file
+        dmnd_build_base = J(self.database_dir, "%s.%d" % (self.modeller_database, os.getpid()))
+
         driver = diamond.Diamond(
             query_fasta=fasta_path,
             run=terminal.Run(verbose=False),
             progress=terminal.Progress(verbose=False),
         )
-        driver.makedb(output_file_path=dmnd_path)
 
-        os.remove(fasta_path)
+        try:
+            driver.makedb(output_file_path=dmnd_build_base)
+            os.rename(dmnd_build_base + '.dmnd', dmnd_db_path)
+        finally:
+            for leftover in (fasta_path, dmnd_build_base + '.dmnd'):
+                if os.path.exists(leftover):
+                    os.remove(leftover)
 
 
     def run_binarize_database(self, pir_db_path, bin_db_path):
@@ -697,15 +710,25 @@ class MODELLER:
         # check script exists, then copy the script into the working directory
         self.copy_script_to_directory(script_name)
 
+        # binarize into a process-unique path in the destination directory, then move it into place
+        # with an atomic (same-filesystem) rename so that concurrent gen-structure-database workers
+        # never observe a partially written .bin
+        bin_build_path = "%s.%d" % (bin_db_path, os.getpid())
+
         command = [self.executable,
                    script_name,
                    pir_db_path,
-                   bin_db_path]
+                   bin_build_path]
 
-        self.run_command(command,
-                         script_name=script_name,
-                         check_output=[bin_db_path],
-                         rename_log=False)
+        try:
+            self.run_command(command,
+                             script_name=script_name,
+                             check_output=[bin_build_path],
+                             rename_log=False)
+            os.rename(bin_build_path, bin_db_path)
+        finally:
+            if os.path.exists(bin_build_path):
+                os.remove(bin_build_path)
 
         self.run.info("New database", bin_db_path)
 

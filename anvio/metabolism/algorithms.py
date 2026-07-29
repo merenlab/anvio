@@ -17,7 +17,10 @@ from anvio.metabolism.constants import STRAY_KO_ANVIO_SUFFIX
 class KeggEstimationAlgorithms:
     """Core estimation algorithms for KEGG metabolism."""
 
-    def __init__(self, run=terminal.Run(), progress=terminal.Progress(), add_copy_number=False):
+    def __init__(self, run=terminal.Run(), progress=terminal.Progress(), add_copy_number=True):
+        """Note: the add_copy_number parameter indicates whether the process calling this function will be
+        reporting copy numbers in its output. Here it is used to control whether or not a particular warning
+        related to the copy number calculation is displayed."""
         self.run = run
         self.progress = progress
         self.add_copy_number = add_copy_number
@@ -1034,6 +1037,11 @@ class KeggEstimationAlgorithms:
         for mod in metabolism_dict_for_list_of_splits.keys():
             self.compute_module_redundancy_for_bin(mod, metabolism_dict_for_list_of_splits)
 
+        # normalize module copy number into per-population copy number, now that copy number is finalized
+        if self.add_per_population_copy_number:
+            for mod in metabolism_dict_for_list_of_splits.keys():
+                self.compute_per_population_copy_number_for_bin(mod, metabolism_dict_for_list_of_splits)
+
 
         # notify user of the modules that gave some fishy results -- but only for genome mode because it's too wordy otherwise
         if not quiet and genome_mode:
@@ -1444,7 +1452,7 @@ class KeggEstimationAlgorithms:
 
 
     def get_dereplicated_enzyme_hits_for_step_in_module(self, meta_dict_for_mnum, step_to_focus_on, mnum,
-                                                       add_copy_number=False):
+                                                       add_copy_number=True):
         """This function returns a dictionary of enzyme accessions matched to the number of hits, with duplicate hits to the
         same gene removed, for the provided step in a metabolic pathway.
 
@@ -1576,6 +1584,41 @@ class KeggEstimationAlgorithms:
 
         module_stepwise_copy_num = min(all_step_copy_nums)
         meta_dict_for_bin[mnum]["stepwise_copy_number"] = module_stepwise_copy_num
+
+
+    def compute_per_population_copy_number_for_bin(self, mnum, meta_dict_for_bin):
+        """This function computes the per-population copy number (PPCN) of the specified module, for both the
+        pathwise and stepwise module copy number.
+
+        PPCN normalizes module copy number by `self.num_populations`, the estimated number of populations in the
+        (meta)genome (see `KeggDataLoader.get_num_populations_for_contigs_db`), so that copy number becomes
+        comparable across (meta)genome assemblies representing communities of different sizes. This function should
+        only be called when `self.add_per_population_copy_number` is True, and only after module copy number has
+        been finalized for the bin (ie, after any adjustments for modules defined by other modules).
+
+        PARAMETERS
+        ==========
+        mnum : string
+            module number to work on
+        meta_dict_for_bin : dictionary of dictionaries
+            metabolism completeness dict for the current bin, to be modified in-place
+
+        NEW KEYS ADDED TO METABOLISM COMPLETENESS DICT
+        =======
+        "pathwise_ppcn"      per-population copy number, computed from the pathwise module copy number
+        "stepwise_ppcn"      per-population copy number, computed from the stepwise module copy number
+        """
+
+        if not self.num_populations:
+            meta_dict_for_bin[mnum]["pathwise_ppcn"] = 'NA'
+            meta_dict_for_bin[mnum]["stepwise_ppcn"] = 'NA'
+            return
+
+        pathwise_copy_number = meta_dict_for_bin[mnum]["pathwise_copy_number"]
+        meta_dict_for_bin[mnum]["pathwise_ppcn"] = pathwise_copy_number / self.num_populations if pathwise_copy_number != 'NA' else 'NA'
+
+        stepwise_copy_number = meta_dict_for_bin[mnum]["stepwise_copy_number"]
+        meta_dict_for_bin[mnum]["stepwise_ppcn"] = stepwise_copy_number / self.num_populations if stepwise_copy_number is not None else 'NA'
 
 
 ## STATIC FUNCTIONS

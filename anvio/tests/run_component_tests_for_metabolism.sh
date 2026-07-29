@@ -61,13 +61,13 @@ anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
                          --kegg-data-dir $kegg_data_dir
 SHOW_FILE single_contigs_db_modules.txt
 
-INFO "Estimating metabolism using metagenome mode"
+INFO "Estimating metabolism using per-contig estimates"
 anvi-estimate-metabolism -c CONTIGS.db \
-                         --metagenome-mode \
-                         -O metagenome_mode \
+                         --per-contig-estimates \
+                         -O per_contig_estimates \
                          --no-progress \
                          --kegg-data-dir $kegg_data_dir
-SHOW_FILE metagenome_mode_modules.txt
+SHOW_FILE per_contig_estimates_modules.txt
 
 INFO "Estimating metabolism on a collection"
 anvi-estimate-metabolism -c CONTIGS.db \
@@ -112,8 +112,17 @@ anvi-estimate-metabolism -i internal-genomes.txt \
                          --kegg-data-dir $kegg_data_dir
 SHOW_FILE internal_modules.txt
 
-INFO "Estimating metabolism on metagenomes file"
-anvi-estimate-metabolism -M metagenomes.txt \
+INFO "Estimating metabolism on internal genomes with --per-contig-estimates"
+anvi-estimate-metabolism -i internal-genomes.txt \
+                         --per-contig-estimates \
+                         -O internal_per_contig \
+                         --no-progress \
+                         --kegg-data-dir $kegg_data_dir
+SHOW_FILE internal_per_contig_modules.txt
+
+INFO "Estimating metabolism on a genomes file with --per-contig-estimates"
+anvi-estimate-metabolism -e metagenomes.txt \
+                         --per-contig-estimates \
                          -O metagenomes \
                          --no-progress \
                          --kegg-data-dir $kegg_data_dir
@@ -280,10 +289,10 @@ anvi-estimate-metabolism -c CONTIGS.db \
 SHOW_FILE collection_coverage_modules.txt
 SHOW_FILE collection_coverage_hits.txt
 
-INFO "Testing --add-coverage for metagenome mode"
+INFO "Testing --add-coverage for per-contig estimates"
 anvi-estimate-metabolism -c CONTIGS.db \
                          -p PROFILE.db \
-                         --metagenome-mode \
+                         --per-contig-estimates \
                          -O metagenome_coverage \
                          --add-coverage \
                          --output-modes modules,hits \
@@ -311,40 +320,9 @@ anvi-estimate-metabolism -c CONTIGS.db \
                          --kegg-data-dir $kegg_data_dir
 SHOW_FILE modules_custom_coverage_modules_custom.txt
 
-
 ## COPY NUMBER TESTS
-INFO "Testing --add-copy-number in long-format output"
+INFO "Generating custom output with copy number headers (including path-level headers)"
 anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
-                         -O copy_num \
-                         --add-copy-number \
-                         --output-modes modules,module_paths,module_steps \
-                         --no-progress \
-                         --kegg-data-dir $kegg_data_dir
-SHOW_FILE copy_num_modules.txt
-SHOW_FILE copy_num_module_paths.txt
-SHOW_FILE copy_num_module_steps.txt
-
-INFO "Testing --add-copy-number in matrix output"
-anvi-estimate-metabolism -e external-genomes.txt \
-                         -O copy_num \
-                         --add-copy-number \
-                         --matrix-format \
-                         --no-progress \
-                         --kegg-data-dir $kegg_data_dir
-SHOW_FILE copy_num-module_pathwise_copy_number-MATRIX.txt
-SHOW_FILE copy_num-module_stepwise_copy_number-MATRIX.txt
-SHOW_FILE copy_num-step_copy_number-MATRIX.txt
-
-INFO "Listing custom output headers with --add-copy-number enabled"
-anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
-                         --add-copy-number \
-                         --list-available-output-headers \
-                         --no-progress \
-                         --kegg-data-dir $kegg_data_dir
-
-INFO "Generating custom output with --add-copy-number enabled (including path-level headers)"
-anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
-                          --add-copy-number \
                           --output-modes modules_custom \
                           -O modules_custom_copynum_path \
                           --custom-output-headers module,path,pathwise_copy_number,num_complete_copies_of_path,stepwise_copy_number,per_step_copy_numbers \
@@ -352,15 +330,53 @@ anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
                          --kegg-data-dir $kegg_data_dir
 SHOW_FILE modules_custom_copynum_path_modules_custom.txt
 
-INFO "Generating custom output with --add-copy-number enabled (including step-level headers)"
+INFO "Generating custom output with copy number headers (including step-level headers)"
 anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
-                          --add-copy-number \
                           --output-modes modules_custom \
                           -O modules_custom_copynum_step \
                           --custom-output-headers module,step,pathwise_copy_number,stepwise_copy_number,per_step_copy_numbers,step_copy_number \
                           --no-progress \
                          --kegg-data-dir $kegg_data_dir
 SHOW_FILE modules_custom_copynum_step_modules_custom.txt
+
+
+## PER-POPULATION COPY NUMBER (PPCN) TESTS
+INFO "Estimating metabolism with --add-per-population-copy-number on a single contigs database"
+anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
+                         --add-per-population-copy-number \
+                         -O ppcn_single \
+                         --no-progress \
+                         --kegg-data-dir $kegg_data_dir
+SHOW_FILE ppcn_single_modules.txt
+
+INFO "Estimating metabolism with --add-per-population-copy-number on external genomes"
+anvi-estimate-metabolism -e external-genomes.txt \
+                         --add-per-population-copy-number \
+                         -O ppcn_external \
+                         --no-progress \
+                         --kegg-data-dir $kegg_data_dir
+SHOW_FILE ppcn_external_modules.txt
+SHOW_FILE ppcn_external-POPULATION-ESTIMATES.txt
+
+INFO "Generating matrix output with --add-per-population-copy-number on external genomes"
+anvi-estimate-metabolism -e external-genomes.txt \
+                         --add-per-population-copy-number \
+                         --matrix-format \
+                         -O ppcn_matrix \
+                         --no-progress \
+                         --kegg-data-dir $kegg_data_dir
+SHOW_FILE ppcn_matrix-module_pathwise_ppcn-MATRIX.txt
+SHOW_FILE ppcn_matrix-module_stepwise_ppcn-MATRIX.txt
+
+INFO "Generating custom output with PPCN headers"
+anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
+                          --add-per-population-copy-number \
+                          --output-modes modules_custom \
+                          -O modules_custom_ppcn \
+                          --custom-output-headers module,pathwise_copy_number,pathwise_ppcn,stepwise_copy_number,stepwise_ppcn \
+                          --no-progress \
+                         --kegg-data-dir $kegg_data_dir
+SHOW_FILE modules_custom_ppcn_modules_custom.txt
 
 
 ## ENZYMES TXT TESTS

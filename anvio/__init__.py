@@ -817,10 +817,21 @@ D = {
             ['-m', '--metagenome-mode'],
             {'default': False,
              'action': 'store_true',
-             'help': "[PER-CONTIG ESTIMATION] Treat a given contigs database as an unbinned metagenome rather than "
-                     "treating it as a single genome. Since we don't know which contigs go together, we'll estimate "
-                     "metabolism for each contig independently. Can be resource-intensive (particularly with memory). "
-                     "Not recommended to combine with --matrix-format or --get-raw-data-as-json."}
+             'help': "Treat a given contigs database as an unbinned metagenome rather than "
+                     "treating it as a single genome."}
+                ),
+    'per-contig-estimates': (
+            ['--per-contig-estimates'],
+            {'default': False,
+             'action': 'store_true',
+             'dest': 'metagenome_mode',
+             'help': "Treat each contigs database as an unbinned metagenome rather than treating it as a single "
+                     "genome, and estimate metabolism for each contig independently rather than for the (meta)genome "
+                     "as a whole. Since we don't know which contigs go together, we'll estimate metabolism for each "
+                     "contig independently. This flag is compatible with individual contigs databases, external genomes, "
+                     "or internal genomes input. However, please note that it can be resource-intensive (particularly with "
+                     " memory). It is therefore NOT recommended to combine this flag with --matrix-format or "
+                     "--get-raw-data-as-json when analyzing very large metagenomes."}
                 ),
     'scg-name-for-metagenome-mode': (
             ['-S','--scg-name-for-metagenome-mode'],
@@ -1910,12 +1921,51 @@ D = {
             {'metavar': 'FILE_PATH',
              'help': "Text file for gene clusters (each line should contain be a unique gene cluster id)."}
                 ),
+    'gene-cluster-ids': (
+            ['--gene-cluster-ids'],
+            {'metavar': 'GENE_CLUSTER_IDS',
+             'type': str,
+             'help': "Gene cluster ids to focus on. Multiple of them can be declared, separated by a comma "
+                     "(e.g., --gene-cluster-ids GC_00000001,GC_00000002). This is the gene-cluster analogue of "
+                     "--gene-caller-ids. If you declare nothing, anvi'o may assume all of them, depending on the "
+                     "program."}
+                ),
+    'gene-clusters-of-interest': (
+            ['--gene-clusters-of-interest'],
+            {'metavar': 'FILE',
+             'help': "A file with anvi'o gene cluster ids. There should be only one column in the file, and each "
+                     "line should correspond to a unique gene cluster id (without a column header). This is the "
+                     "gene-cluster analogue of --genes-of-interest."}
+                ),
+    'select-representative': (
+            ['--select-representative'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Instead of selecting every gene in each gene cluster of interest, select a single "
+                     "representative gene per gene cluster. Anvi'o picks the representative using a medoid-based "
+                     "strategy over the aligned amino acid sequences (it discards length outliers and prefers "
+                     "complete gene calls), so this requires a pangenome for which gene-cluster alignments were "
+                     "computed. The representative is a real gene from the cluster (not a consensus sequence)."}
+                ),
     'split-output-per-gene-cluster': (
             ['--split-output-per-gene-cluster'],
             {'default': False,
              'action': 'store_true',
              'help': "If/when there are more than one gene clusters to report, put each gene cluster into a "
                      "separate FASTA file."}
+                ),
+    'representative-sequences': (
+            ['--representative-sequences'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Instead of reporting every gene sequence in each gene cluster, report a single "
+                     "representative amino acid sequence per gene cluster. Anvi'o picks the representative "
+                     "using a medoid-based strategy: it discards length outliers, prefers complete "
+                     "(non-partial) gene calls, and selects the sequence that is most similar to the others "
+                     "in the cluster. The resulting FASTA uses gene cluster names as deflines and contains "
+                     "no gap characters. This flag requires a pangenome for which gene alignments were computed "
+                     "(i.e., not created with `--skip-alignments`), and cannot be combined with "
+                     "`--concatenate-gene-clusters` or `--report-DNA-sequences`."}
                 ),
     'bin-id': (
             ['-b', '--bin-id'],
@@ -2405,6 +2455,34 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Just store the raw output without any processing of the primary data structure."}
+                ),
+    'tree-output': (
+            ['--tree-output'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Rather than showing you a table where each row describes the entire lineage of a single "
+                     "item, display the results as a hierarchical tree in your terminal, where each node shows "
+                     "the number of items that were assigned to that taxon or to anything under it. This is a "
+                     "much better way to get a quick sense of the taxonomic make up of a metagenome (based on "
+                     "SCGs, anticodons, or who knows what else, since the items will depend on the program "
+                     "you use and your parameters). Declaring this flag will not influence any of the output "
+                     "files you may have asked for. While they will continue describing the very same results "
+                     "in their usual TAB-delimited fashion, this flag will add more fabulous to your terminal."}
+                ),
+    # NOTE: the default here is None rather than 't_genus' even though 't_genus' is the effective default
+    # (which lives in the class `TaxonomyTree`). This is the case just to make sure anvi'o can know if
+    # the user has EXPLICITLY asked for a taxonomic level, so it CAN complain confidently if they did it
+    # without also asking for a tree :) This is how we lay the path that leads to high quality complaints,
+    # of which we obviously are very proud :p
+    'tree-output-level': (
+            ['--tree-output-level'],
+            {'default': None,
+             'type': str,
+             'choices': constants.levels_of_taxonomy,
+             'help': "The deepest taxonomic level to show when you are asking for a tree with `--tree-output`. "
+                     "The default is 't_genus', which means the tree will not show you species names. Please "
+                     "note that this parameter has nothing to do with the parameter `--taxonomic-level`, and it "
+                     "will only influence the tree that is displayed in your terminal."}
                 ),
     'dry-run': (
             ['--dry-run'],
@@ -3025,14 +3103,6 @@ D = {
              'action': 'store_true',
              'help': "Use this flag to request that coverage and detection values be added as columns in long-format "
                      "output files. You must provide the profile database corresonding to your contigs db for this to work."}
-                ),
-    'add-copy-number': (
-            ['--add-copy-number'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "Use this flag to request that module copy number (the number of complete copies of a module, or path "
-                     "through a module) be added to your output files. In long-format mode, it will be an additional column. "
-                     "In matrix mode, it will be an additional matrix file."}
                 ),
     'include-kos-not-in-kofam': (
             ['--include-kos-not-in-kofam'],

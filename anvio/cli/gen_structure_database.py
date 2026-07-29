@@ -20,12 +20,12 @@ __resources__ = [("A conceptual tutorial on the structural biology capabilities 
                   "http://merenlab.org/2018/09/04/structural-biology-with-anvio/"),
                  ("A practical tutorial section in the infant gut tutorial",
                   "http://merenlab.org/tutorials/infant-gut/#chapter-vii-linking-genomic-heterogeneity-to-protein-structures")]
-__requires__ = ['contigs-db']
-__can_use__ = ['pdb-db', 'genes-of-interest-txt']
+__requires__ = ['contigs-db', 'pan-db', 'genomes-storage-db']
+__can_use__ = ['pdb-db', 'genes-of-interest-txt', 'external-structures']
 __provides__ = ['structure-db']
-__description__ = ("Creates a database of protein structures. Predict protein structures for genes in "
-                   "your contigs database using either template-based homology modelling (MODELLER) or "
-                   "AlphaFold2 (ColabFold), or import pre-computed PDB structures you already have.")
+__description__ = ("Creates a database of protein structures. Predict protein structures for the genes of a "
+                   "contigs database or a pangenome using either template-based homology modelling (MODELLER) "
+                   "or AlphaFold2 (ColabFold), or import pre-computed PDB structures you already have.")
 
 
 @terminal.time_program
@@ -49,8 +49,14 @@ def main():
 def get_args():
     parser = ArgumentParser(description=__description__)
 
-    groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
-    groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first. Provide '
+                                       'EITHER a contigs database (structures for its genes) OR a pangenome (--pan-db '
+                                       'plus its --genomes-storage; structures for the genes of your gene clusters).')
+    groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    # --pan-db is declared without its usual '-p' short flag here because '-p' is already taken by
+    # MODELLER's --percent-cutoff in this program.
+    groupD.add_argument('--pan-db', **anvio.K('pan-db', {'required': False}))
+    groupD.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
     groupD.add_argument("--pdb-db", type=str, default=None, help =
                         """By default, this program accesses the structure files it needs from an
                         internal anvi'o database that can be set up with anvi-setup-pdb-database. If
@@ -59,9 +65,13 @@ def get_args():
                         created a database and b) it exists in a custom location. In this case,
                         please provide that path here. Otherwise we vibing.""")
 
-    groupG = parser.add_argument_group('GENES', 'Specifying which genes you want structures for.')
+    groupG = parser.add_argument_group('GENES', 'Specifying which genes you want structures for. The first two options '
+                                       'apply to a contigs-db input; the last three apply to a pangenome input.')
     groupG.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
     groupG.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
+    groupG.add_argument(*anvio.A('gene-clusters-of-interest'), **anvio.K('gene-clusters-of-interest'))
+    groupG.add_argument(*anvio.A('gene-cluster-ids'), **anvio.K('gene-cluster-ids'))
+    groupG.add_argument(*anvio.A('select-representative'), **anvio.K('select-representative'))
 
     groupO = parser.add_argument_group('OUTPUT', 'Output file and output style.')
     groupO.add_argument(*anvio.A('output-db-path'), **anvio.K('output-db-path'))
@@ -186,6 +196,21 @@ def get_args():
                         it with an equals sign so it is not mistaken for anvi'o's own flags, e.g.
                         --colabfold-additional-parameters="--num-seeds 2 --use-dropout". Anvi'o does not validate
                         these, so use with care.""")
+    groupC.add_argument("--only-msa", action='store_true', help =
+                        """Run only ColabFold's multiple sequence alignment (MSA) step and stop, writing the MSAs
+                        and a small checkpoint manifest into --dump-dir. This creates a resumable checkpoint so
+                        you can run the CPU-heavy MSA step and the GPU-heavy prediction step separately (e.g. on
+                        different cluster nodes). This only works with a local ColabFold database (--colabfold-db):
+                        the public MSA server (--colabfold-msa-server) generates the MSA and predicts the structure
+                        in a single step that cannot be split. No structure database is produced in this mode; you
+                        finish the job later with --only-predict. Requires --dump-dir.""")
+    groupC.add_argument("--only-predict", action='store_true', help =
+                        """Skip the MSA step and predict structures from an MSA checkpoint that an earlier
+                        --only-msa run wrote to --dump-dir, then build the structure database. You must provide the
+                        SAME --contigs-db and genes of interest as the --only-msa run: anvi'o verifies that the
+                        sequences match the checkpoint before predicting, and refuses to continue if they do not.
+                        Requires --dump-dir (pointing at the --only-msa output); the structure database goes to -o
+                        (default STRUCTURE.db). Mutually exclusive with --only-msa.""")
 
     groupImport = parser.add_argument_group('IMPORT STRUCTURES', 'Instead of predicting structures, import '
                                             'pre-computed ones. This bypasses the --engine choice entirely.')
