@@ -172,6 +172,26 @@ def get_terminal_size():
     return int(cr[1]), int(cr[0])
 
 
+def stdout_supports_unicode():
+    """Whether the output stream can encode fancy characters, such as box-drawing glyphs.
+
+    Please note that this is a completely different question from `sys.stdout.isatty()`, which is
+    what anvi'o asks before it uses colors (see `ttycolors.color_text`) or draws progress bars (see
+    the class `Progress`). Being attached to a terminal has nothing to do with being able to encode
+    a character: a file anvi'o writes to through a pipe holds box-drawing characters perfectly well
+    even though it is not a terminal, while an ASCII terminal would raise a `UnicodeEncodeError` the
+    moment anvi'o tried to print one. So please don't 'fix' this function to use `isatty`.
+
+    Being a bit lax about how the encoding is spelled is intentional: Python reports it as anything
+    from 'utf-8' to 'UTF8' depending on the platform, and it can also be None when stdout has been
+    replaced with something that doesn't bother to declare one.
+    """
+
+    encoding = sys.stdout.encoding or ''
+
+    return encoding.lower().replace('-', '').replace('_', '') == 'utf8'
+
+
 def clear_progress_line():
     null = '\r' + ' ' * (get_terminal_width())
     sys.stderr.write(null)
