@@ -895,7 +895,10 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
         if self.update_profile_db_with_taxonomy:
             self.add_taxonomy_as_additional_layer_data(items_taxonomy_super_dict)
 
-        self.print_items_taxonomy_super_dict(items_taxonomy_super_dict)
+        if self.tree_output:
+            self.print_items_taxonomy_tree(items_taxonomy_super_dict)
+        else:
+            self.print_items_taxonomy_super_dict(items_taxonomy_super_dict)
 
         if self.output_file_path:
             self.store_items_taxonomy_super_dict(items_taxonomy_super_dict)
@@ -984,6 +987,42 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
             table = sorted(table, key=lambda x: (int(x[1]), int(x[2])), reverse=True)
 
         anvio.TABULATE(table, header)
+
+
+    def print_items_taxonomy_tree(self, items_taxonomy_super_dict):
+        """Display taxonomy as a hierarchical tree rather than a table.
+
+        This is what happens instead of `print_items_taxonomy_super_dict` when the user asks for
+        `--tree-output`. The two functions consume the exact same data, and differ only in how they
+        show it. See the class `TaxonomyTree` for the details of the display itself.
+        """
+
+        self.progress.reset()
+
+        if self.collection_name:
+            self.run.warning(None, header='Taxa in collection "%s"' % self.collection_name, lc="green")
+            unit = 'bins'
+        elif self.metagenome_mode:
+            self.run.warning(None, header='Taxa in metagenome "%s"' % self.contigs_db_project_name, lc="green")
+
+            # in metagenome mode everything in this tree is a copy of a single item -- the one anvi'o
+            # was told to use, or the most frequent one it settled on by itself. by the time we are
+            # here that choice has already been made, so we can be specific about it rather than
+            # implying that the tree covers every item in the contigs database.
+            unit = f"{self.item_name_for_metagenome_mode} copies" if self.item_name_for_metagenome_mode else self._ITEMS
+        else:
+            self.run.warning(None, header='Taxa in "%s"' % self.contigs_db_project_name, lc="green")
+            unit = 'genomes'
+
+        d = self.get_print_friendly_items_taxonomy_super_dict(items_taxonomy_super_dict)
+
+        taxonomy_tree = TaxonomyTree(d,
+                                     max_taxonomic_level=self.tree_output_level or 't_genus',
+                                     coverage_key='coverages' if self.compute_item_coverages else None,
+                                     unit=unit,
+                                     run=self.run)
+
+        taxonomy_tree.print_tree()
 
 
     def store_items_taxonomy_super_dict(self, items_taxonomy_super_dict):
