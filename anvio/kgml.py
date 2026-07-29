@@ -23,7 +23,7 @@ from io import StringIO
 from argparse import Namespace
 from Bio.KEGG.KGML import KGML_parser
 from Bio.Graphics.KGML_vis import KGMLCanvas
-from matplotlib.colors import Colormap, rgb2hex
+from matplotlib.colors import Colormap, rgb2hex, to_hex
 
 from typing import Dict, Iterable, List, Literal, Tuple, Union
 
@@ -45,6 +45,73 @@ __version__ = VERSION
 __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
 __status__ = "Development"
+
+
+def canonical_color(color: Union[str, None]) -> Union[str, None]:
+    """
+    Return a color in the single form used for storing and comparing colors.
+
+    Hex codes are case-insensitive, and one color can be written in more than one way besides: with
+    an alpha channel, in three-digit shorthand, or by name. Colors are canonicalized wherever they
+    are stored in the 'color_priority' attribute of a Pathway or compared against it, because two
+    spellings of one color must not be taken for two colors. Without this, an entry colored
+    '#FFFFFF' would not match a priority registered as '#ffffff': it would be treated as
+    unprioritized, and then recolored into the background, rendering it invisible.
+
+    Parameters
+    ==========
+    color : Union[str, None]
+        A color, or None for a Graphics attribute that is not set.
+
+    Returns
+    =======
+    Union[str, None]
+        The color as a lowercase six-digit hex code. None is returned unchanged, as is a string
+        Matplotlib does not recognize as a color, so that an unusable value is reported by whatever
+        consumes it rather than here.
+    """
+    # Only hex codes are canonicalized. Matplotlib would also read a bare number as a shade of gray
+    # and a word as a named color, but KGML files use neither for colors and do use such values for
+    # other purposes -- '0' marks a reaction that is not highlighted -- so anything that is not a
+    # hex code is left exactly as it is rather than being reinterpreted as a color.
+    if not isinstance(color, str) or not color.startswith('#'):
+        return color
+    try:
+        return to_hex(color)
+    except ValueError:
+        return color.lower()
+
+def reserved_recolor_colors(
+    recolor: Literal['w', 'g'],
+    is_overview_map: bool
+) -> Dict[str, str]:
+    """
+    Return the colors that automatic recoloring gives unprioritized entries, by Entry type.
+
+    These colors are reserved: an entry that is colored one of them cannot be told apart from the
+    unprioritized entries of the base map, so 'recolor_unprioritized_entries' refuses to recolor
+    when a prioritized entry already holds one. Exposing them here lets a caller check its own
+    colors against them BEFORE any map is drawn, rather than discovering the clash part way through.
+
+    Parameters
+    ==========
+    recolor : Literal['w', 'g']
+        The automatic recoloring scheme: 'w' erases unprioritized entries into the base map's own
+        white or black, and 'g' colors them light gray.
+
+    is_overview_map : bool
+        Whether the map is an overview map, whose unidentified reactions are black rather than
+        white.
+
+    Returns
+    =======
+    Dict[str, str]
+        Keys are Entry types ('ortholog', 'compound'), values are the reserved color hex codes.
+    """
+    assert recolor in ('w', 'g')
+    if recolor == 'g':
+        return {'ortholog': '#E0E0E0', 'compound': '#E0E0E0'}
+    return {'ortholog': '#000000' if is_overview_map else '#FFFFFF', 'compound': '#FFFFFF'}
 
 class Element:
     """
@@ -117,7 +184,10 @@ class Pathway(Element):
 
     color_priority : Dict[str, Dict[str, Dict[Tuple[str, str], float]]]
         This defines the order of entry graphics by foreground and background color. Set this
-        attribute with the method, set_color_priority.
+        attribute with the method, set_color_priority, which is what keeps its color keys canonical
+        ('canonical_color'): the lookups against it canonicalize the colors they are given, so keys
+        written in another form -- upper case, an alpha channel, a color name — would not be found,
+        and the entries holding those colors would lose their priority and be recolored away.
 
         Outermost dictionary keys are Entry types, any of the possible values of the type attribute
         of the Entry class, e.g., 'ortholog' and 'compound'. Middle dict keys are Graphics types,
@@ -320,7 +390,9 @@ class Pathway(Element):
                 for colors, priority in sorted(
                     new_graphics_color_priority.items(), key=lambda item: item[1]
                 ):
-                    graphics_type_color_priority[colors] = priority
+                    graphics_type_color_priority[
+                        tuple(canonical_color(color) for color in colors)
+                    ] = priority
         self.color_priority = color_priority
 
         # Reorder Entry elements in the children attribute from lowest to highest priority.
@@ -330,25 +402,14 @@ class Pathway(Element):
             if isinstance(recolor_unprioritized_entries, str):
                 assert recolor_unprioritized_entries in ('w', 'g')
 
-                # Recolor orthologs.
-                if recolor_unprioritized_entries == 'w':
-                    if self.is_overview_map:
-                        color_hex_code = '#000000'
-                    else:
-                        color_hex_code = '#FFFFFF'
-                elif recolor_unprioritized_entries == 'g':
-                    color_hex_code = '#E0E0E0'
-                self.recolor_unprioritized_ortholog_entries(
-                    unprioritized_entry_uuids, color_hex_code
+                reserved = reserved_recolor_colors(
+                    recolor_unprioritized_entries, self.is_overview_map
                 )
-
-                # Recolor compounds.
-                if recolor_unprioritized_entries == 'w':
-                    color_hex_code = '#FFFFFF'
-                elif recolor_unprioritized_entries == 'g':
-                    color_hex_code = '#E0E0E0'
+                self.recolor_unprioritized_ortholog_entries(
+                    unprioritized_entry_uuids, reserved['ortholog']
+                )
                 self.recolor_unprioritized_compound_entries(
-                    unprioritized_entry_uuids, color_hex_code
+                    unprioritized_entry_uuids, reserved['compound']
                 )
             else:
                 self.recolor_unprioritized_entries(
@@ -365,12 +426,11 @@ class Pathway(Element):
         # Recolor compounds that have not been assigned a color priority.
         if recolor_unprioritized_entries:
             if isinstance(recolor_unprioritized_entries, str):
-                if recolor_unprioritized_entries == 'w':
-                    color_hex_code = '#FFFFFF'
-                elif recolor_unprioritized_entries == 'g':
-                    color_hex_code = '#E0E0E0'
                 self.recolor_unprioritized_compound_entries(
-                    unprioritized_entry_uuids, color_hex_code
+                    unprioritized_entry_uuids,
+                    reserved_recolor_colors(
+                        recolor_unprioritized_entries, self.is_overview_map
+                    )['compound']
                 )
             else:
                 self.recolor_unprioritized_entries(
@@ -440,7 +500,9 @@ class Pathway(Element):
 
                 graphics_type = graphics_types[0]
                 try:
-                    priority = entry_type_color_priority[graphics_type][(fgcolors[0], bgcolors[0])]
+                    priority = entry_type_color_priority[graphics_type][
+                        (canonical_color(fgcolors[0]), canonical_color(bgcolors[0]))
+                    ]
                 except KeyError:
                     # The Entry does not have colors in the priority dictionary.
                     priority = -1.0
@@ -573,11 +635,17 @@ class Pathway(Element):
                     graphics_type_color_priority = entry_type_color_priority[graphics_type]
                 except KeyError:
                     continue
-                if graphics_type_colors in graphics_type_color_priority:
+                # The keys of 'color_priority' are canonical ('set_color_priority'), so the recolor
+                # pair is canonicalized to match: the reserved colors here are written in upper case
+                # while colormap-sampled colors arrive in lower case.
+                if tuple(
+                    canonical_color(color) for color in graphics_type_colors
+                ) in graphics_type_color_priority:
                     raise ConfigError(
-                        "Unprioritized entry graphics cannot be assigned the same combination of "
-                        "foreground and background colors as prioritized entries of the same entry "
-                        "and graphics types."
+                        f"Unprioritized entry graphics cannot be assigned the same combination of "
+                        f"foreground and background colors as prioritized entries of the same entry "
+                        f"and graphics types. This occurred for '{entry_type}' entries with "
+                        f"'{graphics_type}' graphics."
                     )
 
         for entry_uuid in unprioritized_entry_uuids:
@@ -674,7 +742,9 @@ class Pathway(Element):
             fgcolor = fgcolors[0]
             bgcolor = bgcolors[0]
             try:
-                priority = self.color_priority['ortholog'][graphics_type][(fgcolor, bgcolor)]
+                priority = self.color_priority['ortholog'][graphics_type][
+                    (canonical_color(fgcolor), canonical_color(bgcolor))
+                ]
             except KeyError:
                 # Unprioritized ortholog entries do not affect the color of associated compounds.
                 continue
@@ -773,7 +843,9 @@ class Pathway(Element):
                 try:
                     # The compound Entry has already been assigned a color priority, so don't
                     # recolor it automatically.
-                    self.color_priority['compound']['circle'][(graphics.fgcolor, graphics.bgcolor)]
+                    self.color_priority['compound']['circle'][
+                        (canonical_color(graphics.fgcolor), canonical_color(graphics.bgcolor))
+                    ]
                     set_color = False
                 except KeyError:
                     continue
@@ -796,10 +868,17 @@ class Pathway(Element):
                 graphics_type_color_priority = entry_type_color_priority['circle']
             except KeyError:
                 entry_type_color_priority['circle'] = graphics_type_color_priority = {}
+            # Canonical keys, as 'set_color_priority' writes: this dictionary is written here rather
+            # than through that method, and the lookups against it canonicalize the colors they are
+            # given, so a key in any other form would never be found.
             if self.is_global_map:
-                graphics_type_color_priority[(compound_color, compound_color)] = compound_priority
+                graphics_type_color_priority[
+                    (canonical_color(compound_color), canonical_color(compound_color))
+                ] = compound_priority
             else:
-                graphics_type_color_priority[(graphics.fgcolor, compound_color)] = compound_priority
+                graphics_type_color_priority[
+                    (canonical_color(graphics.fgcolor), canonical_color(compound_color))
+                ] = compound_priority
 
     def get_entries(
         self,

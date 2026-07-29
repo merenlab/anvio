@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Make KEGG pathway maps incorporating data sourced from anvi'o databases."""
+"""Make KEGG pathway maps incorporating data sourced from external inputs."""
 
 import os
 import re
@@ -7,7 +7,6 @@ import fitz
 import json
 import math
 import shutil
-import functools
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -15,17 +14,15 @@ import matplotlib.colors as mcolors
 
 from argparse import Namespace
 from itertools import combinations
-from typing import Dict, Iterable, List, Literal, Set, Tuple, Union
+from typing import Callable, Dict, Iterable, List, Literal, Set, Tuple, Union
 
 import anvio.kgml as kgml
 import anvio.utils as utils
 import anvio.dbinfo as dbinfo
 import anvio.terminal as terminal
-import anvio.reactionnetwork as rn
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.genomestorage import GenomeStorage
 from anvio.dbops import ContigsDatabase, PanSuperclass
 from anvio import FORCE_OVERWRITE, QUIET, __version__ as VERSION
 
@@ -64,9 +61,53 @@ repeating_colormaps: List[str] = [
     'prism'
 ]
 
+# Functions for reducing a sequence of numeric values to a single value in quantitative coloring.
+# Keys match the recommended choices of the '--*-gene-aggregation'/'--*-accession-aggregation'
+# arguments, which reduce the values of a gene's rows into a per-accession value and the values of a
+# map element's accessions into a per-element value, both within a sample; they also match the
+# recommended value choices of the '--*-sample-summary'/'--*-group-summary' arguments, which pool the
+# values of a set of samples or a set of sample groups. Any other pandas aggregation name is also
+# accepted, resolved by '_resolve_aggregation'.
+#
+# These functions are fast paths that MUST compute the same statistic as the pandas aggregation of
+# the same name, agreeing to floating-point precision (the two sum in different orders, so the last
+# bit can differ). Per-accession values are computed by pandas ('_aggregate_accession_quantities'
+# reduces a gene's rows with 'groupby.agg(name)') while every other level of the hierarchy applies
+# these functions to a list, so were the two to disagree, one argument would silently mean two
+# different statistics at different levels. Hence 'std' is the sample standard deviation (ddof=1), as
+# in pandas, which is undefined for a single value: an undefined result means the accession or
+# element has no value here, so it is dropped ('_finite_values') and left uncolored.
+AGGREGATION_FUNCTIONS = {
+    'sum': lambda values: float(np.sum(values)),
+    'mean': lambda values: float(np.mean(values)),
+    'max': lambda values: float(np.max(values)),
+    'min': lambda values: float(np.min(values)),
+    'median': lambda values: float(np.median(values)),
+    'std': lambda values: float(np.std(values, ddof=1)) if len(values) > 1 else float('nan')
+}
+
+# The presence choices of the '--*-sample-summary'/'--*-group-summary' arguments, which summarize a
+# set of samples or groups by how many ('count') or exactly which ('membership') of them contain an
+# accession, mapped to the discrete colormap schemes that color them. These schemes are the choices of
+# '--discrete-colormap-scheme' and are unrelated to the sequential colormap that colors values
+# continuously; a summary named here is a presence summary, and any other is an aggregation of values.
+SUMMARY_DISCRETE_SCHEMES = {
+    'count': 'by_count',
+    'membership': 'by_membership'
+}
+
+# Subdirectories of the output directory, one per role a map file can have: the map pooling every
+# source, the map of one individual source, and the grid comparing them. Every name directly in the
+# output directory is therefore anvi'o's own, while the names that come from user data — samples,
+# contigs databases, genomes, groups — are confined to 'individual', where they cannot collide with
+# anything anvi'o creates for itself.
+UNIFIED_SUBDIR = 'unified'
+INDIVIDUAL_SUBDIR = 'individual'
+GRID_SUBDIR = 'grid'
+
 class Mapper:
     """
-    Make KEGG pathway maps incorporating data sourced from anvi'o databases.
+    Make KEGG pathway maps incorporating data sourced from external inputs.
 
     Attributes
     ==========
@@ -79,9 +120,6 @@ class Mapper:
     pathway_names : Dict[str, str]
         The names of all KEGG pathways, including those without files in the KEGG data directory.
         Keys are pathway ID numbers and values are pathway names.
-
-    rn_constructor : anvio.reactionnetwork.Constructor
-        Used for loading reaction networks from anvi'o databases.
 
     xml_ops : anvio.kgml.XMLOps
         Used for loading KGML files as pathway objects.
@@ -183,8 +221,6 @@ class Mapper:
             pathway_names[pathway_number[3:]] = pathway_name
         self.pathway_names = pathway_names
 
-        self.rn_constructor = rn.Constructor(kegg_dir=self.kegg_context.kegg_data_dir)
-
         self.xml_ops = kgml.XMLOps()
         self.drawer = kgml.Drawer(
             kegg_dir=self.kegg_context.kegg_data_dir, overwrite_output=overwrite_output
@@ -206,8 +242,8 @@ class Mapper:
         contigs_db: str,
         output_dir: str,
         pathway_numbers: Iterable[str] = None,
-        color_hexcode: str = '#2ca02c',
-        draw_maps_lacking_kos: bool = False
+        reaction_color: str = '#2ca02c',
+        draw_maps_lacking_data: bool = False
     ) -> Dict[str, bool]:
         """
         Draw pathway maps, highlighting KOs present in the contigs database.
@@ -225,14 +261,14 @@ class Mapper:
             Regex patterns to match the ID numbers of the drawn pathway maps. The default of None
             draws all available pathway maps in the KEGG data directory.
 
-        color_hexcode : str, '#2ca02c'
-            This is the color, by default green, for reactions containing contigs database KOs.
-            Alternatively to a color hex code, the string, 'original', can be provided to use the
-            original color scheme of the reference map. In global and overview maps, KOs are
-            represented in reaction lines. The foreground color of lines is set. In standard maps,
-            KOs are represented in boxes, the background color of which is set, or lines.
+        reaction_color : str, '#2ca02c'
+            This is the color, by default green, for reaction elements represented by contigs
+            database KOs. Alternatively to a color hex code, the string, 'original', can be provided
+            to use the original color scheme of the reference map. In global and overview maps, KOs
+            are represented in reaction lines. The foreground color of lines is set. In standard
+            maps, KOs are represented in boxes, the background color of which is set, or lines.
 
-        draw_maps_lacking_kos : bool, False
+        draw_maps_lacking_data : bool, False
             If False, by default, only draw maps containing any of the KOs in the contigs database.
             If True, draw maps regardless, meaning that nothing may be colored.
 
@@ -240,7 +276,7 @@ class Mapper:
         =======
         Dict[str, bool]
             Keys are pathway numbers. Values are True if the map was drawn, False if the map was not
-            drawn because it did not contain any of the select KOs and 'draw_maps_lacking_kos' was
+            drawn because it did not contain any of the select KOs and 'draw_maps_lacking_data' was
             False.
         """
         # Retrieve the IDs of all KO annotations in the contigs database.
@@ -261,24 +297,23 @@ class Mapper:
 
         drawn = self._map_kos_fixed_colors(
             ko_ids,
-            output_dir,
+            os.path.join(output_dir, UNIFIED_SUBDIR),
             pathway_numbers=pathway_numbers,
-            color_hexcode=color_hexcode,
-            draw_maps_lacking_kos=draw_maps_lacking_kos
+            color_hexcode=reaction_color,
+            draw_maps_lacking_data=draw_maps_lacking_data
         )
         count = sum(drawn.values()) if drawn else 0
         self.run.info("Number of maps drawn", count)
 
         return drawn
 
-
     def map_reaction_network_json_kos(
         self,
         json_path: str,
         output_dir: str,
         pathway_numbers: Iterable[str] = None,
-        color_hexcode: str = '#2ca02c',
-        draw_maps_lacking_kos: bool = False
+        reaction_color: str = '#2ca02c',
+        draw_maps_lacking_data: bool = False
     ) -> Dict[str, bool]:
         """
         Draw pathway maps highlighting KOs present in a reaction network JSON file.
@@ -299,16 +334,23 @@ class Mapper:
             Regex patterns to match the ID numbers of the drawn pathway maps. The default of None
             draws all available pathway maps in the KEGG data directory.
 
-        color_hexcode : str, '#2ca02c'
-            Color for reactions containing KOs from the JSON network. Can also be 'original'.
+        reaction_color : str, '#2ca02c'
+            This is the color, by default green, for reaction elements represented by KOs from the
+            network. Instead of a color hex code, the string, 'original', can be provided to use the
+            original color scheme of the reference map. In global and overview maps, KOs are
+            represented in reaction lines — the foreground color of lines is set. In standard maps,
+            KOs are represented in boxes — the background color of which is set — or lines.
 
-        draw_maps_lacking_kos : bool, False
-            If False, only draw maps containing any of the KOs in the network.
+        draw_maps_lacking_data : bool, False
+            If False, by default, only draw maps containing any of the KOs in the network. If True,
+            draw maps regardless, meaning that nothing may be colored.
 
         Returns
         =======
         Dict[str, bool]
-            Keys are pathway numbers. Values are True if the map was drawn, False if not.
+            Keys are pathway numbers. Values are True if the map was drawn, False if the map was not
+            drawn because it did not contain any of the select KOs and 'draw_maps_lacking_data' was
+            False.
         """
         filesnpaths.is_file_exists(json_path)
 
@@ -345,582 +387,1060 @@ class Mapper:
 
         drawn = self._map_kos_fixed_colors(
             ko_ids,
-            output_dir,
+            os.path.join(output_dir, UNIFIED_SUBDIR),
             pathway_numbers=pathway_numbers,
-            color_hexcode=color_hexcode,
-            draw_maps_lacking_kos=draw_maps_lacking_kos
+            color_hexcode=reaction_color,
+            draw_maps_lacking_data=draw_maps_lacking_data
         )
         count = sum(drawn.values()) if drawn else 0
         self.run.info("Number of maps drawn", count)
 
         return drawn
 
-
-    def map_enzymes_txt_kos(
+    def _read_element_txt(
         self,
-        enzymes_txt: str,
-        output_dir: str,
-        pathway_numbers: Iterable[str] = None,
-        color_hexcode: str = '#2ca02c',
-        draw_maps_lacking_kos: bool = False
-    ) -> Dict[str, bool]:
+        path: str,
+        element_type: Literal['reaction', 'compound']
+    ) -> dict:
         """
-        Draw pathway maps highlighting KOs present in an enzymes text file.
+        Read and validate a per-layer draw-kegg-pathways text file into a map-layer table.
 
-        The enzymes text file is a tab-delimited file in the format accepted by
-        'anvi-reaction-network --enzymes-txt' and 'anvi-estimate-metabolism --enzymes-txt'. KO IDs
-        are read directly from the rows where 'source' is 'KOfam', so no reference databases are
-        required. This allows pathway maps to be drawn directly from a custom enzyme list.
+        Each file colors one layer. A 'reaction' file (artifact 'kegg-reaction-txt') colors reaction
+        elements, and its accessions must be all KO IDs ('K#####') or all KEGG reaction IDs
+        ('R#####'), not a mix; it may carry an optional 'gene_id' label column. A 'compound' file
+        (artifact 'kegg-compound-txt') colors compound elements, and its accessions are all KEGG
+        compound IDs ('C#####'); it must not carry a 'gene_id' column, since compounds are not gene
+        products. In both files, the single column that is not a key column ('accession', 'gene_id'
+        for reactions, or 'sample') is auto-detected as a numeric value column for quantitative
+        coloring; with no such column the layer is colored by presence. An optional 'sample' column,
+        if present, must be filled in every row.
 
         Parameters
         ==========
-        enzymes_txt : str
-            Path to a tab-delimited enzymes file with the required columns 'gene_id',
-            'enzyme_accession', and 'source'. KO IDs are taken from rows where 'source' is 'KOfam'.
+        path : str
+            Path to the tab-delimited per-layer text file.
 
-        output_dir : str
-            Path to the output directory in which pathway map PDF files are drawn.
-
-        pathway_numbers : Iterable[str], None
-            Regex patterns to match the ID numbers of the drawn pathway maps. The default of None
-            draws all available pathway maps in the KEGG data directory.
-
-        color_hexcode : str, '#2ca02c'
-            Color for reactions containing KOs from the enzymes file. Can also be 'original'.
-
-        draw_maps_lacking_kos : bool, False
-            If False, only draw maps containing any of the KOs in the enzymes file.
+        element_type : Literal['reaction', 'compound']
+            Which layer the file colors, selecting the accession-typing and key-column rules.
 
         Returns
         =======
-        Dict[str, bool]
-            Keys are pathway numbers. Values are True if the map was drawn, False if not.
+        dict
+            Keys: 'element_type' (the argument), 'reaction_source' ('KO'/'Reaction' for a reaction
+            file, None for a compound file), 'df' (the validated rows, carrying the normalized
+            '__accession' column plus '__sample' when a 'sample' column is present), 'value_column'
+            (the auto-detected value column name, or None for presence coloring), and 'sample_names'
+            (sorted list, or None if there is no 'sample' column).
         """
-        filesnpaths.is_file_tab_delimited(enzymes_txt)
+        # A single-column presence file (just 'accession') is valid, so 'is_file_tab_delimited'
+        # (which rejects a line with no tab) is too strict here; the 'accession'-column check below
+        # gives a clear error if the file is mis-delimited.
+        filesnpaths.is_file_exists(path)
 
-        self.progress.new("Loading KO data from the enzymes text file")
+        self.progress.new(f"Loading the kegg-{element_type}-txt file")
         self.progress.update("...")
 
-        enzymes_df = pd.read_csv(enzymes_txt, sep='\t')
-        required_columns = {'gene_id', 'enzyme_accession', 'source'}
-        missing_columns = required_columns - set(enzymes_df.columns)
-        if missing_columns:
+        # An empty file has no header row for pandas to find, which it reports as an exception rather
+        # than as an empty table.
+        try:
+            df = pd.read_csv(path, sep='\t', dtype=str)
+        except pd.errors.EmptyDataError:
             self.progress.end()
             raise ConfigError(
-                f"The enzymes text file at '{enzymes_txt}' is missing the following required "
-                f"columns: {', '.join(sorted(missing_columns))}. The file must contain at least "
-                f"'gene_id', 'enzyme_accession', and 'source' columns, as described by the "
-                f"enzymes-txt artifact documentation."
+                f"The kegg-{element_type}-txt file at '{path}' is empty. It needs a header row with "
+                f"an 'accession' column, and a row for each accession to color."
+            )
+        original_columns = list(df.columns)
+
+        if 'accession' not in df.columns:
+            self.progress.end()
+            raise ConfigError(
+                f"The kegg-{element_type}-txt file at '{path}' must have an 'accession' column. It "
+                f"has these columns: {', '.join(df.columns)}."
             )
 
-        # Blank cells are read by pandas as NaN, so drop them to keep the KO count accurate and to
-        # ensure the empty-input check below fires when no real accessions are present.
-        ko_ids = set(
-            enzymes_df.loc[enzymes_df['source'] == 'KOfam', 'enzyme_accession'].dropna()
-        )
+        # Every row needs a non-blank accession.
+        accession = df['accession'].fillna('').astype(str).str.strip()
+        if (accession == '').any():
+            self.progress.end()
+            raise ConfigError(
+                f"Every row of the kegg-{element_type}-txt file at '{path}' must have a value in "
+                f"the 'accession' column."
+            )
+        df = df.assign(__accession=accession)
+
+        # Type the accessions by their KEGG ID prefix. A reaction file must be all 'K' (KO) or all
+        # 'R' (KEGG reaction) accessions, not a mix, since both color reaction elements and mixing
+        # them could clash on the same elements; a compound file must be all 'C' accessions.
+        reaction_source = None
+        if element_type == 'reaction':
+            is_ko = df['__accession'].str.match(r'^K\d+$')
+            is_reaction = df['__accession'].str.match(r'^R\d+$')
+            if is_ko.all():
+                reaction_source = 'KO'
+            elif is_reaction.all():
+                reaction_source = 'Reaction'
+            elif is_ko.any() and is_reaction.any():
+                self.progress.end()
+                raise ConfigError(
+                    f"The kegg-reaction-txt file at '{path}' mixes KO accessions ('K' followed by "
+                    f"digits) and KEGG reaction accessions ('R' followed by digits), but a "
+                    f"reaction file must contain only one type: all KOs or all reactions. Both "
+                    f"color the reaction elements of a map, and mixing them could create clashes "
+                    f"on the same elements."
+                )
+            else:
+                self.progress.end()
+                bad = sorted(set(df.loc[~(is_ko | is_reaction), '__accession']))[:5]
+                raise ConfigError(
+                    f"The accessions in the kegg-reaction-txt file at '{path}' must all be KO IDs "
+                    f"('K' followed by digits, e.g., 'K00844') or all be KEGG reaction IDs ('R' "
+                    f"followed by digits, e.g., 'R00200'). These accessions match neither: "
+                    f"{', '.join(bad)}."
+                )
+        else:
+            is_compound = df['__accession'].str.match(r'^C\d+$')
+            if not is_compound.all():
+                self.progress.end()
+                bad = sorted(set(df.loc[~is_compound, '__accession']))[:5]
+                raise ConfigError(
+                    f"The accessions in the kegg-compound-txt file at '{path}' must all be KEGG "
+                    f"compound IDs ('C' followed by digits, e.g., 'C00031'). These accessions do "
+                    f"not: {', '.join(bad)}."
+                )
+
+        # A compound file cannot carry a gene-level identifier, since compounds are not gene
+        # products.
+        if element_type == 'compound' and 'gene_id' in df.columns:
+            self.progress.end()
+            raise ConfigError(
+                f"The kegg-compound-txt file at '{path}' must not have a 'gene_id' column, since "
+                f"compounds are not gene products. A 'gene_id' column labeling the gene a value "
+                f"comes from is only meaningful for the reaction layer (kegg-reaction-txt)."
+            )
+
+        # Auto-detect the value column: the single column that is not a key column ('accession',
+        # 'gene_id' for reactions, or 'sample'). None means presence coloring; one means
+        # quantitative coloring by that column (its header labels the colorbar); two or more is
+        # ambiguous.
+        key_columns = {'accession', 'gene_id', 'sample'}
+        value_columns = [column for column in original_columns if column not in key_columns]
+        if len(value_columns) > 1:
+            self.progress.end()
+            raise ConfigError(
+                f"The kegg-{element_type}-txt file at '{path}' has more than one candidate value "
+                f"column, so it is ambiguous which to color elements by: "
+                f"{', '.join(value_columns)}. A file may have at most one value column (any column "
+                f"that is not a key column): include zero to color by presence/absence, or one to "
+                f"color by that numeric value."
+            )
+        value_column = value_columns[0] if value_columns else None
+
+        # An optional 'sample' column, if present, must be filled in every row, since the sample is
+        # the origin used to color elements across samples.
+        sample_names = None
+        if 'sample' in df.columns:
+            sample = df['sample'].fillna('').astype(str).str.strip()
+            if (sample == '').any():
+                self.progress.end()
+                raise ConfigError(
+                    f"When the kegg-{element_type}-txt file at '{path}' has a 'sample' column, "
+                    f"every row must have a sample value, since the sample is the origin used to "
+                    f"color elements across samples. Some rows have a blank 'sample' value."
+                )
+            df = df.assign(__sample=sample)
+            sample_names = sorted(set(sample))
+
+        # With a value column, each thing the file describes must be given one value. Two rows for
+        # the same thing are ambiguous — repeated measurements to be averaged, or separate
+        # contributions to be added? — and only whoever produced the data can say, so they are
+        # refused rather than combined by a rule the user did not choose. What counts as "the same
+        # thing" is the file's own key: a reaction file naming genes describes one gene's value for
+        # one accession, so several genes carrying one accession are not repeats and remain the
+        # ordinary case.
+        if value_column is not None:
+            key_columns = [
+                column for column in ('__accession', 'gene_id', '__sample') if column in df.columns
+            ]
+            duplicated = df.duplicated(subset=key_columns, keep=False)
+            if duplicated.any():
+                described = ' and '.join(
+                    column.lstrip('_') for column in key_columns
+                ) if len(key_columns) > 1 else 'accession'
+                examples = df.loc[duplicated, key_columns].drop_duplicates().head(3)
+                shown = '; '.join(
+                    ', '.join(str(value) for value in row) for row in examples.itertuples(index=False)
+                )
+                self.progress.end()
+                raise ConfigError(
+                    f"Every row of the kegg-{element_type}-txt file at '{path}' must describe a "
+                    f"different thing, since each carries a value in the '{value_column}' column, but "
+                    f"{int(duplicated.sum())} rows repeat a combination of {described}. The first "
+                    f"repeated {'combinations are' if len(key_columns) > 1 else 'accessions are'}: "
+                    f"{shown}. Anvi'o will not guess how repeated rows should be combined -- averaging "
+                    f"replicate measurements and adding up separate contributions, such as the ions of "
+                    f"one metabolite, are both reasonable and give different answers. Please combine "
+                    f"them in the way that suits your data before drawing."
+                )
 
         self.progress.end()
 
-        if not ko_ids:
-            present_sources = sorted(enzymes_df['source'].astype(str).unique())
-            if present_sources:
-                sources_str = ', '.join(f"'{source}'" for source in present_sources)
-                sources_statement = f"Sources present in the file: {sources_str}."
-            else:
-                sources_statement = "In fact, the file does not contain any data rows."
+        return {
+            'element_type': element_type,
+            'reaction_source': reaction_source,
+            'df': df,
+            'value_column': value_column,
+            'sample_names': sample_names
+        }
+
+    @staticmethod
+    def _resolve_aggregation(aggregation: str, flag: str) -> Callable:
+        """
+        Resolve an aggregation name into a function reducing a sequence of values to one value.
+
+        The recommended names have fast paths in 'AGGREGATION_FUNCTIONS'. Any other pandas
+        aggregation name is accepted as well, provided it reduces a series to a single number: the
+        name is probed here, on a series, before it is applied to any data, so that a name pandas
+        does not recognize, or one that transforms rather than reduces, is reported as a
+        configuration error rather than failing deep in a drawing loop. Probing a series is what
+        makes the name safe at every level of the reduction hierarchy, since the levels below the
+        per-accession values reduce plain lists: an aggregation that only a groupby offers, such as
+        'first', is rejected here rather than working for a gene's rows and failing for a map
+        element's accessions. A name that does reduce but means something unrelated to the value
+        column (pandas 'count', say, which counts rows) is accepted; the colorbar is still labeled
+        by the value column, so choosing such a name is the user's business.
+
+        Parameters
+        ==========
+        aggregation : str
+            The requested aggregation name.
+
+        flag : str
+            The command-line flag the name comes from, used in an error message.
+
+        Returns
+        =======
+        Callable
+            Reduces a sequence of values to a single value.
+        """
+        try:
+            return AGGREGATION_FUNCTIONS[aggregation]
+        except KeyError:
+            pass
+
+        def aggregate(values):
+            return float(pd.Series(values, dtype=float).agg(aggregation))
+
+        # The name is probed at BOTH levels it will be used at, and the two results are compared.
+        # Per accession the name goes to pandas as a string through a groupby
+        # ('_aggregate_accession_quantities'), while every level above applies this function to a
+        # list, and the two accept different sets of names: 'first' exists only on a groupby, and
+        # 'idxmax' means the position within a list at one level but a row label of the whole table
+        # at the other. Probing one level alone would let such a name through to fail, or silently
+        # disagree, on real data. Anything pandas raises for an unknown name, and the TypeError from
+        # a name returning a series rather than a number, become one clear error. The probe table is
+        # given an index that does not start at 0, so that a name returning a row label rather than
+        # a value ('idxmax') disagrees with the list-level result and is caught; every real
+        # reduction ignores the index.
+        probe_values = [1.0, 2.0, 4.0]
+        try:
+            probe = aggregate(probe_values)
+            grouped_probe = float(
+                pd.DataFrame(
+                    {'k': ['x'] * len(probe_values), 'v': probe_values},
+                    index=range(10, 10 + len(probe_values))
+                ).groupby('k')['v'].agg(aggregation).iloc[0]
+            )
+        except Exception:
+            probe = None
+        if probe is None or not np.isfinite(probe) or not np.isclose(
+            probe, grouped_probe, rtol=1e-12, atol=0
+        ):
             raise ConfigError(
-                f"No KOfam annotations were found in the enzymes text file at '{enzymes_txt}' "
-                f"(the value in the 'source' column must be 'KOfam'), so there is nothing to draw. "
-                f"{sources_statement}"
+                f"'{flag}' was given as '{aggregation}', which either does not reduce values to a "
+                f"single number or does not reduce them the same way at every level. Proven "
+                f"acceptable names are "
+                f"{', '.join(repr(name) for name in AGGREGATION_FUNCTIONS)}; any other pandas "
+                f"aggregation that reduces a series to one number, such as 'var' or 'sem', also "
+                f"works. Names that transform rather than reduce, like 'cumsum', cannot be used; "
+                f"neither can names offered only by a grouping, like 'first', nor names meaning "
+                f"different things for a list of values and for a table, like 'idxmax'. Note that "
+                f"the sample and group summary options additionally take 'count' and 'membership' "
+                f"to summarize presence rather than value."
+            )
+        return aggregate
+
+    @staticmethod
+    def _finite_values(values: Dict[str, float], undefined: Set[str] = None) -> Dict[str, float]:
+        """
+        Drop the accessions whose aggregated value is not a finite number.
+
+        An aggregation can be undefined for the values it is given — the standard deviation of a
+        single value, say — and a non-finite value has no place on a color scale, so such an
+        accession is treated as having no value and is left uncolored, exactly as an accession
+        absent from the file would be.
+
+        Parameters
+        ==========
+        values : Dict[str, float]
+            Keys are accessions, values are aggregated values.
+
+        undefined : Set[str], None
+            Accessions that were dropped are added to this set, so that a caller can report them
+            once for the whole layer (see '_warn_undefined_values').
+
+        Returns
+        =======
+        Dict[str, float]
+            The input without the accessions whose value is not a finite number.
+        """
+        dropped = {
+            accession for accession, value in values.items()
+            if not (isinstance(value, (int, float, np.number)) and np.isfinite(value))
+        }
+        if not dropped:
+            return values
+        if undefined is not None:
+            undefined.update(dropped)
+        return {
+            accession: value for accession, value in values.items() if accession not in dropped
+        }
+
+    def _warn_undefined_values(self, undefined: Set[str], aggregation: str, path: str) -> None:
+        """
+        Report the accessions of one layer whose aggregated value was undefined.
+
+        Parameters
+        ==========
+        undefined : Set[str]
+            Accessions dropped by '_finite_values'. Nothing is reported if this is empty.
+
+        aggregation : str
+            The name of the aggregation that was undefined, for the message.
+
+        path : str
+            Path to the layer's text file, for the message.
+        """
+        if not undefined:
+            return
+        examples = ', '.join(sorted(undefined)[:5])
+        self.run.warning(
+            f"Reducing the values of the text file at '{path}' with '{aggregation}' was undefined "
+            f"for {len(undefined)} accession(s), including these: {examples}. This happens when an "
+            f"aggregation needs more values than are available, as the standard deviation does for "
+            f"a single value. These accessions are treated as having no value, so the map elements "
+            f"that depend on them are left uncolored."
+        )
+
+    def _aggregate_accession_quantities(
+        self,
+        rows_df: pd.DataFrame,
+        value_column: str,
+        aggregation: str,
+        path: str,
+        undefined: Set[str] = None
+    ) -> Dict[str, float]:
+        """
+        Validate and aggregate a layer file's auto-detected value column into per-accession values.
+        This aggregates each accession across its rows (e.g., a reaction file's per-gene rows).
+
+        Values are coerced to numbers; a blank or non-numeric value in any row is an error. Each
+        accession's rows are reduced to a single value by 'aggregation', which is applied by pandas
+        here and by the matching function from 'AGGREGATION_FUNCTIONS' at every other level of the
+        reduction hierarchy. An accession whose result is undefined is dropped ('_finite_values').
+
+        Parameters
+        ==========
+        rows_df : pandas.DataFrame
+            Rows of one layer, carrying the normalized '__accession' column and 'value_column'.
+
+        value_column : str
+            Name of the auto-detected numeric value column.
+
+        aggregation : str
+            How to reduce an accession's rows to a single value, as a pandas aggregation name.
+
+        path : str
+            Path to the layer's text file, used in error messages.
+
+        undefined : Set[str], None
+            Accessions whose aggregated value is undefined are added to this set.
+
+        Returns
+        =======
+        Dict[str, float]
+            Keys are accessions, values are aggregated numeric values.
+        """
+        numeric_values = pd.to_numeric(rows_df[value_column], errors='coerce')
+        # A value must be a finite number: 'coerce' turns blanks/non-numerics into NaN, but leaves
+        # 'inf'/'-inf' as infinities that would break the color scale, so reject those too.
+        invalid = ~np.isfinite(numeric_values)
+        if invalid.any():
+            bad_accessions = sorted(set(rows_df.loc[invalid, '__accession']))
+            self.progress.end()
+            raise ConfigError(
+                f"The '{value_column}' value column of the text file at '{path}' must contain a "
+                f"finite number in every row for elements to be colored quantitatively. However, "
+                f"{int(invalid.sum())} {'rows have' if invalid.sum() > 1 else 'row has'} a blank, "
+                f"non-numeric, or infinite value, including these accessions: "
+                f"{', '.join(bad_accessions[:5])}."
+            )
+        valued_df = rows_df.assign(__quantitative_value=numeric_values)
+        return self._finite_values(
+            valued_df.groupby('__accession')['__quantitative_value'].agg(aggregation).to_dict(),
+            undefined
+        )
+
+    @staticmethod
+    def _summarize_category_values(
+        category_values: Dict[str, Dict[str, float]],
+        aggregate: Callable,
+        undefined: Set[str] = None
+    ) -> Dict[str, float]:
+        """
+        Reduce per-category values to a single value per accession.
+
+        This is the value form of a sample or group summary: for each accession, the values of the
+        categories (samples or groups) containing it are reduced by 'aggregate'. A category lacking
+        the accession does not contribute, so the summary is over the categories that have it.
+
+        Parameters
+        ==========
+        category_values : Dict[str, Dict[str, float]]
+            Keys are category names, values are {accession: value} dictionaries.
+
+        aggregate : Callable
+            Reduces a list of values to a single value (see 'AGGREGATION_FUNCTIONS').
+
+        undefined : Set[str], None
+            Accessions whose summarized value is undefined are added to this set.
+
+        Returns
+        =======
+        Dict[str, float]
+            Keys are accessions, values are the summarized values.
+        """
+        accession_values: Dict[str, List[float]] = {}
+        for values in category_values.values():
+            for accession, value in values.items():
+                accession_values.setdefault(accession, []).append(value)
+        return Mapper._finite_values(
+            {accession: aggregate(values) for accession, values in accession_values.items()},
+            undefined
+        )
+
+    def _check_category_names(self, categories: Iterable[str], category_noun: str) -> None:
+        """
+        Check that category names can serve as output subdirectory names.
+
+        Every category (sample, source, or group) gets its own subdirectory of the output directory,
+        and once map grids are drawn the subdirectories of categories that were only needed for a
+        grid are deleted ('_draw_map_grids'). A name that is not a plain directory name would
+        therefore write, or delete, outside the output directory: names come from a text file's
+        'sample' column or a groups file, so they cannot be trusted to be safe paths.
+
+        No name is reserved. Categories are drawn into '<output directory>/individual', which anvi'o
+        creates for that purpose alone, so a category may be named after anything anvi'o puts in the
+        output directory itself -- 'unified', 'grid', 'symlink', or a BRITE category such as
+        'Metabolism' -- without the two ever meeting.
+
+        Parameters
+        ==========
+        categories : Iterable[str]
+            The category names that would become subdirectory names.
+
+        category_noun : str
+            What a category is, for the error message, e.g. 'sample' or 'group'.
+        """
+        separators = {os.sep, os.altsep} - {None}
+        problems: List[str] = []
+        for category in categories:
+            if not category or not category.strip() or category in ('.', '..'):
+                reason = "is not a usable directory name"
+            elif any(separator in category for separator in separators):
+                reason = "contains a path separator"
+            elif os.path.isabs(category) or os.path.basename(category) != category:
+                reason = "is not a plain directory name"
+            else:
+                continue
+            problems.append(f"'{category}' ({reason})")
+
+        if not problems:
+            return
+        raise ConfigError(
+            f"Each {category_noun} gets its own subdirectory of the output directory, so its name "
+            f"must be usable as a directory name. "
+            f"{'These names are' if len(problems) > 1 else 'This name is'} not: "
+            f"{', '.join(problems)}. Please rename {'them' if len(problems) > 1 else 'it'} in the "
+            f"input, using single words without path separators, such as 'SAMPLE_1' or "
+            f"'HIGH_TEMPERATURE'."
+        )
+
+    @staticmethod
+    def _relate_accessions_to_samples(
+        df: pd.DataFrame,
+        all_sample_names: List[str]
+    ) -> Tuple[Dict[str, List[str]], Dict[str, Set[str]]]:
+        """
+        Relate a layer's accessions to the samples containing them, and each sample to its accessions.
+
+        Parameters
+        ==========
+        df : pandas.DataFrame
+            Rows of one layer, carrying the normalized '__accession' and '__sample' columns.
+
+        all_sample_names : List[str]
+            Names of all samples across the run's input files, so that a sample contributing no rows
+            to this layer still gets an empty entry in 'source_accessions'.
+
+        Returns
+        =======
+        Tuple[Dict[str, List[str]], Dict[str, Set[str]]]
+            membership : maps each accession to the sorted names of the samples containing it.
+            source_accessions : maps each sample name to its set of accessions.
+        """
+        membership: Dict[str, Set[str]] = {}
+        source_accessions: Dict[str, Set[str]] = {s: set() for s in all_sample_names}
+        for accession, sample_name in zip(df['__accession'], df['__sample']):
+            source_accessions[sample_name].add(accession)
+            membership.setdefault(accession, set()).add(sample_name)
+        return (
+            {accession: sorted(samples) for accession, samples in membership.items()},
+            source_accessions
+        )
+
+    @staticmethod
+    def _resolve_summary(
+        summary: Union[str, None],
+        value_column: Union[str, None],
+        flag: str,
+        path: str
+    ) -> Tuple[Literal['value', 'presence'], Union[Callable, None], Union[str, None]]:
+        """
+        Resolve a sample or group summary into a coloring kind and its reduction.
+
+        A summary reduces a set of samples, or a set of sample groups, to one statement per
+        accession. 'count'/'membership' summarize presence: how many, or exactly which, categories
+        contain the accession. Any other name pools the categories' values as an aggregation
+        ('_resolve_aggregation'), which requires the layer's file to have a value column. The
+        default of None summarizes presence with the colormap scheme left unresolved, so that
+        '_membership_layer_colors' picks it from the number of categories (by membership for ≤ 3, by
+        count > 3).
+
+        Parameters
+        ==========
+        summary : Union[str, None]
+            The requested summary, or None for presence with an unresolved scheme.
+
+        value_column : Union[str, None]
+            The layer's value column name, or None if it has none.
+
+        flag : str
+            The command-line flag this summary comes from, used in an error message.
+
+        path : str
+            Path to the layer's text file, used in an error message.
+
+        Returns
+        =======
+        Tuple[Literal['value', 'presence'], Union[Callable, None], Union[str, None]]
+            The kind of coloring, the value reduction function (None for presence), and the discrete
+            colormap scheme (None for a value summary or an unresolved presence scheme).
+        """
+        if summary is None:
+            return 'presence', None, None
+        if summary in SUMMARY_DISCRETE_SCHEMES:
+            return 'presence', None, SUMMARY_DISCRETE_SCHEMES[summary]
+        if value_column is None:
+            raise ConfigError(
+                f"'{flag}' was given as '{summary}', which pools the values of samples or sample "
+                f"groups, but the text file at '{path}' has no value column, so there are no "
+                f"values to pool. Summarize presence with 'count' or 'membership' instead, or add "
+                f"a value column to the file."
+            )
+        return 'value', Mapper._resolve_aggregation(summary, flag), None
+
+    def _build_txt_model(
+        self,
+        name: str,
+        data: dict,
+        path: str,
+        gene_aggregation: str,
+        accession_aggregation: str,
+        color: str,
+        colormap: Union[bool, str, mcolors.Colormap, None],
+        colormap_limits: Union[Tuple[float, float], None],
+        reverse_overlay: bool,
+        all_sample_names: Union[List[str], None],
+        group_samples: Union[Dict[str, List[str]], None],
+        sample_summary: Union[str, None],
+        group_summary: Union[str, None]
+    ) -> dict:
+        """
+        Build one layer's coloring model for '_map_elements' from a per-layer reader result.
+
+        The layer colors elements by mode in each of two map contexts: 'unified_mode' for the
+        'unified' map and 'category_mode' for the per-sample or per-group maps. Without a 'sample'
+        column there is nothing to summarize, so the two agree: 'quantitative' with a value column
+        ('_read_element_txt'), or 'single' (one fixed presence color) without one. An
+        '--original-color' layer is the exception, always pairing a 'unified_mode' of 'original' with
+        a 'category_mode' of 'membership', for the reason given where it is built.
+
+        With a 'sample' column the two contexts can differ, since the value column only colors a
+        single sample's magnitude while the summaries independently choose what the views across
+        samples and across groups show. Ungrouped, 'sample_summary' colors the 'unified' map and the
+        per-sample maps show each sample on its own; grouped, 'group_summary' colors the 'unified'
+        map and 'sample_summary' colors each group's map from its samples. A summary naming an
+        aggregation pools values ('quantitative'), while 'count'/'membership' or no summary colors
+        presence ('membership'), as 'SUMMARY_DISCRETE_SCHEMES' and '_resolve_summary' decide. So a
+        value layer can be categorical in the 'unified' map and continuous per sample. A layer
+        without a 'sample' column in a run where the other layer has one carries no category values,
+        so '_map_elements' holds it constant across the per-sample/group maps.
+
+        Parameters
+        ==========
+        name : str
+            Colorbar filename stem ('reactions'/'compounds').
+
+        data : dict
+            The '_read_element_txt' result for this layer.
+
+        path : str
+            Path to the layer's text file, used in aggregation error messages.
+
+        Notes
+        =====
+        'aggregation'/'color'/'colormap'/'colormap_limits'/'reverse_overlay'/'sample_summary'/
+        'group_summary' are this layer's per-layer parameters; 'all_sample_names'/'group_samples'
+        carry the shared sample space and grouping. Returns the layer model dict '_map_elements'
+        consumes.
+        """
+        element_type = data['element_type']
+        use_reaction_attribute = data['reaction_source'] == 'Reaction'
+        df = data['df']
+        value_column = data['value_column']
+        has_sample = data['sample_names'] is not None
+        accessions = set(df['__accession'])
+        common = {
+            'name': name,
+            'element_type': element_type,
+            'use_reaction_attribute': use_reaction_attribute,
+            'accessions': accessions
+        }
+
+        if color == 'original':
+            # A reaction presence layer highlighted in the reference map's colors
+            # ('--original-color'), drawn by the reference-color drawer rather than the element
+            # engine, since both the colors and their render order come from the reference map, so
+            # there is no channel for data. The CLI restricts this to a reaction file with no value
+            # column, magnitude having nowhere to go. With a 'sample' column, the 'unified' map is
+            # the union of the samples and each sample also gets its own map; without one,
+            # 'membership' just carries the accession set the single map colors. 'category_mode' is
+            # 'membership' rather than 'original' so that a grouped run takes the same path as the
+            # database and pangenome inputs, whose per-group maps show within-group source counts:
+            # 'source_accessions' is keyed by sample, so the per-category reference-color branch can
+            # only serve samples, not groups. The reference-color drawer finds elements by the KO
+            # IDs of a map's ortholog entries, so a file of KEGG reaction IDs would match nothing
+            # and draw a blank map, and there is no compound layer to draw at all.
+            if element_type != 'reaction':
+                raise ConfigError(
+                    f"The reference map's own colors highlight reaction elements, so they apply to "
+                    f"a reaction layer. The file at '{path}' is a {element_type} file. Use "
+                    f"'--original-color' with a reaction file, and color compounds with "
+                    f"'--compound-color' or '--compound-colormap'."
+                )
+            if use_reaction_attribute:
+                raise ConfigError(
+                    f"The reference map's own colors are applied by matching the KO IDs of a map's "
+                    f"reaction elements, but the accessions in the reaction file at '{path}' are "
+                    f"KEGG reaction IDs ('R' followed by digits) rather than KO IDs, so nothing "
+                    f"would be highlighted. Use a file of KO accessions with '--original-color', "
+                    f"or color these reactions with '--reaction-color' or '--reaction-colormap'."
+                )
+            if has_sample:
+                membership, source_accessions = self._relate_accessions_to_samples(
+                    df, all_sample_names
+                )
+            else:
+                membership = {accession: [] for accession in accessions}
+                source_accessions = {}
+            return {
+                **common,
+                'unified_mode': 'original',
+                'category_mode': 'membership',
+                'membership': membership,
+                'source_accessions': source_accessions,
+                'color_hexcode': 'original'
+            }
+
+        undefined: Set[str] = set()
+        # Resolved here, before any values are aggregated, so that an unusable aggregation name is
+        # reported as a configuration error rather than reaching pandas: the per-accession values
+        # below are computed by passing the name itself to a groupby. 'aggregate' reduces a map
+        # element's several accessions, which is the level the drawing colorers work at; the gene
+        # aggregation is applied only where the per-accession values are built.
+        aggregate = self._resolve_aggregation(
+            accession_aggregation, f'--{element_type}-accession-aggregation'
+        ) if value_column is not None else None
+        if value_column is not None:
+            self._resolve_aggregation(gene_aggregation, f'--{element_type}-gene-aggregation')
+
+        if not has_sample:
+            # With no samples there is nothing to summarize, so the layer colors the same way in
+            # every map context: by its value column if it has one, otherwise a single presence
+            # color.
+            if value_column is None:
+                return {
+                    **common,
+                    'unified_mode': 'single',
+                    'category_mode': 'single',
+                    'color_hexcode': color
+                }
+            unified_values = self._aggregate_accession_quantities(
+                df, value_column, gene_aggregation, path, undefined
+            )
+            self._warn_undefined_values(undefined, gene_aggregation, path)
+            return {
+                **common,
+                'unified_mode': 'quantitative',
+                'category_mode': 'quantitative',
+                'cmap': self._resolve_sequential_colormap(
+                    colormap if colormap is not None else 'plasma_r', colormap_limits,
+                    subject=f'{element_type}s'
+                ),
+                'reverse_overlay': reverse_overlay,
+                'unified_values': unified_values,
+                'category_values': None,
+                'aggregate': aggregate,
+                'colorbar_label': value_column
+            }
+
+        # Resolve the two summaries into the mode of each map context. Ungrouped, the per-sample
+        # maps show one sample each, so no summary applies to them: they are the sample's own
+        # magnitude with a value column and its presence without one.
+        grouped = group_samples is not None
+        sample_kind, sample_aggregate, sample_scheme = self._resolve_summary(
+            sample_summary, value_column, f'--{element_type}-sample-summary', path
+        )
+        if grouped:
+            group_kind, group_aggregate, group_scheme = self._resolve_summary(
+                group_summary, value_column, f'--{element_type}-group-summary', path
+            )
+            if group_kind == 'value' and sample_kind != 'value':
+                raise ConfigError(
+                    f"'--{element_type}-group-summary' was given as '{group_summary}', which pools "
+                    f"the values of the sample groups, but '--{element_type}-sample-summary' "
+                    f"summarizes each group's samples by presence rather than by value, so the "
+                    f"groups have no values to pool. Please also set "
+                    f"'--{element_type}-sample-summary' to an aggregation such as 'mean'."
+                )
+            unified_kind, unified_scheme = group_kind, group_scheme
+            category_kind = sample_kind
+        else:
+            unified_kind, unified_scheme = sample_kind, sample_scheme
+            category_kind = 'presence' if value_column is None else 'value'
+
+        membership, source_accessions = self._relate_accessions_to_samples(df, all_sample_names)
+
+        # A static color chosen explicitly overrides comparison across samples on the 'unified' map,
+        # which then shows presence in ANY sample in that one color, exactly as it does for multiple
+        # contigs databases or a pangenome. The CLI signals the choice by passing a colormap of
+        # False, the same way it does for those inputs, and rejects the summary options alongside
+        # it. The individual maps are unaffected: each still shows one sample, or, grouped, its
+        # group's sample counts.
+        static_color = colormap is False
+        unified_mode = 'static' if static_color else (
+            'quantitative' if unified_kind == 'value' else 'membership'
+        )
+
+        model = {
+            **common,
+            'unified_mode': unified_mode,
+            'category_mode': 'quantitative' if category_kind == 'value' else 'membership',
+            'membership': membership,
+            'source_accessions': source_accessions,
+            'color_hexcode': color,
+            'colormap': True if colormap is None else colormap,
+            'colormap_limits': colormap_limits,
+            'colormap_scheme': unified_scheme,
+            'reverse_overlay': reverse_overlay,
+            'category_values': None
+        }
+
+        if value_column is None:
+            return model
+
+        # Per-sample values: each sample's rows reduced to one value per accession by the
+        # within-sample aggregation. These are computed even when no context is colored by value, so
+        # that a value column is validated whenever the file has one.
+        sample_values: Dict[str, Dict[str, float]] = {s: {} for s in all_sample_names}
+        for sample_name, sample_rows in df.groupby('__sample'):
+            sample_values[sample_name] = self._aggregate_accession_quantities(
+                sample_rows, value_column, gene_aggregation, path, undefined
+            )
+        self._warn_undefined_values(undefined, gene_aggregation, path)
+
+        if 'quantitative' not in (model['unified_mode'], model['category_mode']):
+            # Both summaries color presence, which only happens with groups (the per-sample maps of
+            # an ungrouped run always show a value column's magnitude), so nothing is colored by
+            # value.
+            self.run.warning(
+                f"The layer from the text file at '{path}' has a value column, "
+                f"'{value_column}', but nothing on the maps is colored by it: with sample groups, "
+                f"the per-group maps are colored by '--{element_type}-sample-summary' and the "
+                f"'unified' map by '--{element_type}-group-summary', and both of these summarize "
+                f"presence rather than value. Set '--{element_type}-sample-summary' to an "
+                f"aggregation, such as 'mean', to color the group maps by value."
+            )
+            return model
+
+        # Each summary is a further reduction that can be undefined where the one below it was not,
+        # so the accessions it drops are reported against the summary's own name rather than the
+        # within-sample aggregation's.
+        if category_kind == 'value':
+            if grouped:
+                undefined_category: Set[str] = set()
+                model['category_values'] = {
+                    group_name: self._summarize_category_values(
+                        {s: sample_values[s] for s in group_sample_names}, sample_aggregate,
+                        undefined_category
+                    )
+                    for group_name, group_sample_names in group_samples.items()
+                }
+                self._warn_undefined_values(undefined_category, sample_summary, path)
+            else:
+                # Each per-sample map shows one sample, so no summary applies to it.
+                model['category_values'] = sample_values
+
+        if unified_kind == 'value':
+            # The 'unified' map summarizes the groups when there are groups, each of which
+            # contributes the summary of its own samples, and otherwise all of the samples.
+            undefined_unified: Set[str] = set()
+            model['unified_values'] = self._summarize_category_values(
+                model['category_values'] if grouped else sample_values,
+                group_aggregate if grouped else sample_aggregate,
+                undefined_unified
+            )
+            self._warn_undefined_values(
+                undefined_unified, group_summary if grouped else sample_summary, path
             )
 
-        self.run.info("KOs found in enzymes text file", len(ko_ids))
-
-        drawn = self._map_kos_fixed_colors(
-            ko_ids,
-            output_dir,
-            pathway_numbers=pathway_numbers,
-            color_hexcode=color_hexcode,
-            draw_maps_lacking_kos=draw_maps_lacking_kos
+        model['cmap'] = self._resolve_sequential_colormap(
+            colormap if colormap is not None else 'plasma_r', colormap_limits,
+            subject=f'{element_type}s'
         )
-        count = sum(drawn.values()) if drawn else 0
-        self.run.info("Number of maps drawn", count)
+        model['aggregate'] = aggregate
+        model['colorbar_label'] = value_column
+        return model
 
-        return drawn
-
-
-    def map_enzymes_txt_samples_kos(
+    def map_kegg_pathways_txt(
         self,
-        enzymes_txt: str,
         output_dir: str,
+        reaction_txt: str = None,
+        compound_txt: str = None,
+        reaction_gene_aggregation: str = 'sum',
+        reaction_accession_aggregation: str = 'sum',
+        compound_accession_aggregation: str = 'sum',
+        reaction_sample_summary: str = None,
+        compound_sample_summary: str = None,
+        reaction_group_summary: str = None,
+        compound_group_summary: str = None,
         groups_txt: str = None,
         group_threshold: float = None,
         pathway_numbers: Iterable[str] = None,
         draw_individual_files: Union[Iterable[str], bool] = False,
         draw_grid: Union[Iterable[str], bool] = False,
-        colormap: Union[bool, str, mcolors.Colormap] = True,
-        colormap_limits: Tuple[float, float] = None,
-        colormap_scheme: Literal['by_count', 'by_membership'] = None,
-        reverse_overlay: bool = False,
-        color_hexcode: str = '#2ca02c',
+        reaction_color: str = '#2ca02c',
+        compound_color: str = "#e239af",
+        reaction_colormap: Union[bool, str, mcolors.Colormap] = None,
+        reaction_colormap_limits: Tuple[float, float] = None,
+        reaction_reverse_overlay: bool = False,
+        compound_colormap: Union[bool, str, mcolors.Colormap] = None,
+        compound_colormap_limits: Tuple[float, float] = None,
+        compound_reverse_overlay: bool = False,
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
         group_colormap_limits: Tuple[float, float] = (0.1, 0.9),
         group_reverse_overlay: bool = False,
-        draw_maps_lacking_kos: bool = False
+        draw_maps_lacking_data: bool = False
     ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
         """
-        Draw pathway maps, highlighting KOs across samples (representing, for example, genomes or
-        metagenomes) or groups of samples (representing, for example, taxa or geographical groups)
-        defined in an enzymes text file.
+        Draw pathway maps from a reaction-layer file and/or a compound-layer file.
 
-        The enzymes text file is a tab-delimited file in the format accepted by
-        'anvi-reaction-network --enzymes-txt' and 'anvi-estimate-metabolism --enzymes-txt', with an
-        additional 'sample' column that assigns each row to a sample of origin. KO IDs are read
-        directly from the rows where 'source' is 'KOfam', so no reference databases are required.
-        A reaction on a map is defined by one or more KOs. The presence/absence of any of these KOs
-        in a sample translates in the map to the presence/absence of the reaction in the sample.
-
-        In global and overview maps, reaction lines are colored. In standard maps, reaction boxes or
-        lines are colored.
+        The reaction file (kegg-reaction-txt, '--reaction-txt') colors reaction elements; the
+        compound file (kegg-compound-txt, '--compound-txt') colors compound elements. Either or both
+        may be given, and each layer is colored independently by what its file provides: a value
+        column colors it quantitatively (continuous colorbar), a 'sample' column without a value
+        column colors it by sample/group presence, and neither colors it a single presence color.
+        The two layers are drawn together on each map, so one map can mix, e.g., presence of KOs
+        with quantitative compound values. When any layer has a 'sample' column, a 'unified' map
+        summarizes the samples and per-sample maps are added; a 'groups_txt' instead draws per-group
+        maps and the 'unified' map summarizes the groups.
 
         Parameters
         ==========
-        enzymes_txt : str
-            Path to a tab-delimited enzymes file with the required columns 'gene_id',
-            'enzyme_accession', 'source', and 'sample'. KO IDs are taken from rows where 'source' is
-            'KOfam', and the 'sample' column assigns each of these KOs to a sample of origin.
-
         output_dir : str
-            Path to the output directory in which pathway map and colorbar PDF files are drawn. The
-            directory is created if it does not exist.
+            Path to the output directory in which pathway map and colorbar PDF files are drawn.
 
-        groups_txt : str, None
-            A tab-delimited text file specifying which group each sample belongs to. The first
-            column, which can have any header, contains sample names, those found in the 'sample'
-            column of the enzymes text file. The second column, which must be headed 'group',
-            contains group names, which are recommended to be single words without fancy characters,
-            such as 'HIGH_TEMPERATURE' or 'LOW_FITNESS' rather than 'my group #1' or 'IS-THIS-OK?'.
-            Each sample can only be associated with a single group. The 'group_threshold' argument
-            must also be used for the groups to take effect, assigning colors based on group
-            membership and drawing individual files ('draw_individual_files') and map grids
-            ('draw_grid') for groups rather than individual samples.
+        reaction_txt : str, None
+            Path to a kegg-reaction-txt file (accessions all KO or all KEGG reaction IDs).
 
-        group_threshold : float, None
-            The proportion of samples in a group containing data of interest for the group to be
-            represented in terms of presence/absence in a map feature. Here is a concrete example.
-            Say each sample represents a genome, and the 'groups_txt' argument, which must be used
-            with this argument, groups these genomes by their species, 'A', 'B', and 'C'. You wish
-            to understand the distribution of metabolic capabilities across the 3 species from KO
-            annotations of genes. Reaction colors are assigned based on the groups rather than
-            individual samples containing the reaction. Thresholds between 0 and 1 can be set to
-            define group membership: a threshold of 0.0 would mean that ANY sample in the group can
-            contain the reaction via KOs for the reaction to be considered present in the group; a
-            threshold of 0.75 means at least 75% of the samples in the group must contain the
-            reaction for it to be present; a threshold of 1.0 means that ALL samples in the group
-            must contain the reaction for it to be present. In our example, set the threshold to
-            0.5. Reaction J on a map corresponds to KO X, and Reaction K on a map corresponds to KOs
-            Y and Z. 90% of species A genomes, 50% of species B genomes, and 10% of species C
-            genomes contain KO X, so Reaction J would be colored to indicate that it is represented
-            in species A and B. 0% of species A genomes, 15% of species B genomes, and 40% of
-            species C genomes contain KO Y and KO Z, so Reaction K would not be colored.
+        compound_txt : str, None
+            Path to a kegg-compound-txt file (accessions all KEGG compound IDs).
 
-        pathway_numbers : Iterable[str], None
-            Regex patterns to match the ID numbers of the drawn pathway maps. The default of None
-            draws all available pathway maps in the KEGG data directory.
+        reaction_gene_aggregation : str, 'sum'
+            How to reduce the values of the genes annotated with one accession to that accession's
+            value, for a reaction file carrying a 'gene_id' column. Any 'AGGREGATION_FUNCTIONS' name,
+            or any other pandas aggregation reducing values to one number (see
+            '_resolve_aggregation').
 
-        draw_individual_files : Union[Iterable[str], bool], False
-            First consider the case where groups are not defined by 'groups_txt'. If the
-            'draw_individual_files' argument is not False, draw map files for individual samples. If
-            True, draw maps for all of the samples. Alternatively, the argument can accept the names
-            of a subset of samples to only draw maps for those samples.
+        reaction_accession_aggregation : str, 'sum'
+            How to reduce the values of the several accessions a map's reaction element stands to
+            that element's value.
 
-            Consider the case where groups are defined by 'groups_txt'. If the
-            'draw_individual_files' argument is not False, draw map files for individual groups
-            showing membership of reactions in the samples defining the group. If True, draw maps
-            for all of the groups. Alternatively, the argument can accept a subset of group names to
-            only draw maps for those groups. Maps are always colored by sample count, never
-            explicitly by membership, allowing maps for different groups to be compared in terms of
-            the same colors.
+        compound_accession_aggregation : str, 'sum'
+            The same reduction for the compound layer: the several compounds that one map circle
+            stands for. A compound file has no genes, and repeated rows are refused
+            ('_read_element_txt'), so it has no reduction below this one.
 
-        draw_grid : Union[Iterable[str], bool], False
-            First consider the case where groups are not defined by 'groups_txt'. If the 'draw_grid'
-            argument is not False, draw a paneled grid file for each pathway map showing the unified
-            map of samples alongside maps for individual samples. If True, include all of the
-            samples in the grid. Alternatively, the argument can accept the names of a subset of
-            samples to only draw individual maps in the grid for those samples.
+        reaction_sample_summary : str, None
+            How the reaction layer summarizes a set of samples: by presence ('count'/'membership')
+            or by pooling their values with an aggregation. This colors the 'unified' map without
+            groups and each per-group map with groups. The default of None summarizes presence, by
+            membership for 3 or fewer samples and by count above that.
 
-            Consider the case where groups are defined by 'groups_txt'. If the 'draw_grid' argument
-            is not False, draw a paneled grid file for each pathway map showing the unified map of
-            groups alongside maps for individual groups that color reactions by count of occurrence
-            in samples of the group. If True, include all of the groups in the grid. Alternatively,
-            the argument can accept a subset of group names to only draw individual maps in the grid
-            for those groups. Individual maps are always colored by sample count, never explicitly
-            by membership, allowing the comparison of maps for different groups in terms of the same
-            colors.
+        compound_sample_summary : str, None
+            The same summary for the compound layer's samples.
 
-        colormap : Union[bool, str, matplotlib.colors.Colormap], True
-            Reactions are dynamically colored to reflect the samples (or groups of samples)
-            containing the reaction, unless the argument value is False. False overrides dynamic
-            coloring via a colormap with the argument provided to 'color_hexcode', so that reactions
-            represented by KOs in samples are assigned predetermined colors.
+        reaction_group_summary : str, None
+            How the reaction layer summarizes the sample groups of 'groups_txt', which colors the
+            'unified' map when there are groups. The default of None summarizes presence, by
+            membership for 3 or fewer groups and by count above that.
 
-            The default argument value of True automatically assigns a colormap given the
-            'colormap_scheme' parameter. The scheme, 'by_count', uses by default the sequential
-            colormap, 'plasma_r', which spans yellow (fewer samples or groups) to blue-violet (more
-            samples or groups). This accentuates reactions that are shared rather than unshared
-            across samples/groups. In contrast, a colormap spanning dark to light, such as 'plasma',
-            is better for drawing attention to unshared reactions. The scheme, 'by_membership', uses
-            by default the qualitative colormap, 'tab10'; it contains distinct colors suitable for
-            clearly differentiating the samples/groups containing reactions.
+        compound_group_summary : str, None
+            The same summary for the compound layer's groups.
 
-            The name of a Matplotlib Colormap or a Colormap object itself can also be provided to be
-            used in lieu of the default. See the following webpage for named colormaps:
-            https://matplotlib.org/stable/users/explain/colors/colormaps.html#classes-of-colormaps
-
-        colormap_limits : Tuple[float, float], None
-            Limit the fraction of the 'colormap' used in dynamically selecting colors. The first
-            value is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.9)
-            limits color selection to 70% of the colormap, trimming the bottom 20% and top 10%. By
-            default, for the colormap scheme, 'by_count', the colormap is 'plasma_r', and the limits
-            are set to (0.1, 0.9). By default, for the scheme, 'by_membership', the colormap is
-            qualititative ('tab10'), and limits are set to (0.0, 1.0).
-
-        colormap_scheme : Literal['by_count', 'by_membership'], None
-            There are two ways of dynamically coloring reactions by inclusion in samples or groups
-            of samples: by count, or explicitly by sample/group or combination of samples/groups.
-            Given the default argument value of None, with 4 or more samples/groups, reactions are
-            colored by count, and with 2 or 3, explicitly by membership. In coloring by count, the
-            colormap should be sequential, such that the color of a reaction changes 'smoothly' with
-            the count. In contrast, coloring by sample/group means reaction color is determined by
-            membership in a sample/group or combination of samples/groups, so a qualitative colormap
-            can be suitable for clearly differentiating each.
-
-        reverse_overlay : bool, False
-            By default, with False, reactions in more samples or groups of samples are drawn on top
-            of those in fewer samples/groups. With True, the opposite applies; especially in global
-            maps with a non-default colormap spanning dark to light, this accentuates unshared
-            rather than shared parts of a pathway.
-
-        color_hexcode : str, '#2ca02c'
-            This is the color, by default green, for reactions containing sample KOs. Alternatively
-            to a color hex code, the string, 'original', can be provided to use the original color
-            scheme of the reference map.
-
-            For this argument to be used in coloring unified maps showing KO membership in all
-            samples, overriding dynamic coloring based on sample/group membership with static
-            coloring based on presence/absence in any sample, the 'colormap' argument must be set to
-            False.
-
-            This argument is used in coloring map files for individual samples
-            ('draw_individual_files'), regardless of the value of 'colormap'.
-
-        group_colormap : Union[str, mcolors.Colormap], 'plasma_r'
-            This parameter is similar in effect to 'colormap', but only applies to drawing files for
-            individual groups ('draw_individual_files') and panels for individual groups in map
-            grids ('draw_grid'). These maps for individual groups show reaction membership in the
-            samples of the group. They are always colored dynamically by count, i.e., the number of
-            samples in the group containing the reaction. Like 'colormap', this parameter can take
-            the name of a Matplotlib Colormap or a Colormap object itself. The default group
-            colormap is 'plasma_r', the same as the default 'colormap' with a 'colormap_scheme' of
-            'by_count'.
-
-        group_colormap_limits : Tuple[float, float], (0.1, 0.9)
-            This parameter is similar in effect to 'colormap_limits', but only applies to drawing
-            files for individual groups and panels for individual groups in map grids (also see
-            'group_colormap'). Like 'colormap_limits', this parameter takes a lower and upper cutoff
-            for the proportion of the group colormap to use. The default group limits of (0.1, 0.9)
-            are the same as the default 'colormap_limits'.
-
-        group_reverse_overlay : bool, False
-            This parameter is similar in effect to 'reverse_overlay', but only applies to drawing
-            files for individual groups and panels for individual groups in map grids (also see
-            'group_colormap'). If True, these maps for individual groups draw reactions found in
-            fewer of the group's samples on top of reactions found in more of the group's samples,
-            the opposite of the default drawing order.
-
-        draw_maps_lacking_kos : bool, False
-            If False, by default, only draw maps containing any of the select KOs. If True, draw
-            maps regardless, meaning that nothing may be colored.
+        Notes
+        =====
+        The remaining parameters carry the shared groups, per-layer colors/colormaps, and drawing
+        options; see the CLI help and '_map_elements'.
 
         Returns
         =======
         Dict[Literal['unified', 'individual', 'grid'], Dict]
-            Keys in the outer dictionary are different types of files that can be drawn. 'unified'
-            maps show data from all samples or groups of samples. 'individual' maps show data from
-            individual samples or groups. 'grid' images show both unified and individual maps.
-
-            'unified' and 'grid' values are Dict[str, bool]. Keys are pathway numbers. Values are
-            True if the map was drawn; False if the map was not drawn, because it did not contain
-            any of the select KOs and 'draw_maps_lacking_kos' was False.
-
-            'individual' values are Dict[str, Dict[str, bool]]. Keys in the outer dictionary here
-            are sample names or group names. Keys in the inner dictionary are pathway numbers.
-            Values in the inner dictionary are True if the map was drawn; False if the map was not
-            drawn because it did not contain any of the select KOs and 'draw_maps_lacking_kos' was
-            False.
+            The record returned by '_map_elements'.
         """
-        # This method is similar to 'map_pan_database_kos' and 'map_contigs_databases_kos', treating
-        # the samples defined in an enzymes text file like genomes in a pangenome.
-
-        self.progress.new("Loading KO data from the enzymes text file")
-        self.progress.update("...")
-
-        filesnpaths.is_file_tab_delimited(enzymes_txt)
-        # Read the 'sample' column as strings so that numeric sample IDs (e.g., 1, 2, 3) are not
-        # coerced to floats ('1.0') when the column also contains blank cells.
-        enzymes_df = pd.read_csv(enzymes_txt, sep='\t', dtype={'sample': str})
-
-        required_columns = {'gene_id', 'enzyme_accession', 'source', 'sample'}
-        missing_columns = required_columns - set(enzymes_df.columns)
-        if missing_columns:
-            self.progress.end()
+        raw_layers: List[dict] = []
+        if reaction_txt is not None:
+            raw_layers.append({
+                'name': 'reactions',
+                'path': reaction_txt,
+                'data': self._read_element_txt(reaction_txt, 'reaction'),
+                'gene_aggregation': reaction_gene_aggregation,
+                'accession_aggregation': reaction_accession_aggregation,
+                'color': reaction_color,
+                'colormap': reaction_colormap,
+                'colormap_limits': reaction_colormap_limits,
+                'reverse_overlay': reaction_reverse_overlay,
+                'sample_summary': reaction_sample_summary,
+                'group_summary': reaction_group_summary
+            })
+        if compound_txt is not None:
+            raw_layers.append({
+                'name': 'compounds',
+                'path': compound_txt,
+                'data': self._read_element_txt(compound_txt, 'compound'),
+                # A compound file has one row per accession per sample, so the gene level is a
+                # reduction over a single value and its function cannot matter.
+                'gene_aggregation': 'sum',
+                'accession_aggregation': compound_accession_aggregation,
+                'color': compound_color,
+                'colormap': compound_colormap,
+                'colormap_limits': compound_colormap_limits,
+                'reverse_overlay': compound_reverse_overlay,
+                'sample_summary': compound_sample_summary,
+                'group_summary': compound_group_summary
+            })
+        if not raw_layers:
             raise ConfigError(
-                f"The enzymes text file at '{enzymes_txt}' is missing the following columns "
-                f"required to draw maps across samples: {', '.join(sorted(missing_columns))}. "
-                f"Drawing maps across samples requires the 'gene_id', 'enzyme_accession', "
-                f"'source', and 'sample' columns."
+                "No draw-kegg-pathways input files were provided. Supply a reaction-layer file "
+                "('--reaction-txt'), a compound-layer file ('--compound-txt'), or both."
             )
 
-        # The samples are every non-blank value in the 'sample' column, regardless of annotation
-        # source. This mirrors how the pangenome and multiple-contigs-database methods count a
-        # source (a genome or database) whether or not it contains any KOs, so group membership
-        # thresholds and colorbar scales stay correct even when a sample's enzymes come only from
-        # non-KOfam sources.
-        sample_column = enzymes_df['sample']
-        blank_in_column = sample_column.isna() | (sample_column.astype(str).str.strip() == '')
-        all_sample_names: List[str] = sorted(set(sample_column[~blank_in_column]))
-        all_sample_names_set: Set[str] = set(all_sample_names)
+        # One shared sample space across both files: when both carry a 'sample' column they describe
+        # the same samples, so the sample names are unioned; a layer with no 'sample' column is held
+        # constant across the per-sample/group maps.
+        sample_name_sets = [
+            layer['data']['sample_names'] for layer in raw_layers
+            if layer['data']['sample_names'] is not None
+        ]
+        all_sample_names = sorted(set().union(*sample_name_sets)) if sample_name_sets else None
 
-        # KO drawing uses only the KOfam rows with an actual accession. Blank accessions are read by
-        # pandas as NaN and are dropped so they neither inflate KO counts nor break the empty-input
-        # check below.
-        kofam_df = enzymes_df[enzymes_df['source'] == 'KOfam'].dropna(subset=['enzyme_accession'])
-
-        # Every KOfam row must name the sample it came from, since the sample is the origin used to
-        # color reactions. Refuse to silently drop KOs with an unknown origin.
-        blank_sample = (
-            kofam_df['sample'].isna() | (kofam_df['sample'].astype(str).str.strip() == '')
-        )
-        if blank_sample.any():
-            blank_gene_ids = kofam_df.loc[blank_sample, 'gene_id'].astype(str).tolist()
-            self.progress.end()
+        # A threshold outside [0, 1] cannot be met by any proportion of a group's samples, or is met
+        # by all of them, so it would silently draw an empty or an undiscriminating map. The
+        # database and pangenome methods make the same check.
+        if group_threshold is not None and not 0 <= group_threshold <= 1:
             raise ConfigError(
-                f"The 'sample' column of the enzymes text file at '{enzymes_txt}' must contain a "
-                f"value in every KOfam row, since the sample identifies the origin used to color "
-                f"reactions across samples. However, {len(blank_gene_ids)} KOfam "
-                f"{'rows have' if len(blank_gene_ids) > 1 else 'row has'} a blank 'sample' value, "
-                f"including the following gene {'IDs' if len(blank_gene_ids) > 1 else 'ID'}: "
-                f"{', '.join(blank_gene_ids[:5])}. Either fill in the sample for these rows, or "
-                f"remove the 'sample' column entirely to draw a single map from all KOs."
+                f"'group_threshold' must be a number between 0 and 1, not {group_threshold}. It is "
+                f"the proportion of a group's samples in which an element must occur for the group "
+                f"to be considered to contain it."
             )
 
-        # Find which samples contain each KO, and which KOs are in each sample. Initialize an entry
-        # for every sample so that samples lacking KOfam annotations still contribute (empty)
-        # individual maps and factor into sample counts.
-        ko_sample_names_sets: Dict[str, Set[str]] = {}
-        sample_kos_sets: Dict[str, Set[str]] = {
-            sample_name: set() for sample_name in all_sample_names
-        }
-        for sample_name, ko_id in zip(kofam_df['sample'], kofam_df['enzyme_accession']):
-            ko_sample_names_sets.setdefault(ko_id, set()).add(sample_name)
-            sample_kos_sets[sample_name].add(ko_id)
-        ko_sample_names: Dict[str, List[str]] = {
-            ko_id: sorted(sample_names) for ko_id, sample_names in ko_sample_names_sets.items()
-        }
-        sample_kos: Dict[str, List[str]] = {
-            sample_name: sorted(ko_ids) for sample_name, ko_ids in sample_kos_sets.items()
-        }
-
-        self.progress.end()
-
-        if not ko_sample_names:
-            present_sources = sorted(enzymes_df['source'].astype(str).unique())
-            if present_sources:
-                sources_str = ', '.join(f"'{source}'" for source in present_sources)
-                sources_statement = f"Sources present in the file: {sources_str}."
+        group_samples = None
+        sample_group = None
+        categories = None
+        category_noun = None
+        if all_sample_names is not None:
+            if groups_txt is not None:
+                sample_group, group_samples = self._relate_samples_to_groups(
+                    groups_txt, all_sample_names
+                )
+                categories = list(group_samples)
+                category_noun = 'group'
             else:
-                sources_statement = "In fact, the file does not contain any data rows."
-            raise ConfigError(
-                f"No KOfam annotations were found in the enzymes text file at '{enzymes_txt}' "
-                f"(the value in the 'source' column must be 'KOfam'), so there is nothing to draw. "
-                f"{sources_statement}"
+                categories = all_sample_names
+                category_noun = 'sample'
+            self.run.info("Samples found across the input file(s)", len(all_sample_names))
+
+        models = [
+            self._build_txt_model(
+                **layer, all_sample_names=all_sample_names, group_samples=group_samples
             )
+            for layer in raw_layers
+        ]
 
-        self.run.info("KOfam KOs found in enzymes text file", len(ko_sample_names))
-        self.run.info("Samples found in enzymes text file", len(all_sample_names))
-
-        # Load groups.
-        if (
-            (groups_txt is None and group_threshold is not None) or
-            (groups_txt is not None and group_threshold is None)
-        ):
-            raise ConfigError(
-                "To group samples, arguments to both 'groups_txt' and 'group_threshold' must be "
-                "provided."
-            )
-
-        if groups_txt is None:
-            source_group = None
-            group_sources = None
-            group_samples = None
-            sample_group = None
-        else:
-            if not 0 <= group_threshold <= 1:
-                raise ConfigError(
-                    f"'group_threshold' must be a number between 0 and 1, not {group_threshold}"
-                )
-
-            source_group, group_sources = utils.get_groups_txt_file_as_dict(
-                groups_txt, run=self.run, progress=self.progress
-            )
-            # Check that groups include all samples. Relate groups and sample names.
-            group_samples: Dict[str, List[str]] = {}
-            sample_group: Dict[str, str] = {}
-            ungrouped_samples: List[str] = []
-            for sample_name in all_sample_names:
-                try:
-                    group = source_group[sample_name]
-                except KeyError:
-                    ungrouped_samples.append(sample_name)
-                    continue
-
-                try:
-                    group_samples[group].append(sample_name)
-                except KeyError:
-                    group_samples[group] = [sample_name]
-                sample_group[sample_name] = group
-
-            if ungrouped_samples:
-                message = ', '.join([f"'{sample_name}'" for sample_name in ungrouped_samples])
-                raise ConfigError(
-                    "The following samples in the enzymes text file were not found in the groups "
-                    f"provided by 'groups_txt': {message}"
-                )
-
-            # Order groups by their appearance in the groups-txt file, which determines the order in
-            # which colors are assigned to groups and their combinations in the drawn maps.
-            group_samples = {
-                group: group_samples[group]
-                for group in group_sources
-                if group in group_samples
+        # Groups are carried through whenever they are defined: they set which samples each group's
+        # map summarizes, and, for a group summary of presence, which groups the 'unified' map shows
+        # an element in (per 'group_threshold').
+        grouped_membership = None
+        if group_samples is not None:
+            grouped_membership = {
+                'source_group': sample_group,
+                'group_sources': group_samples,
+                'group_threshold': group_threshold,
+                'group_colormap': group_colormap,
+                'group_colormap_limits': group_colormap_limits,
+                'group_reverse_overlay': group_reverse_overlay
             }
 
-            # Report samples in 'groups_txt' that are not among the enzymes text file samples.
-            missing_sources: List[str] = []
-            for source in source_group:
-                if source not in all_sample_names_set:
-                    missing_sources.append(source)
-            if missing_sources:
-                message = ', '.join([f"'{source}'" for source in missing_sources])
-                self.run.warning(
-                    "The following samples were grouped in 'groups_txt' but are not found among "
-                    f"the samples in the enzymes text file, and so will not factor into maps: "
-                    f"{message}"
-                )
-
-        return self._map_kos_across_categories(
-            ko_sample_names,
-            sample_kos,
-            all_sample_names,
+        category_subject = f"{category_noun}s" if category_noun is not None else None
+        return self._map_elements(
+            models,
             output_dir,
-            'sample',
-            source_group=sample_group,
-            group_sources=group_samples,
-            group_threshold=group_threshold,
             pathway_numbers=pathway_numbers,
+            categories=categories,
+            category_noun=category_noun,
+            grid_source_type='sample',
+            colorbar_category_suffix=category_subject,
+            subset_subject=category_subject,
+            unified_plural='samples',
+            membership_count_label='sample count',
+            membership_members_label='samples',
+            membership_singular='sample',
+            grouped_membership=grouped_membership,
             draw_individual_files=draw_individual_files,
             draw_grid=draw_grid,
-            colormap=colormap,
-            colormap_limits=colormap_limits,
-            colormap_scheme=colormap_scheme,
-            reverse_overlay=reverse_overlay,
-            color_hexcode=color_hexcode,
-            group_colormap=group_colormap,
-            group_colormap_limits=group_colormap_limits,
-            group_reverse_overlay=group_reverse_overlay,
-            draw_maps_lacking_kos=draw_maps_lacking_kos
+            draw_maps_lacking_data=draw_maps_lacking_data
         )
-
-
-    def map_genomes_storage_genome_kos(
-        self,
-        genomes_storage_db: str,
-        genome_name: str,
-        output_dir: str,
-        pathway_numbers: Iterable[str] = None,
-        color_hexcode: str = '#2ca02c',
-        draw_maps_lacking_kos: bool = False
-    ) -> Dict[str, bool]:
-        """
-        Draw pathway maps, highlighting KOs present in the genome.
-
-        Parameters
-        ==========
-        genomes_storage_db : str
-            File path to a genomes storage database containing KO annotations.
-
-        genome_name : str
-            Name of a genome in the genomes storage.
-
-        output_dir : str
-            Path to the output directory in which pathway map PDF files are drawn. The directory is
-            created if it does not exist.
-
-        pathway_numbers : Iterable[str], None
-            Regex patterns to match the ID numbers of the drawn pathway maps. The default of None
-            draws all available pathway maps in the KEGG data directory.
-
-        color_hexcode : str, '#2ca02c'
-            This is the color, by default green, for reactions containing KOs in the genome.
-            Alternatively to a color hex code, the string, 'original', can be provided to use the
-            original color scheme of the reference map. In global and overview maps, KOs are
-            represented in reaction lines. The foreground color of lines is set. In standard maps,
-            KOs are represented in boxes, the background color of which is set, or lines.
-
-        draw_maps_lacking_kos : bool, False
-            If False, by default, only draw maps containing any of the KOs in the genome. If True,
-            draw maps regardless, meaning that nothing may be colored.
-
-        Returns
-        =======
-        Dict[str, bool]
-            Keys are pathway numbers. Values are True if the map was drawn, False if the map was not
-            drawn because it did not contain any of the select KOs and 'draw_maps_lacking_kos' was
-            False.
-        """
-        # Retrieve the IDs of all KO annotations for the genome.
-        self.progress.new("Loading KO data from the genome")
-        self.progress.update("...")
-
-        self._check_genomes_storage_db(genomes_storage_db)
-        self._check_genomes_storage_ko_annotation(genomes_storage_db)
-
-        gsdb = GenomeStorage(
-            genomes_storage_db,
-            genome_names_to_focus=[genome_name],
-            function_annotation_sources=['KOfam'],
-            run=terminal.Run(verbose=False),
-            progress=terminal.Progress(verbose=False)
-        )
-        ko_ids = gsdb.db.get_single_column_from_table(
-            'gene_function_calls',
-            'accession',
-            unique=True,
-            where_clause=f'genome_name = "{genome_name}" AND source = "KOfam"'
-        )
-        self.progress.end()
-
-        drawn = self._map_kos_fixed_colors(
-            ko_ids,
-            output_dir,
-            pathway_numbers=pathway_numbers,
-            color_hexcode=color_hexcode,
-            draw_maps_lacking_kos=draw_maps_lacking_kos
-        )
-        count = sum(drawn.values()) if drawn else 0
-        self.run.info("Number of maps drawn", count)
-
-        return drawn
 
     def map_contigs_databases_kos(
         self,
@@ -931,27 +1451,25 @@ class Mapper:
         pathway_numbers: Iterable[str] = None,
         draw_individual_files: Union[Iterable[str], bool] = False,
         draw_grid: Union[Iterable[str], bool] = False,
-        colormap: Union[bool, str, mcolors.Colormap] = True,
-        colormap_limits: Tuple[float, float] = None,
+        reaction_colormap: Union[bool, str, mcolors.Colormap] = True,
+        reaction_colormap_limits: Tuple[float, float] = None,
         colormap_scheme: Literal['by_count', 'by_membership'] = None,
-        reverse_overlay: bool = False,
-        color_hexcode: str = '#2ca02c',
+        reaction_reverse_overlay: bool = False,
+        reaction_color: str = '#2ca02c',
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
         group_colormap_limits: Tuple[float, float] = (0.1, 0.9),
         group_reverse_overlay: bool = False,
-        draw_maps_lacking_kos: bool = False
+        draw_maps_lacking_data: bool = False
     ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
         """
-        Draw pathway maps, highlighting KOs across contigs databases (representing, for example,
-        genomes or metagenomes) or groups of databases (representing, for example, taxonomic
-        groups of genomes or geographical groups of metagenomes).
+        Draw pathway maps, coloring the reaction layer by KOs across contigs databases
+        (representing, for example, genomes or metagenomes) or groups of databases (representing,
+        for example, taxonomic groups of genomes or geographical groups of metagenomes).
 
-        A reaction on a map is defined by one or more KOs. These are matched to KO sequence
-        annotations in each contigs database. The presence/absence of any of these KOs in a contigs
-        database translates in the map to the presence/absence of the reaction in the database.
-
-        In global and overview maps, reaction lines are colored. In standard maps, reaction boxes or
-        lines are colored.
+        A reaction element on a map is represented by one or more KOs, matched to the KO annotations
+        of each contigs database; a database "contains" the reaction if it has any of those KOs. The
+        reaction elements (lines in global and overview maps, boxes or lines in standard maps) are
+        colored by the databases or groups containing them via '_map_element_membership'.
 
         Parameters
         ==========
@@ -976,7 +1494,7 @@ class Mapper:
 
         group_threshold : float, None
             The proportion of contigs databases in a group containing data of interest for the group
-            to be represented in terms of presence/absence in a map feature. Here is a concrete
+            to be represented in terms of presence/absence in a reaction element. Here is a concrete
             example. Say each contigs database represents a genome, and the 'groups_txt' argument,
             which must be used with this argument, groups these genomes by their species, 'A', 'B',
             and 'C'. You wish to understand the distribution of metabolic capabilities across the 3
@@ -998,143 +1516,32 @@ class Mapper:
             Regex patterns to match the ID numbers of the drawn pathway maps. The default of None
             draws all available pathway maps in the KEGG data directory.
 
-        draw_individual_files : Union[Iterable[str], bool], False
-            First consider the case where groups are not defined by 'groups_txt'. If the
-            'draw_individual_files' argument is not False, draw map files for individual contigs
-            databases. If True, draw maps for all of the contigs databases. Alternatively, the
-            argument can accept the project names of a subset of contigs databases to only draw maps
-            for those databases.
+        reaction_color : str, '#2ca02c'
+            The single color, by default green, for reaction elements when dynamic coloring is
+            disabled (when 'reaction_colormap' is False). It colors both the unified map (by
+            presence/absence in any database) and the individual-database maps. Alternatively, the
+            string 'original' uses the reference map's original color scheme.
 
-            Consider the case where groups are defined by 'groups_txt'. If the
-            'draw_individual_files' argument is not False, draw map files for individual groups
-            showing membership of reactions in the contigs databases defining the group. If True,
-            draw maps for all of the groups. Alternatively, the argument can accept a subset of
-            group names to only draw maps for those groups. Maps are always colored by contigs
-            database count, never explicitly by membership, allowing maps for different groups to be
-            compared in terms of the same colors.
-
-        draw_grid : Union[Iterable[str], bool], False
-            First consider the case where groups are not defined by 'groups_txt'. If the 'draw_grid'
-            argument is not False, draw a paneled grid file for each pathway map showing the unified
-            map of input contigs databases alongside maps for individual contigs databases. If True,
-            include all of the contigs databases in the grid. Alternatively, the argument can accept
-            the project names of a subset of contigs databases to only draw individual maps in the
-            grid for those databases.
-
-            Consider the case where groups are defined by 'groups_txt'. If the 'draw_grid' argument
-            is not False, draw a paneled grid file for each pathway map showing the unified map of
-            groups alongside maps for individual groups that color reactions by count of occurrence
-            in contigs databases of the group. If True, include all of the groups in the grid.
-            Alternatively, the argument can accept a subset of group names to only draw individual
-            maps in the grid for those groups. Individual maps are always colored by contigs
-            database count, never explicitly by membership, allowing the comparison of maps for
-            different groups in terms of the same colors.
-
-        colormap : Union[bool, str, matplotlib.colors.Colormap], True
-            Reactions are dynamically colored to reflect the contigs databases (or groups of
-            databases) containing the reaction, unless the argument value is False. False overrides
-            dynamic coloring via a colormap with the argument provided to 'color_hexcode', so that
-            reactions represented by KOs in contigs databases are assigned predetermined colors.
-
-            The default argument value of True automatically assigns a colormap given the
-            'colormap_scheme' parameter. The scheme, 'by_count', uses by default the sequential
-            colormap, 'plasma_r', which spans yellow (fewer databases or groups) to blue-violet
-            (more databases or groups). This accentuates reactions that are shared rather than
-            unshared across databases/groups. In contrast, a colormap spanning dark to light, such
-            as 'plasma', is better for drawing attention to unshared reactions. The scheme,
-            'by_membership', uses by default the qualitative colormap, 'tab10'; it contains distinct
-            colors suitable for clearly differentiating the databases/groups containing reactions.
-
-            The name of a Matplotlib Colormap or a Colormap object itself can also be provided to be
-            used in lieu of the default. See the following webpage for named colormaps:
-            https://matplotlib.org/stable/users/explain/colors/colormaps.html#classes-of-colormaps
-
-        colormap_limits : Tuple[float, float], None
-            Limit the fraction of the 'colormap' used in dynamically selecting colors. The first
-            value is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.9)
-            limits color selection to 70% of the colormap, trimming the bottom 20% and top 10%. By
-            default, for the colormap scheme, 'by_count', the colormap is 'plasma_r', and the limits
-            are set to (0.1, 0.9). By default, for the scheme, 'by_membership', the colormap is
-            qualititative ('tab10'), and limits are set to (0.0, 1.0).
-
-        colormap_scheme : Literal['by_count', 'by_membership'], None
-            There are two ways of dynamically coloring reactions by inclusion in contigs databases
-            or groups of databases: by count, or explicitly by database/group or combination of
-            databases/groups. Given the default argument value of None, with 4 or more
-            databases/groups, reactions are colored by count, and with 2 or 3, explicitly by
-            membership. In coloring by count, the colormap should be sequential, such that the color
-            of a reaction changes 'smoothly' with the count. In contrast, coloring by database/group
-            means reaction color is determined by membership in a database/group or combination of
-            databases/groups, so a qualitative colormap can be suitable for clearly differentiating
-            each.
-
-        reverse_overlay : bool, False
-            By default, with False, reactions in more contigs databases or groups of databases are
-            drawn on top of those in fewer databases/groups. With True, the opposite applies;
-            especially in global maps with a non-default colormap spanning dark to light, this
-            accentuates unshared rather than shared parts of a pathway.
-
-        color_hexcode : str, '#2ca02c'
-            This is the color, by default green, for reactions containing contigs database KOs.
-            Alternatively to a color hex code, the string, 'original', can be provided to use the
-            original color scheme of the reference map.
-
-            For this argument to be used in coloring unified maps showing KO membership in all input
-            contigs databases, overriding dynamic coloring based on database/group membership with
-            static coloring based on presence/absence in any database, the 'colormap' argument must
-            be set to False.
-
-            This argument is used in coloring map files for individual contigs databases
-            ('draw_individual_files'), regardless of the value of 'colormap'.
-
-        group_colormap : Union[str, mcolors.Colormap], 'plasma_r'
-            This parameter is similar in effect to 'colormap', but only applies to drawing files for
-            individual groups ('draw_individual_files') and panels for individual groups in map
-            grids ('draw_grid'). These maps for individual groups show reaction membership in the
-            contigs databases of the group. They are always colored dynamically by count, i.e., the
-            number of databases in the group containing the reaction. Like 'colormap', this
-            parameter can take the name of a Matplotlib Colormap or a Colormap object itself. The
-            default group colormap is 'plasma_r', the same as the default 'colormap' with a
-            'colormap_scheme' of 'by_count'.
-
-        group_colormap_limits : Tuple[float, float], (0.1, 0.9)
-            This parameter is similar in effect to 'colormap_limits', but only applies to drawing
-            files for individual groups and panels for individual groups in map grids (also see
-            'group_colormap'). Like 'colormap_limits', this parameter takes a lower and upper cutoff
-            for the proportion of the group colormap to use. The default group limits of (0.1, 0.9)
-            are the same as the default 'colormap_limits'.
-
-        group_reverse_overlay : bool, False
-            This parameter is similar in effect to 'reverse_overlay', but only applies to drawing
-            files for individual groups and panels for individual groups in map grids (also see
-            'group_colormap'). If True, these maps for individual groups draw reactions found in
-            fewer of the group's contigs databases on top of reactions found in more of the group's
-            databases, the opposite of the default drawing order.
-
-        draw_maps_lacking_kos : bool, False
+        draw_maps_lacking_data : bool, False
             If False, by default, only draw maps containing any of the select KOs. If True, draw
             maps regardless, meaning that nothing may be colored.
+
+        Notes
+        =====
+        The dynamic-coloring and drawing options ('reaction_colormap', 'reaction_colormap_limits',
+        'colormap_scheme', 'reaction_reverse_overlay', 'draw_individual_files', 'draw_grid', and the
+        group colormap options) mirror the categorical engine; see the CLI help and
+        '_map_element_membership'.
 
         Returns
         =======
         Dict[Literal['unified', 'individual', 'grid'], Dict]
-            Keys in the outer dictionary are different types of files that can be drawn. 'unified'
-            maps show data from all contigs databases or groups of databases. 'individual' maps show
-            data from individual databases or groups. 'grid' images show both unified and individual
-            maps.
-
-            'unified' and 'grid' values are Dict[str, bool]. Keys are pathway numbers. Values are
-            True if the map was drawn; False if the map was not drawn, because it did not contain
-            any of the select KOs and 'draw_maps_lacking_kos' was False.
-
-            'individual' values are Dict[str, Dict[str, bool]]. Keys in the outer dictionary here
-            are contigs database project names or group names. Keys in the inner dictionary are
-            pathway numbers. Values in the inner dictionary are True if the map was drawn; False if
-            the map was not drawn because it did not contain any of the select KOs and
-            'draw_maps_lacking_kos' was False.
+            The record returned by '_map_element_membership': 'unified' maps show all contigs
+            databases or groups, 'individual' maps show single databases or groups, and 'grid'
+            images show both. See '_map_element_membership' for the nested structure.
         """
         # This method loads KO membership from contigs databases and hands off the drawing of
-        # unified, individual, and grid maps to '_map_kos_across_categories'.
+        # unified, individual, and grid maps to '_map_element_membership'.
 
         self.progress.new("Loading metadata from contigs databases")
         self.progress.update("...")
@@ -1249,11 +1656,21 @@ class Mapper:
 
         self.progress.end()
 
-        return self._map_kos_across_categories(
-            ko_membership,
-            source_kos,
+        layer = {
+            'name': 'reactions',
+            'element_type': 'reaction',
+            'use_reaction_attribute': False,
+            'membership': ko_membership,
+            'source_accessions': {source: set(kos) for source, kos in source_kos.items()},
+            'color_hexcode': reaction_color,
+            'colormap': reaction_colormap,
+            'colormap_limits': reaction_colormap_limits,
+            'colormap_scheme': colormap_scheme,
+            'reverse_overlay': reaction_reverse_overlay
+        }
+        return self._map_element_membership(
+            [layer],
             list(project_name_contigs_db),
-            output_dir,
             'contigs database',
             source_group=source_group,
             group_sources=group_sources,
@@ -1261,17 +1678,12 @@ class Mapper:
             pathway_numbers=pathway_numbers,
             draw_individual_files=draw_individual_files,
             draw_grid=draw_grid,
-            colormap=colormap,
-            colormap_limits=colormap_limits,
-            colormap_scheme=colormap_scheme,
-            reverse_overlay=reverse_overlay,
-            color_hexcode=color_hexcode,
             group_colormap=group_colormap,
             group_colormap_limits=group_colormap_limits,
             group_reverse_overlay=group_reverse_overlay,
-            draw_maps_lacking_kos=draw_maps_lacking_kos
+            output_dir=output_dir,
+            draw_maps_lacking_data=draw_maps_lacking_data
         )
-
 
     def map_pan_database_kos(
         self,
@@ -1285,27 +1697,25 @@ class Mapper:
         pathway_numbers: Iterable[str] = None,
         draw_individual_files: Union[Iterable[str], bool] = False,
         draw_grid: Union[Iterable[str], bool] = False,
-        colormap: Union[bool, str, mcolors.Colormap] = True,
-        colormap_limits: Tuple[float, float] = None,
+        reaction_colormap: Union[bool, str, mcolors.Colormap] = True,
+        reaction_colormap_limits: Tuple[float, float] = None,
         colormap_scheme: Literal['by_count', 'by_membership'] = None,
-        reverse_overlay: bool = False,
-        color_hexcode: str = '#2ca02c',
+        reaction_reverse_overlay: bool = False,
+        reaction_color: str = '#2ca02c',
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
         group_colormap_limits: Tuple[float, float] = (0.1, 0.9),
         group_reverse_overlay: bool = False,
-        draw_maps_lacking_kos: bool = False
+        draw_maps_lacking_data: bool = False
     ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
         """
-        Draw pathway maps, highlighting consensus KOs of gene clusters across genomes or groups
-        of genomes (representing, for example, taxa or geographical groups).
+        Draw pathway maps, coloring the reaction layer by consensus KOs of gene clusters across
+        genomes or groups of genomes (representing, for example, taxa or geographical groups).
 
-        A reaction on a map is defined by one or more KOs. These are matched to consensus KOs of
-        pangenomic gene clusters. A consensus KO is imputed to genomes with genes in the cluster.
-        The presence/absence of any of the reaction KOs among the imputed consensus KOs of a genome
-        translates in the map to the presence/absence of the reaction in the genome.
-
-        In global and overview maps, reaction lines are colored. In standard maps, reaction boxes or
-        lines are colored.
+        A reaction element on a map is represented by one or more KOs, matched to the consensus KOs
+        of pangenomic gene clusters (a consensus KO is imputed to genomes with genes in the
+        cluster); a genome "contains" the reaction if it has any of those consensus KOs. The
+        reaction elements (lines in global and overview maps, boxes or lines in standard maps) are
+        colored by the genomes or groups containing them via '_map_element_membership'.
 
         Parameters
         ==========
@@ -1317,8 +1727,8 @@ class Mapper:
             KO annotations.
 
         output_dir : str
-            Path to the output directory in which pathway map PDF files are drawn. The directory is
-            created if it does not exist.
+            Path to the output directory in which pathway map and colorbar PDF files are drawn. The
+            directory is created if it does not exist.
 
         groups_txt : str, None
             A tab-delimited text file specifying which group each genome belongs to. The first
@@ -1333,13 +1743,13 @@ class Mapper:
 
         group_threshold : float, None
             The proportion of genomes in a group containing data of interest for the group to be
-            represented in terms of presence/absence in a map feature. Here is a concrete example.
-            Say the 'groups_txt' argument, which must be used with this argument, groups genomes by
-            their species, 'A', 'B', and 'C'. You wish to understand the distribution of metabolic
-            capabilities across the 3 species from KO annotations of genes. Reaction colors are
-            assigned based on the groups rather than individual genomes containing the reaction.
-            Thresholds between 0 and 1 can be set to define group membership: a threshold of 0.0
-            would mean that ANY genome in the group can contain the reaction via KOs for the
+            represented in terms of presence/absence in a reaction element. Here is a concrete
+            example. Say the 'groups_txt' argument, which must be used with this argument, groups
+            genomes by their species, 'A', 'B', and 'C'. You wish to understand the distribution of
+            metabolic capabilities across the 3 species from KO annotations of genes. Reaction
+            colors are assigned based on the groups rather than individual genomes containing the
+            reaction. Thresholds between 0 and 1 can be set to define group membership: a threshold
+            of 0.0 would mean that ANY genome in the group can contain the reaction via KOs for the
             reaction to be considered present in the group; a threshold of 0.75 means that at least
             75% of the genomes in the group must contain the reaction for it to be present; a
             threshold of 1.0 means that ALL genomes in the group must contain the reaction for it to
@@ -1372,132 +1782,32 @@ class Mapper:
             Regex patterns to match the ID numbers of the drawn pathway maps. The default of None
             draws all available pathway maps in the KEGG data directory.
 
-        draw_individual_files : Union[Iterable[str], bool], False
-            First consider the case where groups are not defined by 'groups_txt'. If the
-            'draw_individual_files' argument is not False, draw map files for individual genomes.
-            If True, draw maps for all of the genomes. Alternatively, the argument can accept the
-            project names of a subset of genomes to only draw maps for those genomes.
+        reaction_color : str, '#2ca02c'
+            The single color, by default green, for reaction elements when dynamic coloring is
+            disabled (when 'reaction_colormap' is False). It colors both the unified map (by
+            presence/absence in any genome) and the individual-genome maps. Alternatively, the
+            string 'original' uses the reference map's original color scheme.
 
-            Consider the case where groups are defined by 'groups_txt'. If the
-            'draw_individual_files' argument is not False, draw map files for individual groups
-            showing membership of reactions in the genomes defining the group. If True, draw maps
-            for all of the groups. Alternatively, the argument can accept a subset of group names to
-            only draw maps for those groups.
-
-        draw_grid : Union[Iterable[str], bool], False
-            First consider the case where groups are not defined by 'groups_txt'. If the 'draw_grid'
-            argument is not False, draw a paneled grid file for each pathway map showing the unified
-            map of genomes alongside maps for individual genomes. If True, include all of the
-            genomes in the grid. Alternatively, the argument can accept the project names of a
-            subset of genomes to only draw individual maps in the grid for those genomes.
-
-            Consider the case where groups are defined by 'groups_txt'. If the 'draw_grid' argument
-            is not False, draw a paneled grid file for each pathway map showing the unified map of
-            groups alongside maps for individual groups that color reactions by count of occurrence
-            in genomes of the group. If True, include all of the groups in the grid. Alternatively,
-            the argument can accept a subset of group names to only draw individual maps in the grid
-            for those groups.
-
-        colormap : Union[bool, str, matplotlib.colors.Colormap], True
-            Reactions are dynamically colored to reflect the number of genomes (or groups of
-            genomes) containing the reaction, unless the argument value is False. False overrides
-            dynamic coloring via a colormap using the argument provided to 'color_hexcode', so that
-            reactions represented in the pangenome are assigned predetermined colors.
-
-            The default argument value of True automatically assigns a colormap given the
-            'colormap_scheme' parameter. The scheme, 'by_count', uses by default the sequential
-            colormap, 'plasma_r', which spans yellow (fewer genomes or groups) to blue-violet (more
-            genomes or groups). This accentuates reactions that are shared rather than unshared
-            across genomes/groups. In contrast, a colormap spanning dark to light, such as 'plasma',
-            is better for drawing attention to unshared reactions. The scheme, 'by_membership', uses
-            by default the qualitative colormap, 'tab10'; it contains distinct colors suitable for
-            clearly differentiating the genomes/groups containing reactions.
-
-            The name of a Matplotlib Colormap or a Colormap object itself can also be provided to be
-            used in lieu of the default. See the following webpage for named colormaps:
-            https://matplotlib.org/stable/users/explain/colors/colormaps.html#classes-of-colormaps
-
-        colormap_limits : Tuple[float, float], None
-            Limit the fraction of the 'colormap' used in dynamically selecting colors. The first
-            value is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.9)
-            limits color selection to 70% of the colormap, trimming the bottom 20% and top 10%. By
-            default, for the colormap scheme, 'by_count', the colormap is 'plasma_r', and the limits
-            are set to (0.1, 0.9). By default, for the scheme, 'by_membership', the colormap is
-            qualititative ('tab10'), and limits are set to (0.0, 1.0).
-
-        colormap_scheme : Literal['by_count', 'by_membership'], None
-            There are two ways of dynamically coloring reactions by inclusion in genomes or groups
-            of genomes: by count, or explicitly by genome/group or combination of genomes/groups.
-            Given the default argument value of None, with 4 or more genomes/groups, reactions are
-            colored by count, and with 2 or 3, explicitly by membership. In coloring by count, the
-            colormap should be sequential, such that the color of a reaction changes 'smoothly' with
-            the count. In contrast, coloring by genome/group means reaction color is determined by
-            membership in a genome/group or combination of genomes/groups, so a qualitative colormap
-            can be suitable for clearly differentiating each.
-
-        reverse_overlay : bool, False
-            By default, with False, reactions in more genomes or groups of genomes are drawn on top
-            of those in fewer genomes/groups. With True, the opposite applies; especially in global
-            maps with a non-default colormap spanning dark to light, this accentuates unshared
-            rather than shared parts of a pathway.
-
-        color_hexcode : str, '#2ca02c'
-            This is the color, by default green, for reactions containing consensus KOs from the pan
-            database. Alternatively to a color hex code, the string, 'original', can be provided to
-            use the original color scheme of the reference map.
-
-            For this argument to be used in coloring unified maps showing KO membership in all
-            genomes, overriding dynamic coloring based on genome/group membership with static
-            coloring based on presence/absence in any genome, the 'colormap' argument must be set
-            to False.
-
-            This argument is used in coloring map files for individual genomes
-            ('draw_individual_files'), regardless of the value of 'colormap'.
-
-        group_colormap : Union[str, mcolors.Colormap], 'plasma_r'
-            This parameter is similar in effect to 'colormap', but only applies to drawing files for
-            individual groups ('draw_individual_files') and panels for individual groups in map
-            grids ('draw_grid'). These maps for individual groups show the number of genomes in the
-            group containing the reaction. Like 'colormap', this parameter can take the name of a
-            Matplotlib Colormap or a Colormap object itself. The default group colormap is
-            'plasma_r', the same as the default 'colormap'.
-
-        group_colormap_limits : Tuple[float, float], (0.1, 0.9)
-            This parameter is similar in effect to 'colormap_limits', but only applies to drawing
-            files for individual groups and panels for individual groups in map grids (also see
-            'group_colormap'). Like 'colormap_limits', this parameter takes a lower and upper cutoff
-            for the proportion of the group colormap to use. The default group limits of (0.1, 0.9)
-            are the same as the default 'colormap_limits'.
-
-        group_reverse_overlay : bool, False
-            This parameter is similar in effect to 'reverse_overlay', but only applies to drawing
-            files for individual groups and panels for individual groups in map grids (also see
-            'group_colormap'). If True, these maps for individual groups draw reactions found in
-            fewer of the group's genomes on top of reactions found in more of the group's genomes,
-            the opposite of the default drawing order.
-
-        draw_maps_lacking_kos : bool, False
+        draw_maps_lacking_data : bool, False
             If False, by default, only draw maps containing any of the select KOs. If True, draw
             maps regardless, meaning that nothing may be colored.
+
+        Notes
+        =====
+        The dynamic-coloring and drawing options ('reaction_colormap', 'reaction_colormap_limits',
+        'colormap_scheme', 'reaction_reverse_overlay', 'draw_individual_files', 'draw_grid', and the
+        group colormap options) mirror the categorical engine; see the CLI help and
+        '_map_element_membership'.
 
         Returns
         =======
         Dict[Literal['unified', 'individual', 'grid'], Dict]
-            Keys in the outer dictionary are different types of files that can be drawn. 'unified'
-            maps show data from all genomes or groups of genomes. 'individual' maps show data from
-            individual genomes or groups. 'grid' images show both unified and individual maps.
-
-            'unified' and 'grid' values are Dict[str, bool]. Keys are pathway numbers.
-            Values are True if the map was drawn; False if the map was not drawn, because it did not
-            contain any of the select KOs and 'draw_maps_lacking_kos' was False.
-
-            'individual' values are Dict[str, Dict[str, bool]]. Keys in the outer dictionary here
-            are genome or group names. Keys in the inner dictionary are pathway numbers. Values in
-            the inner dictionary are True if the map was drawn; False if the map was not drawn
-            because it did not contain any of the select KOs and 'draw_maps_lacking_kos' was False.
+            The record returned by '_map_element_membership': 'unified' maps show all genomes or
+            groups, 'individual' maps show single genomes or groups, and 'grid' images show both.
+            See '_map_element_membership' for the nested structure.
         """
         # This method loads consensus-KO membership from a pangenome and hands off the drawing
-        # of unified, individual, and grid maps to '_map_kos_across_categories'.
+        # of unified, individual, and grid maps to '_map_element_membership'.
 
         self.progress.new("Loading metadata from pan database")
         self.progress.update("...")
@@ -1589,7 +1899,7 @@ class Mapper:
             if ungrouped_genomes:
                 message = ', '.join([f"'{genome_name}'" for genome_name in ungrouped_genomes])
                 raise ConfigError(
-                    "The following 'pan_db' genomes were not found in the groups provided by "
+                    f"The following 'pan_db' genomes were not found in the groups provided by "
                     f"'groups_txt': {message}"
                 )
 
@@ -1609,7 +1919,7 @@ class Mapper:
             if missing_sources:
                 message = ', '.join([f"'{source}'" for source in missing_sources])
                 self.run.warning(
-                    "The following genomes were grouped in 'groups_txt' but are not found among "
+                    f"The following genomes were grouped in 'groups_txt' but are not found among "
                     f"'pan_db' genomes, and so will not factor into maps: {message}"
                 )
 
@@ -1672,11 +1982,21 @@ class Mapper:
             for genome_name in all_genome_names
         }
 
-        return self._map_kos_across_categories(
-            consensus_ko_genomes,
-            source_kos,
+        layer = {
+            'name': 'reactions',
+            'element_type': 'reaction',
+            'use_reaction_attribute': False,
+            'membership': consensus_ko_genomes,
+            'source_accessions': {source: set(kos) for source, kos in source_kos.items()},
+            'color_hexcode': reaction_color,
+            'colormap': reaction_colormap,
+            'colormap_limits': reaction_colormap_limits,
+            'colormap_scheme': colormap_scheme,
+            'reverse_overlay': reaction_reverse_overlay
+        }
+        return self._map_element_membership(
+            [layer],
             all_genome_names,
-            output_dir,
             'pangenome',
             source_group=source_group,
             group_sources=group_sources,
@@ -1684,591 +2004,12 @@ class Mapper:
             pathway_numbers=pathway_numbers,
             draw_individual_files=draw_individual_files,
             draw_grid=draw_grid,
-            colormap=colormap,
-            colormap_limits=colormap_limits,
-            colormap_scheme=colormap_scheme,
-            reverse_overlay=reverse_overlay,
-            color_hexcode=color_hexcode,
             group_colormap=group_colormap,
             group_colormap_limits=group_colormap_limits,
             group_reverse_overlay=group_reverse_overlay,
-            draw_maps_lacking_kos=draw_maps_lacking_kos
+            output_dir=output_dir,
+            draw_maps_lacking_data=draw_maps_lacking_data
         )
-
-    def _map_kos_across_categories(
-        self,
-        ko_membership: Dict[str, List[str]],
-        source_kos: Dict[str, List[str]],
-        all_sources: List[str],
-        output_dir: str,
-        source_type: Literal['contigs database', 'pangenome', 'sample'],
-        source_group: Dict[str, str] = None,
-        group_sources: Dict[str, List[str]] = None,
-        group_threshold: float = None,
-        pathway_numbers: Iterable[str] = None,
-        draw_individual_files: Union[Iterable[str], bool] = False,
-        draw_grid: Union[Iterable[str], bool] = False,
-        colormap: Union[bool, str, mcolors.Colormap] = True,
-        colormap_limits: Tuple[float, float] = None,
-        colormap_scheme: Literal['by_count', 'by_membership'] = None,
-        reverse_overlay: bool = False,
-        color_hexcode: str = '#2ca02c',
-        group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
-        group_colormap_limits: Tuple[float, float] = (0.1, 0.9),
-        group_reverse_overlay: bool = False,
-        draw_maps_lacking_kos: bool = False
-    ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
-        """
-        Draw pathway maps highlighting KOs across categories of "sources" (enzymes txt samples,
-        pangenome genomes, or contigs databases) or across groups of sources.
-
-        This is the shared drawing engine behind the public methods 'map_contigs_databases_kos',
-        'map_pan_database_kos', and 'map_enzymes_txt_samples_kos'. Each of those methods loads KO
-        membership from its own data source, then delegates the color assignment and drawing of
-        unified, individual, and grid maps here. The kind of source only affects terminology.
-
-        Parameters
-        ==========
-        ko_membership : Dict[str, List[str]]
-            Keys are KO IDs. Values are lists of the names of the sources (contigs databases,
-            genomes, or samples) containing the KO.
-
-        source_kos : Dict[str, List[str]]
-            Keys are source names, values are lists of the KO IDs in the source. Used to draw
-            individual maps for ungrouped sources. There must be an entry for every name in
-            'all_sources' (an empty list for a source lacking KOs).
-
-        all_sources : List[str]
-            The names of all sources, in the order used to assign colors. This is the full set of
-            sources regardless of whether each contains any KOs.
-
-        output_dir : str
-            Path to the output directory in which pathway map and colorbar PDF files are drawn. The
-            directory is created if it does not exist.
-
-        source_type : Literal['contigs database', 'pangenome', 'sample']
-            The kind of source, used only to phrase terminal messages and colorbar labels.
-
-        source_group : Dict[str, str], None
-            Keys are source names, values are group names. None if sources are not grouped. When
-            provided, 'group_sources' and 'group_threshold' must also be provided.
-
-        group_sources : Dict[str, List[str]], None
-            Keys are group names, values are lists of the source names in the group. None if sources
-            are not grouped.
-
-        group_threshold : float, None
-            The proportion of a group's sources that must contain a reaction's KOs for the reaction
-            to be considered present in the group. None if sources are not grouped.
-
-        Notes
-        =====
-        The remaining parameters ('pathway_numbers', 'draw_individual_files', 'draw_grid',
-        'colormap', 'colormap_limits', 'colormap_scheme', 'reverse_overlay', 'color_hexcode',
-        'group_colormap', 'group_colormap_limits', 'group_reverse_overlay', 'draw_maps_lacking_kos')
-        have the same meaning as in the public methods that call this one.
-        """
-        grouped = group_sources is not None
-        assert (source_group is not None) == grouped
-        assert (group_threshold is not None) == grouped
-
-        # Terminology used in messages and colorbar labels, keyed by source type.
-        singular, plural, count_label, members_label, group_phrase = {
-            'contigs database': (
-                'contigs database', 'contigs databases', 'database count', 'databases',
-                'contigs database group'
-            ),
-            'pangenome': ('genome', 'genomes', 'genome count', 'genomes', 'group'),
-            'sample': ('sample', 'samples', 'sample count', 'samples', 'sample group')
-        }[source_type]
-
-        all_sources_set = set(all_sources)
-        categories = list(all_sources) if not grouped else list(group_sources)
-
-        # If individual files or grid panels are requested for a subset of sources or groups, check
-        # that the names are valid.
-        for request, request_phrase in (
-            (draw_individual_files, "Individual maps"),
-            (draw_grid, "Individual maps in grids")
-        ):
-            if isinstance(request, bool):
-                continue
-            if not grouped:
-                unrecognized = [name for name in request if name not in all_sources_set]
-                if unrecognized:
-                    message = ', '.join(f"'{name}'" for name in unrecognized)
-                    raise ConfigError(
-                        f"{request_phrase} were requested for a subset of {plural}, but the "
-                        f"following names were not recognized as any of the provided {plural}: "
-                        f"{message}"
-                    )
-            else:
-                unrecognized = [group for group in request if group not in group_sources]
-                if unrecognized:
-                    message = ', '.join(f"'{group}'" for group in unrecognized)
-                    raise ConfigError(
-                        f"{request_phrase} were requested for a subset of {singular} groups, but "
-                        f"the following group names were not among those provided in the groups "
-                        f"file: {message}"
-                    )
-
-        self.progress.new("Setting map colors")
-        self.progress.update("...")
-
-        # Set the colormap scheme.
-        ignore_groups = False
-        if colormap is False:
-            scheme = 'static'
-            if grouped:
-                ignore_groups = True
-        else:
-            if colormap_scheme is None:
-                if len(categories) < 4:
-                    scheme = 'by_membership'
-                else:
-                    scheme = 'by_count'
-            elif colormap_scheme == 'by_count':
-                scheme = 'by_count'
-            elif colormap_scheme == 'by_membership':
-                scheme = 'by_membership'
-            else:
-                raise AssertionError
-
-        # Set the colormap.
-        if colormap is True:
-            if scheme == 'by_count':
-                cmap = plt.colormaps['plasma_r']
-                if colormap_limits is None:
-                    colormap_limits = (0.1, 0.9)
-            elif scheme == 'by_membership':
-                cmap = plt.colormaps['tab10']
-                if colormap_limits is None:
-                    colormap_limits = (0.0, 1.0)
-            else:
-                raise AssertionError
-        elif colormap is False:
-            cmap = None
-        elif isinstance(colormap, str):
-            cmap = plt.colormaps[colormap]
-            if colormap_limits is None:
-                colormap_limits = (0.0, 1.0)
-        elif isinstance(colormap, mcolors.Colormap):
-            cmap = colormap
-            if colormap_limits is None:
-                colormap_limits = (0.0, 1.0)
-        else:
-            raise AssertionError
-
-        # Set how the colormap is sampled.
-        if cmap is None:
-            sampling = None
-        else:
-            if cmap.name in qualitative_colormaps + repeating_colormaps:
-                sampling = 'in_order'
-            else:
-                sampling = 'even'
-
-        # Trim the colormap.
-        if cmap is not None and colormap_limits is not None and colormap_limits != (0.0, 1.0):
-            lower_limit = colormap_limits[0]
-            upper_limit = colormap_limits[1]
-            assert 0.0 <= lower_limit <= upper_limit <= 1.0
-            cmap = mcolors.LinearSegmentedColormap.from_list(
-                f'trunc({cmap.name},{lower_limit:.2f},{upper_limit:.2f})',
-                cmap(range(int(lower_limit * cmap.N), math.ceil(upper_limit * cmap.N)))
-            )
-
-        # Set and trim the colormap for individual group maps.
-        group_cmap = None
-        poor_colormap = False
-        if grouped and (draw_individual_files is not False or draw_grid is not False):
-            if isinstance(group_colormap, str):
-                group_cmap = plt.colormaps[group_colormap]
-            elif isinstance(group_colormap, mcolors.Colormap):
-                group_cmap = group_colormap
-            else:
-                raise AssertionError
-
-            if group_cmap.name in qualitative_colormaps + repeating_colormaps:
-                poor_colormap = True
-
-            if group_colormap_limits != (0.0, 1.0):
-                lower_limit = group_colormap_limits[0]
-                upper_limit = group_colormap_limits[1]
-                assert 0.0 <= lower_limit <= upper_limit <= 1.0
-                group_cmap = mcolors.LinearSegmentedColormap.from_list(
-                    f'trunc({group_cmap.name},{lower_limit:.2f},{upper_limit:.2f})',
-                    group_cmap(range(
-                        int(lower_limit * group_cmap.N), math.ceil(upper_limit * group_cmap.N)
-                    ))
-                )
-
-        self.progress.end()
-
-        if ignore_groups:
-            self.run.warning(
-                "Groups were provided, but these will be ignored, since 'colormap' was set to "
-                "False, and dynamic coloring based on KO membership in groups will be overridden by "
-                f"static coloring based on KO presence/absence in any {singular}."
-            )
-
-        if poor_colormap:
-            self.run.warning(
-                f"The group colormap, '{group_cmap.name}', that was provided to color individual "
-                f"group maps is not especially useful for displaying the count of {plural}. We "
-                "recommend a sequential colormap like 'plasma' instead."
-            )
-
-        # Find the numeric IDs of the maps to draw.
-        pathway_numbers = self._find_maps(output_dir, 'kos', patterns=pathway_numbers)
-
-        filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
-
-        drawn: Dict[Literal['unified', 'individual', 'grid'], Dict] = {
-            'unified': {},
-            'individual': {},
-            'grid': {}
-        }
-
-        self.progress.new(f"Drawing 'unified' map incorporating data from all {plural}")
-
-        exceeds_colors: Tuple[int, int] = None
-        if scheme == 'static':
-            # Draw unified maps of all sources with static reaction colors.
-            for pathway_number in pathway_numbers:
-                self.progress.update(pathway_number)
-                if color_hexcode == 'original':
-                    drawn['unified'][pathway_number] = self._draw_map_kos_original_color(
-                        pathway_number,
-                        ko_membership,
-                        output_dir,
-                        draw_map_lacking_kos=draw_maps_lacking_kos
-                    )
-                else:
-                    drawn['unified'][pathway_number] = self._draw_map_kos_single_color(
-                        pathway_number,
-                        ko_membership,
-                        color_hexcode,
-                        output_dir,
-                        draw_map_lacking_kos=draw_maps_lacking_kos
-                    )
-        else:
-            # Draw unified maps with dynamic coloring by membership in sources or groups.
-            assert cmap is not None
-            color_priority: Dict[str, float] = {}
-            if scheme == 'by_count':
-                # Sample the colormap for colors representing each possible number of sources or
-                # groups. Lower color values correspond to fewer sources/groups.
-                if sampling == 'in_order':
-                    if len(categories) == 1:
-                        sample_points = range(1, 2)
-                    else:
-                        sample_points = range(len(categories))
-                elif sampling == 'even':
-                    if len(categories) == 1:
-                        sample_points = np.linspace(1, 1, 1)
-                    else:
-                        sample_points = np.linspace(0, 1, len(categories))
-                else:
-                    raise AssertionError
-
-                if len(categories) > cmap.N:
-                    exceeds_colors = (cmap.N, len(categories))
-
-                for sample_point in sample_points:
-                    if reverse_overlay:
-                        color_priority[mcolors.rgb2hex(cmap(sample_point))] = 1 - sample_point
-                    else:
-                        color_priority[mcolors.rgb2hex(cmap(sample_point))] = sample_point
-                category_combos = None
-            elif scheme == 'by_membership':
-                # Sample the colormap for colors representing the different sources or groups and
-                # their combinations. Lower color values correspond to fewer sources/groups.
-                category_combos = []
-                for category_count in range(1, len(categories) + 1):
-                    if not grouped:
-                        category_combos += list(combinations(all_sources, category_count))
-                    else:
-                        category_combos += list(combinations(categories, category_count))
-
-                if sampling == 'in_order':
-                    sample_points = range(len(category_combos))
-                elif sampling == 'even':
-                    sample_points = np.linspace(0, 1, len(category_combos))
-                else:
-                    raise AssertionError
-
-                if len(category_combos) > cmap.N:
-                    exceeds_colors = (cmap.N, len(category_combos))
-
-                for sample_point in sample_points:
-                    if reverse_overlay:
-                        color_priority[
-                            mcolors.rgb2hex(cmap(sample_point))
-                        ] = 1 - sample_point / cmap.N
-                    else:
-                        color_priority[
-                            mcolors.rgb2hex(cmap(sample_point))
-                        ] = (sample_point + 1) / cmap.N
-            else:
-                raise AssertionError
-
-            # Draw a colorbar in a separate file.
-            _draw_colorbar = self.colorbar_drawer.draw
-            if scheme == 'by_count':
-                _draw_colorbar = functools.partial(
-                    _draw_colorbar,
-                    color_labels=range(1, len(categories) + 1),
-                    label=count_label if not grouped else 'group count'
-                )
-            elif scheme == 'by_membership':
-                _draw_colorbar = functools.partial(
-                    _draw_colorbar,
-                    color_labels=[', '.join(combo) for combo in category_combos],
-                    label=members_label if not grouped else 'groups'
-                )
-            _draw_colorbar(
-                color_priority, os.path.join(output_dir, 'colorbar.pdf')
-            )
-
-            for pathway_number in pathway_numbers:
-                self.progress.update(pathway_number)
-                drawn['unified'][pathway_number] = self._draw_map_kos_membership(
-                    pathway_number,
-                    ko_membership,
-                    color_priority,
-                    output_dir,
-                    category_combos=category_combos,
-                    group_sources=group_sources,
-                    group_threshold=group_threshold,
-                    draw_map_lacking_kos=draw_maps_lacking_kos
-                )
-
-        self.progress.end()
-
-        if exceeds_colors:
-            self.run.warning(
-                f"There were fewer distinct colors available in the colormap ({exceeds_colors[0]}) "
-                f"than were needed ({exceeds_colors[1]}), so some colors were repeated in use."
-            )
-
-        if draw_individual_files is False and draw_grid is False:
-            # Our work here is done.
-            count = sum(drawn['unified'].values()) if drawn['unified'] else 0
-            self.run.info("Number of maps drawn", count)
-
-            return drawn
-
-        # Determine the individual maps to draw.
-        if draw_individual_files == True:
-            draw_files_categories = list(all_sources) if not grouped else list(group_sources)
-        elif draw_individual_files == False:
-            draw_files_categories = []
-        else:
-            draw_files_categories = draw_individual_files
-        seen = set()
-        draw_files_categories = [
-            category for category in list(draw_files_categories)
-            if not (category in seen or seen.add(category))
-        ]
-
-        # Determine the map grids to draw.
-        if draw_grid == True:
-            draw_grid_categories = list(all_sources) if not grouped else list(group_sources)
-        elif draw_grid == False:
-            draw_grid_categories = []
-        else:
-            draw_grid_categories = draw_grid
-        seen = set()
-        draw_grid_categories = [
-            category for category in list(draw_grid_categories)
-            if not (category in seen or seen.add(category))
-        ]
-
-        seen = set()
-        draw_categories = [
-            category for category in draw_files_categories + draw_grid_categories
-            if not (category in seen or seen.add(category))
-        ]
-
-        # Gather information needed to draw individual maps for groups, either as separate files or
-        # in map grids. Determine map colors.
-        group_ko_membership: Dict[str, Dict[str, List[str]]] = {}
-        group_color_priority: Dict[str, Dict[str, float]] = {}
-        if grouped:
-            # Determine KO membership among each group's sources.
-            for ko_id, source_names in ko_membership.items():
-                for source_name in source_names:
-                    try:
-                        group = source_group[source_name]
-                    except KeyError:
-                        # 'group_sources' is not required to contain every source.
-                        continue
-
-                    try:
-                        # Use 'inner_' to distinguish from variable 'ko_membership'.
-                        inner_ko_membership = group_ko_membership[group]
-                    except KeyError:
-                        group_ko_membership[group] = inner_ko_membership = {}
-                    try:
-                        inner_source_names = inner_ko_membership[ko_id]
-                    except KeyError:
-                        inner_ko_membership[ko_id] = inner_source_names = []
-                    inner_source_names.append(source_name)
-
-            # For each group, sample the group colormap for colors representing all sources in the
-            # group. Lower color values correspond to fewer sources.
-            assert group_cmap is not None
-            for group, inner_ko_membership in group_ko_membership.items():
-                source_names = group_sources[group]
-                if len(source_names) == 1:
-                    sample_points = np.linspace(1, 1, 1)
-                else:
-                    sample_points = np.linspace(0, 1, len(source_names))
-
-                if len(source_names) > group_cmap.N:
-                    self.run.warning(
-                        "There were fewer distinct colors available in the group colormap "
-                        f"({group_cmap.N}) than were needed ({len(source_names)}) for drawing "
-                        f"individual maps for group '{group}', so some colors were repeated in "
-                        "use."
-                    )
-
-                group_color_priority[group] = inner_color_priority = {}
-                for sample_point in sample_points:
-                    if group_reverse_overlay:
-                        inner_color_priority[
-                            mcolors.rgb2hex(group_cmap(sample_point))
-                        ] = 1 - sample_point
-                    else:
-                        inner_color_priority[
-                            mcolors.rgb2hex(group_cmap(sample_point))
-                        ] = sample_point
-
-        # Draw individual source or group maps needed as final outputs or for grids.
-        for category in draw_categories:
-            drawn_category: Dict[str, bool] = {}
-            if not grouped:
-                self.progress.new(f"Drawing maps for {singular} '{category}'")
-                self.progress.update("...")
-                progress = self.progress
-                self.progress = terminal.Progress(verbose=False)
-                run = self.run
-                self.run = terminal.Run(verbose=False)
-
-                category_output_dir = os.path.join(output_dir, category)
-                filesnpaths.gen_output_directory(
-                    category_output_dir, progress=self.progress, run=self.run
-                )
-
-                for pathway_number in pathway_numbers:
-                    ko_ids = source_kos[category]
-                    if color_hexcode == 'original':
-                        drawn_category[pathway_number] = self._draw_map_kos_original_color(
-                            pathway_number,
-                            ko_ids,
-                            category_output_dir,
-                            draw_map_lacking_kos=draw_maps_lacking_kos
-                        )
-                    else:
-                        drawn_category[pathway_number] = self._draw_map_kos_single_color(
-                            pathway_number,
-                            ko_ids,
-                            color_hexcode,
-                            category_output_dir,
-                            draw_map_lacking_kos=draw_maps_lacking_kos
-                        )
-
-                self.progress = progress
-                self.run = run
-                self.progress.end()
-            else:
-                group = category
-                self.progress.new(f"Drawing maps for {group_phrase} '{group}'")
-                self.progress.update("...")
-                progress = self.progress
-                self.progress = terminal.Progress(verbose=False)
-                run = self.run
-                self.run = terminal.Run(verbose=False)
-
-                group_output_dir = os.path.join(output_dir, group)
-                filesnpaths.gen_output_directory(
-                    group_output_dir, progress=self.progress, run=self.run
-                )
-
-                self.colorbar_drawer.draw(
-                    group_color_priority[group],
-                    os.path.join(output_dir, group, 'colorbar.pdf'),
-                    color_labels=range(1, len(group_sources[group]) + 1),
-                    label=count_label
-                )
-
-                inner_ko_membership = group_ko_membership[group]
-                inner_color_priority = group_color_priority[group]
-                for pathway_number in pathway_numbers:
-                    drawn_category[pathway_number] = self._draw_map_kos_membership(
-                        pathway_number,
-                        inner_ko_membership,
-                        inner_color_priority,
-                        group_output_dir,
-                        draw_map_lacking_kos=draw_maps_lacking_kos
-                    )
-
-                self.progress = progress
-                self.run = run
-                self.progress.end()
-            drawn['individual'][category] = drawn_category
-
-        if draw_grid == False:
-            # Our work here is done.
-            category_message = plural if not grouped else "groups"
-
-            count = sum(drawn['unified'].values()) if drawn['unified'] else 0
-            self.run.info(
-                f"Number of 'unified' maps drawn incorporating data from all {category_message}",
-                count
-            )
-
-            if not drawn['individual']:
-                count = 0
-            else:
-                count = sum([sum(d.values()) if d else 0 for d in drawn['individual'].values()])
-            self.run.info(f"Number of maps drawn for individual {category_message}", count)
-
-            return drawn
-
-        self._draw_map_grids(
-            pathway_numbers,
-            draw_categories,
-            draw_grid_categories,
-            draw_files_categories,
-            output_dir,
-            drawn,
-            group_sources=group_sources,
-            group_color_priority=group_color_priority,
-            check_maps_lacking_kos=not draw_maps_lacking_kos,
-            source_type=source_type
-        )
-
-        # Our work here is done.
-        category_message = plural if not grouped else "groups"
-
-        count = sum(drawn['unified'].values()) if drawn['unified'] else 0
-        self.run.info(
-            f"Number of 'unified' maps drawn incorporating data from all {category_message}", count
-        )
-
-        if draw_individual_files:
-            if not drawn['individual']:
-                count = 0
-            else:
-                count = sum([sum(d.values()) if d else 0 for d in drawn['individual'].values()])
-            self.run.info(f"Number of maps drawn for individual {category_message}", count)
-
-        count = sum(drawn['grid'].values()) if drawn['grid'] else 0
-        self.run.info("Number of map grids drawn", count)
-
-        return drawn
 
     def _map_kos_fixed_colors(
         self,
@@ -2276,7 +2017,7 @@ class Mapper:
         output_dir: str,
         pathway_numbers: List[str] = None,
         color_hexcode: str = '#2ca02c',
-        draw_maps_lacking_kos: bool = False
+        draw_maps_lacking_data: bool = False
     ) -> Dict[str, bool]:
         """
         Draw pathway maps, highlighting reactions containing select KOs in either a single color
@@ -2303,7 +2044,7 @@ class Mapper:
             foreground color of the lines and arrows is set. In standard maps, KOs are represented
             in boxes, the background color of which is set.
 
-        draw_maps_lacking_kos : bool, False
+        draw_maps_lacking_data : bool, False
             If False, by default, only draw maps containing any of the select KOs. If True, draw
             maps regardless, meaning that nothing may be colored.
 
@@ -2311,13 +2052,25 @@ class Mapper:
         =======
         Dict[str, bool]
             Keys are pathway numbers. Values are True if the map was drawn, False if the map was not
-            drawn because it did not contain any of the select KOs and 'draw_maps_lacking_kos' was
+            drawn because it did not contain any of the select KOs and 'draw_maps_lacking_data' was
             False.
         """
         # Find the numeric IDs of the maps to draw.
         pathway_numbers = self._find_maps(output_dir, 'kos', patterns=pathway_numbers)
 
         filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
+
+        # A single-color highlight is drawn through the generalized element engine as a lone
+        # reaction (ortholog) layer. The 'original' scheme preserves each reaction's reference-map
+        # colors and their render order, which the element engine does not model, so it keeps its
+        # own drawer.
+        ko_ids = set(ko_ids)
+        presence_layers = [{
+            'element_type': 'reaction',
+            'use_reaction_attribute': False,
+            'accessions': ko_ids,
+            'color_hexcode': color_hexcode
+        }]
 
         # Draw maps.
         self.progress.new("Drawing map")
@@ -2329,19 +2082,1657 @@ class Mapper:
                     pathway_number,
                     ko_ids,
                     output_dir,
-                    draw_map_lacking_kos=draw_maps_lacking_kos
+                    draw_map_lacking_data=draw_maps_lacking_data
                 )
             else:
-                drawn[pathway_number] = self._draw_map_kos_single_color(
+                drawn[pathway_number] = self._draw_map_element_presence(
                     pathway_number,
-                    ko_ids,
-                    color_hexcode,
+                    presence_layers,
                     output_dir,
-                    draw_map_lacking_kos=draw_maps_lacking_kos
+                    draw_map_lacking_data=draw_maps_lacking_data
                 )
         self.progress.end()
 
         return drawn
+
+    def _relate_samples_to_groups(
+        self,
+        groups_txt: str,
+        all_sample_names: List[str]
+    ) -> Tuple[Dict[str, str], Dict[str, List[str]]]:
+        """
+        Load a groups file relating the input file's samples to groups.
+
+        Every sample must be assigned to a group. Samples grouped in the file but absent from the
+        input file are reported and ignored.
+
+        Parameters
+        ==========
+        groups_txt : str
+            Path to a tab-delimited groups file whose first column holds sample names (those in the
+            input file's 'sample' column) and whose 'group' column holds group names.
+
+        all_sample_names : List[str]
+            The names of all samples in the input file.
+
+        Returns
+        =======
+        Tuple[Dict[str, str], Dict[str, List[str]]]
+            sample_group : maps each sample name to its group name.
+            group_samples : maps each group name to its list of sample names, ordered by the group's
+                appearance in the groups file.
+        """
+        all_sample_names_set = set(all_sample_names)
+        source_group, group_sources = utils.get_groups_txt_file_as_dict(
+            groups_txt, run=self.run, progress=self.progress
+        )
+
+        # Check that groups include all samples. Relate groups and sample names.
+        group_samples: Dict[str, List[str]] = {}
+        sample_group: Dict[str, str] = {}
+        ungrouped_samples: List[str] = []
+        for sample_name in all_sample_names:
+            try:
+                group = source_group[sample_name]
+            except KeyError:
+                ungrouped_samples.append(sample_name)
+                continue
+
+            try:
+                group_samples[group].append(sample_name)
+            except KeyError:
+                group_samples[group] = [sample_name]
+            sample_group[sample_name] = group
+
+        if ungrouped_samples:
+            message = ', '.join([f"'{sample_name}'" for sample_name in ungrouped_samples])
+            raise ConfigError(
+                f"The following samples in the draw-kegg-pathways text file were not found in the "
+                f"groups provided by 'groups_txt': {message}"
+            )
+
+        # Order groups by their appearance in the groups-txt file, which determines the order in
+        # which colors are assigned to groups and their combinations in the drawn maps.
+        group_samples = {
+            group: group_samples[group]
+            for group in group_sources
+            if group in group_samples
+        }
+
+        # Report samples in 'groups_txt' that are not among the draw-kegg-pathways text file
+        # samples.
+        missing_sources: List[str] = []
+        for source in source_group:
+            if source not in all_sample_names_set:
+                missing_sources.append(source)
+        if missing_sources:
+            message = ', '.join([f"'{source}'" for source in missing_sources])
+            self.run.warning(
+                f"The following samples were grouped in 'groups_txt' but are not found among the "
+                f"samples in the draw-kegg-pathways text file, and so will not factor into maps: "
+                f"{message}"
+            )
+
+        return sample_group, group_samples
+
+    @staticmethod
+    def _trim_colormap(
+        cmap: Union[mcolors.Colormap, None],
+        colormap_limits: Tuple[float, float]
+    ) -> Union[mcolors.Colormap, None]:
+        """
+        Trim a colormap to a fraction of its range.
+
+        Parameters
+        ==========
+        cmap : Union[matplotlib.colors.Colormap, None]
+            The colormap to trim, or None.
+
+        colormap_limits : Tuple[float, float], None
+            Lower and upper cutoffs on the fraction of the colormap to keep, e.g., (0.2, 0.9) trims
+            the bottom 20% and top 10%. If None or (0.0, 1.0), or if 'cmap' is None, the colormap is
+            returned unchanged.
+
+        Returns
+        =======
+        Union[matplotlib.colors.Colormap, None]
+            The trimmed colormap, or the input returned unchanged.
+        """
+        if cmap is None or colormap_limits is None or colormap_limits == (0.0, 1.0):
+            return cmap
+        lower_limit = colormap_limits[0]
+        upper_limit = colormap_limits[1]
+        assert 0.0 <= lower_limit <= upper_limit <= 1.0
+        return mcolors.LinearSegmentedColormap.from_list(
+            f'trunc({cmap.name},{lower_limit:.2f},{upper_limit:.2f})',
+            cmap(range(int(lower_limit * cmap.N), math.ceil(upper_limit * cmap.N)))
+        )
+
+    def _get_colormap(self, colormap: str) -> mcolors.Colormap:
+        """
+        Look up a Matplotlib colormap by name.
+
+        Parameters
+        ==========
+        colormap : str
+            The name of a Matplotlib colormap.
+
+        Returns
+        =======
+        matplotlib.colors.Colormap
+            The named colormap.
+        """
+        try:
+            return plt.colormaps[colormap]
+        except KeyError:
+            self.progress.end()
+            raise ConfigError(
+                f"'{colormap}' is not the name of a Matplotlib colormap. The names are listed at "
+                f"https://matplotlib.org/stable/users/explain/colors/colormaps.html and include "
+                f"'plasma', 'viridis' and 'tab10'; adding '_r' to a name, as in 'plasma_r', "
+                f"reverses its colors."
+            )
+
+    def _resolve_sequential_colormap(
+        self,
+        colormap: Union[str, mcolors.Colormap],
+        colormap_limits: Tuple[float, float],
+        subject: str = 'elements'
+    ) -> mcolors.Colormap:
+        """
+        Return a Matplotlib Colormap for quantitative coloring, trimmed to 'colormap_limits'.
+
+        Parameters
+        ==========
+        colormap : Union[str, matplotlib.colors.Colormap]
+            A sequential colormap or its name.
+
+        colormap_limits : Tuple[float, float], None
+            Lower and upper cutoffs on the fraction of the colormap to use, or None for the full
+            colormap.
+
+        subject : str, 'elements'
+            What the colormap colors, for the warning about a qualitative colormap, e.g. 'reactions'
+            or 'compounds'.
+
+        Returns
+        =======
+        matplotlib.colors.Colormap
+            The (optionally trimmed) colormap.
+        """
+        if isinstance(colormap, str):
+            cmap = self._get_colormap(colormap)
+        elif isinstance(colormap, mcolors.Colormap):
+            cmap = colormap
+        else:
+            self.progress.end()
+            raise ConfigError(
+                f"A colormap must be given as the name of a Matplotlib colormap or as a Colormap "
+                f"object, but this one is neither: {colormap}."
+            )
+
+        if cmap.name in qualitative_colormaps + repeating_colormaps:
+            self.run.warning(
+                f"The colormap, '{cmap.name}', provided to color {subject} by value is qualitative "
+                f"rather than sequential, which makes a continuous color scale difficult to "
+                f"interpret. We recommend a sequential colormap like 'plasma' instead."
+            )
+
+        return self._trim_colormap(cmap, colormap_limits)
+
+    @staticmethod
+    def _check_requested_subset(
+        request: Union[Iterable[str], bool],
+        request_phrase: str,
+        valid_names: Set[str],
+        subject: str
+    ) -> None:
+        """
+        Raise a ConfigError if a request for a subset of sources names any unrecognized source.
+
+        Individual map files ('draw_individual_files') and map grid panels ('draw_grid') can be
+        requested for all sources (True), no sources (False), or a subset of sources (a list of
+        names). This checks the subset case, and is a no-op otherwise.
+
+        Parameters
+        ==========
+        request : Union[Iterable[str], bool]
+            A 'draw_individual_files' or 'draw_grid' value.
+
+        request_phrase : str
+            How to refer to the request in an error message, e.g., 'Individual maps' or 'Individual
+            maps in grids'.
+
+        valid_names : Set[str]
+            The recognized source names.
+
+        subject : str
+            A plural noun for the sources in an error message, e.g., 'samples', 'contigs databases',
+            or 'sample groups'.
+        """
+        if isinstance(request, bool):
+            return
+        unrecognized = [name for name in request if name not in valid_names]
+        if unrecognized:
+            message = ', '.join(f"'{name}'" for name in unrecognized)
+            raise ConfigError(
+                f"{request_phrase} were requested for a subset of {subject}, but the following "
+                f"names were not recognized as any of the {subject}: {message}"
+            )
+
+    @staticmethod
+    def _make_quantitative_norm(
+        values: List[float]
+    ) -> Tuple[Union[mcolors.Normalize, None], Union[float, None], Union[float, None]]:
+        """
+        Make a normalization over reaction values for quantitative coloring.
+
+        Parameters
+        ==========
+        values : List[float]
+            All per-reaction values that will be colored on the maps sharing this normalization.
+
+        Returns
+        =======
+        Tuple[Union[matplotlib.colors.Normalize, None], Union[float, None], Union[float, None]]
+            The normalization and its (vmin, vmax). All three are None if 'values' is empty. The
+            normalization is None but vmin and vmax are set (and equal) if all values are equal, a
+            degenerate range in which callers map every reaction to the top of the colormap.
+        """
+        if not values:
+            return None, None, None
+        vmin = min(values)
+        vmax = max(values)
+        if vmin == vmax:
+            return None, vmin, vmax
+        return mcolors.Normalize(vmin=vmin, vmax=vmax, clip=True), vmin, vmax
+
+    @staticmethod
+    def _get_entry_kegg_ids(entry: kgml.Entry, use_reaction_attribute: bool = False) -> List[str]:
+        """
+        Return the KEGG accessions an Entry represents.
+
+        By default these come from the Entry's 'name' attribute: KO IDs for ortholog entries (e.g.,
+        'ko:K00844 ko:K12407' -> ['K00844', 'K12407']) and compound IDs for compound entries (e.g.,
+        'cpd:C00031' -> ['C00031']). With 'use_reaction_attribute', they come instead from the
+        'reaction' attribute of ortholog entries: reaction IDs (e.g., 'rn:R00764 rn:R00756' ->
+        ['R00764', 'R00756']). The source can name multiple accessions or be absent.
+
+        Parameters
+        ==========
+        entry : kgml.Entry
+            The Entry to read.
+
+        use_reaction_attribute : bool, False
+            If True, read reaction IDs from the 'reaction' attribute instead of KO/compound IDs from
+            the 'name' attribute.
+
+        Returns
+        =======
+        List[str]
+            The accessions (the part of each token after the colon), or an empty list if the source
+            attribute is absent.
+        """
+        source = entry.reaction if use_reaction_attribute else entry.name
+        if not source:
+            return []
+        return [token.split(':')[1] for token in source.split()]
+
+    @staticmethod
+    def _reduce_entry_value(
+        entry: kgml.Entry,
+        values: Dict[str, float],
+        aggregate,
+        use_reaction_attribute: bool = False
+    ) -> Union[float, None]:
+        """
+        Reduce the values of an Entry's KEGG accessions to a single element value.
+
+        Parameters
+        ==========
+        entry : kgml.Entry
+            An Entry (ortholog or compound) whose accessions are read by '_get_entry_kegg_ids'.
+
+        values : Dict[str, float]
+            Keys are KEGG accessions (KO, reaction, or compound IDs), values are per-accession
+            values.
+
+        aggregate : callable
+            Reduces a list of values to a single value (see 'AGGREGATION_FUNCTIONS').
+
+        use_reaction_attribute : bool, False
+            Passed to '_get_entry_kegg_ids' to read reaction IDs rather than KO/compound IDs.
+
+        Returns
+        =======
+        Union[float, None]
+            The aggregated value, or None if none of the Entry's accessions have a value or the
+            aggregation is undefined for the values they do have.
+        """
+        entry_values = [
+            values[kegg_id]
+            for kegg_id in Mapper._get_entry_kegg_ids(entry, use_reaction_attribute)
+            if kegg_id in values
+        ]
+        if not entry_values:
+            return None
+        # An aggregation can be undefined for the values of this Entry even when it is defined
+        # elsewhere on the map, as the standard deviation is for an element with a single accession,
+        # in which case the Entry has no value and is left uncolored.
+        value = aggregate(entry_values)
+        return value if np.isfinite(value) else None
+
+    def _draw_quantitative_colorbar(
+        self,
+        cmap: mcolors.Colormap,
+        vmin: float,
+        vmax: float,
+        out_path: str,
+        label: str
+    ) -> None:
+        """
+        Draw a continuous colorbar for quantitative coloring, or a single-value colorbar when the
+        value range is degenerate (vmin == vmax).
+
+        Parameters
+        ==========
+        cmap : matplotlib.colors.Colormap
+            The colormap sampled across the value range.
+
+        vmin : float
+            Lower bound of the value range.
+
+        vmax : float
+            Upper bound of the value range.
+
+        out_path : str
+            Path to the PDF output file.
+
+        label : str
+            Overall colorbar label.
+        """
+        if vmin == vmax:
+            self.colorbar_drawer.draw_discrete(
+                [mcolors.rgb2hex(cmap(1.0))], out_path, color_labels=[f'{vmin:g}'], label=label
+            )
+        else:
+            self.colorbar_drawer.draw_continuous(cmap, vmin, vmax, out_path, label=label)
+
+    def _map_elements(
+        self,
+        layers: List[dict],
+        output_dir: str,
+        pathway_numbers: Iterable[str] = None,
+        categories: Union[List[str], None] = None,
+        category_noun: Union[str, None] = None,
+        grid_source_type: Union[str, None] = None,
+        colorbar_category_suffix: Union[str, None] = None,
+        subset_subject: Union[str, None] = None,
+        unified_plural: Union[str, None] = None,
+        membership_count_label: Union[str, None] = None,
+        membership_members_label: Union[str, None] = None,
+        membership_singular: Union[str, None] = None,
+        grouped_membership: Union[dict, None] = None,
+        draw_individual_files: Union[Iterable[str], bool] = False,
+        draw_grid: Union[Iterable[str], bool] = False,
+        draw_maps_lacking_data: bool = False
+    ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
+        """
+        The unified element engine: color one or two map layers, each by its own mode, on one map.
+
+        A layer's mode sets how it colors its elements: 'quantitative' (continuous value),
+        'membership' (by the sources/groups containing an element, or their count), 'single' (one
+        fixed presence/absence color), 'static' (one fixed color pooled across sources, for the
+        db/pan single-color path), or 'original' (preserve the reference map's colors, drawn by a
+        separate drawer). The mode can differ between the two map contexts, given as 'unified_mode'
+        for the 'unified' map and 'category_mode' for the individual sample/source/group maps: a
+        text layer with a value column and a 'sample' column, for instance, colors per-sample
+        magnitude continuously while summarizing the samples or groups by presence on the 'unified'
+        map. Note that 'original' is a 'unified_mode' only: an individual map can be drawn in the
+        reference colors for one SOURCE, since 'source_accessions' is keyed by source, but not for a
+        group, so an original layer pairs it with a 'category_mode' of 'membership' and its grouped
+        individual maps show within-group source counts.
+
+        Because every layer is reduced to a per-Entry '(color, priority)' by '_draw_map_elements', a
+        quantitative layer and a presence/categorical layer can be colored on the same map. A
+        'unified' map colors elements summarized across all categories; when categories
+        (samples/sources/groups) are drawn individually, each gets its own map, sharing one colorbar
+        per quantitative layer so colors stay comparable.
+
+        Parameters
+        ==========
+        layers : List[dict]
+            One or two layer models, ordered so layers drawn beneath others come first (reaction
+            before compound). Common keys: 'name' (colorbar filename stem), 'accessions' (every
+            accession the layer touches, used to find the entries it colors), 'element_type'
+            ('reaction'/'compound'), and 'use_reaction_attribute' (bool). A layer declares its
+            per-context modes with 'unified_mode' and 'category_mode', or a single 'mode' used in
+            every context (except that a 'static'/'original' layer renders as within-group source
+            counts on grouped individual maps). Mode-specific keys: quantitative -> 'cmap',
+            'reverse_overlay', 'unified_values', 'category_values' (or None), 'aggregate',
+            'colorbar_label'; membership/static/original -> 'membership', 'source_accessions',
+            'color_hexcode', and (membership) 'colormap'/'colormap_limits'/'colormap_scheme'/
+            'reverse_overlay'; single -> 'accessions', 'color_hexcode'. A layer that is quantitative
+            in one context and membership in the other carries the keys of both, plus 'accessions'
+            for finding the entries whose values set the ranges.
+
+        output_dir : str
+            Path to the output directory in which pathway map and colorbar PDF files are drawn.
+
+        categories : Union[List[str], None]
+            The shared category names (samples, sources, or groups) that get individual maps, in
+            color-assignment order, or None for a single map with no category dimension.
+
+        Notes
+        =====
+        'category_noun'/'grid_source_type'/'colorbar_category_suffix'/'subset_subject'/
+        'unified_plural'/'membership_*'/'grouped_membership' carry the terminology and grouping that
+        the public methods supply; the remaining parameters mirror those methods. 'grid_source_type'
+        labels the per-group grid colorbar (which counts sources) and defaults to 'category_noun'.
+        Quantitative layers carry their own colorbar label in 'colorbar_label'.
+        """
+        has_categories = categories is not None
+        grouped = grouped_membership is not None
+        source_group = grouped_membership['source_group'] if grouped else None
+        group_sources = grouped_membership['group_sources'] if grouped else None
+        group_threshold = grouped_membership['group_threshold'] if grouped else None
+
+        # A layer that does not declare per-context modes colors the same way in every context. The
+        # exception is a 'static' or 'original' layer, which pools its sources for the 'unified' map
+        # but still renders as within-group source counts on grouped individual maps.
+        for layer in layers:
+            if 'unified_mode' not in layer:
+                layer['unified_mode'] = layer['mode']
+            if 'category_mode' not in layer:
+                layer['category_mode'] = (
+                    'membership' if layer['mode'] in ('static', 'original') else layer['mode']
+                )
+
+        original_run = any(layer['unified_mode'] == 'original' for layer in layers)
+        static = any(layer['unified_mode'] in ('static', 'original') for layer in layers)
+        # Groups color individual maps by within-group source counts only for the layers whose
+        # per-group context is presence; a group map colored by value gets its colors from the
+        # layer's own colormap instead.
+        grouped_presence = grouped and any(
+            layer['category_mode'] == 'membership' for layer in layers
+        )
+
+        if has_categories:
+            self._check_category_names(categories, category_noun)
+            subset_names = set(categories)
+            self._check_requested_subset(
+                draw_individual_files, "Individual maps", subset_names, subset_subject
+            )
+            self._check_requested_subset(
+                draw_grid, "Individual maps in grids", subset_names, subset_subject
+            )
+
+        if static and grouped:
+            # The individual group maps are the exception to "static overrides dynamic": a single
+            # color cannot distinguish a group's sources, so those maps fall back to within-group
+            # source counts. Only say so when such maps are actually requested.
+            if draw_individual_files is not False or draw_grid is not False:
+                group_map_clause = (
+                    f" The individual group maps are an exception: since one color cannot "
+                    f"distinguish a group's {membership_singular}s, they are colored by the number "
+                    f"of {membership_singular}s in each group containing an element, styled by "
+                    f"'--group-colormap'/'--group-reverse-overlay' rather than by the static color."
+                )
+            else:
+                group_map_clause = ""
+            self.run.warning(
+                f"Groups were provided, but these will be ignored for the 'unified' map, since a "
+                f"static color (or the reference map's own colors) was set: dynamic coloring based "
+                f"on membership in groups is overridden by static coloring based on "
+                f"presence/absence in any {membership_singular}.{group_map_clause}"
+            )
+
+        unified_dir = os.path.join(output_dir, UNIFIED_SUBDIR)
+        pathway_numbers = self._find_maps(unified_dir, 'kos', patterns=pathway_numbers)
+        filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
+
+        drawn: Dict[Literal['unified', 'individual', 'grid'], Dict] = {
+            'unified': {}, 'individual': {}, 'grid': {}
+        }
+
+        # Finalize the coloring model of each layer. A context colored quantitatively needs a value
+        # range; a single parse of each map collects, per layer, the unified values and (shared
+        # across categories) the per-category values of whichever contexts are quantitative, using
+        # the same extraction and aggregation as drawing.
+        norm_layers = [
+            layer for layer in layers
+            if 'quantitative' in (layer['unified_mode'], layer['category_mode'])
+        ]
+        if norm_layers:
+            self.progress.new("Computing the range of values across maps")
+            for layer in norm_layers:
+                layer['_unified_vals'] = []
+                layer['_category_vals'] = []
+            for pathway_number in pathway_numbers:
+                self.progress.update(pathway_number)
+                pathway = self._get_pathway(pathway_number)
+                for layer in norm_layers:
+                    use_reaction = layer['use_reaction_attribute']
+                    unified_valued = layer['unified_mode'] == 'quantitative'
+                    per_category = (
+                        has_categories and layer['category_mode'] == 'quantitative'
+                        and layer['category_values'] is not None
+                    )
+                    for entry in self._find_element_entries(
+                        pathway, use_reaction, layer['accessions']
+                    ):
+                        if unified_valued:
+                            value = self._reduce_entry_value(
+                                entry, layer['unified_values'], layer['aggregate'],
+                                use_reaction_attribute=use_reaction
+                            )
+                            if value is not None:
+                                layer['_unified_vals'].append(value)
+                        if per_category:
+                            for category_name in categories:
+                                category_value = self._reduce_entry_value(
+                                    entry, layer['category_values'][category_name],
+                                    layer['aggregate'], use_reaction_attribute=use_reaction
+                                )
+                                if category_value is not None:
+                                    layer['_category_vals'].append(category_value)
+            self.progress.end()
+            for layer in norm_layers:
+                # No values at all means no element of any drawn map has one, so the layer colors
+                # nothing and gets no colorbar: either its accessions are absent from these maps, or
+                # its aggregation was undefined everywhere (the standard deviation of a single
+                # value, say). Say so rather than leaving a blank map to be puzzled over.
+                if not layer['_unified_vals'] and not layer['_category_vals']:
+                    self.run.warning(
+                        f"Nothing on the maps could be colored by the values of the "
+                        f"'{layer['colorbar_label']}' column of the {layer['element_type']} layer, "
+                        f"so no color scale was drawn for it. Either none of the drawn maps "
+                        f"contains its accessions, or the aggregation reducing them is undefined "
+                        f"for every map element — the standard deviation of a single value, for "
+                        f"instance."
+                    )
+                if layer['unified_mode'] == 'quantitative':
+                    norm, vmin, vmax = self._make_quantitative_norm(layer['_unified_vals'])
+                    layer['_unified_norm'] = norm
+                    layer['_unified_range'] = (vmin, vmax)
+                if layer['category_mode'] != 'quantitative':
+                    continue
+                if has_categories and layer['category_values'] is not None:
+                    norm, vmin, vmax = self._make_quantitative_norm(layer['_category_vals'])
+                    layer['_category_norm'] = norm
+                    layer['_category_range'] = (vmin, vmax)
+                else:
+                    # A layer without a category dimension is constant across the category maps.
+                    layer['_category_norm'] = layer['_unified_norm']
+                    layer['_category_range'] = layer['_unified_range']
+
+        # A context colored by membership needs its by-count/by-membership color scheme over the
+        # categories. Only the 'unified' map draws such a scale (and its colorbar) from the
+        # categories themselves; the presence coloring of grouped individual maps counts each
+        # group's own sources, precomputed below.
+        membership_layers = [layer for layer in layers if layer['unified_mode'] == 'membership']
+        group_membership_layers = [
+            layer for layer in layers if layer['category_mode'] == 'membership'
+        ]
+        if membership_layers:
+            self.progress.new("Setting map colors")
+            self.progress.update("...")
+            for layer in membership_layers:
+                layer['_colors'] = self._membership_layer_colors(layer, categories)
+            self.progress.end()
+
+        def _dedup(items: List[str]) -> List[str]:
+            seen: Set[str] = set()
+            return [item for item in items if not (item in seen or seen.add(item))]
+
+        if has_categories:
+            draw_files_categories = (
+                _dedup(list(categories)) if draw_individual_files is True
+                else [] if draw_individual_files is False
+                else _dedup(list(draw_individual_files))
+            )
+            draw_grid_categories = (
+                _dedup(list(categories)) if draw_grid is True
+                else [] if draw_grid is False
+                else _dedup(list(draw_grid))
+            )
+            draw_categories = _dedup(draw_files_categories + draw_grid_categories)
+        else:
+            draw_files_categories = []
+            draw_grid_categories = []
+            draw_categories = []
+        draw_category_maps = has_categories and (
+            draw_individual_files is not False or draw_grid is not False
+        )
+
+        def _reaction_derived(layer, mode):
+            # How a reaction layer derives compound colors on a reaction-only global/overview map.
+            if layer['element_type'] != 'reaction':
+                return None
+            if mode == 'quantitative':
+                cmap = layer['cmap'].reversed() if layer['reverse_overlay'] else layer['cmap']
+                return ('average', cmap)
+            return ('high', None)
+
+        def _unified_spec(layer):
+            mode = layer['unified_mode']
+            if mode == 'quantitative':
+                return {
+                    'element_type': layer['element_type'],
+                    'use_reaction_attribute': layer['use_reaction_attribute'],
+                    'entry_keys': layer['unified_values'],
+                    'colorer': self._quantitative_colorer(
+                        layer['unified_values'], layer['_unified_norm'], layer['cmap'],
+                        layer['reverse_overlay'], layer['aggregate'],
+                        layer['use_reaction_attribute']
+                    ),
+                    'derived_compound': _reaction_derived(layer, mode)
+                }
+            if mode == 'membership':
+                _, color_priority, category_combos = layer['_colors']
+                return {
+                    'element_type': layer['element_type'],
+                    'use_reaction_attribute': layer['use_reaction_attribute'],
+                    'entry_keys': layer['membership'],
+                    'colorer': self._membership_colorer(
+                        layer['membership'], color_priority, category_combos, group_sources,
+                        group_threshold, layer['use_reaction_attribute']
+                    ),
+                    'derived_compound': _reaction_derived(layer, mode)
+                }
+            # 'static' pools accessions across all sources; 'single' has its own accession set.
+            entry_keys = set(layer['membership']) if mode == 'static' else layer['accessions']
+            return {
+                'element_type': layer['element_type'],
+                'use_reaction_attribute': layer['use_reaction_attribute'],
+                'entry_keys': entry_keys,
+                'colorer': self._single_color_colorer(layer['color_hexcode']),
+                'derived_compound': _reaction_derived(layer, mode)
+            }
+
+        def _category_spec(layer, category):
+            mode = layer['category_mode']
+            if mode == 'quantitative':
+                values = (
+                    layer['unified_values'] if layer['category_values'] is None
+                    else layer['category_values'][category]
+                )
+                return {
+                    'element_type': layer['element_type'],
+                    'use_reaction_attribute': layer['use_reaction_attribute'],
+                    'entry_keys': values,
+                    'colorer': self._quantitative_colorer(
+                        values, layer['_category_norm'], layer['cmap'], layer['reverse_overlay'],
+                        layer['aggregate'], layer['use_reaction_attribute']
+                    ),
+                    'derived_compound': _reaction_derived(layer, mode)
+                }
+            if mode == 'single':
+                return {
+                    'element_type': layer['element_type'],
+                    'use_reaction_attribute': layer['use_reaction_attribute'],
+                    'entry_keys': layer['accessions'],
+                    'colorer': self._single_color_colorer(layer['color_hexcode']),
+                    'derived_compound': _reaction_derived(layer, mode)
+                }
+            # Ungrouped membership/static: an individual source's map colors that source's elements
+            # in the single fixed color (the grouped case is precomputed below).
+            accessions = layer['source_accessions'].get(category, set())
+            return {
+                'element_type': layer['element_type'],
+                'use_reaction_attribute': layer['use_reaction_attribute'],
+                'entry_keys': accessions,
+                'colorer': self._single_color_colorer(layer['color_hexcode']),
+                'derived_compound': _reaction_derived(layer, mode)
+            }
+
+        self._check_reserved_colors(layers, pathway_numbers)
+
+        # Per-layer colorbars for the unified map (layer-prefixed so two layers do not collide),
+        # plus a shared colorbar for the category maps of each layer colored quantitatively there.
+        # Each context is keyed by its own mode, so a layer summarized by presence in the unified
+        # map gets a discrete colorbar there and a continuous one for its category maps.
+        for layer in layers:
+            if layer['unified_mode'] == 'quantitative':
+                vmin, vmax = layer['_unified_range']
+                if vmin is not None:
+                    self._draw_quantitative_colorbar(
+                        layer['cmap'], vmin, vmax,
+                        os.path.join(output_dir, f"colorbar_{layer['name']}.pdf"),
+                        layer['colorbar_label']
+                    )
+            elif layer['unified_mode'] == 'membership':
+                scheme, color_priority, category_combos = layer['_colors']
+                if scheme == 'by_count':
+                    labels = range(1, len(categories) + 1)
+                    label = 'group count' if grouped else membership_count_label
+                else:
+                    labels = [', '.join(combo) for combo in category_combos]
+                    label = 'groups' if grouped else membership_members_label
+                self.colorbar_drawer.draw_discrete(
+                    color_priority,
+                    os.path.join(output_dir, f"colorbar_{layer['name']}.pdf"),
+                    color_labels=labels,
+                    label=label
+                )
+            if (
+                draw_category_maps and layer['category_mode'] == 'quantitative'
+                and layer['category_values'] is not None
+            ):
+                vmin, vmax = layer['_category_range']
+                if vmin is not None:
+                    self._draw_quantitative_colorbar(
+                        layer['cmap'], vmin, vmax,
+                        os.path.join(
+                            output_dir, f"colorbar_{layer['name']}_{colorbar_category_suffix}.pdf"
+                        ),
+                        layer['colorbar_label']
+                    )
+
+        # Draw the unified map (the single map when there are no categories).
+        self.progress.new(
+            f"Drawing 'unified' map incorporating data from all {unified_plural}"
+            if has_categories else "Drawing map"
+        )
+        unified_specs = None if original_run else [_unified_spec(layer) for layer in layers]
+        for pathway_number in pathway_numbers:
+            self.progress.update(pathway_number)
+            if original_run:
+                drawn['unified'][pathway_number] = self._draw_map_kos_original_color(
+                    pathway_number, set(layers[0]['membership']), unified_dir,
+                    draw_map_lacking_data=draw_maps_lacking_data
+                )
+            else:
+                drawn['unified'][pathway_number] = self._draw_map_elements(
+                    pathway_number, unified_specs, unified_dir,
+                    draw_map_lacking_data=draw_maps_lacking_data
+                )
+        self.progress.end()
+
+        if not draw_categories:
+            count = sum(drawn['unified'].values()) if drawn['unified'] else 0
+            self.run.info("Number of maps drawn", count)
+            return drawn
+
+        # For grouped membership individual maps, precompute each group's within-group membership
+        # and a group colormap's color priorities (by count of the group's sources containing an
+        # element).
+        group_layer_membership: Dict[str, Tuple] = {}
+        if grouped_presence:
+            group_cmap = grouped_membership['group_colormap']
+            if isinstance(group_cmap, str):
+                group_cmap = self._get_colormap(group_cmap)
+            if group_cmap.name in qualitative_colormaps + repeating_colormaps:
+                self.run.warning(
+                    f"The group colormap, '{group_cmap.name}', that was provided to color "
+                    f"individual group maps is not especially useful for displaying the count of "
+                    f"{unified_plural}. We recommend a sequential colormap like 'plasma' instead."
+                )
+            group_cmap = self._trim_colormap(
+                group_cmap, grouped_membership['group_colormap_limits']
+            )
+            group_reverse_overlay = grouped_membership['group_reverse_overlay']
+            for group in draw_categories:
+                group_source_names = group_sources[group]
+                if len(group_source_names) > group_cmap.N:
+                    self.run.warning(
+                        f"There were fewer distinct colors available in the group colormap "
+                        f"({group_cmap.N}) than were needed ({len(group_source_names)}) for "
+                        f"drawing individual maps for group '{group}', so some colors were "
+                        f"repeated in use."
+                    )
+                if len(group_source_names) == 1:
+                    sample_points = np.linspace(1, 1, 1)
+                else:
+                    sample_points = np.linspace(0, 1, len(group_source_names))
+                group_color_priority = {}
+                for sample_point in sample_points:
+                    group_color_priority[mcolors.rgb2hex(group_cmap(sample_point))] = (
+                        1 - sample_point if group_reverse_overlay else sample_point
+                    )
+                specs = []
+                for layer in group_membership_layers:
+                    inner_membership = {}
+                    for accession, sources in layer['membership'].items():
+                        in_group = [s for s in sources if source_group.get(s) == group]
+                        if in_group:
+                            inner_membership[accession] = in_group
+                    specs.append({
+                        'element_type': layer['element_type'],
+                        'use_reaction_attribute': layer['use_reaction_attribute'],
+                        'entry_keys': inner_membership,
+                        'colorer': self._membership_colorer(
+                            inner_membership, group_color_priority, None, None, None,
+                            layer['use_reaction_attribute']
+                        ),
+                        'derived_compound': _reaction_derived(layer, 'membership')
+                    })
+                group_layer_membership[group] = (specs, group_color_priority, group_source_names)
+
+        for category in draw_categories:
+            drawn_category: Dict[str, bool] = {}
+            self.progress.new(f"Drawing maps for {category_noun} '{category}'")
+            self.progress.update("...")
+            progress = self.progress
+            self.progress = terminal.Progress(verbose=False)
+            run = self.run
+            self.run = terminal.Run(verbose=False)
+            category_output_dir = os.path.join(output_dir, INDIVIDUAL_SUBDIR, category)
+            filesnpaths.gen_output_directory(
+                category_output_dir, progress=self.progress, run=self.run
+            )
+
+            if grouped_presence:
+                group_specs, group_color_priority, group_source_names = (
+                    group_layer_membership[category]
+                )
+                self.colorbar_drawer.draw_discrete(
+                    group_color_priority,
+                    os.path.join(category_output_dir, 'colorbar.pdf'),
+                    color_labels=range(1, len(group_source_names) + 1),
+                    label=membership_count_label
+                )
+                # Grouped membership specs are precomputed; a layer colored by value or a single
+                # color in its per-group context colors its own map and rides along on the same map.
+                specs = group_specs + [
+                    _category_spec(layer, category) for layer in layers
+                    if layer['category_mode'] != 'membership'
+                ]
+                for pathway_number in pathway_numbers:
+                    drawn_category[pathway_number] = self._draw_map_elements(
+                        pathway_number, specs, category_output_dir,
+                        draw_map_lacking_data=draw_maps_lacking_data
+                    )
+            elif original_run:
+                for pathway_number in pathway_numbers:
+                    drawn_category[pathway_number] = self._draw_map_kos_original_color(
+                        pathway_number, layers[0]['source_accessions'].get(category, set()),
+                        category_output_dir, draw_map_lacking_data=draw_maps_lacking_data
+                    )
+            else:
+                specs = [_category_spec(layer, category) for layer in layers]
+                for pathway_number in pathway_numbers:
+                    drawn_category[pathway_number] = self._draw_map_elements(
+                        pathway_number, specs, category_output_dir,
+                        draw_map_lacking_data=draw_maps_lacking_data
+                    )
+
+            self.progress = progress
+            self.run = run
+            self.progress.end()
+            drawn['individual'][category] = drawn_category
+
+        if draw_grid is not False:
+            grid_group_color_priority = None
+            if grouped_presence:
+                grid_group_color_priority = {
+                    group: priorities
+                    for group, (_, priorities, _) in group_layer_membership.items()
+                }
+            self._draw_map_grids(
+                pathway_numbers,
+                draw_categories,
+                draw_grid_categories,
+                draw_files_categories,
+                output_dir,
+                drawn,
+                group_sources=group_sources if grouped_presence else None,
+                group_color_priority=grid_group_color_priority,
+                check_maps_lacking_kos=not draw_maps_lacking_data,
+                source_type=grid_source_type if grid_source_type is not None else category_noun
+            )
+
+        count = sum(drawn['unified'].values()) if drawn['unified'] else 0
+        self.run.info(
+            f"Number of 'unified' maps drawn incorporating data from all {unified_plural}", count
+        )
+        if draw_individual_files:
+            count = sum(
+                sum(d.values()) if d else 0 for d in drawn['individual'].values()
+            ) if drawn['individual'] else 0
+            self.run.info(f"Number of maps drawn for individual {category_noun}s", count)
+        count = sum(drawn['grid'].values()) if drawn['grid'] else 0
+        self.run.info("Number of map grids drawn", count)
+
+        return drawn
+
+    def _check_reserved_colors(self, layers: List[dict], pathway_numbers: List[str]) -> None:
+        """
+        Check that no layer color is one that a map reserves for its unidentified elements.
+
+        The reactions and compounds a map does not highlight are recolored so that highlighted ones
+        stand out ('kgml.Pathway.set_color_priority'), which puts those colors out of bounds for a
+        layer: an element colored one of them could not be told apart from the background, so 'kgml'
+        refuses to draw such a map. It refuses per map, once drawing is under way, which would leave
+        the output half written -- so the same clash is caught here first, across every class of map
+        about to be drawn, before any file is created.
+
+        Parameters
+        ==========
+        layers : List[dict]
+            The layer models, whose colors are checked. Layers drawn in the reference map's own
+            colors are skipped, having no colors of their own.
+
+        pathway_numbers : List[str]
+            The maps about to be drawn, whose classes decide which colors are reserved: global maps
+            recolor to gray, overview maps to black reactions and white compounds, and standard maps
+            to white.
+        """
+        reserved: Dict[str, Set[str]] = {'reaction': set(), 'compound': set()}
+        for pathway_number in pathway_numbers:
+            is_global = re.match(GLOBAL_MAP_ID_PATTERN, pathway_number) is not None
+            is_overview = re.match(OVERVIEW_MAP_ID_PATTERN, pathway_number) is not None
+            recolor_colors = kgml.reserved_recolor_colors(
+                'g' if is_global else 'w', is_overview
+            )
+            reserved['reaction'].add(kgml.canonical_color(recolor_colors['ortholog']))
+            reserved['compound'].add(kgml.canonical_color(recolor_colors['compound']))
+
+        for layer in layers:
+            if layer['unified_mode'] == 'original':
+                continue
+            # Every color the layer can stage: sampled from its colormap at the values it will color
+            # by, taken from the discrete scale it colors presence by, or its one fixed color.
+            staged: Set[str] = set()
+            for norm_key, values_key in (
+                ('_unified_norm', '_unified_vals'), ('_category_norm', '_category_vals')
+            ):
+                if norm_key not in layer:
+                    continue
+                norm = layer[norm_key]
+                for value in layer[values_key]:
+                    fraction = 1.0 if norm is None else float(norm(value))
+                    staged.add(mcolors.rgb2hex(layer['cmap'](fraction)))
+            if '_colors' in layer:
+                staged.update(layer['_colors'][1])
+            if layer.get('color_hexcode') is not None:
+                staged.add(layer['color_hexcode'])
+
+            clashing = sorted(
+                {
+                    color for color in map(kgml.canonical_color, staged)
+                    if color in reserved[layer['element_type']]
+                }
+            )
+            if not clashing:
+                continue
+            self.progress.end()
+            raise ConfigError(
+                f"The {layer['element_type']} layer would be colored "
+                f"{'colors' if len(clashing) > 1 else 'a color'} that the pathway maps keep for "
+                f"their own unidentified elements: {', '.join(clashing)}. Anvi'o recolors the "
+                f"reactions and compounds a map does not highlight -- gray on global maps, and "
+                f"black reactions with white compounds elsewhere -- so a highlighted element in "
+                f"one of those colors would be invisible. Choose a different color, or a colormap "
+                f"that does not reach these colors: grayscale colormaps and those running to pure "
+                f"white or black, such as 'Greys', 'hot' and 'bone', all do."
+            )
+
+    def _membership_layer_colors(
+        self,
+        layer: dict,
+        categories: List[str]
+    ) -> Tuple[str, Dict[str, float], Union[List[Tuple[str]], None]]:
+        """
+        Resolve a membership layer's coloring scheme, per-color priorities, and category combos.
+
+        Resolves the by-count/by-membership colormap logic for one layer. 'categories' are the
+        sources (or groups) whose count/membership colors the layer.
+
+        Returns
+        =======
+        Tuple[str, Dict[str, float], Union[List[Tuple[str]], None]]
+            The scheme ('by_count'/'by_membership'), a {color_hexcode: priority} dict, and the list
+            of category combinations (for by-membership) or None (for by-count).
+        """
+        colormap = layer.get('colormap', True)
+        colormap_scheme = layer.get('colormap_scheme')
+        reverse_overlay = layer.get('reverse_overlay', False)
+
+        if colormap_scheme is not None:
+            scheme = colormap_scheme
+        else:
+            scheme = 'by_membership' if len(categories) < 4 else 'by_count'
+
+        colormap_limits = layer.get('colormap_limits')
+        if colormap is True:
+            if scheme == 'by_count':
+                cmap = self._get_colormap('plasma_r')
+                colormap_limits = (0.1, 0.9) if colormap_limits is None else colormap_limits
+            else:
+                cmap = self._get_colormap('tab10')
+                colormap_limits = (0.0, 1.0) if colormap_limits is None else colormap_limits
+        elif isinstance(colormap, str):
+            cmap = self._get_colormap(colormap)
+            colormap_limits = (0.0, 1.0) if colormap_limits is None else colormap_limits
+        elif isinstance(colormap, mcolors.Colormap):
+            cmap = colormap
+            colormap_limits = (0.0, 1.0) if colormap_limits is None else colormap_limits
+        else:
+            raise AssertionError
+
+        in_order = cmap.name in qualitative_colormaps + repeating_colormaps
+        cmap = self._trim_colormap(cmap, colormap_limits)
+
+        # Coloring by membership needs a color per combination of the categories, so the count of
+        # them doubles with each category. A colormap holds at most 'cmap.N' colors, so the check
+        # below would fail anyway; making it before the combinations are enumerated keeps a large
+        # number of categories from spending gigabytes on its way to the same error.
+        if scheme == 'by_membership' and 2 ** len(categories) - 1 > cmap.N:
+            self.progress.end()
+            raise ConfigError(
+                f"Coloring by membership needs a distinct color for every combination of the "
+                f"{len(categories)} categories, of which there are {2 ** len(categories) - 1}, and "
+                f"the colormap holds only {cmap.N}. Color by count instead, which needs just "
+                f"{len(categories)} colors, or give a colormap with more colors. Note that no "
+                f"color scale can distinguish combinations of more than a handful of categories."
+            )
+
+        color_priority: Dict[str, float] = {}
+        category_combos = None
+        if scheme == 'by_count':
+            if len(categories) == 1:
+                sample_points = range(1, 2) if in_order else np.linspace(1, 1, 1)
+            else:
+                sample_points = range(len(categories)) if in_order else np.linspace(
+                    0, 1, len(categories)
+                )
+            # A qualitative colormap is sampled at whole positions rather than at fractions of its
+            # range, so reversing the drawing order has to count back from the last position:
+            # subtracting an integer position from 1, as is right for a fraction, would give
+            # negative priorities, which a Pathway rejects.
+            last_point = max(sample_points)
+            for sample_point in sample_points:
+                color_priority[mcolors.rgb2hex(cmap(sample_point))] = (
+                    (last_point - sample_point) if reverse_overlay else sample_point
+                )
+        else:
+            category_combos = []
+            for category_count in range(1, len(categories) + 1):
+                category_combos += list(combinations(categories, category_count))
+            if in_order:
+                sample_points = range(len(category_combos))
+            else:
+                sample_points = np.linspace(0, 1, len(category_combos))
+            for sample_point in sample_points:
+                color_priority[mcolors.rgb2hex(cmap(sample_point))] = (
+                    1 - sample_point / cmap.N if reverse_overlay else (sample_point + 1) / cmap.N
+                )
+
+        # 'color_priority' is keyed by color, so a colormap that cannot supply one DISTINCT color
+        # per count or per membership combination silently collapses to fewer entries, and the
+        # discrete colorbar would then be handed more labels than colors. Rounding to 8-bit color
+        # means the supply can fall short of 'cmap.N' too, so what matters is how many distinct
+        # colors actually came out, not how many the colormap claims to hold.
+        needed = len(categories) if scheme == 'by_count' else len(category_combos)
+        if len(color_priority) != needed:
+            self.progress.end()
+            if scheme == 'by_membership':
+                advice = (
+                    f"Coloring by membership needs a distinct color for every combination of the "
+                    f"{len(categories)} categories, which is {needed} of them, and the colormap "
+                    f"supplied only {len(color_priority)}. Color by count instead, which needs "
+                    f"just {len(categories)} colors, or give a colormap with more distinct colors."
+                )
+            else:
+                advice = (
+                    f"Coloring by count needs a distinct color for each of the {needed} "
+                    f"categories, and the colormap supplied only {len(color_priority)}. Reduce the "
+                    f"number of categories, for example by grouping them, or give a colormap with "
+                    f"more distinct colors."
+                )
+            raise ConfigError(
+                f"The colors of this map could not be assigned: {advice} Note that a color scale "
+                f"can hold at most a few hundred distinguishable colors in any case, so a very "
+                f"large number of categories cannot be told apart by color even where it can be "
+                f"drawn."
+            )
+
+        return scheme, color_priority, category_combos
+
+    def _map_element_membership(
+        self,
+        layers: List[dict],
+        all_sources: List[str],
+        source_type: Literal['contigs database', 'pangenome', 'sample'],
+        source_group: Dict[str, str] = None,
+        group_sources: Dict[str, List[str]] = None,
+        group_threshold: float = None,
+        pathway_numbers: Iterable[str] = None,
+        draw_individual_files: Union[Iterable[str], bool] = False,
+        draw_grid: Union[Iterable[str], bool] = False,
+        group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
+        group_colormap_limits: Tuple[float, float] = (0.1, 0.9),
+        group_reverse_overlay: bool = False,
+        output_dir: str = None,
+        draw_maps_lacking_data: bool = False
+    ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
+        """
+        Adapt presence/absence membership layers to the unified '_map_elements' engine.
+
+        Each layer colors reaction and/or compound elements by presence/absence across sources
+        (contigs databases, pangenome genomes, or samples) or groups of sources, by source/group
+        count or membership, or a single static color (or the reference map's original colors) when
+        a layer's colormap is False. This method classifies each layer's mode and translates the
+        source-type terminology and grouping into a call to '_map_elements'. The single-layer
+        contigs-db and pan-db paths route through here (reaction layer only).
+
+        Parameters
+        ==========
+        layers : List[dict]
+            One or two layer descriptors, reaction before compound. Each has: 'name'
+            ('reactions'/'compounds'), 'element_type', 'use_reaction_attribute', 'membership'
+            ({accession: [sources]}), 'source_accessions' ({source: set of accessions}, for
+            individual ungrouped maps), 'color_hexcode' (single color for individual ungrouped
+            maps), and the colormap options
+            'colormap'/'colormap_limits'/'colormap_scheme'/'reverse_overlay'.
+
+        all_sources : List[str]
+            Names of all sources (samples, contigs databases, or genomes), in color-assignment
+            order.
+
+        source_type : Literal['contigs database', 'pangenome', 'sample']
+            The kind of source, selecting terminology for messages and colorbar labels.
+
+        Notes
+        =====
+        'source_group'/'group_sources'/'group_threshold' group the sources; the remaining parameters
+        mirror the other engines.
+        """
+        grouped = group_sources is not None
+
+        # Terminology used in messages and colorbar labels, keyed by source type.
+        singular, plural, count_label, members_label, group_phrase = {
+            'contigs database': (
+                'contigs database', 'contigs databases', 'database count', 'databases',
+                'contigs database group'
+            ),
+            'pangenome': ('genome', 'genomes', 'genome count', 'genomes', 'group'),
+            'sample': ('sample', 'samples', 'sample count', 'samples', 'sample group')
+        }[source_type]
+
+        # A layer whose 'colormap' is False is colored statically (a single fixed color, or the
+        # reference map's original colors) by presence/absence in any source, rather than by
+        # source/group count or membership. Only the single-layer db/pan paths use it; the
+        # draw-kegg-pathways layers are never static.
+        models = []
+        for layer in layers:
+            if layer.get('colormap') is False:
+                mode = 'original' if layer['color_hexcode'] == 'original' else 'static'
+            else:
+                mode = 'membership'
+            models.append({**layer, 'mode': mode})
+
+        grouped_membership = None
+        if grouped:
+            grouped_membership = {
+                'source_group': source_group,
+                'group_sources': group_sources,
+                'group_threshold': group_threshold,
+                'group_colormap': group_colormap,
+                'group_colormap_limits': group_colormap_limits,
+                'group_reverse_overlay': group_reverse_overlay
+            }
+
+        return self._map_elements(
+            models,
+            output_dir,
+            pathway_numbers=pathway_numbers,
+            categories=list(group_sources) if grouped else list(all_sources),
+            # The categories are groups when the sources are grouped, so the noun that names one has
+            # to follow: it labels the per-category messages and the subdirectory each category is
+            # drawn into.
+            category_noun=group_phrase if grouped else singular,
+            subset_subject=f"{singular} groups" if grouped else plural,
+            unified_plural=plural,
+            membership_count_label=count_label,
+            membership_members_label=members_label,
+            membership_singular=singular,
+            grouped_membership=grouped_membership,
+            draw_individual_files=draw_individual_files,
+            draw_grid=draw_grid,
+            draw_maps_lacking_data=draw_maps_lacking_data
+        )
+
+    def _find_element_entries(
+        self,
+        pathway: kgml.Pathway,
+        use_reaction_attribute: bool,
+        values: Dict[str, float]
+    ) -> List[kgml.Entry]:
+        """
+        Find the entries a layer colors: those with accessions among 'values'.
+
+        For KO and compound layers, accessions are matched against 'Entry.name' via
+        'get_entries(kegg_ids=...)'. For a reaction-by-R-number layer, ortholog entries are matched
+        by the reaction IDs in 'Entry.reaction', which the KEGG-ID index does not cover.
+
+        Parameters
+        ==========
+        pathway : kgml.Pathway
+            The pathway to search.
+
+        use_reaction_attribute : bool
+            If True, match reaction IDs from 'Entry.reaction'; otherwise match KO/compound IDs from
+            'Entry.name'.
+
+        values : Dict[str, float]
+            Keys are the accessions of interest.
+
+        Returns
+        =======
+        List[kgml.Entry]
+            The matching entries.
+        """
+        if use_reaction_attribute:
+            return [
+                entry for entry in pathway.get_entries(entry_type='ortholog')
+                if any(
+                    reaction_id in values
+                    for reaction_id in self._get_entry_kegg_ids(entry, use_reaction_attribute=True)
+                )
+            ]
+        return pathway.get_entries(kegg_ids=values)
+
+    def _stage_element_color(
+        self,
+        pathway: kgml.Pathway,
+        entry: kgml.Entry,
+        element_type: Literal['reaction', 'compound'],
+        color_hexcode: str,
+        priority: float,
+        color_priority: dict
+    ) -> None:
+        """
+        Set an entry's graphics colors for a layer and register them in 'color_priority'.
+
+        Reaction (ortholog) entries are lines in global and overview maps and boxes or lines in
+        standard maps; compound entries are circles. The registered '(fgcolor, bgcolor) -> priority'
+        keeps the entry from being treated as unprioritized and recolored to the background.
+
+        Parameters
+        ==========
+        pathway : kgml.Pathway
+            The pathway being colored.
+
+        entry : kgml.Entry
+            The entry to color.
+
+        element_type : Literal['reaction', 'compound']
+            Which kind of element (and thus which graphics/coloring convention) this is.
+
+        color_hexcode : str
+            The color for the element.
+
+        priority : float
+            Drawing-order priority (higher renders on top).
+
+        color_priority : dict
+            The accumulating '{entry_type: {graphics_type: {(fg, bg): priority}}}' dictionary,
+            shared across a map's layers and passed once to 'set_color_priority'.
+        """
+        if element_type == 'compound':
+            for uuid in entry.children['graphics']:
+                graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
+                # Compounds are circles. On a few maps some compounds are rectangles that are zeroed
+                # out of the base image; those cannot be colored and are skipped (the caller warns).
+                if graphics.type != 'circle':
+                    continue
+                if pathway.is_global_map:
+                    graphics.fgcolor = color_hexcode
+                    graphics.bgcolor = color_hexcode
+                    colors = (color_hexcode, color_hexcode)
+                else:
+                    graphics.fgcolor = '#000000'
+                    graphics.bgcolor = color_hexcode
+                    colors = ('#000000', color_hexcode)
+                color_priority.setdefault(
+                    'compound', {}
+                ).setdefault('circle', {})[colors] = priority
+            return
+
+        for uuid in entry.children['graphics']:
+            graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
+            if pathway.is_global_map:
+                assert graphics.type == 'line'
+                graphics.fgcolor = color_hexcode
+                graphics.bgcolor = '#FFFFFF'
+                graphics_type = 'line'
+                colors = (color_hexcode, '#FFFFFF')
+            elif pathway.is_overview_map:
+                assert graphics.type == 'line'
+                graphics.fgcolor = color_hexcode
+                graphics.bgcolor = '#FFFFFF'
+                graphics.width = 5.0
+                graphics_type = 'line'
+                colors = (color_hexcode, '#FFFFFF')
+            else:
+                if graphics.type == 'rectangle':
+                    graphics.fgcolor = '#000000'
+                    graphics.bgcolor = color_hexcode
+                    graphics_type = 'rectangle'
+                    colors = ('#000000', color_hexcode)
+                elif graphics.type == 'line':
+                    graphics.fgcolor = color_hexcode
+                    graphics.bgcolor = '#FFFFFF'
+                    graphics.width = 5.0
+                    graphics_type = 'line'
+                    colors = (color_hexcode, '#FFFFFF')
+                else:
+                    self.progress.end()
+                    raise ConfigError(
+                        f"Reaction elements are expected to be drawn as a rectangle or a line, but "
+                        f"an ortholog entry of KEGG pathway map {pathway.number} has a graphics "
+                        f"element of type '{graphics.type}', which anvi'o cannot color."
+                    )
+            color_priority.setdefault(
+                'ortholog', {}
+            ).setdefault(graphics_type, {})[colors] = priority
+
+    def _warn_unrenderable_compounds(
+        self,
+        pathway: kgml.Pathway,
+        compound_accessions: Iterable[str]
+    ) -> None:
+        """
+        Warn about supplied compounds that cannot be colored on a map.
+
+        Compounds are colored via their circle Graphics. On a handful of maps (00121, 00621,
+        01052, 01054), some compounds are drawn only as rectangles, which are zeroed out of the
+        base image (see '_zero_out_compound_rectangles') so they do not obscure the chemical
+        structure drawings there. Such rectangles cannot be colored, so a supplied compound present
+        on the map only as rectangles would be invisible; this warns rather than dropping it
+        silently.
+
+        Parameters
+        ==========
+        pathway : kgml.Pathway
+            The map being drawn.
+
+        compound_accessions : Iterable[str]
+            Compound accessions supplied for the compound layer of this map.
+        """
+        unrenderable: List[str] = []
+        for accession in compound_accessions:
+            entries = pathway.get_entries(kegg_ids=[accession])
+            if not entries:
+                continue
+            if not any(
+                pathway.uuid_element_lookup[uuid].type == 'circle'
+                for entry in entries
+                for uuid in entry.children['graphics']
+            ):
+                unrenderable.append(accession)
+
+        if not unrenderable:
+            return
+
+        self.run.warning(
+            f"On KEGG pathway map {pathway.number}, the following supplied compound(s) could not "
+            f"be colored because they are represented on this map only as rectangles rather than "
+            f"circles: {', '.join(sorted(unrenderable))}. Anvi'o zeroes out these compound "
+            f"rectangles so they do not obscure the chemical structure drawings on the few maps "
+            f"where they occur (such as 00121, 00621, 01052, and 01054), so these particular "
+            f"compounds cannot be shown in color. Everything else was drawn as usual.",
+            progress=self.progress
+        )
+
+    def _quantitative_colorer(
+        self,
+        values: Dict[str, float],
+        norm: Union[mcolors.Normalize, None],
+        cmap: mcolors.Colormap,
+        reverse_overlay: bool,
+        aggregate,
+        use_reaction_attribute: bool
+    ):
+        """
+        Build a colorer that colors an Entry by the continuous value of its accessions.
+
+        See '_draw_map_elements' for the colorer contract. An Entry's value is the 'aggregate' of
+        its accessions' values; None (no accession has a value) leaves the Entry uncolored. The
+        color is 'cmap' sampled at the normalized value, and the priority is that fraction, or its
+        complement under 'reverse_overlay', which 'clip=True' on the norm keeps in [0, 1].
+        """
+        def colorer(entry: kgml.Entry) -> Union[Tuple[str, float], None]:
+            value = self._reduce_entry_value(
+                entry, values, aggregate, use_reaction_attribute=use_reaction_attribute
+            )
+            if value is None:
+                return None
+            fraction = 1.0 if norm is None else float(norm(value))
+            priority = (1.0 - fraction) if reverse_overlay else fraction
+            return mcolors.rgb2hex(cmap(fraction)), priority
+        return colorer
+
+    def _single_color_colorer(self, color_hexcode: str):
+        """
+        Build a colorer that colors every matching Entry a single fixed color at priority 1.0.
+
+        See '_draw_map_elements' for the colorer contract. Used wherever a layer's elements all take
+        one fixed color: a 'single' layer, the pooled 'unified' map of a 'static' layer, and each
+        individual source or sample map of a layer colored by membership.
+        """
+        def colorer(entry: kgml.Entry) -> Tuple[str, float]:
+            return color_hexcode, 1.0
+        return colorer
+
+    def _membership_colorer(
+        self,
+        membership: Dict[str, List[str]],
+        color_priority: Dict[str, float],
+        category_combos: Union[List[Tuple[str]], None],
+        group_sources: Union[Dict[str, List[str]], None],
+        group_threshold: Union[float, None],
+        use_reaction_attribute: bool
+    ):
+        """
+        Build a colorer that colors an Entry by the sources (or groups) containing its accessions.
+
+        See '_draw_map_elements' for the colorer contract. An Entry's containing sources are pooled
+        across its accessions via 'membership'; with 'group_sources', the qualifying groups (those
+        meeting 'group_threshold' among their sources) are used instead. The color is chosen by the
+        count of categories ('category_combos' None) or by their exact combination (by membership),
+        and its priority comes from 'color_priority'. An Entry in no source, or, when grouped, in no
+        qualifying group, is left uncolored.
+        """
+        color_hexcodes = list(color_priority)
+        combo_lookup: Dict[Tuple[str], Tuple[str]] = {}
+        if category_combos is not None:
+            for combo in category_combos:
+                combo_lookup[tuple(sorted(combo))] = combo
+        grouped = group_sources is not None
+        group_source_count: Dict[str, int] = {}
+        source_group: Dict[str, str] = {}
+        if grouped:
+            for group, sources in group_sources.items():
+                group_source_count[group] = len(sources)
+                for source in sources:
+                    source_group[source] = group
+
+        def colorer(entry: kgml.Entry) -> Union[Tuple[str, float], None]:
+            sources: Set[str] = set()
+            for accession in self._get_entry_kegg_ids(entry, use_reaction_attribute):
+                if accession in membership:
+                    sources.update(membership[accession])
+            if not sources:
+                return None
+            if grouped:
+                group_counts = {group: 0 for group in group_source_count}
+                for source in sources:
+                    if source in source_group:
+                        group_counts[source_group[source]] += 1
+                categories = set()
+                for group, count in group_counts.items():
+                    proportion = count / group_source_count[group]
+                    if (proportion > 0) if group_threshold == 0 else \
+                            (proportion >= group_threshold):
+                        categories.add(group)
+                if not categories:
+                    return None
+            else:
+                categories = sources
+            if category_combos is None:
+                color_hexcode = color_hexcodes[len(categories) - 1]
+            else:
+                color_hexcode = color_hexcodes[
+                    category_combos.index(combo_lookup[tuple(sorted(categories))])
+                ]
+            return color_hexcode, color_priority[color_hexcode]
+        return colorer
+
+    def _draw_map_elements(
+        self,
+        pathway_number: str,
+        layer_specs: List[dict],
+        output_dir: str,
+        draw_map_lacking_data: bool = False
+    ) -> bool:
+        """
+        Draw one pathway map, coloring each layer's elements via that layer's colorer.
+
+        This is the single mode-agnostic draw path of the element engine. Each layer contributes a
+        'colorer' mapping a matching Entry to a '(color_hexcode, priority)' pair, or None to leave it
+        uncolored, computed however that layer's mode requires (continuous value, sample/group
+        membership, or a single fixed color). All layers are staged onto one 'Pathway' and applied in
+        a single 'set_color_priority' call (list order sets draw order: earlier layers render beneath
+        later ones), so one map can mix a quantitative layer with a presence/categorical layer. The
+        map is drawn once.
+
+        Parameters
+        ==========
+        pathway_number : str
+            Numeric ID of the map to draw.
+
+        layer_specs : List[dict]
+            Per-layer specs, ordered so earlier layers render beneath later ones. Each has:
+            'element_type' ('reaction'/'compound'), 'use_reaction_attribute' (bool), 'entry_keys'
+            (the accessions this layer touches, for entry lookup and the compound warning), 'colorer'
+            (callable mapping an Entry to '(color_hexcode, priority)' or None), and 'derived_compound'
+            (how a reaction layer derives compound colors when no compound layer is present on a
+            global/overview map: a '(mode, colormap)' pair such as ('average', cmap) or ('high',
+            None); None on a compound layer, where it is never read).
+
+        output_dir : str
+            Path to the output directory in which the map PDF is drawn.
+
+        draw_map_lacking_data : bool, False
+            If False, only draw the map if some layer matched any of its accessions.
+
+        Returns
+        =======
+        bool
+            True if the map was drawn, False if it was skipped for lacking data.
+        """
+        pathway = self._get_pathway(pathway_number)
+
+        color_priority: dict = {}
+        found_entries = False
+        for spec in layer_specs:
+            entries = self._find_element_entries(
+                pathway, spec['use_reaction_attribute'], spec['entry_keys']
+            )
+            if entries:
+                found_entries = True
+            for entry in entries:
+                colored = spec['colorer'](entry)
+                if colored is None:
+                    continue
+                color_hexcode, priority = colored
+                self._stage_element_color(
+                    pathway, entry, spec['element_type'], color_hexcode, priority, color_priority
+                )
+
+        if not found_entries and not draw_map_lacking_data:
+            return False
+
+        compound_layer = next(
+            (spec for spec in layer_specs if spec['element_type'] == 'compound'), None
+        )
+        if compound_layer is not None:
+            self._warn_unrenderable_compounds(pathway, compound_layer['entry_keys'])
+
+        # When a compound layer supplies compound colors, or the map is neither global nor overview,
+        # colors are applied directly. Otherwise, on a reaction-only global/overview map, compounds
+        # are derived from their associated reactions per the reaction layer's 'derived_compound'.
+        recolor = 'g' if pathway.is_global_map else 'w'
+        if compound_layer is not None or not (pathway.is_global_map or pathway.is_overview_map):
+            pathway.set_color_priority(color_priority, recolor_unprioritized_entries=recolor)
+        else:
+            reaction_layer = next(
+                spec for spec in layer_specs if spec['element_type'] == 'reaction'
+            )
+            mode, colormap = reaction_layer['derived_compound']
+            if colormap is None:
+                pathway.set_color_priority(
+                    color_priority,
+                    recolor_unprioritized_entries=recolor,
+                    color_associated_compounds=mode
+                )
+            else:
+                pathway.set_color_priority(
+                    color_priority,
+                    recolor_unprioritized_entries=recolor,
+                    color_associated_compounds=mode,
+                    colormap=colormap
+                )
+
+        self._draw_map(pathway, output_dir)
+        return True
+
+    def _draw_map_element_presence(
+        self,
+        pathway_number: str,
+        layers: List[dict],
+        output_dir: str,
+        draw_map_lacking_data: bool = False
+    ) -> bool:
+        """
+        Draw one pathway map, coloring each layer's present elements a single fixed color.
+
+        Every present element of a layer is colored that layer's 'color_hexcode', with no value or
+        source driving the choice. Both layers are staged onto one 'Pathway' and applied in a single
+        'set_color_priority' call (earlier layers render beneath later ones), then the map is drawn
+        once. This is the single-color path used by '_map_kos_fixed_colors', which serves the
+        single-source database and reaction-network-JSON inputs; layers whose color varies by value
+        or by source go through '_map_elements' instead.
+
+        Parameters
+        ==========
+        pathway_number : str
+            Numeric ID of the map to draw.
+
+        layers : List[dict]
+            Per-layer specs, each with keys 'element_type' ('reaction'/'compound'),
+            'use_reaction_attribute' (bool), 'accessions' (a set/dict of the accessions to color),
+            and 'color_hexcode'. Ordered so earlier layers render beneath later ones.
+
+        output_dir : str
+            Path to the output directory in which the map PDF is drawn.
+
+        draw_map_lacking_data : bool, False
+            If False, only draw the map if some layer contains any of its accessions.
+
+        Returns
+        =======
+        bool
+            True if the map was drawn, False if it was skipped for lacking data.
+        """
+        specs = []
+        for layer in layers:
+            # On a reaction-only global/overview map, compounds take the color of the highest-
+            # priority reaction they touch (as the single-source database path does).
+            derived_compound = ('high', None) if layer['element_type'] == 'reaction' else None
+            specs.append({
+                'element_type': layer['element_type'],
+                'use_reaction_attribute': layer['use_reaction_attribute'],
+                'entry_keys': layer['accessions'],
+                'colorer': self._single_color_colorer(layer['color_hexcode']),
+                'derived_compound': derived_compound
+            })
+        return self._draw_map_elements(
+            pathway_number, specs, output_dir, draw_map_lacking_data=draw_map_lacking_data
+        )
 
     @staticmethod
     def _check_contigs_db(contigs_db: str) -> None:
@@ -2548,7 +3939,7 @@ class Mapper:
                     out_path = os.path.join(output_dir, out_basename)
                 else:
                     out_path = os.path.join(
-                        *self.pathway_categorization[pathway_number], out_basename
+                        output_dir, *self.pathway_categorization[pathway_number], out_basename
                     )
                 if os.path.exists(out_path):
                     raise ConfigError(
@@ -2587,124 +3978,12 @@ class Mapper:
             if not (pathway_number in seen or seen.add(pathway_number))
         ]
 
-    def _draw_map_kos_single_color(
-        self,
-        pathway_number: str,
-        ko_ids: Iterable[str],
-        color_hexcode: str,
-        output_dir: str,
-        draw_map_lacking_kos: bool = False
-    ) -> bool:
-        """
-        Draw a pathway map, highlighting reactions containing select KOs in a single color.
-
-        Parameters
-        ==========
-        pathway_number : str, None
-            Numeric ID of the map to draw.
-
-        ko_ids : Iterable[str]
-            Select KOs, any of which in the map are colored.
-
-        color_hexcode : str
-            This is the color, by default green, for reactions containing provided KOs. A reaction
-            on a map can correspond to one or more KOs, and a KO can annotate one or more sequences
-            in a contigs database. In global and overview maps, reaction lines are colored. In
-            standard maps, reaction boxes or lines are colored.
-
-        output_dir : str
-            Path to the output directory in which map PDF files are drawn, created if it doesn't
-            already exist.
-
-        draw_map_lacking_kos : bool, False
-            If False, by default, only draw the map if it contains any of the select KOs. If True,
-            draw the map regardless, meaning that nothing may be highlighted.
-
-        Returns
-        =======
-        bool
-            True if the map was drawn, False if the map was not drawn because it did not contain any
-            of the select KOs and 'draw_map_lacking_kos' was False.
-        """
-        pathway = self._get_pathway(pathway_number)
-
-        select_entries = pathway.get_entries(kegg_ids=ko_ids)
-        if not select_entries and not draw_map_lacking_kos:
-            return False
-
-        # Set the color of Graphics elements for reactions containing select KOs. For other Graphics
-        # elements, change the 'fgcolor' attribute to a nonsense value of '0' to ensure that the
-        # elements with the prioritized color can be distinguished from other elements. Also, in
-        # overview and standard maps, widen lines from the base map default of 1.0.
-        all_entries = pathway.get_entries(entry_type='ortholog')
-        select_uuids = [entry.uuid for entry in select_entries]
-        for entry in all_entries:
-            if entry.uuid in select_uuids:
-                for uuid in entry.children['graphics']:
-                    graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
-                    if pathway.is_global_map:
-                        assert graphics.type == 'line'
-                        graphics.fgcolor = color_hexcode
-                        graphics.bgcolor = '#FFFFFF'
-                    elif pathway.is_overview_map:
-                        assert graphics.type == 'line'
-                        graphics.fgcolor = color_hexcode
-                        graphics.bgcolor = '#FFFFFF'
-                        graphics.width = 5.0
-                    else:
-                        if graphics.type == 'rectangle':
-                            graphics.fgcolor = '#000000'
-                            graphics.bgcolor = color_hexcode
-                        elif graphics.type == 'line':
-                            graphics.fgcolor = color_hexcode
-                            graphics.bgcolor = '#FFFFFF'
-                            graphics.width = 5.0
-                        else:
-                            raise AssertionError(
-                                "Ortholog entries are assumed to have Graphics elements of type "
-                                "'rectangle' or 'line', not the encountered type, "
-                                f"'{graphics.type}'."
-                            )
-            else:
-                for uuid in entry.children['graphics']:
-                    graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
-                    graphics.fgcolor = '0'
-
-        # Set the color priority so that the colored reactions are prioritized for display on top.
-        # Recolor "unprioritized" reactions to a background color. In global and overview maps,
-        # recolor circles to reflect the colors of prioritized reactions involving the compounds.
-        color_priority: Dict[str, Dict[str, Dict[Tuple[str, str], float]]] = {}
-        if pathway.is_global_map:
-            color_priority['ortholog'] = {'line': {(color_hexcode, '#FFFFFF'): 1.0}}
-            recolor_unprioritized_entries = 'g'
-            color_associated_compounds = 'high'
-        elif pathway.is_overview_map:
-            color_priority['ortholog'] = {'line': {(color_hexcode, '#FFFFFF'): 1.0}}
-            recolor_unprioritized_entries = 'w'
-            color_associated_compounds = 'high'
-        else:
-            color_priority['ortholog'] = {
-                'rectangle': {('#000000', color_hexcode): 1.0},
-                'line': {(color_hexcode, '#FFFFFF'): 1.0}
-            }
-            recolor_unprioritized_entries = 'w'
-            color_associated_compounds = None
-        pathway.set_color_priority(
-            color_priority,
-            recolor_unprioritized_entries=recolor_unprioritized_entries,
-            color_associated_compounds=color_associated_compounds
-        )
-
-        self._draw_map(pathway, output_dir)
-
-        return True
-
     def _draw_map_kos_original_color(
         self,
         pathway_number: str,
         ko_ids: Iterable[str],
         output_dir: str,
-        draw_map_lacking_kos: bool = False
+        draw_map_lacking_data: bool = False
     ) -> bool:
         """
         Draw a pathway map, highlighting reactions containing select KOs in the color or colors
@@ -2722,7 +4001,7 @@ class Mapper:
             Path to the output directory in which map PDF files are drawn, created if it doesn't
             already exist.
 
-        draw_map_lacking_kos : bool, False
+        draw_map_lacking_data : bool, False
             If False, by default, only draw the map if it contains any of the select KOs. If True,
             draw the map regardless, meaning that nothing may be highlighted.
 
@@ -2730,12 +4009,12 @@ class Mapper:
         =======
         bool
             True if the map was drawn, False if the map was not drawn because it did not contain any
-            of the select KOs and 'draw_map_lacking_kos' was False.
+            of the select KOs and 'draw_map_lacking_data' was False.
         """
         pathway = self._get_pathway(pathway_number)
 
         select_entries = pathway.get_entries(kegg_ids=ko_ids)
-        if not select_entries and not draw_map_lacking_kos:
+        if not select_entries and not draw_map_lacking_data:
             return False
 
         # Set "secondary" colors of ortholog Graphics elements for reactions containing select KOs:
@@ -2764,10 +4043,12 @@ class Mapper:
                             graphics.bgcolor = '#FFFFFF'
                             graphics.width = 5.0
                         else:
-                            raise AssertionError(
-                                "Ortholog entries are assumed to have Graphics elements of type "
-                                "'rectangle' or 'line', not the encountered type, "
-                                f"'{graphics.type}'."
+                            self.progress.end()
+                            raise ConfigError(
+                                f"Reaction elements are expected to be drawn as a rectangle or a "
+                                f"line, but an ortholog entry of KEGG pathway map "
+                                f"{pathway.number} has a graphics element of type "
+                                f"'{graphics.type}', which anvi'o cannot color."
                             )
                     try:
                         graphics_type_prioritized_colors = prioritized_colors[graphics.type]
@@ -2811,233 +4092,6 @@ class Mapper:
             recolor_unprioritized_entries=recolor_unprioritized_entries,
             color_associated_compounds=color_associated_compounds
         )
-
-        self._draw_map(pathway, output_dir)
-
-        return True
-
-    def _draw_map_kos_membership(
-        self,
-        pathway_number: str,
-        ko_membership: Dict[str, List[str]],
-        color_priority: Dict[str, float],
-        output_dir: str,
-        category_combos: List[Tuple[str]] = None,
-        group_sources: Dict[str, List[str]] = None,
-        group_threshold: float = None,
-        draw_map_lacking_kos: bool = False
-    ) -> bool:
-        """
-        Draw a pathway map, coloring reactions by their membership via KOs in data sources (e.g.,
-        contigs databases, pan genomes) or groups of data sources (e.g., groups of databases or
-        genomes).
-
-        In global and overview maps, compounds involved in colored reactions are given the color of
-        the reaction with the highest priority.
-
-        Parameters
-        ==========
-        pathway_number : str
-            Numeric ID of the map to draw.
-
-        ko_membership : Dict[str, List[str]]
-            Keys are KO IDs. Values are lists of data sources in which KOs are found.
-
-        color_priority : Dict[str, float]
-            Keys are color hex codes. Without a 'category_combos' argument, there should be a color
-            for each possible number of data sources or groups. With a 'category_combos' argument,
-            there should be a color for each source/group and combination thereof. Values are
-            priorities. Reactions assigned higher priority colors are drawn over reactions assigned
-            lower priority colors.
-
-        output_dir : str
-            Path to the output directory in which map PDF files are drawn, created if it doesn't
-            already exist.
-
-        category_combos : List[Tuple[str]], None
-            With the default argument value of None, reactions are colored by count of data sources
-            or groups containing the reaction. A list of tuples representing all possible
-            combinations of sources or groups can be provided to color explicitly by source/group
-            membership. Tuples should consist of source/group names (e.g., contigs database project
-            names, pan genome names, or group names) and their combinations, e.g., [('A', ), ('B',
-            ), ('C', ), ('A', 'B'), ('A', 'C'), ('B', 'C'), ('A', 'B', 'C')].
-
-        group_sources : Dict[str, List[str]], None
-            This argument in conjunction with 'group_threshold' is needed to color reactions by
-            group membership. Keys are group names. Values are lists of data sources (e.g., contigs
-            databases, pan genomes) categorized in the group. Each source must be unique to a single
-            group.
-
-        group_threshold : float, None
-            The proportion of KO data sources (e.g., contigs databases, pan genomes) in a group
-            associated with a reaction Entry needed for the group to be represented in terms of
-            presence/absence of the reaction. Here is a concrete example. Say genomes are grouped by
-            their species, 'A', 'B', and 'C'. You wish to understand the distribution of metabolic
-            capabilities across the 3 species from KO annotations of genes. Reaction colors are
-            assigned based on the groups rather than individual genomes associated with the reaction
-            via KOs. Thresholds between 0 and 1 can be set to define group membership: a threshold
-            of 0.0 would mean that ANY genome in the group can have the reaction for the reaction to
-            be considered present in the group; a threshold of 0.75 means that at least 75% of the
-            genomes in the group must have the reaction for it to be present; a threshold of 1.0
-            means that ALL genomes in the group must contain the reaction for it to be present. In
-            our example, set the threshold to 0.5. Reaction J on a map corresponds to KO X, and
-            Reaction K on a map corresponds to KOs Y and Z. 90% of species A genomes, 50% of species
-            B genomes, and 10% of species C genomes contain KO X, so Reaction J would be colored to
-            indicate that it is represented in species A and B. 0% of species A genomes, 15% of
-            species B genomes, and 40% of species C genomes contain KO Y or KO Z, so Reaction K
-            would not be colored.
-
-        draw_map_lacking_kos : bool, False
-            If False, by default, only draw the map if it contains any of the select KOs. If True,
-            draw the map regardless, meaning that nothing may be highlighted.
-
-        Returns
-        =======
-        bool
-            True if the map was drawn, False if the map was not drawn because it did not contain any
-            of the select KOs and 'draw_map_lacking_kos' was False.
-        """
-        assert not (
-            (group_sources is None and group_threshold is not None) or
-            (group_threshold is None and group_sources is not None)
-        )
-
-        pathway = self._get_pathway(pathway_number)
-
-        combo_lookup: Dict[Tuple[str], Tuple[str]] = {}
-        if category_combos is not None:
-            for combo in category_combos:
-                combo_lookup[tuple(sorted(combo))] = combo
-
-        entries = pathway.get_entries(kegg_ids=ko_membership)
-        if not entries and not draw_map_lacking_kos:
-            return False
-
-        def _get_reaction_sources(entry: kgml.Entry) -> Set[str]:
-            """Get data sources associated with the ortholog Entry via KOs."""
-            sources = []
-            for kegg_name in entry.name.split():
-                split_kegg_name = kegg_name.split(':')
-                kegg_id = split_kegg_name[1]
-                try:
-                    sources += ko_membership[kegg_id]
-                except KeyError:
-                    continue
-            sources = set(sources)
-
-            return sources
-
-        def _get_qualifying_groups(entry: kgml.Entry) -> Set[str]:
-            """Get groups associated with the ortholog Entry via KOs and meeting the threshold."""
-            sources = _get_reaction_sources(entry)
-            group_counts: Dict[str, int] = {}.fromkeys(group_source_count, 0)
-            for source in sources:
-                try:
-                    group = source_group[source]
-                except KeyError:
-                    continue
-                group_counts[group] += 1
-
-            qualifying_groups = []
-            for group, counts in group_counts.items():
-                if group_threshold == 0:
-                    if counts / group_source_count[group] > 0:
-                        qualifying_groups.append(group)
-                else:
-                    if counts / group_source_count[group] >= group_threshold:
-                        qualifying_groups.append(group)
-            qualifying_groups = set(qualifying_groups)
-
-            return qualifying_groups
-
-        group_source_count: Dict[str, int] = {}
-        source_group: Dict[str, str] = {}
-        ko_groups: Dict[str, List[str]] = {}
-        if group_sources:
-            get_categories = _get_qualifying_groups
-
-            for group, sources in group_sources.items():
-                group_source_count[group] = len(sources)
-
-            for group, sources in group_sources.items():
-                for source in sources:
-                    assert source not in source_group
-                    source_group[source] = group
-        else:
-            get_categories = _get_reaction_sources
-
-        # Change the colors of the KO graphics. A reaction Entry can represent multiple KOs. Also,
-        # in overview and standard maps, widen lines from the base map default of 1.0.
-        color_hexcodes = list(color_priority)
-        for entry in entries:
-            # Get categories (data sources or groups) associated with the reaction Entry via KOs.
-            categories = get_categories(entry)
-            if not categories:
-                # The KO was provided without being in any categories.
-                continue
-
-            if category_combos is None:
-                color_hexcode = color_hexcodes[len(categories) - 1]
-            else:
-                combo = combo_lookup[tuple(sorted(categories))]
-                color_hexcode = color_hexcodes[category_combos.index(combo)]
-            for uuid in entry.children['graphics']:
-                graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
-                if pathway.is_global_map:
-                    assert graphics.type == 'line'
-                    graphics.fgcolor = color_hexcode
-                    graphics.bgcolor = '#FFFFFF'
-                elif pathway.is_overview_map:
-                    assert graphics.type == 'line'
-                    graphics.fgcolor = color_hexcode
-                    graphics.bgcolor = '#FFFFFF'
-                    graphics.width = 5.0
-                else:
-                    if graphics.type == 'rectangle':
-                        graphics.fgcolor = '#000000'
-                        graphics.bgcolor = color_hexcode
-                    elif graphics.type == 'line':
-                        graphics.fgcolor = color_hexcode
-                        graphics.bgcolor = '#FFFFFF'
-                        graphics.width = 5.0
-                    else:
-                        raise AssertionError(
-                            "Ortholog entries are assumed to have Graphics elements of type "
-                            f"'rectangle' or 'line', not the encountered type, '{graphics.type}'."
-                        )
-
-        # Set the color priorities of entries for proper overlaying in the image. Recolor
-        # "unprioritized" KO graphics to a background color. In global and overview maps, recolor
-        # circles to reflect the colors of prioritized reactions involving the compounds.
-        ortholog_color_priority: Dict[str, Dict[Tuple[str, str], float]] = {}
-        if pathway.is_global_map:
-            ortholog_color_priority['line'] = line_color_priority = {}
-            for color_hexcode, priority in color_priority.items():
-                line_color_priority[(color_hexcode, '#FFFFFF')] = priority
-            pathway.set_color_priority(
-                {'ortholog': ortholog_color_priority},
-                recolor_unprioritized_entries='g',
-                color_associated_compounds='high'
-            )
-        elif pathway.is_overview_map:
-            ortholog_color_priority['line'] = line_color_priority = {}
-            for color_hexcode, priority in color_priority.items():
-                line_color_priority[(color_hexcode, '#FFFFFF')] = priority
-            pathway.set_color_priority(
-                {'ortholog': ortholog_color_priority},
-                recolor_unprioritized_entries='w',
-                color_associated_compounds='high'
-            )
-        else:
-            ortholog_color_priority['rectangle'] = rectangle_color_priority = {}
-            ortholog_color_priority['line'] = line_color_priority = {}
-            for color_hexcode, priority in color_priority.items():
-                rectangle_color_priority[('#000000', color_hexcode)] = priority
-                line_color_priority[(color_hexcode, '#FFFFFF')] = priority
-            pathway.set_color_priority(
-                {'ortholog': ortholog_color_priority},
-                recolor_unprioritized_entries='w'
-            )
 
         self._draw_map(pathway, output_dir)
 
@@ -3140,20 +4194,25 @@ class Mapper:
             Record of drawn map files.
 
         group_sources : Dict[str, List[str]], None
-            This is required to draw groups. Keys are group names. Values are lists of group data
-            sources.
+            Used to draw a per-group discrete colorbar of source counts. Keys are group names;
+            values are lists of the group's data sources. Left None when no layer colors its
+            individual group maps by within-group source counts, as when a group map is colored by
+            value instead, in which case no per-group source-count colorbars are drawn.
 
         group_color_priority : Dict[str, Dict[str, float]], None
-            This is required to draw groups. Keys are group names. Values are dictionaries mapping
-            color hex code to priority. Reactions assigned higher priority colors are drawn over
-            reactions assigned lower priority colors.
+            Used together with 'group_sources' to draw the per-group colorbars. Keys are group names;
+            values are dictionaries mapping color hex code to priority. Reactions assigned higher
+            priority colors are drawn over reactions assigned lower priority colors. Left None
+            whenever 'group_sources' is.
 
         check_maps_lacking_kos : bool, True
             If True, check for "empty" individual map files that are needed to complete the map grid
             and draw them as temporary files, deleting them at after map grids are drawn.
 
-        source_type : Literal['contigs database', 'pangenome', 'sample', 'unknown'], 'unknown'
-            The type of data sources being used
+        source_type : Literal['contigs database', 'pangenome', 'sample'], 'unknown'
+            The kind of source a group is made of, which labels the per-group colorbars of source
+            counts. The text engine passes 'sample', including for a grouped run, since a group is
+            made of samples.
         """
         self.progress.new("Drawing map grid")
         self.progress.update("...")
@@ -3187,10 +4246,10 @@ class Mapper:
                     if drawn_map:
                         continue
 
-                    out_dir = os.path.join(output_dir, category)
+                    out_dir = os.path.join(output_dir, INDIVIDUAL_SUBDIR, category)
 
                     self._map_kos_fixed_colors(
-                        [], out_dir, [pathway_number], draw_maps_lacking_kos=True
+                        [], out_dir, [pathway_number], draw_maps_lacking_data=True
                     )
 
                     if self.pathway_categorization is None:
@@ -3207,7 +4266,7 @@ class Mapper:
             self.run = run
 
         # Draw map grids.
-        grid_dir = os.path.join(output_dir, 'grid')
+        grid_dir = os.path.join(output_dir, GRID_SUBDIR)
         filesnpaths.gen_output_directory(grid_dir, progress=self.progress, run=self.run)
 
         if group_sources is not None:
@@ -3221,7 +4280,7 @@ class Mapper:
             else:
                 label = 'source count'
             for group in draw_categories:
-                self.colorbar_drawer.draw(
+                self.colorbar_drawer.draw_discrete(
                     group_color_priority[group],
                     os.path.join(grid_dir, f'colorbar_{group}.pdf'),
                     color_labels=range(1, len(group_sources[group]) + 1),
@@ -3232,10 +4291,11 @@ class Mapper:
             self.progress.update(pathway_number)
             pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
             pathway_basename = f'kos_{pathway_number}{pathway_name}.pdf'
+            unified_dir = os.path.join(output_dir, UNIFIED_SUBDIR)
             if self.pathway_categorization is None:
-                unified_map_path = os.path.join(output_dir, pathway_basename)
+                unified_map_path = os.path.join(unified_dir, pathway_basename)
             else:
-                out_dir = os.path.join(output_dir, *self.pathway_categorization[pathway_number])
+                out_dir = os.path.join(unified_dir, *self.pathway_categorization[pathway_number])
                 unified_map_path = os.path.join(out_dir, pathway_basename)
             if not os.path.exists(unified_map_path):
                 continue
@@ -3247,10 +4307,13 @@ class Mapper:
 
             for category in draw_grid_categories:
                 if self.pathway_categorization is None:
-                    individual_map_path = os.path.join(output_dir, category, pathway_basename)
+                    individual_map_path = os.path.join(
+                        output_dir, INDIVIDUAL_SUBDIR, category, pathway_basename
+                    )
                 else:
                     out_dir = os.path.join(
-                        output_dir, category, *self.pathway_categorization[pathway_number]
+                        output_dir, INDIVIDUAL_SUBDIR, category,
+                        *self.pathway_categorization[pathway_number]
                     )
                     individual_map_path = os.path.join(out_dir, pathway_basename)
                 if not os.path.exists(individual_map_path):
@@ -3275,15 +4338,22 @@ class Mapper:
         for path in paths_to_remove:
             os.remove(path)
         for category in set(draw_categories).difference(set(draw_files_categories)):
-            shutil.rmtree(os.path.join(output_dir, category))
+            shutil.rmtree(os.path.join(output_dir, INDIVIDUAL_SUBDIR, category))
             drawn['individual'].pop(category)
+
+        # The directory holding the individual maps exists only for them, so it should not outlive
+        # them: a run that asked for grids alone drew those maps as grid panels and has just removed
+        # them again, which would otherwise leave an empty directory behind.
+        individual_dir = os.path.join(output_dir, INDIVIDUAL_SUBDIR)
+        if os.path.isdir(individual_dir) and not os.listdir(individual_dir):
+            os.rmdir(individual_dir)
 
         # If map files were categorized in a subdirectory structure, remove subdirectories that no
         # longer contain files.
         if not self.categorize_files:
             return
         for category in draw_files_categories:
-            category_dir = os.path.join(output_dir, category)
+            category_dir = os.path.join(output_dir, INDIVIDUAL_SUBDIR, category)
             for dir_path, subdir_names, filenames in os.walk(category_dir, topdown=False):
                 if dir_path != category_dir and not os.listdir(dir_path):
                     os.rmdir(dir_path)
@@ -3489,7 +4559,7 @@ class ColorbarDrawer:
         self.label_fontsize: int = 24
         self.labelpad: int = 30
 
-    def draw(
+    def draw_discrete(
         self,
         colors: Iterable,
         out_path: str,
@@ -3497,7 +4567,7 @@ class ColorbarDrawer:
         label: str = None
     ) -> None:
         """
-        Save a standalone colorbar to a file.
+        Save a standalone discrete (segmented) colorbar to a file, with one color band per color.
 
         Parameters
         ==========
@@ -3555,6 +4625,67 @@ class ColorbarDrawer:
 
             cb.set_ticks(np.arange(len(colors)) + 0.5)
             cb.set_ticklabels(color_labels, fontsize=tick_fontsize)
+
+        if label:
+            if self.label_rotation is None:
+                if self.orientation == 'vertical':
+                    label_rotation = 270
+                elif self.orientation == 'horizontal':
+                    label_rotation = 0
+                else:
+                    raise AssertionError
+            else:
+                label_rotation = self.label_rotation
+            cb.set_label(
+                label,
+                rotation=label_rotation,
+                labelpad=self.labelpad,
+                fontsize=self.label_fontsize
+            )
+
+        filesnpaths.is_output_file_writable(out_path, ok_if_exists=self.overwrite_output)
+        plt.savefig(out_path, format='pdf', bbox_inches='tight')
+        plt.close()
+
+    def draw_continuous(
+        self,
+        colormap: mcolors.Colormap,
+        vmin: float,
+        vmax: float,
+        out_path: str,
+        label: str = None
+    ) -> None:
+        """
+        Save a standalone continuous colorbar to a file.
+
+        Parameters
+        ==========
+        colormap : matplotlib.colors.Colormap
+            Colormap sampled across the value range.
+
+        vmin : float
+            Lower bound of the value range.
+
+        vmax : float
+            Upper bound of the value range.
+
+        out_path : str
+            Path to PDF output file.
+
+        label : str, None
+            Overall colorbar label.
+        """
+        fig, ax = plt.subplots(figsize=self.figsize)
+
+        norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+        cb = plt.colorbar(
+            plt.cm.ScalarMappable(norm=norm, cmap=colormap),
+            cax=ax,
+            orientation=self.orientation
+        )
+
+        if self.tick_fontsize is not None:
+            cb.ax.tick_params(labelsize=self.tick_fontsize)
 
         if label:
             if self.label_rotation is None:

@@ -18,13 +18,58 @@ cp ${files}/mock_data_for_pangenomics/group-information.txt ${output_dir}/pan-gr
 cp ${files}/data/input_files/minimal_enzymes_input.txt ${output_dir}/
 awk -F'\t' 'NR==1 {print $0} NR>1 {$1=$1".db"; print $0}' OFS='\t' \
 ${output_dir}/pan-group-information.txt > ${output_dir}/contigs-db-group-information.txt
+
 cd ${output_dir}/
-# Build an enzymes text file with a 'sample' column to test drawing KOs across samples, plus a
-# groups file assigning those samples to groups.
-awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print $0,"sample"} NR>1{s=((NR-2)%3)+1; print $0,"SAMPLE_"s}' \
-minimal_enzymes_input.txt > enzymes_with_samples.txt
-printf 'sample\tgroup\nSAMPLE_1\tG1\nSAMPLE_2\tG2\nSAMPLE_3\tG2\n' > enzymes-sample-group-information.txt
-mkdir enzymes_txt_kos
+# Build per-layer draw-kegg-pathways text files from the enzymes input's KOfam rows (gene ID and KO
+# accession), plus a groups file assigning samples to groups. Variants add a 'sample' column and/or
+# a numeric 'coverage' value column to test comparison across samples/groups and quantitative
+# coloring. Reaction-layer files ('.reaction.txt') hold KO or KEGG reaction accessions;
+# compound-layer files ('.compound.txt') hold KEGG compound accessions.
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id"} NR>1{print $2,$1}' \
+minimal_enzymes_input.txt > draw_kos.reaction.txt
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","sample"} NR>1{s=((NR-2)%3)+1; print $2,$1,"SAMPLE_"s}' \
+minimal_enzymes_input.txt > draw_kos_samples.reaction.txt
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","sample"} NR>1{s=((NR-2)%4)+1; print $2,$1,"SAMPLE_"s}' \
+minimal_enzymes_input.txt > draw_kos_samples4.reaction.txt
+printf 'sample\tgroup\nSAMPLE_1\tG1\nSAMPLE_2\tG2\nSAMPLE_3\tG2\n' > draw-sample-group-information.txt
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","coverage"} NR>1{print $2,$1,((NR-2)%37)+0.5}' \
+minimal_enzymes_input.txt > draw_kos_coverage.reaction.txt
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","sample","coverage"} NR>1{s=((NR-2)%3)+1; print $2,$1,"SAMPLE_"s,((NR-2)%37)+0.5}' \
+minimal_enzymes_input.txt > draw_kos_samples_coverage.reaction.txt
+
+# A constant 'coverage' column. With 'max' at BOTH reduction levels, every per-reaction value reduces
+# to the same constant, exercising the degenerate (vmin == vmax) branch of quantitative coloring and
+# its single-value colorbar. (Both levels are named explicitly in the test below so that it stays
+# degenerate whatever the defaults are; with 'sum', an accession with more genes, or an element with
+# more accessions, would differ from the rest.)
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","coverage"} NR>1{print $2,$1,1}' \
+minimal_enzymes_input.txt > draw_kos_constant_coverage.reaction.txt
+
+# Reaction-level (KEGG reaction IDs) and compound-level fixtures (KEGG IDs present on the tested maps).
+printf 'accession\tvalue\nR01068\t5\nR00710\t10\nR00229\t15\nR00755\t25\nR00431\t40\nR00014\t30\n' > draw_reactions.reaction.txt
+# A reaction file and a compound file drawn together as two quantitative layers.
+{ printf 'accession\tgene_id\tvalue\n'; awk -F'\t' 'NR>1{print $2"\t"$1"\t"(((NR-2)%37)+0.5)}' minimal_enzymes_input.txt; } > draw_kos_and_compounds.reaction.txt
+printf 'accession\tvalue\nC00031\t2\nC00668\t5\nC00074\t9\nC00267\t14\n' > draw_compounds.compound.txt
+# A compound file with a 'sample' column and a value column, for comparing metabolomes across samples.
+{
+    printf 'accession\tsample\tconcentration\n'
+    printf 'C00031\tSAMPLE_1\t55\nC00031\tSAMPLE_2\t31\nC00668\tSAMPLE_1\t12\n'
+    printf 'C00074\tSAMPLE_2\t30.5\nC00074\tSAMPLE_3\t8\nC00267\tSAMPLE_3\t14\n'
+} > draw_compounds_samples.compound.txt
+# A compound file with no value column (presence), for testing a custom compound presence color.
+printf 'accession\nC00031\nC00668\nC00074\nC00267\n' > draw_compounds_presence.compound.txt
+
+# Malformed files exercising the input-validation guards (each drawn command below is expected to fail).
+printf 'accession\nK00844\nR00200\n' > draw_bad_mixed_kr.reaction.txt
+printf 'accession\tgene_id\nC00031\tgene_1\n' > draw_bad_compound_gene_id.compound.txt
+printf 'accession\tcol_a\tcol_b\nK00844\t1\t2\n' > draw_bad_two_values.reaction.txt
+printf 'accession\tgene_id\tcoverage\nK00844\tgene_1\t10\nK00844\tgene_1\t30\n' > draw_bad_repeated_rows.reaction.txt
+printf 'accession\tconcentration\nC00031\t10\nC00031\t30\n' > draw_bad_repeated_compounds.compound.txt
+
+# Samples named after the output directory's own subdirectories and after a BRITE category: these
+# are drawn under 'individual', so they cannot collide with anything anvi'o creates for itself.
+printf 'accession\tsample\nK00844\tMetabolism\nK00845\tsymlink\nK02358\tgrid\nK00844\tunified\n' > draw_kos_awkward_sample_names.reaction.txt
+
 mkdir contigs_db_kos
 mkdir contigs_dbs_kos_count
 mkdir pan_db_kos_genome_count_emphasize_shared
@@ -71,48 +116,569 @@ anvi-reaction-network "${args[@]}"
 
 pathway_numbers=( "00010" "01100" "01200" )
 
-INFO "Testing mapping KOs from an enzymes text file"
+INFO "Testing drawing KOs from a kegg-reaction-txt file by presence (single color)"
 args=()
-args+=( "--enzymes-txt" "minimal_enzymes_input.txt" )
-args+=( "--output-dir" ${output_dir}/enzymes_txt_kos )
-args+=( "--ko" )
+args+=( "--reaction-txt" "draw_kos.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_kos )
 args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
 
-INFO "Testing mapping KOs from an enzymes text file across samples defined by a 'sample' column, \
-displaying sample membership, drawing map grids and map files for each sample"
+INFO "Testing drawing KOs across samples defined by a 'sample' column, drawing map grids and map \
+files for each sample"
 args=()
-args+=( "--enzymes-txt" "enzymes_with_samples.txt" )
-args+=( "--output-dir" ${output_dir}/enzymes_txt_samples_kos )
-args+=( "--ko" )
+args+=( "--reaction-txt" "draw_kos_samples.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_samples_kos )
 args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
 args+=( "--draw-individual-files" )
 args+=( "--draw-grid" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
 
-INFO "Testing mapping KOs from an enzymes text file across groups of samples, where KOs are in \
-any samples in the group, drawing map grids and map files for each group"
+INFO "Testing drawing KOs across groups of samples, where KOs are in any samples in the group, \
+drawing map grids and map files for each group"
 args=()
-args+=( "--enzymes-txt" "enzymes_with_samples.txt" )
-args+=( "--groups-txt" "enzymes-sample-group-information.txt" )
+args+=( "--reaction-txt" "draw_kos_samples.reaction.txt" )
+args+=( "--groups-txt" "draw-sample-group-information.txt" )
 args+=( "--group-threshold" "0" )
-args+=( "--output-dir" ${output_dir}/enzymes_txt_samples_kos_groups )
-args+=( "--ko" )
+args+=( "--output-dir" ${output_dir}/draw_txt_samples_kos_groups )
 args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
 args+=( "--draw-individual-files" )
 args+=( "--draw-grid" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing drawing reactions from a kegg-reaction-txt file of KEGG reaction IDs, colored by a \
+value column"
+args=()
+args+=( "--reaction-txt" "draw_reactions.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_reactions )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing drawing compounds from a kegg-compound-txt file, colored by a value column"
+args=()
+args+=( "--compound-txt" "draw_compounds.compound.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_compounds )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing drawing the reaction and compound layers together from two files, each colored by \
+its own value column on its own scale"
+args=()
+args+=( "--reaction-txt" "draw_kos_and_compounds.reaction.txt" )
+args+=( "--compound-txt" "draw_compounds.compound.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_reactions_and_compounds )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing coloring reactions by a value column from a kegg-reaction-txt file"
+args=()
+args+=( "--reaction-txt" "draw_kos_coverage.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_kos_quantitative )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing coloring reactions by a value column across samples, where the per-sample maps show \
+each sample's own values continuously and the default sample summary makes the 'unified' map show \
+which samples contain each reaction, drawing map grids and map files for each sample"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples_coverage.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_samples_kos_quantitative )
+args+=( "--reaction-gene-aggregation" "mean" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing summarizing samples by pooling their values, so that the 'unified' map is colored by \
+the mean of the samples' values"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples_coverage.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_samples_kos_quantitative_mean )
+args+=( "--reaction-gene-aggregation" "mean" )
+args+=( "--reaction-sample-summary" "mean" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing summarizing samples by count rather than by membership, overriding the default for \
+three or fewer samples"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_samples_kos_count )
+args+=( "--reaction-sample-summary" "count" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing a static presence color on a layer with a 'sample' column: it overrides coloring by \
+sample on the 'unified' map, which shows presence in any sample in that one color, while the \
+individual sample maps are unaffected"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples.reaction.txt" )
+args+=( "--reaction-color" "#FF8800" )
+args+=( "--output-dir" ${output_dir}/draw_txt_samples_static_color )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing a qualitative colormap with the drawing order reversed, which samples the colormap at \
+whole positions rather than at fractions of its range"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples.reaction.txt" )
+args+=( "--reaction-colormap" "tab10" )
+args+=( "--reaction-reverse-overlay" )
+args+=( "--output-dir" ${output_dir}/draw_txt_samples_qualitative_reverse )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing both layers across the same samples, each with its own aggregation and its own \
+sample summary: reactions pooled by their mean and compounds by their maximum concentration"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples_coverage.reaction.txt" )
+args+=( "--compound-txt" "draw_compounds_samples.compound.txt" )
+args+=( "--reaction-gene-aggregation" "mean" )
+args+=( "--compound-accession-aggregation" "sum" )
+args+=( "--reaction-sample-summary" "mean" )
+args+=( "--compound-sample-summary" "max" )
+args+=( "--output-dir" ${output_dir}/draw_txt_both_layers_samples )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing an aggregation outside the validated names, resolved through pandas ('var' within \
+a sample), together with one that maps disagreement among samples ('std' across them), including \
+accessions for which the standard deviation is undefined and are therefore left uncolored"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples_coverage.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_samples_kos_std )
+args+=( "--reaction-gene-aggregation" "var" )
+args+=( "--reaction-sample-summary" "std" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing the two summary levels together for replicates: each group's map shows the mean of \
+its samples' values, while the 'unified' map shows the number of groups containing each reaction, \
+drawing map grids and map files for each group"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples_coverage.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_groups_kos_quantitative )
+args+=( "--groups-txt" "draw-sample-group-information.txt" )
+args+=( "--group-threshold" "0.5" )
+args+=( "--reaction-sample-summary" "mean" )
+args+=( "--reaction-group-summary" "count" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing pooling values at both summary levels, so that the 'unified' map is colored by the \
+mean across groups of each group's mean"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples_coverage.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_groups_kos_quantitative_mean )
+args+=( "--groups-txt" "draw-sample-group-information.txt" )
+args+=( "--reaction-sample-summary" "mean" )
+args+=( "--reaction-group-summary" "mean" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing summarizing the samples of a value-column layer by presence at both levels, where \
+the group maps show within-group sample counts and the value column goes unused"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples_coverage.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_groups_kos_presence )
+args+=( "--groups-txt" "draw-sample-group-information.txt" )
+args+=( "--group-threshold" "0" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing value-column coloring with a constant column and 'max' aggregation, exercising the \
+degenerate value range and its single-value colorbar"
+args=()
+args+=( "--reaction-txt" "draw_kos_constant_coverage.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_kos_quantitative_constant )
+args+=( "--reaction-gene-aggregation" "max" )
+args+=( "--reaction-accession-aggregation" "max" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing MIXED coloring: presence of KOs (reaction layer) with quantitative compounds \
+(compound layer) on the same maps"
+args=()
+args+=( "--reaction-txt" "draw_kos.reaction.txt" )
+args+=( "--compound-txt" "draw_compounds.compound.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_mixed_presence_quant )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing MIXED coloring across samples: KO membership across samples (reaction layer) with a \
+quantitative compound layer held constant across the per-sample maps"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples.reaction.txt" )
+args+=( "--compound-txt" "draw_compounds.compound.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_mixed_samples )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing custom presence colors for the reaction and compound layers of draw-kegg-pathways \
+text files"
+args=()
+args+=( "--reaction-txt" "draw_kos.reaction.txt" )
+args+=( "--compound-txt" "draw_compounds_presence.compound.txt" )
+args+=( "--reaction-color" "#FF8800" )
+args+=( "--compound-color" "#0000FF" )
+args+=( "--output-dir" ${output_dir}/draw_txt_custom_colors )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing highlighting a reaction presence layer in the reference map's original colors"
+args=()
+args+=( "--reaction-txt" "draw_kos.reaction.txt" )
+args+=( "--original-color" )
+args+=( "--output-dir" ${output_dir}/draw_txt_original_color )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing the reference map's original colors across samples: the 'unified' map is the union \
+of the samples and each sample also gets its own map"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples.reaction.txt" )
+args+=( "--original-color" )
+args+=( "--output-dir" ${output_dir}/draw_txt_original_color_samples )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing the reference map's original colors with sample groups: the 'unified' map is still \
+the union of the samples, while each group's map falls back to within-group sample counts, since \
+one color cannot distinguish a group's samples"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples.reaction.txt" )
+args+=( "--original-color" )
+args+=( "--groups-txt" "draw-sample-group-information.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_original_color_groups )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing samples whose names match the output directory's own subdirectories ('unified', \
+'grid', 'symlink') and a BRITE category ('Metabolism'), which are drawn under 'individual' and so \
+cannot collide with them"
+args=()
+args+=( "--reaction-txt" "draw_kos_awkward_sample_names.reaction.txt" )
+args+=( "--categorize-files" )
+args+=( "--output-dir" ${output_dir}/draw_txt_awkward_sample_names )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing that the draw-kegg-pathways text file input rejects invalid files and argument \
+combinations (each command below is expected to fail)"
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_mixed_kr.reaction.txt \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a reaction file mixing 'K' and 'R' accessions should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --compound-txt draw_bad_compound_gene_id.compound.txt \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a compound file with a 'gene_id' column should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_two_values.reaction.txt \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a file with two candidate value columns should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt --reaction-color "#FF8800" \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: '--reaction-color' on a value-colored reaction layer should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
+    --compound-txt draw_compounds_presence.compound.txt --original-color \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: '--original-color' with a compound file (reaction-only) should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt --original-color \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: '--original-color' on a reaction layer with a value column should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt --original-color \
+    --reaction-sample-summary count \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a sample summary with '--original-color' should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt --original-color \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0 --draw-individual-files \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: '--group-threshold' with '--original-color' should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt --original-color --reaction-color "#FF8800" \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: '--original-color' with '--reaction-color' should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt --reaction-colormap plasma \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: '--reaction-colormap' with a single-color presence reaction layer should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt --compound-colormap cividis \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: '--compound-colormap' with no compound file should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt --discrete-colormap-scheme by_count \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: '--discrete-colormap-scheme' on a text run should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0.5 \
+    --reaction-sample-summary mean --reaction-group-summary mean \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: '--group-threshold' with no group summary of presence should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --groups-txt draw-sample-group-information.txt \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a group summary of presence without '--group-threshold' should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --reaction-sample-summary mean \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a value sample summary on a layer with no value column should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-sample-summary mean \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a sample summary on a layer with no 'sample' column should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --compound-sample-summary count \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a sample summary naming a layer with no file should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-group-summary count \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a group summary without '--groups-txt' should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0.5 \
+    --reaction-sample-summary count --reaction-group-summary mean \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a value group summary with a presence sample summary should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0.5 \
+    --reaction-sample-summary mean --group-colormap plasma --draw-individual-files \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: '--group-colormap' with value-colored group maps should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_repeated_rows.reaction.txt \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a reaction file repeating an accession and gene should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --compound-txt draw_bad_repeated_compounds.compound.txt \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a compound file repeating a compound should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_reactions.reaction.txt \
+    --reaction-gene-aggregation mean \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a gene aggregation on a file with no 'gene_id' column should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-gene-aggregation cumsum \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: an aggregation that transforms rather than reduces should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-gene-aggregation idxmax \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: an aggregation meaning different things at different levels should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples4.reaction.txt \
+    --reaction-sample-summary membership \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: 'membership' needing more colors than the colormap has should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt --draw-individual-files \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: '--draw-individual-files' with no 'sample' column should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt --reaction-color "#FF8800" \
+    --reaction-sample-summary count \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a sample summary with a static presence color should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-colormap plasma 0.9 0.2 \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: reversed colormap limits should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-colormap Greys \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a colormap reaching a color reserved for unhighlighted elements should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
+    --reaction-color "#ffffffff" \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: another spelling of a reserved color should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-colormap not_a_colormap \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: an unrecognized colormap name should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
+    --genomes-storage TEST-GENOMES.db \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a pangenome option on a text run should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-gene-aggregation not_an_aggregation \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: an unrecognized aggregation name should have failed but did not."
+    exit 1
+fi
 
 INFO "Testing mapping KOs from a genomic contigs database"
 args=()
-args+=( "--contigs-db" "E_faecalis_6240.db" )
+args+=( "--contigs-dbs" "E_faecalis_6240.db" )
 args+=( "--output-dir" ${output_dir}/contigs_db_kos )
 args+=( "--name-files" )
 args+=( "--categorize-files" )
-args+=( "--ko" )
 args+=( "--pathway-numbers" "${pathway_numbers[@]}" "05310" )
 args+=( "--draw-bare-maps" )
 args+=( "--no-progress" )
@@ -124,7 +690,6 @@ args=()
 args+=( "--external-genomes" "external-genomes.txt" )
 args+=( "--output-dir" ${output_dir}/contigs_dbs_kos_count )
 args+=( "--categorize-files" )
-args+=( "--ko" )
 args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
 args+=( "--draw-grid" )
 args+=( "--no-progress" )
@@ -138,7 +703,6 @@ args+=( "--contigs-dbs" \
 "E_faecalis_6512.db"
 )
 args+=( "--output-dir" ${output_dir}/contigs_dbs_kos_membership )
-args+=( "--ko" )
 args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
@@ -160,7 +724,6 @@ args+=( "--output-dir" ${output_dir}/contigs_dbs_kos_group_membership_min_thresh
 args+=( "--categorize-files" )
 args+=( "--draw-individual-files" )
 args+=( "--draw-grid" )
-args+=( "--ko" )
 args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
@@ -181,7 +744,6 @@ args+=( "--group-threshold" "1" )
 args+=( "--output-dir" ${output_dir}/contigs_dbs_kos_group_membership_max_threshold )
 args+=( "--draw-individual-files" "G2" )
 args+=( "--draw-grid" "G2" )
-args+=( "--ko" )
 args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
@@ -192,7 +754,6 @@ args=()
 args+=( "--pan-db" "TEST-PAN.db" )
 args+=( "--genomes-storage" "TEST-GENOMES.db" )
 args+=( "--output-dir" ${output_dir}/pan_db_kos_genome_count_emphasize_shared )
-args+=( "--ko" )
 args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
@@ -206,10 +767,9 @@ args+=( "--output-dir" ${output_dir}/pan_db_kos_genome_count_emphasize_unshared 
 args+=( "--categorize-files" )
 args+=( "--draw-individual-files" )
 args+=( "--draw-grid" )
-args+=( "--ko" )
 args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
-args+=( "--colormap" "plasma" "0.1" "0.9")
-args+=( "--reverse-overlay" )
+args+=( "--reaction-colormap" "plasma" "0.1" "0.9")
+args+=( "--reaction-reverse-overlay" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
 
@@ -218,9 +778,8 @@ args=()
 args+=( "--pan-db" "TEST-PAN.db" )
 args+=( "--genomes-storage" "TEST-GENOMES.db" )
 args+=( "--output-dir" ${output_dir}/pan_db_kos_presence_absence )
-args+=( "--ko" )
 args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
-args+=( "--set-color" )
+args+=( "--reaction-color" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
 
@@ -236,7 +795,6 @@ args+=( "--output-dir" ${output_dir}/pan_db_kos_group_count_emphasize_shared )
 args+=( "--categorize-files" )
 args+=( "--draw-individual-files" "G1" )
 args+=( "--draw-grid" "G1" )
-args+=( "--ko" )
 args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
@@ -250,11 +808,10 @@ args+=( "--groups-txt" "pan-group-information.txt" )
 args+=( "--group-threshold" "0" )
 args+=( "--output-dir" ${output_dir}/pan_db_kos_group_membership_emphasize_unshared )
 args+=( "--draw-grid" )
-args+=( "--ko" )
 args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
-args+=( "--colormap" "plasma" "0.1" "0.9")
-args+=( "--colormap-scheme" "by_count" )
-args+=( "--reverse-overlay" )
+args+=( "--reaction-colormap" "plasma" "0.1" "0.9")
+args+=( "--discrete-colormap-scheme" "by_count" )
+args+=( "--reaction-reverse-overlay" )
 args+=( "--group-colormap" "plasma" "0.1" "0.9" )
 args+=( "--group-reverse-overlay" )
 args+=( "--no-progress" )
