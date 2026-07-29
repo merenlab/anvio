@@ -122,6 +122,8 @@ def get_args():
                                                                                    "show you quickly the distribution of each taxon across all metagenomes "
                                                                                    "in programs like EXCEL. WELL TRY IT AND SEE."}))
     groupE.add_argument(*anvio.A('raw-output'), **anvio.K('raw-output'))
+    groupE.add_argument(*anvio.A('tree-output'), **anvio.K('tree-output'))
+    groupE.add_argument(*anvio.A('tree-output-level'), **anvio.K('tree-output-level'))
 
     groupF = parser.add_argument_group('PERFORMANCE', "We are not sure if allocating more threads for this operation will change anything.\
                                                        But hey. One can try.")
