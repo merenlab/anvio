@@ -9,11 +9,18 @@ import math
 import shutil
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
 from argparse import Namespace
 from itertools import combinations
+# Colorbars are drawn with Matplotlib's object-oriented API rather than 'pyplot'. Importing
+# 'pyplot' selects a backend, and with the pinned Matplotlib that happens at import time: on Linux
+# it probes the X display, so merely running this program over an X-forwarded SSH connection (even
+# just for '-h') opens an X client connection and fires up the user's X server. The classes below
+# are equivalent, never touch a backend, and keep figures out of pyplot's global registry.
+from matplotlib import colormaps
+from matplotlib.figure import Figure
+from matplotlib.cm import ScalarMappable
 from typing import Callable, Dict, Iterable, List, Literal, Set, Tuple, Union
 
 import anvio.kgml as kgml
@@ -2223,7 +2230,7 @@ class Mapper:
             The named colormap.
         """
         try:
-            return plt.colormaps[colormap]
+            return colormaps[colormap]
         except KeyError:
             self.progress.end()
             raise ConfigError(
@@ -4587,13 +4594,14 @@ class ColorbarDrawer:
         if color_labels is not None:
             assert len(colors) == len(color_labels)
 
-        fig, ax = plt.subplots(figsize=self.figsize)
+        fig = Figure(figsize=self.figsize)
+        ax = fig.subplots()
 
         cmap = mcolors.ListedColormap(colors)
         norm = mcolors.BoundaryNorm(boundaries=range(len(colors) + 1), ncolors=len(colors))
 
-        cb = plt.colorbar(
-            plt.cm.ScalarMappable(norm=norm, cmap=cmap),
+        cb = fig.colorbar(
+            ScalarMappable(norm=norm, cmap=cmap),
             cax=ax,
             orientation=self.orientation
         )
@@ -4644,8 +4652,7 @@ class ColorbarDrawer:
             )
 
         filesnpaths.is_output_file_writable(out_path, ok_if_exists=self.overwrite_output)
-        plt.savefig(out_path, format='pdf', bbox_inches='tight')
-        plt.close()
+        fig.savefig(out_path, format='pdf', bbox_inches='tight')
 
     def draw_continuous(
         self,
@@ -4675,11 +4682,12 @@ class ColorbarDrawer:
         label : str, None
             Overall colorbar label.
         """
-        fig, ax = plt.subplots(figsize=self.figsize)
+        fig = Figure(figsize=self.figsize)
+        ax = fig.subplots()
 
         norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
-        cb = plt.colorbar(
-            plt.cm.ScalarMappable(norm=norm, cmap=colormap),
+        cb = fig.colorbar(
+            ScalarMappable(norm=norm, cmap=colormap),
             cax=ax,
             orientation=self.orientation
         )
@@ -4705,8 +4713,7 @@ class ColorbarDrawer:
             )
 
         filesnpaths.is_output_file_writable(out_path, ok_if_exists=self.overwrite_output)
-        plt.savefig(out_path, format='pdf', bbox_inches='tight')
-        plt.close()
+        fig.savefig(out_path, format='pdf', bbox_inches='tight')
 
 class PDFGridDrawer:
     """
