@@ -11,8 +11,8 @@ You can run the program on a set of genomes for a given annotation source:
 
 {{ codestart }}
 anvi-gen-function-matrix -e %(external-genomes)s \
-                                               --annotation-source COG20_FUNCTION \
-                                               --output-file-prefix MY-GENOMES
+                         --annotation-source COG20_FUNCTION \
+                         --output-file-prefix MY-GENOMES
 {{ codestop }}
 
 The command above will result in two files in your work directory, both of which will be of type %(functions-across-genomes-txt)s:
@@ -31,9 +31,9 @@ If we want to get an idea of differences in functional capacity across different
 
 {{ codestart }}
 anvi-gen-function-matrix -e %(external-genomes)s \
-                                               --annotation-source COG20_FUNCTION \
-                                               --output-file-prefix MY-METAGENOMES \
-                                               --add-per-population-copy-number
+                         --annotation-source COG20_FUNCTION \
+                         --output-file-prefix MY-METAGENOMES \
+                         --add-per-population-copy-number
 {{ codestop }}
 
 Adding the flag generates an additional output file of type %(functions-across-genomes-txt)s:
@@ -50,9 +50,9 @@ Alternatively, you can run it with a %(groups-txt)s that associates sets of geno
 
 {{ codestart }}
 anvi-gen-function-matrix -i %(internal-genomes)s \
-                                               --annotation-source COG20_FUNCTION \
-                                               --output-file-prefix MY-GENOMES \
-                                               --groups-txt groups.txt
+                         --annotation-source COG20_FUNCTION \
+                         --output-file-prefix MY-GENOMES \
+                         --groups-txt groups.txt
 {{ codestop }}
 
 which would generate an additional file in your work directory of type %(functional-enrichment-txt)s:
