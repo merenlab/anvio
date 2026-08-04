@@ -16,7 +16,9 @@ from anvio.argparse import ArgumentParser
 from anvio import A, K, __version__ as VERSION
 from anvio.metabolism.context import KeggContext
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.keggmapping import AGGREGATION_FUNCTIONS, SUMMARY_DISCRETE_SCHEMES, Mapper
+from anvio.keggmapping import (
+    AGGREGATION_FUNCTIONS, SUMMARY_PRESENCE_PHRASE, SUMMARY_PRESENCE_SCHEMES, Mapper
+)
 
 
 __authors__ = ["semiller10"]
@@ -41,7 +43,10 @@ DEFAULT_COMPOUND_COLOR = '#e239af'
 # pools a layer's value column, so it requires the layer to have one. These names take precedence
 # over the aggregations, so pandas 'count' (which counts rows) is not reachable through a summary
 # option.
-PRESENCE_SUMMARIES = tuple(SUMMARY_DISCRETE_SCHEMES)
+PRESENCE_SUMMARIES = tuple(SUMMARY_PRESENCE_SCHEMES)
+
+# The '--count-scale-max' values naming a rule rather than giving a count.
+COUNT_SCALE_MAX_RULES = ('observed', 'total')
 
 # Aggregation names with fast paths in the mapper, listed in help text as the recommended ones. Any
 # other pandas aggregation reducing values to one number is accepted too ('_resolve_aggregation').
@@ -212,9 +217,9 @@ def get_args() -> Namespace:
         "Reaction K would not be colored. This threshold defines group presence, so it applies "
         "whenever groups are summarized by presence: always for contigs databases and pangenomes, "
         "and for a draw-kegg-pathways text layer whose "
-        "'--reaction-group-summary'/'--compound-group-summary' is 'count' or 'membership' (the "
-        "default). It does not apply when every text layer's groups are summarized by pooling "
-        "values instead."
+        "'--reaction-group-summary'/'--compound-group-summary' summarizes presence ('count', "
+        "'count_continuous', or 'membership'), which is the default. It does not apply when every "
+        "text layer's groups are summarized by pooling values instead."
     )
 
     groupSUMMARY = parser.add_argument_group(
@@ -227,22 +232,30 @@ def get_args() -> Namespace:
     )
     groupSUMMARY.add_argument(
         '--reaction-sample-summary', metavar='NAME', help=
-        f"How to summarize a SET OF SAMPLES for the reaction layer. 'count' and 'membership' "
-        f"summarize presence, coloring an element by how many or exactly which samples contain it. "
-        f"Any other name is an aggregation that pools the samples' values from the layer's value "
-        f"column, which the file must have: the recommended ones are {RECOMMENDED_AGGREGATIONS}, "
-        f"and any other pandas aggregation reducing numbers to a single number works too (see "
-        f"'--reaction-gene-aggregation'). 'std' is a natural fit here, mapping how much replicate "
+        f"How to summarize a SET OF SAMPLES for the reaction layer. {SUMMARY_PRESENCE_PHRASE} "
+        f"summarize presence, coloring an element by how many ('count' and 'count_continuous') or "
+        f"exactly which ('membership') samples contain it. 'count' gives each count its own band "
+        f"of a discrete colorbar, which needs a distinguishable color per sample and so is refused "
+        f"when there are more samples than the colormap can supply; 'count_continuous' colors "
+        f"counts from the same colormap — assigning the very same colors, with the sequential "
+        f"colormap a count scale calls for — but draws the scale as a gradient from the lowest "
+        f"count to the highest, which any number of samples can share, at the cost of a color "
+        f"reading as a position along the range rather than as an exact count. Any other name is "
+        f"an aggregation that pools the samples' values from the layer's value column, which the "
+        f"file must have: the validated ones are {RECOMMENDED_AGGREGATIONS}, and any other pandas "
+        f"aggregation reducing numbers to a single number works too (see "
+        f"'--reaction-gene-aggregation'). 'std' is an example here, mapping how much replicate "
         f"samples disagree. This summary colors the 'unified' map when the samples are not "
         f"grouped, and each group's map when they are grouped with '--groups-txt' — though only an "
-        f"aggregation changes a group's map, since presence there is always the count of the "
-        f"group's own samples, so 'count' and 'membership' are rejected in a grouped run as having "
+        f"aggregation affects a group's map, since presence there is always the count of the "
+        f"group's own samples, so the presence names are rejected in a grouped run as having "
         f"nothing to choose between. Maps for individual samples are never summarized, always "
         f"showing that one sample alone: its own values with a value column, its presence without "
         f"one. Without this option, samples are summarized by presence, by membership with 3 or "
-        f"fewer samples and by count above that. Presence is the default because it is meaningful "
-        f"for any set of samples, whereas pooling values is only meaningful when the samples are "
-        f"commensurable, such as replicates of one condition."
+        f"fewer samples, by count above that, and by a continuous count scale where there are more "
+        f"samples than the colormap has distinguishable colors. Presence is the default because it "
+        f"is meaningful for any set of samples, whereas pooling values is only meaningful when the "
+        f"samples are commensurable, such as replicates of one condition."
     )
     groupSUMMARY.add_argument(
         '--compound-sample-summary', metavar='NAME', help=
@@ -252,15 +265,18 @@ def get_args() -> Namespace:
     groupSUMMARY.add_argument(
         '--reaction-group-summary', metavar='NAME', help=
         "How to summarize THE SAMPLE GROUPS of '--groups-txt' for the reaction layer, which colors "
-        "the 'unified' map of a grouped run. 'count' and 'membership' summarize presence, coloring "
-        "an element by how many or exactly which groups contain it, a group containing it per "
-        "'--group-threshold'. Any other name is an aggregation pooling the groups' values, each "
-        "group's value being its own samples summarized by '--reaction-sample-summary' (which must "
-        "therefore also pool values). Without this option, groups are summarized by presence, by "
-        "membership with 3 or fewer groups and by count above that. A useful combination for "
-        "replicates is '--reaction-sample-summary mean --reaction-group-summary count': each "
-        "group's map shows the mean of its replicate samples, while the 'unified' map shows in how "
-        "many groups each element occurs."
+        "the 'unified' map of a grouped run. 'count', 'count_continuous' and 'membership' "
+        "summarize presence, coloring an element by how many or exactly which groups contain it, a "
+        "group containing it subject to the '--group-threshold'; 'count' and 'count_continuous' "
+        "differ only in whether the scale is drawn in discrete bands or as a gradient, as "
+        "described for '--reaction-sample-summary'. Any other name is an aggregation pooling the "
+        "groups' values, each group's value being its own samples summarized by "
+        "'--reaction-sample-summary' (which must therefore also pool values). Without this option, "
+        "groups are summarized by presence, by membership with 3 or fewer groups, by count above "
+        "that, and by a continuous count scale where there are more groups than the colormap has "
+        "distinguishable colors. A useful combination for replicates is '--reaction-sample-summary "
+        "mean --reaction-group-summary count': each group's map shows the mean of its replicate "
+        "samples, while the 'unified' map shows in how many groups each element occurs."
     )
     groupSUMMARY.add_argument(
         '--compound-group-summary', metavar='NAME', help=
@@ -397,32 +413,59 @@ def get_args() -> Namespace:
         "genomes), which accentuates in darker colors reactions that are shared rather than "
         "unshared across genomes. In contrast, a colormap spanning dark to light, such as "
         "'plasma', can be better for drawing attention to unshared reactions. Multiple contigs "
-        "databases and groups can use two 'schemes' for dynamic coloring, 'by_count' and "
-        "'by_membership' (see the argument, '--discrete-colormap-scheme'). As with pangenomes, "
-        "'by_count' uses by default the 'plasma_r' colormap, trimming the top and bottom 10%%. "
-        "'by_membership' uses by default the qualitative colormap, 'tab10', without trimming. This "
-        "colormap contains distinct colors suitable for clearly differentiating the databases or "
-        "groups containing reactions. All of the above concerns occurrence coloring. When coloring "
-        "a reaction layer by a value column instead (a '--reaction-txt' file with a value column), "
-        "this same option selects the sequential colormap that is sampled continuously to map "
-        "reaction values (default 'plasma_r'), and '--discrete-colormap-scheme' does not apply. "
-        "See the following webpage for named colormaps: "
-        "https://matplotlib.org/stable/users/explain/colors/colormaps.html#classes-of-colormaps "
+        "databases and groups can use three 'schemes' for dynamic coloring: 'by_count', "
+        "'by_count_continuous', or 'by_membership' (see '--presence-colormap-scheme'). As with "
+        "pangenomes, the two count schemes use by default the 'plasma_r' colormap, trimming the "
+        "top and bottom 10%%. 'by_membership' uses by default the qualitative colormap, 'tab10', "
+        "without trimming. This colormap contains distinct colors suitable for clearly "
+        "differentiating the databases or groups containing reactions. All of the above concerns "
+        "occurrence coloring. When coloring a reaction layer by a value column instead (a "
+        "'--reaction-txt' file with a value column), this same option selects the sequential "
+        "colormap that is sampled continuously to map reaction values (default 'plasma_r'), and "
+        "'--presence-colormap-scheme' does not apply. See the following webpage for named "
+        "colormaps: "
+        "https://matplotlib.org/stable/users/explain/colors/colormaps.html#classes-of-colormaps"
     )
     groupCOLOR.add_argument(
-        '--discrete-colormap-scheme', choices=['by_count', 'by_membership'], help=
-        "There are two ways of dynamically coloring elements by occurrence in multiple contigs "
+        '--presence-colormap-scheme',
+        choices=['by_count', 'by_count_continuous', 'by_membership'], help=
+        "There are three ways of dynamically coloring elements by occurrence in multiple contigs "
         "databases ('--contigs-dbs'), the genomes of a pangenome, or groups ('--groups-txt') of "
-        "either: by count or by membership. For a draw-kegg-pathways text file this choice is part "
-        "of the sample and group summaries instead ('--reaction-sample-summary' and the related "
-        "options), so this option is rejected for a text run. By default, with 4 or more databases "
-        "or groups, reactions are colored by count of database or group; with 2 or 3, reactions "
-        "are colored explicitly by database or group membership. In coloring by count, the "
-        "colormap should be sequential, such that the color of a reaction changes 'smoothly' with "
-        "the count. In contrast, coloring by membership means reaction color is determined by "
-        "membership in a database/group or combination of databases/groups, so a qualitative "
-        "colormap can be used instead of a sequential colormap, as by default with 2 or 3 "
-        "categories, to give a distinct color to each membership category."
+        "either: by count in discrete bands, by count on a continuous scale, or by membership. For "
+        "a draw-kegg-pathways text file this choice is part of the sample and group summaries "
+        "instead ('--reaction-sample-summary' and the related options), so this option is rejected "
+        "for a text run. By default, with 4 or more databases or groups, reactions are colored by "
+        "count of database or group; with 2 or 3, reactions are colored explicitly by database or "
+        "group membership. In coloring by count, the colormap should be sequential, such that the "
+        "color of a reaction changes 'smoothly' with the count. 'by_count' additionally needs a "
+        "distinguishable color for every count, since its colorbar labels one band per count, and "
+        "is refused when there are more databases or groups than the colormap can supply — with a "
+        "few hundred of them no color scale could tell them apart anyway. 'by_count_continuous' "
+        "colors counts from the same colormap in the same way but draws its colorbar as a gradient "
+        "from the lowest count to the highest, which needs no distinguishable color per count, so "
+        "a color there reads as a position along the range rather than as an exact count; it is "
+        "chosen automatically, with a warning, where 'by_count' would be refused. In contrast, "
+        "coloring by membership means reaction color is determined by membership in a "
+        "database/group or combination of databases/groups, so a qualitative colormap can be used "
+        "instead of a sequential colormap, as by default with 2 or 3 categories, to give a "
+        "distinct color to each membership category."
+    )
+    groupCOLOR.add_argument(
+        '--count-scale-max', metavar='NAME_OR_NUMBER', default='observed', help=
+        "Where a color scale of counts stops, which decides how the colors are spread over the "
+        "counts. By default, 'observed' stops at the highest count anything on the drawn maps "
+        "actually has, so that the colors span the counts that occur. 'total' runs the scale to "
+        "every category there is — every sample, contigs database, genome, or group — which is "
+        "what the count could be at most. A number stops the scale there instead, and counts above "
+        "it take the top color, which is how separate figures are given the same scale. The "
+        "default matters most for sparse data: with 100 samples and no element in more than 10 of "
+        "them, a scale running to 100 draws every element in indistinguishable shades at the "
+        "bottom of the colormap, while one running to 10 spreads them across it. Use 'total' or a "
+        "number if a fixed scale matters more, since an 'observed' scale depends on which maps "
+        "were drawn and so is not comparable between runs that draw different maps. This applies "
+        "to every count scale: the 'unified' map's, per layer, and the within-group source counts "
+        "of individual group maps. Coloring by membership is unaffected, needing a color per "
+        "combination; so is coloring by a value column, which always spans the input values."
     )
     groupCOLOR.add_argument(
         '--reaction-reverse-overlay', action='store_true', default=False, help=
@@ -458,19 +501,19 @@ def get_args() -> Namespace:
         '--group-colormap', nargs='+', help=
         "This option is like '--reaction-colormap', but only applies to drawing files for "
         "individual groups ('--draw-individual-files') and panels for individual groups in map "
-        "grids ('--draw-grid'). These maps for individual groups show data membership in group "
-        "sources, e.g., contigs databases, pan genomes, or the samples of a draw-kegg-pathways "
-        "text file. They are always colored dynamically by count, e.g., the number of databases or "
-        "genomes in the group containing the data. Like '--reaction-colormap', this parameter "
-        "takes the name of a Matplotlib Colormap, and optionally, two decimal values between 0.0 "
-        "and 1.0 to limit the fraction of the colormap used. The default configuration is the "
-        "same, with the colormap being 'plasma_r' and the limits being 0.1 and 0.9. This applies "
-        "only to individual group maps that show source counts, so for a draw-kegg-pathways text "
-        "layer it applies when the layer's samples are summarized by presence "
-        "('--reaction-sample-summary'/'--compound-sample-summary' of 'count' or 'membership', the "
-        "default). When a layer's samples are summarized by pooling values, its individual group "
-        "maps are colored continuously from '--reaction-colormap'/'--compound-colormap' instead, "
-        "and no per-group source-count colorbar is written."
+        "grids ('--draw-grid'). These maps for individual groups show data from group sources — "
+        "samples, contigs databases, or pan genomes. Presence may only be colored by count — e.g., "
+        "the number of samples in the group containing the data — not membership. Like "
+        "'--reaction-colormap', this parameter takes the name of a Matplotlib Colormap, and "
+        "optionally, two decimal values between 0.0 and 1.0 to limit the fraction of the colormap "
+        "used. The default configuration is the same, with the colormap being 'plasma_r' and the "
+        "limits being 0.1 and 0.9. Note that per-group maps show counts in discrete bands, one per "
+        "source, so a group with more sources than this colormap has distinguishable colors gets a "
+        "colorbar whose bands cannot all be told apart, along with a warning. When a layer's "
+        "samples are summarized by pooling numerical values with "
+        "--reaction-sample-summary/--compound-sample-summary, its individual group maps are "
+        "colored continuously using '--reaction-colormap'/'--compound-colormap' instead, so no "
+        "per-group source-count colorbar is written."
     )
     groupGROUP.add_argument(
         '--group-reverse-overlay', action='store_true', default=False, help=
@@ -571,8 +614,10 @@ def map_json_network_ko_data(args: Namespace, mapper: Mapper) -> None:
     ):
         if aggregation_arg is not None:
             unsupported_args.append(aggregation_flag)
-    if args.discrete_colormap_scheme is not None:
-        unsupported_args.append('--discrete-colormap-scheme')
+    if args.presence_colormap_scheme is not None:
+        unsupported_args.append('--presence-colormap-scheme')
+    if args.count_scale_max != 'observed':
+        unsupported_args.append('--count-scale-max')
     if args.reaction_reverse_overlay:
         unsupported_args.append('--reaction-reverse-overlay')
     if args.group_colormap is not None:
@@ -910,16 +955,17 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"combines the several accessions it stands for."
                 )
 
-        # '--discrete-colormap-scheme' is superseded for text layers by the summaries, which choose
-        # count vs. membership per layer and per level.
-        if args.discrete_colormap_scheme is not None:
+        # '--presence-colormap-scheme' is superseded for text layers by the summaries, which choose
+        # the presence scheme per layer and per level.
+        if args.presence_colormap_scheme is not None:
             raise ConfigError(
-                "'--discrete-colormap-scheme' selects count vs. membership coloring for contigs "
-                "databases, pangenome genomes, and groups of either. For a draw-kegg-pathways text "
-                "file, that choice is made per layer and per level by the summary options: use "
-                "'--reaction-sample-summary'/'--compound-sample-summary' with 'count' or "
-                "'membership' for coloring across samples, and "
-                "'--reaction-group-summary'/'--compound-group-summary' for coloring across groups."
+                f"'--presence-colormap-scheme' selects how presence is colored for contigs "
+                f"databases, pan genomes, and groups of either. For a draw-kegg-pathways text "
+                f"file, that choice is made per layer and per level by the summary options: use "
+                f"'--reaction-sample-summary'/'--compound-sample-summary' with one of "
+                f"{SUMMARY_PRESENCE_PHRASE} for coloring across samples, and "
+                f"'--reaction-group-summary'/'--compound-group-summary' for coloring across "
+                f"groups."
             )
 
         # Sample and group summaries. A summary reduces a set of samples, or the sample groups, to
@@ -944,8 +990,8 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     raise ConfigError(
                         f"'{flag}' was given as '{summary}', which is an aggregation that pools "
                         f"values, but the {element_type} file has no value column, so there are no "
-                        f"values to pool. Summarize presence with 'count' or 'membership' instead, "
-                        f"or add a value column to the file."
+                        f"values to pool. Summarize presence with one of {SUMMARY_PRESENCE_PHRASE} "
+                        f"instead, or add a value column to the file."
                     )
                 if level == 'group' and args.groups_txt is None:
                     raise ConfigError(
@@ -953,8 +999,9 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                         f"'--groups-txt'."
                     )
                 # With groups, presence at the SAMPLE level is always the count of a group's own
-                # samples, so 'count' and 'membership' describe the same per-group map and neither
-                # changes anything: the choice only shapes the ungrouped 'unified' map.
+                # samples in discrete bands from '--group-colormap', so every presence name
+                # describes the same per-group map and none of them changes anything: the choice
+                # only shapes the ungrouped 'unified' map.
                 if (
                     level == 'sample' and args.groups_txt is not None
                     and summary in PRESENCE_SUMMARIES
@@ -962,12 +1009,12 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     raise ConfigError(
                         f"'{flag}' was given as '{summary}', but the samples here are grouped with "
                         f"'--groups-txt', and each group's map shows the count of that group's own "
-                        f"samples however presence is asked for, so 'count' and 'membership' would "
-                        f"draw the same thing. Summarizing the samples by presence is already the "
-                        f"default, so drop the option; use an aggregation such as 'mean' to color "
-                        f"each group's map by pooled values instead, and note that "
-                        f"'--{element_type}-group-summary' is what chooses count versus membership "
-                        f"across the groups themselves."
+                        f"samples in discrete bands regardless of how presence is asked for, so "
+                        f"{SUMMARY_PRESENCE_PHRASE} would all draw the same thing. Summarizing the "
+                        f"samples by presence is already the default, so drop the option; use an "
+                        f"aggregation such as 'mean' to color each group's map by pooled values "
+                        f"instead, and note that '--{element_type}-group-summary' is what chooses "
+                        f"how presence is colored across the groups themselves."
                     )
                 # A static color overrides summarizing across samples or groups, so asking for both
                 # is asking for two different things on the 'unified' map.
@@ -1091,6 +1138,8 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         kwargs['compound_color'] = compound_color
         kwargs['compound_colormap'] = False
 
+    kwargs['count_scale_max'] = args.count_scale_max
+
     mapper.map_kegg_pathways_txt(args.output_dir, **kwargs)
 
 def map_single_contigs_db_ko_data(args: Namespace, mapper: Mapper) -> None:
@@ -1166,12 +1215,12 @@ def map_multiple_contigs_dbs_ko_data(args: Namespace, mapper: Mapper) -> None:
             reaction_colormap_limits=(min_limit, max_limit)
         )
 
-    if args.discrete_colormap_scheme is None:
+    if args.presence_colormap_scheme is None:
         # The scheme is determined automatically by the number of contigs databases or groups.
         pass
     else:
         map_contigs_databases_kos = functools.partial(
-            map_contigs_databases_kos, colormap_scheme=args.discrete_colormap_scheme
+            map_contigs_databases_kos, colormap_scheme=args.presence_colormap_scheme
         )
 
     if args.original_color:
@@ -1216,6 +1265,7 @@ def map_multiple_contigs_dbs_ko_data(args: Namespace, mapper: Mapper) -> None:
         pathway_numbers=args.pathway_numbers,
         reaction_reverse_overlay=args.reaction_reverse_overlay,
         group_reverse_overlay=args.group_reverse_overlay,
+        count_scale_max=args.count_scale_max,
         draw_maps_lacking_data=args.draw_bare_maps
     )
 
@@ -1269,12 +1319,12 @@ def map_pan_db_ko_data(args: Namespace, mapper: Mapper) -> None:
             reaction_colormap_limits=(min_limit, max_limit)
         )
 
-    if args.discrete_colormap_scheme is None:
+    if args.presence_colormap_scheme is None:
         # The scheme is determined automatically by the number of genomes or groups.
         pass
     else:
         map_pan_database_kos = functools.partial(
-            map_pan_database_kos, colormap_scheme=args.discrete_colormap_scheme
+            map_pan_database_kos, colormap_scheme=args.presence_colormap_scheme
         )
 
     if args.original_color:
@@ -1322,6 +1372,7 @@ def map_pan_db_ko_data(args: Namespace, mapper: Mapper) -> None:
         pathway_numbers=args.pathway_numbers,
         reaction_reverse_overlay=args.reaction_reverse_overlay,
         group_reverse_overlay=args.group_reverse_overlay,
+        count_scale_max=args.count_scale_max,
         draw_maps_lacking_data=args.draw_bare_maps
     )
 
@@ -1332,6 +1383,25 @@ def main() -> None:
         check_package_dependencies()
         check_kegg_data(args)
         consolidate_contigs_dbs(args)
+
+        # '--count-scale-max' either names a rule or gives the count to stop at. Normalized here,
+        # once, so that every dispatcher below hands the mapper either a rule name or an int.
+        if args.count_scale_max not in COUNT_SCALE_MAX_RULES:
+            try:
+                args.count_scale_max = int(args.count_scale_max)
+            except ValueError:
+                raise ConfigError(
+                    f"'--count-scale-max' was given as '{args.count_scale_max}', which is neither "
+                    f"{' nor '.join(repr(rule) for rule in COUNT_SCALE_MAX_RULES)} nor a number. "
+                    f"Use 'observed' to stop a count scale at the highest count in the data, "
+                    f"'total' to run it to every category there is, or a number to stop it there."
+                )
+            if args.count_scale_max < 1:
+                raise ConfigError(
+                    f"'--count-scale-max' was given as {args.count_scale_max}, but a scale of "
+                    f"counts has to reach at least 1, since an element colored by count is in at "
+                    f"least one category."
+                )
 
         # Only one primary data source can be drawn per run. Each source writes its map files (and
         # shared colorbars) into the same output directory with the same names, so combining sources

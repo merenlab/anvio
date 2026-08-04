@@ -94,14 +94,29 @@ AGGREGATION_FUNCTIONS = {
 }
 
 # The presence choices of the '--*-sample-summary'/'--*-group-summary' arguments, which summarize a
-# set of samples or groups by how many ('count') or exactly which ('membership') of them contain an
-# accession, mapped to the discrete colormap schemes that color them. These schemes are the choices of
-# '--discrete-colormap-scheme' and are unrelated to the sequential colormap that colors values
-# continuously; a summary named here is a presence summary, and any other is an aggregation of values.
-SUMMARY_DISCRETE_SCHEMES = {
+# set of samples or groups by how many ('count' and 'count_continuous') or exactly which
+# ('membership') of them contain an accession, mapped to the colormap schemes that color them. These
+# schemes are the choices of '--presence-colormap-scheme' and are unrelated to the sequential
+# colormap that colors a value column; a summary named here is a presence summary, and any other is
+# an aggregation of values. 'count' and 'count_continuous' color a count from the same colormap —
+# identically, for the sequential colormap a count scale calls for — and differ only in how the
+# scale is drawn: 'count' gives each count a band of a discrete colorbar, which requires one
+# distinguishable color per category, while 'count_continuous' draws a gradient from the first count
+# to the last, which any number of categories can share ('_membership_layer_colors').
+SUMMARY_PRESENCE_SCHEMES = {
     'count': 'by_count',
+    'count_continuous': 'by_count_continuous',
     'membership': 'by_membership'
 }
+
+# The presence summary names as a phrase for messages that list them, e.g. "'count',
+# 'count_continuous' and 'membership'".
+SUMMARY_PRESENCE_PHRASE = ' and '.join(
+    part for part in (
+        ', '.join(repr(name) for name in list(SUMMARY_PRESENCE_SCHEMES)[:-1]),
+        repr(list(SUMMARY_PRESENCE_SCHEMES)[-1])
+    ) if part
+)
 
 # Subdirectories of the output directory, one per role a map file can have: the map pooling every
 # source, the map of one individual source, and the grid comparing them. Every name directly in the
@@ -672,8 +687,8 @@ class Mapper:
                 f"works. Names that transform rather than reduce, like 'cumsum', cannot be used; "
                 f"neither can names offered only by a grouping, like 'first', nor names meaning "
                 f"different things for a list of values and for a table, like 'idxmax'. Note that "
-                f"the sample and group summary options additionally take 'count' and 'membership' "
-                f"to summarize presence rather than value."
+                f"the sample and group summary options additionally take "
+                f"{SUMMARY_PRESENCE_PHRASE} to summarize presence rather than value."
             )
         return aggregate
 
@@ -927,12 +942,14 @@ class Mapper:
         Resolve a sample or group summary into a coloring kind and its reduction.
 
         A summary reduces a set of samples, or a set of sample groups, to one statement per
-        accession. 'count'/'membership' summarize presence: how many, or exactly which, categories
-        contain the accession. Any other name pools the categories' values as an aggregation
+        accession. The names of 'SUMMARY_PRESENCE_SCHEMES' summarize presence: how many
+        ('count'/'count_continuous'), or exactly which ('membership'), categories contain the
+        accession. Any other name pools the categories' values as an aggregation
         ('_resolve_aggregation'), which requires the layer's file to have a value column. The
         default of None summarizes presence with the colormap scheme left unresolved, so that
         '_membership_layer_colors' picks it from the number of categories (by membership for ≤ 3, by
-        count > 3).
+        count > 3, and by a continuous count scale where the colormap runs out of distinguishable
+        colors).
 
         Parameters
         ==========
@@ -951,19 +968,19 @@ class Mapper:
         Returns
         =======
         Tuple[Literal['value', 'presence'], Union[Callable, None], Union[str, None]]
-            The kind of coloring, the value reduction function (None for presence), and the discrete
+            The kind of coloring, the value reduction function (None for presence), and the presence
             colormap scheme (None for a value summary or an unresolved presence scheme).
         """
         if summary is None:
             return 'presence', None, None
-        if summary in SUMMARY_DISCRETE_SCHEMES:
-            return 'presence', None, SUMMARY_DISCRETE_SCHEMES[summary]
+        if summary in SUMMARY_PRESENCE_SCHEMES:
+            return 'presence', None, SUMMARY_PRESENCE_SCHEMES[summary]
         if value_column is None:
             raise ConfigError(
                 f"'{flag}' was given as '{summary}', which pools the values of samples or sample "
                 f"groups, but the text file at '{path}' has no value column, so there are no "
-                f"values to pool. Summarize presence with 'count' or 'membership' instead, or add "
-                f"a value column to the file."
+                f"values to pool. Summarize presence with {SUMMARY_PRESENCE_PHRASE} instead, or "
+                f"add a value column to the file."
             )
         return 'value', Mapper._resolve_aggregation(summary, flag), None
 
@@ -998,8 +1015,8 @@ class Mapper:
         samples and across groups show. Ungrouped, 'sample_summary' colors the 'unified' map and the
         per-sample maps show each sample on its own; grouped, 'group_summary' colors the 'unified'
         map and 'sample_summary' colors each group's map from its samples. A summary naming an
-        aggregation pools values ('quantitative'), while 'count'/'membership' or no summary colors
-        presence ('membership'), as 'SUMMARY_DISCRETE_SCHEMES' and '_resolve_summary' decide. So a
+        aggregation pools values ('quantitative'), while a presence summary or no summary colors
+        presence ('membership'), as 'SUMMARY_PRESENCE_SCHEMES' and '_resolve_summary' decide. So a
         value layer can be categorical in the 'unified' map and continuous per sample. A layer
         without a 'sample' column in a run where the other layer has one carries no category values,
         so '_map_elements' holds it constant across the per-sample/group maps.
@@ -1268,6 +1285,7 @@ class Mapper:
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
         group_colormap_limits: Tuple[float, float] = (0.1, 0.9),
         group_reverse_overlay: bool = False,
+        count_scale_max: Union[str, int] = 'observed',
         draw_maps_lacking_data: bool = False
     ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
         """
@@ -1444,6 +1462,7 @@ class Mapper:
             membership_members_label='samples',
             membership_singular='sample',
             grouped_membership=grouped_membership,
+            count_scale_max=count_scale_max,
             draw_individual_files=draw_individual_files,
             draw_grid=draw_grid,
             draw_maps_lacking_data=draw_maps_lacking_data
@@ -1460,12 +1479,13 @@ class Mapper:
         draw_grid: Union[Iterable[str], bool] = False,
         reaction_colormap: Union[bool, str, mcolors.Colormap] = True,
         reaction_colormap_limits: Tuple[float, float] = None,
-        colormap_scheme: Literal['by_count', 'by_membership'] = None,
+        colormap_scheme: Literal['by_count', 'by_count_continuous', 'by_membership'] = None,
         reaction_reverse_overlay: bool = False,
         reaction_color: str = '#2ca02c',
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
         group_colormap_limits: Tuple[float, float] = (0.1, 0.9),
         group_reverse_overlay: bool = False,
+        count_scale_max: Union[str, int] = 'observed',
         draw_maps_lacking_data: bool = False
     ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
         """
@@ -1688,6 +1708,7 @@ class Mapper:
             group_colormap=group_colormap,
             group_colormap_limits=group_colormap_limits,
             group_reverse_overlay=group_reverse_overlay,
+            count_scale_max=count_scale_max,
             output_dir=output_dir,
             draw_maps_lacking_data=draw_maps_lacking_data
         )
@@ -1706,12 +1727,13 @@ class Mapper:
         draw_grid: Union[Iterable[str], bool] = False,
         reaction_colormap: Union[bool, str, mcolors.Colormap] = True,
         reaction_colormap_limits: Tuple[float, float] = None,
-        colormap_scheme: Literal['by_count', 'by_membership'] = None,
+        colormap_scheme: Literal['by_count', 'by_count_continuous', 'by_membership'] = None,
         reaction_reverse_overlay: bool = False,
         reaction_color: str = '#2ca02c',
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
         group_colormap_limits: Tuple[float, float] = (0.1, 0.9),
         group_reverse_overlay: bool = False,
+        count_scale_max: Union[str, int] = 'observed',
         draw_maps_lacking_data: bool = False
     ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
         """
@@ -2014,6 +2036,7 @@ class Mapper:
             group_colormap=group_colormap,
             group_colormap_limits=group_colormap_limits,
             group_reverse_overlay=group_reverse_overlay,
+            count_scale_max=count_scale_max,
             output_dir=output_dir,
             draw_maps_lacking_data=draw_maps_lacking_data
         )
@@ -2435,7 +2458,8 @@ class Mapper:
         vmin: float,
         vmax: float,
         out_path: str,
-        label: str
+        label: str,
+        integer_ticks: bool = False
     ) -> None:
         """
         Draw a continuous colorbar for quantitative coloring, or a single-value colorbar when the
@@ -2457,13 +2481,19 @@ class Mapper:
 
         label : str
             Overall colorbar label.
+
+        integer_ticks : bool, False
+            If True, label the bar at whole numbers spanning the range rather than at Matplotlib's
+            automatic ticks, for a range that counts things rather than measuring them.
         """
         if vmin == vmax:
             self.colorbar_drawer.draw_discrete(
                 [mcolors.rgb2hex(cmap(1.0))], out_path, color_labels=[f'{vmin:g}'], label=label
             )
         else:
-            self.colorbar_drawer.draw_continuous(cmap, vmin, vmax, out_path, label=label)
+            self.colorbar_drawer.draw_continuous(
+                cmap, vmin, vmax, out_path, label=label, integer_ticks=integer_ticks
+            )
 
     def _map_elements(
         self,
@@ -2480,6 +2510,7 @@ class Mapper:
         membership_members_label: Union[str, None] = None,
         membership_singular: Union[str, None] = None,
         grouped_membership: Union[dict, None] = None,
+        count_scale_max: Union[str, int] = 'observed',
         draw_individual_files: Union[Iterable[str], bool] = False,
         draw_grid: Union[Iterable[str], bool] = False,
         draw_maps_lacking_data: bool = False
@@ -2673,21 +2704,6 @@ class Mapper:
                     layer['_category_norm'] = layer['_unified_norm']
                     layer['_category_range'] = layer['_unified_range']
 
-        # A context colored by membership needs its by-count/by-membership color scheme over the
-        # categories. Only the 'unified' map draws such a scale (and its colorbar) from the
-        # categories themselves; the presence coloring of grouped individual maps counts each
-        # group's own sources, precomputed below.
-        membership_layers = [layer for layer in layers if layer['unified_mode'] == 'membership']
-        group_membership_layers = [
-            layer for layer in layers if layer['category_mode'] == 'membership'
-        ]
-        if membership_layers:
-            self.progress.new("Setting map colors")
-            self.progress.update("...")
-            for layer in membership_layers:
-                layer['_colors'] = self._membership_layer_colors(layer, categories)
-            self.progress.end()
-
         def _dedup(items: List[str]) -> List[str]:
             seen: Set[str] = set()
             return [item for item in items if not (item in seen or seen.add(item))]
@@ -2711,6 +2727,38 @@ class Mapper:
         draw_category_maps = has_categories and (
             draw_individual_files is not False or draw_grid is not False
         )
+
+        # A context colored by membership needs its by-count/by-membership color scheme over the
+        # categories. Only the 'unified' map draws such a scale (and its colorbar) from the
+        # categories themselves; the presence coloring of grouped individual maps counts each
+        # group's own sources, precomputed below.
+        membership_layers = [layer for layer in layers if layer['unified_mode'] == 'membership']
+        group_membership_layers = [
+            layer for layer in layers if layer['category_mode'] == 'membership'
+        ]
+        # Where a count scale is asked to stop at the highest count in the data, that count has to
+        # be found first, which takes one parse of the maps about to be drawn.
+        group_observed_counts: Dict[str, int] = {}
+        if count_scale_max == 'observed':
+            scaled_group_layers = group_membership_layers if (
+                draw_category_maps and grouped_presence
+            ) else []
+            if membership_layers or scaled_group_layers:
+                group_observed_counts = self._find_observed_counts(
+                    membership_layers, scaled_group_layers, pathway_numbers, group_sources,
+                    group_threshold
+                )
+        if membership_layers:
+            self.progress.new("Setting map colors")
+            self.progress.update("...")
+            for layer in membership_layers:
+                layer['_count_scale_top'] = self._resolve_count_scale_top(
+                    count_scale_max, layer.get('_observed_count', 0), len(categories)
+                )
+                layer['_colors'] = self._membership_layer_colors(
+                    layer, categories, layer['_count_scale_top']
+                )
+            self.progress.end()
 
         def _reaction_derived(layer, mode):
             # How a reaction layer derives compound colors on a reaction-only global/overview map.
@@ -2736,13 +2784,13 @@ class Mapper:
                     'derived_compound': _reaction_derived(layer, mode)
                 }
             if mode == 'membership':
-                _, color_priority, category_combos = layer['_colors']
+                _, color_priorities, category_combos, _ = layer['_colors']
                 return {
                     'element_type': layer['element_type'],
                     'use_reaction_attribute': layer['use_reaction_attribute'],
                     'entry_keys': layer['membership'],
                     'colorer': self._membership_colorer(
-                        layer['membership'], color_priority, category_combos, group_sources,
+                        layer['membership'], color_priorities, category_combos, group_sources,
                         group_threshold, layer['use_reaction_attribute']
                     ),
                     'derived_compound': _reaction_derived(layer, mode)
@@ -2798,7 +2846,7 @@ class Mapper:
         # Per-layer colorbars for the unified map (layer-prefixed so two layers do not collide),
         # plus a shared colorbar for the category maps of each layer colored quantitatively there.
         # Each context is keyed by its own mode, so a layer summarized by presence in the unified
-        # map gets a discrete colorbar there and a continuous one for its category maps.
+        # map gets a presence colorbar there and a continuous one for its category maps.
         for layer in layers:
             if layer['unified_mode'] == 'quantitative':
                 vmin, vmax = layer['_unified_range']
@@ -2809,19 +2857,32 @@ class Mapper:
                         layer['colorbar_label']
                     )
             elif layer['unified_mode'] == 'membership':
-                scheme, color_priority, category_combos = layer['_colors']
-                if scheme == 'by_count':
-                    labels = range(1, len(categories) + 1)
-                    label = 'group count' if grouped else membership_count_label
+                scheme, color_priorities, category_combos, presence_cmap = layer['_colors']
+                count_scale_top = layer['_count_scale_top']
+                colorbar_path = os.path.join(output_dir, f"colorbar_{layer['name']}.pdf")
+                count_label = 'group count' if grouped else membership_count_label
+                if scheme == 'by_count_continuous':
+                    # The same color per count that 'by_count' assigns, but shown as a gradient
+                    # across the colormap from the lowest count to the highest rather than as one
+                    # labeled band per count, which is what frees it from needing a distinct color
+                    # for each.
+                    self._draw_quantitative_colorbar(
+                        presence_cmap, 1, count_scale_top, colorbar_path, count_label,
+                        integer_ticks=True
+                    )
                 else:
-                    labels = [', '.join(combo) for combo in category_combos]
-                    label = 'groups' if grouped else membership_members_label
-                self.colorbar_drawer.draw_discrete(
-                    color_priority,
-                    os.path.join(output_dir, f"colorbar_{layer['name']}.pdf"),
-                    color_labels=labels,
-                    label=label
-                )
+                    if scheme == 'by_count':
+                        labels = range(1, count_scale_top + 1)
+                        label = count_label
+                    else:
+                        labels = [', '.join(combo) for combo in category_combos]
+                        label = 'groups' if grouped else membership_members_label
+                    self.colorbar_drawer.draw_discrete(
+                        [color for color, _ in color_priorities],
+                        colorbar_path,
+                        color_labels=labels,
+                        label=label
+                    )
             if (
                 draw_category_maps and layer['category_mode'] == 'quantitative'
                 and layer['category_values'] is not None
@@ -2864,6 +2925,14 @@ class Mapper:
         # For grouped membership individual maps, precompute each group's within-group membership
         # and a group colormap's color priorities (by count of the group's sources containing an
         # element).
+
+        # Each group's map colors elements by how many of that group's own sources contain them,
+        # always in discrete bands — never the continuous scale the 'unified' map's count can have.
+        # That choice is made per layer, by the layer's summary, but '--group-colormap' styles every
+        # layer's group maps at once, so there is nowhere here to make it per layer. Where the scale
+        # runs over more counts than the colormap has distinguishable colors, neighboring counts
+        # therefore share a color, as the warning below reports; every element is still colored by
+        # its own count.
         group_layer_membership: Dict[str, Tuple] = {}
         if grouped_presence:
             group_cmap = grouped_membership['group_colormap']
@@ -2881,21 +2950,33 @@ class Mapper:
             group_reverse_overlay = grouped_membership['group_reverse_overlay']
             for group in draw_categories:
                 group_source_names = group_sources[group]
-                if len(group_source_names) > group_cmap.N:
-                    self.run.warning(
-                        f"There were fewer distinct colors available in the group colormap "
-                        f"({group_cmap.N}) than were needed ({len(group_source_names)}) for "
-                        f"drawing individual maps for group '{group}', so some colors were "
-                        f"repeated in use."
-                    )
-                if len(group_source_names) == 1:
+                # A group's scale stops where '--count-scale-max' says, exactly as the 'unified'
+                # map's does, so that a group of many sources whose elements are in only a few of
+                # them is not drawn in one shade at the bottom of the colormap.
+                group_scale_top = self._resolve_count_scale_top(
+                    count_scale_max, group_observed_counts.get(group, 0), len(group_source_names)
+                )
+                if group_scale_top == 1:
                     sample_points = np.linspace(1, 1, 1)
                 else:
-                    sample_points = np.linspace(0, 1, len(group_source_names))
-                group_color_priority = {}
-                for sample_point in sample_points:
-                    group_color_priority[mcolors.rgb2hex(group_cmap(sample_point))] = (
+                    sample_points = np.linspace(0, 1, group_scale_top)
+                # In ascending order of count, as '_membership_colorer' looks them up.
+                group_color_priorities = [
+                    (
+                        mcolors.rgb2hex(group_cmap(sample_point)),
                         1 - sample_point if group_reverse_overlay else sample_point
+                    )
+                    for sample_point in sample_points
+                ]
+                distinct_colors = len({color for color, _ in group_color_priorities})
+                if distinct_colors < group_scale_top:
+                    self.run.warning(
+                        f"The group colormap could supply only {distinct_colors} colors that can "
+                        f"be told apart, fewer than the {group_scale_top} counts the scale of "
+                        f"group '{group}' runs over, so neighboring counts share a color on that "
+                        f"group's individual maps, and its colorbar labels more bands than it has "
+                        f"distinct colors. Every element is still colored by the count of the "
+                        f"{unified_plural} containing it."
                     )
                 specs = []
                 for layer in group_membership_layers:
@@ -2909,12 +2990,12 @@ class Mapper:
                         'use_reaction_attribute': layer['use_reaction_attribute'],
                         'entry_keys': inner_membership,
                         'colorer': self._membership_colorer(
-                            inner_membership, group_color_priority, None, None, None,
+                            inner_membership, group_color_priorities, None, None, None,
                             layer['use_reaction_attribute']
                         ),
                         'derived_compound': _reaction_derived(layer, 'membership')
                     })
-                group_layer_membership[group] = (specs, group_color_priority, group_source_names)
+                group_layer_membership[group] = (specs, group_color_priorities, group_scale_top)
 
         for category in draw_categories:
             drawn_category: Dict[str, bool] = {}
@@ -2930,13 +3011,13 @@ class Mapper:
             )
 
             if grouped_presence:
-                group_specs, group_color_priority, group_source_names = (
+                group_specs, group_color_priorities, group_scale_top = (
                     group_layer_membership[category]
                 )
                 self.colorbar_drawer.draw_discrete(
-                    group_color_priority,
+                    [color for color, _ in group_color_priorities],
                     os.path.join(category_output_dir, 'colorbar.pdf'),
-                    color_labels=range(1, len(group_source_names) + 1),
+                    color_labels=range(1, group_scale_top + 1),
                     label=membership_count_label
                 )
                 # Grouped membership specs are precomputed; a layer colored by value or a single
@@ -2970,11 +3051,16 @@ class Mapper:
             drawn['individual'][category] = drawn_category
 
         if draw_grid is not False:
-            grid_group_color_priority = None
+            grid_group_color_priorities = None
+            grid_group_scale_tops = None
             if grouped_presence:
-                grid_group_color_priority = {
+                grid_group_color_priorities = {
                     group: priorities
                     for group, (_, priorities, _) in group_layer_membership.items()
+                }
+                grid_group_scale_tops = {
+                    group: scale_top
+                    for group, (_, _, scale_top) in group_layer_membership.items()
                 }
             self._draw_map_grids(
                 pathway_numbers,
@@ -2983,8 +3069,8 @@ class Mapper:
                 draw_files_categories,
                 output_dir,
                 drawn,
-                group_sources=group_sources if grouped_presence else None,
-                group_color_priority=grid_group_color_priority,
+                group_scale_tops=grid_group_scale_tops,
+                group_color_priorities=grid_group_color_priorities,
                 check_maps_lacking_kos=not draw_maps_lacking_data,
                 source_type=grid_source_type if grid_source_type is not None else category_noun
             )
@@ -3039,7 +3125,7 @@ class Mapper:
             if layer['unified_mode'] == 'original':
                 continue
             # Every color the layer can stage: sampled from its colormap at the values it will color
-            # by, taken from the discrete scale it colors presence by, or its one fixed color.
+            # by, taken from the scale it colors presence by, or its one fixed color.
             staged: Set[str] = set()
             for norm_key, values_key in (
                 ('_unified_norm', '_unified_vals'), ('_category_norm', '_category_vals')
@@ -3051,7 +3137,7 @@ class Mapper:
                     fraction = 1.0 if norm is None else float(norm(value))
                     staged.add(mcolors.rgb2hex(layer['cmap'](fraction)))
             if '_colors' in layer:
-                staged.update(layer['_colors'][1])
+                staged.update(color for color, _ in layer['_colors'][1])
             if layer.get('color_hexcode') is not None:
                 staged.add(layer['color_hexcode'])
 
@@ -3075,26 +3161,183 @@ class Mapper:
                 f"white or black, such as 'Greys', 'hot' and 'bone', all do."
             )
 
-    def _membership_layer_colors(
-        self,
-        layer: dict,
-        categories: List[str]
-    ) -> Tuple[str, Dict[str, float], Union[List[Tuple[str]], None]]:
+    @staticmethod
+    def _resolve_count_scale_top(count_scale_max: Union[str, int], observed: int, total: int) -> int:
         """
-        Resolve a membership layer's coloring scheme, per-color priorities, and category combos.
+        Resolve the count a color scale runs up to from the '--count-scale-max' choice.
 
-        Resolves the by-count/by-membership colormap logic for one layer. 'categories' are the
-        sources (or groups) whose count/membership colors the layer.
+        There are three choices. 'observed' stops the scale at the highest count anything on the
+        drawn maps actually has, so that the colors spread over the counts that occur. 'total' runs
+        it to every category there is, which keeps the scale the same however few of them the data
+        reaches, and so is comparable between runs. A number pins the scale, which is how separate
+        figures are given one scale when their data differs.
+
+        Parameters
+        ==========
+        count_scale_max : Union[str, int]
+            'observed', 'total', or the count to stop at.
+
+        observed : int
+            The highest count anything on the drawn maps has, 0 if nothing was counted.
+
+        total : int
+            How many categories there are in all.
 
         Returns
         =======
-        Tuple[str, Dict[str, float], Union[List[Tuple[str]], None]]
-            The scheme ('by_count'/'by_membership'), a {color_hexcode: priority} dict, and the list
-            of category combinations (for by-membership) or None (for by-count).
+        int
+            The count the scale runs up to.
+        """
+        if count_scale_max == 'observed':
+            # An observed maximum of 0 means nothing on the drawn maps was counted at all, and a
+            # scale of no counts cannot be drawn, so it runs to every category instead. The layer
+            # colors nothing either way, so which of the two it is never shows on a map.
+            top = observed if observed > 0 else total
+        elif count_scale_max == 'total':
+            top = total
+        else:
+            top = int(count_scale_max)
+
+        # Whatever the choice, a scale reaches at least 1, since an element colored by its count is
+        # in at least one category.
+        return max(top, 1)
+
+    def _find_observed_counts(
+        self,
+        unified_layers: List[dict],
+        group_layers: List[dict],
+        pathway_numbers: Iterable[str],
+        group_sources: Union[Dict[str, List[str]], None],
+        group_threshold: Union[float, None]
+    ) -> Dict[str, int]:
+        """
+        Find the highest count that presence coloring reaches, in one parse of the drawn maps.
+
+        Where a count scale stops at the highest count in the data ('--count-scale-max observed'),
+        that count is not known until every element of every map about to be drawn has been counted.
+        The pass that computes a value scale's range works the same way and for the same reason: one
+        scale has to serve every map for the colors on them to be comparable.
+
+        Parameters
+        ==========
+        unified_layers : List[dict]
+            Layers colored by count or membership on the 'unified' map. Each has the highest count
+            it reaches there recorded as '_observed_count'.
+
+        group_layers : List[dict]
+            Layers colored by within-group source counts on grouped individual maps. What they reach
+            is returned rather than recorded, since one scale serves every layer of a group's map.
+
+        pathway_numbers : Iterable[str]
+            Numeric IDs of the maps that will be drawn.
+
+        Returns
+        =======
+        Dict[str, int]
+            The highest within-group source count of each group, empty when there are no groups or no
+            layer is colored by them.
+
+        Notes
+        =====
+        'group_sources'/'group_threshold' group the sources, as elsewhere.
+        """
+        for layer in unified_layers:
+            layer['_observed_count'] = 0
+        categorizers = [
+            self._membership_categorizer(
+                layer['membership'], group_sources, group_threshold,
+                layer['use_reaction_attribute']
+            )
+            for layer in unified_layers
+        ]
+
+        source_group: Dict[str, str] = {}
+        if group_sources is not None:
+            for group, sources in group_sources.items():
+                for source in sources:
+                    source_group[source] = group
+        group_counts: Dict[str, int] = (
+            {group: 0 for group in group_sources} if group_layers and source_group else {}
+        )
+
+        self.progress.new("Finding the highest count across maps")
+        # Groups are counted inside the pass over the maps rather than by looping over the groups
+        # themselves, so that a run with many groups reads each map once.
+        for pathway_number in pathway_numbers:
+            self.progress.update(pathway_number)
+            pathway = self._get_pathway(pathway_number)
+            for layer, categorize in zip(unified_layers, categorizers):
+                for entry in self._find_element_entries(
+                    pathway, layer['use_reaction_attribute'], layer['membership']
+                ):
+                    categories = categorize(entry)
+                    if categories is not None and len(categories) > layer['_observed_count']:
+                        layer['_observed_count'] = len(categories)
+            for layer in group_layers if group_counts else ():
+                for entry in self._find_element_entries(
+                    pathway, layer['use_reaction_attribute'], layer['membership']
+                ):
+                    # A group's own map counts the group's sources containing an element, whatever
+                    # the group threshold, which only decides whether the GROUP counts as containing
+                    # it on the 'unified' map.
+                    within: Dict[str, int] = {}
+                    for source in self._entry_sources(
+                        entry, layer['membership'], layer['use_reaction_attribute']
+                    ):
+                        group = source_group.get(source)
+                        if group is not None:
+                            within[group] = within.get(group, 0) + 1
+                    for group, count in within.items():
+                        if count > group_counts[group]:
+                            group_counts[group] = count
+        self.progress.end()
+
+        return group_counts
+
+    def _membership_layer_colors(
+        self,
+        layer: dict,
+        categories: List[str],
+        count_scale_top: int = None
+    ) -> Tuple[str, List[Tuple[str, float]], Union[List[Tuple[str]], None], mcolors.Colormap]:
+        """
+        Resolve a membership layer's coloring scheme, colors and priorities, and category combos.
+
+        Resolves the by-count/by-membership colormap logic for one layer. 'categories' are the
+        sources (or groups) whose count/membership colors the layer, and 'count_scale_top' is the
+        count the color scale runs up to, defaulting to all of them ('_resolve_count_scale_top').
+        Stopping the scale where the data does spreads the colors over the counts that occur instead
+        of over counts nothing reaches, which for sparse data is the difference between a readable
+        map and one colored in a single shade; the cost is that the scale then depends on what was
+        drawn.
+
+        The colors come back in the order the scheme assigns them — by ascending count, or by the
+        order of the category combinations — rather than keyed by color, because a continuous count
+        scale ('by_count_continuous') deliberately gives the same color to neighboring counts
+        wherever the colormap has no distinguishable color left for each one. The two count schemes
+        sample the same colormap and differ only in how the scale is drawn, and therefore in whether
+        the colors they assign must be distinguishable: a discrete colorbar labels one band per
+        count, so a count without its own color would leave the bar mislabeled, whereas a gradient
+        from the first count to the last stays honest however many counts share a color. For the
+        sequential colormap a count scale calls for, the colors the two assign are identical; only a
+        qualitative colormap makes them differ, since 'by_count' samples it at whole positions while
+        a gradient has to span a range.
+
+        Returns
+        =======
+        Tuple[str, List[Tuple[str, float]], Union[List[Tuple[str]], None], matplotlib.colors.Colormap]
+            The scheme ('by_count'/'by_count_continuous'/'by_membership'), the (color_hexcode,
+            priority) pairs in assignment order, the list of category combinations (for
+            by-membership) or None (for the count schemes), and the trimmed colormap the colors were
+            sampled from, which a continuous count scale's colorbar spans.
         """
         colormap = layer.get('colormap', True)
         colormap_scheme = layer.get('colormap_scheme')
         reverse_overlay = layer.get('reverse_overlay', False)
+        # Only the count schemes have a scale that can stop early: coloring by membership needs a
+        # color for every combination of the categories however few of them the data reaches.
+        if count_scale_top is None:
+            count_scale_top = len(categories)
 
         if colormap_scheme is not None:
             scheme = colormap_scheme
@@ -3103,12 +3346,12 @@ class Mapper:
 
         colormap_limits = layer.get('colormap_limits')
         if colormap is True:
-            if scheme == 'by_count':
-                cmap = self._get_colormap('plasma_r')
-                colormap_limits = (0.1, 0.9) if colormap_limits is None else colormap_limits
-            else:
+            if scheme == 'by_membership':
                 cmap = self._get_colormap('tab10')
                 colormap_limits = (0.0, 1.0) if colormap_limits is None else colormap_limits
+            else:
+                cmap = self._get_colormap('plasma_r')
+                colormap_limits = (0.1, 0.9) if colormap_limits is None else colormap_limits
         elif isinstance(colormap, str):
             cmap = self._get_colormap(colormap)
             colormap_limits = (0.0, 1.0) if colormap_limits is None else colormap_limits
@@ -3118,7 +3361,12 @@ class Mapper:
         else:
             raise AssertionError
 
-        in_order = cmap.name in qualitative_colormaps + repeating_colormaps
+        # A qualitative colormap is sampled at whole positions rather than at fractions of its range.
+        # A continuous count scale is the exception: its colorbar is a gradient across the fraction of
+        # the colormap in use, so its colors have to be sampled from that same fraction to be the
+        # ones the colorbar shows.
+        colormap_name = cmap.name
+        qualitative = colormap_name in qualitative_colormaps + repeating_colormaps
         cmap = self._trim_colormap(cmap, colormap_limits)
 
         # Coloring by membership needs a color per combination of the categories, so the count of
@@ -3127,75 +3375,125 @@ class Mapper:
         # number of categories from spending gigabytes on its way to the same error.
         if scheme == 'by_membership' and 2 ** len(categories) - 1 > cmap.N:
             self.progress.end()
+            # Written out in full up to a million and in scientific notation above it, since past a
+            # few dozen categories the exact number runs to hundreds of digits that say nothing.
+            combos = 2 ** len(categories) - 1
+            combos_shown = f'{combos}' if combos <= 10 ** 6 else f'{combos:.1e}'
             raise ConfigError(
-                f"Coloring by membership needs a distinct color for every combination of the "
-                f"{len(categories)} categories, of which there are {2 ** len(categories) - 1}, and "
-                f"the colormap holds only {cmap.N}. Color by count instead, which needs just "
-                f"{len(categories)} colors, or give a colormap with more colors. Note that no "
-                f"color scale can distinguish combinations of more than a handful of categories."
+                f"Coloring the {layer['element_type']} layer by membership needs a distinct color "
+                f"for every combination of the {len(categories)} categories, of which there are "
+                f"{combos_shown}, and its colormap holds only {cmap.N}. Color by count instead, "
+                f"which needs just {count_scale_top} colors, or give a colormap with more colors. "
+                f"Note that no color scale can distinguish combinations of more than a handful of "
+                f"categories."
             )
 
-        color_priority: Dict[str, float] = {}
-        category_combos = None
-        if scheme == 'by_count':
-            if len(categories) == 1:
+        def _count_colors(in_order: bool) -> List[Tuple[str, float]]:
+            # The color and drawing priority of each count, in ascending order of count, from a
+            # count of 1 up to the top of the scale.
+            if count_scale_top == 1:
                 sample_points = range(1, 2) if in_order else np.linspace(1, 1, 1)
             else:
-                sample_points = range(len(categories)) if in_order else np.linspace(
-                    0, 1, len(categories)
+                sample_points = range(count_scale_top) if in_order else np.linspace(
+                    0, 1, count_scale_top
                 )
-            # A qualitative colormap is sampled at whole positions rather than at fractions of its
-            # range, so reversing the drawing order has to count back from the last position:
-            # subtracting an integer position from 1, as is right for a fraction, would give
-            # negative priorities, which a Pathway rejects.
+            # A sample point is both a position in the colormap and a drawing priority, which
+            # 'reverse_overlay' inverts. Inverting it as '1 - point' suits the fractions but goes
+            # negative at the whole positions an 'in_order' colormap is sampled at (1 - 2 = -1), and
+            # a Pathway requires non-negative priorities. Counting back from the last point descends
+            # without going negative, and for fractions that point IS 1, so one expression does
+            # both.
             last_point = max(sample_points)
-            for sample_point in sample_points:
-                color_priority[mcolors.rgb2hex(cmap(sample_point))] = (
+            return [
+                (
+                    mcolors.rgb2hex(cmap(sample_point)),
                     (last_point - sample_point) if reverse_overlay else sample_point
                 )
-        else:
+                for sample_point in sample_points
+            ]
+
+        category_combos = None
+        if scheme == 'by_membership':
             category_combos = []
             for category_count in range(1, len(categories) + 1):
                 category_combos += list(combinations(categories, category_count))
-            if in_order:
+            if qualitative:
                 sample_points = range(len(category_combos))
             else:
                 sample_points = np.linspace(0, 1, len(category_combos))
-            for sample_point in sample_points:
-                color_priority[mcolors.rgb2hex(cmap(sample_point))] = (
+            color_priorities = [
+                (
+                    mcolors.rgb2hex(cmap(sample_point)),
                     1 - sample_point / cmap.N if reverse_overlay else (sample_point + 1) / cmap.N
                 )
+                for sample_point in sample_points
+            ]
+        else:
+            color_priorities = _count_colors(qualitative and scheme == 'by_count')
 
-        # 'color_priority' is keyed by color, so a colormap that cannot supply one DISTINCT color
-        # per count or per membership combination silently collapses to fewer entries, and the
-        # discrete colorbar would then be handed more labels than colors. Rounding to 8-bit color
-        # means the supply can fall short of 'cmap.N' too, so what matters is how many distinct
-        # colors actually came out, not how many the colormap claims to hold.
-        needed = len(categories) if scheme == 'by_count' else len(category_combos)
-        if len(color_priority) != needed:
+        # A discrete colorbar labels one band per count or per membership combination, so a colormap
+        # that cannot supply a DISTINCT color for each of them leaves the bar with more labels than
+        # colors a reader can tell apart. Rounding to 8-bit color means the supply can fall short of
+        # 'cmap.N' too, so what matters is how many distinct colors actually came out, not how many
+        # the colormap claims to hold.
+        needed = len(category_combos) if scheme == 'by_membership' else count_scale_top
+        distinct = len({color for color, _ in color_priorities})
+        if scheme == 'by_count' and distinct != needed and colormap_scheme is None:
+            # Nobody asked for the discrete bands: the scheme was chosen from the number of
+            # categories, and there are more of them than bands can be told apart, so the count is
+            # drawn as a gradient instead. The colors are resampled from fractions of the colormap's
+            # range, which is what that gradient spans.
+            scheme = 'by_count_continuous'
+            color_priorities = _count_colors(False)
+            self.run.warning(
+                f"The {layer['element_type']} layer is colored by counts running up to "
+                f"{count_scale_top}, and its colormap could supply only {distinct} colors that can "
+                f"be told apart, so that count is drawn on a CONTINUOUS color scale rather than in "
+                f"discrete bands of one color per count. The colorbar is a gradient running from a "
+                f"count of 1 to a count of {count_scale_top}, on which a color reads as a position "
+                f"along that range rather than as an exact count. Ask "
+                f"for this scale explicitly with a sample or group summary of 'count_continuous' "
+                f"(or with '--presence-colormap-scheme by_count_continuous'), or ask for 'count' "
+                f"to insist on the discrete bands and be told when they cannot be drawn. Each "
+                f"layer decides this for itself, so with a reaction layer and a compound layer you "
+                f"may see this twice, once per layer.",
+                progress=self.progress
+            )
+        if scheme == 'by_count_continuous' and qualitative:
+            self.run.warning(
+                f"The colormap, '{colormap_name}', that colors the {layer['element_type']} layer "
+                f"by count is qualitative rather than sequential, which makes a continuous color "
+                f"scale difficult to interpret. We recommend a sequential colormap like 'plasma' "
+                f"instead.",
+                progress=self.progress
+            )
+        if scheme != 'by_count_continuous' and distinct != needed:
             self.progress.end()
             if scheme == 'by_membership':
                 advice = (
                     f"Coloring by membership needs a distinct color for every combination of the "
                     f"{len(categories)} categories, which is {needed} of them, and the colormap "
-                    f"supplied only {len(color_priority)}. Color by count instead, which needs "
-                    f"just {len(categories)} colors, or give a colormap with more distinct colors."
+                    f"supplied only {distinct}. Color by count instead, which needs just "
+                    f"{count_scale_top} colors, or give a colormap with more distinct colors."
                 )
             else:
                 advice = (
-                    f"Coloring by count needs a distinct color for each of the {needed} "
-                    f"categories, and the colormap supplied only {len(color_priority)}. Reduce the "
-                    f"number of categories, for example by grouping them, or give a colormap with "
-                    f"more distinct colors."
+                    f"Coloring by count in discrete bands needs a distinct color for each count "
+                    f"up to {needed}, and the colormap supplied only {distinct}. Color by "
+                    f"count on a continuous scale instead, which needs no distinct color per count "
+                    f"and is asked for with a sample or group summary of 'count_continuous' (or "
+                    f"with '--presence-colormap-scheme by_count_continuous'); alternatively, "
+                    f"reduce the number of categories, for example by grouping them, or give a "
+                    f"colormap with more distinct colors."
                 )
             raise ConfigError(
-                f"The colors of this map could not be assigned: {advice} Note that a color scale "
-                f"can hold at most a few hundred distinguishable colors in any case, so a very "
-                f"large number of categories cannot be told apart by color even where it can be "
-                f"drawn."
+                f"The colors of the {layer['element_type']} layer of this map could not be "
+                f"assigned: {advice} Note that a color scale can hold at most a few hundred "
+                f"distinguishable colors in any case, so a very large number of categories cannot "
+                f"be told apart by color even where it can be drawn."
             )
 
-        return scheme, color_priority, category_combos
+        return scheme, color_priorities, category_combos, cmap
 
     def _map_element_membership(
         self,
@@ -3211,6 +3509,7 @@ class Mapper:
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
         group_colormap_limits: Tuple[float, float] = (0.1, 0.9),
         group_reverse_overlay: bool = False,
+        count_scale_max: Union[str, int] = 'observed',
         output_dir: str = None,
         draw_maps_lacking_data: bool = False
     ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
@@ -3296,6 +3595,7 @@ class Mapper:
             membership_members_label=members_label,
             membership_singular=singular,
             grouped_membership=grouped_membership,
+            count_scale_max=count_scale_max,
             draw_individual_files=draw_individual_files,
             draw_grid=draw_grid,
             draw_maps_lacking_data=draw_maps_lacking_data
@@ -3524,10 +3824,91 @@ class Mapper:
             return color_hexcode, 1.0
         return colorer
 
+    def _entry_sources(
+        self,
+        entry: kgml.Entry,
+        membership: Dict[str, List[str]],
+        use_reaction_attribute: bool
+    ) -> Set[str]:
+        """
+        The sources containing a map element, pooled across the accessions it stands for.
+
+        A single line, box or circle can stand for several KOs, reactions or compounds, so the
+        sources it is present in are the union of its accessions' sources. This one definition serves
+        everything that counts an element's sources: the colorer that colors by that count, the pass
+        that finds the highest count on the drawn maps, and the within-group counts of grouped
+        individual maps.
+
+        Parameters
+        ==========
+        entry : anvio.kgml.Entry
+            The map element.
+
+        membership : Dict[str, List[str]]
+            Maps each accession to the sources containing it.
+
+        use_reaction_attribute : bool
+            Read the element's KEGG reaction IDs rather than its KO IDs.
+
+        Returns
+        =======
+        Set[str]
+            The sources containing the element, empty if it is in none of them.
+        """
+        sources: Set[str] = set()
+        for accession in self._get_entry_kegg_ids(entry, use_reaction_attribute):
+            if accession in membership:
+                sources.update(membership[accession])
+        return sources
+
+    def _membership_categorizer(
+        self,
+        membership: Dict[str, List[str]],
+        group_sources: Union[Dict[str, List[str]], None],
+        group_threshold: Union[float, None],
+        use_reaction_attribute: bool
+    ):
+        """
+        Build a function giving the categories a map element counts as being in, or None for none.
+
+        Ungrouped, an element's categories are the sources containing it ('_entry_sources'). With
+        'group_sources' they are the qualifying groups instead: those where the proportion of the
+        group's own sources containing the element meets 'group_threshold'. Both the colorer that
+        colors an element by how many categories it is in ('_membership_colorer') and the pass that
+        finds the highest such count across the drawn maps ('_find_observed_counts') go through
+        here, so the count a color stands for and the count the scale was built for cannot disagree.
+        """
+        grouped = group_sources is not None
+        group_source_count: Dict[str, int] = {}
+        source_group: Dict[str, str] = {}
+        if grouped:
+            for group, sources in group_sources.items():
+                group_source_count[group] = len(sources)
+                for source in sources:
+                    source_group[source] = group
+
+        def categorize(entry: kgml.Entry) -> Union[Set[str], None]:
+            sources = self._entry_sources(entry, membership, use_reaction_attribute)
+            if not sources:
+                return None
+            if not grouped:
+                return sources
+            group_counts = {group: 0 for group in group_source_count}
+            for source in sources:
+                if source in source_group:
+                    group_counts[source_group[source]] += 1
+            categories = set()
+            for group, count in group_counts.items():
+                proportion = count / group_source_count[group]
+                if (proportion > 0) if group_threshold == 0 else (proportion >= group_threshold):
+                    categories.add(group)
+            return categories or None
+        return categorize
+
     def _membership_colorer(
         self,
         membership: Dict[str, List[str]],
-        color_priority: Dict[str, float],
+        color_priorities: List[Tuple[str, float]],
         category_combos: Union[List[Tuple[str]], None],
         group_sources: Union[Dict[str, List[str]], None],
         group_threshold: Union[float, None],
@@ -3538,54 +3919,33 @@ class Mapper:
 
         See '_draw_map_elements' for the colorer contract. An Entry's containing sources are pooled
         across its accessions via 'membership'; with 'group_sources', the qualifying groups (those
-        meeting 'group_threshold' among their sources) are used instead. The color is chosen by the
-        count of categories ('category_combos' None) or by their exact combination (by membership),
-        and its priority comes from 'color_priority'. An Entry in no source, or, when grouped, in no
-        qualifying group, is left uncolored.
+        meeting 'group_threshold' among their sources) are used instead. The color and its priority
+        are looked up in 'color_priorities' by the count of categories ('category_combos' None) or
+        by the position of their exact combination (by membership), so a color shared by more than
+        one count — which a continuous count scale allows — still carries that count's own priority.
+        An Entry in no source, or, when grouped, in no qualifying group, is left uncolored.
         """
-        color_hexcodes = list(color_priority)
         combo_lookup: Dict[Tuple[str], Tuple[str]] = {}
         if category_combos is not None:
             for combo in category_combos:
                 combo_lookup[tuple(sorted(combo))] = combo
-        grouped = group_sources is not None
-        group_source_count: Dict[str, int] = {}
-        source_group: Dict[str, str] = {}
-        if grouped:
-            for group, sources in group_sources.items():
-                group_source_count[group] = len(sources)
-                for source in sources:
-                    source_group[source] = group
+        categorize = self._membership_categorizer(
+            membership, group_sources, group_threshold, use_reaction_attribute
+        )
+        count_scale_top = len(color_priorities)
 
         def colorer(entry: kgml.Entry) -> Union[Tuple[str, float], None]:
-            sources: Set[str] = set()
-            for accession in self._get_entry_kegg_ids(entry, use_reaction_attribute):
-                if accession in membership:
-                    sources.update(membership[accession])
-            if not sources:
+            categories = categorize(entry)
+            if categories is None:
                 return None
-            if grouped:
-                group_counts = {group: 0 for group in group_source_count}
-                for source in sources:
-                    if source in source_group:
-                        group_counts[source_group[source]] += 1
-                categories = set()
-                for group, count in group_counts.items():
-                    proportion = count / group_source_count[group]
-                    if (proportion > 0) if group_threshold == 0 else \
-                            (proportion >= group_threshold):
-                        categories.add(group)
-                if not categories:
-                    return None
-            else:
-                categories = sources
             if category_combos is None:
-                color_hexcode = color_hexcodes[len(categories) - 1]
-            else:
-                color_hexcode = color_hexcodes[
-                    category_combos.index(combo_lookup[tuple(sorted(categories))])
-                ]
-            return color_hexcode, color_priority[color_hexcode]
+                # A count scale can stop below the highest count there is, since '--count-scale-max'
+                # takes a ceiling, so a count above the top of the scale takes the top color, as a
+                # value above the top of a value scale does.
+                return color_priorities[min(len(categories), count_scale_top) - 1]
+            return color_priorities[
+                category_combos.index(combo_lookup[tuple(sorted(categories))])
+            ]
         return colorer
 
     def _draw_map_elements(
@@ -4164,8 +4524,8 @@ class Mapper:
         draw_files_categories: List[str],
         output_dir: str,
         drawn: Dict[Literal['unified', 'individual', 'grid'], Dict],
-        group_sources: Dict[str, List[str]] = None,
-        group_color_priority: Dict[str, Dict[str, float]] = None,
+        group_scale_tops: Dict[str, int] = None,
+        group_color_priorities: Dict[str, List[Tuple[str, float]]] = None,
         check_maps_lacking_kos: bool = True,
         source_type: str = 'unknown'
     ) -> None:
@@ -4200,17 +4560,17 @@ class Mapper:
         drawn : Dict[Literal['unified', 'individual', 'grid'], Dict]
             Record of drawn map files.
 
-        group_sources : Dict[str, List[str]], None
-            Used to draw a per-group discrete colorbar of source counts. Keys are group names;
-            values are lists of the group's data sources. Left None when no layer colors its
-            individual group maps by within-group source counts, as when a group map is colored by
-            value instead, in which case no per-group source-count colorbars are drawn.
+        group_scale_tops : Dict[str, int], None
+            Used to draw a per-group discrete colorbar of source counts. Keys are group names; values
+            are the count each group's scale runs up to ('_resolve_count_scale_top'). Left None when
+            no layer colors its individual group maps by within-group source counts, as when a group
+            map is colored by value instead, in which case no per-group colorbars are drawn.
 
-        group_color_priority : Dict[str, Dict[str, float]], None
-            Used together with 'group_sources' to draw the per-group colorbars. Keys are group names;
-            values are dictionaries mapping color hex code to priority. Reactions assigned higher
-            priority colors are drawn over reactions assigned lower priority colors. Left None
-            whenever 'group_sources' is.
+        group_color_priorities : Dict[str, List[Tuple[str, float]]], None
+            Used together with 'group_scale_tops' to draw the per-group colorbars. Keys are group
+            names; values are lists of (color hex code, priority) pairs in ascending order of
+            within-group source count. Reactions assigned higher priority colors are drawn over
+            reactions assigned lower priority colors. Left None whenever 'group_scale_tops' is.
 
         check_maps_lacking_kos : bool, True
             If True, check for "empty" individual map files that are needed to complete the map grid
@@ -4276,7 +4636,7 @@ class Mapper:
         grid_dir = os.path.join(output_dir, GRID_SUBDIR)
         filesnpaths.gen_output_directory(grid_dir, progress=self.progress, run=self.run)
 
-        if group_sources is not None:
+        if group_scale_tops is not None:
             # Draw colorbars for each group.
             if source_type == 'pangenome':
                 label = 'genome count'
@@ -4288,9 +4648,9 @@ class Mapper:
                 label = 'source count'
             for group in draw_categories:
                 self.colorbar_drawer.draw_discrete(
-                    group_color_priority[group],
+                    [color for color, _ in group_color_priorities[group]],
                     os.path.join(grid_dir, f'colorbar_{group}.pdf'),
-                    color_labels=range(1, len(group_sources[group]) + 1),
+                    color_labels=range(1, group_scale_tops[group] + 1),
                     label=label
                 )
 
@@ -4549,6 +4909,9 @@ class ColorbarDrawer:
 
     labelpad : int
         Spacing of colorbar label from tick labels in points.
+
+    max_integer_ticks : int
+        The most ticks a continuous colorbar is given by 'draw_continuous' with 'integer_ticks'.
     """
     def __init__(self, overwrite_output: bool = FORCE_OVERWRITE) -> None:
         """
@@ -4565,6 +4928,7 @@ class ColorbarDrawer:
         self.label_rotation: int = None
         self.label_fontsize: int = 24
         self.labelpad: int = 30
+        self.max_integer_ticks: int = 6
 
     def draw_discrete(
         self,
@@ -4660,7 +5024,8 @@ class ColorbarDrawer:
         vmin: float,
         vmax: float,
         out_path: str,
-        label: str = None
+        label: str = None,
+        integer_ticks: bool = False
     ) -> None:
         """
         Save a standalone continuous colorbar to a file.
@@ -4681,6 +5046,14 @@ class ColorbarDrawer:
 
         label : str, None
             Overall colorbar label.
+
+        integer_ticks : bool, False
+            If True, label the bar at up to 'max_integer_ticks' whole numbers evenly spanning the
+            range, both ends included, rather than at Matplotlib's automatic ticks. Pass this for a
+            range that counts things — how many samples contain an element, say — where automatic
+            ticks can fall between whole numbers and leave the ends of the range unlabeled, which
+            are the two values a reader most needs in order to tell what a color stands for. The
+            range is assumed to run between whole numbers, as a count does.
         """
         fig = Figure(figsize=self.figsize)
         ax = fig.subplots()
@@ -4691,6 +5064,21 @@ class ColorbarDrawer:
             cax=ax,
             orientation=self.orientation
         )
+
+        if integer_ticks:
+            # Every whole number where they all fit, and otherwise a whole-number stride, so that the
+            # gaps between labels are even: spacing the ticks evenly and rounding each to a whole
+            # number afterwards would leave gaps of different sizes, which reads as a missing label.
+            # The last tick is the top of the range rather than the last stride, so both ends are
+            # labeled; only the final gap can come out shorter, as it does on any axis.
+            lower = int(vmin)
+            upper = int(vmax)
+            if upper - lower + 1 <= self.max_integer_ticks:
+                ticks = list(range(lower, upper + 1))
+            else:
+                stride = math.ceil((upper - lower) / (self.max_integer_ticks - 1))
+                ticks = list(range(lower, upper, stride)) + [upper]
+            cb.set_ticks(ticks)
 
         if self.tick_fontsize is not None:
             cb.ax.tick_params(labelsize=self.tick_fontsize)

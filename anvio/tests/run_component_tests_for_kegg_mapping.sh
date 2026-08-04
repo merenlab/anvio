@@ -32,6 +32,28 @@ minimal_enzymes_input.txt > draw_kos_samples.reaction.txt
 awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","sample"} NR>1{s=((NR-2)%4)+1; print $2,$1,"SAMPLE_"s}' \
 minimal_enzymes_input.txt > draw_kos_samples4.reaction.txt
 printf 'sample\tgroup\nSAMPLE_1\tG1\nSAMPLE_2\tG2\nSAMPLE_3\tG2\n' > draw-sample-group-information.txt
+# More samples than a colormap has distinguishable colors (a colormap holds 256), so that coloring
+# elements by sample count cannot give each count its own color. Presence there is drawn on a
+# continuous scale rather than in discrete bands.
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","sample"} NR>1{s=((NR-2)%300)+1; print $2,$1,sprintf("SAMPLE_%03d",s)}' \
+minimal_enzymes_input.txt > draw_kos_samples300.reaction.txt
+# The same 300 samples, but with each accession in only a handful of them: a scale running to 300
+# would squeeze every element into the bottom of the colormap, which is what '--count-scale-max' is
+# for.
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","sample"} NR>1{for (i = 1; i <= ((NR-2)%5)+1; i++) print $2,$1,sprintf("SAMPLE_%03d",(((NR-2)*7+i)%300)+1)}' \
+minimal_enzymes_input.txt > draw_kos_sparse300.reaction.txt
+# A compound layer over the same samples, so that both layers fall back to a continuous count scale
+# in one run and each says which layer it is talking about.
+{
+    printf 'accession\tsample\n'
+    for accession in C00031 C00668 C00074 C00267
+    do
+        for sample in $(seq -f 'SAMPLE_%03g' 1 300)
+        do
+            printf '%s\t%s\n' "${accession}" "${sample}"
+        done
+    done
+} > draw_compounds_samples300.compound.txt
 awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","coverage"} NR>1{print $2,$1,((NR-2)%37)+0.5}' \
 minimal_enzymes_input.txt > draw_kos_coverage.reaction.txt
 awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","sample","coverage"} NR>1{s=((NR-2)%3)+1; print $2,$1,"SAMPLE_"s,((NR-2)%37)+0.5}' \
@@ -215,6 +237,79 @@ args=()
 args+=( "--reaction-txt" "draw_kos_samples.reaction.txt" )
 args+=( "--output-dir" ${output_dir}/draw_txt_samples_kos_count )
 args+=( "--reaction-sample-summary" "count" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing summarizing samples by count on a continuous scale, which is asked for explicitly \
+here even though four samples would fit in discrete bands: with the default sequential colormap \
+the colors are the same as 'count' would assign, but the colorbar is a gradient from the lowest \
+count to the highest"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples4.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_samples_kos_count_continuous )
+args+=( "--reaction-sample-summary" "count_continuous" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing that with a scale running to more samples than the colormap has distinguishable \
+colors, the default presence summary falls back from discrete bands to a continuous count scale \
+rather than failing"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples300.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_samples300_kos_count_continuous )
+args+=( "--count-scale-max" "total" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing the same fallback with a reaction layer and a compound layer together: each layer \
+decides for itself, so the run reports the fallback once per layer, saying which layer each time"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples300.reaction.txt" )
+args+=( "--compound-txt" "draw_compounds_samples300.compound.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_samples300_two_layers_count_continuous )
+args+=( "--count-scale-max" "total" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}" 2>&1 | tee draw_txt_samples300_two_layers.log
+for element_type in reaction compound
+do
+    if ! grep -q "The ${element_type} layer is colored by counts" \
+        draw_txt_samples300_two_layers.log
+    then
+        echo "ERROR: the continuous count scale fallback did not name the ${element_type} layer."
+        exit 1
+    fi
+done
+
+INFO "Testing that a count scale stops at the highest count in the data by default, so that a \
+sparse layer over 300 samples spreads its colors over the counts that occur instead of squeezing \
+them into the bottom of the colormap"
+args=()
+args+=( "--reaction-txt" "draw_kos_sparse300.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_sparse300_count_scale_observed )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing running a count scale to every sample there is rather than to the highest count \
+observed"
+args=()
+args+=( "--reaction-txt" "draw_kos_sparse300.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_sparse300_count_scale_total )
+args+=( "--count-scale-max" "total" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing pinning a count scale to a given number, so that separate figures share a scale, \
+with counts above it taking the top color"
+args=()
+args+=( "--reaction-txt" "draw_kos_sparse300.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_sparse300_count_scale_number )
+args+=( "--count-scale-max" "3" )
 args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
@@ -490,10 +585,32 @@ then
     exit 1
 fi
 
-if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt --discrete-colormap-scheme by_count \
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt --count-scale-max nonsense \
     --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: '--discrete-colormap-scheme' on a text run should have failed but did not."
+    echo "ERROR: '--count-scale-max' with a value that is neither a rule nor a number should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt --count-scale-max 0 \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: '--count-scale-max' below 1 should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples300.reaction.txt \
+    --reaction-sample-summary count --count-scale-max total \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: 'count' in discrete bands over a scale of more samples than the colormap has distinct colors should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt --presence-colormap-scheme by_count \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: '--presence-colormap-scheme' on a text run should have failed but did not."
     exit 1
 fi
 
@@ -810,9 +927,20 @@ args+=( "--output-dir" ${output_dir}/pan_db_kos_group_membership_emphasize_unsha
 args+=( "--draw-grid" )
 args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
 args+=( "--reaction-colormap" "plasma" "0.1" "0.9")
-args+=( "--discrete-colormap-scheme" "by_count" )
+args+=( "--presence-colormap-scheme" "by_count" )
 args+=( "--reaction-reverse-overlay" )
 args+=( "--group-colormap" "plasma" "0.1" "0.9" )
 args+=( "--group-reverse-overlay" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing mapping KOs from a pangenomic database, coloring reactions by genome count on a \
+continuous scale rather than in discrete bands"
+args=()
+args+=( "--pan-db" "TEST-PAN.db" )
+args+=( "--genomes-storage" "TEST-GENOMES.db" )
+args+=( "--output-dir" ${output_dir}/pan_db_kos_count_continuous )
+args+=( "--presence-colormap-scheme" "by_count_continuous" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
