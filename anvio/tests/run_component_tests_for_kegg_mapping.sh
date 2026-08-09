@@ -92,6 +92,10 @@ printf 'accession\tconcentration\nC00031\t10\nC00031\t30\n' > draw_bad_repeated_
 # are drawn under 'individual', so they cannot collide with anything anvi'o creates for itself.
 printf 'accession\tsample\nK00844\tMetabolism\nK00845\tsymlink\nK02358\tgrid\nK00844\tunified\n' > draw_kos_awkward_sample_names.reaction.txt
 
+# A sample whose name cannot be a directory name, alongside one that can. Only a sample drawn on its
+# own maps becomes a subdirectory, so this file is fine until such maps are asked for it.
+printf 'accession\tsample\nK00844\tSAMPLE_1\nK00845\tBAD/NAME\nK02358\tSAMPLE_1\n' > draw_kos_unusable_sample_names.reaction.txt
+
 mkdir contigs_db_kos
 mkdir contigs_dbs_kos_count
 mkdir pan_db_kos_genome_count_emphasize_shared
@@ -503,8 +507,43 @@ args+=( "--draw-grid" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
 
+INFO "Testing a sample whose name cannot be a directory name, which is summarized on the 'unified' \
+map by color alone and so never becomes a path"
+args=()
+args+=( "--reaction-txt" "draw_kos_unusable_sample_names.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_unusable_sample_names )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing that individual maps can still be drawn for a subset of samples that leaves out the \
+sample whose name cannot be a directory name"
+args=()
+args+=( "--reaction-txt" "draw_kos_unusable_sample_names.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_unusable_sample_names_subset )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" "SAMPLE_1" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
 INFO "Testing that the draw-kegg-pathways text file input rejects invalid files and argument \
 combinations (each command below is expected to fail)"
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_unusable_sample_names.reaction.txt \
+    --draw-individual-files \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: individual maps for a sample whose name cannot be a directory name should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_unusable_sample_names.reaction.txt \
+    --draw-grid "BAD/NAME" "SAMPLE_1" \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a grid panel for a sample whose name cannot be a directory name should have failed."
+    exit 1
+fi
 if anvi-draw-kegg-pathways --reaction-txt draw_bad_mixed_kr.reaction.txt \
     --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then

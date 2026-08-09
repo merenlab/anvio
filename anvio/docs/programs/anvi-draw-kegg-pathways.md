@@ -73,6 +73,8 @@ Colorbars, which are keys to the colors of every map in the run, are written at 
 
 Because the names in `individual` come from your own data, they are kept in that subdirectory of their own: a sample, genome, or group may be named anything at all — including `unified`, `grid`, `symlink`, or `Metabolism` — without ever colliding with a directory this program creates for itself.
 
+The one requirement is that a name becoming a subdirectory has to work as a directory name, so a name containing a path separator, such as `Rhizobium meliloti RU11/001`, is refused. This only applies to the sources that are actually drawn individually: a source summarized on the `unified` map contributes color rather than a path, so its name is never used as one, and a source left out of a subset requested with `--draw-individual-files` or `--draw-grid` is not checked either.
+
 ### File names
 
 By default, output file names contain the ID of each map, e.g., `kos_00010.pdf` for `Glycolysis / Gluconeogenesis`. The `--name-files` flag attaches a simplified version of the pathway name to the file name, e.g., `kos_00010_Glycolysis_Gluconeogenesis.pdf`.

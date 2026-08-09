@@ -855,11 +855,15 @@ class Mapper:
         """
         Check that category names can serve as output subdirectory names.
 
-        Every category (sample, source, or group) gets its own subdirectory of the output directory,
-        and once map grids are drawn the subdirectories of categories that were only needed for a
-        grid are deleted ('_draw_map_grids'). A name that is not a plain directory name would
-        therefore write, or delete, outside the output directory: names come from a text file's
-        'sample' column or a groups file, so they cannot be trusted to be safe paths.
+        A category (sample, source, or group) drawn on its own maps gets its own subdirectory of the
+        output directory, and once map grids are drawn the subdirectories of categories that were
+        only needed for a grid are deleted ('_draw_map_grids'). A name that is not a plain directory
+        name would therefore write, or delete, outside the output directory: names come from a text
+        file's 'sample' column or a groups file, so they cannot be trusted to be safe paths.
+
+        Only the categories actually getting maps are checked, since a category summarized on the
+        'unified' map alone contributes color rather than a path, and its name is never joined onto
+        one.
 
         No name is reserved. Categories are drawn into '<output directory>/individual', which anvi'o
         creates for that purpose alone, so a category may be named after anything anvi'o puts in the
@@ -890,12 +894,15 @@ class Mapper:
         if not problems:
             return
         raise ConfigError(
-            f"Each {category_noun} gets its own subdirectory of the output directory, so its name "
-            f"must be usable as a directory name. "
-            f"{'These names are' if len(problems) > 1 else 'This name is'} not: "
+            f"Each {category_noun} drawn on its own maps gets its own subdirectory of the output "
+            f"directory, so its name must be usable as a directory name. "
+            f"{'These names cannot be used' if len(problems) > 1 else 'This name cannot be used'}: "
             f"{', '.join(problems)}. Please rename {'them' if len(problems) > 1 else 'it'} in the "
             f"input, using single words without path separators, such as 'SAMPLE_1' or "
-            f"'HIGH_TEMPERATURE'."
+            f"'HIGH_TEMPERATURE'. Alternatively, leave {'them' if len(problems) > 1 else 'it'} out "
+            f"of the {category_noun}s requested with '--draw-individual-files'/'--draw-grid': a "
+            f"{category_noun} that is only summarized on the 'unified' map does not need a name "
+            f"that works as a directory."
         )
 
     @staticmethod
@@ -2595,8 +2602,11 @@ class Mapper:
             layer['category_mode'] == 'membership' for layer in layers
         )
 
+        def _dedup(items: List[str]) -> List[str]:
+            seen: Set[str] = set()
+            return [item for item in items if not (item in seen or seen.add(item))]
+
         if has_categories:
-            self._check_category_names(categories, category_noun)
             subset_names = set(categories)
             self._check_requested_subset(
                 draw_individual_files, "Individual maps", subset_names, subset_subject
@@ -2604,6 +2614,31 @@ class Mapper:
             self._check_requested_subset(
                 draw_grid, "Individual maps in grids", subset_names, subset_subject
             )
+            draw_files_categories = (
+                _dedup(list(categories)) if draw_individual_files is True
+                else [] if draw_individual_files is False
+                else _dedup(list(draw_individual_files))
+            )
+            draw_grid_categories = (
+                _dedup(list(categories)) if draw_grid is True
+                else [] if draw_grid is False
+                else _dedup(list(draw_grid))
+            )
+            draw_categories = _dedup(draw_files_categories + draw_grid_categories)
+            # Only a category drawn on its own maps has its name joined onto a path, so only those
+            # names have to be usable as directory names. A run that draws no individual maps or
+            # grids, or that asks for a subset of them, never writes the other categories' names
+            # anywhere: they are summarized on the 'unified' map by color alone. The check comes
+            # after the subset checks so that a name that is not a category at all is reported as
+            # unrecognized rather than as unusable.
+            self._check_category_names(draw_categories, category_noun)
+        else:
+            draw_files_categories = []
+            draw_grid_categories = []
+            draw_categories = []
+        draw_category_maps = has_categories and (
+            draw_individual_files is not False or draw_grid is not False
+        )
 
         if static and grouped:
             # The individual group maps are the exception to "static overrides dynamic": a single
@@ -2703,30 +2738,6 @@ class Mapper:
                     # A layer without a category dimension is constant across the category maps.
                     layer['_category_norm'] = layer['_unified_norm']
                     layer['_category_range'] = layer['_unified_range']
-
-        def _dedup(items: List[str]) -> List[str]:
-            seen: Set[str] = set()
-            return [item for item in items if not (item in seen or seen.add(item))]
-
-        if has_categories:
-            draw_files_categories = (
-                _dedup(list(categories)) if draw_individual_files is True
-                else [] if draw_individual_files is False
-                else _dedup(list(draw_individual_files))
-            )
-            draw_grid_categories = (
-                _dedup(list(categories)) if draw_grid is True
-                else [] if draw_grid is False
-                else _dedup(list(draw_grid))
-            )
-            draw_categories = _dedup(draw_files_categories + draw_grid_categories)
-        else:
-            draw_files_categories = []
-            draw_grid_categories = []
-            draw_categories = []
-        draw_category_maps = has_categories and (
-            draw_individual_files is not False or draw_grid is not False
-        )
 
         # A context colored by membership needs its by-count/by-membership color scheme over the
         # categories. Only the 'unified' map draws such a scale (and its colorbar) from the
