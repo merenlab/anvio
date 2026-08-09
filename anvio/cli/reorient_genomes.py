@@ -45,11 +45,27 @@ def get_args():
     groupA.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
 
     groupRef = parser.add_argument_group('SELECTION & PROCESSING OF REFERENCE',
-                                         "If you do not set --reference, the program will auto-select a reference by "
-                                         "choosing the genome with the fewest contigs; ties are broken by the largest "
-                                         "total length. This mirrors how anvi'o tools often prioritize more complete assemblies.")
+                                         "IMPORTANT: the reference MUST be a single contig, since orienting and ordering "
+                                         "contigs requires a single continuous coordinate system to work against, and "
+                                         "coordinates from different contigs of a fragmented reference do not form one "
+                                         "axis. The program will STOP WITH AN ERROR otherwise. Please note that this is a "
+                                         "separate matter from circularity: the reference additionally needs to be a "
+                                         "COMPLETE, CIRCULAR sequence if anvi'o is going to ROTATE it, which happens when "
+                                         "the reference is auto-selected, or when --use-dnaa-for-reference-orientation is "
+                                         "used, since rotating a linear sequence or a fragment of a chromosome is "
+                                         "biologically meaningless. If your reference is a genomic locus rather than a "
+                                         "complete chromosome, name it explicitly with --reference, which never rotates "
+                                         "anything. If you do not set --reference, the program will auto-select a reference "
+                                         "by choosing the genome with the fewest contigs (ties are broken by the largest "
+                                         "total length), and it will refuse to continue if even that genome turns out to "
+                                         "have more than one contig. The only way to work with a fragmented reference is "
+                                         "--use-auto-reference-as-is, which skips all steps of rotation over the reference, "
+                                         "and uses it as is.")
     groupRef.add_argument('--reference', required=False,
-                          help="Genome name in fasta-txt to use as the reference orientation. If omitted, auto-selection applies.")
+                          help="Name of the entry in fasta-txt to use as the reference orientation. It must be a single "
+                               "contig, but it does not have to be a complete circular genome: a single contig covering a "
+                               "genomic locus of interest works just as well, since anvi'o never rotates a reference you "
+                               "name explicitly here. If omitted, auto-selection applies.")
     groupRef.add_argument('--use-auto-reference-as-is', action='store_true',
                           help="When anvi'o selects the reference genome automatically (i.e., when `--reference` parameter is not "
                                "used) it first chooses the genome with the fewest contigs and then longest among those that have "
@@ -58,14 +74,21 @@ def get_args():
                                "tinker with the auto-picked reference orientation. This is most useful when the collection of "
                                "genomes (or contigs) all start with an evolutionarily meaningful positions, and all you want to "
                                "do is to reverse complement those that need it so all genomes (or contigs) have the same "
-                               "orientation. This flag is obviously not compatible with `--reference` and "
+                               "orientation. This is ALSO the only supported way to move forward when none of the genomes in "
+                               "your fasta-txt file is a single contig -- but please be aware of what you are giving up: since "
+                               "coordinates that come from different contigs of a fragmented reference do not form a single "
+                               "continuous axis, the contig ordering, the scaffolding output, and the reported start positions "
+                               "will not be trustworthy. This flag is obviously not compatible with `--reference` and "
                                "`--use-dnaa-for-reference-orientation`.")
     groupRef.add_argument('--use-dnaa-for-reference-orientation', action='store_true',
                           help="Use DnaA gene location to orient the reference genome. The program will identify the DnaA "
                                "gene using an HMM profile (Bac_DnaA_C from Pfam), and rotate the reference to start near "
-                               "the DnaA gene, which typically marks the origin of replication in bacterial genomes. This "
+                               "the DnaA gene, which typically marks the origin of replication in bacterial genomes. Since "
+                               "this rotates the reference, it requires the reference genome to be a single contig. This "
                                "option is useful for bacterial genomes but may not work well for plasmids or viral genomes "
-                               "without DnaA.")
+                               "without DnaA, or fragments from genomes such as specific genomic loci you are interested in "
+                               "(for such cases you should certainly consider naming your reference explicitly with "
+                               "`--reference`, which never rotates it, or using `--use-auto-reference-as-is`).")
 
     groupScaffold = parser.add_argument_group('SCAFFOLDING OPTIONS',
                                               "These options control how multi-contig (fragmented) genomes are ordered "

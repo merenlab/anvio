@@ -2,6 +2,28 @@
 
 It reports (1) alignment quality between each pair of genomes (coverage between the two genomes and very crappy approximate ANI that no one should trust), (2) what actions were taken to reach a consensus (reverse-complement, rotations, contig ordering, etc), and (3) a final determination of the level of trust one should have for outcomes. The program also generates synteny ribbon plots to visualize the alignment patterns between each genome and the reference before and after reorientation.
 
+### Critical considerations of 'reference'
+
+How to treat your reference is the **single most important thing to know about this program**, and there are a few considerations to keep in mind.
+
+Does your reference have to be a single-contig? Short answer: yes, it must be. But it doesn't necessarily be a complete, circular genome. It has to be that way only if you will let/ask anvi'o to rotate it. Here is a longer why:
+
+* **The reference must always be a single contig.** Orienting contigs, ordering them, and scaffolding them all require a single, continuous coordinate system different contigs from a fragmented reference cannot offer. Anvi'o will stop with an error if the reference (whether you passed it explicitly or it is auto-selected by anvi'o for you) contains more than one contig. The *only way* around this error is to use `--use-auto-reference-as-is`, which comes with other caveats you must consdier (explained below).
+
+* **The reference must *additionally* be complete and circular if anvi'o IS going to ROTATE it.** Rotation of the reference happens in two cases. If the reference is auto-selected (anvi'o rotates it to a conserved start position that all input genomes share), or when you ask anvi'o to use DnaA gene to orient the reference. But you have to keep in mind that rotating a linear sequence or a fragment of a chromosome is a biologically meaningless operation (since a fragment does not capture the entirety of a circular chromosome, so there is no coordinate to 'rotate around'). But anvi'o cannot know this since it cannot know what kind of sequences you are working with. **This requirement does not apply if nothing is being rotated**, so if you have sequences that shouldn't be rotated, you either name a reference explicitly `--reference` or tell anvi'o to use the reference it automatically choses as is with `--use-auto-reference-as-is`.
+
+So, does your reference have to be a complete circular genome? Not necessarily. But the answer really depends on what you are planning to do with it. Here are some more ideas for you to think about before running this tool:
+
+* **If you are working with complete bacterial or archaeal chromosomes** (or circular plasmids or viral genomes) and you care about where each genome *starts* (so that the origin of replication .. or another evolutionary meaningful and/or conserved region lines up nicely across your collection), then yes, rotation is the whole point, and both your reference and your parameters matter a great deal. Let anvi'o auto-select and rotate the reference, or reach for `--use-dnaa-for-reference-orientation`.
+
+* **If you are working with a genomic locus**, such as a genomic region of interest, a prophage, an operon and its neighborhood, and all your other sequences are fragmented versions of that same region, then rotation is neither needed nor meaningful. All you want is for the contigs to be reverse-complemented and ordered carefully so they follow the reference as closely as possible. A single contig covering your locus is a perfectly good reference here. Just name it with `--reference` and anvi'o will leave it exactly as it is.
+
+Finally, please note that all of this applies **only to the reference**. Every *other* entry in your %(fasta-txt)s file is free to be as fragmented as they come.
+
+If this is confusing please reach out to us, and we will try to make it less confusing (*I will take "unfulfillable promises" for $200* (well, yes, but you can't know until we/you try)).
+
+### Default usage
+
 The default usage is simple, which will simply instruct anvi'o to **take care of everything *de novo***,
 
 {{ codestart }}
@@ -30,12 +52,12 @@ anvi-reorient-genomes --fasta-txt %(fasta-txt)s \
 {:.notice}
 TL;DR: Best for any set of highly similar genomes - whether circular (viral, plasmids, complete bacterial genomes) or fragmented (MAGs, draft assemblies). For circular genomes, uses secondary alignments from `minimap2` to find the most conserved position across all genomes in a data-driven manner. For fragmented genomes, orders and orients contigs based on their alignment to the reference.
 
-If the user does not explicitly mention a reference genome, **the program will auto-select the genome with the fewest contigs as reference** (ties broken by longest total length), preferring complete circular genomes over fragmented ones. It will then rotate the reference genome to an optimal starting position that is conserved across most of the input genomes mentioned in the %(fasta-txt)s file in a *mindful* fashion. It is 'mindful' because %(anvi-reorient-genomes)s does this step by first aligning each genome to the reference **using all possible good alignments (primary + secondary alignments)** to get a true picture of conserved regions across all genomes, and then using a 1,000 bp sliding window to search for a region that is shared between all genomes in a greedy fashion (once it finds a region that works for all genomes, it stops).
+If the user does not explicitly mention a reference genome, **the program will auto-select the genome with the fewest contigs as reference** (ties broken by longest total length), preferring complete circular genomes over fragmented ones. If the winner of that contest *still* has more than one contig, the program will stop with an error rather than rotate a fragment (see 'What if none of my sequences is a single contig?' below). Otherwise, it will rotate the reference genome to an optimal starting position that is conserved across most of the input genomes mentioned in the %(fasta-txt)s file in a *mindful* fashion. It is 'mindful' because %(anvi-reorient-genomes)s does this step by first aligning each genome to the reference **using all possible good alignments (primary + secondary alignments)** to get a true picture of conserved regions across all genomes, and then using a 1,000 bp sliding window to search for a region that is shared between all genomes in a greedy fashion (once it finds a region that works for all genomes, it stops).
 
 {:.notice}
 Please note that when a reference genome is chosen automatically, the program will likely end up rotating the automatically chosen reference genome to a more meaningful and conserved start position to maximize agreements across all genomes.
 
-If you have a reference genome that you trust (downloaded from a reliable source or manually circularized), you can ask the program to use that as a reference. In which case the program will not be tinkering with the reference, and do its best to match every other genome to it.
+If you have a reference sequence that you trust (downloaded from a reliable source, manually circularized, or simply the locus you happen to care about), you can ask the program to use that as a reference with `--reference`. In which case the program will not be tinkering with the reference (unless you also use `--use-dnaa-for-reference-orientation`, which will rotate it to the DnaA gene), and do its best to match everything else to it. It must be a single contig, or the program will stop with an error -- but since nothing is being rotated, it does *not* need to be a complete circular genome.
 
 If you want anvi'o to still auto-select the reference (fewest contigs, longest total length) but use it **without any rotation**, you can use `--use-auto-reference-as-is`:
 
@@ -46,6 +68,22 @@ anvi-reorient-genomes --fasta-txt %(fasta-txt)s \
 {{ codestop }}
 
 This flag is incompatible with `--reference` (you cannot specify a reference and also ask for auto-selection) and with `--use-dnaa-for-reference-orientation` (which would rotate the reference, defeating the purpose of using it as-is).
+
+### What if none of my sequences is a single contig?
+
+Since the reference must be a single contig, a %(fasta-txt)s file in which *every* entry is fragmented (a set of MAGs, say) will make the program stop with an error. You have two options.
+
+**The good option** is to add a single-contig reference to your %(fasta-txt)s file and point anvi'o to it:
+
+{{ codestart }}
+anvi-reorient-genomes --fasta-txt %(fasta-txt)s \
+                      --reference MY-SINGLE-CONTIG-REFERENCE \
+                      --output-dir REORIENTED-FASTA-FILES/
+{{ codestop }}
+
+Remember that this reference does not have to be a complete circular genome. If you are working with whole chromosomes, a complete isolate genome from a public database is the natural choice. But if your genomes are really fragmented versions of one genomic region, then a single contig covering that region is just as good -- anvi'o will not rotate a reference you name explicitly, so circularity never enters the picture.
+
+**The limited option** is `--use-auto-reference-as-is`, which lets anvi'o pick the least fragmented entry and use it exactly as it is. Since nothing gets rotated, nothing biologically meaningless happens to the reference, and the program will still put everything on a consistent strand. But please be clear-eyed about what you are giving up: coordinates that come from *different contigs* of a fragmented reference do not form a single continuous axis, so the contig ordering, the `--scaffold-fragmented` output, and the reported 'Start in reference' / 'Start in query' values will not be trustworthy, and the trust labels in the final report are correspondingly much weaker statements. The program will remind you of all this with a big warning when you take this route.
 
 ### Using DnaA gene for biologically meaningful reference orientation
 
@@ -128,12 +166,12 @@ Please don't do it, though -- don't 'scaffold' your MAGs based on a reference an
 
 Here is a more detailed description of what is going on behind the scenes when you press ENTER:
 
-1. **Parse inputs and pick a reference**. Reads %(fasta-txt)s, and if `--reference` is not set, the program picks the genome with the fewest contigs (ties broken by longest total length). All FASTAs are sanity-checked (existence, FASTA format). The reference must be a single-contig circular genome.
+1. **Parse inputs and pick a reference**. Reads %(fasta-txt)s, and if `--reference` is not set, the program picks the genome with the fewest contigs (ties broken by longest total length). All FASTAs are sanity-checked (existence, FASTA format). The reference must be a single contig, and this is **enforced with an error**: no matter whether the reference came from `--reference` or from auto-selection, the program refuses to continue if it has more than one contig. The single exception is `--use-auto-reference-as-is`, which proceeds with a big warning instead of an error. An auto-selected reference additionally needs to be a complete, circular genome, since it is about to be rotated -- a reference named with `--reference` does not, since it never is.
 
 2. **Determine reference orientation**. The program uses one of three strategies to orient the reference genome:
-   - **DnaA-based orientation** (if `--use-dnaa-for-reference-orientation` is set): Calls genes with `prodigal`, searches for the DnaA gene using `hmmsearch` with the Bac_DnaA_C HMM profile, and rotates the reference to start at the DnaA gene position. This provides biologically meaningful orientation for bacterial genomes.
+   - **DnaA-based orientation** (if `--use-dnaa-for-reference-orientation` is set): Calls genes with `prodigal`, searches for the DnaA gene using `hmmsearch` with the Bac_DnaA_C HMM profile, and rotates the reference to start at the DnaA gene position. This provides biologically meaningful orientation for bacterial genomes. This strategy takes precedence over the two below, and applies to a user-specified reference just as much as to an auto-selected one.
    - **De novo optimal position** (if reference is auto-selected without DnaA flag): Aligns each genome to the reference using minimap2 with `--secondary=yes -N 100 -p 0.5` to capture **all possible good alignments** (not just the best one). Builds a coverage map using 1,000 bp bins showing which positions are covered by alignments from each genome. Identifies the position with maximum coverage across all genomes (stopping early if it finds 100%% coverage). The reference is then rotated to start at this optimal position, ensuring all genomes will start at a conserved region that is genuinely shared across the dataset.
-   - **User-specified reference** (if `--reference` is set): Uses the reference genome as-is without rotation.
+   - **User-specified reference** (if `--reference` is set without the DnaA flag): Uses the reference genome as-is without rotation.
    - **Auto-selected reference used as-is** (if `--use-auto-reference-as-is` is set): Auto-selects the reference (fewest contigs, longest total length) but skips any rotation, treating the auto-chosen genome exactly like a user-specified one.
 
 **For circular genomes (single-contig):**
@@ -175,7 +213,7 @@ Here is a more detailed description of what is going on behind the scenes when y
 
 * **Scaffolding fragmented genomes**: By default, fragmented genomes are written with contigs as separate sequences (ordered and oriented). Use `--scaffold-fragmented` to concatenate them into a single sequence with N-padding representing gaps. While this maximizes gene synteny for comparative analyses, **do not submit N-scaffolded MAGs as complete genomes** to public databases. The scaffolding is reference-based and may not represent the true genomic structure.
 
-* **Auto-selected reference and optimal start**: When you don't specify `--reference`, the program picks the genome with the fewest contigs (ties broken by longest total length), preferring complete circular genomes over fragmented ones. It then rotates the reference to a conserved position across your dataset using secondary alignments to capture all conserved regions (not just the single best alignment). This is especially useful for sets of closely related genomes where you want them all to start at a biologically meaningful position. For bacterial genomes, consider using `--use-dnaa-for-reference-orientation` for even more consistent results based on the replication origin. If you want a specific genome or starting position, use `--reference` to override this behavior. If you want anvi'o to auto-select the reference but skip the rotation step (i.e., keep it exactly as it appears in the input FASTA), use `--use-auto-reference-as-is`.
+* **Auto-selected reference and optimal start**: When you don't specify `--reference`, the program picks the genome with the fewest contigs (ties broken by longest total length), preferring complete circular genomes over fragmented ones -- and stops with an error if even the best candidate is not a single contig (use `--use-auto-reference-as-is` to proceed anyway, without any rotation). Since anvi'o is about to rotate this auto-selected reference, it should really be a complete circular genome -- if your sequences are linear loci rather than whole chromosomes, rotating them is meaningless, so name your reference explicitly with `--reference` instead. It then rotates the reference to a conserved position across your dataset using secondary alignments to capture all conserved regions (not just the single best alignment). This is especially useful for sets of closely related genomes where you want them all to start at a biologically meaningful position. For bacterial genomes, consider using `--use-dnaa-for-reference-orientation` for even more consistent results based on the replication origin. If you want a specific genome or starting position, use `--reference` to override this behavior. If you want anvi'o to auto-select the reference but skip the rotation step (i.e., keep it exactly as it appears in the input FASTA), use `--use-auto-reference-as-is`.
 
 * **DnaA-based orientation benefits**: When working with bacterial genomes, the `--use-dnaa-for-reference-orientation` flag typically produces highly consistent alignments (e.g., all genomes starting within a few base pairs of each other) because it uses biological knowledge (the replication origin) rather than purely sequence-based heuristics. This can be particularly valuable for downstream synteny analyses or when comparing gene order across closely related strains.
 
