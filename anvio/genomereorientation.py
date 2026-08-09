@@ -25,6 +25,8 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
+P = terminal.pluralize
+
 
 class PafRecord:
     def __init__(self, qname, qlen, qstart, qend, strand, tname, tlen, tstart, tend, nmatch, alen, mapq, tags):
@@ -279,13 +281,9 @@ class GenomeReorienter:
                               "not compatible with one another. The former keeps the auto-selected reference untouched. "
                               "The latter rotates it. Incompatible stuff.")
 
-        # Validate reference is single-contig if user-specified
-        if self.reference_name:
-            ref_contigs = self.genomes[self.reference_name]['num_contigs']
-            if ref_contigs != 1:
-                raise ConfigError(f"Reference genome '{self.reference_name}' must be a single-contig "
-                                  f"circular genome, but it has {ref_contigs} contigs. Please choose a "
-                                  f"different reference or let anvi'o auto-select one.")
+        # please note that whether the reference genome is a single contig or not is checked in
+        # `check_reference_is_single_contig`, which is called by `select_reference_genome` so the
+        # very same rule applies to user-specified and auto-selected references alike.
 
         self.output_dir = filesnpaths.check_output_directory(self.output_dir, ok_if_exists=False)
 
@@ -1619,27 +1617,125 @@ class GenomeReorienter:
     def select_reference_genome(self):
         """Determine the reference genome whether it is from the user or de novo"""
 
-        if self.reference_name:
+        user_specified = self.reference_name is not None
+
+        if user_specified:
             self.run.info("Reference genome", f"'{self.reference_name}' (specified by the user)")
             self.reference_path = self.genomes[self.reference_name]['path']
+        else:
+            candidate_stats = []
+            for genome_name, entry in self.genomes.items():
+                # `num_contigs` is already in `self.genomes` thanks to `sanity_check`, so there is no
+                # need to go through every FASTA file one more time here just to count sequences.
+                candidate_stats.append((entry['num_contigs'], -self._get_total_length(entry['path']), genome_name, entry['path']))
+
+            candidate_stats.sort()
+            chosen = candidate_stats[0]
+            self.reference_name = chosen[2]
+            self.reference_path = chosen[3]
+            chosen_contigs = chosen[0]
+            chosen_len = -chosen[1]
+            self.run.info("Reference genome", f"'{self.reference_name}' (selected by anvi'o)")
+            self.run.info("Reference contigs", chosen_contigs)
+            self.run.info("Reference length", chosen_len)
+
+        # everything this program does to the reference that involves 'rotations' assumes
+        # that the reference is a complete circular sequence. we can't really be 100% sure
+        # it the sequence is circular, but we can make sure at least some part of it (i.e.,
+        # being a single contig actually holds:
+        self.check_reference_is_single_contig(user_specified)
+
+
+    def check_reference_is_single_contig(self, user_specified):
+        """Make sure the reference genome is a single contig, and complain loudly if it is not.
+
+           This program needs the reference to be a single contig, since everything it does for the
+           user, such as orienting contigs, ordering them, scaffolding them, requires a single continuous
+           coordinate system to work against. Coordinates that come from different contigs of a
+           fragmented reference simply do not form one axis.
+
+           Please note that this is a separate concern from *circularity*. A reference must also be
+           a complete, circular sequence if (and only if) anvi'o is going to ROTATE it, which happens
+           when the reference is auto-selected, or when `--use-dnaa-for-reference-orientation` is
+           used. Rotating a linear sequence or a fragment of a chromosome is obviously meaningless.
+           But a single-contig genomic locus that is not circular at all is a perfectly good reference
+           for someone who only wants to orient/order other contigs against it, and in that case anvi'o
+           will not rotate anything (which is why `--reference` alone never triggers a rotation).
+
+           The only way out of the single-contig requirement is `--use-auto-reference-as-is`, which
+           also skips every rotation step. Even then the user gets a warning, since a multi-contig
+           reference still does not offer that single continuous coordinate system.
+
+        Parameters
+        ==========
+        user_specified : bool
+            Whether the reference genome was set by the user through `--reference`, or was chosen
+            by anvi'o automatically. This only influences which error message the user gets.
+        """
+
+        num_contigs = self.genomes[self.reference_name]['num_contigs']
+
+        if num_contigs == 1:
             return
 
-        candidate_stats = []
-        for genome_name, entry in self.genomes.items():
-            path = entry['path']
-            num_sequences = utils.get_num_sequences_in_fasta(path)
-            total_len = self._get_total_length(path)
-            candidate_stats.append((num_sequences, -total_len, genome_name, path))
+        if self.use_auto_reference_as_is:
+            # the user explicitly asked anvi'o to not tinker with the reference, so there will be no
+            # rotation, and thus nothing biologically meaningless will happen to the reference. but
+            # they still deserve to know what they are getting (and what they are not getting):
+            self.run.warning(f"The reference genome anvi'o selected for you, '{self.reference_name}', is not a single "
+                             f"contig :/ It is composed of {P('contig', num_contigs)}, and normally anvi'o would have "
+                             f"refused to work with it. But since you used the flag `--use-auto-reference-as-is`, anvi'o "
+                             f"will use it but NOT rotate it to any start position (which is exactly what that "
+                             f"flag asks for), so nothing biologically meaningless will be done to it. That said, "
+                             f"please keep the following in mind while you are interpreting the results: (1) the only "
+                             f"thing anvi'o is really doing for you here is putting all your sequences on a consistent "
+                             f"strand, (2) alignment coordinates that come from different contigs of the reference do "
+                             f"NOT form a single continuous axis, so the contig ordering, the output of "
+                             f"`--scaffold-fragmented`, and the 'Start in reference' / 'Start in query' numbers you "
+                             f"will see below should not be trusted, and (3) the trust labels in the final report are "
+                             f"computed on that same shaky basis, so they are much weaker statements than they would "
+                             f"be with a single-contig reference. In an ideal world you would add a single-contig "
+                             f"reference to your fasta-txt file and point anvi'o to it with `--reference`. That "
+                             f"reference does not have to be a complete circular genome, by the way. If you are "
+                             f"working with a genomic region rather than whole chromosomes, a single contig that "
+                             f"covers the locus of interest will do just fine.",
+                             header="YOUR REFERENCE IS NOT A SINGLE CONTIG", lc='yellow')
+            return
 
-        candidate_stats.sort()
-        chosen = candidate_stats[0]
-        self.reference_name = chosen[2]
-        self.reference_path = chosen[3]
-        chosen_contigs = chosen[0]
-        chosen_len = -chosen[1]
-        self.run.info("Reference genome", f"'{self.reference_name}' (selected by anvi'o)")
-        self.run.info("Reference contigs", chosen_contigs)
-        self.run.info("Reference length", chosen_len)
+        if user_specified:
+            raise ConfigError(f"The reference must be a single contig, but the one you chose with `--reference`, "
+                              f"'{self.reference_name}', is composed of {P('contig', num_contigs)} :/ This will "
+                              f"not work as everything this program does for you needs a single, continuous "
+                              f"coordinate system to work against, and coordinates that come from different contigs "
+                              f"of a fragmented reference can't offer that. IS THERE A SOLUTION? There is no "
+                              f"solution that will maek a multi-contig reference work for most applications, but "
+                              f"please look at the online help for this program anyway.")
+
+        genomes_with_a_single_contig = [g for g in self.genomes if self.genomes[g]['num_contigs'] == 1]
+
+        if not len(genomes_with_a_single_contig):
+            raise ConfigError(f"Anvi'o auto-selected '{self.reference_name}' as your reference since it had the fewest "
+                              f"contigs of the bunch, but it still is composed of {P('contig', num_contigs)}. In fact, "
+                              f"not a single one of the {P('entr', len(self.genomes), sfp='ies', sfs='y')} in your "
+                              f"fasta-txt file is a single contig, so there is nothing anvi'o can use here as a "
+                              f"reference :( Two things are going wrong at once here. First, anvi'o needs the reference to be a single "
+                              f"contig, since orienting and ordering contigs requires a single, continuous coordinate "
+                              f"system to work against. Second, when anvi'o auto-selects a reference it also ROTATES it "
+                              f"to a start position that is conserved across your dataset, and rotating a fragment of a "
+                              f"chromosome is a biologically meaningless operation. Your options: (1) add a "
+                              f"single-contig reference to your fasta-txt file and point anvi'o to it with "
+                              f"`--reference` (this can be a complete circular genome if you are working with whole "
+                              f"chromosomes, but it can just as well be a single contig covering a genomic locus of "
+                              f"interest, since anvi'o never rotates a reference you name explicitly), or (2) if all you "
+                              f"want is for everything to end up on the same strand with no rotation whatsoever, use "
+                              f"the flag `--use-auto-reference-as-is` (and please do read what it does first, since the "
+                              f"results will be much more limited, and for that kind of reading, the online help is likely "
+                              f"much more useful here than the program help menu).")
+
+        # if we are here, anvi'o somehow managed to pick a multi-contig reference even though there were
+        # single-contig genomes to choose from. so, if this is happening, someone changed something
+        # somehwere they shouldn't have and we need to take a look:
+        raise ConfigError(f"Something unexpected happened, and anvi'o needs a visit from its programmers :(")
 
 
     def _get_total_length(self, fasta_path):
