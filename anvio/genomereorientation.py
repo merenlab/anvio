@@ -1735,7 +1735,7 @@ class GenomeReorienter:
         # if we are here, anvi'o somehow managed to pick a multi-contig reference even though there were
         # single-contig genomes to choose from. so, if this is happening, someone changed something
         # somehwere they shouldn't have and we need to take a look:
-        raise ConfigError(f"Something unexpected happened, and anvi'o needs a visit from its programmers :(")
+        raise ConfigError("Something unexpected happened, and anvi'o needs a visit from its programmers :(")
 
 
     def _get_total_length(self, fasta_path):
