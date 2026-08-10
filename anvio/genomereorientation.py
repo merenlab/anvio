@@ -367,7 +367,16 @@ class GenomeReorienter:
         # Trust criteria for fragmented genomes
         aligned_pct = (num_aligned / num_total) * 100 if num_total > 0 else 0
 
-        if ref_cov < 50 or aligned_pct < 50:
+        # a contig that maps to both the beginning and the end of the reference overrides every
+        # statistic below it: those describe how well the sequences align, while this one describes
+        # whether the output FASTA file puts them in the right order, which is what this program is
+        # for. See `_find_contigs_spanning_the_reference_axis`
+        contigs_spanning_reference_axis = result_data['contigs_spanning_reference_axis']
+
+        if contigs_spanning_reference_axis:
+            trust_label = "NOT TRUSTWORTHY"
+            trust_color = "red"
+        elif ref_cov < 50 or aligned_pct < 50:
             trust_label = "NOT TRUSTWORTHY"
             trust_color = "red"
         elif ref_cov < 70 or aligned_pct < 80 or avg_ani < 95:
@@ -380,6 +389,9 @@ class GenomeReorienter:
         message = (f"Scaffolded {num_aligned}/{num_total} contigs, "
                    f"ref_coverage={ref_cov:.1f}%, avg_ani={avg_ani:.1f}%")
 
+        if contigs_spanning_reference_axis:
+            message += f", {P('contig', len(contigs_spanning_reference_axis))} spanning the entire reference"
+
         # Report fragmented genome-specific metrics
         self.progress.clear()
         self.run.info("Scaffolding outcome", trust_label, mc=trust_color)
@@ -391,6 +403,9 @@ class GenomeReorienter:
             self.run.info("Circularly permuted contigs rotated", result_data['num_contigs_rotated'], mc="yellow")
         if result_data['num_contigs_split']:
             self.run.info("Contigs cut at reference boundaries", f"{result_data['num_contigs_split']} (into {result_data['num_fragments']} fragments)", mc="yellow")
+        if contigs_spanning_reference_axis:
+            self.run.info("Contigs spanning the entire reference",
+                          ', '.join(entry['contig_id'] for entry in contigs_spanning_reference_axis), mc="red")
         self.run.info("Contigs processed", num_total)
         self.run.info("Contigs aligned", num_aligned)
         self.run.info("Contigs unaligned", result_data['num_contigs_unaligned'])
