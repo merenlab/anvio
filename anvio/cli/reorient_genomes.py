@@ -101,8 +101,34 @@ def get_args():
                                     "simply concatenated in order without gap padding.")
     groupScaffold.add_argument('--min-contig-length', type=int, default=1000,
                                help="Minimum contig length (in bp) to include in scaffolding. Contigs shorter than "
-                                    "this threshold are excluded from alignment and will not appear in output. "
-                                    "Default: %(default)s bp.")
+                                    "this threshold are excluded from alignment and will not appear in output. This "
+                                    "threshold also serves as the smallest fragment anvi'o is willing to create when it "
+                                    "cuts a contig that runs past the ends of the reference, which keeps the handful of "
+                                    "nucleotides `minimap2` routinely soft-clips off the end of a divergent alignment "
+                                    "from being promoted into contigs of their own. Default: %(default)s bp.")
+    groupScaffold.add_argument('--keep-query-contigs-intact', action='store_true',
+                               help="Never cut or rotate a query contig, even when keeping it in one piece misrepresents how it "
+                                    "aligns to the reference. By default anvi'o keeps your contigs intact whenever it "
+                                    "can, but it will cut one into fragments when the contig runs past the beginning or "
+                                    "the end of the reference. This is becasue such a contig will have no single position "
+                                    "on the reference to be placed at, since one part of it belongs to the very start of "
+                                    "the reference coordinates and another part of it to the very end (which is exactly what happens "
+                                    "when your reference and your query genome were circularized at different "
+                                    "positions), or because one of its ends hangs off the reference with too little "
+                                    "reference left over for that sequence to sit on. Anvi'o cuts such contigs, aligns each "
+                                    "fragment on its own merit, and tells you about it. Which means the output FASTA file for a "
+                                    "genome may have MORE contigs than the input FASTA did! If your downstream analyses cannot "
+                                    "tolerate that, or you are doing an analysis that requires your contigs to be kept intact, "
+                                    "then you can use this flag if you promise that you will keep in mind the tradeoff: your "
+                                    "contigs will survive in one piece, and in exchange parts of them will not actually be "
+                                    "aligned to the reference even though the output file will look like they are. This flag "
+                                    "will ALSO suppress the rotation of circularly permuted contigs (contigs an assembler cut "
+                                    "out of a cycle in its assembly graph at an arbitrary point, which anvi'o will recognize "
+                                    "because their two ends are neighbours on the reference and will rotates back into co-linearity). "
+                                    "The cost of preventing this step is that a large part of such a contig will sit in the "
+                                    "wrong place. Long story short, anvi'o will report every contig as they were in the query genome "
+                                    "apart from reverse-complementing them when necessary, and re-ordering them to match the order "
+                                    "of the reference.")
 
     groupViz = parser.add_argument_group('VISUALIZATION',
                                          "By default, the program will generate synteny ribbon plots showing "
