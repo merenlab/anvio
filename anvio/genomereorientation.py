@@ -188,7 +188,7 @@ class GenomeReorienter:
 
             processed += 1
             self.progress.clear()
-            self.run.warning(None, header=f"REORIENTING {genome_name} ({processed} OF {total_to_process} TOTAL)")
+            self.run.section(f"REORIENTING {genome_name} ({processed} OF {total_to_process} TOTAL)")
 
             fasta_path = entry["path"]
             output_path = self._output_path_for(genome_name)
