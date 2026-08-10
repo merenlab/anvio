@@ -351,12 +351,7 @@ class GenomeReorienter:
         self.run.info("Reference coverage by alignment", f"{cov_t:.1f}%")
         self.run.info("Approx ANI to reference", f"{approx_ani:.1f}%", nl_after=1)
 
-        # Show before and after visualizations
-        if not self.skip_visualizing_alignments:
-            self.run.info_single("Before reorientation", nl_after=1)
-            self._plot_synteny_ribbons(paf_initial, genome_name, label="Before reorientation", query_fasta_path=fasta_path)
-            self.run.info_single("After reorientation", nl_before=1, nl_after=1)
-            self._plot_synteny_ribbons(paf_final, genome_name, label="After reorientation", query_fasta_path=output_path, show_legendary_info=True)
+        self._visualize_before_and_after(genome_name, fasta_path, output_path, paf_initial=paf_initial, paf_final=paf_final)
 
         return ReorientationResult(genome_name, "success", message, output_path, trust=trust_label, alignment=best_alignment)
 
@@ -404,27 +399,58 @@ class GenomeReorienter:
         self.run.info("Total gaps", len(result_data['gaps']))
         self.run.info("Total gap size", f"{result_data['total_gap_size']:,} nts", nl_after=1)
 
-        # Generate alignment plots showing before and after reorientation
-        if not self.skip_visualizing_alignments:
-            self.progress.update(f"{genome_name}: Generating alignment plots")
-            try:
-                # Before
-                initial_paf = self._minimap2_align(self.reference_path, fasta_path)
-                if initial_paf:
-                    self.progress.reset()
-                    self.run.info_single("Before reorientation", nl_after=1)
-                    self._plot_synteny_ribbons(initial_paf, genome_name, label="Before reorientation", query_fasta_path=fasta_path)
-
-                # After
-                reoriented_paf = self._minimap2_align(self.reference_path, output_path)
-                if reoriented_paf:
-                    self.progress.reset()
-                    self.run.info_single("After reorientation", nl_before=1, nl_after=1)
-                    self._plot_synteny_ribbons(reoriented_paf, genome_name, label="After reorientation", query_fasta_path=output_path, show_legendary_info=True)
-            except Exception as e:
-                self.log_run.info_single(f"Could not generate alignment plots: {e}", level=2)
+        self._visualize_before_and_after(genome_name, fasta_path, output_path)
 
         return ReorientationResult(genome_name, "success", message, output_path, trust=trust_label, alignment=None)
+
+
+    def _visualize_before_and_after(self, genome_name, fasta_path, output_path, paf_initial=None, paf_final=None):
+        """Draws the two synteny plots that show a genome as it was, and as it came out of anvi'o.
+
+        Parameters
+        ==========
+        genome_name : str
+            Name of the query genome, used for labels.
+        fasta_path : str
+            Path to the genome as the user provided it.
+        output_path : str
+            Path to the reoriented genome anvi'o just wrote.
+        paf_initial : list
+            `PafRecord` objects from aligning `fasta_path` to the reference. Computed here when it
+            is not passed (which is the case for fragmented genomes, since those are put together
+            contig by contig and never aligned as a whole along the way).
+        paf_final : list
+            `PafRecord` objects from aligning `output_path` to the reference. Computed here when it
+            is not passed.
+        """
+        if self.skip_visualizing_alignments:
+            return
+
+        self.progress.update(f"{genome_name}: Generating alignment plots")
+
+        try:
+            if paf_initial is None:
+                paf_initial = self._minimap2_align(self.reference_path, fasta_path)
+
+            if paf_final is None:
+                paf_final = self._minimap2_align(self.reference_path, output_path)
+
+            # please note that a genome is plotted even when nothing in it aligned to the reference,
+            # since a plot of two tracks with no ribbons between them is the clearest way to say so.
+            # the legend, in contrast, goes under the second plot only, since it describes both.
+            plots = [("Before reorientation", paf_initial, fasta_path, False),
+                     ("After reorientation", paf_final, output_path, True)]
+
+            for label, recs, path, is_last_plot in plots:
+                self.progress.reset()
+                self.run.info_single(label, nl_before=1 if is_last_plot else 0, nl_after=1)
+                self._plot_synteny_ribbons(recs, genome_name, label=label, query_fasta_path=path, show_legendary_info=is_last_plot)
+        except Exception as e:
+            self.progress.reset()
+            self.run.warning(f"Anvi'o could not draw the alignment plots for '{genome_name}' :/ This has no bearing on "
+                             f"the reoriented FASTA file itself, which is where it should be, but it does mean you will "
+                             f"have to judge this genome by its numbers alone. This is what happened, in case it makes "
+                             f"any sense to you: \"{e}\".")
 
 
     def _process_circular(self, query_fa, output_path, genome_name):
@@ -1585,6 +1611,57 @@ class GenomeReorienter:
         return offsets, max(cursor - gap, 0)
 
 
+    def _layout_two_genomes_on_plot_axes(self, ref_contigs, query_contigs, num_columns):
+        """Works out where every contig of both genomes goes on the x axis of a synteny plot.
+
+           The reference and the query each get their own axis, but the two axes must use the same
+           gap between contigs, or a boundary would look wider on one track than on the other for
+           no reason.
+
+        Parameters
+        ==========
+        ref_contigs, query_contigs : list
+            Lists of (name, length) tuples, in the order they should appear on their axis.
+        num_columns : int
+            How many characters wide the plot area is going to be.
+
+        Returns
+        =======
+        ref_layout, query_layout : tuple
+            An (offsets, span) tuple each, as returned by `_layout_contigs_on_a_single_axis`.
+        contig_boundaries_are_resolvable : bool
+            False when there are so many contigs that the gaps had to be made narrower than what it
+            takes to tell every single one of them apart on a character grid.
+        """
+        # A gap has to be a few characters wide before anvi'o can promise that at least one of them
+        # comes out completely blank: a boundary that is only one character wide is easily eaten by
+        # the rounding that happens on either side of it when the two contigs it separates are drawn
+        # onto the character grid. How wide those characters are in nucleotides depends on the total
+        # span of the axis, which in turn depends on how much of it the gaps themselves take up, and
+        # solving that gives the first expression below. A genome in many pieces would spend most of
+        # the axis on empty space that way, so anvi'o will not let all the gaps together take up
+        # more than `max_fraction_of_axis_for_gaps` of it, and admits in that case that not every
+        # boundary can be told apart.
+        columns_per_gap = 3
+        max_fraction_of_axis_for_gaps = 0.3
+        num_gaps = max(len(ref_contigs), len(query_contigs)) - 1
+        largest_genome = max(sum(length for _, length in contigs) for contigs in (ref_contigs, query_contigs))
+
+        if num_gaps <= 0:
+            gap = 0
+            contig_boundaries_are_resolvable = True
+        elif columns_per_gap * num_gaps <= max_fraction_of_axis_for_gaps * num_columns:
+            gap = int(columns_per_gap * largest_genome / (num_columns - columns_per_gap * num_gaps))
+            contig_boundaries_are_resolvable = True
+        else:
+            gap = int(largest_genome * max_fraction_of_axis_for_gaps / ((1 - max_fraction_of_axis_for_gaps) * num_gaps))
+            contig_boundaries_are_resolvable = False
+
+        return (self._layout_contigs_on_a_single_axis(ref_contigs, gap),
+                self._layout_contigs_on_a_single_axis(query_contigs, gap),
+                contig_boundaries_are_resolvable)
+
+
     def _merge_intervals(self, intervals, min_gap=0):
         """Merges a list of (start, stop) tuples into a minimal list of non-overlapping ones.
 
@@ -1675,31 +1752,7 @@ class GenomeReorienter:
         effective_plot_width = min(plot_width, terminal.get_terminal_width())
         num_columns = max(effective_plot_width - max(len(f"{genome_name} [Q]"), len(f"{self.reference_name} [R]")) - 2, 10)
 
-        # A gap has to be a few characters wide before anvi'o can promise that at least one of them
-        # comes out completely blank: a boundary that is only one character wide can land halfway
-        # into a character and render as a half-filled block instead of empty space. How wide those
-        # characters are in nucleotides depends on the total span of the axis, which in turn depends
-        # on how much of it the gaps themselves take up, and solving that gives the first expression
-        # below. A genome in many pieces would spend most of the axis on empty space that way, so
-        # anvi'o will not let all the gaps together take up more than `max_fraction_of_axis_for_gaps`
-        # of it, and admits in that case that not every boundary can be told apart.
-        columns_per_gap = 3
-        max_fraction_of_axis_for_gaps = 0.3
-        num_gaps = max(len(ref_contigs), len(query_contigs)) - 1
-        largest_genome = max(ref_total, query_total)
-
-        if num_gaps <= 0:
-            gap = 0
-            contig_boundaries_are_resolvable = True
-        elif columns_per_gap * num_gaps <= max_fraction_of_axis_for_gaps * num_columns:
-            gap = int(columns_per_gap * largest_genome / (num_columns - columns_per_gap * num_gaps))
-            contig_boundaries_are_resolvable = True
-        else:
-            gap = int(largest_genome * max_fraction_of_axis_for_gaps / ((1 - max_fraction_of_axis_for_gaps) * num_gaps))
-            contig_boundaries_are_resolvable = False
-
-        ref_offsets, ref_span = self._layout_contigs_on_a_single_axis(ref_contigs, gap)
-        query_offsets, query_span = self._layout_contigs_on_a_single_axis(query_contigs, gap)
+        (ref_offsets, ref_span), (query_offsets, query_span), contig_boundaries_are_resolvable = self._layout_two_genomes_on_plot_axes(ref_contigs, query_contigs, num_columns)
 
         # anything narrower than a single character cannot be drawn honestly, so gaps that small are
         # closed up when drawing rather than being rendered as a break in a continuous contig. this
@@ -1732,6 +1785,23 @@ class GenomeReorienter:
         # as a contig boundary.
         ribbon_margin = 1.5 * (ref_y - qry_y) / max(plot_height - 2, 4)
 
+        # The two tracks are drawn with a half-block character handed to plotext as a literal marker
+        # rather than through one of its named high-definition markers, and that is a deliberate
+        # choice rather than a cosmetic one. Given a high-definition marker, plotext draws onto a
+        # canvas twice as fine as the character grid and then writes the result into that grid one
+        # character at a time, so a segment that ends halfway into a character yields a half-filled
+        # character which *replaces* whatever was in that character before, blanking the other half
+        # of it. Since a track is painted in layers (gray first, then the stretches that aligned
+        # over it), every single color change along a track would leave a sliver of empty space
+        # behind that way -- and empty space on a track is supposed to mean a contig boundary and
+        # nothing else. A literal marker is exempt from all that, since plotext simply puts it in
+        # the character it lands in: each character is either entirely painted or entirely empty,
+        # and the only cost is that the boundary between two colors rounds to the nearest character,
+        # which is as honest as this resolution gets anyway. Which half of the character is filled
+        # is what keeps each track visually attached to the side of the plot its label is on.
+        ref_track_marker = '▀'
+        query_track_marker = '▄'
+
         # Draw alignment ribbons connecting reference to query first
         ribbons = sorted(primaries, key=lambda r: r.aligned_bases, reverse=True)
         num_ribbons_omitted = max(len(ribbons) - max_ribbons_to_draw, 0)
@@ -1760,32 +1830,21 @@ class GenomeReorienter:
             # Draw right edge of ribbon (alignment end) - use braille for vertical lines
             plt.plot([ref_end, qry_end], [ref_y - ribbon_margin, qry_y + ribbon_margin], color=color, marker='braille')
 
-            # Draw top and bottom edges of the alignment block - keep solid for horizontal bars
-            plt.plot([ref_start, ref_end], [ref_y, ref_y], color=color)
-            plt.plot([qry_start, qry_end], [qry_y, qry_y], color=color)
+        # Draw the two genome tracks AFTER the alignment ribbons so they appear continuous on top.
+        # Each contig is first laid down in gray (as in, 'nothing here is supported by an
+        # alignment'), and the stretches that did align are then painted over it. On the query
+        # track the reverse-strand stretches go last so they win wherever the two strands overlap.
+        tracks = [(ref_y, ref_track_marker, ref_contigs, ref_offsets, [('white', ref_aligned)]),
+                  (qry_y, query_track_marker, query_contigs, query_offsets, [('white', query_aligned['+']), ('red', query_aligned['-'])])]
 
-        # Draw genome tracks AFTER alignment ribbons so they appear continuous on top. Each contig
-        # is first drawn in gray (as in, 'nothing here is supported by an alignment'), and then the
-        # stretches that did align are painted over it.
-        for name, length in ref_contigs:
-            offset = ref_offsets[name]
-            plt.plot([offset, offset + length], [ref_y, ref_y], color='gray')
+        for y, marker, contigs, offsets, layers in tracks:
+            for name, length in contigs:
+                plt.plot([offsets[name], offsets[name] + length], [y, y], color='gray', marker=marker)
 
-        for name, intervals in ref_aligned.items():
-            offset = ref_offsets[name]
-            for start, stop in self._merge_intervals(intervals, min_gap=min_gap_to_draw):
-                plt.plot([start + offset, stop + offset], [ref_y, ref_y], color='white')
-
-        for name, length in query_contigs:
-            offset = query_offsets[name]
-            plt.plot([offset, offset + length], [qry_y, qry_y], color='gray')
-
-        # reverse-strand stretches are painted last so they win wherever the two overlap
-        for strand, segment_color in (('+', 'white'), ('-', 'red')):
-            for name, intervals in query_aligned[strand].items():
-                offset = query_offsets[name]
-                for start, stop in self._merge_intervals(intervals, min_gap=min_gap_to_draw):
-                    plt.plot([start + offset, stop + offset], [qry_y, qry_y], color=segment_color)
+            for segment_color, aligned in layers:
+                for name, intervals in aligned.items():
+                    for start, stop in self._merge_intervals(intervals, min_gap=min_gap_to_draw):
+                        plt.plot([start + offsets[name], stop + offsets[name]], [y, y], color=segment_color, marker=marker)
 
         # Format the plot. Please note that plotext silently drops a title that is wider than the
         # plot area, so this one is kept short and the legend is printed separately below.
