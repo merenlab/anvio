@@ -3347,7 +3347,7 @@ class PanSuperclass(object):
                                                                       min_combined_homogeneity_index,
                                                                       max_combined_homogeneity_index)
 
-        # this is where we add the items in the resulting filtered dict into the items additonal data
+        # this is where we add the items in the resulting filtered dict into the items additional data
         # table:
         if add_into_items_additional_data_table:
             data_key = add_into_items_additional_data_table
