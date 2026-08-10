@@ -118,6 +118,17 @@ SUMMARY_PRESENCE_PHRASE = ' and '.join(
     ) if part
 )
 
+# How to ask for each presence colormap scheme, keyed by the scheme, for the inputs whose scheme
+# '--presence-colormap-scheme' chooses: contigs databases, pan genomes, and groups of either. A
+# draw-kegg-pathways text layer carries its own version of this map instead ('_build_txt_model'),
+# since its scheme comes from the sample or group summary that colors the 'unified' map, whose
+# presence names are the keys of 'SUMMARY_PRESENCE_SCHEMES' rather than the schemes themselves. The
+# option that applies to one of these inputs is refused for the other, so a message naming the
+# option that changes a layer's scheme has to take the wording from the layer.
+PRESENCE_SCHEME_OPTIONS = {
+    scheme: f'--presence-colormap-scheme {scheme}' for scheme in SUMMARY_PRESENCE_SCHEMES.values()
+}
+
 # Subdirectories of the output directory, one per role a map file can have: the map pooling every
 # source, the map of one individual source, and the grid comparing them. Every name directly in the
 # output directory is therefore anvi'o's own, while the names that come from user data — samples,
@@ -1184,6 +1195,12 @@ class Mapper:
             'quantitative' if unified_kind == 'value' else 'membership'
         )
 
+        # The option that chose the 'unified' map's presence scheme, so that a message about that
+        # scheme names the option that can change it rather than the one this input refuses: the
+        # group summary colors the 'unified' map of a grouped run, and the sample summary colors it
+        # otherwise, exactly as 'unified_scheme' was taken above.
+        summary_flag = f"--{element_type}-{'group' if grouped else 'sample'}-summary"
+
         model = {
             **common,
             'unified_mode': unified_mode,
@@ -1194,6 +1211,10 @@ class Mapper:
             'colormap': True if colormap is None else colormap,
             'colormap_limits': colormap_limits,
             'colormap_scheme': unified_scheme,
+            'scheme_options': {
+                scheme: f'{summary_flag} {name}'
+                for name, scheme in SUMMARY_PRESENCE_SCHEMES.items()
+            },
             'reverse_overlay': reverse_overlay,
             'category_values': None
         }
@@ -2557,9 +2578,11 @@ class Mapper:
             'reverse_overlay', 'unified_values', 'category_values' (or None), 'aggregate',
             'colorbar_label'; membership/static/original -> 'membership', 'source_accessions',
             'color_hexcode', and (membership) 'colormap'/'colormap_limits'/'colormap_scheme'/
-            'reverse_overlay'; single -> 'accessions', 'color_hexcode'. A layer that is quantitative
-            in one context and membership in the other carries the keys of both, plus 'accessions'
-            for finding the entries whose values set the ranges.
+            'scheme_options'/'reverse_overlay'; single -> 'accessions', 'color_hexcode'.
+            'scheme_options' names the option that chooses this layer's presence scheme, which
+            differs by input ('PRESENCE_SCHEME_OPTIONS'). A layer that is quantitative in one
+            context and membership in the other carries the keys of both, plus 'accessions' for
+            finding the entries whose values set the ranges.
 
         output_dir : str
             Path to the output directory in which pathway map and colorbar PDF files are drawn.
@@ -3344,6 +3367,9 @@ class Mapper:
         """
         colormap = layer.get('colormap', True)
         colormap_scheme = layer.get('colormap_scheme')
+        # A message that tells the reader how to ask for a scheme has to name the option this
+        # layer's input actually takes, since the option the other input takes is refused here.
+        scheme_options = layer.get('scheme_options', PRESENCE_SCHEME_OPTIONS)
         reverse_overlay = layer.get('reverse_overlay', False)
         # Only the count schemes have a scale that can stop early: coloring by membership needs a
         # color for every combination of the categories however few of them the data reaches.
@@ -3393,10 +3419,10 @@ class Mapper:
             raise ConfigError(
                 f"Coloring the {layer['element_type']} layer by membership needs a distinct color "
                 f"for every combination of the {len(categories)} categories, of which there are "
-                f"{combos_shown}, and its colormap holds only {cmap.N}. Color by count instead, "
-                f"which needs just {count_scale_top} colors, or give a colormap with more colors. "
-                f"Note that no color scale can distinguish combinations of more than a handful of "
-                f"categories."
+                f"{combos_shown}, and its colormap holds only {cmap.N}. Color by count instead "
+                f"with '{scheme_options['by_count']}', which needs just {count_scale_top} colors, "
+                f"or give a colormap with more colors. Note that no color scale can distinguish "
+                f"combinations of more than a handful of categories."
             )
 
         def _count_colors(in_order: bool) -> List[Tuple[str, float]]:
@@ -3462,12 +3488,11 @@ class Mapper:
                 f"be told apart, so that count is drawn on a CONTINUOUS color scale rather than in "
                 f"discrete bands of one color per count. The colorbar is a gradient running from a "
                 f"count of 1 to a count of {count_scale_top}, on which a color reads as a position "
-                f"along that range rather than as an exact count. Ask "
-                f"for this scale explicitly with a sample or group summary of 'count_continuous' "
-                f"(or with '--presence-colormap-scheme by_count_continuous'), or ask for 'count' "
-                f"to insist on the discrete bands and be told when they cannot be drawn. Each "
-                f"layer decides this for itself, so with a reaction layer and a compound layer you "
-                f"may see this twice, once per layer.",
+                f"along that range rather than as an exact count. Ask for this scale explicitly "
+                f"with '{scheme_options['by_count_continuous']}', or ask for "
+                f"'{scheme_options['by_count']}' to insist on the discrete bands and be told when "
+                f"they cannot be drawn. Each layer decides this for itself, so with a reaction "
+                f"layer and a compound layer you may see this twice, once per layer.",
                 progress=self.progress
             )
         if scheme == 'by_count_continuous' and qualitative:
@@ -3484,18 +3509,18 @@ class Mapper:
                 advice = (
                     f"Coloring by membership needs a distinct color for every combination of the "
                     f"{len(categories)} categories, which is {needed} of them, and the colormap "
-                    f"supplied only {distinct}. Color by count instead, which needs just "
-                    f"{count_scale_top} colors, or give a colormap with more distinct colors."
+                    f"supplied only {distinct}. Color by count instead with "
+                    f"'{scheme_options['by_count']}', which needs just {count_scale_top} colors, "
+                    f"or give a colormap with more distinct colors."
                 )
             else:
                 advice = (
                     f"Coloring by count in discrete bands needs a distinct color for each count "
                     f"up to {needed}, and the colormap supplied only {distinct}. Color by "
                     f"count on a continuous scale instead, which needs no distinct color per count "
-                    f"and is asked for with a sample or group summary of 'count_continuous' (or "
-                    f"with '--presence-colormap-scheme by_count_continuous'); alternatively, "
-                    f"reduce the number of categories, for example by grouping them, or give a "
-                    f"colormap with more distinct colors."
+                    f"and is asked for with '{scheme_options['by_count_continuous']}'; "
+                    f"alternatively, reduce the number of categories, for example by grouping "
+                    f"them, or give a colormap with more distinct colors."
                 )
             raise ConfigError(
                 f"The colors of the {layer['element_type']} layer of this map could not be "
@@ -3578,7 +3603,9 @@ class Mapper:
                 mode = 'original' if layer['color_hexcode'] == 'original' else 'static'
             else:
                 mode = 'membership'
-            models.append({**layer, 'mode': mode})
+            # These inputs take their presence scheme from '--presence-colormap-scheme', which is
+            # what a message about the scheme should name for them.
+            models.append({**layer, 'mode': mode, 'scheme_options': PRESENCE_SCHEME_OPTIONS})
 
         grouped_membership = None
         if grouped:
