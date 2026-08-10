@@ -1541,62 +1541,182 @@ class GenomeReorienter:
         return None
 
 
-    def _plot_synteny_ribbons(self, recs, genome_name, label):
-        """Plot synteny-style ribbons showing alignment blocks between reference and query."""
+    def _get_contigs_in_fasta(self, fasta_path):
+        """Returns an ordered list of (name, length) tuples for every sequence in a FASTA file.
+
+           Names are truncated at the first whitespace character so they match the query and
+           target names `minimap2` reports in its PAF output.
+        """
+        contigs = []
+        fasta = utils.u.SequenceSource(fasta_path)
+        while next(fasta):
+            contigs.append((fasta.id.split()[0], len(fasta.seq)))
+        fasta.close()
+        return contigs
+
+
+    def _layout_contigs_on_a_single_axis(self, contigs, gap):
+        """Place contigs one after another on a single synthetic axis for plotting.
+
+           Contigs are laid out in the order in which they occur in their FASTA file (which, for a
+           reoriented output file, is already the reference order), separated by `gap` nts of empty
+           space so it is clear where one contig ends and the next one begins.
+
+        Parameters
+        ==========
+        contigs : list
+            List of (name, length) tuples, in the order they should appear on the axis.
+        gap : int
+            Number of nucleotides of empty space to leave between two consecutive contigs.
+
+        Returns
+        =======
+        offsets : dict
+            Maps each contig name to the x coordinate of its first nucleotide.
+        span : int
+            Total width of the resulting layout.
+        """
+        offsets, cursor = {}, 0
+
+        for name, length in contigs:
+            offsets[name] = cursor
+            cursor += length + gap
+
+        return offsets, max(cursor - gap, 0)
+
+
+    def _merge_intervals(self, intervals, min_gap=0):
+        """Merges a list of (start, stop) tuples into a minimal list of non-overlapping ones.
+
+           Intervals that are separated by `min_gap` nucleotides or fewer are merged together as
+           well. Plotting code uses this to avoid drawing gaps that are narrower than a single
+           character on the terminal: such a gap cannot be drawn honestly, and if it is drawn
+           anyway it shows up as a break in a track that is in fact continuous, which is
+           indistinguishable from the break that marks the end of a contig.
+
+           Please note that `min_gap` must be left at 0 when these intervals are used to *count*
+           covered nucleotides, since merging across a gap would count that gap as covered.
+        """
+        if not intervals:
+            return []
+
+        merged = []
+        for start, stop in sorted(intervals):
+            if merged and start - merged[-1][1] <= min_gap:
+                merged[-1][1] = max(merged[-1][1], stop)
+            else:
+                merged.append([start, stop])
+
+        return [(start, stop) for start, stop in merged]
+
+
+    def _plot_synteny_ribbons(self, recs, genome_name, label, query_fasta_path=None, show_legendary_info=False):
+        """Plot synteny-style ribbons showing alignment blocks between reference and query.
+
+           Both genomes are drawn in full: every contig of the reference and every contig of the
+           query gets a segment on its track whether or not it aligned to anything, and stretches
+           that no alignment supports are drawn in gray. This way sequence that has no counterpart
+           in the other genome (an entire contig that did not align, or the part of a contig that
+           hangs off the reference) shows up rather than being silently omitted from the picture.
+
+        Parameters
+        ==========
+        recs : list
+            `PafRecord` objects from aligning `query_fasta_path` to `self.reference_path`.
+        genome_name : str
+            Name of the query genome, used for labels.
+        label : str
+            Prefix for the plot title, i.e., 'Before reorientation' or 'After reorientation'.
+        query_fasta_path : str
+            Path to the query FASTA file these `recs` came from. Without it there is no way to know
+            about contigs that did not align at all, and the function falls back to plotting only
+            those contigs that occur in `recs`.
+        """
         try:
             import plotext as plt
         except ImportError:
             self.run.warning(f"plotext is not available; skipping alignment plot for '{genome_name}'.")
             return
 
+        # this is the maximum number of ribbons anvi'o will draw. it only limits ribbons, and never
+        # the tracks, so a contig will never look unaligned merely because it did not make the cut.
+        max_ribbons_to_draw = 100
+
         primaries = [r for r in recs if r.is_primary]
-        if not primaries:
-            self.run.warning(f"No primary alignments to plot for '{genome_name}'.")
+
+        # learn about every contig in both genomes, so the ones that did not align are drawn, too
+        ref_contigs = self._get_contigs_in_fasta(self.reference_path)
+
+        if query_fasta_path:
+            query_contigs = self._get_contigs_in_fasta(query_fasta_path)
+        else:
+            # we were not told which FASTA file these alignments came from, so the best we can do
+            # is to show the contigs that occur in the alignments themselves
+            query_contigs = list(dict((r.qname, r.qlen) for r in primaries).items())
+
+        if not ref_contigs or not query_contigs:
+            self.run.warning(f"There is nothing to plot for '{genome_name}' :/")
             return
 
-        # Sort by alignment size and take top alignments for clarity
-        primaries = sorted(primaries, key=lambda r: r.aligned_bases, reverse=True)[:30]
-
-        ref_len = primaries[0].tlen
-
-        # Check if we have multiple contigs (different qnames)
-        unique_qnames = list(set([r.qname for r in primaries]))
-        has_multiple_contigs = len(unique_qnames) > 1
-
-        # Calculate offsets for multi-contig genomes to avoid overlap
-        contig_offsets = {}
-        total_query_span = 0
-
-        if has_multiple_contigs:
-            # Group records by contig and calculate offsets
-            contig_groups = {}
-            for r in primaries:
-                if r.qname not in contig_groups:
-                    contig_groups[r.qname] = []
-                contig_groups[r.qname].append(r)
-
-            # Sort contigs by their position on reference (for better visual flow)
-            sorted_contigs = sorted(contig_groups.keys(),
-                                   key=lambda qn: min(r.tstart for r in contig_groups[qn]))
-
-            current_offset = 0
-            gap_size = 50000  # 50kb gap between contigs for visualization
-
-            for qname in sorted_contigs:
-                contig_offsets[qname] = current_offset
-                contig_len = contig_groups[qname][0].qlen
-                current_offset += contig_len + gap_size
-
-            total_query_span = current_offset - gap_size  # Remove last gap
-        else:
-            # Single contig case
-            qry_len = primaries[0].qlen
-            total_query_span = qry_len
-            contig_offsets[primaries[0].qname] = 0
+        ref_total = sum(length for _, length in ref_contigs)
+        query_total = sum(length for _, length in query_contigs)
 
         # Get plot dimensions - use user-specified or defaults
         plot_width = self.plot_width if self.plot_width else terminal.get_terminal_width()
         plot_height = self.plot_height
+
+        # An empty stretch on a track should mean one thing only: 'this is where one contig ends
+        # and the next one begins'. For that to hold, the gap anvi'o leaves between two contigs has
+        # to be wide enough to survive being squeezed into a terminal character grid. Below is an
+        # estimate of how many characters wide the plot area will end up being once plotext has
+        # taken its share for the axis labels and the frame. Please note that plotext silently
+        # caps a plot at the width of the terminal, so asking for a wider one through `--plot-width`
+        # than the terminal can show does not actually make the plot any wider.
+        effective_plot_width = min(plot_width, terminal.get_terminal_width())
+        num_columns = max(effective_plot_width - max(len(f"{genome_name} [Q]"), len(f"{self.reference_name} [R]")) - 2, 10)
+
+        # A gap has to be a few characters wide before anvi'o can promise that at least one of them
+        # comes out completely blank: a boundary that is only one character wide can land halfway
+        # into a character and render as a half-filled block instead of empty space. How wide those
+        # characters are in nucleotides depends on the total span of the axis, which in turn depends
+        # on how much of it the gaps themselves take up, and solving that gives the first expression
+        # below. A genome in many pieces would spend most of the axis on empty space that way, so
+        # anvi'o will not let all the gaps together take up more than `max_fraction_of_axis_for_gaps`
+        # of it, and admits in that case that not every boundary can be told apart.
+        columns_per_gap = 3
+        max_fraction_of_axis_for_gaps = 0.3
+        num_gaps = max(len(ref_contigs), len(query_contigs)) - 1
+        largest_genome = max(ref_total, query_total)
+
+        if num_gaps <= 0:
+            gap = 0
+            contig_boundaries_are_resolvable = True
+        elif columns_per_gap * num_gaps <= max_fraction_of_axis_for_gaps * num_columns:
+            gap = int(columns_per_gap * largest_genome / (num_columns - columns_per_gap * num_gaps))
+            contig_boundaries_are_resolvable = True
+        else:
+            gap = int(largest_genome * max_fraction_of_axis_for_gaps / ((1 - max_fraction_of_axis_for_gaps) * num_gaps))
+            contig_boundaries_are_resolvable = False
+
+        ref_offsets, ref_span = self._layout_contigs_on_a_single_axis(ref_contigs, gap)
+        query_offsets, query_span = self._layout_contigs_on_a_single_axis(query_contigs, gap)
+
+        # anything narrower than a single character cannot be drawn honestly, so gaps that small are
+        # closed up when drawing rather than being rendered as a break in a continuous contig. this
+        # is what keeps, say, the 20 nt gaps between the alignments of 40 different contigs from
+        # shredding the track of a reference that is a single, continuous sequence.
+        min_gap_to_draw = int(max(ref_span, query_span) / num_columns)
+
+        # only keep alignments we can actually place on both axes
+        primaries = [r for r in primaries if r.qname in query_offsets and r.tname in ref_offsets]
+
+        # figure out which parts of each contig are supported by an alignment, and on which strand,
+        # so aligned and unaligned stretches can be painted differently
+        query_aligned = {'+': {}, '-': {}}
+        ref_aligned = {}
+        for r in primaries:
+            query_aligned[r.strand].setdefault(r.qname, []).append((r.qstart, r.qend))
+            ref_aligned.setdefault(r.tname, []).append((r.tstart, r.tend))
 
         plt.clf()
         plt.plotsize(plot_width, plot_height)
@@ -1606,13 +1726,22 @@ class GenomeReorienter:
         ref_y = 2.0
         qry_y = 0.0
 
+        # The diagonal edges of a ribbon stop short of the two tracks by this much. Without it a
+        # steep diagonal lands on the very row a track lives on, and paints characters into the gap
+        # between two contigs, which is precisely the empty space the reader is meant to be reading
+        # as a contig boundary.
+        ribbon_margin = 1.5 * (ref_y - qry_y) / max(plot_height - 2, 4)
+
         # Draw alignment ribbons connecting reference to query first
-        for r in primaries:
-            ref_start = r.tstart
-            ref_end = r.tend
+        ribbons = sorted(primaries, key=lambda r: r.aligned_bases, reverse=True)
+        num_ribbons_omitted = max(len(ribbons) - max_ribbons_to_draw, 0)
+
+        for r in ribbons[:max_ribbons_to_draw]:
+            ref_start = r.tstart + ref_offsets[r.tname]
+            ref_end = r.tend + ref_offsets[r.tname]
 
             # Apply offset for this contig
-            offset = contig_offsets[r.qname]
+            offset = query_offsets[r.qname]
 
             if r.strand == '+':
                 # Forward strand: connect in same direction
@@ -1626,68 +1755,93 @@ class GenomeReorienter:
                 color = 'red'
 
             # Draw left edge of ribbon (alignment start) - use braille for vertical lines
-            plt.plot([ref_start, qry_start], [ref_y, qry_y], color=color, marker='braille')
+            plt.plot([ref_start, qry_start], [ref_y - ribbon_margin, qry_y + ribbon_margin], color=color, marker='braille')
 
             # Draw right edge of ribbon (alignment end) - use braille for vertical lines
-            plt.plot([ref_end, qry_end], [ref_y, qry_y], color=color, marker='braille')
+            plt.plot([ref_end, qry_end], [ref_y - ribbon_margin, qry_y + ribbon_margin], color=color, marker='braille')
 
             # Draw top and bottom edges of the alignment block - keep solid for horizontal bars
             plt.plot([ref_start, ref_end], [ref_y, ref_y], color=color)
             plt.plot([qry_start, qry_end], [qry_y, qry_y], color=color)
 
-        # Draw genome lines AFTER alignment ribbons so they appear continuous on top
-        # Draw reference genome line (top) - always continuous
-        plt.plot([0, ref_len], [ref_y, ref_y], color='white')
+        # Draw genome tracks AFTER alignment ribbons so they appear continuous on top. Each contig
+        # is first drawn in gray (as in, 'nothing here is supported by an alignment'), and then the
+        # stretches that did align are painted over it.
+        for name, length in ref_contigs:
+            offset = ref_offsets[name]
+            plt.plot([offset, offset + length], [ref_y, ref_y], color='gray')
 
-        # Draw query genome line (bottom) - color-coded by contig type
-        if has_multiple_contigs:
-            # Draw individual segments for each contig with color coding
-            contig_groups = {}
-            contig_strands = {}
-            for r in primaries:
-                if r.qname not in contig_groups:
-                    contig_groups[r.qname] = r.qlen
-                    contig_strands[r.qname] = r.strand
+        for name, intervals in ref_aligned.items():
+            offset = ref_offsets[name]
+            for start, stop in self._merge_intervals(intervals, min_gap=min_gap_to_draw):
+                plt.plot([start + offset, stop + offset], [ref_y, ref_y], color='white')
 
-            for qname, qlen in contig_groups.items():
-                offset = contig_offsets[qname]
+        for name, length in query_contigs:
+            offset = query_offsets[name]
+            plt.plot([offset, offset + length], [qry_y, qry_y], color='gray')
 
-                # Determine color based on contig type
-                if '_wrapPart' in qname:
-                    # Wrapped-around contigs are green
-                    segment_color = 'green'
-                elif contig_strands[qname] == '-':
-                    # Reverse-complemented contigs are red
-                    segment_color = 'red'
-                else:
-                    # Forward strand, non-wrapped contigs are white
-                    segment_color = 'white'
+        # reverse-strand stretches are painted last so they win wherever the two overlap
+        for strand, segment_color in (('+', 'white'), ('-', 'red')):
+            for name, intervals in query_aligned[strand].items():
+                offset = query_offsets[name]
+                for start, stop in self._merge_intervals(intervals, min_gap=min_gap_to_draw):
+                    plt.plot([start + offset, stop + offset], [qry_y, qry_y], color=segment_color)
 
-                plt.plot([offset, offset + qlen], [qry_y, qry_y], color=segment_color)
-        else:
-            # Single contig - determine color
-            strand = primaries[0].strand
-            segment_color = 'red' if strand == '-' else 'white'
-            plt.plot([0, total_query_span], [qry_y, qry_y], color=segment_color)
-
-        # Format the plot
-        contig_info = f" ({len(unique_qnames)} contigs)" if has_multiple_contigs else ""
-        plt.title(f"{label}: {genome_name}{contig_info} ↔ {self.reference_name} (green=forward, red=reverse)")
+        # Format the plot. Please note that plotext silently drops a title that is wider than the
+        # plot area, so this one is kept short and the legend is printed separately below.
+        plt.title(f"{label}: {genome_name} [Q] vs {self.reference_name} [R]")
         plt.xlabel("Genome position (nts)")
-        plt.ylim(-0.1, 2.1)
+
+        # the two tracks sit exactly on the limits of the y axis on purpose: with any padding here
+        # plotext puts the tick labels and the tracks on different rows at some plot heights, and
+        # then the labels point at empty space instead of at the genomes they name
+        plt.ylim(qry_y, ref_y)
 
         # Set y-axis labels
         plt.yticks([0, 2], [f"{genome_name} [Q]", f"{self.reference_name} [R]"])
 
         # Set x-axis with human-readable numbers
         try:
-            max_len = max(ref_len, total_query_span)
+            max_len = max(ref_span, query_span)
             x_ticks = [0, max_len * 0.25, max_len * 0.5, max_len * 0.75, max_len]
             plt.xticks(x_ticks, [utils.human_readable_number(x, decimals=1) for x in x_ticks])
         except Exception:
             pass
 
         plt.show()
+
+        # a caption for the plot above, since a lot of what makes it readable (what gray means,
+        # how much of each genome the alignments actually cover) can't be shown in the plot itself
+        ref_covered = sum(sum(stop - start for start, stop in self._merge_intervals(intervals)) for intervals in ref_aligned.values())
+
+        query_covered_per_contig = {}
+        for name, _ in query_contigs:
+            intervals = query_aligned['+'].get(name, []) + query_aligned['-'].get(name, [])
+            query_covered_per_contig[name] = sum(stop - start for start, stop in self._merge_intervals(intervals))
+
+        query_covered = sum(query_covered_per_contig.values())
+        num_query_contigs_unaligned = len([name for name, _ in query_contigs if not query_covered_per_contig[name]])
+
+        if show_legendary_info:
+            self.run.info_single(f"[REF] {self.reference_name} :: {P('contig', len(ref_contigs))} / {ref_total:,} nts, of which "
+                                 f"{ref_covered / ref_total * 100:.1f}% is covered by these alignments. /// "
+                                 f"[QUERY] {genome_name} :: {P('contig', len(query_contigs))} / {query_total:,} nts, of which "
+                                 f"{query_covered / query_total * 100:.1f}% aligns to the reference "
+                                 f"({P('contig', num_query_contigs_unaligned)} with no alignment at all). /// "
+                                 f"[TRACKS] :: gray = no alignment, white = aligned (forward), red = aligned (reverse). "
+                                 f"Empty space on a track means a contig boundary. Ribbons: green = forward, red = reverse.",
+                                 level=2, cut_after=200, nl_before=1)
+
+            if not contig_boundaries_are_resolvable:
+                self.run.info_single("There are more contigs here than there are characters to keep them apart, so not "
+                                     "every contig boundary above is drawn as its own gap. A wider terminal (along with a "
+                                     "matching `--plot-width`) is the only way to see each one of them.",
+                                     level=2, cut_after=0)
+
+            if num_ribbons_omitted:
+                self.run.info_single(f"{P('ribbon', num_ribbons_omitted)} omitted from the plot to keep it readable. The "
+                                     f"tracks above still reflect every single alignment.",
+                                     level=2, cut_after=0)
 
 
     def _find_optimal_reference_start(self):
