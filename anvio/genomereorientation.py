@@ -669,7 +669,48 @@ class GenomeReorienter:
                 )
             )
 
-            # Step 7: Orient contigs and calculate gaps
+            # Step 7: Now that we know where every contig will go, check whether the layout that
+            # follows from it is something a FASTA file can actually express (see
+            # `_find_contigs_spanning_the_reference_axis` for what can go wrong and why none of the
+            # alignment statistics computed further below would notice)
+            contigs_spanning_reference_axis = self._find_contigs_spanning_the_reference_axis(ordered_contig_ids, contig_alignments, alignments, ref_length)
+
+            if contigs_spanning_reference_axis:
+                intact_note = ("This is the expected consequence of `--keep-query-contigs-intact`, which is why that flag "
+                               "comes with a warning: anvi'o was not allowed to cut anything, so it had to place these "
+                               "contigs whole. " if self.keep_query_contigs_intact else
+                               "Anvi'o cuts contigs like these into fragments before placing them precisely so that this "
+                               "cannot happen, so if you are seeing this message without having used "
+                               "`--keep-query-contigs-intact`, one of them made it past that step and anvi'o would love to "
+                               "hear about it. ")
+
+                num_spanning = len(contigs_spanning_reference_axis)
+
+                self.run.warning(f"{P('One contig', num_spanning, alt=f'{num_spanning} contigs')} in "
+                                 f"'{genome_name}' {P('maps', num_spanning, alt='map')} to "
+                                 f"BOTH the beginning and the end of the reference, and the sequences of other contigs "
+                                 f"belong in between. Such a contig has no single position on the reference to be placed at: "
+                                 f"it goes into the output FASTA in one piece, wherever its largest alignment block belongs, "
+                                 f"and everything else it carries travels along with it to the wrong end of the genome. "
+                                 f"{intact_note}The FASTA file anvi'o is about to write for this genome is therefore fine "
+                                 f"nucleotide by nucleotide, but its gene order does NOT follow the reference, which is the "
+                                 f"one thing you came here for. This is why the outcome for '{genome_name}' is reported as "
+                                 f"NOT TRUSTWORTHY below regardless of how immaculate its coverage and ANI look. Here is "
+                                 f"what anvi'o is talking about:",
+                                 header=f"CONTIGS SPANNING THE ENTIRE REFERENCE IN {genome_name}", lc="red")
+
+                for entry in contigs_spanning_reference_axis:
+                    inside = entry['contigs_inside']
+                    inside_str = ', '.join(f"'{c}'" for c in inside[:3]) + (f" and {len(inside) - 3} more" if len(inside) > 3 else "")
+
+                    self.run.info_single(f"'{entry['contig_id']}' ({entry['length']:,} nts) aligns to a "
+                                         f"{ref_length:,} nt reference both at position {entry['first_block'][0]:,} and at "
+                                         f"position {entry['last_block'][0]:,}, leaving {entry['hole_size']:,} nts of "
+                                         f"reference in between that it does not cover itself, but "
+                                         f"{P('contig', len(inside))} of this genome ({inside_str}) "
+                                         f"{P('does', len(inside), alt='do')}.", level=2)
+
+            # Step 8: Orient contigs and calculate gaps
             gaps = []
             oriented_contigs = []
 
@@ -733,7 +774,7 @@ class GenomeReorienter:
                             'overlap': overlap_size
                         })
 
-            # Step 8: Write output FASTA
+            # Step 9: Write output FASTA
             self.progress.update(f"{genome_name}: Writing reoriented output")
 
             # We will do it differently depending on user's wishes
@@ -779,7 +820,7 @@ class GenomeReorienter:
                         for i in range(0, len(seq), 80):
                             out_fa.write(seq[i:i+80] + '\n')
 
-            # Step 9: Calculate quality metrics
+            # Step 10: Calculate quality metrics
             total_gap_size = sum(g['gap_size'] for g in gaps if 'overlap' not in g)
 
             # Reference coverage. every primary alignment block of every placed contig counts here,
@@ -834,11 +875,114 @@ class GenomeReorienter:
                 'total_gap_size': total_gap_size,
                 'avg_ani': avg_ani,
                 'actions_summary': actions_summary,
+                'contigs_spanning_reference_axis': contigs_spanning_reference_axis,
             }
 
         finally:
             if not anvio.DEBUG:
                 shutil.rmtree(temp_dir)
+
+
+    def _find_contigs_spanning_the_reference_axis(self, ordered_contig_ids, contig_alignments, alignments, ref_length):
+        """Finds placed contigs that map to both the beginning AND the end of the reference axis.
+
+           Everything anvi'o reports about a fragmented genome -- reference coverage, the fraction
+           of contigs that aligned, ANI -- is computed from alignment blocks, and none of it knows
+           anything about the *order* in which those contigs end up in the output FASTA file. That
+           order is the whole point of this program, though, so it needs a check of its own, and
+           this is it.
+
+           A contig is written to the output at the single position where its largest alignment
+           block goes. When a contig also carries sequence that belongs at the opposite end of the
+           reference, that sequence travels along with it and lands at the wrong end of the genome,
+           with the sequence of every other contig in between. `_find_reference_boundary_cut_points`
+           exists to cut such contigs before they are placed, and `_find_circular_permutation` to
+           rotate the ones an assembler cut out of a cycle in its assembly graph -- but if a contig
+           slips past both of them, its genome must not be advertised as trustworthy simply because
+           its alignment statistics look immaculate. From the point of view of gene order, the
+           output file is scrambled, and that is the thing this program is asked to get right.
+
+           A contig is reported here when all of the following hold:
+
+            - its alignment blocks reach both ends of the reference axis, each by a block long
+              enough to mean something (a stray repeat hit at the far end of the reference, or the
+              handful of nucleotides `minimap2` soft-clips, is not a reason to distrust a genome),
+
+            - there is a stretch of reference in between the two that the contig itself does not
+              cover, and
+
+            - other contigs of the same genome are placed inside that stretch. This is the part that
+              turns a curiosity into a problem: it is the sequence of those contigs that ends up on
+              the wrong side of everything this contig carries.
+
+        Parameters
+        ==========
+        ordered_contig_ids : list
+            Contig ids that were placed on the reference, in the order in which they will be
+            written to the output FASTA file.
+        contig_alignments : dict
+            Maps a contig id to its 'contig_data' and the single best 'alignment' it was placed by.
+        alignments : dict
+            Maps a contig id to all of its PAF records against the reference.
+        ref_length : int
+            Length of the reference sequence.
+
+        Returns
+        =======
+        spanning_contigs : list
+            One dictionary per offending contig, with its 'contig_id', its 'length', the
+            'first_block' and 'last_block' it aligns to the reference by, the 'hole' it leaves in
+            between them along with its 'hole_size', and the 'contigs_inside' that hole.
+        """
+        boundary_window = max(self.min_contig_length, ref_length // 100)
+        placements = {contig_id: contig_alignments[contig_id]['alignment'].tstart for contig_id in ordered_contig_ids}
+
+        spanning_contigs = []
+
+        for contig_id in ordered_contig_ids:
+            primaries = [r for r in (alignments[contig_id] or []) if r.is_primary]
+
+            if len(primaries) < 2:
+                continue
+
+            coverage = self._merge_intervals([(r.tstart, r.tend) for r in primaries])
+
+            if len(coverage) < 2:
+                continue
+
+            reaches_beginning = coverage[0][0] < boundary_window and coverage[0][1] - coverage[0][0] >= self.min_contig_length
+            reaches_end = coverage[-1][1] > ref_length - boundary_window and coverage[-1][1] - coverage[-1][0] >= self.min_contig_length
+
+            if not (reaches_beginning and reaches_end):
+                continue
+
+            holes = [(coverage[i][1], coverage[i + 1][0]) for i in range(len(coverage) - 1)]
+            hole_start, hole_end = max(holes, key=lambda hole: hole[1] - hole[0])
+            hole_size = hole_end - hole_start
+
+            if hole_size < max(self.min_contig_length, 1):
+                continue
+
+            contigs_inside = [other_id for other_id in ordered_contig_ids
+                              if other_id != contig_id and hole_start <= placements[other_id] < hole_end]
+
+            if not contigs_inside:
+                continue
+
+            self.log_run.info_single(f"'{contig_id}': spans the reference axis -- ref[{coverage[0][0]}:{coverage[0][1]}] and "
+                                     f"ref[{coverage[-1][0]}:{coverage[-1][1]}] of a {ref_length} nt reference, with "
+                                     f"{len(contigs_inside)} other contig(s) placed in the {hole_size} nt hole in between",
+                                     level=2)
+
+            spanning_contigs.append({'contig_id': contig_id,
+                                     'length': contig_alignments[contig_id]['contig_data']['length'],
+                                     'first_block': coverage[0],
+                                     'last_block': coverage[-1],
+                                     'hole': (hole_start, hole_end),
+                                     'hole_size': hole_size,
+                                     'contigs_inside': contigs_inside})
+
+        return spanning_contigs
 
 
     def _align_contig_to_reference(self, contig, temp_dir, file_tag):
@@ -868,6 +1012,40 @@ class GenomeReorienter:
         except RuntimeError as e:
             self.log_run.info_single(f"'{contig['id']}': no alignment to the reference ({e})", level=2)
             return None
+
+
+    def _distance_around_the_reference(self, distance, ref_length):
+        """Re-measures a distance between two reference positions the short way around the reference.
+
+           The reference is a linear coordinate axis as far as anvi'o's output is concerned, but the
+           sequences it describes are usually circular, and the position at which the reference
+           begins and ends is an arbitrary point on that circle. Two positions on either side of
+           that point are neighbours no matter how far apart the linear axis says they are, and any
+           test that asks whether two positions are adjacent has to be asked in those terms.
+
+           This function takes a `distance` computed on the linear axis and returns the equivalent
+           distance measured the short way around the reference, keeping its sign: positive when the
+           second position follows the first one, negative when the two overlap. A distance of
+           `-1,453,502` nucleotides on a 1,453,515 nt reference comes back as `13`.
+
+        Parameters
+        ==========
+        distance : int
+            A distance between two reference positions, as computed on the linear axis.
+        ref_length : int
+            Length of the reference sequence.
+
+        Returns
+        =======
+        distance : int
+            The same distance, measured the short way around the reference.
+        """
+        if not ref_length:
+            return distance
+
+        distance %= ref_length
+
+        return distance if distance <= ref_length // 2 else distance - ref_length
 
 
     def _find_circular_permutation(self, contig, paf_records, ref_length):
@@ -901,8 +1079,15 @@ class GenomeReorienter:
               rotating it invents no adjacency that is not already in the sequence. It is the same
               standard anvi'o applies to itself before rotating a reference.
 
-           A contig that straddles the position at which the reference begins and ends fails the
-           second test by a mile (its ends land at opposite ends of the reference), so it is left
+           That second distance is measured *around* the reference rather than along the linear axis
+           anvi'o writes its output on, since the reference these contigs come from is a circle. A
+           contig whose first block begins a few nucleotides after the position at which the
+           reference begins, and whose last block ends a few nucleotides before it, has its two ends
+           13 nucleotides apart -- not a megabase apart, which is all the linear axis can see.
+
+           A contig that straddles the position at which the reference begins and ends still fails
+           the second test, and rightly so: its two ends are the two extremes of the region it
+           covers, and everything it does *not* cover lies in between them. Such a contig is left
            for `_find_reference_boundary_cut_points` to cut, which is the right treatment for it.
 
         Parameters
@@ -946,8 +1131,10 @@ class GenomeReorienter:
             return None
 
         # ... and the contig's two ends have to be neighbours on the reference, or this is a
-        # rearrangement after all and rotating the contig would fabricate an adjacency
-        end_gap = blocks[0][2] - blocks[-1][3]
+        # rearrangement after all and rotating the contig would fabricate an adjacency. the distance
+        # between them is measured around the reference rather than along it, since where the
+        # reference happens to begin has nothing to do with whether two positions are neighbours
+        end_gap = self._distance_around_the_reference(blocks[0][2] - blocks[-1][3], ref_length)
 
         if abs(end_gap) > max(self.min_contig_length, 1):
             return None
@@ -1052,7 +1239,7 @@ class GenomeReorienter:
         return 0 if self.keep_query_contigs_intact else num_contigs_rotated
 
 
-    def _find_reference_boundary_cut_points(self, contig, paf_records, ref_length):
+    def _find_reference_boundary_cut_points(self, contig, paf_records, ref_length, coverage_by_other_contigs=None):
         """Finds the positions at which a query contig must be cut to be placed on the reference.
 
            A query contig is a linear sequence, but the reference offers a single coordinate axis
@@ -1063,7 +1250,7 @@ class GenomeReorienter:
            contig out in one piece would quietly claim an agreement with the reference that the
            contig as a whole does not have, which is why anvi'o cuts it instead.
 
-           Two situations produce this, and both are handled here:
+           Three situations produce this, and all of them are handled here:
 
             - The contig straddles the position at which the reference begins and ends. This is
               the common case for circular genomes: the reference was circularized (or rotated) at
@@ -1077,6 +1264,21 @@ class GenomeReorienter:
               it must not travel along inside a contig that is placed, where it would look like it
               had been placed too.
 
+            - The contig closes on itself around the reference: its first block begins right after
+              the position at which the reference begins, its last block ends right before it, and a
+              single large stretch of reference in between the two is skipped. This is the same
+              assembly-graph artifact `_find_circular_permutation` deals with -- a contig cut out of
+              a cycle at an arbitrary point -- except that the arbitrary point happens to coincide
+              with the position at which the reference begins and ends, so nothing looks scrambled
+              and no rotation is called for. What is called for is a cut at the stretch the contig
+              skips, so that the part of it that belongs at the beginning of the reference and the
+              part that belongs at its end can be placed on either side of the contigs that fill
+              that stretch, instead of both travelling to the beginning of the output file together.
+              The evidence that the skipped stretch is not simply missing from the query -- and that
+              the junction being cut is therefore an artifact rather than biology -- is that other
+              contigs of the same genome cover it, which is what `coverage_by_other_contigs` is for.
+              Without that evidence the contig is left alone.
+
            The second test is the reason unaligned sequence alone is *not* enough to cut a contig.
            A contig that aligns comfortably inside the reference but carries an unaligned stretch
            at one of its ends is simply a genome with a variable region, and cutting it would be
@@ -1084,10 +1286,10 @@ class GenomeReorienter:
            it is. Only when the unaligned stretch is long compared to the reference that remains
            beyond the alignment does it actually run off the axis.
 
-           Between them, these two tests are also why a query genome should not gain more than a
-           couple of contigs. The reference axis has exactly one boundary, so at most one contig
-           can contain it and be cut in two, and at most one contig on either side of it can hang
-           off it. Everything else stays whole.
+           These tests are also why a query genome should not gain more than a couple of contigs.
+           The reference axis has exactly one boundary, so at most one contig can contain it and be
+           cut in two, at most one contig on either side of it can hang off it, and at most one
+           contig can close on itself around it. Everything else stays whole.
 
            Cutting is never done when it would produce a fragment shorter than
            `--min-contig-length`. This keeps the few hundred nucleotides `minimap2` routinely
@@ -1107,6 +1309,11 @@ class GenomeReorienter:
             PAF records for this contig against the reference, or None if it did not align.
         ref_length : int
             Length of the reference sequence.
+        coverage_by_other_contigs : list
+            Merged (start, stop) intervals of the reference that the *other* contigs of the same
+            genome cover. Only the third test above uses this, and it is that test's only evidence
+            that a stretch of reference a contig skips is present in the query elsewhere rather than
+            absent from it.
 
         Returns
         =======
@@ -1187,6 +1394,43 @@ class GenomeReorienter:
 
             cut_points.append((position, "it straddles the position at which the reference begins and ends"))
 
+        # (3) the contig closes on itself around the reference: read along the contig its blocks
+        # march forward through the reference all the way from its beginning to its end, skipping a
+        # single large stretch on the way, and its two ends turn out to be neighbours once that is
+        # measured around the reference rather than along it. Such a contig needs no rotation (its
+        # blocks are already in the order the reference puts them in) but it does need a cut, since
+        # what it carries on either side of the stretch it skips belongs at the two opposite ends of
+        # the output file
+        ends_are_neighbours = abs(self._distance_around_the_reference(blocks[0][2] - blocks[-1][3], ref_length)) <= min_fragment_length
+        marches_forward = all(blocks[i + 1][2] >= blocks[i][2] for i in range(len(blocks) - 1))
+
+        if len(blocks) > 1 and ends_are_neighbours and marches_forward and not cut_points:
+            # the largest stretch of reference the contig skips: everything else between its blocks
+            # is the ordinary business of two genomes differing from one another
+            index, skipped_start, skipped_end = max([(i, blocks[i][3], blocks[i + 1][2]) for i in range(len(blocks) - 1)],
+                                                    key=lambda skipped: skipped[2] - skipped[1])
+            skipped_length = skipped_end - skipped_start
+
+            # ... and the proof that this stretch is present in the query rather than missing from
+            # it, which is what makes the junction anvi'o is about to cut an artifact of assembly
+            # rather than a difference between two genomes worth preserving
+            skipped_length_covered_by_other_contigs = sum(min(stop, skipped_end) - max(start, skipped_start)
+                                                         for start, stop in (coverage_by_other_contigs or [])
+                                                         if stop > skipped_start and start < skipped_end)
+
+            self.log_run.info_single(f"'{contig['id']}': closes on itself around the reference, skipping "
+                                     f"{skipped_length:,} nts of it at contig position {blocks[index][1]:,}, "
+                                     f"{skipped_length_covered_by_other_contigs:,} nts of which other contigs of this "
+                                     f"genome cover", level=2)
+
+            if skipped_length >= min_fragment_length and skipped_length_covered_by_other_contigs >= min_fragment_length:
+                # the sequence between the two blocks has no home on either side of the cut, so it
+                # is split down the middle rather than being handed to one of the two fragments
+                position = (blocks[index][1] + blocks[index + 1][0]) // 2
+
+                cut_points.append((position, f"it closes on itself around the reference, and other contigs of this genome "
+                                             f"cover the {skipped_length:,} nts of reference it skips"))
+
         # back to the frame in which the contig occurs in the input FASTA file
         if needs_rc:
             cut_points = [(contig_length - position, reason) for position, reason in cut_points]
@@ -1248,8 +1492,16 @@ class GenomeReorienter:
         resulting_contigs, report_lines = [], []
         num_contigs_split, num_fragments = 0, 0
 
+        # which parts of the reference each contig covers, so that every contig can be asked about
+        # the stretches of reference it skips: the ones its neighbours cover are the interesting ones
+        blocks_per_contig = {contig['id']: [(r.tstart, r.tend) for r in (alignments[contig['id']] or []) if r.is_primary]
+                             for contig in contigs}
+
         for contig in contigs:
-            cut_points = self._find_reference_boundary_cut_points(contig, alignments[contig['id']], ref_length)
+            coverage_by_other_contigs = self._merge_intervals([block for contig_id, blocks in blocks_per_contig.items()
+                                                              if contig_id != contig['id'] for block in blocks])
+
+            cut_points = self._find_reference_boundary_cut_points(contig, alignments[contig['id']], ref_length, coverage_by_other_contigs)
 
             if not cut_points:
                 resulting_contigs.append(contig)
@@ -1309,9 +1561,10 @@ class GenomeReorienter:
             self.run.warning(f"Anvi'o had to cut {P('contig', num_contigs_split)} in '{genome_name}' into "
                              f"{P('fragment', num_fragments)}, which means this genome will have more contigs in the "
                              f"output file than it had in the input file. This is not anvi'o being clumsy: a contig that "
-                             f"runs past the beginning or the end of the reference has no single position on the "
-                             f"reference to be placed at, since one part of it belongs to the very start of the reference "
-                             f"coordinates and another part of it to the very end. Keeping such a contig in one piece "
+                             f"runs past the beginning or the end of the reference -- or that closes on itself around it "
+                             f"-- has no single position on the reference to be placed at, since one part of it belongs "
+                             f"to the very start of the reference coordinates and another part of it to the very end. "
+                             f"Keeping such a contig in one piece "
                              f"would have meant reporting it as aligned when a part of it is not. Each fragment below was "
                              f"aligned to the reference on its own merit, and ordered and oriented accordingly. If you "
                              f"would rather have your contigs kept intact and are willing to accept that some of them "
@@ -1521,9 +1774,11 @@ class GenomeReorienter:
         if num_not_trustworthy or num_failed:
             review_msg = "the alignment plots above and " if not self.skip_visualizing_alignments else ""
             final_text = (f"Your genome reorientation task considered {num_reoriented} genomes and {num_reference} "
-                          f"reference. Some outcomes are not trustworthy (low alignment coverage can lead to unreliable "
-                          f"orientation). Please review {review_msg}the summary below to decide which FASTA "
-                          f"files to use downstream.")
+                          f"reference. Some outcomes are not trustworthy (either because their alignment coverage was too "
+                          f"low for a reliable orientation, or because a contig that maps to both ends of the reference "
+                          f"made the gene order in the output file unreliable regardless). Please review "
+                          f"{review_msg}the summary below, and the warnings for the genomes in question, to decide which "
+                          f"FASTA files to use downstream.")
         elif num_somewhat:
             review_msg = "the alignment plots and " if not self.skip_visualizing_alignments else ""
             final_text = (f"Your genome reorientation task considered {num_reoriented} genomes and {num_reference} "
