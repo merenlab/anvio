@@ -87,6 +87,7 @@ class GenomeReorienter:
         self.use_auto_reference_as_is = A('use_auto_reference_as_is') or False
         self.scaffold_fragmented = A('scaffold_fragmented') or False
         self.min_contig_length = A('min_contig_length') or 1000
+        self.keep_query_contigs_intact = A('keep_query_contigs_intact') or False
 
         # Visualization parameters
         self.skip_visualizing_alignments = A('skip_visualizing_alignments') or False
@@ -390,6 +391,11 @@ class GenomeReorienter:
         self.run.info("Applied actions", "")
         self.run.info_single(result_data['actions_summary'], level=2)
         self.run.info("Output FASTA", output_path)
+        self.run.info("Contigs in input", result_data['num_contigs_in_input'])
+        if result_data['num_contigs_rotated']:
+            self.run.info("Circularly permuted contigs rotated", result_data['num_contigs_rotated'], mc="yellow")
+        if result_data['num_contigs_split']:
+            self.run.info("Contigs cut at reference boundaries", f"{result_data['num_contigs_split']} (into {result_data['num_fragments']} fragments)", mc="yellow")
         self.run.info("Contigs processed", num_total)
         self.run.info("Contigs aligned", num_aligned)
         self.run.info("Contigs unaligned", result_data['num_contigs_unaligned'])
@@ -568,119 +574,53 @@ class GenomeReorienter:
 
             # Step 2: Align each contig to reference
             self.progress.update(f"{genome_name}: Aligning {num_contigs_after_filter} contigs")
+            ref_length = self._get_total_length(self.reference_path)
+
+            alignments = {}
+            for idx, contig in enumerate(contigs):
+                alignments[contig['id']] = self._align_contig_to_reference(contig, temp_dir, f"contig_{idx}")
+
+            # Step 3: Rotate the contigs an assembler cut out of a cycle in its assembly graph, so
+            # that they stop looking scrambled and become co-linear with the reference (see
+            # `_find_circular_permutation`). This happens before any cutting, since a contig that
+            # has been made co-linear may no longer need to be cut at all
+            num_contigs_rotated = self._uncoil_circularly_permuted_contigs(contigs, alignments, ref_length, genome_name, temp_dir)
+
+            # Step 4: Cut the contigs that run past either end of the reference coordinate axis into
+            # fragments, since there is no single place on that axis where such a contig could go in
+            # one piece (see `_find_reference_boundary_cut_points` for the long story)
+            contigs, num_contigs_split, num_fragments = self._split_contigs_at_reference_boundaries(contigs, alignments, ref_length, genome_name, temp_dir)
+
+            # Step 5: Sort every contig -- and every fragment of a contig that had to be cut -- into
+            # those that aligned to the reference and those that did not
             contig_alignments = {}
             unaligned_contigs = []
-            ref_length = self._get_total_length(self.reference_path)
-            num_wrap_around_contigs = 0
 
-            for idx, contig in enumerate(contigs):
-                # Write contig to temp file
-                temp_contig_fa = os.path.join(temp_dir, f"contig_{idx}.fa")
-                with open(temp_contig_fa, 'w') as f:
-                    f.write(f">{contig['id']}\n{contig['seq']}\n")
+            for contig in contigs:
+                primaries = [r for r in (alignments[contig['id']] or []) if r.is_primary]
 
-                # Align to reference
-                try:
-                    paf_records = self._minimap2_align(self.reference_path, temp_contig_fa)
-
-                    if not paf_records:
-                        self.log_run.info_single(f"'{contig['id']}': no alignment to reference", level=2)
-                        unaligned_contigs.append(contig)
-                        continue
-
-                    # Check for wrap-around: contig spans the circularization point
-                    # This happens when we have alignments at both ends of the reference
-                    wrap_around_detected = False
-
-                    if len(paf_records) >= 2:
-                        # Sort alignments by reference start position
-                        sorted_aligns = sorted(paf_records, key=lambda r: r.tstart)
-
-                        # Check if we have alignment near start AND near end of reference
-                        # Near start: tstart < 10% of ref_length
-                        # Near end: tstart > 90% of ref_length
-                        near_start = [a for a in sorted_aligns if a.tstart < ref_length * 0.1]
-                        near_end = [a for a in sorted_aligns if a.tstart > ref_length * 0.9]
-
-                        if near_start and near_end:
-                            # Likely wrap-around: check if alignments together cover most of contig
-                            total_aligned = sum(a.aligned_bases for a in paf_records)
-                            if total_aligned > contig['length'] * 0.7:  # At least 70% of contig aligned
-                                wrap_around_detected = True
-                                num_wrap_around_contigs += 1
-
-                                # Get the two main alignments (one near end, one near start)
-                                end_align = max(near_end, key=lambda r: r.aligned_bases)
-                                start_align = max(near_start, key=lambda r: r.aligned_bases)
-
-                                self.log_run.info_single(
-                                    f"'{contig['id']}': WRAP-AROUND detected! Rotating to reference start", level=2)
-                                self.log_run.info_single(
-                                    f"  Ref-end alignment:   ref[{end_align.tstart}:{end_align.tend}] "
-                                    f"qry[{end_align.qstart}:{end_align.qend}] strand={end_align.strand}", level=2)
-                                self.log_run.info_single(
-                                    f"  Ref-start alignment: ref[{start_align.tstart}:{start_align.tend}] "
-                                    f"qry[{start_align.qstart}:{start_align.qend}] strand={start_align.strand}", level=2)
-
-                                # Apply the same RC+rotate logic as _process_circular, using
-                                # start_align as the anchor to find ref[0] in the contig.
-                                # We fully orient the contig here and mark it so step 4 skips it.
-                                temp_wrap_fa = os.path.join(temp_dir, f"wrap_{idx}.fa")
-                                with open(temp_wrap_fa, 'w') as f:
-                                    f.write(f">{contig['id']}\n{contig['seq']}\n")
-
-                                cut0 = self._cut0_for_ref0(start_align)
-
-                                if start_align.strand == '-':
-                                    temp_wrap_rc = os.path.join(temp_dir, f"wrap_{idx}_rc.fa")
-                                    self._seqkit_reverse_complement(temp_wrap_fa, temp_wrap_rc)
-                                    cut0 = (start_align.qlen - 1 - cut0) % start_align.qlen
-                                    temp_wrap_fa = temp_wrap_rc
-                                    self.log_run.info_single(f"  Reverse-complemented '{contig['id']}' (wrap-around, strand=-)", level=2)
-
-                                temp_wrap_rot = os.path.join(temp_dir, f"wrap_{idx}_rot.fa")
-                                self._seqkit_rotate(temp_wrap_fa, cut0 + 1, temp_wrap_rot)
-                                self.log_run.info_single(f"  Rotated '{contig['id']}' by {cut0} nts (wrap-around)", level=2)
-
-                                wrap_fasta = utils.u.SequenceSource(temp_wrap_rot)
-                                next(wrap_fasta)
-                                wrap_contig = {'id': contig['id'], 'seq': wrap_fasta.seq, 'length': len(wrap_fasta.seq)}
-                                wrap_fasta.close()
-
-                                contig_alignments[contig['id']] = {
-                                    'contig_data': wrap_contig,
-                                    'alignment': start_align,
-                                    'already_oriented': True
-                                }
-
-                    # If not wrap-around, process normally
-                    if not wrap_around_detected:
-                        primaries = [r for r in paf_records if r.is_primary]
-
-                        if primaries:
-                            # Select best primary alignment
-                            best = max(primaries, key=lambda r: (r.aligned_bases, r.mapq, r.nmatch))
-                            contig_alignments[contig['id']] = {
-                                'contig_data': contig,
-                                'alignment': best
-                            }
-                            self.log_run.info_single(
-                                f"'{contig['id']}': ref[{best.tstart}:{best.tend}] "
-                                f"strand={best.strand} alen={best.aligned_bases}", level=2)
-                        else:
-                            self.log_run.info_single(f"'{contig['id']}': no primary alignment", level=2)
-                            unaligned_contigs.append(contig)
-
-                except RuntimeError as e:
-                    self.log_run.info_single(f"'{contig['id']}': alignment failed ({e})", level=2)
+                if not primaries:
+                    self.log_run.info_single(f"'{contig['id']}': no primary alignment to the reference", level=2)
                     unaligned_contigs.append(contig)
+                    continue
 
+                # Select best primary alignment
+                best = max(primaries, key=lambda r: (r.aligned_bases, r.mapq, r.nmatch))
+                contig_alignments[contig['id']] = {
+                    'contig_data': contig,
+                    'alignment': best
+                }
+                self.log_run.info_single(
+                    f"'{contig['id']}': ref[{best.tstart}:{best.tend}] "
+                    f"strand={best.strand} alen={best.aligned_bases}", level=2)
+
+            num_contigs_after_split = len(contigs)
             num_aligned = len(contig_alignments)
             num_unaligned = len(unaligned_contigs)
 
             self.log_run.info_single(
-                f"Alignment summary: {num_aligned} contigs aligned "
-                f"({num_wrap_around_contigs} rotated for wrap-around)",
+                f"Alignment summary: {num_aligned}/{num_contigs_after_split} contigs aligned "
+                f"({num_contigs_split} contigs were cut into {num_fragments} fragments)",
                 level=2)
 
             if num_unaligned > 0:
@@ -693,7 +633,7 @@ class GenomeReorienter:
             if num_aligned == 0:
                 raise ConfigError("No contigs aligned to reference")
 
-            # Step 3: Order contigs by reference position
+            # Step 6: Order contigs by reference position
             ordered_contig_ids = sorted(
                 contig_alignments.keys(),
                 key=lambda cid: (
@@ -703,7 +643,7 @@ class GenomeReorienter:
                 )
             )
 
-            # Step 4: Orient contigs and calculate gaps
+            # Step 7: Orient contigs and calculate gaps
             gaps = []
             oriented_contigs = []
 
@@ -712,8 +652,8 @@ class GenomeReorienter:
                 contig_data = contig_info['contig_data']
                 alignment = contig_info['alignment']
 
-                # Orient based on strand; wrap-around contigs are already fully oriented
-                if alignment.strand == '-' and not contig_info.get('already_oriented', False):
+                # Orient based on strand
+                if alignment.strand == '-':
                     temp_in = os.path.join(temp_dir, f"orient_in_{idx}.fa")
                     temp_out = os.path.join(temp_dir, f"orient_out_{idx}.fa")
                     with open(temp_in, 'w') as f:
@@ -767,7 +707,7 @@ class GenomeReorienter:
                             'overlap': overlap_size
                         })
 
-            # Step 5: Write output FASTA
+            # Step 8: Write output FASTA
             self.progress.update(f"{genome_name}: Writing reoriented output")
 
             # We will do it differently depending on user's wishes
@@ -813,25 +753,19 @@ class GenomeReorienter:
                         for i in range(0, len(seq), 80):
                             out_fa.write(seq[i:i+80] + '\n')
 
-            # Step 6: Calculate quality metrics
+            # Step 9: Calculate quality metrics
             total_gap_size = sum(g['gap_size'] for g in gaps if 'overlap' not in g)
 
-            # Reference coverage
-            ref_covered_regions = [(contig_alignments[cid]['alignment'].tstart,
-                                    contig_alignments[cid]['alignment'].tend)
-                                   for cid in ordered_contig_ids]
-            ref_covered_regions.sort()
+            # Reference coverage. every primary alignment block of every placed contig counts here,
+            # not just the single best block per contig: a contig often aligns to the reference in
+            # more than one piece, and counting only the largest of them can understate the
+            # coverage of a perfectly good genome by tens of percent (which then drags its trust
+            # label down with it for no reason)
+            ref_covered_regions = [(record.tstart, record.tend) for contig_id in ordered_contig_ids
+                                   for record in alignments[contig_id] if record.is_primary]
 
-            # Merge overlapping intervals
-            merged_regions = [ref_covered_regions[0]]
-            for start, end in ref_covered_regions[1:]:
-                if start <= merged_regions[-1][1]:
-                    merged_regions[-1] = (merged_regions[-1][0], max(merged_regions[-1][1], end))
-                else:
-                    merged_regions.append((start, end))
-
+            merged_regions = self._merge_intervals(ref_covered_regions)
             total_covered_bases = sum(end - start for start, end in merged_regions)
-            ref_length = self._get_total_length(self.reference_path)
             reference_coverage_pct = (total_covered_bases / ref_length) * 100
 
             # Average ANI
@@ -850,8 +784,11 @@ class GenomeReorienter:
             avg_ani = sum(ani_values) / len(ani_values) if ani_values else 0.0
 
             actions_summary = f"ordered {num_aligned} contigs by reference position"
-            if num_wrap_around_contigs > 0:
-                actions_summary += f" ({num_wrap_around_contigs} rotated for wrap-around)"
+            if num_contigs_rotated > 0:
+                actions_summary += f" (after rotating {P('circularly permuted contig', num_contigs_rotated)})"
+            if num_contigs_split > 0:
+                actions_summary += (f" (after cutting {P('contig', num_contigs_split)} that ran past the ends of the "
+                                    f"reference into {P('fragment', num_fragments)})")
             if self.scaffold_fragmented:
                 actions_summary += f", inserted {total_gap_size:,} nts of N-padding"
             if unaligned_contigs:
@@ -859,7 +796,11 @@ class GenomeReorienter:
 
             # Return results
             return {
-                'num_contigs_processed': num_contigs_after_filter,
+                'num_contigs_processed': num_contigs_after_split,
+                'num_contigs_in_input': num_contigs_after_filter,
+                'num_contigs_rotated': num_contigs_rotated,
+                'num_contigs_split': num_contigs_split,
+                'num_fragments': num_fragments,
                 'num_contigs_aligned': num_aligned,
                 'num_contigs_unaligned': num_unaligned,
                 'reference_coverage_pct': reference_coverage_pct,
@@ -872,6 +813,495 @@ class GenomeReorienter:
         finally:
             if not anvio.DEBUG:
                 shutil.rmtree(temp_dir)
+
+
+    def _align_contig_to_reference(self, contig, temp_dir, file_tag):
+        """Aligns a single contig to the reference and returns its PAF records.
+
+        Parameters
+        ==========
+        contig : dict
+            A contig dictionary with 'id', 'seq', and 'length' keys.
+        temp_dir : str
+            Directory in which the single-contig FASTA file will be written.
+        file_tag : str
+            Basename (without extension) for that intermediate FASTA file.
+
+        Returns
+        =======
+        paf_records : list
+            PAF records for this contig against the reference, or None if the contig did not
+            align to the reference at all.
+        """
+        temp_contig_fa = os.path.join(temp_dir, f"{file_tag}.fa")
+        with open(temp_contig_fa, 'w') as f:
+            f.write(f">{contig['id']}\n{contig['seq']}\n")
+
+        try:
+            return self._minimap2_align(self.reference_path, temp_contig_fa)
+        except RuntimeError as e:
+            self.log_run.info_single(f"'{contig['id']}': no alignment to the reference ({e})", level=2)
+            return None
+
+
+    def _find_circular_permutation(self, contig, paf_records, ref_length):
+        """Works out whether a query contig is a circularly permuted version of a reference region.
+
+           Every now and then a query contig aligns to the reference in two big pieces whose order
+           is swapped: the first half of the contig matches a *later* part of the reference than
+           its second half does. That looks like a large rearrangement, and if it were one, anvi'o
+           would have no business touching it. But it usually is not one. It is an artifact of how
+           the contig was pulled out of an assembly graph.
+
+           Assemblers report contigs by walking an assembly graph, and that graph contains cycles --
+           some of them biological (a whole circular replicon), most of them the result of repeats,
+           coverage gaps, and the other ordinary complications of assembling a genome from short
+           pieces. When the walk goes around a cycle, the assembler has to break it somewhere to
+           report a linear contig, and where it breaks is arbitrary. The result is a contig that is
+           perfectly co-linear with a better reference *once you rotate it*, but that looks
+           scrambled in the middle as long as you read it from the arbitrary point the assembler
+           happened to choose. The give-away is that the two ENDS of such a contig sit right next
+           to each other on the reference: the contig closes on itself.
+
+           That is the signature this function looks for, and it demands all of it:
+
+            - the contig's alignment blocks, read along the contig, jump backwards in reference
+              coordinates exactly once (a genuine rearrangement would rarely be this tidy, and more
+              than one jump is not something a single rotation can explain), and
+
+            - the reference position where the contig's first block begins is immediately after the
+              position where its last block ends -- within `--min-contig-length` nucleotides. This
+              is the part that matters: it is proof that the contig's two ends are neighbours, so
+              rotating it invents no adjacency that is not already in the sequence. It is the same
+              standard anvi'o applies to itself before rotating a reference.
+
+           A contig that straddles the position at which the reference begins and ends fails the
+           second test by a mile (its ends land at opposite ends of the reference), so it is left
+           for `_find_reference_boundary_cut_points` to cut, which is the right treatment for it.
+
+        Parameters
+        ==========
+        contig : dict
+            A contig dictionary with 'id', 'seq', and 'length' keys.
+        paf_records : list
+            PAF records for this contig against the reference, or None if it did not align.
+        ref_length : int
+            Length of the reference sequence.
+
+        Returns
+        =======
+        permutation : dict or None
+            None when the contig is not a circular permutation. Otherwise a dictionary with
+            'needs_rc' (whether the contig must be reverse-complemented first), 'position' (the
+            offset at which to rotate it, in the frame that follows from 'needs_rc'), and
+            'end_gap' (how many nucleotides of reference separate the contig's two ends, which is
+            the evidence that they are neighbours).
+        """
+        primaries = [r for r in (paf_records or []) if r.is_primary]
+
+        if len(primaries) < 2:
+            return None
+
+        contig_length = contig['length']
+
+        best = max(primaries, key=lambda r: (r.aligned_bases, r.mapq, r.nmatch))
+        needs_rc = best.strand == '-'
+        oriented = lambda r: (contig_length - r.qend, contig_length - r.qstart) if needs_rc else (r.qstart, r.qend)
+
+        blocks = sorted([oriented(r) + (r.tstart, r.tend) for r in primaries if r.strand == best.strand])
+
+        if len(blocks) < 2:
+            return None
+
+        # exactly one place along the contig where the reference coordinate goes backwards
+        backward_jumps = [i for i in range(len(blocks) - 1) if blocks[i + 1][2] < blocks[i][2]]
+
+        if len(backward_jumps) != 1:
+            return None
+
+        # ... and the contig's two ends have to be neighbours on the reference, or this is a
+        # rearrangement after all and rotating the contig would fabricate an adjacency
+        end_gap = blocks[0][2] - blocks[-1][3]
+
+        if abs(end_gap) > max(self.min_contig_length, 1):
+            return None
+
+        return {'needs_rc': needs_rc, 'position': blocks[backward_jumps[0] + 1][0], 'end_gap': end_gap}
+
+
+    def _uncoil_circularly_permuted_contigs(self, contigs, alignments, ref_length, genome_name, temp_dir):
+        """Rotates query contigs that an assembler cut out of a cycle in its assembly graph.
+
+           See `_find_circular_permutation` for what these contigs are and how anvi'o recognizes
+           them. This function rotates each one so that it becomes co-linear with the reference,
+           re-aligns it, and reports what it did. The contig keeps its name and every one of its
+           nucleotides: only the point at which it is considered to start moves, which is exactly
+           the operation anvi'o performs on a circular reference.
+
+           When the user asks for their contigs to be kept intact with `--keep-query-contigs-intact`
+           nothing is rotated, since rotating restructures a contig even though it does not break
+           it apart. The contigs are still reported, because a permuted contig that is left as it
+           is will carry a large chunk of itself in the wrong place.
+
+        Parameters
+        ==========
+        contigs : list
+            List of contig dictionaries with 'id', 'seq', and 'length' keys. Updated in place for
+            every contig that is rotated.
+        alignments : dict
+            Maps each contig id to its PAF records (or None). Entries of rotated contigs are
+            replaced with their alignments after rotation.
+        ref_length : int
+            Length of the reference sequence.
+        genome_name : str
+            Name of the genome being processed, for reporting.
+        temp_dir : str
+            Directory for intermediate files.
+
+        Returns
+        =======
+        num_contigs_rotated : int
+            How many contigs were rotated.
+        """
+        report_lines, num_contigs_rotated = [], 0
+
+        for index, contig in enumerate(contigs):
+            permutation = self._find_circular_permutation(contig, alignments[contig['id']], ref_length)
+
+            if not permutation:
+                continue
+
+            num_contigs_rotated += 1
+            position, end_gap = permutation['position'], permutation['end_gap']
+            neighbours = f"{abs(end_gap):,} nts {'apart' if end_gap >= 0 else 'of overlap'}"
+
+            if self.keep_query_contigs_intact:
+                report_lines.append((2, f"'{contig['id']}' ({contig['length']:,} nts), which would have become co-linear "
+                                        f"with the reference by rotating it {position:,} nts (its two ends are "
+                                        f"{neighbours} on the reference)."))
+                continue
+
+            sequence = utils.rev_comp(contig['seq']) if permutation['needs_rc'] else contig['seq']
+            contig['seq'] = sequence[position:] + sequence[:position]
+
+            alignments[contig['id']] = self._align_contig_to_reference(contig, temp_dir, f"rotated_{index}")
+
+            blocks_before = len([r for r in alignments[contig['id']] or [] if r.is_primary])
+            report_lines.append((2, f"'{contig['id']}' ({contig['length']:,} nts) was rotated by {position:,} nts"
+                                    f"{' after being reverse-complemented' if permutation['needs_rc'] else ''}, since "
+                                    f"its two ends are {neighbours} on the reference and it therefore closes on itself. "
+                                    f"It now aligns to the reference in {P('piece', blocks_before)}."))
+
+        if not num_contigs_rotated:
+            return 0
+
+        self.progress.clear()
+
+        if self.keep_query_contigs_intact:
+            self.run.warning(f"Anvi'o recognized {P('contig', num_contigs_rotated)} in '{genome_name}' that an assembler "
+                             f"appears to have cut out of a cycle in its assembly graph. Read from the arbitrary point "
+                             f"the assembler chose, such a contig looks scrambled against the reference, but its two "
+                             f"ends sit right next to each other on it, which means it closes on itself and would line "
+                             f"up perfectly if it were rotated. Anvi'o would normally do exactly that, but you asked "
+                             f"for your contigs to be kept intact with `--keep-query-contigs-intact`, so they are left "
+                             f"as they are -- which means a large part of each of them is going to sit in the wrong "
+                             f"place in the output:",
+                             header=f"CIRCULARLY PERMUTED CONTIGS IN {genome_name}")
+        else:
+            self.run.warning(f"Anvi'o rotated {P('contig', num_contigs_rotated)} in '{genome_name}'. Contigs like these "
+                             f"come out of an assembler having been cut out of a cycle in its assembly graph, and the "
+                             f"point at which they were cut is arbitrary, so they look scrambled against a better "
+                             f"reference even though nothing is actually rearranged. Anvi'o can tell them apart from "
+                             f"true rearrangements because their two ends are neighbours on the reference: they close "
+                             f"on themselves, so rotating them invents no adjacency that was not already in the "
+                             f"sequence. Every nucleotide and every contig name survives this; only the point at which "
+                             f"each contig is considered to start has moved:",
+                             header=f"CIRCULARLY PERMUTED CONTIGS ROTATED IN {genome_name}")
+
+        for level, line in report_lines:
+            self.run.info_single(line, level=level)
+
+        self.run.info_single('', level=0, nl_after=1)
+
+        return 0 if self.keep_query_contigs_intact else num_contigs_rotated
+
+
+    def _find_reference_boundary_cut_points(self, contig, paf_records, ref_length):
+        """Finds the positions at which a query contig must be cut to be placed on the reference.
+
+           A query contig is a linear sequence, but the reference offers a single coordinate axis
+           with a beginning and an end, and everything this program does -- ordering contigs,
+           orienting them, scaffolding them -- is expressed in terms of that axis. A contig that
+           runs past either end of the axis therefore has no single place to go: one part of it
+           belongs at the far left of the axis, and another part at the far right. Writing such a
+           contig out in one piece would quietly claim an agreement with the reference that the
+           contig as a whole does not have, which is why anvi'o cuts it instead.
+
+           Two situations produce this, and both are handled here:
+
+            - The contig straddles the position at which the reference begins and ends. This is
+              the common case for circular genomes: the reference was circularized (or rotated) at
+              one position and the query genome at another, so a query contig that spans the
+              reference's start/end boundary aligns to the very end of the reference with one part
+              of itself and to the very beginning of it with another.
+
+            - One end of the contig hangs off the beginning or the end of the reference: it has no
+              alignment, AND there is not enough reference left before (or after) the contig's
+              alignment for that sequence to fit. Such a stretch has nowhere to go on the axis, and
+              it must not travel along inside a contig that is placed, where it would look like it
+              had been placed too.
+
+           The second test is the reason unaligned sequence alone is *not* enough to cut a contig.
+           A contig that aligns comfortably inside the reference but carries an unaligned stretch
+           at one of its ends is simply a genome with a variable region, and cutting it would be
+           vandalism: there is plenty of room on the reference axis for that sequence to sit where
+           it is. Only when the unaligned stretch is long compared to the reference that remains
+           beyond the alignment does it actually run off the axis.
+
+           Between them, these two tests are also why a query genome should not gain more than a
+           couple of contigs. The reference axis has exactly one boundary, so at most one contig
+           can contain it and be cut in two, and at most one contig on either side of it can hang
+           off it. Everything else stays whole.
+
+           Cutting is never done when it would produce a fragment shorter than
+           `--min-contig-length`. This keeps the few hundred nucleotides `minimap2` routinely
+           soft-clips off the ends of a divergent alignment from being promoted into contigs of
+           their own, and it is the same threshold that decides whether a stretch that hangs off
+           the reference is long enough to be worth worrying about.
+
+           Rearrangements *within* a contig (inversions, internal translocations) are none of this
+           function's business: they describe real differences between two genomes rather than an
+           artifact of where a sequence happens to begin, and anvi'o keeps them intact.
+
+        Parameters
+        ==========
+        contig : dict
+            A contig dictionary with 'id', 'seq', and 'length' keys.
+        paf_records : list
+            PAF records for this contig against the reference, or None if it did not align.
+        ref_length : int
+            Length of the reference sequence.
+
+        Returns
+        =======
+        cut_points : list
+            Sorted list of (position, reason) tuples, where `position` is a 0-based offset into
+            the contig *as it occurs in the input FASTA file* at which it must be cut, and
+            `reason` is a short explanation of the cut for reporting purposes.
+        """
+        primaries = [r for r in (paf_records or []) if r.is_primary]
+
+        # a contig that does not align to the reference at all is not misplaced by being kept in
+        # one piece: all of it is equally unplaced, and it is reported as such
+        if not primaries:
+            return []
+
+        contig_length = contig['length']
+        min_fragment_length = max(self.min_contig_length, 1)
+
+        # everything below happens in the 'oriented frame': the contig as it will be written out,
+        # running in the same direction as the reference. a position `p` in that frame is the
+        # position `contig_length - p` in the input frame when the contig needs reverse
+        # complementing, which is how cut points are translated back at the very end
+        best = max(primaries, key=lambda r: (r.aligned_bases, r.mapq, r.nmatch))
+        needs_rc = best.strand == '-'
+        oriented = lambda r: (contig_length - r.qend, contig_length - r.qstart) if needs_rc else (r.qstart, r.qend)
+
+        cut_points = []
+
+        blocks = sorted([oriented(r) + (r.tstart, r.tend) for r in primaries if r.strand == best.strand])
+        aligned_stretches = self._merge_intervals([oriented(r) for r in primaries])
+
+        # (1) an end of the contig that hangs off the reference. an end that merely has no
+        # alignment is NOT enough: the reference that remains beyond the contig's own alignment has
+        # to be too short to accommodate that sequence, since otherwise anvi'o would be cutting up
+        # perfectly well-placed contigs simply for having a variable region at one of their ends.
+        #
+        # a stretch that is covered by an alignment on the other strand is left alone, too: that is
+        # an inversion, and inversions are real biology rather than an accident of coordinates
+        leading_flank_length, trailing_flank_length = blocks[0][0], contig_length - blocks[-1][1]
+        reference_before_contig, reference_after_contig = blocks[0][2], ref_length - blocks[-1][3]
+
+        if leading_flank_length or trailing_flank_length:
+            self.log_run.info_single(f"'{contig['id']}': unaligned flanks -- {leading_flank_length:,} nts at the start "
+                                     f"(with {reference_before_contig:,} nts of reference before the alignment to hold "
+                                     f"it) and {trailing_flank_length:,} nts at the end (with {reference_after_contig:,} "
+                                     f"nts of reference after it)", level=2)
+
+        if aligned_stretches[0][0] == blocks[0][0] and leading_flank_length - reference_before_contig >= min_fragment_length:
+            cut_points.append((blocks[0][0], "one of its ends hangs off the beginning of the reference"))
+
+        if aligned_stretches[-1][1] == blocks[-1][1] and trailing_flank_length - reference_after_contig >= min_fragment_length:
+            cut_points.append((blocks[-1][1], "one of its ends hangs off the end of the reference"))
+
+        # (2) the contig straddles the position at which the reference begins and ends. this shows
+        # up as two alignment blocks that follow one another along the contig, the first of which
+        # reaches the end of the reference while the second one starts at its beginning. anvi'o
+        # requires both blocks to actually reach their respective ends of the reference, so that a
+        # contig that merely jumps backwards in reference coordinates -- which is a rearrangement,
+        # and thus real biology -- is left alone
+        boundary_window = max(min_fragment_length, ref_length // 100)
+
+        for i in range(len(blocks) - 1):
+            current_start, current_end, current_tstart, current_tend = blocks[i]
+            next_start, next_end, next_tstart, next_tend = blocks[i + 1]
+
+            reaches_end_of_reference = current_tend > ref_length - boundary_window
+            starts_at_beginning_of_reference = next_tstart < boundary_window
+
+            if not (reaches_end_of_reference and starts_at_beginning_of_reference and next_tstart < current_tstart):
+                continue
+
+            # project the position at which the reference begins and ends onto the contig from
+            # each of the two blocks, and cut between them
+            projected_from_current = current_end + (ref_length - current_tend)
+            projected_from_next = next_start - next_tstart
+            lower_bound, upper_bound = current_end, max(current_end, next_start)
+            position = min(max((projected_from_current + projected_from_next) // 2, lower_bound), upper_bound)
+
+            cut_points.append((position, "it straddles the position at which the reference begins and ends"))
+
+        # back to the frame in which the contig occurs in the input FASTA file
+        if needs_rc:
+            cut_points = [(contig_length - position, reason) for position, reason in cut_points]
+
+        # a cut that would leave behind a fragment shorter than the minimum contig length is not
+        # worth making
+        accepted_cut_points, previous_position = [], 0
+        for position, reason in sorted(cut_points):
+            if position - previous_position < min_fragment_length or contig_length - position < min_fragment_length:
+                self.log_run.info_single(f"'{contig['id']}': not cutting at position {position:,} ({reason}) since it "
+                                         f"would leave behind a fragment shorter than {min_fragment_length:,} nts", level=2)
+                continue
+
+            accepted_cut_points.append((position, reason))
+            previous_position = position
+
+        return accepted_cut_points
+
+
+    def _split_contigs_at_reference_boundaries(self, contigs, alignments, ref_length, genome_name, temp_dir):
+        """Cuts query contigs that run past either end of the reference coordinate axis.
+
+           Anvi'o keeps query contigs intact whenever it can, but sometimes keeping one intact
+           would amount to a false claim about how it agrees with the reference. See
+           `_find_reference_boundary_cut_points` for what those cases are and why. This function
+           replaces every such contig with the fragments it has to be cut into, aligns each
+           fragment to the reference on its own merit so that it can be ordered and oriented like
+           any other contig, and reports what it did.
+
+           When the user asks for their contigs to be kept intact with
+           `--keep-query-contigs-intact`, nothing is cut, but the contigs that *would* have been
+           cut are still reported, since the user deserves to know which of the contigs in their
+           output file are not really placed by this program.
+
+        Parameters
+        ==========
+        contigs : list
+            List of contig dictionaries with 'id', 'seq', and 'length' keys.
+        alignments : dict
+            Maps each contig id to its PAF records (or None). Updated in place: the entry of every
+            contig that is cut is removed, and one entry per resulting fragment is added.
+        ref_length : int
+            Length of the reference sequence.
+        genome_name : str
+            Name of the genome being processed, for reporting.
+        temp_dir : str
+            Directory for intermediate files.
+
+        Returns
+        =======
+        contigs : list
+            The new list of contigs, in which every contig that had to be cut is replaced by the
+            fragments it was cut into.
+        num_contigs_split : int
+            How many contigs were cut.
+        num_fragments : int
+            How many fragments those contigs were cut into.
+        """
+        resulting_contigs, report_lines = [], []
+        num_contigs_split, num_fragments = 0, 0
+
+        for contig in contigs:
+            cut_points = self._find_reference_boundary_cut_points(contig, alignments[contig['id']], ref_length)
+
+            if not cut_points:
+                resulting_contigs.append(contig)
+                continue
+
+            num_contigs_split += 1
+            reasons = ' and '.join(sorted(set(reason for position, reason in cut_points)))
+            positions = ', '.join([f"{position:,}" for position, reason in cut_points])
+
+            if self.keep_query_contigs_intact:
+                resulting_contigs.append(contig)
+                report_lines.append((2, f"'{contig['id']}' ({contig['length']:,} nts), since {reasons}."))
+                continue
+
+            # fragments are numbered along the original contig, from its first nucleotide to its
+            # last, so that their names describe how they were related to one another in the input
+            # assembly no matter where each of them ends up in the output file
+            boundaries = [0] + [position for position, reason in cut_points] + [contig['length']]
+            fragments = [{'id': f"{contig['id']}_fragment_{i + 1:02d}",
+                          'seq': contig['seq'][boundaries[i]:boundaries[i + 1]],
+                          'length': boundaries[i + 1] - boundaries[i]} for i in range(len(boundaries) - 1)]
+
+            del alignments[contig['id']]
+            num_fragments += len(fragments)
+
+            report_lines.append((2, f"'{contig['id']}' ({contig['length']:,} nts) was cut into {P('fragment', len(fragments))} at "
+                                    f"{P('position', len(cut_points), alt='positions')} {positions}, since {reasons}:"))
+
+            for fragment in fragments:
+                alignments[fragment['id']] = self._align_contig_to_reference(fragment, temp_dir, f"fragment_{num_fragments}_{len(resulting_contigs)}")
+                resulting_contigs.append(fragment)
+
+                primaries = [r for r in (alignments[fragment['id']] or []) if r.is_primary]
+                if primaries:
+                    best = max(primaries, key=lambda r: (r.aligned_bases, r.mapq, r.nmatch))
+                    report_lines.append((3, f"'{fragment['id']}' ({fragment['length']:,} nts) aligns to the reference at "
+                                            f"position {best.tstart:,} on the {best.strand} strand."))
+                else:
+                    report_lines.append((3, f"'{fragment['id']}' ({fragment['length']:,} nts) does not align to the reference "
+                                            f"anywhere, and is reported as an unaligned contig."))
+
+        if not num_contigs_split:
+            return resulting_contigs, 0, 0
+
+        self.progress.clear()
+
+        if self.keep_query_contigs_intact:
+            self.run.warning(f"Anvi'o found {P('contig', num_contigs_split)} in '{genome_name}' running past the ends of "
+                             f"the reference genome, which means there is no single position on the reference where such "
+                             f"a contig can be placed in one piece. Normally anvi'o would cut such contigs into fragments "
+                             f"and place each fragment independently, but since you asked for your contigs to be kept intact "
+                             f"with `--keep-query-contigs-intact`, they will be written out whole. Please keep in mind "
+                             f"that parts of these contigs are therefore NOT aligned to the reference in the output file, "
+                             f"even though the file will look like they are:",
+                             header=f"CONTIGS THAT RUN PAST THE REFERENCE IN {genome_name}")
+        else:
+            self.run.warning(f"Anvi'o had to cut {P('contig', num_contigs_split)} in '{genome_name}' into "
+                             f"{P('fragment', num_fragments)}, which means this genome will have more contigs in the "
+                             f"output file than it had in the input file. This is not anvi'o being clumsy: a contig that "
+                             f"runs past the beginning or the end of the reference has no single position on the "
+                             f"reference to be placed at, since one part of it belongs to the very start of the reference "
+                             f"coordinates and another part of it to the very end. Keeping such a contig in one piece "
+                             f"would have meant reporting it as aligned when a part of it is not. Each fragment below was "
+                             f"aligned to the reference on its own merit, and ordered and oriented accordingly. If you "
+                             f"would rather have your contigs kept intact and are willing to accept that some of them "
+                             f"will not really be aligned to the reference, please use the flag "
+                             f"`--keep-query-contigs-intact`:",
+                             header=f"QUERY CONTIGS CUT INTO FRAGMENTS IN {genome_name}")
+
+        for level, line in report_lines:
+            self.run.info_single(line, level=level)
+
+        self.run.info_single('', level=0, nl_after=1)
+
+        if self.keep_query_contigs_intact:
+            return resulting_contigs, 0, 0
+
+        return resulting_contigs, num_contigs_split, num_fragments
 
 
     def _minimap2_align(self, ref_fa, qry_fa, find_all_alignments=False):
