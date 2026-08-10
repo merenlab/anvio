@@ -354,9 +354,9 @@ class GenomeReorienter:
         # Show before and after visualizations
         if not self.skip_visualizing_alignments:
             self.run.info_single("Before reorientation", nl_after=1)
-            self._plot_synteny_ribbons(paf_initial, genome_name, label="Before reorientation")
+            self._plot_synteny_ribbons(paf_initial, genome_name, label="Before reorientation", query_fasta_path=fasta_path)
             self.run.info_single("After reorientation", nl_before=1, nl_after=1)
-            self._plot_synteny_ribbons(paf_final, genome_name, label="After reorientation")
+            self._plot_synteny_ribbons(paf_final, genome_name, label="After reorientation", query_fasta_path=output_path, show_legendary_info=True)
 
         return ReorientationResult(genome_name, "success", message, output_path, trust=trust_label, alignment=best_alignment)
 
@@ -413,14 +413,14 @@ class GenomeReorienter:
                 if initial_paf:
                     self.progress.reset()
                     self.run.info_single("Before reorientation", nl_after=1)
-                    self._plot_synteny_ribbons(initial_paf, genome_name, label="Before reorientation")
+                    self._plot_synteny_ribbons(initial_paf, genome_name, label="Before reorientation", query_fasta_path=fasta_path)
 
                 # After
                 reoriented_paf = self._minimap2_align(self.reference_path, output_path)
                 if reoriented_paf:
                     self.progress.reset()
                     self.run.info_single("After reorientation", nl_before=1, nl_after=1)
-                    self._plot_synteny_ribbons(reoriented_paf, genome_name, label="After reorientation")
+                    self._plot_synteny_ribbons(reoriented_paf, genome_name, label="After reorientation", query_fasta_path=output_path, show_legendary_info=True)
             except Exception as e:
                 self.log_run.info_single(f"Could not generate alignment plots: {e}", level=2)
 
