@@ -4491,7 +4491,7 @@ def get_pruned_HMM_hits_dict(hmm_hits_dict):
                 shortest_of_the_two = min(hits[i][0], hits[j][0])
 
                 if alignment_end - alignment_start > shortest_of_the_two / 2:
-                    # the overlap between these two is more than the half of the lenght of the
+                    # the overlap between these two is more than the half of the length of the
                     # shorter one. this is done
                     overlapping_hits_indices.add(i)
                     overlapping_hits_indices.add(j)
