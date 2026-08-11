@@ -14,8 +14,10 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'qclayssen']
-__requires__ = ['profile-db', 'contigs-db', 'scgs-taxonomy', 'collection', 'bin', 'metagenomes']
-__provides__ = ['genome-taxonomy', 'genome-taxonomy-txt']
+__requires__ = ['contigs-db', 'scgs-taxonomy']
+__can_use__ = ['profile-db', 'collection', 'bin', 'metagenomes']
+__provides__ = ['genome-taxonomy']
+__can_provide__ = ['genome-taxonomy-txt']
 __resources__ = [("Usage examples and warnings", "http://merenlab.org/scg-taxonomy")]
 __description__ = ("Estimates taxonomy at genome and metagenome level. This program is the entry point to "
                    "estimate taxonomy for a given set of contigs (i.e., all contigs in a contigs database, "
@@ -84,6 +86,8 @@ def get_args():
                                                                                    "show you quickly the distribution of each taxon across all metagenomes "
                                                                                    "in programs like EXCEL. WELL TRY IT AND SEE."}))
     groupD.add_argument(*anvio.A('raw-output'), **anvio.K('raw-output'))
+    groupD.add_argument(*anvio.A('tree-output'), **anvio.K('tree-output'))
+    groupD.add_argument(*anvio.A('tree-output-level'), **anvio.K('tree-output-level'))
 
     groupE = parser.add_argument_group('PERFORMANCE', "We are not sure if allocating more threads for this operation will change anything.\
                                                        But hey. One can try.")

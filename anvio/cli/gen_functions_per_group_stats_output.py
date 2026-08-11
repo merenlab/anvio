@@ -16,7 +16,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'adw96']
-__requires__ = ['functions', 'genomes-storage-db', 'internal-genomes', 'external-genomes']
+__requires__ = ['functions', 'external-genomes']
+__can_use__ = ['internal-genomes', 'genomes-storage-db']
 __provides__ = ['interactive']
 __description__ = "Generate a TAB delimited file for the distribution of functions across groups of genomes/metagenomes"
 

@@ -15,9 +15,16 @@ cp ${files}/mock_data_for_pangenomics/*.db ${output_dir}/
 cp ${files}/mock_data_for_pangenomics/external-genomes.txt ${output_dir}/
 cp ${files}/example_description.md ${output_dir}/
 cp ${files}/mock_data_for_pangenomics/group-information.txt ${output_dir}/pan-group-information.txt
+cp ${files}/data/input_files/minimal_enzymes_input.txt ${output_dir}/
 awk -F'\t' 'NR==1 {print $0} NR>1 {$1=$1".db"; print $0}' OFS='\t' \
 ${output_dir}/pan-group-information.txt > ${output_dir}/contigs-db-group-information.txt
 cd ${output_dir}/
+# Build an enzymes text file with a 'sample' column to test drawing KOs across samples, plus a
+# groups file assigning those samples to groups.
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print $0,"sample"} NR>1{s=((NR-2)%3)+1; print $0,"SAMPLE_"s}' \
+minimal_enzymes_input.txt > enzymes_with_samples.txt
+printf 'sample\tgroup\nSAMPLE_1\tG1\nSAMPLE_2\tG2\nSAMPLE_3\tG2\n' > enzymes-sample-group-information.txt
+mkdir enzymes_txt_kos
 mkdir contigs_db_kos
 mkdir contigs_dbs_kos_count
 mkdir pan_db_kos_genome_count_emphasize_shared
@@ -63,6 +70,41 @@ args+=( "--no-progress" )
 anvi-reaction-network "${args[@]}"
 
 pathway_numbers=( "00010" "01100" "01200" )
+
+INFO "Testing mapping KOs from an enzymes text file"
+args=()
+args+=( "--enzymes-txt" "minimal_enzymes_input.txt" )
+args+=( "--output-dir" ${output_dir}/enzymes_txt_kos )
+args+=( "--ko" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing mapping KOs from an enzymes text file across samples defined by a 'sample' column, \
+displaying sample membership, drawing map grids and map files for each sample"
+args=()
+args+=( "--enzymes-txt" "enzymes_with_samples.txt" )
+args+=( "--output-dir" ${output_dir}/enzymes_txt_samples_kos )
+args+=( "--ko" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing mapping KOs from an enzymes text file across groups of samples, where KOs are in \
+any samples in the group, drawing map grids and map files for each group"
+args=()
+args+=( "--enzymes-txt" "enzymes_with_samples.txt" )
+args+=( "--groups-txt" "enzymes-sample-group-information.txt" )
+args+=( "--group-threshold" "0" )
+args+=( "--output-dir" ${output_dir}/enzymes_txt_samples_kos_groups )
+args+=( "--ko" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
 
 INFO "Testing mapping KOs from a genomic contigs database"
 args=()

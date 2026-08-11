@@ -351,6 +351,9 @@ class AuxiliaryDBInfo(DBInfo):
 class StructureDBInfo(DBInfo):
     """A class to keep track of structure databases"""
     db_type = 'structure'
+    # a structure db links to its contigs database through contigs_db_hash. Future input types (e.g.
+    # pangenome) will store their own linkage hash, and the hash to check would then depend on the
+    # `input_type` meta value in the self table.
     hash_name = 'contigs_db_hash'
     def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)

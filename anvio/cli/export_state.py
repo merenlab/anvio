@@ -16,8 +16,9 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['pan-db', 'profile-db', 'state']
-__provides__ = ['state-json',]
+__requires__ = ['profile-db']
+__can_use__ = ['pan-db', 'state']
+__provides__ = ['state-json']
 __description__ = "Export an anvi'o state into a profile database"
 
 

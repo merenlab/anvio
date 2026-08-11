@@ -18,8 +18,9 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['mschecht']
+__requires__ = ["contigs-db"]
+__can_use__ = ["hmm-source", "hmm-hits"]
 __provides__ = ["hmm-hits"]
-__requires__ = ["contigs-db","hmm-source", "hmm-hits"]
 __description__ = ("Filter weak HMM hits from a given contigs database using a domain hits table "
                    "reported by `anvi-run-hmms`.")
 

@@ -21,6 +21,7 @@ from anvio.dbops import ContigsDatabase, ContigsSuperclass
 from anvio.drivers.diamond import Diamond
 from anvio.genomedescriptions import GenomeDescriptions, MetagenomeDescriptions
 
+from anvio.taxonomyops import TaxonomyTree
 from anvio.taxonomyops import AccessionIdToTaxonomy
 from anvio.taxonomyops import TaxonomyEstimatorSingle
 from anvio.taxonomyops import PopulateContigsDatabaseWithTaxonomy
@@ -161,6 +162,32 @@ class SanityCheck(object):
                                   "the presence/absence information is only meaningful when working without coverage data :/")
 
             ###########################################################
+            # tree output, which is relevant to both estimator classes
+            ###########################################################
+            if self.__class__.__name__ in ['SCGTaxonomyEstimatorSingle', 'SCGTaxonomyEstimatorMulti']:
+                if self.tree_output_level and not self.tree_output:
+                    raise ConfigError(f"You asked anvi'o to not show anything deeper than '{self.tree_output_level}' in the tree "
+                                      f"output, but you didn't actually ask for a tree output :/ Perhaps you meant to add the "
+                                      f"flag `--tree-output` to your command? Or perhaps you were looking for the parameter "
+                                      f"`--taxonomic-level`, which is a completely different thing?")
+
+                if self.tree_output_level and self.tree_output_level not in constants.levels_of_taxonomy:
+                    raise ConfigError(f"The taxonomic level '{self.tree_output_level}' is not a level anvi'o knows about. Here is the "
+                                      f"list of taxonomic levels anvi'o recognizes: {', '.join(constants.levels_of_taxonomy)}.")
+
+                if self.tree_output and anvio.QUIET:
+                    raise ConfigError("You asked anvi'o for a tree output, and then you asked it to be quiet. But the tree is the "
+                                      "only thing `--tree-output` produces, so these two flags together mean 'please do all this "
+                                      "work and then show me nothing', which anvi'o refuses to believe is what you meant. Please "
+                                      "remove one of them and try again (and if you were after a file rather than a display, the "
+                                      "parameter you want is `--output-file`).")
+
+                if self.tree_output and anvio.AS_MARKDOWN:
+                    raise ConfigError("The flag `--as-markdown` will not do anything good to a tree since the characters anvi'o "
+                                      "uses to draw one do not survive markdown rendering :/ Please pick either `--tree-output` "
+                                      "or `--as-markdown`.")
+
+            ###########################################################
             # PopulateContigsDatabaseWithSCGTaxonomy
             ###########################################################
             if self.__class__.__name__ in ['PopulateContigsDatabaseWithSCGTaxonomy']:
@@ -284,8 +311,15 @@ class SanityCheck(object):
                     raise ConfigError("More than one input file type (external genomes AND metagenomes) has been given to the "
                                       "taxonomy estimation classes. Please run this program with only one input type at a time.")
 
-                if not self.output_file_prefix and not self.output_file_path:
+                if not self.output_file_prefix and not self.output_file_path and not self.tree_output:
                     raise ConfigError("When using SCG taxonomy estimation in this mode, you must provide an output file path or prefix :/")
+
+                if self.tree_output and not self.output_file_prefix and not self.output_file_path and (self.matrix_format or self.raw_output):
+                    raise ConfigError("You asked anvi'o for a tree output and nothing else, but you also asked for the output to be "
+                                      "formatted as a matrix and/or to be reported raw. Those two only influence output files, and "
+                                      "you are not asking for any output files here, so anvi'o has no idea what to do with them. "
+                                      "Please either add an output file path/prefix to your command, or remove the flag(s) that "
+                                      "describe how output files should look like.")
 
                 if self.output_file_path and not self.output_file_prefix and self.matrix_format:
                     raise ConfigError("Matrix format output only works if you provide an output file prefix.")
@@ -335,6 +369,8 @@ class SCGTaxonomyArgs(object):
         self.user_taxonomic_level = A('taxonomic_level')
         self.matrix_format = A('matrix_format')
         self.raw_output = A('raw_output')
+        self.tree_output = A('tree_output')
+        self.tree_output_level = A('tree_output_level')
 
         if format_args_for_single_estimator:
             # so you're here to get an args instance to fool a single estimator class.
@@ -346,6 +382,14 @@ class SCGTaxonomyArgs(object):
             self.matrix_format = None
             self.raw_output = None
             self.presence_absence_only = False
+
+            # the multi estimator class is the one that displays the tree for multiple (meta)genomes,
+            # and it does that once, after it is done with all of them. so the single estimators it
+            # runs under the hood should keep their mouths shut. NOTE: both of these must be
+            # nullified together, otherwise the sanity check that makes sure `--tree-output-level`
+            # is not used without `--tree-output` will complain.
+            self.tree_output = None
+            self.tree_output_level = None
 
         self.skip_sanity_check = A('skip_sanity_check')
 
@@ -513,6 +557,9 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         if self.sequences_file_path_prefix:
             self.store_sequences_for_items_multi(scg_taxonomy_super_dict_multi)
 
+        if self.tree_output:
+            self.print_scg_taxonomy_super_dict_multi_as_tree(scg_taxonomy_super_dict_multi)
+
         if self.output_file_path:
             self.store_scg_taxonomy_super_dict_multi_output_file(scg_taxonomy_super_dict_multi)
         if self.output_file_prefix:
@@ -557,6 +604,9 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         if self.sequences_file_path_prefix:
             self.store_sequences_for_items_multi(scg_taxonomy_super_dict_multi)
 
+        if self.tree_output:
+            self.print_scg_taxonomy_super_dict_multi_as_tree(scg_taxonomy_super_dict_multi)
+
         if self.output_file_path:
             self.store_scg_taxonomy_super_dict_multi_output_file(scg_taxonomy_super_dict_multi)
         if self.output_file_prefix:
@@ -571,6 +621,58 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         else:
             raise ConfigError("Anvi'o is not sure how things got to this point, but somehow we find ourselves without input for the "
                               "SCGTaxonomyEstimatorMulti class's estimate() function.")
+
+
+    def print_scg_taxonomy_super_dict_multi_as_tree(self, scg_taxonomy_super_dict_multi):
+        """Display taxonomy across many (meta)genomes as a single, merged hierarchical tree.
+
+        A tree is not the ideal way to look at results that span multiple (meta)genomes since it
+        offers no way to tell which input a given taxon came from -- that is what the output files
+        are for. But if the user insists, the least anvi'o can do is to be explicit about what it
+        is showing them.
+        """
+
+        self.progress.reset()
+
+        self.run.warning("You asked anvi'o to display these results as a tree, which is not quite the appropriate "
+                         "display for results that describe multiple genomes or metagenomes, since a tree gives you "
+                         "no way to tell which of your inputs a given taxon was found in. But you are the boss, so "
+                         "here it is: a single tree in which the results from every single one of your inputs are "
+                         "merged together. If you need to know which input contributed what, please take a look at "
+                         "the output files.")
+
+        d = self.get_print_friendly_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
+
+        # here we merge everything into a single list of entries rather than a single dictionary, since
+        # two of the user's inputs may perfectly well have identical item names, and a dictionary would
+        # silently lose some of them.
+        entries = []
+        for metagenome_name in d:
+            entries.extend(list(d[metagenome_name].values()))
+
+        # a note on the unit of counting here: when the single estimators that produced these results
+        # ran in metagenome mode, every entry is a single copy of the SCG anvi'o chose for this
+        # analysis. otherwise each entry is the consensus taxonomy of an entire input, so what is
+        # being counted is (meta)genomes. rather than trying to guess which of these happened from
+        # the parameters (a rabbit hole, since some of them are set for the user based on whether
+        # there are profile databases around), we simply ask the data: consensus taxonomy entries
+        # are the only ones that come with a `total_scgs` key.
+        entries_describe_genomes = len(entries) and 'total_scgs' in entries[0]
+
+        if entries_describe_genomes:
+            unit = '(meta)genomes'
+        else:
+            unit = f"{self.scg_name_for_metagenome_mode} copies"
+
+        self.run.warning(None, header='Taxa across all of your inputs, merged', lc="green")
+
+        taxonomy_tree = TaxonomyTree(entries,
+                                     max_taxonomic_level=self.tree_output_level or 't_genus',
+                                     coverage_key='coverage' if self.compute_scg_coverages else None,
+                                     unit=unit,
+                                     run=self.run)
+
+        taxonomy_tree.print_tree()
 
 
     def store_sequences_for_items_multi(self, scg_taxonomy_super_dict_multi):
@@ -824,15 +926,15 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                 missing_taxa = [taxon for taxon in list_of_unique_taxon_names if taxon not in known_taxa]
                 for taxon in missing_taxa:
                     row = {'metagenome_name': metagenome_name, 'taxon': taxon, 'coverage': 0.0, 'taxonomic_level': taxonomic_level}
-                    x = x.append(row, ignore_index=True)
+                    x = pd.concat([x, pd.DataFrame([row])], ignore_index=True)
 
-            DFx = DFx.append(x, ignore_index=True)
+            DFx = pd.concat([DFx, x], ignore_index=True)
 
         DFx.sort_values(by=['metagenome_name', 'taxonomic_level', 'coverage'], ascending=[True, True, False], inplace=True)
 
         DF = pd.DataFrame(columns=['metagenome_name', 'taxon', 'coverage', 'taxonomic_level'])
         for taxonomic_level in constants.levels_of_taxonomy:
-            DF = DF.append(DFx[DFx['taxonomic_level'] == taxonomic_level], ignore_index=True)
+            DF = pd.concat([DF, DFx[DFx['taxonomic_level'] == taxonomic_level]], ignore_index=True)
 
         del DFx
 

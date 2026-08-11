@@ -1,3 +1,14 @@
+const description_panel = new DescriptionPanel('/pangraph/store_description');
+
+function showFetchOverlay(message) {
+    $('#fetch-overlay-message').text(message || 'Loading...');
+    $('#fetch-overlay').css('display', 'flex');
+}
+
+function hideFetchOverlay() {
+    $('#fetch-overlay').hide();
+}
+
 class PangenomeGraphUserInterface {
     constructor() {
         this.bin_dict = {'bin_1': []};
@@ -66,10 +77,14 @@ class PangenomeGraphUserInterface {
         this.recolor_alignment = this.recolor_alignment.bind(this);
         this.alignment_download = this.alignment_download.bind(this);
         this.info_download = this.info_download.bind(this);
+        this.download_bin_fasta = this.download_bin_fasta.bind(this);
+        this.show_region_fasta_download = this.show_region_fasta_download.bind(this);
         this.add_info_to_bin = this.add_info_to_bin.bind(this);
         this.flextree_change = this.flextree_change.bind(this);
         this.save_bin = this.save_bin.bind(this);
         this.load_bin = this.load_bin.bind(this);
+        this.show_save_state_modal = this.show_save_state_modal.bind(this);
+        this.show_load_state_modal = this.show_load_state_modal.bind(this);
         this.save_state = this.save_state.bind(this);
         this.load_state = this.load_state.bind(this);
         this.set_UI_settings = this.set_UI_settings.bind(this);
@@ -78,6 +93,14 @@ class PangenomeGraphUserInterface {
 
         this.draw_newick = this.draw_newick.bind(this);
         this.generate_svg = this.generate_svg.bind(this);
+
+        this.run_search = this.run_search.bind(this);
+        this.highlight_search = this.highlight_search.bind(this);
+        this.clear_search_highlight = this.clear_search_highlight.bind(this);
+        this.append_search_to_bin = this.append_search_to_bin.bind(this);
+        this.remove_search_from_bin = this.remove_search_from_bin.bind(this);
+
+        this._search_results = [];
 
         this.initialize_JSON();
     }
@@ -124,7 +147,6 @@ class PangenomeGraphUserInterface {
         var node_size = parseFloat($('#size')[0].value);
         var node_thickness = parseFloat($('#circ')[0].value);
         var edge_thickness = parseFloat($('#edge')[0].value);
-        var line_thickness = parseFloat($('#line')[0].value);
         var track_line_width = parseFloat($('#track_line_width')[0].value);
         var node_distance_x = parseFloat($('#distx')[0].value);
         var node_distance_y = parseFloat($('#disty')[0].value);
@@ -133,6 +155,7 @@ class PangenomeGraphUserInterface {
         var offset = parseFloat($('#tree_offset')[0].value);
         var tree_thickness = parseFloat($('#tree_thickness')[0].value);
         var text_offset = parseFloat($('#label_offset')[0].value);
+        var position_tick_font_size = parseFloat($('#position_tick_font_size')[0].value);
         
         var core_color = $('#core_color').attr('color');
         var paralog_color = $('#paralog_color').attr('color');
@@ -291,8 +314,19 @@ class PangenomeGraphUserInterface {
         
             var [arrow_size, arrow_start, arrow_stop] = middle_layers['arrow']
             var pointer_height = arrow_stop - arrow_start
-            var pointer_length = pointer_height / 20
             var arrow_thickness = pointer_height / 4
+            if (linear == 0) {
+                // Circular layout: pointer_length is used as an x-axis (node-index)
+                // offset, but x maps to *angle* here. Derive it from the desired
+                // arc length at the tip's middle radius so the arrowhead's on-screen
+                // width is proportional to its radial height. Without this the tip
+                // wraps around the ring on small components (large theta).
+                var middle_r = arrow_start + arrow_thickness * 2
+                var theta_rad = theta * Math.PI / 180
+                var pointer_length = (pointer_height / 2) / (middle_r * theta_rad)
+            } else {
+                var pointer_length = pointer_height / 20
+            }
             var steps = Math.round(this.global_x / (num_position + 1))
             
             if (steps < 1) {
@@ -308,7 +342,13 @@ class PangenomeGraphUserInterface {
                 var [circle_g_x, circle_g_y] = this.circle_transform(this.global_x + 0.5, arrow_start + arrow_thickness * 2, theta, start_angle)
                 var [circle_e_x, circle_e_y] = this.circle_transform(this.global_x + 0.5 - pointer_length, arrow_start, theta, start_angle)
                     
-                if ((this.global_x) * theta > 180) {
+                // Arc spans (this.global_x + 1) * theta degrees -- the
+                // path goes from x=-0.5 to x=this.global_x+0.5, i.e. the
+                // full ring extent. Using this.global_x alone is off by
+                // one theta and flips the large-arc flag on small
+                // components (orphans), drawing the arrow the wrong way
+                // around (outside the ring).
+                if ((this.global_x + 1) * theta > 180) {
                     var arc_flag = 1
                 } else {
                     var arc_flag = 0
@@ -385,12 +425,12 @@ class PangenomeGraphUserInterface {
                     }
 
                     svg_arrow.push(
-                        $('<text text-anchor="middle" dominant-baseline="middle" transform="rotate(-' + rotate + ' ' + circle_l_x + ' ' + circle_l_y +')" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="white">' + l + '</text>')
+                        $('<text text-anchor="middle" dominant-baseline="middle" transform="rotate(-' + rotate + ' ' + circle_l_x + ' ' + circle_l_y +')" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + position_tick_font_size + '" font-family="sans-serif" fill="white">' + l + '</text>')
                     )
                 } else {
                     var [circle_l_x, circle_l_y] = [(l) * node_distance_x, -(arrow_start + arrow_thickness * 2)]
                     svg_arrow.push(
-                        $('<text text-anchor="middle" dominant-baseline="middle" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="white">' + l + '</text>')
+                        $('<text text-anchor="middle" dominant-baseline="middle" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + position_tick_font_size + '" font-family="sans-serif" fill="white">' + l + '</text>')
                     )
                 }
                 l += steps
@@ -409,54 +449,37 @@ class PangenomeGraphUserInterface {
 
             var edge = this.data['edges'][i];
             // console.log(edge)
-            var edge_genomes = Object.keys(edge['directions'])
-            
+            var edge_genomes = edge['genomes']
+
             var intersection = edge_genomes.filter(x => enabled.includes(x));
             if (intersection.length > 0) {
                 var edge_genomes_length = edge_genomes.length;
-                var color = this.pickcolor(edgecoloring, Object.keys(edge['directions']))
-        
+                var color = this.pickcolor(edgecoloring, edge_genomes)
+
                 if (saturation == 1){
                     var pick = this.lighter_color('#ffffff', color, edge_genomes_length / genome_size);
                 } else {
                     var pick = color;
                 }
-            
+
                 var source = edge['source']
                 var target = edge['target']
-                
+
                 if (source != 'start' && target != 'stop' && edge['active'] == true){
-            
+
                     var i_x = this.nodes[source]['position'][0]
                     var i_y = this.nodes[source]['position'][1]
                     var j_x = this.nodes[target]['position'][0]
                     var j_y = this.nodes[target]['position'][1]
-                    
-                    var dir_set = Object.values(edge['directions'])
-    
-                    if (dir_set.includes('L') && dir_set.includes('R')) {
-                        var stroke = ' stroke-dasharray="' + line_thickness * 4 + ' ' + line_thickness + '" '
-                    } else if (dir_set.includes('L')) {
-                        var stroke = ' stroke-dasharray="' + line_thickness + '" '
+
+                    var stroke = ''
+
+                    if (source in edge_synteny) {
                     } else {
-                        var stroke = ''
+                        edge_synteny[source] = {}
                     }
 
-                    if (dir_set.includes('R')) {
-                        if (source in edge_synteny) {
-                        } else {
-                            edge_synteny[source] = {}
-                        }
-    
-                        edge_synteny[source][target] = edge['route']
-                    } else {
-                        if (target in edge_synteny) {
-                        } else {
-                            edge_synteny[target] = {}
-                        }
-
-                        edge_synteny[target][source] = [...edge['route']].reverse()
-                    }
+                    edge_synteny[source][target] = edge['route']
     
                     var [graph_size, graph_start, graph_stop] = outer_layers['graph']
                     var i_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + i_y * node_distance_y
@@ -533,53 +556,66 @@ class PangenomeGraphUserInterface {
         for (var genome of this.genomes) {
             var layer_name = genome + 'layer'
             if (Object.keys(middle_layers).includes(layer_name)){
-        
+
                 var [layer_width, layer_start, layer_stop] = middle_layers[layer_name]
-            
+
+                // per-genome track appearance, falling back to globals
+                var genome_bg_color = ($('#' + genome + 'trackbg').attr('color') || '').trim() || layer_color;
+                var genome_track_lw_raw = parseFloat($('#' + genome + 'tracklw')[0].value);
+                var genome_track_lw = isNaN(genome_track_lw_raw) ? track_line_width : genome_track_lw_raw;
+
                 if (linear == 0){
                     var [circle_a_x, circle_a_y] = this.circle_transform(0-0.5, layer_start, theta, start_angle)
                     var [circle_b_x, circle_b_y] = this.circle_transform(0-0.5, layer_stop, theta, start_angle)
                     var [circle_c_x, circle_c_y] = this.circle_transform(this.global_x + 0.5, layer_start, theta, start_angle)
                     var [circle_d_x, circle_d_y] = this.circle_transform(this.global_x + 0.5, layer_stop, theta, start_angle)
-                    
-                    if ((this.global_x) * theta > 180) {
+
+                    // Arc spans (this.global_x + 1) * theta degrees -- see
+                    // the matching note on the orientation-arrow arc above.
+                    if ((this.global_x + 1) * theta > 180) {
                         var arc_flag = 1
                     } else {
                         var arc_flag = 0
                     }
-            
+
                     svg_genome_tracks[genome].push(
                         $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
                         ' A ' + layer_start + ' ' + layer_start + ' 0 ' + arc_flag + ' 1 ' + circle_a_x + ' ' + circle_a_y +
                         ' L ' + circle_b_x + ' ' + circle_b_y +
                         ' A ' + layer_stop + ' ' + layer_stop + ' 0 ' + arc_flag + ' 0 ' + circle_d_x + ' ' + circle_d_y +
-                        ' Z" stroke-width="0" fill="' + layer_color + '"></path>')
+                        ' Z" stroke-width="0" fill="' + genome_bg_color + '"></path>')
                     )
                 } else {
                     var [circle_a_x, circle_a_y] = [(0-0.5) * node_distance_x, -layer_start]
                     var [circle_b_x, circle_b_y] = [(0-0.5) * node_distance_x, -layer_stop]
                     var [circle_c_x, circle_c_y] = [(this.global_x + 0.5) * node_distance_x, -layer_start]
                     var [circle_d_x, circle_d_y] = [(this.global_x + 0.5) * node_distance_x, -layer_stop]
-                    
+
                     svg_genome_tracks[genome].push(
                         $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
                         ' L ' + circle_a_x + ' ' + circle_a_y +
                         ' L ' + circle_b_x + ' ' + circle_b_y +
                         ' L ' + circle_d_x + ' ' + circle_d_y +
-                        ' Z" stroke-width="0" fill="' + layer_color + '"></path>')
+                        ' Z" stroke-width="0" fill="' + genome_bg_color + '"></path>')
                     )
                 }
 
                 var sorted_keys = Object.keys(this.synteny[genome]).sort(function (a, b) {return parseInt(a) - parseInt(b);});
-                if (layer_width >= track_line_width) {
+                if (layer_width >= genome_track_lw) {
 
-                    layer_width -= track_line_width
-                    layer_start += track_line_width * 0.5
-                    layer_stop -= track_line_width * 0.5
+                    layer_width -= genome_track_lw
+                    layer_start += genome_track_lw * 0.5
+                    layer_stop -= genome_track_lw * 0.5
 
                     var draw = edgecoloring[genome][1]
-                    var thickness = track_line_width
+                    var thickness = genome_track_lw
                     var stroke = ''
+
+                    // Linear orphans have every node at y=0, so this.global_y stays 0
+                    // and layer_width/this.global_y blows up to Infinity, producing NaN
+                    // path coordinates. Collapse the scale to 0 in that case so the
+                    // backbone sits flat at layer_start.
+                    var y_scale = this.global_y > 0 ? (layer_width / this.global_y) : 0
 
                     var edge_chain = []
                     for(var i of sorted_keys){
@@ -615,7 +651,7 @@ class PangenomeGraphUserInterface {
                             for (var p=0; p < edge_chain.length - 1; p++){
                                 var p_x = edge_chain[p][0]
                                 var p_y = edge_chain[p][1]
-                                var p_y_size = layer_start + p_y * (layer_width / this.global_y)
+                                var p_y_size = layer_start + p_y * y_scale
 
                                 if (linear == 0){
                                     var [circle_p_x, circle_p_y] = this.circle_transform(p_x, p_y_size, theta, start_angle);
@@ -629,7 +665,7 @@ class PangenomeGraphUserInterface {
                                 
                                 var q_x = edge_chain[p+1][0]
                                 var q_y = edge_chain[p+1][1]
-                                var q_y_size = layer_start + q_y * (layer_width / this.global_y)
+                                var q_y_size = layer_start + q_y * y_scale
 
                                 if (linear == 0){
                                     var [circle_q_x, circle_q_y] = this.circle_transform(q_x, q_y_size, theta, start_angle);
@@ -759,7 +795,7 @@ class PangenomeGraphUserInterface {
                 var j_y = search_stop
                 
                 if (!global_values.includes(k_x)) {
-                    svg_search.push(this.create_rectangle(i_x, i_y, j_x, j_y, theta, start_angle, node_distance_x, linear, 'white', k_x))
+                    svg_search.push(this.create_rectangle(i_x, i_y, j_x, j_y, theta, start_angle, node_distance_x, linear, 'white', 'searchhit_' + k_x, 'pangraph-search-hit'))
                 }
     
                 for (var layer_name of this.layers) {
@@ -881,7 +917,12 @@ class PangenomeGraphUserInterface {
                     var color = group_color
                 }
         
-                if ((l_x - m_x) * theta >= 180) {
+                // Group spans from l_x (left) to m_x (right); the arc
+                // covers (m_x - l_x) * theta degrees. The previous
+                // (l_x - m_x) expression was negative and never crossed
+                // the threshold, so arc_flag was always 0 -- fine for
+                // narrow groups, wrong for groups spanning > 180 deg.
+                if ((m_x - l_x) * theta >= 180) {
                     var arc_flag = 1
                 } else {
                     var arc_flag = 0
@@ -1007,9 +1048,6 @@ class PangenomeGraphUserInterface {
                 var x_max = rinfo['x_max'];
                 var x_span = x_max - x_min;
 
-                // Skip single-position (backbone-only) regions
-                if (x_span === 0) continue;
-
                 // Find the tallest node in this region so the label clears it.
                 var region_max_y = 0;
                 for (var [nid, ndata] of Object.entries(this.nodes)) {
@@ -1022,7 +1060,9 @@ class PangenomeGraphUserInterface {
                 var outer_content_r = base_outer_r + region_max_y * node_distance_y;
 
                 var x_mid = (x_min + x_max) / 2;
-                var svg_region_width = x_span * node_distance_x;
+                // Single-position regions have x_span === 0; use one node-width so the
+                // zoom threshold has a non-zero value to work against.
+                var svg_region_width = Math.max(x_span, 1) * node_distance_x;
 
                 // Store geometry as data attributes; position and font-size are set
                 // dynamically by the zoom handler so the label always clears the graph.
@@ -1043,7 +1083,7 @@ class PangenomeGraphUserInterface {
                             text-anchor="middle" dominant-baseline="middle"
                             x="0" y="0" font-size="1" font-family="sans-serif"
                             fill="#555555" opacity="0.85"
-                            style="display:none">#${rid}</text>`
+                            style="display:none">#${rid.split('_').pop()}</text>`
                     ));
                 } else {
                     var label_x   = x_mid * node_distance_x;
@@ -1061,7 +1101,7 @@ class PangenomeGraphUserInterface {
                             text-anchor="middle" dominant-baseline="middle"
                             x="${label_x}" y="0" font-size="1" font-family="sans-serif"
                             fill="#555555" opacity="0.85"
-                            style="display:none">#${rid}</text>`
+                            style="display:none">#${rid.split('_').pop()}</text>`
                     ));
                 }
             }
@@ -1193,14 +1233,16 @@ class PangenomeGraphUserInterface {
         return color4
     }
 
-    create_rectangle(i_x, i_y, j_x, j_y, theta, start_angle, node_distance_x, linear, color, id='') {
-    
+    create_rectangle(i_x, i_y, j_x, j_y, theta, start_angle, node_distance_x, linear, color, id='', css_class='') {
+
+        var extra = ''
         if (id != '') {
-            var extra = '" id="' + id
-        } else {
-            var extra = ''
+            extra += '" id="' + id
         }
-        
+        if (css_class != '') {
+            extra += '" class="' + css_class
+        }
+
         if (linear == 0) {
             var [a_x, a_y] = this.circle_transform(i_x, i_y, theta, start_angle)
             var [b_x, b_y] = this.circle_transform(j_x, i_y, theta, start_angle)
@@ -1437,13 +1479,14 @@ class PangenomeGraphUserInterface {
         return(result)
     }
     
-    start_draw() {
+    start_draw(on_complete) {
         var new_settings_dict = {};
-        
+
         new_settings_dict['condtr'] = parseInt($('#condtr')[0].value);
         new_settings_dict['maxlength'] = parseInt($('#maxlength')[0].value);
         new_settings_dict['groupcompress'] = parseFloat($('#groupcompress')[0].value);
-        
+        new_settings_dict['component'] = $('#component_select').val();
+
         if (JSON.stringify(this.settings_dict) !== JSON.stringify(new_settings_dict)) {
             this.rerun_JSON(new_settings_dict);
         }
@@ -1462,6 +1505,14 @@ class PangenomeGraphUserInterface {
                 this.settings_dict = JSON.parse(JSON.stringify(new_settings_dict));
                 this.main_draw();
                 $('#svgbox').css('opacity', '');
+                // start_draw is also bound directly as a jQuery event handler
+                // (#redraw click, #component_select change), so on_complete may
+                // arrive as an Event object -- guard against non-functions.
+                if (typeof on_complete === 'function') requestAnimationFrame(() => requestAnimationFrame(on_complete));
+                if (!this._description_panel_shown && description_panel.description) {
+                    this._description_panel_shown = true;
+                    description_panel.show();
+                }
             },
             error: (err) => {
                 $('#svgbox').css('opacity', '');
@@ -1563,7 +1614,13 @@ class PangenomeGraphUserInterface {
             type_display += ', ' + copies_in_graph + ' cop' + (copies_in_graph === 1 ? 'y' : 'ies') + ' in graph';
         }
 
-        instance.setContent('<strong>' + gene_cluster + '</strong><br />' + type_display);
+        // For a grouped node (rectangle), label by the group id (GCG_...) rather
+        // than the first member's gene cluster -- otherwise hovering a group
+        // looks like hovering a single node.
+        var display_name = instance.reference.id.startsWith('GCG_')
+            ? instance.reference.id
+            : gene_cluster;
+        instance.setContent('<strong>' + display_name + '</strong><br />' + type_display);
         $('#number_type')[0].innerText = type_display;
     }
 
@@ -1979,8 +2036,15 @@ class PangenomeGraphUserInterface {
                     ring_el.setAttribute('pointer-events', 'none');
                     deferred_ring_els.push(ring_el);
                 } else {
-                    const x1 = rx_min * L.node_distance_x;
-                    const x2 = (rx_max + 1) * L.node_distance_x;
+                    // Linear places a node at position p at p * node_distance_x
+                    // (its cell is centered there). Circular instead routes every
+                    // x through circle_transform(), which bakes in a +0.5 so the
+                    // node sits at the center of the [p, p+1] wedge -- which is
+                    // why the [rx_min, rx_max+1] span is correct in circular but
+                    // half a cell to the right of the nodes in linear. Center the
+                    // linear span on the node cells to match.
+                    const x1 = (rx_min - 0.5) * L.node_distance_x;
+                    const x2 = (rx_max + 0.5) * L.node_distance_x;
 
                     // Background fill
                     const bg_rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -2067,7 +2131,9 @@ class PangenomeGraphUserInterface {
                             label_el.setAttribute('y', ly);
                         }
                     } else {
-                        const lx = run_x_mid * L.node_distance_x;
+                        // -0.5 to match the linear span centering above (the
+                        // circular label keeps the +0.5 baked into circle_transform).
+                        const lx = (run_x_mid - 0.5) * L.node_distance_x;
                         const ly = -label_r;
 
                         if (orientation === 'radial') {
@@ -2135,6 +2201,56 @@ class PangenomeGraphUserInterface {
 
         $('#svgbox').empty().html(svg_core[0].outerHTML);
 
+        // Minimum on-screen line width. The graph lives in a huge viewBox that
+        // gets squeezed into the viewport, so at fit-view stroke widths (set in
+        // user units) collapse to sub-pixel widths and render as faint, shimmery
+        // "antialiased garbage". We keep strokes scaling naturally with the graph
+        // (so they stay proportional and look right at every zoom) but never let
+        // a rendered stroke drop below MIN_PX device pixels:
+        //   rendered_px = baseW * realZoom  ->  clamp so it's >= MIN_PX
+        //   => stroke-width attr = max(baseW, MIN_PX / realZoom)
+        // Zoomed in, MIN_PX/realZoom is tiny so widths are natural; zoomed out,
+        // the floor keeps thin lines crisp instead of collapsing.
+        //
+        // Snapshot every strokable element's natural (base) width once per redraw
+        // so the per-zoom pass just reads dataset.baseStroke.
+        this._lineEls = [];
+        document.querySelectorAll('#result [stroke-width]').forEach(el => {
+            const baseW = parseFloat(el.getAttribute('stroke-width'));
+            if (baseW > 0) {
+                el.dataset.baseStroke = baseW;
+                this._lineEls.push(el);
+            }
+        });
+        this._minBaseStroke = this._lineEls.reduce(
+            (m, el) => Math.min(m, parseFloat(el.dataset.baseStroke)), Infinity);
+        this._strokeRegime = null;
+
+        this.apply_stroke_floor = () => {
+            if (!this._lineEls || !this._lineEls.length || !this.panZoomInstance) return;
+            const to_base = () => {
+                // Only touch the DOM when leaving the floor regime, so ordinary
+                // zoomed-in interaction does no per-element work.
+                if (this._strokeRegime === 'base') return;
+                this._lineEls.forEach(el => el.setAttribute('stroke-width', el.dataset.baseStroke));
+                this._strokeRegime = 'base';
+            };
+            // High-performance mode: skip the floor entirely (cheap pan/zoom;
+            // lines may go sub-pixel when fully zoomed out).
+            if ($('#flexhighperf').prop('checked')) { to_base(); return; }
+            const MIN_PX = parseFloat($('#min_line_px')[0].value) || 0;
+            if (MIN_PX <= 0) { to_base(); return; }
+            const realZoom = this.panZoomInstance.getSizes().realZoom;
+            const floor = MIN_PX / realZoom;
+            // Even the thinnest line already renders >= MIN_PX -> nothing to do.
+            if (floor <= this._minBaseStroke) { to_base(); return; }
+            this._lineEls.forEach(el => {
+                const baseW = parseFloat(el.dataset.baseStroke);
+                el.setAttribute('stroke-width', baseW > floor ? baseW : floor);
+            });
+            this._strokeRegime = 'floor';
+        };
+
         this.refresh_region_label_visibility = () => {
             if (!$('#flexregionlabels').prop('checked')) return;
             const realZoom = this.panZoomInstance.getSizes().realZoom;
@@ -2178,7 +2294,7 @@ class PangenomeGraphUserInterface {
             controlIconsEnabled: false,
             minZoom: 0.1,
             maxZoom: 100,
-            onZoom: () => { this.refresh_region_label_visibility(); this._render_bin_visuals(); }
+            onZoom: () => { this.apply_stroke_floor(); this.refresh_region_label_visibility(); this._render_bin_visuals(); this.refresh_search_outline(); }
         });
 
         // Restore pan/zoom from before the redraw (e.g. after a color change).
@@ -2186,6 +2302,9 @@ class PangenomeGraphUserInterface {
             this.panZoomInstance.zoom(savedZoom);
             this.panZoomInstance.pan(savedPan);
         }
+
+        // Apply the min-line-width floor for the initial view.
+        this.apply_stroke_floor();
 
         // Auto-size region labels once on first load.
         //
@@ -2342,6 +2461,8 @@ class PangenomeGraphUserInterface {
                 this.initialize_variables();
                 this.initialize_user_interface();
                 this.set_UI_settings();
+                description_panel.setup(this.data['meta']['description']);
+                this.start_draw(toggleLeftPanel);
             },
             error: (err) => {
                 toastr.error('Could not reach the server during initialization.', 'Initialization error', { 'timeOut': '0', 'extendedTimeOut': '0' });
@@ -2534,9 +2655,9 @@ class PangenomeGraphUserInterface {
 
         const $row = $(`<tr class="bin-row" id="bin_${n}_grid">
             <td><input type="radio" name="binradio" id="bin_${n}_radio" bin_id="bin_${n}" checked></td>
-            <td><div class="pangraph-colorpicker" id="bin_${n}_color" color="${new_color}" style="background-color: ${new_color}; width: 30px; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div></td>
+            <td><div class="pangraph-colorpicker" id="bin_${n}_color" color="${new_color}" style="background-color: ${new_color};"></div></td>
             <td><input type="text" class="form-control form-control-sm p-0 border-0" style="background-color: #e9ecef;" value="Bin_${n}" id="bin_${n}_text"></td>
-            <td><input type="button" class="form-control form-control-sm p-0 border-0 bin-count-btn" id="bin_${n}_value" value=0 title="Click for functions summary"></td>
+            <td><input type="button" class="form-control form-control-sm p-0 border-0 bin-count-btn" id="bin_${n}_value" value=0 title="Click to inspect bin contents"></td>
             <td><center><span class="default-bin-icon bi bi-trash-fill fa-lg" aria-hidden="true" title="Delete this bin" onclick="pgui.delete_bin('bin_${n}');"></span></center></td>
         </tr>`);
 
@@ -2657,71 +2778,280 @@ class PangenomeGraphUserInterface {
         });
     }
 
+    // Wire up settings-panel tooltips with Tippy.js (the tooltip engine already
+    // used for node hovers). The markup carries Bootstrap-style
+    // data-toggle="tooltip" + title attributes, but Bootstrap 4 tooltips need
+    // Popper v1 which this view doesn't load, so they never showed. Worse, the
+    // title lives on the input widget, not on the descriptive text label, so
+    // hovering the label showed nothing. Here we make the text label the hover
+    // target while keeping the widget hoverable too, and strip the native title
+    // so the browser doesn't draw a duplicate tooltip.
+    initialize_settings_tooltips() {
+        document.querySelectorAll('#settings-content .col-12.d-flex').forEach(row => {
+            // The descriptive text label for the row (col-9/col-11 for most
+            // settings; col-5 for the per-layer min/max rows).
+            const label = row.querySelector('.col-9, .col-11, .col-5');
+
+            // Read each widget's title, then strip title/data-toggle so no native
+            // browser tooltip (and no stray Bootstrap handler) can double up. Most
+            // widgets carry data-toggle="tooltip"; a few (e.g. the search-hit
+            // color/outline controls) use a bare title attribute — handle both.
+            const items = [...row.querySelectorAll('[data-toggle="tooltip"], [title]')].map(el => {
+                const title = (el.getAttribute('title') || '').trim();
+                el.removeAttribute('title');
+                el.removeAttribute('data-toggle');
+                // Treat empty and the literal "..." placeholder as "no tooltip".
+                return { el, title: (title === '...' ? '' : title) };
+            }).filter(it => it.title);
+
+            if (!items.length) return;
+
+            // The value box (col-2) is the row's primary control; its tooltip is
+            // the one we also surface when hovering the text label. Fall back to
+            // the first real widget (e.g. toggle-only rows with no value box).
+            const primary = items.find(it => it.el.closest('.col-2')) || items[0];
+
+            items.forEach(({ el, title }) => {
+                const on_label = (el === primary.el && label);
+                tippy(on_label ? label : el, {
+                    content: title,
+                    // When there is a label, anchor the tooltip to it (so it
+                    // appears under the cursor on the text) but trigger from both
+                    // the label and the widget.
+                    triggerTarget: on_label ? [label, el] : el,
+                    theme: 'light',
+                    placement: 'top',
+                    arrow: false,
+                    duration: 0,
+                });
+            });
+        });
+    }
+
     // Initialize colpick on static (HTML-declared) color pickers.
     // Per-genome pickers are initialized individually in the genome loop.
     initialize_colorpickers() {
         const genomeColorIds = new Set(this.genomes);
         document.querySelectorAll('.pangraph-colorpicker').forEach(el => {
-            if (!genomeColorIds.has(el.id)) {
-                this._init_colorpicker('#' + el.id);
+            if (genomeColorIds.has(el.id)) return;
+            if (el.id === 'search_color') {
+                this._init_search_colorpicker();
+                return;
+            }
+            this._init_colorpicker('#' + el.id);
+        });
+    }
+
+    // The search-hit color doesn't affect generate_svg, so instead of the
+    // generic full redraw on close we just re-apply the current highlight (if
+    // any) in the new color.
+    _init_search_colorpicker() {
+        $('#search_color').colpick({
+            layout: 'hex',
+            submit: 0,
+            colorScheme: 'light',
+            onChange: (hsb, hex, rgb, el, bySetColor) => {
+                $(el).css('background-color', '#' + hex);
+                $(el).attr('color', '#' + hex);
+            },
+            onHide: () => {
+                if ((this._search_svg_ids || []).length) this.highlight_search();
             }
         });
     }
 
     set_UI_settings() {
+        const state = this.data['states'];
 
-        var genome_order = []
-
-        for (var [setting, value] of Object.entries(this.data['states'])) {
-            const el = $('#' + setting);
-            if (el.hasClass('pangraph-colorpicker')) {
-                // colpick element: set background and color attribute
-                const hex = value.replace('#', '');
-                el.css('background-color', value).attr('color', value);
-                el.colpickSetColor(hex);
-            } else if (typeof value === 'number') {
-                el[0].value = value;
-            } else if (value == true || value == false) {
-                el.prop('checked', value);
-            } else {
-                el[0].value = value;
-            }
-
-            if (this.genomes.includes(setting)) {
-                genome_order.push(setting)
-            }
-        }
-
-        var container = document.getElementById('genomecolors');
-
-        genome_order.forEach(id => {
-            var element = document.getElementById(id + '_row');
-            if (element) {
-                container.appendChild(element);
-            }
-        });
-
-        // If max edge length filter was never set (legacy -1 default), apply the new default.
-        if (parseInt($('#maxlength')[0].value) === -1) {
-            $('#maxlength')[0].value = 1000;
-            $('#flexmaxlength').prop('checked', true);
-        }
-
-        for(var [layer, max_value] of Object.entries(this.layers_max)) {
-            $('#' + layer + '_max')[0].value = max_value;
-        }
-
-        for(var [layer, min_value] of Object.entries(this.layers_min)) {
-            $('#' + layer + '_min')[0].value = min_value;
-        }
-
-        const isLinear = $('#flexlinear').prop('checked');
+        // drawing
+        const isLinear = state['drawing']['type'] === 'linear';
+        $('#flexlinear').prop('checked', isLinear);
         $('#drawing_type_select').val(isLinear ? 'linear' : 'circular');
         $('#radius_row').toggle(!isLinear);
+        $('#inner')[0].value = state['drawing']['inner_radius'];
+        $('#start_angle')[0].value = state['drawing']['start_angle'];
+        $('#end_angle')[0].value = state['drawing']['end_angle'];
+        $('#distx')[0].value = state['drawing']['node_x_spacing'];
+        $('#disty')[0].value = state['drawing']['node_y_spacing'];
+
+        // nodes
+        $('#size')[0].value = state['nodes']['radius'];
+        $('#circ')[0].value = state['nodes']['outline_width'];
+        $('#flexsaturation').prop('checked', state['nodes']['fade_by_prevalence']);
+        const tc = state['nodes']['type_colors'] || {};
+        // [picker id, stored color, default]. Pan-graphs migrated before
+        // `duplication`/`rna` became the canonical type names stored their
+        // colours under the old `multi_copy`/`trna` keys, so fall back to those,
+        // then to the default — a stale state must never crash set_UI_settings
+        // on `color.replace(...)`.
+        const node_color_pickers = [
+            ['core_color',       tc['core'],                                '#BCBCBC'],
+            ['rearranged_color', tc['rearrangement'],                       '#8FF0A4'],
+            ['accessory_color',  tc['accessory'],                           '#DC8ADD'],
+            ['paralog_color',    tc['duplication'] ?? tc['multi_copy'],     '#FFA348'],
+            ['singleton_color',  tc['singleton'],                           '#99C1F1'],
+            ['trna_color',       tc['rna'] ?? tc['trna'],                   '#ECFA28']
+        ];
+        for (const [id, stored, fallback] of node_color_pickers) {
+            const color = stored ?? fallback;
+            $('#' + id).css('background-color', color).attr('color', color);
+            $('#' + id).colpickSetColor(color.replace('#', ''));
+        }
+
+        // edges
+        $('#edge')[0].value = state['edges']['width'];
+        // min line width floor — fall back to the HTML default for older states
+        $('#min_line_px')[0].value = state['edges']['min_line_width_px'] ?? 0.5;
+
+        // graph_layout
+        const gl = state['graph_layout'];
+        $('#flexcondtr').prop('checked', gl['grouping_enabled']);
+        $('#condtr')[0].value = gl['grouping_threshold'];
+        $('#flexmaxlength').prop('checked', gl['max_edge_length_enabled']);
+        $('#maxlength')[0].value = gl['max_edge_length'];
+        $('#flexgroupcompress').prop('checked', gl['group_compression_enabled']);
+        $('#groupcompress')[0].value = gl['group_compression'];
+
+        // layers
+        const lyr = state['layers'];
+        $('#flexglobalbackbone').prop('checked', lyr['backbone']['visible']);
+        $('#globalbackbone')[0].value = lyr['backbone']['height'];
+        for (const [id, color] of Object.entries({
+            'back_color': lyr['backbone']['backbone_color'],
+            'non_back_color': lyr['backbone']['variable_region_color']
+        })) {
+            $('#' + id).css('background-color', color).attr('color', color);
+            $('#' + id).colpickSetColor(color.replace('#', ''));
+        }
+        $('#flexarrow').prop('checked', lyr['orientation_arrow']['visible']);
+        $('#arrow')[0].value = lyr['orientation_arrow']['height'];
+        $('#search_hit')[0].value = lyr['search']['hit_height'];
+        const searchColor = lyr['search']['hit_color'] ?? '#FF7F0E';
+        $('#search_color').css('background-color', searchColor).attr('color', searchColor);
+        $('#search_color').colpickSetColor(searchColor.replace('#', ''));
+        $('#search_outline_width')[0].value = lyr['search']['hit_outline_width'] ?? 3;
+
+        // layers_tree
+        const lt = state['layers_tree'];
+        $('#flextree').prop('checked', lt['visible']);
+        $('#tree_length')[0].value = lt['height'];
+        $('#tree_offset')[0].value = lt['offset'];
+        $('#tree_thickness')[0].value = lt['line_width'];
+
+        // genome_tracks
+        const gt = state['genome_tracks'];
+        $('#track_line_width')[0].value = gt['line_width'];
+        const bgColor = gt['background_color'];
+        $('#layer_color').css('background-color', bgColor).attr('color', bgColor);
+        $('#layer_color').colpickSetColor(bgColor.replace('#', ''));
+
+        const genome_order = [];
+        for (const [genome, gdata] of Object.entries(gt['genomes'])) {
+            $('#flex' + genome).prop('checked', gdata['show']);
+            const gc = gdata['color'];
+            $('#' + genome).css('background-color', gc).attr('color', gc);
+            $('#' + genome).colpickSetColor(gc.replace('#', ''));
+            $('#flex' + genome + 'layer').prop('checked', gdata['show_track']);
+            $('#' + genome + 'layer')[0].value = gdata['track_height'];
+            // per-genome track overrides — fall back to globals for old states
+            const tbc = gdata['track_bg_color'] ?? bgColor;
+            $('#' + genome + 'trackbg').css('background-color', tbc).attr('color', tbc);
+            $('#' + genome + 'trackbg').colpickSetColor(tbc.replace('#', ''));
+            $('#' + genome + 'tracklw')[0].value = gdata['track_line_width'] ?? gt['line_width'];
+            genome_order.push(genome);
+        }
+
+        // imported_layers
+        const il = state['imported_layers'] || {};
+        for (const [layer, ldata] of Object.entries(il)) {
+            $('#flex' + layer).prop('checked', ldata['visible']);
+            const lel = $('#' + layer);
+            if (lel.length) lel[0].value = ldata['height'];
+        }
+
+        // labels
+        const lbl = state['labels'];
+        $('#label')[0].value = lbl['font_size'];
+        $('#label_offset')[0].value = lbl['offset'];
+        $('#num_position')[0].value = lbl['position_tick_count'];
+        $('#position_tick_font_size')[0].value = lbl['position_tick_font_size'] || lbl['font_size'];
+
+        // margins
+        $('#inner_margin')[0].value = state['margins']['inner'];
+        $('#outer_margin')[0].value = state['margins']['outer'];
+
+        // region_labels
+        const rl = state['region_labels'];
+        $('#region_label_size')[0].value = rl['font_size'];
+        $('#region_label_min_width')[0].value = rl['min_width_px'];
+        $('#region_label_distance')[0].value = rl['distance'];
+
+        // bins
+        const bins = state['bins'];
+        $('#flexbinlabels').prop('checked', bins['show_labels']);
+        $('#bin_label_orientation')[0].value = bins['label_orientation'];
+        $('#bin_label_size')[0].value = bins['label_font_size'];
+        $('#bin_ring_height')[0].value = bins['ring_height'];
+        $('#bin_ring_opacity')[0].value = bins['ring_opacity'];
+        $('#flexbinedges').prop('checked', bins['show_edges']);
+        $('#bin_edge_thickness')[0].value = bins['edge_thickness'];
+        const beColor = bins['edge_color'];
+        $('#bin_edge_color').css('background-color', beColor).attr('color', beColor);
+        $('#bin_edge_color').colpickSetColor(beColor.replace('#', ''));
+        $('#bin_edge_opacity')[0].value = bins['edge_opacity'];
+
+        // restore genome row order in the genomecolors container
+        const container = document.getElementById('genomecolors');
+        genome_order.forEach(id => {
+            const element = document.getElementById(id + '_row');
+            if (element) container.appendChild(element);
+        });
+
+        // imported layer data min/max values
+        for (const [layer, max_value] of Object.entries(this.layers_max)) {
+            $('#' + layer + '_max')[0].value = max_value;
+        }
+        for (const [layer, min_value] of Object.entries(this.layers_min)) {
+            $('#' + layer + '_min')[0].value = min_value;
+        }
+    }
+
+    // Build the Component dropdown from meta.components_summary, which the
+    // server fills with {cid: node_count} for the WHOLE graph (not just the
+    // active component, which is the only one in this.nodes). Component ids are
+    // prefixed strings ("C_1", "C_2", ...). The currently active component
+    // (settings_dict['component'], defaulting to "C_1") is preselected;
+    // meta.component (set by load_state / rerun_state) wins if settings_dict
+    // hasn't been seeded yet.
+    populate_component_select() {
+        const summary = (this.data && this.data['meta'] && this.data['meta']['components_summary']) || {};
+        // Sort by the numeric suffix so C_2 precedes C_10 (plain string sort would not).
+        const ids = Object.keys(summary)
+                          .sort((a, b) => parseInt(a.split('_').pop()) - parseInt(b.split('_').pop()));
+
+        let current;
+        if (this.settings_dict && this.settings_dict['component'] !== undefined) {
+            current = this.settings_dict['component'];
+        } else if (this.data && this.data['meta'] && this.data['meta']['component'] !== undefined) {
+            current = this.data['meta']['component'];
+        } else {
+            current = 'CP_0001';
+        }
+
+        const $sel = $('#component_select');
+        $sel.empty();
+        for (const cid of ids) {
+            // Value is the real id (CP_0001); label shows the friendly number ("Component 1").
+            const opt = $('<option>').attr('value', cid).text(`Component ${parseInt(cid.split('_').pop())} (${summary[cid]} nodes)`);
+            if (cid === current) opt.attr('selected', 'selected');
+            $sel.append(opt);
+        }
     }
 
     initialize_user_interface() {
-        
+
+        this.populate_component_select();
+
         $('#RightOffcanvasBodyTop').append(
             $('<tr>').append(
                 $('<td class="col-4">').append(
@@ -2775,7 +3105,7 @@ class PangenomeGraphUserInterface {
                 var element = $('<div class="col-12 d-flex mb-1"></div>').append(
                     $('<div class="col-1 d-flex align-items-center"></div>').append(
                         $('<div class="form-switch d-flex"></div>').append(
-                            $('<input class="" type="checkbox" id="flex' + layer + '" name="flex' + layer + '" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip">')
+                            $('<input class="" type="checkbox" id="flex' + layer + '" name="flex' + layer + '" aria-label="..." data-toggle="tooltip" data-placement="top" title="Show or hide this per-path data overlay layer">')
                         )
                     )
                 ).append(
@@ -2784,15 +3114,15 @@ class PangenomeGraphUserInterface {
                     )
                 ).append(
                     $('<div class="d-flex col-2"></div>').append(
-                        $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + layer + '_min" name="' + layer + '_min" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">')
+                        $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + layer + '_min" name="' + layer + '_min" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Lower bound of this layer\'s value-to-color scale; values at or below it map to the low (green) color">')
                     )
                 ).append(
                     $('<div class="d-flex col-2"></div>').append(
-                        $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + layer + '_max" name="' + layer + '_max" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">')
+                        $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + layer + '_max" name="' + layer + '_max" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Upper bound of this layer\'s value-to-color scale; values at or above it map to the high (red) color">')
                     )
                 ).append(
                     $('<div class="d-flex col-2"></div>').append(
-                        $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + layer + '" name="' + layer + '" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">')
+                        $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + layer + '" name="' + layer + '" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Height of this overlay layer\'s track, in pixels">')
                     )
                 );
 
@@ -2815,31 +3145,48 @@ class PangenomeGraphUserInterface {
         $('#title-panel-first-line').text(this.data['meta']['project_name']);
         $('#title-panel-second-line').text('Pangraph Detail');
         
+        const default_track_bg = $('#layer_color').attr('color') || '#F5F5F5';
+        const default_track_lw = $('#track_line_width')[0].value || '5';
+
         // if (!$('#genomecolors').children().length) {
-        for (var genome of this.genomes) {  
+        for (var genome of this.genomes) {
             $('#genomecolors').append(
-                $('<div class="col-12 d-flex mb-1" id="' + genome + '_row">').append(
-                    $('<div class="col-1 d-flex align-items-center">').append(
-                        $('<div class="form-switch d-flex">').append(
-                            $('<input class="" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">')
+                $('<div class="genome-row mb-1" id="' + genome + '_row">').append(
+                    // Line 1: vis checkbox | line color | genome name
+                    $('<div class="d-flex align-items-center gap-1">').append(
+                        $('<div class="form-switch mb-0">').append(
+                            $('<input class="genome-vis-check form-check-input" type="checkbox" id="flex' + genome + '" name="' + genome + '" checked title="Show/hide this genome">')
                         )
+                    ).append(
+                        $('<div class="pangraph-colorpicker" id="' + genome + '" color="#000000" style="background-color:#000000;"></div>')
+                    ).append(
+                        $('<span class="genome-row-name" title="' + genome + '">').text(genome)
                     )
                 ).append(
-                    $('<div class="col-8 d-flex align-items-center">').append(
-                        genome
-                    )
-                ).append(
-                    $('<div class="col-1 d-flex align-items-center">').append(
-                        $('<i class="user-handle bi bi-arrows-expand"></i>')
-                    )
-                ).append(
-                    $('<div class="d-flex col-2 align-items-center">').append(
-                        $('<div class="pangraph-colorpicker" id="' + genome + '" color="#000000" style="background-color: #000000; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>')
+                    // Line 2: track toggle | track BG color | height | LW
+                    $('<div class="d-flex align-items-center gap-1 ms-1 genome-row-track">').append($('<span style="padding-right:3px;">Display Genome Track: </span>')
+                    ).append(
+                        $('<div class="form-switch mb-0">').append(
+                            $('<input class="genome-track-check form-check-input" type="checkbox" id="flex' + genome + 'layer" name="flex' + genome + 'layer" title="Show/hide track ring">')
+                        )
+                    ).append(
+                        $('<span class="ms-1">&nbsp;Color:</span>')
+                    ).append(
+                        $('<div class="pangraph-colorpicker" id="' + genome + 'trackbg" color="' + default_track_bg + '" style="background-color:' + default_track_bg + ';" title="Track background color"></div>')
+                    ).append(
+                        $('<span class="ms-1">&nbsp;Height:&nbsp;</span>')
+                    ).append(
+                        $('<input type="text" class="form-control text-end p-0 border-0 genome-row-input" id="' + genome + 'layer" name="' + genome + 'layer" value=0 title="Track height">')
+                    ).append(
+                        $('<span class="ms-1">&nbsp;Line W:&nbsp;</span>')
+                    ).append(
+                        $('<input type="text" class="form-control text-end p-0 border-0 genome-row-input" id="' + genome + 'tracklw" name="' + genome + 'tracklw" value="' + default_track_lw + '" title="Track line width">')
                     )
                 )
             );
             this._init_colorpicker('#' + genome);
-    
+            this._init_colorpicker('#' + genome + 'trackbg');
+
             $('#RightOffcanvasBodyTop').append(
                 $('<tr>').append(
                     $('<td class="col-4">').append(
@@ -2851,25 +3198,6 @@ class PangenomeGraphUserInterface {
                     )
                 )
             );
-    
-            // if ($('#flex' + genome + 'layer').length == 0) {
-            var element = $('<div class="col-12 d-flex mb-1"></div>').append(
-                $('<div class="col-1 d-flex align-items-center"></div>').append(
-                    $('<div class="form-switch d-flex"></div>').append(
-                        $('<input class="" type="checkbox" id="flex' + genome + 'layer" name="flex' + genome + 'layer" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
-                    )
-                )
-            ).append(
-                $('<div class="col-9 d-flex align-items-center"></div>').append(
-                    genome
-                )
-            ).append(
-                $('<div class="d-flex col-2"></div>').append(
-                    $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + genome + 'layer" name="' + genome + 'layer" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">')
-                )
-            );
-
-            $('#genome_tracks').append(element);
         }
         // }
         // }
@@ -2880,7 +3208,7 @@ class PangenomeGraphUserInterface {
                 $('<div class="col-12"></div>').append(
                     $('<div class="row align-items-center"></div>').append(
                         $('<div class="col-2 mb-1"></div>').append(
-                            $('<input class="" type="checkbox" id="flex' + annotation_source + '" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+                            $('<input class="" type="checkbox" id="flex' + annotation_source + '" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Include this annotation source when searching functions">')
                         )
                     ).append(  
                         $('<div class="col-8 mb-1"></div>').append(
@@ -2915,7 +3243,7 @@ class PangenomeGraphUserInterface {
             $('<div class="col-12"></div>').append(
                 $('<div class="row align-items-center"></div>').append(
                     $('<div class="col-2 mb-1"></div>').append(
-                        $('<input class="" type="checkbox" id="minposition" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+                        $('<input class="" type="checkbox" id="minposition" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Keep only nodes whose graph position is at least the value entered on the right">')
                     )
                 ).append(  
                     $('<div class="col-8 mb-1"></div>').append(
@@ -2927,7 +3255,7 @@ class PangenomeGraphUserInterface {
                     )  
                 ).append(
                     $('<div class="col-2 mb-1"></div>').append(
-                        $('<input class="" type="checkbox" id="maxposition" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+                        $('<input class="" type="checkbox" id="maxposition" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Keep only nodes whose graph position is at most the value entered on the right">')
                     )
                 ).append( 
                     $('<div class="col-8 mb-1"></div>').append(
@@ -2947,7 +3275,7 @@ class PangenomeGraphUserInterface {
                     $('<div class="col-12"></div>').append(
                         $('<div class="row align-items-center"></div>').append(
                             $('<div class="col-2 mb-1"></div>').append(
-                                $('<input class="" type="checkbox" id="min' + layer + '" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+                                $('<input class="" type="checkbox" id="min' + layer + '" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Keep only nodes whose value for this layer is at least the value entered on the right">')
                             )
                         ).append(  
                             $('<div class="col-8 mb-1"></div>').append(
@@ -2959,7 +3287,7 @@ class PangenomeGraphUserInterface {
                             )  
                         ).append(
                             $('<div class="col-2 mb-1"></div>').append(
-                                $('<input class="" type="checkbox" id="max' + layer + '" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+                                $('<input class="" type="checkbox" id="max' + layer + '" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Keep only nodes whose value for this layer is at most the value entered on the right">')
                             )
                         ).append( 
                             $('<div class="col-8 mb-1"></div>').append(
@@ -3074,11 +3402,22 @@ class PangenomeGraphUserInterface {
         
         $('#flexgroupcompress').change(function() {
             if ($(this).prop('checked') == true){
-                $('#groupcompress')[0].value = 0.0;
+                $('#groupcompress')[0].value = 0.5;
                 $('#groupcompress').prop('disabled', false);
             } else {
                 $('#groupcompress')[0].value = 1.0;
                 $('#groupcompress').prop('disabled', true);
+            }
+        })
+
+        $('#groupcompress').on('change', function() {
+            const val = parseFloat(this.value);
+            if (val < 0.1) {
+                this.value = 0.1;
+                toastr.warning('Compression factor cannot go below 0.1 :/', 'Value out of range');
+            } else if (val > 1.0) {
+                this.value = 1.0;
+                toastr.warning('Compression value cannot exceed 1.0. Well, it could, but it really should not :/ Anvi\'o set it to 1.0 for now.', 'Value out of range');
             }
         })
         
@@ -3129,6 +3468,16 @@ class PangenomeGraphUserInterface {
 
         $('#flextree').on("change", this.flextree_change)
         $('#flexsaturation').on("change", () => this.main_draw())
+        // Min line width / high-performance mode only re-clamp existing strokes,
+        // so no redraw is needed -- just re-run the floor pass. Reset the regime
+        // cache first so the pass re-evaluates from scratch.
+        $('#min_line_px, #flexhighperf').on("change", () => {
+            if (this.apply_stroke_floor) {
+                this._strokeRegime = null;
+                this.apply_stroke_floor();
+                this.refresh_search_outline();
+            }
+        })
         $('#flexregionlabels').on("change", () => this.main_draw())
         $('#region_label_size, #region_label_min_width, #region_label_distance').on("change", () => {
             if (this.panZoomInstance && $('#flexregionlabels').prop('checked')) {
@@ -3140,20 +3489,14 @@ class PangenomeGraphUserInterface {
         $('#binadd').on("click", this.add_bin);
         $('#binremove').on("click", this.delete_all_bins);
         $('#redraw').on("click", this.start_draw);
+        // Switching components doesn't need an explicit "Redraw" click.
+        // (start_draw still triggers a rerun_state on the server -- the
+        // layout is deterministic so it's a re-derivation, not new work
+        // semantically -- and then re-fetches the JSON for the newly
+        // active component.)
+        $('#component_select').on("change", this.start_draw);
         $('#fit').on('click', this.fit_aspect);
         $('#svgDownload').on('click', this.svg_download);
-        $('#genome_tracks_select_all').on('click', () => {
-            $('#genome_tracks input[type="checkbox"]').prop('checked', true).trigger('change');
-        })
-        $('#genome_tracks_unselect_all').on('click', () => {
-            $('#genome_tracks input[type="checkbox"]').prop('checked', false).trigger('change');
-        })
-        $('#genomes_select_all').on('click', () => {
-            $('#genomecolors input[type="checkbox"]').prop('checked', true).trigger('change');
-        })
-        $('#genomes_unselect_all').on('click', () => {
-            $('#genomecolors input[type="checkbox"]').prop('checked', false).trigger('change');
-        })
         $('#svgbox').on('mousedown', this.press_down)
         $('#svgbox').on('mousemove', this.press_move)
         $('#svgbox').on('mouseup', this.press_up)
@@ -3162,8 +3505,22 @@ class PangenomeGraphUserInterface {
         $('#AlignmentDownload').on("click", this.alignment_download);
         $('#InfoDownload').on("click", this.info_download);
 
-        $('#stateload').on("click", () => this.state_modal('load'));
-        $('#statesave').on("click", () => this.state_modal('save'));
+        // Search tab: the expression controls ship disabled in the HTML; enable
+        // them now that the layer/source/filter options have been populated.
+        $('#expressiondrop, #expressionrel, #expressiontext').prop('disabled', false);
+        $('#search').on('click', this.run_search);
+        $('#searchcolor').on('click', this.highlight_search);
+        $('#searcherase').on('click', this.clear_search_highlight);
+        $('#searchadd').on('click', this.append_search_to_bin);
+        $('#searchremove').on('click', this.remove_search_from_bin);
+        $('#expressiontext, #searchFunctionsValue').on('keydown', (ev) => {
+            if (ev.key === 'Enter') { ev.preventDefault(); this.run_search(); }
+        });
+        // re-size an active highlight ring when the outline width changes
+        $('#search_outline_width').on('change', () => this.refresh_search_outline());
+
+        $('#stateload').on("click", this.show_load_state_modal);
+        $('#statesave').on("click", this.show_save_state_modal);
         $('#binload').on("click", this.load_bin);
         $('#binsave').on("click", this.save_bin);
 
@@ -3172,12 +3529,45 @@ class PangenomeGraphUserInterface {
         
         sortable('#genomecolors', {
             forcePlaceholderSize: true,
-            handle: '.user-handle',
-            items: 'div'
+            items: '.genome-row'
         });
-        this.settings_dict['condtr'] = JSON.parse(JSON.stringify(this.data['states']['condtr']))
-        this.settings_dict['maxlength'] = JSON.parse(JSON.stringify(this.data['states']['maxlength']))
-        this.settings_dict['groupcompress'] = JSON.parse(JSON.stringify(this.data['states']['groupcompress']))
+
+        document.getElementById('genomecolors').addEventListener('sortupdate', () => {
+            if ($('#flextree').prop('checked')) {
+                $('#flextree').prop('checked', false);
+                this.flextree_change({ currentTarget: document.getElementById('flextree') });
+                toastr.warning("As you have changed the genome order manually, the dendrogram is removed from the display (anvi'o hopes you are happy).", 'Dendrogram removed');
+            }
+        });
+
+        $(document).on('change', '.genome-vis-check', function() {
+            const genome = this.name;
+            if (!this.checked) {
+                $('#flex' + genome + 'layer').prop('checked', false);
+                if ($('#flextree').prop('checked')) {
+                    $('#flextree').prop('checked', false);
+                    pgui.flextree_change({ currentTarget: document.getElementById('flextree') });
+                    toastr.warning("As you have changed the genome order manually, the dendrogram is removed from the display (anvi'o hopes you are happy).", 'Dendrogram removed');
+                }
+            } else {
+                $('#flex' + genome + 'layer').prop('checked', true);
+            }
+        });
+
+        $('#apply-track-defaults').on('click', () => {
+            const bgColor = $('#layer_color').attr('color');
+            const lw = $('#track_line_width')[0].value;
+            for (const genome of this.genomes) {
+                $('#' + genome + 'trackbg').css('background-color', bgColor).attr('color', bgColor);
+                $('#' + genome + 'trackbg').colpickSetColor(bgColor.replace('#', ''));
+                $('#' + genome + 'tracklw')[0].value = lw;
+            }
+            this.main_draw();
+        });
+        this.settings_dict['condtr'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['grouping_threshold']))
+        this.settings_dict['maxlength'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['max_edge_length']))
+        this.settings_dict['groupcompress'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['group_compression']))
+        this.settings_dict['component'] = $('#component_select').val() || 'CP_0001'
         this.settings_dict['state'] = JSON.parse(JSON.stringify(this.data['meta']['state']))
 
         // Delegated handlers for amino acid conservation checkboxes in the alignment modal
@@ -3202,14 +3592,20 @@ class PangenomeGraphUserInterface {
         // initialized individually as they are created in the genome loop above).
         this.initialize_colorpickers();
 
+        // Tooltips for the settings panel (labels + widgets), via Tippy.js.
+        this.initialize_settings_tooltips();
+
         $("#redraw").removeClass("disabled");
+        $("#settings-content").removeClass("settings-loading").addClass("settings-loading-cleared");
     }
 
     flextree_change(instance) {
         if ($(instance.currentTarget).prop('checked') == true){
             for (var genome of this.genomes) {
                 if ($('#flex' + genome + 'layer').prop('checked') == false){
-                    $('#' + genome + 'layer')[0].value = 50;
+                    const el = document.getElementById(genome + 'layer');
+                    el.dataset.savedHeight = el.value;
+                    el.value = 50;
                     $('#flex' + genome + 'layer').prop('checked', true);
                 }
                 $('#flex' + genome + 'layer').prop('disabled', true);
@@ -3217,6 +3613,11 @@ class PangenomeGraphUserInterface {
         } else {
             for (var genome of this.genomes) {
                 $('#flex' + genome + 'layer').prop('disabled', false);
+                const el = document.getElementById(genome + 'layer');
+                if (el && el.dataset.savedHeight !== undefined) {
+                    el.value = el.dataset.savedHeight;
+                    delete el.dataset.savedHeight;
+                }
             }
         }
     }
@@ -3239,7 +3640,10 @@ class PangenomeGraphUserInterface {
         const { gene_cluster_id: gcid, gene_cluster_context } = this._resolve_node_ids(e, gene_cluster_id);
 
         const all_info = await this.get_gene_cluster_display_tables(gcid, gene_cluster_context, 1, false);
-        const title = `Synteny gene cluster: ${gcid}`;
+        // gene_cluster_context is the GCG_ id when this is a group; prefer it
+        // so the title reflects the group identity rather than its first member.
+        const display_id = gene_cluster_context || gcid;
+        const title = `Synteny gene cluster: ${display_id}`;
         showPangraphFunctionsSummaryTableDialog(title, all_info);
 
         setTimeout(() => {
@@ -3257,18 +3661,19 @@ class PangenomeGraphUserInterface {
             toastr.error('The server is no longer accessible.', 'Request failed');
             return;
         }
-        waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
+        showFetchOverlay('Fetching functions and metabolism data...');
         let all_info;
         try {
             all_info = await this.get_gene_cluster_display_tables(gcid, gene_cluster_context, 1, true);
         } catch(err) {
-            waitingDialog.hide();
             toastr.error('Could not load data.', "Request failed");
             return;
+        } finally {
+            hideFetchOverlay();
         }
-        waitingDialog.hide();
 
-        const title = `Synteny gene cluster: ${gcid}`;
+        const display_id = gene_cluster_context || gcid;
+        const title = `Synteny gene cluster: ${display_id}`;
         showPangraphFunctionsSummaryTableDialog(title, all_info);
 
         setTimeout(() => {
@@ -3290,7 +3695,7 @@ class PangenomeGraphUserInterface {
         menu.style.visibility = 'hidden';
 
         const items = [
-            { title: 'Show functions for this SynGC', action: () => this.nodeinfo_with_functions(node_el) },
+            { title: 'Inspect this SynGC', action: () => this.nodeinfo_with_functions(node_el) },
             { title: 'Add SynGC as a new bin', action: () => {
                 this.add_bin();
                 this.marknode(node_el, this.current_bin_id);
@@ -3583,18 +3988,17 @@ class PangenomeGraphUserInterface {
             toastr.error('The server is no longer accessible.', 'Request failed');
             return;
         }
-        waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
+        showFetchOverlay('Fetching functions and metabolism data...');
 
         let response;
         try {
             response = await this.fetch_functions_and_metabolism(sgc_ids);
         } catch(err) {
-            waitingDialog.hide();
             toastr.error('Could not reach the functions endpoint.', "Request failed");
             return;
+        } finally {
+            hideFetchOverlay();
         }
-
-        waitingDialog.hide();
 
         if (!response || response.status !== 0) {
             toastr.error((response && response.message) || 'Could not load functional annotations.', "Server error");
@@ -3602,8 +4006,11 @@ class PangenomeGraphUserInterface {
         }
 
         this._last_gene_clusters = response['gene_clusters'] || {};
+        this._last_bin_sgc_ids = sgc_ids;
+        this._last_bin_functions = response['functions'] || {};
+        this._last_bin_name = raw_name;
         const title = `A summary of functions for ${sgc_ids.length} synteny gene clusters in "${bin_name}"`;
-        showPangraphFunctionsSummaryTableDialog(title, buildFunctionsContent(response, this.get_pangraph_gc_config()));
+        showPangraphFunctionsSummaryTableDialog(title, buildFunctionsContent(response, {...this.get_pangraph_gc_config(), binName: bin_name}));
         setTimeout(() => setupItemTableFiltering(this._last_gene_clusters), 100);
     }
 
@@ -3641,7 +4048,8 @@ class PangenomeGraphUserInterface {
         menu.style.visibility = 'hidden';
 
         const items = [
-            { title: 'Show summary of functions in region', action: () => this.show_region_functions(rid) },
+            { title: 'Inspect this region', action: () => this.show_region_functions(rid) },
+            { title: 'Download gene sequences in this region', action: () => this.show_region_fasta_download(rid) },
             { title: 'Add SynGCs in region as a new bin',   action: () => this.add_region_as_new_bin(rid) },
             { title: 'Append SynGCs in region into the active bin', action: () => this.append_region_to_active_bin(rid) },
         ];
@@ -3668,11 +4076,11 @@ class PangenomeGraphUserInterface {
         document.addEventListener('click', () => menu.remove(), { once: true });
     }
 
-    async show_region_functions(rid) {
+    _get_region_sgc_ids(rid) {
         const svg_ids = this.get_region_svg_node_ids(rid);
         if (!svg_ids.length) {
-            toastr.warning('There are no synteny gene clusters in this region.', "Nothing to show");
-            return;
+            toastr.warning('There are no synteny gene clusters in this region.', 'Nothing to show');
+            return null;
         }
 
         const sgc_ids = [];
@@ -3683,32 +4091,67 @@ class PangenomeGraphUserInterface {
             }
         }
 
+        return sgc_ids;
+    }
+
+    async _fetch_region_data(rid) {
+        const sgc_ids = this._get_region_sgc_ids(rid);
+        if (!sgc_ids) return null;
+
         if (this.server_offline) {
             toastr.error('The server is no longer accessible.', 'Request failed');
-            return;
+            return null;
         }
-        waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
+        showFetchOverlay('Fetching functions and metabolism data...');
 
         let response;
         try {
             response = await this.fetch_functions_and_metabolism(sgc_ids);
         } catch(err) {
-            waitingDialog.hide();
-            toastr.error('Could not reach the functions endpoint.', "Request failed");
-            return;
+            toastr.error('Could not reach the functions endpoint.', 'Request failed');
+            return null;
+        } finally {
+            hideFetchOverlay();
         }
-
-        waitingDialog.hide();
 
         if (!response || response.status !== 0) {
-            toastr.error((response && response.message) || 'Could not load functional annotations.', "Server error");
-            return;
+            toastr.error((response && response.message) || 'Could not load functional annotations.', 'Server error');
+            return null;
         }
 
+        return { sgc_ids, response };
+    }
+
+    async show_region_functions(rid) {
+        const result = await this._fetch_region_data(rid);
+        if (!result) return;
+        const { sgc_ids, response } = result;
+
         this._last_gene_clusters = response['gene_clusters'] || {};
-        const title = `A summary of functions for ${sgc_ids.length} synteny gene clusters in region #${rid}`;
-        showPangraphFunctionsSummaryTableDialog(title, buildFunctionsContent(response, this.get_pangraph_gc_config()));
+        this._last_bin_sgc_ids = sgc_ids;
+        this._last_bin_functions = response['functions'] || {};
+        this._last_bin_name = `region_${rid}`;
+
+        // rid is the full region id (e.g. "CP_0001_5"); show just the region
+        // number ("#5"), matching the on-graph region labels.
+        const region_num = rid.split('_').pop();
+        const title = `A summary of functions for ${sgc_ids.length} synteny gene clusters in region #${region_num}`;
+        showPangraphFunctionsSummaryTableDialog(title, buildFunctionsContent(response, {...this.get_pangraph_gc_config(), binName: `Region #${region_num}`}));
         setTimeout(() => setupItemTableFiltering(this._last_gene_clusters), 100);
+    }
+
+    show_region_fasta_download(rid) {
+        const sgc_ids = this._get_region_sgc_ids(rid);
+        if (!sgc_ids) return;
+
+        this._last_bin_sgc_ids = sgc_ids;
+        this._last_bin_functions = {};
+        this._last_bin_name = `region_${rid}`;
+
+        showFastaOptionsDialog(
+            `Download sequences from region #${rid.split('_').pop()} as FASTA`,
+            buildFastaOptionsHTML({})
+        );
     }
 
     add_region_as_new_bin(rid) {
@@ -3741,6 +4184,490 @@ class PangenomeGraphUserInterface {
             }
         }
         toastr.success(`Appended ${added} new item(s) to "${bin_id}".`, "Bin updated");
+    }
+
+    // ---------------------------------------------------------------------
+    // SEARCH
+    // ---------------------------------------------------------------------
+
+    // Map a list of SynGC (node) ids to the SVG element ids that actually
+    // represent them on screen: an ungrouped node keeps its own id, a grouped
+    // node is represented by its GCG_ group element.
+    _node_ids_to_svg_ids(node_ids) {
+        const node_to_group = {};
+        for (const [group_id, members] of Object.entries(this.group_dict)) {
+            for (const member of members) node_to_group[member] = group_id;
+        }
+        const svg_ids = new Set();
+        for (const nid of node_ids) {
+            if (!this.data['nodes'][nid]) continue;   // not in the active component
+            svg_ids.add(nid in node_to_group ? node_to_group[nid] : nid);
+        }
+        return svg_ids;
+    }
+
+    // Client-side "Search with expression": Name / Position / any layer value.
+    // Returns a Set of matching node ids, or null if the box is not in use.
+    _gather_expression_matches() {
+        const item = $('#expressiondrop').val();
+        const operator = $('#expressionrel').val();
+        const term = ($('#expressiontext').val() || '').trim();
+
+        if (!item || item === 'Choose item' || !operator || term === '') return null;
+
+        const num_term = parseFloat(term);
+        const matches = new Set();
+
+        for (const [nid, node] of Object.entries(this.data['nodes'])) {
+            let cell;
+            if (item === 'Name') {
+                cell = node['gene_cluster'];
+            } else if (item === 'Position') {
+                cell = node['position'][0];
+            } else {
+                cell = node['layer'] ? node['layer'][item] : undefined;
+            }
+            if (cell === undefined || cell === null) continue;
+
+            const num_cell = parseFloat(cell);
+            const str_cell = String(cell);
+            let hit = false;
+            switch (operator) {
+                case 'eq':       hit = (str_cell === term) || (num_cell === num_term); break;
+                case 'ne':       hit = (str_cell !== term) && !(num_cell === num_term); break;
+                case 'lt':       hit = (num_cell <  num_term); break;
+                case 'le':       hit = (num_cell <= num_term); break;
+                case 'gt':       hit = (num_cell >  num_term); break;
+                case 'ge':       hit = (num_cell >= num_term); break;
+                case 'contains': hit = str_cell.toLowerCase().includes(term.toLowerCase()); break;
+                case 'starts':   hit = str_cell.toLowerCase().startsWith(term.toLowerCase()); break;
+                case 'ends':     hit = str_cell.toLowerCase().endsWith(term.toLowerCase()); break;
+            }
+            if (hit) matches.add(nid);
+        }
+        return matches;
+    }
+
+    // Client-side "Filter": min/max ranges on Position and any layer value.
+    // Returns a Set of matching node ids, or null if no filter is active.
+    _gather_filter_matches() {
+        const constraints = [];   // {accessor, min, max}
+
+        const read = (key, accessor) => {
+            const min_on = $('#min' + key).prop('checked');
+            const max_on = $('#max' + key).prop('checked');
+            if (!min_on && !max_on) return;
+            const min_v = min_on ? parseFloat($('#min' + key + 'text').val()) : -Infinity;
+            const max_v = max_on ? parseFloat($('#max' + key + 'text').val()) :  Infinity;
+            constraints.push({ accessor, min: isNaN(min_v) ? -Infinity : min_v, max: isNaN(max_v) ? Infinity : max_v });
+        };
+
+        read('position', (node) => node['position'][0]);
+        for (const layer of this.layers) {
+            read(layer, (node) => (node['layer'] ? node['layer'][layer] : undefined));
+        }
+
+        if (constraints.length === 0) return null;
+
+        const matches = new Set();
+        for (const [nid, node] of Object.entries(this.data['nodes'])) {
+            let ok = true;
+            for (const c of constraints) {
+                const v = parseFloat(c.accessor(node));
+                if (isNaN(v) || v < c.min || v > c.max) { ok = false; break; }
+            }
+            if (ok) matches.add(nid);
+        }
+        return matches;
+    }
+
+    // Server-backed "Search functions". Returns a Set of matching node ids
+    // (and caches per-node annotation detail in this._search_function_detail),
+    // or null if the box is not in use.
+    async _gather_function_matches() {
+        const terms = ($('#searchFunctionsValue').val() || '').trim();
+        if (terms === '') return null;
+
+        const sources = [];
+        $('#searchSources input:checkbox:checked').each((i, el) => {
+            sources.push(el.id.replace(/^flex/, ''));
+        });
+
+        if (this.server_offline) {
+            toastr.error('The server is no longer accessible.', 'Request failed');
+            return new Set();
+        }
+
+        showFetchOverlay('Searching functional annotations...');
+        let response;
+        try {
+            response = await $.ajax({
+                url: '/pangraph/get_pangraph_synteny_gene_cluster_search_result',
+                type: 'POST',
+                data: JSON.stringify({ search_terms: terms, sources: sources }),
+                contentType: 'application/json',
+                dataType: 'json',
+                timeout: 30000,
+            });
+        } catch (err) {
+            toastr.error('Could not reach the functions search endpoint.', 'Request failed');
+            return new Set();
+        } finally {
+            hideFetchOverlay();
+        }
+
+        if (!response || response.status !== 0) {
+            toastr.error((response && response.message) || 'Function search failed.', 'Server error');
+            return new Set();
+        }
+
+        this._search_function_detail = response['data'] || {};
+        this._search_function_components = response['components'] || {};
+        return new Set(Object.keys(this._search_function_detail));
+    }
+
+    // The component currently shipped to the client (only its nodes are in
+    // this.data['nodes']).
+    _active_component() {
+        const v = $('#component_select').val();
+        if (v) return v;
+        return this.data['meta']['component'] || 'CP_0001';
+    }
+
+    // Component id for a matched node: the server-provided one for function
+    // hits, otherwise the active component (expression/filter only ever match
+    // nodes that are already in view).
+    _component_of_match(nid) {
+        const c = (this._search_function_components || {})[nid];
+        if (c !== undefined) return c;
+        if (this.data['nodes'][nid]) return this._active_component();
+        return null;   // component not reported by the server
+    }
+
+    // Run whichever search boxes are filled and intersect their results.
+    async run_search() {
+        this._search_function_detail = {};
+        this._search_function_components = {};
+
+        const expr = this._gather_expression_matches();
+        const filt = this._gather_filter_matches();
+        const func = await this._gather_function_matches();
+
+        const active = [expr, filt, func].filter(s => s !== null);
+        if (active.length === 0) {
+            toastr.warning('Fill in an expression, a function term, or a filter first.', 'Nothing to search');
+            return;
+        }
+
+        // intersect the active result sets
+        let result_ids = null;
+        for (const s of active) {
+            if (result_ids === null) {
+                result_ids = new Set(s);
+            } else {
+                result_ids = new Set([...result_ids].filter(x => s.has(x)));
+            }
+        }
+        const all_ids = [...result_ids];
+
+        // Function search spans the whole pangenome, but only the active
+        // component's nodes are drawn. Split matches accordingly: mark/bin the
+        // ones in view, and tally the rest per component so the user knows
+        // where they are.
+        const active_comp = this._active_component();
+        const node_ids = all_ids.filter(nid => this.data['nodes'][nid]);   // in view
+        this._search_results = node_ids;
+        this._search_svg_ids = [...this._node_ids_to_svg_ids(node_ids)];
+
+        // per-component tally over ALL matches (nodes the server didn't place
+        // fall into an "other" bucket)
+        const per_component = {};
+        let other = 0;
+        for (const nid of all_ids) {
+            const c = this._component_of_match(nid);
+            if (c === null) { other++; continue; }
+            per_component[c] = (per_component[c] || 0) + 1;
+        }
+        this._search_component_tally = per_component;
+        this._search_other_count = other;
+
+        this.render_search_results();
+
+        const has_results = node_ids.length > 0;
+        $('#searchcolor, #searcherase, #searchadd, #searchremove').prop('disabled', !has_results);
+
+        // highlight the in-view hits right away
+        if (has_results) this.highlight_search();
+    }
+
+    // "17 hits: 12 in component 1 (current), 4 in component 5, 1 in component 8"
+    _format_component_breakdown(total, per_component, other, active_comp) {
+        if (total === 0) return 'No synteny gene clusters matched.';
+        // active component first, then by numeric suffix so CP_0002 precedes CP_0010.
+        const suffix = c => parseInt(String(c).split('_').pop());
+        const comps = Object.keys(per_component)
+            .sort((a, b) => (a === active_comp ? -1 : b === active_comp ? 1 : suffix(a) - suffix(b)));
+        // Show the friendly component number ("component 5"), matching the dropdown.
+        const parts = comps.map(c =>
+            `${per_component[c]} in component ${suffix(c)}${c === active_comp ? ' (current)' : ''}`);
+        if (other) parts.push(`${other} in other component(s)`);
+        return `${total} hit${total === 1 ? '' : 's'}: ` + parts.join(', ');
+    }
+
+    render_search_results() {
+        const node_ids = this._search_results || [];
+        const per_component = this._search_component_tally || {};
+        const other = this._search_other_count || 0;
+        const active_comp = this._active_component();
+        const total = Object.values(per_component).reduce((a, b) => a + b, 0) + other;
+
+        if (total === 0) {
+            $('#searchtable').html('<p class="text-muted mt-2">No matches.</p>');
+            return;
+        }
+
+        // Per-component breakdown message
+        let summary = `<div class="mt-2 mb-1"><strong>${this._format_component_breakdown(total, per_component, other, active_comp)}</strong></div>`;
+
+        // Buttons to jump to other components that contain hits. per_component is
+        // keyed by the real component id ('CP_0001'), which is what switch_to_component
+        // needs to set the select -- so keep the id in data-component and only show the
+        // friendly number (last segment) in the label.
+        const suffix = c => parseInt(String(c).split('_').pop());
+        const other_comps = Object.keys(per_component).filter(c => c !== active_comp).sort((a, b) => suffix(a) - suffix(b));
+        if (other_comps.length) {
+            summary += `<div class="mb-2" style="font-size:0.85em;">Jump to: `;
+            summary += other_comps.map(c =>
+                `<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 me-1 pangraph-search-goto" data-component="${c}">component ${suffix(c)} (${per_component[c]})</button>`
+            ).join('');
+            summary += `</div>`;
+        }
+
+        let table = '';
+        if (node_ids.length) {
+            let rows = '';
+            for (const nid of node_ids) {
+                const node = this.data['nodes'][nid];
+                const gc_name = node['gene_cluster'];
+                let detail = '';
+                const fd = (this._search_function_detail || {})[nid];
+                if (fd && fd.length) {
+                    const first = fd[0];
+                    detail = `${first.source}: ${first.function || first.accession || ''}`;
+                }
+                rows += `<tr>` +
+                        `<td><a href="#" class="no-link pangraph-search-hit-link" data-node-id="${nid}">${nid}</a></td>` +
+                        `<td>${gc_name}</td>` +
+                        `<td>${detail}</td>` +
+                        `</tr>`;
+            }
+            table = `<table class="table table-striped table-bordered table-sm">` +
+                `<thead><tr><th>SynGC</th><th>Gene cluster</th><th>Function</th></tr></thead>` +
+                `<tbody>${rows}</tbody></table>`;
+        } else {
+            table = `<p class="text-muted">No hits in the current component. Use the buttons above to switch to a component that has hits.</p>`;
+        }
+
+        $('#searchtable').html(summary + table);
+
+        // clicking a result inspects that SynGC
+        $('#searchtable .pangraph-search-hit-link').on('click', (ev) => {
+            ev.preventDefault();
+            const nid = ev.currentTarget.getAttribute('data-node-id');
+            const svg_ids = [...this._node_ids_to_svg_ids([nid])];
+            const el = svg_ids.length ? document.getElementById(svg_ids[0]) : null;
+            if (el) this.nodeinfo(el);
+        });
+
+        // clicking a "jump to component" button switches component and re-runs the search
+        $('#searchtable .pangraph-search-goto').on('click', (ev) => {
+            const comp = ev.currentTarget.getAttribute('data-component');
+            this.switch_to_component(comp);
+        });
+    }
+
+    // Switch the drawn component, then re-run the current search so its hits in
+    // the now-active component get marked.
+    switch_to_component(comp) {
+        $('#component_select').val(String(comp));
+        this.start_draw(() => { this.run_search(); });
+    }
+
+    highlight_search() {
+        const svg_ids = this._search_svg_ids || [];
+        if (!svg_ids.length) {
+            toastr.warning('Run a search first.', 'Nothing to highlight');
+            return;
+        }
+        this.clear_search_highlight();
+
+        const highlight_color = $('#search_color').attr('color') || '#FF7F0E';
+
+        // 1) recolor the search-hit ring at each match's x-position. Nodes
+        // stacked at the same x share a search-hit id, so match by id across
+        // all rects rather than relying on getElementById (which finds one).
+        const target_x = new Set();
+        for (const nid of this._search_results) {
+            if (this.data['nodes'][nid]) target_x.add(String(this.data['nodes'][nid]['position'][0]));
+        }
+        document.querySelectorAll('.pangraph-search-hit').forEach(rect => {
+            if (target_x.has(rect.id.replace('searchhit_', ''))) rect.setAttribute('fill', highlight_color);
+        });
+
+        // 2) draw a ring just *outside* each matched node (and trace the outline
+        // of matched groups) into a dedicated overlay group. Using a separate
+        // element rather than thickening the node's own centered stroke keeps
+        // the node body uncovered, and leaves its `class`/attributes untouched
+        // (press_up and marknode match class exactly, e.g. class === 'node').
+        const svg_el = document.getElementById('result');
+        const vp = svg_el ? (svg_el.querySelector('.svg-pan-zoom_viewport') || svg_el) : null;
+        if (!vp) return;
+
+        const grp = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        grp.setAttribute('id', 'search-outline-group');
+        for (const svg_id of svg_ids) {
+            const el = document.getElementById(svg_id);
+            if (!el) continue;
+            let marker;
+            let occluder = null;
+            if (el.tagName.toLowerCase() === 'circle') {
+                // concentric ring hugging the node's outer edge. cx/cy are fixed,
+                // but the radius and stroke-width are (re)computed by
+                // refresh_search_outline() -- which is also run on every zoom --
+                // so the ring keeps tracking the node's *rendered* stroke as
+                // apply_stroke_floor re-floors it, instead of drifting away.
+                marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                marker.setAttribute('cx', el.getAttribute('cx'));
+                marker.setAttribute('cy', el.getAttribute('cy'));
+                marker.dataset.nodeId = svg_id;
+            } else {
+                // group node: stroke a copy of its boundary, then lay an opaque
+                // clone of the group ON TOP of that stroke (occluder). The clone
+                // hides the stroke everywhere up to the group's border outer
+                // edge, so only an `outline`-wide band beyond the border shows --
+                // the outline grows strictly outward, matching the circle rings.
+                const d = el.getAttribute('d');
+                if (!d) continue;
+                marker = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                marker.setAttribute('d', d);
+                marker.dataset.nodeId = svg_id;      // refresh reads the border width
+                marker.dataset.groupOutline = '1';
+                occluder = el.cloneNode(true);
+                occluder.removeAttribute('id');       // avoid duplicate ids
+                occluder.setAttribute('pointer-events', 'none');
+                // apply_stroke_floor() re-floors the group's border on zoom, so
+                // keep the occluder's border in sync (refresh_search_outline)
+                // -- otherwise it would stop covering the border exactly.
+                occluder.dataset.occluderFor = svg_id;
+            }
+            marker.setAttribute('fill', 'none');
+            marker.setAttribute('stroke', highlight_color);
+            marker.setAttribute('pointer-events', 'none');
+            grp.appendChild(marker);
+            // occluder must paint AFTER (on top of) the outline stroke.
+            if (occluder) grp.appendChild(occluder);
+        }
+        vp.appendChild(grp);
+        this.refresh_search_outline();
+    }
+
+    // Size and position the search-highlight ring(s) to hug the node's current
+    // rendered edge. Split out from highlight_search() so it can also run on
+    // zoom: the ring radius depends on the node's stroke-width, which
+    // apply_stroke_floor() rewrites as you zoom, so a once-computed ring would
+    // otherwise drift off the edge (and its own thickness would collapse or
+    // balloon). The outline thickness follows the same MIN_PX floor as the
+    // graph lines so it renders at a consistent on-screen width.
+    refresh_search_outline() {
+        const grp = document.getElementById('search-outline-group');
+        if (!grp) return;
+
+        const base_outline = parseFloat($('#search_outline_width')[0].value) || 3;
+        let outline = base_outline;
+        const MIN_PX = parseFloat($('#min_line_px')[0].value) || 0;
+        if (!$('#flexhighperf').prop('checked') && MIN_PX > 0 && this.panZoomInstance) {
+            const floor = MIN_PX / this.panZoomInstance.getSizes().realZoom;
+            if (floor > base_outline) outline = floor;
+        }
+
+        grp.querySelectorAll('circle').forEach(marker => {
+            const node = document.getElementById(marker.dataset.nodeId);
+            if (!node) return;
+            const r = parseFloat(node.getAttribute('r')) || 0;
+            // node stroke is centered, so its rendered outer edge is r + sw/2;
+            // the ring stroke is also centered, so offset by another outline/2
+            // to leave the ring's inner edge flush with the node's outer edge.
+            const sw = parseFloat(node.getAttribute('stroke-width')) || 0;
+            marker.setAttribute('r', r + sw / 2 + outline / 2);
+            marker.setAttribute('stroke-width', outline);
+        });
+        // Only the group-outline paths (not the opaque occluder clones laid on
+        // top of them). The stroke straddles the group's boundary; its inner
+        // half plus everything up to the border's outer edge (sw/2 beyond the
+        // boundary) is hidden by the occluder, so widening by sw + 2*outline
+        // leaves an `outline`-wide band starting at the border's outer edge.
+        grp.querySelectorAll('path[data-group-outline]').forEach(marker => {
+            const node = document.getElementById(marker.dataset.nodeId);
+            const sw = node ? (parseFloat(node.getAttribute('stroke-width')) || 0) : 0;
+            marker.setAttribute('stroke-width', sw + 2 * outline);
+        });
+        // Keep each occluder's border matched to its group's current (floored)
+        // border so it always covers exactly up to the border's outer edge.
+        grp.querySelectorAll('[data-occluder-for]').forEach(occ => {
+            const node = document.getElementById(occ.dataset.occluderFor);
+            if (node) occ.setAttribute('stroke-width', node.getAttribute('stroke-width'));
+        });
+    }
+
+    clear_search_highlight() {
+        // reset recolored search-hit rectangles back to white
+        document.querySelectorAll('.pangraph-search-hit').forEach(rect => rect.setAttribute('fill', 'white'));
+
+        // remove the search-hit outline overlay
+        const grp = document.getElementById('search-outline-group');
+        if (grp) grp.remove();
+    }
+
+    append_search_to_bin() {
+        const svg_ids = this._search_svg_ids || [];
+        if (!svg_ids.length) {
+            toastr.warning('Run a search first.', 'Nothing to add');
+            return;
+        }
+        const bin_id = this.current_bin_id;
+        this._suppress_bin_ring_draw = true;
+        let added = 0;
+        for (const svg_id of svg_ids) {
+            if (!this.bin_dict[bin_id].includes(svg_id)) {
+                const el = document.getElementById(svg_id);
+                if (el) { this.marknode(el, bin_id); added++; }
+            }
+        }
+        this._suppress_bin_ring_draw = false;
+        this.draw_bin_rings();
+        toastr.success(`Appended ${added} synteny gene cluster(s) to "${bin_id}".`, 'Bin updated');
+    }
+
+    remove_search_from_bin() {
+        const svg_ids = this._search_svg_ids || [];
+        if (!svg_ids.length) {
+            toastr.warning('Run a search first.', 'Nothing to remove');
+            return;
+        }
+        const bin_id = this.current_bin_id;
+        this._suppress_bin_ring_draw = true;
+        let removed = 0;
+        for (const svg_id of svg_ids) {
+            // marknode toggles a node out of its bin only when it is currently in
+            // *this* bin, so restrict removal to members of the active bin.
+            if (this.bin_dict[bin_id].includes(svg_id)) {
+                const el = document.getElementById(svg_id);
+                if (el) { this.marknode(el, bin_id); removed++; }
+            }
+        }
+        this._suppress_bin_ring_draw = false;
+        this.draw_bin_rings();
+        toastr.success(`Removed ${removed} synteny gene cluster(s) from "${bin_id}".`, 'Bin updated');
     }
 
 
@@ -3779,7 +4706,21 @@ class PangenomeGraphUserInterface {
 
     async appendalignment(gene_cluster_id) {
         var d = await this.fetchalignment([gene_cluster_id]);
+
+        // Non-coding nodes (tRNA/rRNA) have no amino-acid sequences in
+        // genomes-storage, so the server returns an empty per-genome dict
+        // for each genome in the cluster. The route may also fail outright
+        // (status != 0) -- in either case we just render an empty alignment
+        // table rather than throw.
+        if (!d || d.status !== 0 || !d.data || typeof d.data !== 'object') {
+            return `<p class="bin-modal-header" style="background: #f8bbd078;">Sequence alignments</p>` +
+                   `<p class="text-muted" style="margin:10px 0">No amino-acid sequences available for this node.</p>`;
+        }
         var alignment = d['data'][gene_cluster_id];
+        if (!alignment || typeof alignment !== 'object') {
+            return `<p class="bin-modal-header" style="background: #f8bbd078;">Sequence alignments</p>` +
+                   `<p class="text-muted" style="margin:10px 0">No amino-acid sequences available for this node.</p>`;
+        }
 
         // Collect sequences in display order to build conservation-based per-column colors
         var sequence_entries = [];
@@ -3789,6 +4730,10 @@ class PangenomeGraphUserInterface {
                     sequence_entries.push({genome, gene_call, sequence});
                 }
             }
+        }
+        if (sequence_entries.length === 0) {
+            return `<p class="bin-modal-header" style="background: #f8bbd078;">Sequence alignments</p>` +
+                   `<p class="text-muted" style="margin:10px 0">No amino-acid sequences available for this node.</p>`;
         }
 
         // Build sequences_array[col][seq_idx] as required by determineColor; cache for recolor_alignment()
@@ -4007,6 +4952,90 @@ class PangenomeGraphUserInterface {
         this.download_blob(blob, title + ".fa");
     }
 
+    async download_bin_fasta() {
+        const sgc_ids = this._last_bin_sgc_ids || [];
+        if (!sgc_ids.length) {
+            toastr.warning('No gene clusters to export.', 'Nothing to download');
+            return;
+        }
+
+        const report_dna = document.querySelector('input[name="fasta_seq_type"]:checked')?.value === 'dna';
+        const wrap_sequences = document.getElementById('fasta_wrap_sequences')?.checked ?? false;
+        const active_tokens = [...document.querySelectorAll('.fasta-defline-opt:checked')].map(el => el.value);
+        const functions = this._last_bin_functions || {};
+
+        showFetchOverlay('Fetching sequences...');
+
+        let response;
+        try {
+            response = await $.ajax({
+                url: '/pangraph/get_pangraph_bin_sequences_fasta',
+                type: 'POST',
+                data: JSON.stringify({ synteny_gene_clusters: sgc_ids, report_dna }),
+                contentType: 'application/json',
+                dataType: 'json',
+                timeout: 30000,
+            });
+        } catch(err) {
+            toastr.error('Could not reach the sequences endpoint.', 'Request failed');
+            return;
+        } finally {
+            hideFetchOverlay();
+        }
+
+        if (!response || response.status !== 0) {
+            toastr.error((response && response.message) || 'Could not fetch sequences.', 'Server error');
+            return;
+        }
+
+        const sequences = response.sequences || {};
+        const metadata = response.metadata || {};
+
+        let fasta = '';
+        const sorted_clusters = Object.entries(sequences).sort(([a], [b]) => {
+            const xa = metadata[a]?.x ?? Infinity;
+            const xb = metadata[b]?.x ?? Infinity;
+            return xa !== xb ? xa - xb : a.localeCompare(b);
+        });
+
+        for (const [sgc_id, genomes] of sorted_clusters) {
+            const meta = metadata[sgc_id] || {};
+
+            // Build per-cluster tokens (same for every gene in this cluster)
+            const cluster_parts = [];
+            if (active_tokens.includes('gene_cluster')) cluster_parts.push(`SynGC:${sgc_id}`);
+            if (active_tokens.includes('position') && meta.x != null) cluster_parts.push(`pos:${meta.x}`);
+            if (active_tokens.includes('region') && meta.region) cluster_parts.push(`region:${meta.region}`);
+            if (active_tokens.includes('function')) {
+                const sgc_funcs = functions[sgc_id] || {};
+                const first_source = Object.keys(sgc_funcs)[0];
+                if (first_source) {
+                    const fn = sgc_funcs[first_source]?.function;
+                    if (fn && fn !== 'N/A' && fn !== '-') cluster_parts.push(`function:${fn}`);
+                }
+            }
+
+            for (const [genome, gene_calls] of Object.entries(genomes).sort(([a], [b]) => a.localeCompare(b))) {
+                for (const [gene_callers_id, sequence] of Object.entries(gene_calls)) {
+                    if (!sequence || !sequence.length) continue;
+                    const defline_suffix = cluster_parts.length ? ' ' + cluster_parts.join('|') : '';
+                    fasta += `>${genome}_${gene_callers_id}${defline_suffix}\n`;
+                    fasta += (wrap_sequences ? sequence.match(/.{1,120}/g).join('\n') : sequence) + '\n';
+                }
+            }
+        }
+
+        if (!fasta.length) {
+            toastr.warning('No sequences were available for this bin.', 'Nothing to download');
+            return;
+        }
+
+        const project = (this.data['meta']['project_name'] || 'project').replace(/\s+/g, '_');
+        const bin = (this._last_bin_name || 'bin').replace(/\s+/g, '_');
+        const seq_type = report_dna ? 'DNA' : 'AA';
+        this.download_blob(new Blob([fasta]), `${project}_${bin}_GENES_${seq_type}.fa`);
+    }
+
     save_bin() {
         const exportFn = () => {
             const data = {};
@@ -4070,114 +5099,223 @@ class PangenomeGraphUserInterface {
         new LoadCollectionDialog(importFn).Show();
     }
 
-    load_state () {
-        if ($('#loadstatename')[0].value != "") {
-            this.state = $('#loadstatename')[0].value
-
-            var state = {}
-            state['state_name'] = this.state
-    
-            $.ajax({
-                url: "/pangraph/load_pangraph_state",
-                type: "POST",
-                cache: false,
-                contentType: "application/json",
-                dataType: "json",
-                data: JSON.stringify(state),
-                success: (data) => {
-                    this.data = data['data'];
-                    this.initialize_variables();
-                    this.set_UI_settings();
-                    this.main_draw();
-                    toastr.success(`State "${this.state}" has been loaded.`, 'State loaded');
-                },
-                error: (err) => {
-                    toastr.error('Failed to load state.', 'Error');
-                }
-            })
-            
-            $('#loadstatemodal').modal('hide');
-        }
-    }
-    
-    save_state () {
-        var new_state = {}
-        
-        for (var [setting, value] of Object.entries(this.data['states'])) {
-            const el = $('#' + setting);
-            if (el.hasClass('pangraph-colorpicker')) {
-                new_state[setting] = el.attr('color');
-            } else if (typeof value === 'number') {
-                new_state[setting] = Number(el[0].value);
-            } else if (value == true || value == false) {
-                new_state[setting] = el.prop('checked');
-            } else {
-                new_state[setting] = el[0].value;
-            }
-        }
-
-        var genome_order = [...document.getElementById("genomecolors").children]
-            .filter(element => element.classList.contains("col-12"))
-            .map(element => element.id.replace('_row', ''));
-
-        genome_order.forEach(key => {
-            if (key in new_state) {
-              const value = new_state[key];
-              delete new_state[key];
-              new_state[key] = value;
-            }
-        });
-         
-        var result = {}
-        result['state_name'] = $('#savestatename')[0].value
-        result['state_values'] = new_state
-
-        $.ajax({
-            url: "/pangraph/save_pangraph_state",
-            type: "POST",
-            data: JSON.stringify(result),
-            contentType: "application/json",
-            dataType: "json",
-            error: function(){
-                toastr.error('Failed to save state.', 'Error');
-            },
-            success: function(){
-                toastr.success(`State "${result['state_name']}" has been saved.`, 'State saved');
-            }
-        })
-        
-        $('#savestatemodal').modal('hide');
-    }
-    
-    state_modal (save_load) {
-
+    show_save_state_modal () {
         $.ajax({
             type: 'GET',
             cache: false,
             url: '/pangraph/get_pangraph_states',
-            success: function(data) {
-
-                $('#' + save_load + 'statelisttab').empty()
-                $('#' + save_load + 'statename')[0].value = ""
-                
-                for (var state_name of data['data']) {
-                    $('#' + save_load + 'statelisttab').append(
-                        $('<a class="list-group-item list-group-item-action" id="list-profile-list" data-toggle="list" href="#list-profile" role="tab" aria-controls="profile">').append(
-                            state_name
-                        )
-                    )
+            success: (state_list) => {
+                $('#savestatelist').empty();
+                for (let state_name in state_list) {
+                    const selected = (state_name === this.state) ? ' selected="selected"' : '';
+                    $('#savestatelist').append(`<option${selected}>${state_name}</option>`);
                 }
-    
-                $('#' + save_load + 'statelisttab a').on('click', function (e) {
-                    e.preventDefault()
-                    $(this).tab('show')
-                    $('#' + save_load + 'statename')[0].value = $(this)[0].innerText
-                })
-    
-                $('#' + save_load + 'statemodal').modal('show');
+                if ($('#savestatelist').val() === null) {
+                    $('#savestatename').val('default');
+                } else {
+                    $('#savestatelist').trigger('change');
+                }
+                $('#savestatemodal').modal('show');
             }
         });
     }
+
+    show_load_state_modal () {
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/pangraph/get_pangraph_states',
+            success: (state_list) => {
+                $('#loadstatename').empty();
+                for (let state_name in state_list) {
+                    $('#loadstatename').append(`<option lastmodified="${state_list[state_name]['last_modified']}">${state_name}</option>`);
+                }
+                $('#loadstate_lastmodified').html('Last modified: n/a');
+                $('#loadstatemodal').modal('show');
+            }
+        });
+    }
+
+    load_state () {
+        const state_name = $('#loadstatename').val();
+        if (!state_name) return;
+
+        $('#loadstatemodal').modal('hide');
+
+        $.ajax({
+            url: "/pangraph/load_pangraph_state",
+            type: "POST",
+            cache: false,
+            contentType: "application/json",
+            dataType: "json",
+            data: JSON.stringify({state_name: state_name}),
+            success: (response) => {
+                if (response['status'] != 0) {
+                    toastr.error('Failed to load state: ' + (response['message'] || 'unknown error'), 'Error');
+                    return;
+                }
+                this.state = state_name;
+                this.data = response['data'];
+                this.initialize_variables();
+                this.set_UI_settings();
+                this.main_draw();
+                toastr.success(`State "${this.state}" has been loaded.`, 'State loaded');
+            },
+            error: () => {
+                toastr.error('Failed to load state.', 'Error');
+            }
+        });
+    }
+
+    save_state () {
+        const name = $('#savestatename').val();
+        if (!name || name.length === 0) {
+            $('#savestatename').focus();
+            return;
+        }
+
+        const state_exists = Array.from($('#savestatelist option')).some(o => o.value === name);
+        if (state_exists && !confirm(`"${name}" already exists, do you want to overwrite it?`)) {
+            return;
+        }
+
+        const genome_order = [...document.getElementById("genomecolors").children]
+            .filter(el => el.classList.contains("col-12"))
+            .map(el => el.id.replace('_row', ''));
+
+        const genomes_state = {};
+        for (const genome of genome_order) {
+            genomes_state[genome] = {
+                color: $('#' + genome).attr('color'),
+                show: $('#flex' + genome).prop('checked'),
+                track_height: Number($('#' + genome + 'layer')[0].value),
+                show_track: $('#flex' + genome + 'layer').prop('checked'),
+                track_bg_color: $('#' + genome + 'trackbg').attr('color'),
+                track_line_width: Number($('#' + genome + 'tracklw')[0].value)
+            };
+        }
+
+        const imported_layers_state = {};
+        for (const layer of this.layers) {
+            imported_layers_state[layer] = {
+                visible: $('#flex' + layer).prop('checked'),
+                height: Number($('#' + layer)[0].value)
+            };
+        }
+
+        const new_state = {
+            drawing: {
+                type: $('#drawing_type_select').val(),
+                inner_radius: Number($('#inner')[0].value),
+                start_angle: Number($('#start_angle')[0].value),
+                end_angle: Number($('#end_angle')[0].value),
+                node_x_spacing: Number($('#distx')[0].value),
+                node_y_spacing: Number($('#disty')[0].value)
+            },
+            nodes: {
+                radius: Number($('#size')[0].value),
+                outline_width: Number($('#circ')[0].value),
+                fade_by_prevalence: $('#flexsaturation').prop('checked'),
+                type_colors: {
+                    core: $('#core_color').attr('color'),
+                    rearrangement: $('#rearranged_color').attr('color'),
+                    accessory: $('#accessory_color').attr('color'),
+                    duplication: $('#paralog_color').attr('color'),
+                    singleton: $('#singleton_color').attr('color'),
+                    rna: $('#trna_color').attr('color')
+                }
+            },
+            edges: {
+                width: Number($('#edge')[0].value),
+                min_line_width_px: Number($('#min_line_px')[0].value)
+            },
+            graph_layout: {
+                grouping_enabled: $('#flexcondtr').prop('checked'),
+                grouping_threshold: Number($('#condtr')[0].value),
+                max_edge_length_enabled: $('#flexmaxlength').prop('checked'),
+                max_edge_length: Number($('#maxlength')[0].value),
+                group_compression_enabled: $('#flexgroupcompress').prop('checked'),
+                group_compression: Number($('#groupcompress')[0].value)
+            },
+            layers: {
+                backbone: {
+                    visible: $('#flexglobalbackbone').prop('checked'),
+                    height: Number($('#globalbackbone')[0].value),
+                    backbone_color: $('#back_color').attr('color'),
+                    variable_region_color: $('#non_back_color').attr('color')
+                },
+                orientation_arrow: {
+                    visible: $('#flexarrow').prop('checked'),
+                    height: Number($('#arrow')[0].value)
+                },
+                search: {
+                    hit_height: Number($('#search_hit')[0].value),
+                    hit_color: $('#search_color').attr('color'),
+                    hit_outline_width: Number($('#search_outline_width')[0].value)
+                }
+            },
+            layers_tree: {
+                visible: $('#flextree').prop('checked'),
+                height: Number($('#tree_length')[0].value),
+                offset: Number($('#tree_offset')[0].value),
+                line_width: Number($('#tree_thickness')[0].value)
+            },
+            genome_tracks: {
+                line_width: Number($('#track_line_width')[0].value),
+                background_color: $('#layer_color').attr('color'),
+                genomes: genomes_state
+            },
+            imported_layers: imported_layers_state,
+            labels: {
+                font_size: Number($('#label')[0].value),
+                offset: Number($('#label_offset')[0].value),
+                position_tick_count: Number($('#num_position')[0].value),
+                position_tick_font_size: Number($('#position_tick_font_size')[0].value)
+            },
+            margins: {
+                inner: Number($('#inner_margin')[0].value),
+                outer: Number($('#outer_margin')[0].value)
+            },
+            region_labels: {
+                font_size: Number($('#region_label_size')[0].value),
+                min_width_px: Number($('#region_label_min_width')[0].value),
+                distance: Number($('#region_label_distance')[0].value)
+            },
+            bins: {
+                show_labels: $('#flexbinlabels').prop('checked'),
+                label_orientation: $('#bin_label_orientation')[0].value,
+                label_font_size: Number($('#bin_label_size')[0].value),
+                ring_height: Number($('#bin_ring_height')[0].value),
+                ring_opacity: Number($('#bin_ring_opacity')[0].value),
+                show_edges: $('#flexbinedges').prop('checked'),
+                edge_thickness: Number($('#bin_edge_thickness')[0].value),
+                edge_color: $('#bin_edge_color').attr('color'),
+                edge_opacity: Number($('#bin_edge_opacity')[0].value)
+            }
+        };
+
+        $.ajax({
+            url: "/pangraph/save_pangraph_state",
+            type: "POST",
+            data: JSON.stringify({state_name: name, state_values: new_state}),
+            contentType: "application/json",
+            dataType: "json",
+            success: (response) => {
+                if (response['status_code'] == '1') {
+                    this.state = name;
+                    toastr.success(`State "${name}" has been saved.`, 'State saved');
+                    $('#savestatemodal').modal('hide');
+                } else {
+                    toastr.error('Failed to save state: ' + (response['error'] || 'server is in read-only mode'), 'Error');
+                }
+            },
+            error: () => {
+                toastr.error('Failed to save state.', 'Error');
+            }
+        });
+    }
+
+
 }
 
 $(document).ready(function () {
