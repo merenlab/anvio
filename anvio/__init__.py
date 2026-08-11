@@ -4222,6 +4222,21 @@ D = {
                      "rather than genes, this filter is applied to genes before grouping them as "
                      "functions."}
         ),
+    'ignore-start-codons': (
+            ['--ignore-start-codons'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Ignore start codons in the analysis. Besides ATG, GTG and TTG are notable minority "
+                     "start codons in bacteria and archaea. With start codons removed, frequencies only "
+                     "represent elongation codons. This makes codon usage bias calculations more accurate, "
+                     "because initiation GTG and TTG, like ATG, encode fMet in bacteria and Met in archaea "
+                     "and eukaryotes, but anvi'o treats them like elongation codons encoding Val and Leu, "
+                     "respectively, in the standard genetic code. ATG does not contribute to codon usage "
+                     "bias given the standard genetic code, because it lacks synonymous codons, being the "
+                     "only Met codon. Note that `--ignore-start-codons` removes start codons from genes in "
+                     "the earliest steps of the analysis, which influences `--gene-min-codons`: the number "
+                     "of codons in a gene never counts the start codon."}
+        ),
     'relative': (
             ['--relative'],
             {'default': False,

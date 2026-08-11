@@ -2312,6 +2312,10 @@ class MultiGenomeCodonUsage(object):
         if self.use_shared_function_sources is None:
             self.use_shared_function_sources = False
 
+        self.ignore_start_codons = A('ignore_start_codons')
+        if self.ignore_start_codons is None:
+            self.ignore_start_codons = False
+
         self.preload_genomes = A('preload_genomes')
         if self.preload_genomes is None:
             self.preload_genomes = False
@@ -2424,7 +2428,7 @@ class MultiGenomeCodonUsage(object):
                 genome_info['codon_to_amino_acid'] = self.args.codon_to_amino_acid
             else:
                 genome_info['codon_to_amino_acid'] = default_codon_amino_acid_dict
-            genome_info['ignore_start_codons'] = self.args.ignore_start_codons
+            genome_info['ignore_start_codons'] = self.ignore_start_codons
 
         # There are memory- and CPU-efficient ways of setting up the object. `preload_genomes` loads
         # all of the SingleGenomeCodonUsage objects into memory, allowing methods to save time by
