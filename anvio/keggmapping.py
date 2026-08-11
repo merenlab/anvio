@@ -5778,6 +5778,13 @@ class ColorbarDrawer:
         If None, dynamically set the font size of each color segment to fit between ticks, else set
         to the provided value.
 
+    tick_fontsize_segment_fraction : float
+        How much of one color segment a dynamically sized tick label is allowed to fill, since
+        labels one segment apart need a gap between them ('draw_discrete').
+
+    max_tick_fontsize : int
+        The largest a dynamically sized tick label gets, however much room a color segment has.
+
     label_rotation : Union[int, None]
         If None, the colorbar label is rotated 270° if 'orientation' is vertical or 0° if
         horizontal. Otherwise rotate the label by the provided value.
@@ -5803,6 +5810,8 @@ class ColorbarDrawer:
         self.figsize: Tuple[int, int] = (1, 6)
         self.orientation: Literal['horizontal', 'vertical'] = 'vertical'
         self.tick_fontsize: Union[int, None] = None
+        self.tick_fontsize_segment_fraction: float = 0.8
+        self.max_tick_fontsize: int = 24
         self.label_rotation: int = None
         self.label_fontsize: int = 24
         self.labelpad: int = 30
@@ -5853,23 +5862,20 @@ class ColorbarDrawer:
 
         if color_labels:
             if self.tick_fontsize is None:
-                # Calculate appropriate font size of tick labels based on color segment height.
-                length_in_data_coords = 1 / len(colors)
+                # Fit the tick labels to one color segment, which is 1 in the data coordinates of a
+                # colorbar built on integer boundaries. Labels sit one segment apart, so type as
+                # tall as a segment would leave neighbors touching.
                 origin_in_points = ax.transData.transform((0, 0))
                 if self.orientation == 'vertical':
-                    size_value = height_in_points = (
-                        ax.transData.transform((0, length_in_data_coords)) - origin_in_points
-                    )[1]
+                    segment_in_points = (ax.transData.transform((0, 1)) - origin_in_points)[1]
                 elif self.orientation == 'horizontal':
-                    size_value = width_in_points = (
-                        ax.transData.transform((length_in_data_coords, 0)) - origin_in_points
-                    )[0]
+                    segment_in_points = (ax.transData.transform((1, 0)) - origin_in_points)[0]
                 else:
                     raise AssertionError
-                if size_value < 10:
-                    tick_fontsize = size_value * 2
-                else:
-                    tick_fontsize = min(size_value, 24)
+                tick_fontsize = min(
+                    segment_in_points * self.tick_fontsize_segment_fraction,
+                    self.max_tick_fontsize
+                )
             else:
                 tick_fontsize = self.tick_fontsize
 
@@ -5944,11 +5950,11 @@ class ColorbarDrawer:
         )
 
         if integer_ticks:
-            # Every whole number where they all fit, and otherwise a whole-number stride, so that the
-            # gaps between labels are even: spacing the ticks evenly and rounding each to a whole
-            # number afterwards would leave gaps of different sizes, which reads as a missing label.
-            # The last tick is the top of the range rather than the last stride, so both ends are
-            # labeled; only the final gap can come out shorter, as it does on any axis.
+            # Every whole number where they all fit, and otherwise a whole-number stride, so that
+            # the gaps between labels are even: spacing the ticks evenly and rounding each to a
+            # whole number afterwards would leave gaps of different sizes, which reads as a missing
+            # label. The last tick is the top of the range rather than the last stride, so both ends
+            # are labeled; only the final gap can come out shorter, as it does on any axis.
             lower = int(vmin)
             upper = int(vmax)
             if upper - lower + 1 <= self.max_integer_ticks:
