@@ -13,6 +13,7 @@ import matplotlib.colors as mcolors
 
 from argparse import Namespace
 from itertools import combinations
+from typing import Callable, Dict, Iterable, List, Literal, Set, Tuple, Union
 # Colorbars are drawn with Matplotlib's object-oriented API rather than 'pyplot'. Importing
 # 'pyplot' selects a backend, and with the pinned Matplotlib that happens at import time: on Linux
 # it probes the X display, so merely running this program over an X-forwarded SSH connection (even
@@ -21,7 +22,6 @@ from itertools import combinations
 from matplotlib import colormaps
 from matplotlib.figure import Figure
 from matplotlib.cm import ScalarMappable
-from typing import Callable, Dict, Iterable, List, Literal, Set, Tuple, Union
 
 import anvio.kgml as kgml
 import anvio.utils as utils
@@ -29,16 +29,17 @@ import anvio.dbinfo as dbinfo
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import ConfigError
-from anvio.dbops import ContigsDatabase, PanSuperclass
 from anvio import FORCE_OVERWRITE, QUIET, __version__ as VERSION
 
+from anvio.errors import ConfigError
 from anvio.metabolism.context import KeggContext
+from anvio.dbops import ContigsDatabase, PanSuperclass
+from anvio.colorconversions import blend_hexcodes, tint_hexcode
 from anvio.metabolism.constants import GLOBAL_MAP_ID_PATTERN, OVERVIEW_MAP_ID_PATTERN
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2026, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = VERSION
@@ -128,6 +129,40 @@ SUMMARY_PRESENCE_PHRASE = ' and '.join(
 PRESENCE_SCHEME_OPTIONS = {
     scheme: f'--presence-colormap-scheme {scheme}' for scheme in SUMMARY_PRESENCE_SCHEMES.values()
 }
+
+# The name a category colors file gives its color column. Its other column holds category names and
+# can be headed anything, exactly as the item column of a groups-txt file can, so that one file can
+# describe samples in one run and groups in another without being renamed.
+CATEGORY_COLORS_COLUMN = 'color'
+
+# What separates the names of a combination of categories in the first column of a category colors
+# file, where a row can override the color that coloring by membership would otherwise derive for
+# that combination by category color averaging. It matches how the membership colorbar labels a
+# combination, so an override row can be copied straight from the scale it adjusts.
+CATEGORY_COMBO_SEPARATOR = ','
+
+# Coloring by membership needs a color for every possible combination of the categories, of which
+# there are '2 ** n - 1'. With colors given per category the combinations are blended rather than
+# sampled from a colormap, so there is no colormap size to bound them; this is the ceiling instead,
+# above which the combinations are refused before they are enumerated. It is set at the size of a
+# typical colormap, well past the handful of categories whose combinations any scale can tell apart.
+MAX_CATEGORY_COLOR_COMBOS = 256
+
+# The '--group-colormap' value asking for each group's individual maps to be colored by a ramp built
+# from that group's own color rather than sampled from a named Matplotlib colormap. Every group's
+# ramp is built the same way, differing only in the hue it runs to, so the panels of a grid stay
+# comparable while each says which group it is.
+GROUP_COLORMAP_FROM_CATEGORY = 'category'
+
+# The fractions of the way from white to a group's own color that its ramp runs between, used when
+# 'GROUP_COLORMAP_FROM_CATEGORY' is asked for without explicit limits. The pale end stops short of
+# white because white is a reserved color of standard and overview maps ('_check_reserved_colors'),
+# and a ramp that reached it could not be drawn there at all.
+DEFAULT_GROUP_TINT_SPAN = (0.25, 1.0)
+
+# The fraction of a named group colormap used when no limits are given, trimming its darkest and
+# lightest tenths.
+DEFAULT_GROUP_COLORMAP_LIMITS = (0.1, 0.9)
 
 # Subdirectories of the output directory, one per role a map file can have: the map pooling every
 # source, the map of one individual source, and the grid comparing them. Every name directly in the
@@ -1012,6 +1047,7 @@ class Mapper:
         color: str,
         colormap: Union[bool, str, mcolors.Colormap, None],
         colormap_limits: Union[Tuple[float, float], None],
+        category_colors_txt: Union[str, None],
         reverse_overlay: bool,
         all_sample_names: Union[List[str], None],
         group_samples: Union[Dict[str, List[str]], None],
@@ -1052,10 +1088,10 @@ class Mapper:
 
         Notes
         =====
-        'aggregation'/'color'/'colormap'/'colormap_limits'/'reverse_overlay'/'sample_summary'/
-        'group_summary' are this layer's per-layer parameters; 'all_sample_names'/'group_samples'
-        carry the shared sample space and grouping. Returns the layer model dict '_map_elements'
-        consumes.
+        'aggregation'/'color'/'colormap'/'colormap_limits'/'category_colors_txt'/'reverse_overlay'/
+        'sample_summary'/'group_summary' are this layer's per-layer parameters; 'all_sample_names'/
+        'group_samples' carry the shared sample space and grouping. Returns the layer model dict
+        '_map_elements' consumes.
         """
         element_type = data['element_type']
         use_reaction_attribute = data['reaction_source'] == 'Reaction'
@@ -1063,12 +1099,26 @@ class Mapper:
         value_column = data['value_column']
         has_sample = data['sample_names'] is not None
         accessions = set(df['__accession'])
+        category_colors_flag = f'--{element_type}-category-colors'
         common = {
             'name': name,
             'element_type': element_type,
             'use_reaction_attribute': use_reaction_attribute,
-            'accessions': accessions
+            'accessions': accessions,
+            'category_colors_flag': category_colors_flag
         }
+        # Colors given per category name are read here, before any of them is checked against the
+        # run's categories, so that a malformed file is reported as such rather than as a file full
+        # of unrecognized names. '_map_elements' does that check, where the categories are known.
+        if category_colors_txt is None:
+            common['category_colors'] = None
+            common['category_combo_colors'] = {}
+        else:
+            category_colors, combo_colors = self._read_category_colors_txt(
+                category_colors_txt, category_colors_flag
+            )
+            common['category_colors'] = category_colors
+            common['category_combo_colors'] = combo_colors
 
         if color == 'original':
             # A reaction presence layer highlighted in the reference map's colors
@@ -1098,6 +1148,13 @@ class Mapper:
                     f"KEGG reaction IDs ('R' followed by digits) rather than KO IDs, so nothing "
                     f"would be highlighted. Use a file of KO accessions with '--original-color', "
                     f"or color these reactions with '--reaction-color' or '--reaction-colormap'."
+                )
+            if common['category_colors'] is not None:
+                raise ConfigError(
+                    f"'{category_colors_flag}' gives a color to each sample or group, but "
+                    f"'--original-color' takes both its colors and its drawing order from the "
+                    f"reference map, so there is no color left to choose. Please use only one of "
+                    f"them."
                 )
             if has_sample:
                 membership, source_accessions = self._relate_accessions_to_samples(
@@ -1306,12 +1363,14 @@ class Mapper:
         compound_color: str = "#e239af",
         reaction_colormap: Union[bool, str, mcolors.Colormap] = None,
         reaction_colormap_limits: Tuple[float, float] = None,
+        reaction_category_colors: str = None,
         reaction_reverse_overlay: bool = False,
         compound_colormap: Union[bool, str, mcolors.Colormap] = None,
         compound_colormap_limits: Tuple[float, float] = None,
+        compound_category_colors: str = None,
         compound_reverse_overlay: bool = False,
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
-        group_colormap_limits: Tuple[float, float] = (0.1, 0.9),
+        group_colormap_limits: Tuple[float, float] = None,
         group_reverse_overlay: bool = False,
         count_scale_max: Union[str, int] = 'observed',
         draw_maps_lacking_data: bool = False
@@ -1372,10 +1431,22 @@ class Mapper:
         compound_group_summary : str, None
             The same summary for the compound layer's groups.
 
+        reaction_category_colors : str, None
+            Path to a kegg-category-colors-txt file giving the reaction layer a color per category —
+            per sample, or per group when the samples are grouped — which colors it by membership in
+            place of a colormap, and colors each category's own map. A row naming a combination of
+            categories overrides the blend of their colors ('_read_category_colors_txt').
+
+        compound_category_colors : str, None
+            The same colors for the compound layer.
+
         Notes
         =====
         The remaining parameters carry the shared groups, per-layer colors/colormaps, and drawing
-        options; see the CLI help and '_map_elements'.
+        options; see the CLI help and '_map_elements'. 'group_colormap' may be
+        'GROUP_COLORMAP_FROM_CATEGORY' to color each group's own maps by a ramp running to that
+        group's own color instead of by a named colormap, in which case 'group_colormap_limits' is
+        how far from white that ramp runs ('_group_map_colors').
 
         Returns
         =======
@@ -1393,6 +1464,7 @@ class Mapper:
                 'color': reaction_color,
                 'colormap': reaction_colormap,
                 'colormap_limits': reaction_colormap_limits,
+                'category_colors_txt': reaction_category_colors,
                 'reverse_overlay': reaction_reverse_overlay,
                 'sample_summary': reaction_sample_summary,
                 'group_summary': reaction_group_summary
@@ -1409,6 +1481,7 @@ class Mapper:
                 'color': compound_color,
                 'colormap': compound_colormap,
                 'colormap_limits': compound_colormap_limits,
+                'category_colors_txt': compound_category_colors,
                 'reverse_overlay': compound_reverse_overlay,
                 'sample_summary': compound_sample_summary,
                 'group_summary': compound_group_summary
@@ -1508,10 +1581,11 @@ class Mapper:
         reaction_colormap: Union[bool, str, mcolors.Colormap] = True,
         reaction_colormap_limits: Tuple[float, float] = None,
         colormap_scheme: Literal['by_count', 'by_count_continuous', 'by_membership'] = None,
+        reaction_category_colors: str = None,
         reaction_reverse_overlay: bool = False,
         reaction_color: str = '#2ca02c',
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
-        group_colormap_limits: Tuple[float, float] = (0.1, 0.9),
+        group_colormap_limits: Tuple[float, float] = None,
         group_reverse_overlay: bool = False,
         count_scale_max: Union[str, int] = 'observed',
         draw_maps_lacking_data: bool = False
@@ -1584,9 +1658,15 @@ class Mapper:
         Notes
         =====
         The dynamic-coloring and drawing options ('reaction_colormap', 'reaction_colormap_limits',
-        'colormap_scheme', 'reaction_reverse_overlay', 'draw_individual_files', 'draw_grid', and the
-        group colormap options) mirror the categorical engine; see the CLI help and
-        '_map_element_membership'.
+        'colormap_scheme', 'reaction_category_colors', 'reaction_reverse_overlay',
+        'draw_individual_files', 'draw_grid', and the group colormap options) mirror the categorical
+        engine; see the CLI help and '_map_element_membership'. 'reaction_category_colors' is the
+        path to a kegg-category-colors-txt file giving a color per category — per source, or per
+        group when the sources are grouped — which colors the layer by membership in place of a
+        colormap, and colors each category's own map. 'group_colormap' may be
+        'GROUP_COLORMAP_FROM_CATEGORY' to color each group's own maps by a ramp running to that
+        group's own color instead of by a named colormap, in which case 'group_colormap_limits' is
+        how far from white that ramp runs ('_group_map_colors').
 
         Returns
         =======
@@ -1688,6 +1768,13 @@ class Mapper:
                     f"found among input 'contigs_dbs', and so will not factor into maps: {message}"
                 )
 
+        # Colors given per category are read before the databases are opened, so that a malformed
+        # file is reported before the run spends time loading data it may not draw. They are checked
+        # against the categories, which are the databases or their groups, in '_map_elements'.
+        category_colors, combo_colors = self._read_category_colors_txt(
+            reaction_category_colors, '--reaction-category-colors'
+        ) if reaction_category_colors is not None else (None, {})
+
         self.progress.new("Loading KO data from contigs databases")
         self.progress.update("...")
 
@@ -1721,6 +1808,9 @@ class Mapper:
             'colormap': reaction_colormap,
             'colormap_limits': reaction_colormap_limits,
             'colormap_scheme': colormap_scheme,
+            'category_colors_flag': '--reaction-category-colors',
+            'category_colors': category_colors,
+            'category_combo_colors': combo_colors,
             'reverse_overlay': reaction_reverse_overlay
         }
         return self._map_element_membership(
@@ -1756,10 +1846,11 @@ class Mapper:
         reaction_colormap: Union[bool, str, mcolors.Colormap] = True,
         reaction_colormap_limits: Tuple[float, float] = None,
         colormap_scheme: Literal['by_count', 'by_count_continuous', 'by_membership'] = None,
+        reaction_category_colors: str = None,
         reaction_reverse_overlay: bool = False,
         reaction_color: str = '#2ca02c',
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
-        group_colormap_limits: Tuple[float, float] = (0.1, 0.9),
+        group_colormap_limits: Tuple[float, float] = None,
         group_reverse_overlay: bool = False,
         count_scale_max: Union[str, int] = 'observed',
         draw_maps_lacking_data: bool = False
@@ -1852,9 +1943,15 @@ class Mapper:
         Notes
         =====
         The dynamic-coloring and drawing options ('reaction_colormap', 'reaction_colormap_limits',
-        'colormap_scheme', 'reaction_reverse_overlay', 'draw_individual_files', 'draw_grid', and the
-        group colormap options) mirror the categorical engine; see the CLI help and
-        '_map_element_membership'.
+        'colormap_scheme', 'reaction_category_colors', 'reaction_reverse_overlay',
+        'draw_individual_files', 'draw_grid', and the group colormap options) mirror the categorical
+        engine; see the CLI help and '_map_element_membership'. 'reaction_category_colors' is the
+        path to a kegg-category-colors-txt file giving a color per category — per source, or per
+        group when the sources are grouped — which colors the layer by membership in place of a
+        colormap, and colors each category's own map. 'group_colormap' may be
+        'GROUP_COLORMAP_FROM_CATEGORY' to color each group's own maps by a ramp running to that
+        group's own color instead of by a named colormap, in which case 'group_colormap_limits' is
+        how far from white that ramp runs ('_group_map_colors').
 
         Returns
         =======
@@ -1980,6 +2077,13 @@ class Mapper:
                     f"'pan_db' genomes, and so will not factor into maps: {message}"
                 )
 
+        # Colors given per category are read before the gene clusters are loaded, so that a
+        # malformed file is reported before the run spends time on data it may not draw. They are
+        # checked against the categories, which are the genomes or their groups, in '_map_elements'.
+        category_colors, combo_colors = self._read_category_colors_txt(
+            reaction_category_colors, '--reaction-category-colors'
+        ) if reaction_category_colors is not None else (None, {})
+
         self.progress.new("Loading consensus KO data from pan database")
         self.progress.update("...")
 
@@ -2049,6 +2153,9 @@ class Mapper:
             'colormap': reaction_colormap,
             'colormap_limits': reaction_colormap_limits,
             'colormap_scheme': colormap_scheme,
+            'category_colors_flag': '--reaction-category-colors',
+            'category_colors': category_colors,
+            'category_combo_colors': combo_colors,
             'reverse_overlay': reaction_reverse_overlay
         }
         return self._map_element_membership(
@@ -2232,6 +2339,197 @@ class Mapper:
             )
 
         return sample_group, group_samples
+
+    def _read_category_colors_txt(
+        self,
+        path: str,
+        flag: str
+    ) -> Tuple[Dict[str, str], Dict[Tuple[str, ...], str]]:
+        """
+        Load a file of per-category colors, and of colors overriding category combinations.
+
+        The file names a color for each category — each sample, contigs database, genome, or group —
+        which coloring by membership uses for the elements in that category alone, an individual
+        map uses for its own category, and a group's color ramp runs to. A row whose first field
+        lists several names separated by 'CATEGORY_COMBO_SEPARATOR' instead gives the color of that
+        combination of categories, replacing the blend of their colors that coloring by membership
+        would otherwise derive.
+
+        The names are not checked against the run's actual categories here, since a file is read
+        before they are all known; '_check_category_colors' does that.
+
+        Parameters
+        ==========
+        path : str
+            Path to a tab-delimited file whose first column holds category names, or combinations of
+            them, and whose 'CATEGORY_COLORS_COLUMN' column holds color hex codes.
+
+        flag : str
+            The command-line flag this file came from, used in error messages.
+
+        Returns
+        =======
+        Tuple[Dict[str, str], Dict[Tuple[str, ...], str]]
+            category_colors : maps each category name to its color hex code.
+            combo_colors : maps each combination of category names, sorted and as a tuple, to the
+                color hex code overriding the blend of that combination.
+        """
+        filesnpaths.is_file_tab_delimited(path)
+        columns = utils.get_columns_of_TAB_delim_file(path, include_first_column=True)
+        if CATEGORY_COLORS_COLUMN not in columns:
+            self.progress.end()
+            raise ConfigError(
+                f"The colors file given to '{flag}', at '{path}', should have a column called "
+                f"'{CATEGORY_COLORS_COLUMN}' holding a color hex code for each category. Its "
+                f"columns are: {', '.join(repr(column) for column in columns)}."
+            )
+        if len(columns) < 2:
+            self.progress.end()
+            raise ConfigError(
+                f"The colors file given to '{flag}', at '{path}', should have at least two "
+                f"columns: the first one holding the names of the categories — the samples, "
+                f"contigs databases, genomes, or groups being colored — and a "
+                f"'{CATEGORY_COLORS_COLUMN}' column holding a color hex code for each of them."
+            )
+        if columns[0] == CATEGORY_COLORS_COLUMN:
+            self.progress.end()
+            raise ConfigError(
+                f"The first column of the colors file given to '{flag}', at '{path}', is the "
+                f"'{CATEGORY_COLORS_COLUMN}' column, but anvi'o expects the first column to hold "
+                f"category names, so the two columns need to be the other way around."
+            )
+
+        table = utils.get_TAB_delimited_file_as_dictionary(path)
+
+        category_colors: Dict[str, str] = {}
+        combo_colors: Dict[Tuple[str, ...], str] = {}
+        for name, row in table.items():
+            color = str(row[CATEGORY_COLORS_COLUMN]).strip()
+            # Only hex codes are accepted, even though Matplotlib would also read a color name here:
+            # the colors a map reserves for its own unhighlighted elements are compared as hex codes
+            # ('_check_reserved_colors'), and a file of hex codes is what the drawn colorbars and
+            # the '--reaction-color'/'--compound-color' options already speak.
+            if not re.fullmatch(r'#[0-9A-Fa-f]{6}', color):
+                self.progress.end()
+                raise ConfigError(
+                    f"Each color in the file given to '{flag}', at '{path}', must be a six-digit "
+                    f"hex code such as '#FFA500', but the color of '{name}' is '{color}'."
+                )
+            members = tuple(
+                sorted(
+                    {part.strip() for part in name.split(CATEGORY_COMBO_SEPARATOR) if part.strip()}
+                )
+            )
+            if not members:
+                self.progress.end()
+                raise ConfigError(
+                    f"A row of the colors file given to '{flag}', at '{path}', names no category at "
+                    f"all in its first column. Every row should name a category, or a combination "
+                    f"of them separated by '{CATEGORY_COMBO_SEPARATOR}'."
+                )
+            if len(members) == 1:
+                category_colors[members[0]] = kgml.canonical_color(color)
+            else:
+                combo_colors[members] = kgml.canonical_color(color)
+
+        if not category_colors:
+            self.progress.end()
+            raise ConfigError(
+                f"The colors file given to '{flag}', at '{path}', gives colors only for "
+                f"combinations of categories, and none for a category on its own. A combination's "
+                f"color adjusts the blend of its members' colors, so the members need colors first."
+            )
+
+        self.run.info(f"Categories colored by '{flag}'", len(category_colors))
+        if combo_colors:
+            self.run.info(f"Category combinations recolored by '{flag}'", len(combo_colors))
+        return category_colors, combo_colors
+
+    def _check_category_colors(
+        self,
+        layers: List[dict],
+        categories: List[str], category_noun: str
+    ) -> None:
+        """
+        Check each layer's category colors against the categories the run actually has.
+
+        A category with no color of its own cannot be colored at all, so it is an error, reported
+        for every such category at once. A color given for a name that is not a category, or for a
+        combination naming one, describes something this run does not draw, so it is reported and
+        ignored, as a groups file's extra items are ('_relate_samples_to_groups'): one file can then
+        cover a set of samples that different runs draw different subsets of.
+
+        Parameters
+        ==========
+        layers : List[dict]
+            The layer models, whose 'category_colors'/'category_combo_colors' are checked. A layer
+            without colors of its own is skipped.
+
+        categories : List[str]
+            The names of every category of the run.
+
+        category_noun : str
+            What one category is called, for error messages, e.g. 'sample' or 'group'.
+        """
+        category_set = set(categories)
+        # A combination is written as its names separated by 'CATEGORY_COMBO_SEPARATOR', so a name
+        # containing that separator could not be told from a combination of other names.
+        containing_separator = sorted(
+            name for name in category_set if CATEGORY_COMBO_SEPARATOR in name
+        )
+        if containing_separator:
+            message = ', '.join(f"'{name}'" for name in containing_separator)
+            self.progress.end()
+            raise ConfigError(
+                f"A colors file names a combination of {category_noun}s by separating their names "
+                f"with '{CATEGORY_COMBO_SEPARATOR}', so no {category_noun} name may itself contain "
+                f"that character. "
+                f"{'These names do' if len(containing_separator) > 1 else 'This name does'}: "
+                f"{message}. Please rename {'them' if len(containing_separator) > 1 else 'it'} in "
+                f"the input, or drop the colors file and color these {category_noun}s from a "
+                f"colormap instead."
+            )
+
+        for layer in layers:
+            category_colors = layer.get('category_colors')
+            if category_colors is None:
+                continue
+            flag = layer['category_colors_flag']
+
+            missing = [category for category in categories if category not in category_colors]
+            if missing:
+                message = ', '.join(f"'{category}'" for category in missing)
+                self.progress.end()
+                raise ConfigError(
+                    f"The colors file given to '{flag}' gives no color for "
+                    f"{'these' if len(missing) > 1 else 'this'} {category_noun}"
+                    f"{'s' if len(missing) > 1 else ''} of the run: {message}. Coloring by "
+                    f"membership needs a color for every {category_noun}, since an element is "
+                    f"colored by exactly which of them contain it, so anvi'o will not fill in the "
+                    f"gaps from a colormap: that would put colors chosen here and colors chosen "
+                    f"for you on one scale. Please add {'them' if len(missing) > 1 else 'it'} to "
+                    f"the file."
+                )
+
+            extra = sorted(name for name in category_colors if name not in category_set)
+            unknown_combos = sorted(
+                f'{CATEGORY_COMBO_SEPARATOR} '.join(combo)
+                for combo in layer['category_combo_colors']
+                if not set(combo) <= category_set
+            )
+            if extra:
+                message = ', '.join(f"'{name}'" for name in extra)
+                self.run.warning(
+                    f"The colors file given to '{flag}' colors the following names, which are not "
+                    f"{category_noun}s of this run and so will not factor into the maps: {message}"
+                )
+            if unknown_combos:
+                message = ', '.join(f"'{combo}'" for combo in unknown_combos)
+                self.run.warning(
+                    f"The colors file given to '{flag}' recolors the following combinations, which "
+                    f"name at least one thing that is not a {category_noun} of this run, and so "
+                    f"will not factor into the maps: {message}"
+                )
 
     @staticmethod
     def _trim_colormap(
@@ -2582,7 +2880,11 @@ class Mapper:
             'scheme_options' names the option that chooses this layer's presence scheme, which
             differs by input ('PRESENCE_SCHEME_OPTIONS'). A layer that is quantitative in one
             context and membership in the other carries the keys of both, plus 'accessions' for
-            finding the entries whose values set the ranges.
+            finding the entries whose values set the ranges. A membership layer may carry a color
+            per category instead of a colormap, as 'category_colors' with the
+            'category_combo_colors' overriding combinations of them and the 'category_colors_flag'
+            they came from; those colors then color the membership scale and each category's own
+            map, and are checked against the categories here.
 
         output_dir : str
             Path to the output directory in which pathway map and colorbar PDF files are drawn.
@@ -2662,6 +2964,50 @@ class Mapper:
         draw_category_maps = has_categories and (
             draw_individual_files is not False or draw_grid is not False
         )
+
+        # Colors given per category name are checked against the categories the run has, and against
+        # what this run would actually do with them, before anything is drawn. A layer whose contexts
+        # are all colored some other way would leave them unused, which is worth an error rather than
+        # a map that quietly ignores the file it was handed.
+        colored_layers = [layer for layer in layers if layer.get('category_colors') is not None]
+        if colored_layers:
+            if not has_categories:
+                flags = ', '.join(f"'{layer['category_colors_flag']}'" for layer in colored_layers)
+                raise ConfigError(
+                    f"A color was given per category ({flags}), but this run has no categories to "
+                    f"color: there is a single source of data, so there is one map rather than one "
+                    f"per sample, database, genome, or group. Set the color of the single map with "
+                    f"'--reaction-color'/'--compound-color' instead."
+                )
+            self._check_category_colors(colored_layers, categories, category_noun)
+            group_ramps = grouped and (
+                grouped_membership['group_colormap'] == GROUP_COLORMAP_FROM_CATEGORY
+            )
+            for layer in colored_layers:
+                # Where the colors land: the combinations of the 'unified' map's membership scale,
+                # the one color of each category's own map when the categories are not grouped, and
+                # the ramp of each group's own maps when they are and that ramp was asked for.
+                if layer['unified_mode'] == 'membership':
+                    continue
+                if layer['category_mode'] == 'membership' and draw_category_maps and (
+                    group_ramps if grouped else True
+                ):
+                    continue
+                grouped_clause = (
+                    f" Grouped, a group's own maps are colored by the number of the group's "
+                    f"{membership_singular}s containing an element, which takes its colors from "
+                    f"'--group-colormap': ask for '--group-colormap "
+                    f"{GROUP_COLORMAP_FROM_CATEGORY}' to build each group's scale from that group's "
+                    f"own color."
+                ) if grouped else ""
+                raise ConfigError(
+                    f"The colors file given to '{layer['category_colors_flag']}' gives a color to "
+                    f"each {category_noun}, which colors an element by exactly which "
+                    f"{category_noun}s contain it, and colors each {category_noun}'s own map. "
+                    f"Nothing in this run is colored either way for the {layer['element_type']} "
+                    f"layer, so the file would go unused.{grouped_clause} Please remove it, or "
+                    f"color this layer by presence."
+                )
 
         if static and grouped:
             # The individual group maps are the exception to "static overrides dynamic": a single
@@ -2794,6 +3140,19 @@ class Mapper:
                 )
             self.progress.end()
 
+        # Each group's individual maps are colored by how many of that group's own sources contain
+        # an element, on a scale of its own. The colors are resolved here, before anything is
+        # checked or drawn, so that they can be checked against the colors a map reserves along with
+        # every other color of the run; the per-layer specs that use them are built further below,
+        # once the within-group membership they need has been narrowed to each group.
+        group_color_priorities: Dict[str, List[Tuple[str, float]]] = {}
+        group_scale_tops: Dict[str, int] = {}
+        if grouped_presence:
+            group_color_priorities, group_scale_tops = self._group_map_colors(
+                grouped_membership, layers, draw_categories, group_observed_counts, count_scale_max,
+                unified_plural, category_noun
+            )
+
         def _reaction_derived(layer, mode):
             # How a reaction layer derives compound colors on a reaction-only global/overview map.
             if layer['element_type'] != 'reaction':
@@ -2865,17 +3224,26 @@ class Mapper:
                     'derived_compound': _reaction_derived(layer, mode)
                 }
             # Ungrouped membership/static: an individual source's map colors that source's elements
-            # in the single fixed color (the grouped case is precomputed below).
+            # in one fixed color (the grouped case is precomputed below). With a color per category,
+            # that color is the category's own, so a panel of a grid says which category it is and
+            # matches the band it takes on the 'unified' map's membership scale.
             accessions = layer['source_accessions'].get(category, set())
+            category_colors = layer.get('category_colors')
+            color_hexcode = layer['color_hexcode'] if category_colors is None else (
+                category_colors[category]
+            )
             return {
                 'element_type': layer['element_type'],
                 'use_reaction_attribute': layer['use_reaction_attribute'],
                 'entry_keys': accessions,
-                'colorer': self._single_color_colorer(layer['color_hexcode']),
+                'colorer': self._single_color_colorer(color_hexcode),
                 'derived_compound': _reaction_derived(layer, mode)
             }
 
-        self._check_reserved_colors(layers, pathway_numbers)
+        self._check_reserved_colors(
+            layers, pathway_numbers, group_color_priorities=group_color_priorities,
+            group_element_types={layer['element_type'] for layer in group_membership_layers}
+        )
 
         # Per-layer colorbars for the unified map (layer-prefixed so two layers do not collide),
         # plus a shared colorbar for the category maps of each layer colored quantitatively there.
@@ -2956,62 +3324,13 @@ class Mapper:
             self.run.info("Number of maps drawn", count)
             return drawn
 
-        # For grouped membership individual maps, precompute each group's within-group membership
-        # and a group colormap's color priorities (by count of the group's sources containing an
-        # element).
-
-        # Each group's map colors elements by how many of that group's own sources contain them,
-        # always in discrete bands — never the continuous scale the 'unified' map's count can have.
-        # That choice is made per layer, by the layer's summary, but '--group-colormap' styles every
-        # layer's group maps at once, so there is nowhere here to make it per layer. Where the scale
-        # runs over more counts than the colormap has distinguishable colors, neighboring counts
-        # therefore share a color, as the warning below reports; every element is still colored by
-        # its own count.
+        # For grouped membership individual maps, precompute each group's within-group membership,
+        # narrowing the layer's membership to the group's own sources so that a group's map counts
+        # only them. The colors these counts take were resolved above, with every other color of the
+        # run.
         group_layer_membership: Dict[str, Tuple] = {}
         if grouped_presence:
-            group_cmap = grouped_membership['group_colormap']
-            if isinstance(group_cmap, str):
-                group_cmap = self._get_colormap(group_cmap)
-            if group_cmap.name in qualitative_colormaps + repeating_colormaps:
-                self.run.warning(
-                    f"The group colormap, '{group_cmap.name}', that was provided to color "
-                    f"individual group maps is not especially useful for displaying the count of "
-                    f"{unified_plural}. We recommend a sequential colormap like 'plasma' instead."
-                )
-            group_cmap = self._trim_colormap(
-                group_cmap, grouped_membership['group_colormap_limits']
-            )
-            group_reverse_overlay = grouped_membership['group_reverse_overlay']
             for group in draw_categories:
-                group_source_names = group_sources[group]
-                # A group's scale stops where '--count-scale-max' says, exactly as the 'unified'
-                # map's does, so that a group of many sources whose elements are in only a few of
-                # them is not drawn in one shade at the bottom of the colormap.
-                group_scale_top = self._resolve_count_scale_top(
-                    count_scale_max, group_observed_counts.get(group, 0), len(group_source_names)
-                )
-                if group_scale_top == 1:
-                    sample_points = np.linspace(1, 1, 1)
-                else:
-                    sample_points = np.linspace(0, 1, group_scale_top)
-                # In ascending order of count, as '_membership_colorer' looks them up.
-                group_color_priorities = [
-                    (
-                        mcolors.rgb2hex(group_cmap(sample_point)),
-                        1 - sample_point if group_reverse_overlay else sample_point
-                    )
-                    for sample_point in sample_points
-                ]
-                distinct_colors = len({color for color, _ in group_color_priorities})
-                if distinct_colors < group_scale_top:
-                    self.run.warning(
-                        f"The group colormap could supply only {distinct_colors} colors that can "
-                        f"be told apart, fewer than the {group_scale_top} counts the scale of "
-                        f"group '{group}' runs over, so neighboring counts share a color on that "
-                        f"group's individual maps, and its colorbar labels more bands than it has "
-                        f"distinct colors. Every element is still colored by the count of the "
-                        f"{unified_plural} containing it."
-                    )
                 specs = []
                 for layer in group_membership_layers:
                     inner_membership = {}
@@ -3024,12 +3343,14 @@ class Mapper:
                         'use_reaction_attribute': layer['use_reaction_attribute'],
                         'entry_keys': inner_membership,
                         'colorer': self._membership_colorer(
-                            inner_membership, group_color_priorities, None, None, None,
+                            inner_membership, group_color_priorities[group], None, None, None,
                             layer['use_reaction_attribute']
                         ),
                         'derived_compound': _reaction_derived(layer, 'membership')
                     })
-                group_layer_membership[group] = (specs, group_color_priorities, group_scale_top)
+                group_layer_membership[group] = (
+                    specs, group_color_priorities[group], group_scale_tops[group]
+                )
 
         for category in draw_categories:
             drawn_category: Dict[str, bool] = {}
@@ -3045,13 +3366,13 @@ class Mapper:
             )
 
             if grouped_presence:
-                group_specs, group_color_priorities, group_scale_top = (
+                group_specs, category_color_priorities, category_scale_top = (
                     group_layer_membership[category]
                 )
                 self.colorbar_drawer.draw_discrete(
-                    [color for color, _ in group_color_priorities],
+                    [color for color, _ in category_color_priorities],
                     os.path.join(category_output_dir, 'colorbar.pdf'),
-                    color_labels=range(1, group_scale_top + 1),
+                    color_labels=range(1, category_scale_top + 1),
                     label=membership_count_label
                 )
                 # Grouped membership specs are precomputed; a layer colored by value or a single
@@ -3123,7 +3444,13 @@ class Mapper:
 
         return drawn
 
-    def _check_reserved_colors(self, layers: List[dict], pathway_numbers: List[str]) -> None:
+    def _check_reserved_colors(
+        self,
+        layers: List[dict],
+        pathway_numbers: List[str],
+        group_color_priorities: Dict[str, List[Tuple[str, float]]] = None,
+        group_element_types: Set[str] = None
+    ) -> None:
         """
         Check that no layer color is one that a map reserves for its unidentified elements.
 
@@ -3144,6 +3471,15 @@ class Mapper:
             The maps about to be drawn, whose classes decide which colors are reserved: global maps
             recolor to gray, overview maps to black reactions and white compounds, and standard maps
             to white.
+
+        group_color_priorities : Dict[str, List[Tuple[str, float]]], None
+            The colors of each group's individual maps ('_group_map_colors'), which belong to no one
+            layer: one scale colors the within-group source counts of every layer whose per-group
+            context is presence. A ramp built from a group's own color runs towards white by
+            construction, so it can reach a reserved color even where a layer's own colors do not.
+
+        group_element_types : Set[str], None
+            The element types the group scale colors, deciding which reserved colors apply to it.
         """
         reserved: Dict[str, Set[str]] = {'reaction': set(), 'compound': set()}
         for pathway_number in pathway_numbers:
@@ -3154,6 +3490,36 @@ class Mapper:
             )
             reserved['reaction'].add(kgml.canonical_color(recolor_colors['ortholog']))
             reserved['compound'].add(kgml.canonical_color(recolor_colors['compound']))
+
+        # One scale colors the within-group source counts of every layer whose per-group context is
+        # presence, so it is out of bounds for the reserved colors of all of their element types.
+        group_reserved = set().union(
+            *(reserved[element_type] for element_type in group_element_types)
+        ) if group_element_types else set()
+        for group, color_priorities in (group_color_priorities or {}).items():
+            clashing = sorted(
+                {
+                    color for color in map(
+                        kgml.canonical_color, (color for color, _ in color_priorities)
+                    ) if color in group_reserved
+                }
+            )
+            if not clashing:
+                continue
+            self.progress.end()
+            raise ConfigError(
+                f"The individual maps of group '{group}' would be colored "
+                f"{'colors' if len(clashing) > 1 else 'a color'} that the pathway maps keep for "
+                f"their own unidentified elements: {', '.join(clashing)}. Anvi'o recolors the "
+                f"reactions and compounds a map does not highlight — gray on global maps, and "
+                f"black reactions with white compounds elsewhere — so a highlighted element in one "
+                f"of those colors would be invisible. These maps color the number of the group's "
+                f"own sources containing an element, styled by '--group-colormap': choose a "
+                f"colormap that does not reach these colors, or, where the scale is a ramp running "
+                f"from a pale tint to the group's own color ('--group-colormap "
+                f"{GROUP_COLORMAP_FROM_CATEGORY}'), start that ramp further from white with the "
+                f"two limits that option also takes."
+            )
 
         for layer in layers:
             if layer['unified_mode'] == 'original':
@@ -3172,6 +3538,8 @@ class Mapper:
                     staged.add(mcolors.rgb2hex(layer['cmap'](fraction)))
             if '_colors' in layer:
                 staged.update(color for color, _ in layer['_colors'][1])
+            if layer.get('category_colors') is not None:
+                staged.update(layer['category_colors'].values())
             if layer.get('color_hexcode') is not None:
                 staged.add(layer['color_hexcode'])
 
@@ -3328,6 +3696,309 @@ class Mapper:
 
         return group_counts
 
+    def _group_map_colors(
+        self,
+        grouped_membership: dict,
+        layers: List[dict],
+        draw_categories: List[str],
+        group_observed_counts: Dict[str, int],
+        count_scale_max: Union[str, int],
+        unified_plural: str,
+        category_noun: str
+    ) -> Tuple[Dict[str, List[Tuple[str, float]]], Dict[str, int]]:
+        """
+        Resolve the colors of each group's individual maps, which count the group's own sources.
+
+        Each group's map colors elements by how many of that group's own sources contain them,
+        always in discrete bands — never the continuous scale the 'unified' map's count can have.
+        That choice is made per layer, by the layer's summary, but the group style applies to every
+        layer's group maps at once, so there is nowhere here to make it per layer. Where a scale
+        runs over more counts than its colors can distinguish, neighboring counts share a color, as
+        the warning below reports; every element is still colored by its own count.
+
+        The colors come from a named Matplotlib colormap, shared by every group, or, when
+        'GROUP_COLORMAP_FROM_CATEGORY' is asked for, from a ramp per group running from a pale tint
+        to that group's own color ('tint_hexcode'). The ramp binds the identity channel to the
+        magnitude channel: every panel of a grid is built the same way and so stays comparable,
+        while its hue says which group it is. A named colormap is the default because one engineered
+        for magnitude reads better as magnitude than a color chosen to identify a group does.
+
+        Parameters
+        ==========
+        grouped_membership : dict
+            The grouping record, carrying 'group_sources' and the group style
+            ('group_colormap'/'group_colormap_limits'/'group_reverse_overlay').
+
+        layers : List[dict]
+            Every layer of the run, of which those given a color per category say what color a ramp
+            runs to. Since one style covers every layer's group maps, two layers coloring one group
+            differently is refused.
+
+        draw_categories : List[str]
+            The groups whose own maps are drawn.
+
+        group_observed_counts : Dict[str, int]
+            The highest within-group source count found on the drawn maps, per group, or empty when
+            the scale does not stop at what was observed.
+
+        count_scale_max : Union[str, int]
+            Where each group's count scale stops ('_resolve_count_scale_top').
+
+        unified_plural : str
+            The plural of what a group's sources are, for messages, e.g. 'samples'.
+
+        category_noun : str
+            What one category is called, for messages, e.g. 'sample group'.
+
+        Returns
+        =======
+        Tuple[Dict[str, List[Tuple[str, float]]], Dict[str, int]]
+            Per group: the (color_hexcode, priority) pairs in ascending order of count, as
+            '_membership_colorer' looks them up, and the count its scale runs up to.
+        """
+        group_sources = grouped_membership['group_sources']
+        group_colormap = grouped_membership['group_colormap']
+        colormap_limits = grouped_membership['group_colormap_limits']
+        group_reverse_overlay = grouped_membership['group_reverse_overlay']
+
+        from_category = group_colormap == GROUP_COLORMAP_FROM_CATEGORY
+        group_colors: Dict[str, str] = {}
+        group_cmap = None
+        if from_category:
+            # One ramp per group needs one color per group, and one style covers every layer's group
+            # maps, so the layers that have colors must agree about them.
+            colored_layers = [layer for layer in layers if layer.get('category_colors')]
+            if not colored_layers:
+                self.progress.end()
+                raise ConfigError(
+                    f"The group colormap was given as '{GROUP_COLORMAP_FROM_CATEGORY}', which "
+                    f"colors each group's own maps by a ramp running from a pale tint to that "
+                    f"group's own color, but no color was given for any group. Give one per group "
+                    f"with the category colors option of a layer colored by presence, or name a "
+                    f"Matplotlib colormap for the group maps instead."
+                )
+            for layer in colored_layers:
+                for group, color in layer['category_colors'].items():
+                    if group_colors.setdefault(group, color) != color:
+                        self.progress.end()
+                        raise ConfigError(
+                            f"The group colormap was given as '{GROUP_COLORMAP_FROM_CATEGORY}', so "
+                            f"each group's own maps are colored by a ramp running to that group's "
+                            f"color. One ramp per group styles every layer's group maps at once, "
+                            f"but the reaction and compound layers were given different colors for "
+                            f"the {category_noun} '{group}': '{group_colors[group]}' and "
+                            f"'{color}'. Please give that {category_noun} one color in both files "
+                            f"— pointing both options at a single file is the simplest way — or "
+                            f"name a Matplotlib colormap for the group maps instead."
+                        )
+            if colormap_limits is None:
+                colormap_limits = DEFAULT_GROUP_TINT_SPAN
+            if not 0.0 <= colormap_limits[0] <= colormap_limits[1] <= 1.0:
+                self.progress.end()
+                raise ConfigError(
+                    f"The two limits of a group colormap of '{GROUP_COLORMAP_FROM_CATEGORY}' are "
+                    f"how far from white towards a group's own color its ramp starts and stops, so "
+                    f"they must lie between 0.0 and 1.0 with the smaller one first. These do not: "
+                    f"{colormap_limits[0]}, {colormap_limits[1]}."
+                )
+        else:
+            if isinstance(group_colormap, str):
+                group_cmap = self._get_colormap(group_colormap)
+            else:
+                group_cmap = group_colormap
+            if group_cmap.name in qualitative_colormaps + repeating_colormaps:
+                self.run.warning(
+                    f"The group colormap, '{group_cmap.name}', that was provided to color "
+                    f"individual group maps is not especially useful for displaying the count of "
+                    f"{unified_plural}. We recommend a sequential colormap like 'plasma' instead."
+                )
+            if colormap_limits is None:
+                colormap_limits = DEFAULT_GROUP_COLORMAP_LIMITS
+            group_cmap = self._trim_colormap(group_cmap, colormap_limits)
+
+        group_color_priorities: Dict[str, List[Tuple[str, float]]] = {}
+        group_scale_tops: Dict[str, int] = {}
+        for group in draw_categories:
+            # A group's scale stops where '--count-scale-max' says, exactly as the 'unified' map's
+            # does, so that a group of many sources whose elements are in only a few of them is not
+            # drawn in one shade at the bottom of the scale.
+            group_scale_top = self._resolve_count_scale_top(
+                count_scale_max, group_observed_counts.get(group, 0), len(group_sources[group])
+            )
+            if group_scale_top == 1:
+                sample_points = np.linspace(1, 1, 1)
+            else:
+                sample_points = np.linspace(0, 1, group_scale_top)
+            if from_category:
+                lower_limit, upper_limit = colormap_limits
+                # A group of one source is drawn in that group's color exactly, the top of its ramp,
+                # since there is no range of counts for a ramp to spread over.
+                colors = [
+                    tint_hexcode(
+                        group_colors[group],
+                        lower_limit + (upper_limit - lower_limit) * sample_point
+                    )
+                    for sample_point in sample_points
+                ]
+            else:
+                colors = [
+                    mcolors.rgb2hex(group_cmap(sample_point)) for sample_point in sample_points
+                ]
+            # In ascending order of count, as '_membership_colorer' looks them up.
+            group_color_priorities[group] = [
+                (color, 1 - sample_point if group_reverse_overlay else sample_point)
+                for color, sample_point in zip(colors, sample_points)
+            ]
+            group_scale_tops[group] = group_scale_top
+
+            distinct_colors = len(set(colors))
+            if distinct_colors < group_scale_top:
+                source_clause = (
+                    f"The ramp running to the color of group '{group}' could supply only "
+                    f"{distinct_colors} colors that can be told apart, fewer than the "
+                    f"{group_scale_top} counts its scale runs over. Widening the ramp's span with "
+                    f"the two limits of the group colormap option gives it more room."
+                ) if from_category else (
+                    f"The group colormap could supply only {distinct_colors} colors that can be "
+                    f"told apart, fewer than the {group_scale_top} counts the scale of group "
+                    f"'{group}' runs over."
+                )
+                self.run.warning(
+                    f"{source_clause} Neighboring counts therefore share a color on that group's "
+                    f"individual maps, and its colorbar labels more bands than it has distinct "
+                    f"colors. Every element is still colored by the count of the {unified_plural} "
+                    f"containing it."
+                )
+
+        return group_color_priorities, group_scale_tops
+
+    def _membership_layer_category_colors(
+        self,
+        layer: dict,
+        categories: List[str],
+        count_scale_top: int
+    ) -> Tuple[str, List[Tuple[str, float]], List[Tuple[str]], None]:
+        """
+        Resolve a membership layer's colors from a color given per category.
+
+        This is the 'category_colors' branch of '_membership_layer_colors', which see: it returns
+        the same record, and the drawing and colorbar code cannot tell where the colors came from.
+        Each category alone is drawn in its own color, and a combination of categories in the blend
+        of their colors ('blend_hexcodes') unless the colors file overrides that combination.
+        Drawing priority follows the order of the combinations exactly as it does when they are
+        sampled from a colormap, so an element in more categories is still drawn over one in fewer.
+
+        Parameters
+        ==========
+        layer : dict
+            The layer model, carrying 'category_colors', 'category_combo_colors', the flag they came
+            from, and 'reverse_overlay'.
+
+        categories : List[str]
+            The categories whose membership colors the layer, in color-assignment order.
+
+        count_scale_top : int
+            The count a color scale would run up to, named in the message that points at coloring by
+            count instead.
+
+        Returns
+        =======
+        Tuple[str, List[Tuple[str, float]], List[Tuple[str]], None]
+            'by_membership', the (color_hexcode, priority) pairs in combination order, the
+            combinations themselves, and None in place of the colormap the colors did not come from.
+        """
+        category_colors: Dict[str, str] = layer['category_colors']
+        combo_colors: Dict[Tuple[str, ...], str] = layer['category_combo_colors']
+        flag = layer['category_colors_flag']
+        scheme_options = layer.get('scheme_options', PRESENCE_SCHEME_OPTIONS)
+        reverse_overlay = layer.get('reverse_overlay', False)
+
+        # A count says how many categories contain an element, not which, so there is no category
+        # whose color it could take. Refused rather than ignored, since the two were asked for
+        # together and only one of them can be honored.
+        colormap_scheme = layer.get('colormap_scheme')
+        if colormap_scheme is not None and colormap_scheme != 'by_membership':
+            self.progress.end()
+            raise ConfigError(
+                f"The {layer['element_type']} layer was given a color for each category by "
+                f"'{flag}', and asked to be colored by count with "
+                f"'{scheme_options[colormap_scheme]}'. A count is how many categories contain an "
+                f"element rather than which ones, so it cannot take a category's own color: the "
+                f"two requests cannot both be honored. Either drop '{flag}' and color the counts "
+                f"from a colormap, or ask for '{scheme_options['by_membership']}' so that the "
+                f"colors given per category are what an element is colored by."
+            )
+
+        # Coloring by membership needs a color per combination of the categories, so the count of
+        # them doubles with each category. The ceiling is checked before the combinations are
+        # enumerated, so that a large number of categories cannot spend gigabytes on its way to the
+        # same refusal.
+        combo_count = 2 ** len(categories) - 1
+        if combo_count > MAX_CATEGORY_COLOR_COMBOS:
+            self.progress.end()
+            combos_shown = f'{combo_count}' if combo_count <= 10 ** 6 else f'{combo_count:.1e}'
+            raise ConfigError(
+                f"Coloring the {layer['element_type']} layer by membership needs a distinct color "
+                f"for every combination of the {len(categories)} categories, of which there are "
+                f"{combos_shown}. Anvi'o blends the colors given by '{flag}' to derive them, and "
+                f"refuses past {MAX_CATEGORY_COLOR_COMBOS} combinations, well beyond the handful "
+                f"that any color scale could tell apart. Color by count instead with "
+                f"'{scheme_options['by_count']}', which needs just {count_scale_top} colors and "
+                f"takes them from a colormap rather than from '{flag}', or reduce the number of "
+                f"categories, for example by grouping them."
+            )
+
+        category_combos: List[Tuple[str]] = []
+        for category_count in range(1, len(categories) + 1):
+            category_combos += list(combinations(categories, category_count))
+
+        color_priorities: List[Tuple[str, float]] = []
+        blended: List[Tuple[str]] = []
+        for combo_index, combo in enumerate(category_combos):
+            if len(combo) == 1:
+                color = category_colors[combo[0]]
+            else:
+                override = combo_colors.get(tuple(sorted(combo)))
+                if override is None:
+                    color = blend_hexcodes(category_colors[category] for category in combo)
+                    blended.append(combo)
+                else:
+                    color = override
+            # The position in the combination order is both the color's place on the scale and its
+            # drawing priority, which 'reverse_overlay' inverts. Counting from the last combination
+            # rather than subtracting from 1 keeps every priority non-negative, as a Pathway
+            # requires.
+            color_priorities.append((
+                color,
+                1 - combo_index / len(category_combos) if reverse_overlay
+                else (combo_index + 1) / len(category_combos)
+            ))
+
+        # A discrete colorbar labels one band per combination, so two combinations sharing a color
+        # would leave the bar with more labels than colors a reader can tell apart. Blending is what
+        # usually causes this — two blends can land on one color, and a blend can land on a
+        # category's own color — so the message points at the rows that would fix it.
+        distinct = len({color for color, _ in color_priorities})
+        if distinct != len(category_combos):
+            self.progress.end()
+            blend_clause = (
+                f" {len(blended)} of the {len(category_combos)} combinations took a color blended "
+                f"from their members' colors; a row of the file naming a combination, with its "
+                f"names separated by '{CATEGORY_COMBO_SEPARATOR}', sets that combination's color "
+                f"directly instead."
+            ) if blended else ""
+            raise ConfigError(
+                f"The colors of the {layer['element_type']} layer of this map could not be "
+                f"assigned. Coloring by membership needs a distinct color for every combination of "
+                f"the {len(categories)} categories, which is {len(category_combos)} of them, and "
+                f"the colors from '{flag}' came to only {distinct}.{blend_clause} Alternatively, "
+                f"color by count with '{scheme_options['by_count']}', which needs just "
+                f"{count_scale_top} colors and takes them from a colormap rather than from "
+                f"'{flag}'."
+            )
+
+        return 'by_membership', color_priorities, category_combos, None
+
     def _membership_layer_colors(
         self,
         layer: dict,
@@ -3357,16 +4028,24 @@ class Mapper:
         qualitative colormap makes them differ, since 'by_count' samples it at whole positions while
         a gradient has to span a range.
 
+        A layer given a color per category ('category_colors') is colored by membership from those
+        colors instead of from a colormap: each category alone takes its own color, and a
+        combination of them takes the blend of their colors unless a row of the colors file
+        overrides it. Since a count identifies no category, the count schemes have nothing to take
+        from such a file and are refused for it.
+
         Returns
         =======
         Tuple[str, List[Tuple[str, float]], Union[List[Tuple[str]], None], matplotlib.colors.Colormap]
             The scheme ('by_count'/'by_count_continuous'/'by_membership'), the (color_hexcode,
             priority) pairs in assignment order, the list of category combinations (for
             by-membership) or None (for the count schemes), and the trimmed colormap the colors were
-            sampled from, which a continuous count scale's colorbar spans.
+            sampled from, which a continuous count scale's colorbar spans (None when the colors came
+            from a colors file rather than a colormap, which only by-membership allows).
         """
         colormap = layer.get('colormap', True)
         colormap_scheme = layer.get('colormap_scheme')
+        category_colors = layer.get('category_colors')
         # A message that tells the reader how to ask for a scheme has to name the option this
         # layer's input actually takes, since the option the other input takes is refused here.
         scheme_options = layer.get('scheme_options', PRESENCE_SCHEME_OPTIONS)
@@ -3375,6 +4054,9 @@ class Mapper:
         # color for every combination of the categories however few of them the data reaches.
         if count_scale_top is None:
             count_scale_top = len(categories)
+
+        if category_colors is not None:
+            return self._membership_layer_category_colors(layer, categories, count_scale_top)
 
         if colormap_scheme is not None:
             scheme = colormap_scheme
@@ -3543,7 +4225,7 @@ class Mapper:
         draw_individual_files: Union[Iterable[str], bool] = False,
         draw_grid: Union[Iterable[str], bool] = False,
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
-        group_colormap_limits: Tuple[float, float] = (0.1, 0.9),
+        group_colormap_limits: Tuple[float, float] = None,
         group_reverse_overlay: bool = False,
         count_scale_max: Union[str, int] = 'observed',
         output_dir: str = None,
@@ -3566,8 +4248,9 @@ class Mapper:
             ('reactions'/'compounds'), 'element_type', 'use_reaction_attribute', 'membership'
             ({accession: [sources]}), 'source_accessions' ({source: set of accessions}, for
             individual ungrouped maps), 'color_hexcode' (single color for individual ungrouped
-            maps), and the colormap options
-            'colormap'/'colormap_limits'/'colormap_scheme'/'reverse_overlay'.
+            maps), the colormap options 'colormap'/'colormap_limits'/'colormap_scheme'/
+            'reverse_overlay', and the colors given per category, if any, as 'category_colors'/
+            'category_combo_colors' with the 'category_colors_flag' they came from.
 
         all_sources : List[str]
             Names of all sources (samples, contigs databases, or genomes), in color-assignment

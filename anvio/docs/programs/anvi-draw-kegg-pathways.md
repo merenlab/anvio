@@ -191,6 +191,27 @@ When comparing a larger number of contigs databases, it makes more sense to colo
 
 ![Three maps showing KOs from six contigs databases](../../images/anvi-draw-kegg-pathways/kos_six_contigs_dbs.png)
 
+#### Choose the color of each category yourself
+
+Instead of having anvi'o sample a colormap, a color can be given to each category — each contigs database, genome, sample, or group — in a %(kegg-category-colors-txt)s file, passed with `--reaction-category-colors` (and `--compound-category-colors` for the compound layer of a %(kegg-compound-txt)s file). This is what to reach for when a category's color has to mean the same thing across every figure in a paper.
+
+|category|color|
+|:--|:--|
+|E_faecalis_6240|#1f77b4|
+|E_faecalis_6255|#ff7f0e|
+|E_faecalis_6512|#2ca02c|
+
+Coloring by membership colors a reaction by exactly *which* categories contain it, so it needs a color per *combination* of them: a category on its own takes its own color, and a combination takes the perceptual blend of its members' colors, which a row naming the combination (its names separated by commas) overrides. The same colors also color each category's own map, so a panel of a grid says which category it is and matches the band it takes on the `unified` map.
+
+Because the colors answer the same question a colormap does, this replaces `--reaction-colormap` and cannot be combined with it. It also does not apply to coloring by *count*, which says how many categories contain a reaction rather than which, and so has no category whose color it could take.
+
+{{ codestart }}
+anvi-draw-kegg-pathways --external-genomes %(external-genomes)s \
+                        --reaction-category-colors %(kegg-category-colors-txt)s \
+                        --draw-grid \
+                        -o output_dir
+{{ codestop }}
+
 ##### Counts on a continuous scale
 
 `by_count` labels one band per count, so it needs a distinguishable color for each, and is refused when there are more categories than the colormap can supply — a few hundred at most.
@@ -297,6 +318,27 @@ anvi-draw-kegg-pathways --external-genomes %(external-genomes)s \
                         -o output_dir
 {{ codestop }}
 
+##### Give each group's maps its own color
+
+A group's own maps show a *magnitude* — the number of the group's databases, genomes, or samples containing a reaction — while a group's color on the `unified` map is an *identity*. The two are separate by default: `--group-colormap` names a colormap engineered for showing magnitude, and a %(kegg-category-colors-txt)s file does not change it.
+
+To bind them, give `--group-colormap category`. Each group's scale is then a ramp running from a pale tint to that group's own color, so `faecalis` panels are drawn in shades of one hue and `faecium` panels in shades of another. Every group's ramp is built the same way, so the panels of a grid stay comparable while each says which group it is.
+
+{{ codestart }}
+anvi-draw-kegg-pathways --external-genomes %(external-genomes)s \
+                        --groups-txt %(groups-txt)s \
+                        --group-threshold 0 \
+                        --reaction-category-colors %(kegg-category-colors-txt)s \
+                        --group-colormap category \
+                        --draw-individual-files \
+                        --draw-grid \
+                        -o output_dir
+{{ codestop }}
+
+The two decimal values `--group-colormap` also accepts then say how far from white each ramp starts and stops rather than which fraction of a colormap to use, defaulting to `0.25 1.0`. The pale end stops short of white on purpose: standard and overview maps keep white for their own unhighlighted elements, so a ramp reaching it could not be drawn there. Anvi'o checks every group's ramp against those reserved colors before writing any file, and says which limits to widen if one collides.
+
+Since one scale styles every layer's group maps at once, a run whose reaction and compound layers give the same group different colors is refused; pointing both `--reaction-category-colors` and `--compound-category-colors` at a single file is the simplest way to keep them in step.
+
 Continuing with the comparison of *Enterococcus* species, the `Folate biosynthesis` map from above shows, on the left side, that all *faecalis* genomes have the pathway for molybdenum cofactor (MoCo) biosynthesis, unlike any *faecium* genomes. A molybdenum requirement in *faecalis* but not *faecium* is supported by the annotation of a molybdate transporter in all *faecalis* genomes and no *faecium* genomes, as seen in an `ABC transporters` map grid -- in the map of "all" groups, it is the top transporter colored blue in the first column.
 
 ![ABC transporter group maps using two group thresholds](../../images/anvi-draw-kegg-pathways/kos_db_group_grid.png)
@@ -306,6 +348,8 @@ Continuing with the comparison of *Enterococcus* species, the `Folate biosynthes
 The %(kegg-reaction-txt)s and %(kegg-compound-txt)s files introduced above can compare data across origins in the same way as multiple contigs databases, without any anvi'o database. Add a `sample` column that assigns each row to its sample of origin, where a sample can be, for example, a genome (e.g., *E. coli* versus *K. pneumoniae*), a metagenome, or a transcriptomic, proteomic, or metabolomic sample. Every row must have a sample.
 
 When a layer's file has a `sample` column but no value column, its elements are compared across samples just as reactions are across contigs databases: they are colored by the sample or by the number of samples in which they occur, a `colorbar_reactions.pdf` (and, for the compound layer, `colorbar_compounds.pdf`) key is written, and all of the same coloring and output options apply, including `--reaction-colormap`, `--compound-colormap`, `--reaction-reverse-overlay`, `--draw-individual-files`, and `--draw-grid`. Whether elements are colored by *which* samples or by *how many* is set per layer with `--reaction-sample-summary`/`--compound-sample-summary` (`membership`, `count` or `count_continuous`; by default `membership` for 3 or fewer samples, `count` above that, and `count_continuous` where there are more samples than the colormap has distinguishable colors). `count` writes a discrete colorbar with one band per count and `count_continuous` writes a gradient from the lowest count to the highest, as described under [counts on a continuous scale](#counts-on-a-continuous-scale). These per-layer options take the place of `--presence-colormap-scheme`, which applies to contigs database and pangenome inputs only and is rejected for a text run. (If a file has a value column, that value colors each sample's own map; see [Color elements by a quantitative value](#color-elements-by-a-quantitative-value).)
+
+When elements are colored by *which* samples or groups contain them, the color of each of them can be given explicitly in a %(kegg-category-colors-txt)s file rather than sampled from a colormap — `--reaction-category-colors` for the reaction layer and `--compound-category-colors` for the compound layer, each taking the place of that layer's colormap. See [Choose the color of each category yourself](#choose-the-color-of-each-category-yourself), which works the same way here as it does for contigs databases and genomes.
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
@@ -432,4 +476,4 @@ Text-file presence layers use their own default colors (reaction green, compound
 
 A reaction presence layer can instead be highlighted in the reference map's colors with `--original-color`, which also works with a `sample` column: the `unified` map shows the union of the samples and `--draw-individual-files`/`--draw-grid` add a reference-colored map per sample, just as they do for multiple contigs databases. Because the reference map dictates both the colors and their drawing order, that flag, like a fixed color, cannot be combined with a value column, with the sample or group summaries, with `--reaction-reverse-overlay`, or with `--group-threshold`. With a %(groups-txt)s the `unified` map is still the union, while each group's map falls back to counting the group's samples — one color cannot distinguish them — styled by `--group-colormap`/`--group-reverse-overlay`.
 
-Avoid purely grayscale colormaps or colormaps whose ends are pure white or black, as these can collide with the reserved colors that anvi'o uses for un-highlighted reactions and compounds; if that happens, the error names which layer's colormap (`--reaction-colormap` or `--compound-colormap`) to change.
+Avoid purely grayscale colormaps or colormaps whose ends are pure white or black, as these can collide with the reserved colors that anvi'o uses for un-highlighted reactions and compounds; if that happens, the error names which layer's colormap (`--reaction-colormap` or `--compound-colormap`) to change. The same check covers the colors given per category in a %(kegg-category-colors-txt)s file and the scale of each group's own maps, including a ramp built from a group's own color (`--group-colormap category`), which runs towards white by construction and so is the most likely of them to collide.

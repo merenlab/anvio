@@ -81,6 +81,21 @@ printf 'accession\tvalue\nC00031\t2\nC00668\t5\nC00074\t9\nC00267\t14\n' > draw_
 # A compound file with no value column (presence), for testing a custom compound presence color.
 printf 'accession\nC00031\nC00668\nC00074\nC00267\n' > draw_compounds_presence.compound.txt
 
+# Colors chosen per category rather than sampled from a colormap: one file per level, since a run's
+# categories are its samples when they are ungrouped and its groups when they are not. The
+# combination file additionally overrides the color that blending two samples' colors would derive.
+printf 'category\tcolor\nSAMPLE_1\t#1f77b4\nSAMPLE_2\t#ff7f0e\nSAMPLE_3\t#2ca02c\n' > draw-sample-colors.txt
+printf 'category\tcolor\nSAMPLE_1\t#1f77b4\nSAMPLE_2\t#ff7f0e\nSAMPLE_3\t#2ca02c\nSAMPLE_1, SAMPLE_2\t#7d5ba6\n' > draw-sample-colors-combo.txt
+printf 'category\tcolor\nG1\t#1f77b4\nG2\t#d62728\n' > draw-group-colors.txt
+printf 'category\tcolor\nSAMPLE_1\t#1f77b4\nSAMPLE_2\t#ff7f0e\n' > draw-sample-colors-incomplete.txt
+# Two samples given the same color, so that two of the seven combinations of three samples come out
+# the same and the membership scale cannot label its bands.
+printf 'category\tcolor\nSAMPLE_1\t#1f77b4\nSAMPLE_2\t#ff7f0e\nSAMPLE_3\t#1f77b4\n' > draw-sample-colors-clashing.txt
+# Contigs databases are named by their project names, which is what the maps compare them by. The
+# groups of them are named G1 and G2, as the sample groups above are, so one file of group colors
+# serves both inputs.
+printf 'genome\tcolor\nE_faecalis_6240\t#1f77b4\nE_faecalis_6255\t#ff7f0e\nE_faecalis_6512\t#2ca02c\n' > draw-contigs-db-colors.txt
+
 # Malformed files exercising the input-validation guards (each drawn command below is expected to fail).
 printf 'accession\nK00844\nR00200\n' > draw_bad_mixed_kr.reaction.txt
 printf 'accession\tgene_id\nC00031\tgene_1\n' > draw_bad_compound_gene_id.compound.txt
@@ -140,13 +155,22 @@ fi
 args+=( "--no-progress" )
 anvi-reaction-network "${args[@]}"
 
-pathway_numbers=( "00010" "01100" "01200" )
+# The map classes anvi'o treats differently: 00010 is a standard map and 01200 an overview map, both
+# of which every test below draws. 01100, the global metabolism map, holds the whole of metabolism
+# and takes about ten times as long to render as the other two together, so only the handful of tests
+# that exercise something specific to a global map add it. What is specific to them is the color they
+# reserve for their own unhighlighted elements -- gray, where overview maps use black and white and
+# standard maps use white -- so the tests that add it are those staging colors through a distinct
+# path: each coloring mode, each drawer, and each input engine, once.
+pathway_numbers=( "00010" "01200" )
+global_pathway_numbers=( "${pathway_numbers[@]}" "01100" )
 
 INFO "Testing drawing KOs from a kegg-reaction-txt file by presence (single color)"
 args=()
 args+=( "--reaction-txt" "draw_kos.reaction.txt" )
 args+=( "--output-dir" ${output_dir}/draw_txt_kos )
-args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+# Draws the global map too, for presence in a single color.
+args+=( "--pathway-numbers" "${global_pathway_numbers[@]}" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
 
@@ -205,7 +229,8 @@ INFO "Testing coloring reactions by a value column from a kegg-reaction-txt file
 args=()
 args+=( "--reaction-txt" "draw_kos_coverage.reaction.txt" )
 args+=( "--output-dir" ${output_dir}/draw_txt_kos_quantitative )
-args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+# Draws the global map too, for a value column, whose reactions also derive compound colors.
+args+=( "--pathway-numbers" "${global_pathway_numbers[@]}" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
 
@@ -331,6 +356,88 @@ args+=( "--draw-grid" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
 
+INFO "Testing coloring by membership from a color given per sample rather than sampled from a \
+colormap: each sample alone takes its own color, each combination of them the blend of their \
+colors, and each sample's own map that sample's color"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples.reaction.txt" )
+args+=( "--reaction-category-colors" "draw-sample-colors.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_samples_category_colors )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing a row of the colors file that names a combination of samples, which sets that \
+combination's color directly in place of the blend of its members' colors"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples.reaction.txt" )
+args+=( "--reaction-category-colors" "draw-sample-colors-combo.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_samples_category_colors_combo )
+# Draws the global map too, for colors given per category, blends included.
+args+=( "--pathway-numbers" "${global_pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing that colors given per sample also color a compound layer, independently of the \
+reaction layer, so that the two layers drawn on one map keep their own scales"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples.reaction.txt" )
+args+=( "--compound-txt" "draw_compounds_samples.compound.txt" )
+args+=( "--reaction-category-colors" "draw-sample-colors.txt" )
+args+=( "--compound-category-colors" "draw-sample-colors-combo.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_two_layers_category_colors )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing colors given per GROUP, which color the 'unified' map by group membership while each \
+group's own maps keep the default group colormap: the identity and magnitude channels stay \
+separate unless the group colormap is asked to follow the colors"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples.reaction.txt" )
+args+=( "--groups-txt" "draw-sample-group-information.txt" )
+args+=( "--group-threshold" "0.5" )
+args+=( "--reaction-category-colors" "draw-group-colors.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_groups_category_colors )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing '--group-colormap category', which builds each group's own scale as a ramp running \
+from a pale tint to that group's own color instead of sampling one colormap shared by every group"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples.reaction.txt" )
+args+=( "--groups-txt" "draw-sample-group-information.txt" )
+args+=( "--group-threshold" "0.5" )
+args+=( "--reaction-category-colors" "draw-group-colors.txt" )
+args+=( "--group-colormap" "category" )
+args+=( "--output-dir" ${output_dir}/draw_txt_groups_category_ramps )
+# Draws the global map too, for a scale per group, built from that group's own color.
+args+=( "--pathway-numbers" "${global_pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing the same group ramps with an explicit span, which says how far from white each ramp \
+starts and stops rather than which fraction of a colormap to use"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples.reaction.txt" )
+args+=( "--groups-txt" "draw-sample-group-information.txt" )
+args+=( "--group-threshold" "0.5" )
+args+=( "--reaction-category-colors" "draw-group-colors.txt" )
+args+=( "--group-colormap" "category" "0.4" "0.95" )
+args+=( "--group-reverse-overlay" )
+args+=( "--output-dir" ${output_dir}/draw_txt_groups_category_ramps_span )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
 INFO "Testing a qualitative colormap with the drawing order reversed, which samples the colormap at \
 whole positions rather than at fractions of its range"
 args=()
@@ -431,7 +538,8 @@ args=()
 args+=( "--reaction-txt" "draw_kos.reaction.txt" )
 args+=( "--compound-txt" "draw_compounds.compound.txt" )
 args+=( "--output-dir" ${output_dir}/draw_txt_mixed_presence_quant )
-args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+# Draws the global map too, for two layers at once, which suppresses derived compound colors.
+args+=( "--pathway-numbers" "${global_pathway_numbers[@]}" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
 
@@ -464,7 +572,8 @@ args=()
 args+=( "--reaction-txt" "draw_kos.reaction.txt" )
 args+=( "--original-color" )
 args+=( "--output-dir" ${output_dir}/draw_txt_original_color )
-args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+# Draws the global map too, for the reference-color drawer, a separate path from the element engine.
+args+=( "--pathway-numbers" "${global_pathway_numbers[@]}" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
 
@@ -614,6 +723,67 @@ if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt --reaction-color
     --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: '--reaction-colormap' with a single-color presence reaction layer should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --reaction-category-colors draw-sample-colors-incomplete.txt \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a colors file leaving a sample of the run uncolored should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --reaction-category-colors draw-sample-colors-clashing.txt \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a colors file whose combinations cannot be told apart should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --reaction-category-colors draw-sample-colors.txt --reaction-colormap tab10 \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: colors given per category together with a colormap should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --reaction-category-colors draw-sample-colors.txt --reaction-sample-summary count \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: colors given per category with a count summary should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
+    --reaction-category-colors draw-sample-colors.txt \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: colors given per category for a layer with no 'sample' column should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0.5 --draw-individual-files \
+    --group-colormap category \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: group ramps built from each group's own color, with no colors given, should have failed."
+    exit 1
+fi
+
+# The pale end of a group's ramp is white at a span starting from 0, and standard and overview maps
+# keep white for their own unhighlighted elements. Caught before any file is written, rather than by
+# the drawing code partway through.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0.5 --draw-individual-files \
+    --reaction-category-colors draw-group-colors.txt --group-colormap category 0.0 1.0 \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a group ramp running all the way to white should have failed."
     exit 1
 fi
 
@@ -859,6 +1029,45 @@ args+=( "--contigs-dbs" \
 "E_faecalis_6512.db"
 )
 args+=( "--output-dir" ${output_dir}/contigs_dbs_kos_membership )
+# Draws the global map too, for the contigs database engine.
+args+=( "--pathway-numbers" "${global_pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing mapping KOs from multiple contigs databases, coloring database membership from a \
+color given per database rather than sampled from a colormap, so that each database's own map \
+takes that database's color and matches its band on the 'unified' map"
+args=()
+args+=( "--contigs-dbs" \
+"E_faecalis_6240.db" \
+"E_faecalis_6255.db" \
+"E_faecalis_6512.db"
+)
+args+=( "--reaction-category-colors" "draw-contigs-db-colors.txt" )
+args+=( "--output-dir" ${output_dir}/contigs_dbs_kos_category_colors )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing colors given per group of contigs databases, with each group's own maps colored by a \
+ramp running to that group's color rather than by one colormap shared across the groups"
+args=()
+args+=( "--contigs-dbs" \
+"E_faecalis_6240.db" \
+"E_faecalis_6255.db" \
+"E_faecalis_6512.db" \
+"E_faecalis_6557.db" \
+"E_faecalis_6563.db" \
+)
+args+=( "--groups-txt" ${output_dir}/contigs-db-group-information.txt)
+args+=( "--group-threshold" "0" )
+args+=( "--reaction-category-colors" "draw-group-colors.txt" )
+args+=( "--group-colormap" "category" )
+args+=( "--output-dir" ${output_dir}/contigs_dbs_kos_group_category_ramps )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
 args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
@@ -910,7 +1119,8 @@ args=()
 args+=( "--pan-db" "TEST-PAN.db" )
 args+=( "--genomes-storage" "TEST-GENOMES.db" )
 args+=( "--output-dir" ${output_dir}/pan_db_kos_genome_count_emphasize_shared )
-args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+# Draws the global map too, for the pangenome engine.
+args+=( "--pathway-numbers" "${global_pathway_numbers[@]}" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
 
