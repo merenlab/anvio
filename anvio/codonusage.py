@@ -1032,7 +1032,7 @@ class SingleGenomeCodonUsage(object):
 
         gene_function_df = gene_function_df.reset_index()
 
-        def select_keys(gene_function_df, requested_keys):
+        def select_exact_keys(gene_function_df, requested_keys):
             gene_function_df = gene_function_df.set_index(['function_source', 'function_name'])
             if expect_functions:
                 available_keys = set(gene_function_df.index)
@@ -1065,46 +1065,43 @@ class SingleGenomeCodonUsage(object):
                 else:
                     nonbrite_requested_keys.append(requested_key)
 
-            gene_brite_df = gene_brite_df.set_index('function_name')
             brite_select_keys = []
             brite_found_keys = []
-            for available_key in gene_brite_df.index:
+            for available_key in set(gene_brite_df['function_name']):
                 for requested_key in brite_requested_keys:
-                    try:
-                        position = available_key.index(requested_key)
-                    except ValueError:
-                        continue
-                    if position == 0 and available_key[
-                        len(requested_key): len(requested_key) + 3] == '>>>':
-                        brite_select_keys.append(available_key)
+                    # The requested category is either the category annotating the gene or a higher
+                    # level of the same hierarchy.
+                    if (available_key == requested_key or
+                        available_key.startswith(requested_key + '>>>')):
+                        brite_select_keys.append(('KEGG_BRITE', available_key))
                         brite_found_keys.append(requested_key)
-            brite_select_keys = set(
-                [('KEGG_BRITE', function_name) for function_name in set(brite_select_keys)])
-            brite_found_keys = set(brite_found_keys)
-            brite_missing_keys = brite_found_keys.difference(brite_select_keys)
+            brite_select_keys = set(brite_select_keys)
             brite_missing_keys = set(
-                [('KEGG_BRITE', function_name) for function_name in set(brite_missing_keys)])
+                [('KEGG_BRITE', requested_key) for requested_key in
+                 set(brite_requested_keys).difference(set(brite_found_keys))])
 
+            if nonbrite_requested_keys:
+                nonbrite_select_keys, nonbrite_missing_keys = select_exact_keys(
+                    gene_nonbrite_df, set(nonbrite_requested_keys))
 
-            raise
-            # FIXME: The select_keys issue below
-            if len(gene_nonbrite_df) > 0:
-                nonbrite_select_keys, nonbrite_missing_keys = select_keys(
-                    gene_nonbrite_df, nonbrite_requested_keys)
-
-                select_keys = brite_select_keys.union(nonbrite_select_keys)
-                missing_keys = brite_missing_keys.union(nonbrite_missing_keys)
+                select_keys = brite_select_keys.union(set(nonbrite_select_keys))
+                missing_keys = brite_missing_keys.union(
+                    set(nonbrite_missing_keys) if nonbrite_missing_keys else set())
             else:
                 select_keys = brite_select_keys
                 missing_keys = brite_missing_keys
 
-            return select_keys, missing_keys
+            return sorted(select_keys), (missing_keys if expect_functions else None)
 
         if self.all_brite_categories:
+            # Every level of every BRITE hierarchy is already represented in the table, so requested
+            # categories are matched exactly.
+            select_keys, missing_keys = select_exact_keys(gene_function_df, requested_keys)
+        else:
+            # Only the most specific BRITE categories are in the table, so requested categories
+            # higher in a hierarchy must be matched against the categories they encompass.
             select_keys, missing_keys = select_keys_given_higher_brite_categories(
                 gene_function_df, requested_keys)
-        else:
-            select_keys, missing_keys = select_keys(gene_function_df, requested_keys)
 
         if expect_functions and missing_keys:
             # Prepare and throw an error message.
