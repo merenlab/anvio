@@ -54,6 +54,17 @@ minimal_enzymes_input.txt > draw_kos_sparse300.reaction.txt
         done
     done
 } > draw_compounds_samples300.compound.txt
+# Groups over those 300 samples, nearly all of them in one group, so that the group's own count scale
+# runs over more counts than its colormap has distinguishable colors. That is what makes a group's
+# maps fall back to a continuous count scale, as the 'unified' map's can.
+{
+    printf 'sample\tgroup\n'
+    for sample in $(seq -f 'SAMPLE_%03g' 1 299)
+    do
+        printf '%s\tBIG\n' "${sample}"
+    done
+    printf 'SAMPLE_300\tTINY\n'
+} > draw-sample-group-information-300.txt
 awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","coverage"} NR>1{print $2,$1,((NR-2)%37)+0.5}' \
 minimal_enzymes_input.txt > draw_kos_coverage.reaction.txt
 awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","sample","coverage"} NR>1{s=((NR-2)%3)+1; print $2,$1,"SAMPLE_"s,((NR-2)%37)+0.5}' \
@@ -437,6 +448,67 @@ args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
 args+=( "--draw-individual-files" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing '--group-colormap-scheme by_count_continuous', which draws every group's count scale \
+as a gradient rather than in discrete bands of one color per source, here for a ramp built from \
+each group's own color, so that a group's colorbar spans that group's own hue"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples.reaction.txt" )
+args+=( "--groups-txt" "draw-sample-group-information.txt" )
+args+=( "--group-threshold" "0.5" )
+args+=( "--reaction-category-colors" "draw-group-colors.txt" )
+args+=( "--group-colormap" "category" )
+args+=( "--group-colormap-scheme" "by_count_continuous" )
+args+=( "--output-dir" ${output_dir}/draw_txt_groups_scheme_continuous )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing that a group whose count scale runs over more counts than its colormap can \
+distinguish falls back to the continuous scale on its own, with a warning, and that asking for the \
+discrete bands outright keeps them and warns that neighboring counts share a color"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples300.reaction.txt" )
+args+=( "--groups-txt" "draw-sample-group-information-300.txt" )
+args+=( "--group-threshold" "0.5" )
+args+=( "--count-scale-max" "total" )
+args+=( "--output-dir" ${output_dir}/draw_txt_groups300_scheme_fallback )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}" 2>&1 | tee draw_txt_groups300_scheme_fallback.log
+# Warnings are wrapped to the terminal width, so a phrase is matched against the log with its line
+# breaks flattened to spaces rather than line by line.
+if ! tr '\n' ' ' < draw_txt_groups300_scheme_fallback.log \
+    | grep -q "drawn on a CONTINUOUS color scale"
+then
+    echo "ERROR: a group scale short of colors did not fall back to the continuous scale."
+    exit 1
+fi
+args=()
+args+=( "--reaction-txt" "draw_kos_samples300.reaction.txt" )
+args+=( "--groups-txt" "draw-sample-group-information-300.txt" )
+args+=( "--group-threshold" "0.5" )
+args+=( "--count-scale-max" "total" )
+args+=( "--group-colormap-scheme" "by_count" )
+args+=( "--output-dir" ${output_dir}/draw_txt_groups300_scheme_bands )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}" 2>&1 | tee draw_txt_groups300_scheme_bands.log
+flattened_bands_log=$(tr '\n' ' ' < draw_txt_groups300_scheme_bands.log)
+if ! grep -q "Neighboring counts therefore share a color" <<< "${flattened_bands_log}"
+then
+    echo "ERROR: insisting on the discrete bands did not warn that counts share a color."
+    exit 1
+fi
+if grep -q "drawn on a CONTINUOUS color scale" <<< "${flattened_bands_log}"
+then
+    echo "ERROR: the discrete bands were asked for but the continuous scale was drawn."
+    exit 1
+fi
 
 INFO "Testing a qualitative colormap with the drawing order reversed, which samples the colormap at \
 whole positions rather than at fractions of its range"
@@ -887,6 +959,14 @@ if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt
     --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: '--group-colormap' with value-colored group maps should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --group-colormap-scheme by_count_continuous \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: '--group-colormap-scheme' without individual group maps should have failed."
     exit 1
 fi
 

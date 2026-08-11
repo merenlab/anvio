@@ -164,6 +164,24 @@ DEFAULT_GROUP_TINT_SPAN = (0.25, 1.0)
 # lightest tenths.
 DEFAULT_GROUP_COLORMAP_LIMITS = (0.1, 0.9)
 
+# How to ask for each scheme of the count scale on individual group maps, keyed by the scheme, for
+# messages that name the option ('_group_map_colors'). The schemes are those of a count scale
+# elsewhere: 'by_count' gives each count a band of a discrete colorbar, which requires one
+# distinguishable color per count, while 'by_count_continuous' draws a gradient from the lowest
+# count to the highest, which any number of counts can share. 'by_membership' is not among them,
+# since a group's own map counts that group's sources and never shows which of them contain an
+# element.
+GROUP_SCHEME_OPTIONS = {
+    scheme: f'--group-colormap-scheme {scheme}'
+    for scheme in ('by_count', 'by_count_continuous')
+}
+
+# How many colors a ramp built from a group's own color is sampled at to become a Colormap, which is
+# what a continuous colorbar spans. The ramp is perceptual ('tint_hexcode') and Matplotlib
+# interpolates in sRGB between the samples, so the count is set high enough that the difference
+# between neighbors is invisible and the bar matches the colors drawn on the map.
+GROUP_RAMP_COLORMAP_SIZE = 256
+
 # Subdirectories of the output directory, one per role a map file can have: the map pooling every
 # source, the map of one individual source, and the grid comparing them. Every name directly in the
 # output directory is therefore anvi'o's own, while the names that come from user data — samples,
@@ -1372,6 +1390,7 @@ class Mapper:
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
         group_colormap_limits: Tuple[float, float] = None,
         group_reverse_overlay: bool = False,
+        group_colormap_scheme: Literal['by_count', 'by_count_continuous'] = None,
         count_scale_max: Union[str, int] = 'observed',
         draw_maps_lacking_data: bool = False
     ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
@@ -1446,7 +1465,9 @@ class Mapper:
         options; see the CLI help and '_map_elements'. 'group_colormap' may be
         'GROUP_COLORMAP_FROM_CATEGORY' to color each group's own maps by a ramp running to that
         group's own color instead of by a named colormap, in which case 'group_colormap_limits' is
-        how far from white that ramp runs ('_group_map_colors').
+        how far from white that ramp runs ('_group_map_colors'). 'group_colormap_scheme' draws the
+        count scale of every group's maps in discrete bands ('by_count') or as a gradient
+        ('by_count_continuous'), and by default keeps the bands while the colors can be told apart.
 
         Returns
         =======
@@ -1545,7 +1566,8 @@ class Mapper:
                 'group_threshold': group_threshold,
                 'group_colormap': group_colormap,
                 'group_colormap_limits': group_colormap_limits,
-                'group_reverse_overlay': group_reverse_overlay
+                'group_reverse_overlay': group_reverse_overlay,
+                'group_colormap_scheme': group_colormap_scheme
             }
 
         category_subject = f"{category_noun}s" if category_noun is not None else None
@@ -1587,6 +1609,7 @@ class Mapper:
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
         group_colormap_limits: Tuple[float, float] = None,
         group_reverse_overlay: bool = False,
+        group_colormap_scheme: Literal['by_count', 'by_count_continuous'] = None,
         count_scale_max: Union[str, int] = 'observed',
         draw_maps_lacking_data: bool = False
     ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
@@ -1666,7 +1689,9 @@ class Mapper:
         colormap, and colors each category's own map. 'group_colormap' may be
         'GROUP_COLORMAP_FROM_CATEGORY' to color each group's own maps by a ramp running to that
         group's own color instead of by a named colormap, in which case 'group_colormap_limits' is
-        how far from white that ramp runs ('_group_map_colors').
+        how far from white that ramp runs ('_group_map_colors'). 'group_colormap_scheme' draws the
+        count scale of every group's maps in discrete bands ('by_count') or as a gradient
+        ('by_count_continuous'), and by default keeps the bands while the colors can be told apart.
 
         Returns
         =======
@@ -1826,6 +1851,7 @@ class Mapper:
             group_colormap=group_colormap,
             group_colormap_limits=group_colormap_limits,
             group_reverse_overlay=group_reverse_overlay,
+            group_colormap_scheme=group_colormap_scheme,
             count_scale_max=count_scale_max,
             output_dir=output_dir,
             draw_maps_lacking_data=draw_maps_lacking_data
@@ -1852,6 +1878,7 @@ class Mapper:
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
         group_colormap_limits: Tuple[float, float] = None,
         group_reverse_overlay: bool = False,
+        group_colormap_scheme: Literal['by_count', 'by_count_continuous'] = None,
         count_scale_max: Union[str, int] = 'observed',
         draw_maps_lacking_data: bool = False
     ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
@@ -1951,7 +1978,9 @@ class Mapper:
         colormap, and colors each category's own map. 'group_colormap' may be
         'GROUP_COLORMAP_FROM_CATEGORY' to color each group's own maps by a ramp running to that
         group's own color instead of by a named colormap, in which case 'group_colormap_limits' is
-        how far from white that ramp runs ('_group_map_colors').
+        how far from white that ramp runs ('_group_map_colors'). 'group_colormap_scheme' draws the
+        count scale of every group's maps in discrete bands ('by_count') or as a gradient
+        ('by_count_continuous'), and by default keeps the bands while the colors can be told apart.
 
         Returns
         =======
@@ -2171,6 +2200,7 @@ class Mapper:
             group_colormap=group_colormap,
             group_colormap_limits=group_colormap_limits,
             group_reverse_overlay=group_reverse_overlay,
+            group_colormap_scheme=group_colormap_scheme,
             count_scale_max=count_scale_max,
             output_dir=output_dir,
             draw_maps_lacking_data=draw_maps_lacking_data
@@ -3147,10 +3177,14 @@ class Mapper:
         # once the within-group membership they need has been narrowed to each group.
         group_color_priorities: Dict[str, List[Tuple[str, float]]] = {}
         group_scale_tops: Dict[str, int] = {}
+        group_cmaps: Dict[str, mcolors.Colormap] = {}
+        group_colormap_scheme = None
         if grouped_presence:
-            group_color_priorities, group_scale_tops = self._group_map_colors(
-                grouped_membership, layers, draw_categories, group_observed_counts, count_scale_max,
-                unified_plural, category_noun
+            group_color_priorities, group_scale_tops, group_cmaps, group_colormap_scheme = (
+                self._group_map_colors(
+                    grouped_membership, layers, draw_categories, group_observed_counts,
+                    count_scale_max, unified_plural, category_noun
+                )
             )
 
         def _reaction_derived(layer, mode):
@@ -3369,12 +3403,22 @@ class Mapper:
                 group_specs, category_color_priorities, category_scale_top = (
                     group_layer_membership[category]
                 )
-                self.colorbar_drawer.draw_discrete(
-                    [color for color, _ in category_color_priorities],
-                    os.path.join(category_output_dir, 'colorbar.pdf'),
-                    color_labels=range(1, category_scale_top + 1),
-                    label=membership_count_label
-                )
+                colorbar_path = os.path.join(category_output_dir, 'colorbar.pdf')
+                if group_colormap_scheme == 'by_count_continuous':
+                    # The same color per count that the discrete bands assign, shown as a gradient
+                    # across the ramp from the lowest count to the highest rather than as one labeled
+                    # band per count, which is what frees it from needing a distinct color for each.
+                    self._draw_quantitative_colorbar(
+                        group_cmaps[category], 1, category_scale_top, colorbar_path,
+                        membership_count_label, integer_ticks=True
+                    )
+                else:
+                    self.colorbar_drawer.draw_discrete(
+                        [color for color, _ in category_color_priorities],
+                        colorbar_path,
+                        color_labels=range(1, category_scale_top + 1),
+                        label=membership_count_label
+                    )
                 # Grouped membership specs are precomputed; a layer colored by value or a single
                 # color in its per-group context colors its own map and rides along on the same map.
                 specs = group_specs + [
@@ -3426,6 +3470,8 @@ class Mapper:
                 drawn,
                 group_scale_tops=grid_group_scale_tops,
                 group_color_priorities=grid_group_color_priorities,
+                group_cmaps=group_cmaps,
+                group_colormap_scheme=group_colormap_scheme,
                 check_maps_lacking_kos=not draw_maps_lacking_data,
                 source_type=grid_source_type if grid_source_type is not None else category_noun
             )
@@ -3705,16 +3751,28 @@ class Mapper:
         count_scale_max: Union[str, int],
         unified_plural: str,
         category_noun: str
-    ) -> Tuple[Dict[str, List[Tuple[str, float]]], Dict[str, int]]:
+    ) -> Tuple[
+        Dict[str, List[Tuple[str, float]]],
+        Dict[str, int],
+        Dict[str, mcolors.Colormap],
+        Literal['by_count', 'by_count_continuous']
+    ]:
         """
         Resolve the colors of each group's individual maps, which count the group's own sources.
 
-        Each group's map colors elements by how many of that group's own sources contain them,
-        always in discrete bands — never the continuous scale the 'unified' map's count can have.
-        That choice is made per layer, by the layer's summary, but the group style applies to every
-        layer's group maps at once, so there is nowhere here to make it per layer. Where a scale
-        runs over more counts than its colors can distinguish, neighboring counts share a color, as
-        the warning below reports; every element is still colored by its own count.
+        Each group's map colors elements by how many of that group's own sources contain them. Which
+        color a count takes never depends on the scheme resolved here: the colors are always sampled
+        at even fractions of the group's ramp, so the scheme decides only how the scale is DRAWN, in
+        discrete bands of one color per count ('by_count') or as a gradient from the lowest count to
+        the highest ('by_count_continuous'). Unlike the schemes of the 'unified' map, which each
+        layer's summary chooses for itself ('_membership_layer_colors'), this one is chosen for the
+        whole run by the group style, and rightly so: both layers of a group's map share one set of
+        colors and one colorbar, so there is no per-layer scale for a per-layer scheme to describe.
+
+        Where the colors run short of the counts, the gradient is what a discrete band per count
+        cannot be, so the scheme falls back to it and says so, exactly as the 'unified' map's count
+        scale does. Asking for 'by_count' outright keeps the bands, and neighboring counts then share
+        a color, as the warning below reports; every element is still colored by its own count.
 
         The colors come from a named Matplotlib colormap, shared by every group, or, when
         'GROUP_COLORMAP_FROM_CATEGORY' is asked for, from a ramp per group running from a pale tint
@@ -3726,8 +3784,8 @@ class Mapper:
         Parameters
         ==========
         grouped_membership : dict
-            The grouping record, carrying 'group_sources' and the group style
-            ('group_colormap'/'group_colormap_limits'/'group_reverse_overlay').
+            The grouping record, carrying 'group_sources' and the group style ('group_colormap'/
+            'group_colormap_limits'/'group_reverse_overlay'/'group_colormap_scheme').
 
         layers : List[dict]
             Every layer of the run, of which those given a color per category say what color a ramp
@@ -3752,14 +3810,18 @@ class Mapper:
 
         Returns
         =======
-        Tuple[Dict[str, List[Tuple[str, float]]], Dict[str, int]]
+        Tuple[Dict[str, List[Tuple[str, float]]], Dict[str, int], Dict[str, mcolors.Colormap], str]
             Per group: the (color_hexcode, priority) pairs in ascending order of count, as
-            '_membership_colorer' looks them up, and the count its scale runs up to.
+            '_membership_colorer' looks them up; the count its scale runs up to; and the colormap
+            its colors were sampled from, which its colorbar spans, left empty for a scale drawn in
+            discrete bands, which spans no colormap. Then the scheme ('by_count'/
+            'by_count_continuous') that every group's colorbar is drawn by.
         """
         group_sources = grouped_membership['group_sources']
         group_colormap = grouped_membership['group_colormap']
         colormap_limits = grouped_membership['group_colormap_limits']
         group_reverse_overlay = grouped_membership['group_reverse_overlay']
+        requested_scheme = grouped_membership['group_colormap_scheme']
 
         from_category = group_colormap == GROUP_COLORMAP_FROM_CATEGORY
         group_colors: Dict[str, str] = {}
@@ -3816,15 +3878,21 @@ class Mapper:
                 colormap_limits = DEFAULT_GROUP_COLORMAP_LIMITS
             group_cmap = self._trim_colormap(group_cmap, colormap_limits)
 
-        group_color_priorities: Dict[str, List[Tuple[str, float]]] = {}
-        group_scale_tops: Dict[str, int] = {}
-        for group in draw_categories:
-            # A group's scale stops where '--count-scale-max' says, exactly as the 'unified' map's
-            # does, so that a group of many sources whose elements are in only a few of them is not
-            # drawn in one shade at the bottom of the scale.
-            group_scale_top = self._resolve_count_scale_top(
+        # A group's scale stops where '--count-scale-max' says, exactly as the 'unified' map's does,
+        # so that a group of many sources whose elements are in only a few of them is not drawn in
+        # one shade at the bottom of the scale. Every group's top is resolved before any colors are
+        # built, because the scheme below is decided for the whole run and so needs all of them.
+        group_scale_tops: Dict[str, int] = {
+            group: self._resolve_count_scale_top(
                 count_scale_max, group_observed_counts.get(group, 0), len(group_sources[group])
             )
+            for group in draw_categories
+        }
+
+        group_color_priorities: Dict[str, List[Tuple[str, float]]] = {}
+        group_distinct_colors: Dict[str, int] = {}
+        for group in draw_categories:
+            group_scale_top = group_scale_tops[group]
             if group_scale_top == 1:
                 sample_points = np.linspace(1, 1, 1)
             else:
@@ -3849,28 +3917,93 @@ class Mapper:
                 (color, 1 - sample_point if group_reverse_overlay else sample_point)
                 for color, sample_point in zip(colors, sample_points)
             ]
-            group_scale_tops[group] = group_scale_top
+            # Rounding to 8-bit color means the supply can fall short of what the ramp holds, so
+            # what matters is how many distinct colors actually came out of it.
+            group_distinct_colors[group] = len(set(colors))
 
-            distinct_colors = len(set(colors))
-            if distinct_colors < group_scale_top:
-                source_clause = (
-                    f"The ramp running to the color of group '{group}' could supply only "
-                    f"{distinct_colors} colors that can be told apart, fewer than the "
-                    f"{group_scale_top} counts its scale runs over. Widening the ramp's span with "
-                    f"the two limits of the group colormap option gives it more room."
-                ) if from_category else (
-                    f"The group colormap could supply only {distinct_colors} colors that can be "
-                    f"told apart, fewer than the {group_scale_top} counts the scale of group "
-                    f"'{group}' runs over."
+        # A discrete colorbar labels one band per count, so a ramp that cannot supply a DISTINCT
+        # color for each of them leaves the bar with more labels than colors a reader can tell apart.
+        # The scheme is settled once for the whole run rather than per group, so that every panel of
+        # a grid carries the same kind of bar; the group whose scale runs furthest past its colors is
+        # what decides it, since a scheme good for that one is good for the rest.
+        short_groups = [
+            group for group in draw_categories
+            if group_distinct_colors[group] < group_scale_tops[group]
+        ]
+        scheme = requested_scheme
+        if scheme is None:
+            # Nobody asked for either scheme, so the bands are kept while they can be told apart and
+            # the gradient takes over when they cannot.
+            scheme = 'by_count_continuous' if short_groups else 'by_count'
+
+        def _short_group_clause(group: str) -> str:
+            return (
+                f"The ramp running to the color of {category_noun} '{group}' could supply only "
+                f"{group_distinct_colors[group]} colors that can be told apart, fewer than the "
+                f"{group_scale_tops[group]} counts its scale runs over. Widening the ramp's span "
+                f"with the two limits of the group colormap option gives it more room."
+            ) if from_category else (
+                f"The group colormap could supply only {group_distinct_colors[group]} colors that "
+                f"can be told apart, fewer than the {group_scale_tops[group]} counts the scale of "
+                f"{category_noun} '{group}' runs over."
+            )
+
+        if scheme == 'by_count_continuous':
+            # Colors running short is what the gradient is for, so it is worth reporting only when
+            # the gradient was not asked for: the bands were the default, and this is why they were
+            # not drawn. Only the colorbar changes, since the colors a count takes are sampled from
+            # fractions of the ramp either way.
+            if short_groups and requested_scheme is None:
+                worst_group = max(
+                    short_groups,
+                    key=lambda group: group_scale_tops[group] - group_distinct_colors[group]
                 )
                 self.run.warning(
-                    f"{source_clause} Neighboring counts therefore share a color on that group's "
-                    f"individual maps, and its colorbar labels more bands than it has distinct "
-                    f"colors. Every element is still colored by the count of the {unified_plural} "
-                    f"containing it."
+                    f"{_short_group_clause(worst_group)} The count on individual {category_noun} "
+                    f"maps is therefore drawn on a CONTINUOUS color scale rather than in discrete "
+                    f"bands of one color per count. Each colorbar is a gradient running from a "
+                    f"count of 1 to the top of that {category_noun}'s scale, on which a color "
+                    f"reads as a position along that range rather than as an exact count. Ask for "
+                    f"this scale explicitly with '{GROUP_SCHEME_OPTIONS['by_count_continuous']}', "
+                    f"or ask for '{GROUP_SCHEME_OPTIONS['by_count']}' to insist on the discrete "
+                    f"bands and be told when they cannot be drawn. One scheme covers every "
+                    f"{category_noun}'s maps, so the {category_noun} whose scale runs furthest "
+                    f"past its colors is the one reported here."
+                )
+        elif short_groups:
+            for group in short_groups:
+                self.run.warning(
+                    f"{_short_group_clause(group)} Neighboring counts therefore share a color on "
+                    f"that {category_noun}'s individual maps, and its colorbar labels more bands "
+                    f"than it has distinct colors. Every element is still colored by the count of "
+                    f"the {unified_plural} containing it. Drawing the count on a continuous color "
+                    f"scale instead, with '{GROUP_SCHEME_OPTIONS['by_count_continuous']}', needs "
+                    f"no distinct color per count."
                 )
 
-        return group_color_priorities, group_scale_tops
+        # A continuous colorbar spans the colormap its colors were sampled from. A named colormap,
+        # trimmed to its limits above, is that colormap already and is shared by every group; a ramp
+        # built from a group's own color has to be made into one. Neither is built for a scale drawn
+        # in discrete bands, which spans no colormap: its bar is the colors themselves.
+        group_cmaps: Dict[str, mcolors.Colormap] = {}
+        if scheme == 'by_count_continuous':
+            for group in draw_categories:
+                if from_category:
+                    lower_limit, upper_limit = colormap_limits
+                    group_cmaps[group] = mcolors.LinearSegmentedColormap.from_list(
+                        f'tint({group_colors[group]},{lower_limit:.2f},{upper_limit:.2f})',
+                        [
+                            tint_hexcode(
+                                group_colors[group],
+                                lower_limit + (upper_limit - lower_limit) * fraction
+                            )
+                            for fraction in np.linspace(0, 1, GROUP_RAMP_COLORMAP_SIZE)
+                        ]
+                    )
+                else:
+                    group_cmaps[group] = group_cmap
+
+        return group_color_priorities, group_scale_tops, group_cmaps, scheme
 
     def _membership_layer_category_colors(
         self,
@@ -4227,6 +4360,7 @@ class Mapper:
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
         group_colormap_limits: Tuple[float, float] = None,
         group_reverse_overlay: bool = False,
+        group_colormap_scheme: Literal['by_count', 'by_count_continuous'] = None,
         count_scale_max: Union[str, int] = 'observed',
         output_dir: str = None,
         draw_maps_lacking_data: bool = False
@@ -4298,7 +4432,8 @@ class Mapper:
                 'group_threshold': group_threshold,
                 'group_colormap': group_colormap,
                 'group_colormap_limits': group_colormap_limits,
-                'group_reverse_overlay': group_reverse_overlay
+                'group_reverse_overlay': group_reverse_overlay,
+                'group_colormap_scheme': group_colormap_scheme
             }
 
         return self._map_elements(
@@ -5247,6 +5382,8 @@ class Mapper:
         drawn: Dict[Literal['unified', 'individual', 'grid'], Dict],
         group_scale_tops: Dict[str, int] = None,
         group_color_priorities: Dict[str, List[Tuple[str, float]]] = None,
+        group_cmaps: Dict[str, mcolors.Colormap] = None,
+        group_colormap_scheme: str = None,
         check_maps_lacking_kos: bool = True,
         source_type: str = 'unknown'
     ) -> None:
@@ -5282,9 +5419,9 @@ class Mapper:
             Record of drawn map files.
 
         group_scale_tops : Dict[str, int], None
-            Used to draw a per-group discrete colorbar of source counts. Keys are group names; values
-            are the count each group's scale runs up to ('_resolve_count_scale_top'). Left None when
-            no layer colors its individual group maps by within-group source counts, as when a group
+            Used to draw a per-group colorbar of source counts. Keys are group names; values are the
+            count each group's scale runs up to ('_resolve_count_scale_top'). Left None when no
+            layer colors its individual group maps by within-group source counts, as when a group
             map is colored by value instead, in which case no per-group colorbars are drawn.
 
         group_color_priorities : Dict[str, List[Tuple[str, float]]], None
@@ -5292,6 +5429,17 @@ class Mapper:
             names; values are lists of (color hex code, priority) pairs in ascending order of
             within-group source count. Reactions assigned higher priority colors are drawn over
             reactions assigned lower priority colors. Left None whenever 'group_scale_tops' is.
+
+        group_cmaps : Dict[str, matplotlib.colors.Colormap], None
+            The colormap each group's colors were sampled from, which its colorbar spans when
+            'group_colormap_scheme' draws that bar as a gradient ('_group_map_colors'). Empty or
+            None for a scheme that draws discrete bands, which span no colormap.
+
+        group_colormap_scheme : str, None
+            How the per-group colorbars are drawn ('by_count' in discrete bands of one color per
+            count, 'by_count_continuous' as a gradient from the lowest count to the highest),
+            settled for the whole run by '_group_map_colors'. Left None whenever 'group_scale_tops'
+            is.
 
         check_maps_lacking_kos : bool, True
             If True, check for "empty" individual map files that are needed to complete the map grid
@@ -5368,12 +5516,21 @@ class Mapper:
             else:
                 label = 'source count'
             for group in draw_categories:
-                self.colorbar_drawer.draw_discrete(
-                    [color for color, _ in group_color_priorities[group]],
-                    os.path.join(grid_dir, f'colorbar_{group}.pdf'),
-                    color_labels=range(1, group_scale_tops[group] + 1),
-                    label=label
-                )
+                colorbar_path = os.path.join(grid_dir, f'colorbar_{group}.pdf')
+                if group_colormap_scheme == 'by_count_continuous':
+                    # A gradient from the lowest count to the highest, as the same group's own map
+                    # directory gets, so a grid and the maps it is made of are keyed the same way.
+                    self._draw_quantitative_colorbar(
+                        group_cmaps[group], 1, group_scale_tops[group], colorbar_path, label,
+                        integer_ticks=True
+                    )
+                else:
+                    self.colorbar_drawer.draw_discrete(
+                        [color for color, _ in group_color_priorities[group]],
+                        colorbar_path,
+                        color_labels=range(1, group_scale_tops[group] + 1),
+                        label=label
+                    )
 
         for pathway_number in pathway_numbers:
             self.progress.update(pathway_number)

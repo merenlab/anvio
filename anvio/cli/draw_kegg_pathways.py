@@ -18,7 +18,7 @@ from anvio.metabolism.context import KeggContext
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.keggmapping import (
     AGGREGATION_FUNCTIONS, DEFAULT_GROUP_TINT_SPAN, GROUP_COLORMAP_FROM_CATEGORY,
-    SUMMARY_PRESENCE_PHRASE, SUMMARY_PRESENCE_SCHEMES, Mapper
+    GROUP_SCHEME_OPTIONS, SUMMARY_PRESENCE_PHRASE, SUMMARY_PRESENCE_SCHEMES, Mapper
 )
 
 
@@ -528,21 +528,22 @@ def get_args() -> Namespace:
     )
     groupGROUP.add_argument(
         '--group-colormap', nargs='+', help=
-        "This option is like '--reaction-colormap', but only applies to drawing files for "
-        "individual groups ('--draw-individual-files') and panels for individual groups in map "
-        "grids ('--draw-grid'). These maps for individual groups show data from group sources — "
-        "samples, contigs databases, or pan genomes. Presence may only be colored by count — e.g., "
-        "the number of samples in the group containing the data — not membership. Like "
-        "'--reaction-colormap', this parameter takes the name of a Matplotlib Colormap, and "
-        "optionally, two decimal values between 0.0 and 1.0 to limit the fraction of the colormap "
-        "used. The default configuration is the same, with the colormap being 'plasma_r' and the "
-        "limits being 0.1 and 0.9. Note that per-group maps show counts in discrete bands, one per "
-        "source, so a group with more sources than this colormap has distinguishable colors gets a "
-        "colorbar whose bands cannot all be told apart, along with a warning. When a layer's "
-        f"samples are summarized by pooling numerical values with "
-        f"--reaction-sample-summary/--compound-sample-summary, its individual group maps are "
-        f"colored continuously using '--reaction-colormap'/'--compound-colormap' instead, so no "
-        f"per-group source-count colorbar is written. In place of a colormap name, the value "
+        f"This option is like '--reaction-colormap', but only applies to drawing files for "
+        f"individual groups ('--draw-individual-files') and panels for individual groups in map "
+        f"grids ('--draw-grid'). These maps for individual groups show data from group sources — "
+        f"samples, contigs databases, or pan genomes. Presence may only be colored by count — "
+        f"e.g., the number of samples in the group containing the data — not membership. Like "
+        f"'--reaction-colormap', this parameter takes the name of a Matplotlib Colormap, and "
+        f"optionally, two decimal values between 0.0 and 1.0 to limit the fraction of the colormap "
+        f"used. The default configuration is the same, with the colormap being 'plasma_r' and the "
+        f"limits being 0.1 and 0.9. Note that per-group maps show counts in discrete bands by "
+        f"default, one per source, so a group with more sources than this colormap has "
+        f"distinguishable colors has its count drawn on a continuous scale instead, along with a "
+        f"warning saying so ('--group-colormap-scheme'). When a layer's samples are summarized by "
+        f"pooling numerical values with --reaction-sample-summary/--compound-sample-summary, its "
+        f"individual group maps are colored continuously using "
+        f"'--reaction-colormap'/'--compound-colormap' instead, so no per-group source-count "
+        f"colorbar is written. In place of a colormap name, the value "
         f"'{GROUP_COLORMAP_FROM_CATEGORY}' colors each group's own maps by a ramp running from a "
         f"pale tint to that group's own color, which "
         f"'--reaction-category-colors'/'--compound-category-colors' gives; every group's ramp is "
@@ -553,6 +554,25 @@ def get_args() -> Namespace:
         f"of white because standard and overview maps keep white for their own unhighlighted "
         f"elements. A named colormap remains the default, since one built for showing magnitude "
         f"usually reads better as a count than a color chosen to identify a group does."
+    )
+    groupGROUP.add_argument(
+        '--group-colormap-scheme', choices=list(GROUP_SCHEME_OPTIONS), help=
+        "How the count scale of individual group maps is drawn: 'by_count' gives each count a band "
+        "of a discrete colorbar, one per source in the group, while 'by_count_continuous' draws a "
+        "gradient from the lowest count to the highest. Which color a count takes is the same "
+        "either way — it is always sampled at an even fraction of '--group-colormap' — so this "
+        "option changes the colorbar and nothing on the maps themselves. Discrete bands need one "
+        "distinguishable color per count, which a group of many sources can exhaust; a gradient "
+        "needs none, since a color on it reads as a position along the range of counts rather than "
+        "as an exact count, and so works for a group of any size. By default the bands are drawn "
+        "while their colors can be told apart, and the gradient takes over with a warning where "
+        "they cannot. Unlike '--presence-colormap-scheme', which each layer sets for itself, one "
+        "scheme covers every layer's group maps, because the reaction and compound layers of a "
+        "group's map share one set of colors and one colorbar; for the same reason the choice is "
+        "made once for the whole run rather than per group, so that the panels of a grid all carry "
+        "the same kind of colorbar. There is no 'by_membership' here: a group's own map counts "
+        "that group's sources and never shows which of them contain an element. Like "
+        "'--group-colormap', this applies only to individual group maps that show source counts."
     )
     groupGROUP.add_argument(
         '--group-reverse-overlay', action='store_true', default=False, help=
@@ -665,6 +685,8 @@ def map_json_network_ko_data(args: Namespace, mapper: Mapper) -> None:
         unsupported_args.append('--reaction-reverse-overlay')
     if args.group_colormap is not None:
         unsupported_args.append('--group-colormap')
+    if args.group_colormap_scheme is not None:
+        unsupported_args.append('--group-colormap-scheme')
     if args.group_reverse_overlay:
         unsupported_args.append('--group-reverse-overlay')
 
@@ -1124,6 +1146,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
             )
         group_flags = [flag for present_flag, flag in (
             (args.group_colormap is not None, '--group-colormap'),
+            (args.group_colormap_scheme is not None, '--group-colormap-scheme'),
             (args.group_reverse_overlay, '--group-reverse-overlay')
         ) if present_flag]
         if group_flags and not (group_presence_maps and draw_category_maps):
@@ -1171,6 +1194,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         'reaction_reverse_overlay': args.reaction_reverse_overlay,
         'compound_reverse_overlay': args.compound_reverse_overlay,
         'group_reverse_overlay': args.group_reverse_overlay,
+        'group_colormap_scheme': args.group_colormap_scheme,
         'draw_maps_lacking_data': args.draw_bare_maps
     }
     for aggregation, key in (
@@ -1343,6 +1367,7 @@ def map_multiple_contigs_dbs_ko_data(args: Namespace, mapper: Mapper) -> None:
         pathway_numbers=args.pathway_numbers,
         reaction_reverse_overlay=args.reaction_reverse_overlay,
         group_reverse_overlay=args.group_reverse_overlay,
+        group_colormap_scheme=args.group_colormap_scheme,
         count_scale_max=args.count_scale_max,
         draw_maps_lacking_data=args.draw_bare_maps
     )
@@ -1457,6 +1482,7 @@ def map_pan_db_ko_data(args: Namespace, mapper: Mapper) -> None:
         pathway_numbers=args.pathway_numbers,
         reaction_reverse_overlay=args.reaction_reverse_overlay,
         group_reverse_overlay=args.group_reverse_overlay,
+        group_colormap_scheme=args.group_colormap_scheme,
         count_scale_max=args.count_scale_max,
         draw_maps_lacking_data=args.draw_bare_maps
     )
