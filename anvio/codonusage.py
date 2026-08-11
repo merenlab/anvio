@@ -2532,6 +2532,7 @@ class MultiGenomeCodonUsage(object):
         reference_function_accessions=None,
         reference_function_names=None,
         expect_reference_functions=False,
+        reference_gene_caller_ids=None,
         gene_min_codons=0,
         function_min_codons=0,
         min_codon_filter='both',
@@ -2544,8 +2545,18 @@ class MultiGenomeCodonUsage(object):
         """This generator yields a genome name and CUB table dict from each genome.
 
         See the `SingleGenomeCodonUsage.get_codon_usage_bias` docstring for descriptions of each
-        parameter.
+        parameter. `reference_gene_caller_ids` is the one parameter that cannot be applied to more
+        than one genome, as gene caller IDs are specific to a contigs database.
         """
+        if reference_gene_caller_ids and len(self.genome_info_dict) > 1:
+            raise ConfigError(
+                f"Reference genes can only be selected by gene caller ID when a single genome is "
+                f"analyzed, but {pp(len(self.genome_info_dict))} genomes were provided. Gene "
+                f"caller IDs are specific to a contigs database, so the same IDs cannot "
+                f"meaningfully be sought in every genome. Reference genes can be selected across "
+                f"multiple genomes by function instead."
+            )
+
         # Rather than individually listing a slew of arguments when calling `get_codon_usage_bias`,
         # package them in a tidy kwargs dictionary.
         kwargs = {}
