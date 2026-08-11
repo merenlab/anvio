@@ -18,7 +18,8 @@ from anvio.metabolism.context import KeggContext
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.keggmapping import (
     AGGREGATION_FUNCTIONS, DEFAULT_GROUP_TINT_SPAN, GROUP_COLORMAP_FROM_CATEGORY,
-    GROUP_SCHEME_OPTIONS, SUMMARY_PRESENCE_PHRASE, SUMMARY_PRESENCE_SCHEMES, Mapper
+    GROUP_SCHEME_OPTIONS, MAX_DISCRETE_COUNT_BANDS, SUMMARY_PRESENCE_PHRASE,
+    SUMMARY_PRESENCE_SCHEMES, Mapper
 )
 
 
@@ -237,15 +238,16 @@ def get_args() -> Namespace:
         f"How to summarize a SET OF SAMPLES for the reaction layer. {SUMMARY_PRESENCE_PHRASE} "
         f"summarize presence, coloring an element by how many ('count' and 'count_continuous') or "
         f"exactly which ('membership') samples contain it. 'count' gives each count its own band "
-        f"of a discrete colorbar, which needs a distinguishable color per sample and so is refused "
-        f"when there are more samples than the colormap can supply; 'count_continuous' colors "
-        f"counts from the same colormap — assigning the very same colors, with the sequential "
-        f"colormap a count scale calls for — but draws the scale as a gradient from the lowest "
-        f"count to the highest, which any number of samples can share, at the cost of a color "
-        f"reading as a position along the range rather than as an exact count. Any other name is "
-        f"an aggregation that pools the samples' values from the layer's value column, which the "
-        f"file must have: the validated ones are {RECOMMENDED_AGGREGATIONS}, and any other pandas "
-        f"aggregation reducing numbers to a single number works too (see "
+        f"of a discrete colorbar, which needs a distinguishable color per sample and a legible "
+        f"label per band, and so is refused when there are more samples than the colormap can "
+        f"supply and warns when there are more bands than a bar can label; 'count_continuous' "
+        f"colors counts from the same colormap — assigning the very same colors, with the "
+        f"sequential colormap a count scale calls for — but draws the scale as a gradient from the "
+        f"lowest count to the highest, which any number of samples can share, at the cost of a "
+        f"color reading as a position along the range rather than as an exact count. Any other "
+        f"name is an aggregation that pools the samples' values from the layer's value column, "
+        f"which the file must have: the validated ones are {RECOMMENDED_AGGREGATIONS}, and any "
+        f"other pandas aggregation reducing numbers to a single number works too (see "
         f"'--reaction-gene-aggregation'). 'std' is an example here, mapping how much replicate "
         f"samples disagree. This summary colors the 'unified' map when the samples are not "
         f"grouped, and each group's map when they are grouped with '--groups-txt' — though only an "
@@ -254,10 +256,11 @@ def get_args() -> Namespace:
         f"nothing to choose between. Maps for individual samples are never summarized, always "
         f"showing that one sample alone: its own values with a value column, its presence without "
         f"one. Without this option, samples are summarized by presence, by membership with 3 or "
-        f"fewer samples, by count above that, and by a continuous count scale where there are more "
-        f"samples than the colormap has distinguishable colors. Presence is the default because it "
-        f"is meaningful for any set of samples, whereas pooling values is only meaningful when the "
-        f"samples are commensurable, such as replicates of one condition."
+        f"fewer samples, by count above that, and by a continuous count scale where a discrete one "
+        f"would run out of distinguishable colors or of room to label its bands (above "
+        f"{MAX_DISCRETE_COUNT_BANDS} of them). Presence is the default because it is meaningful "
+        f"for any set of samples, whereas pooling values is only meaningful when the samples are "
+        f"commensurable, such as replicates of one condition."
     )
     groupSUMMARY.add_argument(
         '--compound-sample-summary', metavar='NAME', help=
@@ -275,10 +278,11 @@ def get_args() -> Namespace:
         "groups' values, each group's value being its own samples summarized by "
         "'--reaction-sample-summary' (which must therefore also pool values). Without this option, "
         "groups are summarized by presence, by membership with 3 or fewer groups, by count above "
-        "that, and by a continuous count scale where there are more groups than the colormap has "
-        "distinguishable colors. A useful combination for replicates is '--reaction-sample-summary "
-        "mean --reaction-group-summary count': each group's map shows the mean of its replicate "
-        "samples, while the 'unified' map shows in how many groups each element occurs."
+        "that, and by a continuous count scale where a discrete one would run out of "
+        "distinguishable colors or of room to label its bands. A useful combination for replicates "
+        "is '--reaction-sample-summary mean --reaction-group-summary count': each group's map "
+        "shows the mean of its replicate samples, while the 'unified' map shows in how many groups "
+        "each element occurs."
     )
     groupSUMMARY.add_argument(
         '--compound-group-summary', metavar='NAME', help=
@@ -458,26 +462,29 @@ def get_args() -> Namespace:
     groupCOLOR.add_argument(
         '--presence-colormap-scheme',
         choices=['by_count', 'by_count_continuous', 'by_membership'], help=
-        "There are three ways of dynamically coloring elements by occurrence in multiple contigs "
-        "databases ('--contigs-dbs'), the genomes of a pangenome, or groups ('--groups-txt') of "
-        "either: by count in discrete bands, by count on a continuous scale, or by membership. For "
-        "a draw-kegg-pathways text file this choice is part of the sample and group summaries "
-        "instead ('--reaction-sample-summary' and the related options), so this option is rejected "
-        "for a text run. By default, with 4 or more databases or groups, reactions are colored by "
-        "count of database or group; with 2 or 3, reactions are colored explicitly by database or "
-        "group membership. In coloring by count, the colormap should be sequential, such that the "
-        "color of a reaction changes 'smoothly' with the count. 'by_count' additionally needs a "
-        "distinguishable color for every count, since its colorbar labels one band per count, and "
-        "is refused when there are more databases or groups than the colormap can supply — with a "
-        "few hundred of them no color scale could tell them apart anyway. 'by_count_continuous' "
-        "colors counts from the same colormap in the same way but draws its colorbar as a gradient "
-        "from the lowest count to the highest, which needs no distinguishable color per count, so "
-        "a color there reads as a position along the range rather than as an exact count; it is "
-        "chosen automatically, with a warning, where 'by_count' would be refused. In contrast, "
-        "coloring by membership means reaction color is determined by membership in a "
-        "database/group or combination of databases/groups, so a qualitative colormap can be used "
-        "instead of a sequential colormap, as by default with 2 or 3 categories, to give a "
-        "distinct color to each membership category."
+        f"There are three ways of dynamically coloring elements by occurrence in multiple contigs "
+        f"databases ('--contigs-dbs'), the genomes of a pangenome, or groups ('--groups-txt') of "
+        f"either: by count in discrete bands, by count on a continuous scale, or by membership. "
+        f"For a draw-kegg-pathways text file this choice is part of the sample and group summaries "
+        f"instead ('--reaction-sample-summary' and the related options), so this option is "
+        f"rejected for a text run. By default, with 4 or more databases or groups, reactions are "
+        f"colored by count of database or group; with 2 or 3, reactions are colored explicitly by "
+        f"database or group membership. In coloring by count, the colormap should be sequential, "
+        f"such that the color of a reaction changes 'smoothly' with the count. Because its "
+        f"colorbar labels one band per count, 'by_count' additionally needs a distinguishable "
+        f"color for every count, and is refused when there are more databases or groups than the "
+        f"colormap can supply — with a few hundred of them no color scale could tell them apart "
+        f"anyway — and it needs room to set every one of those labels, so above about "
+        f"{MAX_DISCRETE_COUNT_BANDS} counts it warns that they will be too small to read. "
+        f"'by_count_continuous' colors counts from the same colormap in the same way but draws its "
+        f"colorbar as a gradient from the lowest count to the highest, which needs neither a "
+        f"distinguishable color nor a label per count, so a color there reads as a position along "
+        f"the range rather than as an exact count; it is chosen automatically, with a warning, "
+        f"wherever 'by_count' would be refused or its labels would be unreadable. In contrast, "
+        f"coloring by membership means reaction color is determined by membership in a "
+        f"database/group or combination of databases/groups, so a qualitative colormap can be used "
+        f"instead of a sequential colormap, as by default with 2 or 3 categories, to give a "
+        f"distinct color to each membership category."
     )
     groupCOLOR.add_argument(
         '--count-scale-max', metavar='NAME_OR_NUMBER', default='observed', help=
@@ -557,22 +564,24 @@ def get_args() -> Namespace:
     )
     groupGROUP.add_argument(
         '--group-colormap-scheme', choices=list(GROUP_SCHEME_OPTIONS), help=
-        "How the count scale of individual group maps is drawn: 'by_count' gives each count a band "
-        "of a discrete colorbar, one per source in the group, while 'by_count_continuous' draws a "
-        "gradient from the lowest count to the highest. Which color a count takes is the same "
-        "either way — it is always sampled at an even fraction of '--group-colormap' — so this "
-        "option changes the colorbar and nothing on the maps themselves. Discrete bands need one "
-        "distinguishable color per count, which a group of many sources can exhaust; a gradient "
-        "needs none, since a color on it reads as a position along the range of counts rather than "
-        "as an exact count, and so works for a group of any size. By default the bands are drawn "
-        "while their colors can be told apart, and the gradient takes over with a warning where "
-        "they cannot. Unlike '--presence-colormap-scheme', which each layer sets for itself, one "
-        "scheme covers every layer's group maps, because the reaction and compound layers of a "
-        "group's map share one set of colors and one colorbar; for the same reason the choice is "
-        "made once for the whole run rather than per group, so that the panels of a grid all carry "
-        "the same kind of colorbar. There is no 'by_membership' here: a group's own map counts "
-        "that group's sources and never shows which of them contain an element. Like "
-        "'--group-colormap', this applies only to individual group maps that show source counts."
+        f"How the count scale of individual group maps is drawn: 'by_count' gives each count a "
+        f"band of a discrete colorbar, one per source in the group, while 'by_count_continuous' "
+        f"draws a gradient from the lowest count to the highest. Which color a count takes is the "
+        f"same either way — it is always sampled at an even fraction of '--group-colormap' — so "
+        f"this option changes the colorbar and nothing on the maps themselves. Discrete bands need "
+        f"one distinguishable color per count and room to label every band, both of which a group "
+        f"of many sources can exhaust (the labels above about {MAX_DISCRETE_COUNT_BANDS} counts); "
+        f"a gradient needs neither, since a color on it reads as a position along the range of "
+        f"counts rather than as an exact count, and so works for a group of any size. By default "
+        f"the bands are drawn while they can be told apart and read, and the gradient takes over "
+        f"with a warning where they cannot. Unlike '--presence-colormap-scheme', which each layer "
+        f"sets for itself, one scheme covers every layer's group maps, because the reaction and "
+        f"compound layers of a group's map share one set of colors and one colorbar; for the same "
+        f"reason the choice is made once for the whole run rather than per group, so that the "
+        f"panels of a grid all carry the same kind of colorbar. There is no 'by_membership' here: "
+        f"a group's own map counts that group's sources and never shows which of them contain an "
+        f"element. Like '--group-colormap', this applies only to individual group maps that show "
+        f"source counts."
     )
     groupGROUP.add_argument(
         '--group-reverse-overlay', action='store_true', default=False, help=

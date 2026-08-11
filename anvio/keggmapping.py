@@ -148,6 +148,15 @@ CATEGORY_COMBO_SEPARATOR = ','
 # typical colormap, well past the handful of categories whose combinations any scale can tell apart.
 MAX_CATEGORY_COLOR_COMBOS = 256
 
+# The most counts a color scale is drawn in discrete bands of before the count is drawn on a
+# continuous scale instead. A band's label is sized to fit the band
+# ('ColorbarDrawer.draw_discrete'), so a scale of many counts labels them in type too small to read
+# long before it runs out of colors to draw them in: this ceiling is where the labels stop fitting,
+# not where the colors do. Past it a bar of bands reads as a gradient anyway, while a gradient labels
+# the range rather than every count. Coloring by membership has no such ceiling because it has no
+# gradient to fall back to — a color on one says which categories, which a position cannot.
+MAX_DISCRETE_COUNT_BANDS = 40
+
 # The '--group-colormap' value asking for each group's individual maps to be colored by a ramp built
 # from that group's own color rather than sampled from a named Matplotlib colormap. Every group's
 # ramp is built the same way, differing only in the hue it runs to, so the panels of a grid stay
@@ -3921,20 +3930,24 @@ class Mapper:
             # what matters is how many distinct colors actually came out of it.
             group_distinct_colors[group] = len(set(colors))
 
-        # A discrete colorbar labels one band per count, so a ramp that cannot supply a DISTINCT
-        # color for each of them leaves the bar with more labels than colors a reader can tell apart.
-        # The scheme is settled once for the whole run rather than per group, so that every panel of
-        # a grid carries the same kind of bar; the group whose scale runs furthest past its colors is
-        # what decides it, since a scheme good for that one is good for the rest.
+        # Two things stop a band per count from being drawn: a ramp with too few DISTINCT colors to
+        # tell the bands apart, and more bands than a colorbar can label in type large enough to read
+        # ('MAX_DISCRETE_COUNT_BANDS'). The scheme is settled once for the whole run rather than per
+        # group, so that every panel of a grid carries the same kind of bar; the group that runs
+        # furthest past a limit decides it, since a scheme good for that one is good for the rest.
         short_groups = [
             group for group in draw_categories
             if group_distinct_colors[group] < group_scale_tops[group]
         ]
+        crowded_groups = [
+            group for group in draw_categories
+            if group_scale_tops[group] > MAX_DISCRETE_COUNT_BANDS
+        ]
         scheme = requested_scheme
         if scheme is None:
-            # Nobody asked for either scheme, so the bands are kept while they can be told apart and
-            # the gradient takes over when they cannot.
-            scheme = 'by_count_continuous' if short_groups else 'by_count'
+            # Nobody asked for either scheme, so the bands are kept while they can be drawn and read,
+            # and the gradient takes over when they cannot.
+            scheme = 'by_count_continuous' if short_groups or crowded_groups else 'by_count'
 
         def _short_group_clause(group: str) -> str:
             return (
@@ -3948,29 +3961,45 @@ class Mapper:
                 f"{category_noun} '{group}' runs over."
             )
 
-        if scheme == 'by_count_continuous':
-            # Colors running short is what the gradient is for, so it is worth reporting only when
-            # the gradient was not asked for: the bands were the default, and this is why they were
-            # not drawn. Only the colorbar changes, since the colors a count takes are sampled from
-            # fractions of the ramp either way.
-            if short_groups and requested_scheme is None:
-                worst_group = max(
+        def _crowded_group_clause(group: str) -> str:
+            return (
+                f"The scale of {category_noun} '{group}' runs over {group_scale_tops[group]} "
+                f"counts, and a discrete colorbar labels one band per count, which is more labels "
+                f"than it can set in type large enough to read past approximately "
+                f"{MAX_DISCRETE_COUNT_BANDS} of them."
+            )
+
+        # Too few colors is the harder limit of the two, so it is the one reported when both apply:
+        # a ramp that cannot fill the bands cannot fill fewer of them either.
+        def _worst_group_clause() -> str:
+            if short_groups:
+                return _short_group_clause(max(
                     short_groups,
                     key=lambda group: group_scale_tops[group] - group_distinct_colors[group]
-                )
+                ))
+            return _crowded_group_clause(max(crowded_groups, key=group_scale_tops.get))
+
+        if scheme == 'by_count_continuous':
+            # Running past either limit is what the gradient is for, so it is worth reporting only
+            # when the gradient was not asked for: the bands were the default, and this is why they
+            # were not drawn. Only the colorbar changes, since the colors a count takes are sampled
+            # from fractions of the ramp either way.
+            if (short_groups or crowded_groups) and requested_scheme is None:
                 self.run.warning(
-                    f"{_short_group_clause(worst_group)} The count on individual {category_noun} "
-                    f"maps is therefore drawn on a CONTINUOUS color scale rather than in discrete "
-                    f"bands of one color per count. Each colorbar is a gradient running from a "
-                    f"count of 1 to the top of that {category_noun}'s scale, on which a color "
-                    f"reads as a position along that range rather than as an exact count. Ask for "
-                    f"this scale explicitly with '{GROUP_SCHEME_OPTIONS['by_count_continuous']}', "
-                    f"or ask for '{GROUP_SCHEME_OPTIONS['by_count']}' to insist on the discrete "
-                    f"bands and be told when they cannot be drawn. One scheme covers every "
-                    f"{category_noun}'s maps, so the {category_noun} whose scale runs furthest "
-                    f"past its colors is the one reported here."
+                    f"{_worst_group_clause()} The count on individual {category_noun} maps is "
+                    f"therefore drawn on a CONTINUOUS color scale rather than in discrete bands of "
+                    f"one color per count. Each colorbar is a gradient running from a count of 1 "
+                    f"to the top of that {category_noun}'s scale, on which a color reads as a "
+                    f"position along that range rather than as an exact count. Ask for this scale "
+                    f"explicitly with '{GROUP_SCHEME_OPTIONS['by_count_continuous']}', or ask for "
+                    f"'{GROUP_SCHEME_OPTIONS['by_count']}' to insist on the discrete bands and be "
+                    f"told when they cannot be drawn. One scheme covers every {category_noun}'s "
+                    f"maps, so the {category_noun} that runs furthest past a limit is the one "
+                    f"reported here."
                 )
-        elif short_groups:
+        else:
+            # The bands were asked for outright, so each group that runs past a limit is reported
+            # once, by the limit that says the most about it.
             for group in short_groups:
                 self.run.warning(
                     f"{_short_group_clause(group)} Neighboring counts therefore share a color on "
@@ -3979,6 +4008,17 @@ class Mapper:
                     f"the {unified_plural} containing it. Drawing the count on a continuous color "
                     f"scale instead, with '{GROUP_SCHEME_OPTIONS['by_count_continuous']}', needs "
                     f"no distinct color per count."
+                )
+            for group in crowded_groups:
+                if group in short_groups:
+                    continue
+                self.run.warning(
+                    f"{_crowded_group_clause(group)} The bands are drawn as asked, and every "
+                    f"element is still colored by the count of the {unified_plural} containing it, "
+                    f"but that {category_noun}'s colorbar labels will be very small. Drawing the "
+                    f"count on a continuous color scale instead, with "
+                    f"'{GROUP_SCHEME_OPTIONS['by_count_continuous']}', labels the range rather "
+                    f"than every count."
                 )
 
         # A continuous colorbar spans the colormap its colors were sampled from. A named colormap,
@@ -4290,24 +4330,50 @@ class Mapper:
         # the colormap claims to hold.
         needed = len(category_combos) if scheme == 'by_membership' else count_scale_top
         distinct = len({color for color, _ in color_priorities})
-        if scheme == 'by_count' and distinct != needed and colormap_scheme is None:
+        # Two things stop a band per count from being drawn: a colormap with too few distinct colors
+        # to tell the bands apart, and more bands than a colorbar can label in type large enough to
+        # read. Either is reason for the gradient, and the message says which it was.
+        short_colors = scheme == 'by_count' and distinct != needed
+        too_many_bands = scheme == 'by_count' and count_scale_top > MAX_DISCRETE_COUNT_BANDS
+        if (short_colors or too_many_bands) and colormap_scheme is None:
             # Nobody asked for the discrete bands: the scheme was chosen from the number of
-            # categories, and there are more of them than bands can be told apart, so the count is
-            # drawn as a gradient instead. The colors are resampled from fractions of the colormap's
-            # range, which is what that gradient spans.
+            # categories, and there are more of them than bands can carry, so the count is drawn as
+            # a gradient instead. The colors are resampled from fractions of the colormap's range,
+            # which is what that gradient spans.
             scheme = 'by_count_continuous'
             color_priorities = _count_colors(False)
+            # Too few colors is the harder limit of the two, so it is the one reported when both
+            # apply: a colormap that cannot fill the bands cannot fill fewer of them either.
+            reason = (
+                f"its colormap could supply only {distinct} colors that can be told apart"
+            ) if short_colors else (
+                f"a discrete colorbar labels one band per count, which is more labels than it can "
+                f"set in type large enough to read past approximately {MAX_DISCRETE_COUNT_BANDS} "
+                f"of them"
+            )
             self.run.warning(
                 f"The {layer['element_type']} layer is colored by counts running up to "
-                f"{count_scale_top}, and its colormap could supply only {distinct} colors that can "
-                f"be told apart, so that count is drawn on a CONTINUOUS color scale rather than in "
-                f"discrete bands of one color per count. The colorbar is a gradient running from a "
-                f"count of 1 to a count of {count_scale_top}, on which a color reads as a position "
-                f"along that range rather than as an exact count. Ask for this scale explicitly "
-                f"with '{scheme_options['by_count_continuous']}', or ask for "
-                f"'{scheme_options['by_count']}' to insist on the discrete bands and be told when "
-                f"they cannot be drawn. Each layer decides this for itself, so with a reaction "
-                f"layer and a compound layer you may see this twice, once per layer.",
+                f"{count_scale_top}, and {reason}, so that count is drawn on a CONTINUOUS color "
+                f"scale rather than in discrete bands of one color per count. The colorbar is a "
+                f"gradient running from a count of 1 to a count of {count_scale_top}, on which a "
+                f"color reads as a position along that range rather than as an exact count. Ask "
+                f"for this scale explicitly with '{scheme_options['by_count_continuous']}', or ask "
+                f"for '{scheme_options['by_count']}' to insist on the discrete bands and be told "
+                f"when they cannot be drawn. Each layer decides this for itself, so with a "
+                f"reaction layer and a compound layer you may see this twice, once per layer.",
+                progress=self.progress
+            )
+        elif too_many_bands:
+            # The bands were asked for outright. Unlike a colormap short of colors, which cannot
+            # draw them at all, this only makes them hard to read, so they are drawn as asked.
+            self.run.warning(
+                f"The {layer['element_type']} layer was asked to color counts running up to "
+                f"{count_scale_top} in discrete bands, which is more bands than a colorbar can "
+                f"label in type large enough to read: it holds about {MAX_DISCRETE_COUNT_BANDS}. "
+                f"The bands are drawn as asked, and every element is colored by its own count, but "
+                f"the colorbar's labels will be very small. Drawing the count on a continuous "
+                f"scale instead, with '{scheme_options['by_count_continuous']}', labels the range "
+                f"rather than every count.",
                 progress=self.progress
             )
         if scheme == 'by_count_continuous' and qualitative:

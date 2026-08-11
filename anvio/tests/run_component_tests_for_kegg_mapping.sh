@@ -37,6 +37,21 @@ printf 'sample\tgroup\nSAMPLE_1\tG1\nSAMPLE_2\tG2\nSAMPLE_3\tG2\n' > draw-sample
 # continuous scale rather than in discrete bands.
 awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","sample"} NR>1{s=((NR-2)%300)+1; print $2,$1,sprintf("SAMPLE_%03d",s)}' \
 minimal_enzymes_input.txt > draw_kos_samples300.reaction.txt
+# Enough samples that a discrete colorbar cannot label one band per count in type large enough to
+# read, but not so many that the colormap runs out of distinguishable colors: the count is drawn on
+# a continuous scale for the second reason rather than the first.
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","sample"} NR>1{s=((NR-2)%60)+1; print $2,$1,sprintf("SAMPLE_%02d",s)}' \
+minimal_enzymes_input.txt > draw_kos_samples60.reaction.txt
+# Groups over those samples, nearly all of them in one group, so that the group's own scale runs
+# over more counts than its colorbar can label.
+{
+    printf 'sample\tgroup\n'
+    for sample in $(seq -f 'SAMPLE_%02g' 1 59)
+    do
+        printf '%s\tWIDE\n' "${sample}"
+    done
+    printf 'SAMPLE_60\tTINY\n'
+} > draw-sample-group-information-60.txt
 # The same 300 samples, but with each accession in only a handful of them: a scale running to 300
 # would squeeze every element into the bottom of the colormap, which is what '--count-scale-max' is
 # for.
@@ -304,6 +319,36 @@ args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
 
+INFO "Testing that a scale with colors enough for every count but more bands than a colorbar can \
+label falls back to the continuous scale too, and that asking for the discrete bands outright \
+draws them with a warning that the labels will be too small to read"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples60.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_samples60_bands_unreadable )
+args+=( "--count-scale-max" "total" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}" 2>&1 | tee draw_txt_samples60_fallback.log
+# Warnings are wrapped to the terminal width, so a phrase is matched against the log with its line
+# breaks flattened to spaces rather than line by line.
+if ! tr '\n' ' ' < draw_txt_samples60_fallback.log \
+    | grep -q "more labels than it can set in type large enough to read"
+then
+    echo "ERROR: a count scale of unlabelable bands did not fall back to the continuous scale."
+    exit 1
+fi
+# For a text file the scheme comes from the layer's summary rather than from
+# '--presence-colormap-scheme', which such a run rejects.
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples60.reaction.txt \
+    --output-dir ${output_dir}/draw_txt_samples60_bands_asked_for --count-scale-max total \
+    --reaction-sample-summary count --pathway-numbers "${pathway_numbers[@]}" --no-progress 2>&1 \
+    | tee draw_txt_samples60_bands.log
+if ! tr '\n' ' ' < draw_txt_samples60_bands.log | grep -q "The bands are drawn as asked"
+then
+    echo "ERROR: insisting on more bands than a colorbar can label did not warn about the labels."
+    exit 1
+fi
+
 INFO "Testing the same fallback with a reaction layer and a compound layer together: each layer \
 decides for itself, so the run reports the fallback once per layer, saying which layer each time"
 args=()
@@ -465,6 +510,32 @@ args+=( "--draw-individual-files" )
 args+=( "--draw-grid" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing that a group whose count scale runs over more counts than its colorbar can label \
+falls back to the continuous scale too, even though its colormap has a distinguishable color for \
+every one of those counts"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples60.reaction.txt" )
+args+=( "--groups-txt" "draw-sample-group-information-60.txt" )
+args+=( "--group-threshold" "0.5" )
+args+=( "--count-scale-max" "total" )
+args+=( "--output-dir" ${output_dir}/draw_txt_groups60_bands_unreadable )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}" 2>&1 | tee draw_txt_groups60_fallback.log
+flattened_groups60_log=$(tr '\n' ' ' < draw_txt_groups60_fallback.log)
+if ! grep -q "more labels than it can set in type large enough to read" \
+    <<< "${flattened_groups60_log}"
+then
+    echo "ERROR: a group scale of unlabelable bands did not fall back to the continuous scale."
+    exit 1
+fi
+if grep -q "could supply only" <<< "${flattened_groups60_log}"
+then
+    echo "ERROR: the fallback blamed the colors when it was the labels that did not fit."
+    exit 1
+fi
 
 INFO "Testing that a group whose count scale runs over more counts than its colormap can \
 distinguish falls back to the continuous scale on its own, with a warning, and that asking for the \
