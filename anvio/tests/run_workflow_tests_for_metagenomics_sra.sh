@@ -85,14 +85,24 @@ if grep -c "sra_reads_released *1$" dag-co-assembly.txt > /dev/null; then
     echo "Both samples of the co-assembly group are released together, as they should be."
 fi
 
+# Mapping every sample against every assembly leaves anvi'o no room to download a few samples at
+# a time: nothing can be mapped until every assembly exists, and no assembly exists until its own
+# reads have been downloaded. That is allowed — the reads are still deleted afterwards — but all
+# the samples end up in a single release unit, and the budget can then only say yes or no.
+INFO "Mapping everything against everything while assembling puts every sample in one release unit"
+DRY_RUN config-all-against-all.json > all-against-all-output.txt 2>&1
+ASSERT_FILE_CONTAINS all-against-all-output.txt "EVERY SAMPLE WILL BE ON DISK AT ONCE"
+SNAKEMAKE_DAG config-all-against-all.json > dag-all-against-all.txt
+ASSERT_FILE_CONTAINS dag-all-against-all.txt "01_SRA-all-against-all/released/every-sample-at-once.released"
+
 EXPECT_FAIL "single-end short reads, which this workflow cannot process" \
     anvi-run-workflow -w metagenomics -c config-single-end.json --dry-run
 
 EXPECT_FAIL "a disk budget too small to fit even one sample" \
     anvi-run-workflow -w metagenomics -c config-tiny-budget.json --dry-run
 
-EXPECT_FAIL "mapping everything against everything while also assembling" \
-    anvi-run-workflow -w metagenomics -c config-all-against-all.json --dry-run
+EXPECT_FAIL "a budget too small for a run where every sample has to be downloaded at once" \
+    anvi-run-workflow -w metagenomics -c config-all-against-all-tight.json --dry-run
 
 EXPECT_FAIL "removing reads based on references while quality filtering is off" \
     anvi-run-workflow -w metagenomics -c config-ref-removal-without-qc.json --dry-run

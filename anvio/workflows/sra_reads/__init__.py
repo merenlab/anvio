@@ -35,6 +35,11 @@ __authors__ = ['FlorianTrigodet']
 
 run = terminal.Run()
 
+# The name of the release unit used when every sample has to be on disk simultaneously. It
+# contains a character that anvi'o does not allow in sample or group names, so it can never be
+# mistaken for one of them.
+EVERY_SAMPLE_AT_ONCE = 'every-sample-at-once'
+
 
 class SRAReadsModule:
     """Mixin that teaches a workflow to download its own reads from the SRA.
@@ -313,9 +318,13 @@ class SRAReadsModule:
 
         # In references mode every sample stands alone: its reads are mapped and then finished
         # with. When samples are assembled, everything that goes into one assembly has to be
-        # present at the same time, so the assembly group becomes the unit.
+        # present at the same time, so the assembly group becomes the unit. And when every sample
+        # is mapped against every assembly, there is no way to take them a few at a time at all,
+        # so they all end up in a single unit (see `everything_must_be_downloaded_at_once`).
         for sample in self.samples_txt.samples():
-            if self.references_mode:
+            if self.everything_must_be_downloaded_at_once():
+                unit = EVERY_SAMPLE_AT_ONCE
+            elif self.references_mode:
                 unit = sample
             else:
                 unit = self.samples_txt.get_sample(sample).get('group') or sample
@@ -333,6 +342,20 @@ class SRAReadsModule:
         self.download_unit_gates = self.compute_download_gates()
 
 
+    def everything_must_be_downloaded_at_once(self):
+        """Whether this workflow leaves anvi'o no room to download samples a few at a time.
+
+        Mapping every sample against every assembly is such a case. A sample's reads cannot be
+        let go of until it has been mapped against the last assembly, and that assembly cannot
+        exist until its own reads have been downloaded, so by the time the final assembly is
+        built every sample is necessarily still on disk. Reads are still deleted afterwards —
+        that part works no matter what — but there is no order in which they could be spread
+        out. In references mode the same setting is harmless, because references come from a
+        fasta-txt rather than from the reads."""
+
+        return bool(self.get_param_value_from_config('all_against_all')) and not self.references_mode
+
+
     def get_predicted_peak_gb(self, sample):
         """The most disk space one sample's reads will take up while they are being dealt with."""
 
@@ -345,16 +368,18 @@ class SRAReadsModule:
     def sanity_check_sra_workflow_combination(self):
         """Refuse the combinations of settings for which a disk budget cannot mean anything."""
 
-        if self.get_param_value_from_config('all_against_all') and not self.references_mode:
-            raise ConfigError("Your config file asks anvi'o to download reads from the SRA, to assemble them, and to "
-                              "map every sample against every assembly (`all_against_all`). Those three things "
-                              "cannot be combined: mapping every sample against every assembly means no sample's "
-                              "reads can be deleted until every assembly exists, and no assembly can be built until "
-                              "its reads are downloaded, so every metagenome you have would need to be on disk at "
-                              "once. That is the very thing downloading reads inside the workflow is meant to avoid. "
-                              "You can either turn off `all_against_all`, or switch to references mode "
-                              "(`references_mode: true` with a fasta-txt), where mapping everything against "
-                              "everything is perfectly fine.")
+        if self.everything_must_be_downloaded_at_once():
+            self.run.warning("Your config file asks anvi'o to download reads from the SRA, to assemble them, and to "
+                             "map every sample against every assembly (`all_against_all`). This is a perfectly "
+                             "reasonable thing to want, but it does mean that every metagenome has to be on disk at "
+                             "the same time: a sample cannot be mapped until every assembly exists, and an assembly "
+                             "cannot be built until its own reads have been downloaded. So there is no order in "
+                             "which anvi'o could download your samples a few at a time.\n\n"
+                             "Anvi'o will still delete each sample's reads as soon as nothing needs them anymore, "
+                             "which for this kind of run means once the last assembly has been mapped against. What "
+                             "it cannot do here is spread the downloads out, so a disk budget can only tell you "
+                             "whether you have enough room for all of them — it cannot make do with less.",
+                             header="EVERY SAMPLE WILL BE ON DISK AT ONCE", lc="yellow")
 
         if self.remove_short_reads_based_on_references and not self.run_qc:
             raise ConfigError("Your config file asks anvi'o to download reads from the SRA and to remove short reads "
@@ -384,6 +409,19 @@ class SRAReadsModule:
 
         if not too_big:
             return
+
+        # When everything has to be downloaded at once there is only ever one unit, and saying
+        # that "1 sample or group" does not fit would be a strange way to put it.
+        if self.everything_must_be_downloaded_at_once():
+            needed = self.download_unit_peak_gb[EVERY_SAMPLE_AT_ONCE]
+            raise ConfigError(f"Your disk budget of {self.max_disk_gb} GB (`max_disk_gb` in the `download_reads` "
+                              f"section of your config file) is not enough for this workflow. Because you asked for "
+                              f"every sample to be mapped against every assembly (`all_against_all`), all "
+                              f"{terminal.pluralize('sample', len(self.samples_txt.samples()))} have to be on disk "
+                              f"at the same time, and anvi'o expects that to need about {needed:.0f} GB. There is no "
+                              f"way to do this run with less, so please either raise `max_disk_gb` to at least that "
+                              f"much, or reconsider `all_against_all`: with it turned off, anvi'o can work through "
+                              f"your samples a few at a time and fit into whatever budget you have.")
 
         offenders = '\n'.join(f"    {u} needs about {gb:.1f} GB "
                               f"({terminal.pluralize('sample', len(self.download_unit_members[u]))}: "

@@ -688,9 +688,16 @@ S01	ERR6450080,ERR6450082
 S02	ERR6450081,SRR11951439
 ```
 
-#### Two combinations anvi'o will refuse
+#### When samples cannot be taken a few at a time
 
-* **`all_against_all` together with assembly.** Mapping every sample against every assembly means no sample's reads can be deleted until every assembly exists, and no assembly can be built until its reads are downloaded — so every metagenome you have would need to be on disk at once, which is the very thing this feature exists to avoid. In references mode, where the references come from a %(fasta-txt)s rather than from the reads, `all_against_all` is perfectly fine.
+There is one arrangement where anvi'o cannot spread downloads out at all: assembling your samples *and* mapping every sample against every assembly (`all_against_all`). A sample cannot be mapped until the last assembly exists, and that assembly cannot exist until its own reads have been downloaded, so by the time the final assembly is built every metagenome is necessarily still on disk. There is no order that avoids it.
+
+This is still allowed, because it is a perfectly reasonable thing to want, and reads are still deleted once nothing needs them anymore. What changes is what the budget means: anvi'o treats all of your samples as a single unit, so `max_disk_gb` can only tell you whether you have room for the whole set — it cannot make do with less. If you do not, anvi'o says so before downloading anything, and tells you how many GB the run actually needs.
+
+In references mode the same setting is harmless, since the references come from a %(fasta-txt)s rather than from the reads, and `all_against_all` costs nothing.
+
+#### One combination anvi'o will refuse
+
 * **Reference-based read removal with quality filtering turned off.** In that combination the read removal step consumes the downloaded files themselves rather than a filtered copy, leaving nothing for the steps that come after it.
 
 #### Where things end up
