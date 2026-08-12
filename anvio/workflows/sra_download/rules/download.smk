@@ -1,3 +1,16 @@
+def fastq_candidates(accession, directory):
+    """Return the exact FASTQ file names `fasterq-dump --split-3` can produce for an accession.
+
+    Matching these names exactly rather than globbing on the accession prefix is what keeps
+    accessions whose names are prefixes of one another (such as SRR1195143 and SRR11951439)
+    from claiming each other's FASTQ files.
+    """
+    return [
+        os.path.join(directory, f"{accession}{suffix}.fastq")
+        for suffix in ["", "_1", "_2", "_3"]
+    ]
+
+
 rule prefetch:
     """Prefetch data from the Sequence Read Archive (SRA).
 
@@ -28,6 +41,8 @@ NOTES:
         ),
     log:
         rule_log("prefetch", "{accession}_prefetch"),
+    wildcard_constraints:
+        accession=ACCESSION_RE,
     threads: M.T("prefetch")
     resources:
         nodes=M.T("prefetch"),
@@ -69,6 +84,8 @@ rule check_md5sum:
         ),
     log:
         rule_log("check_md5sum", "{accession}_check_md5sum"),
+    wildcard_constraints:
+        accession=ACCESSION_RE,
     threads: M.T("check_md5sum")
     resources:
         nodes=M.T("check_md5sum"),
@@ -80,35 +97,83 @@ rule check_md5sum:
             dirs_dict["SRA_prefetch"], "{accession}", "{accession}.sra"
         ),
     run:
-        # Identify the correct SRA file from prefetch
+        # Identify the correct SRA file from prefetch. `prefetch` gives us either a full
+        # `.sra` or a reduced-representation `.sralite`, and NCBI reports a separate md5
+        # for each, so the file type we downloaded decides which entry we compare against.
+        accession = wildcards.accession
+        sra_file = params.sra_file
+        file_type = "sra"
         sralite_file = os.path.join(
-            dirs_dict["SRA_prefetch"],
-            f"{wildcards.accession}",
-            f"{wildcards.accession}.sralite",
+            dirs_dict["SRA_prefetch"], accession, f"{accession}.sralite"
         )
-        if not os.path.exists(params.sra_file) and os.path.exists(sralite_file):
-            params.sra_file = sralite_file
+        if not os.path.exists(sra_file) and os.path.exists(sralite_file):
+            sra_file = sralite_file
+            file_type = "sralite"
         log_path = str(log)
         with open(log_path, "w") as log_file:
-            log_file.write(f"Checking MD5sum for file: {params.sra_file}\n")
+            log_file.write(f"Checking MD5sum for file: {sra_file}\n")
         # Get the md5sum from the SRA FTP site
         shell(
             "curl 'https://locate.ncbi.nlm.nih.gov/sdl/2/retrieve?filetype=run&location-type=forced&location=s3.us-east-1&accept-charges=aws&acc={wildcards.accession}' --output {params.md5sum} >> {log} 2>&1"
         )
-        # Get the expected md5sum hash
-        with open(params.md5sum) as sra_metadata_file:
-            sra_metadata_dict = json.load(sra_metadata_file)
-            expected_md5 = sra_metadata_dict["result"][0]["files"][0]["md5"]
-        calculated_md5 = M.calculate_md5(file_path=params.sra_file)
-        # Compare expected and calculated md5 and log the result
-        with open(log_path, "a") as log_file:
-            if calculated_md5 == expected_md5:
-                log_file.write(f"Checksums match: {calculated_md5}\n")
-            else:
-                raise ValueError(
-                    f"[{wildcards.accession}] MD5 checksum failed: "
-                    f"expected {expected_md5}, got {calculated_md5} for file {params.sra_file}"
+        # Get the expected md5sum hash. The response is a JSON document that looks like
+        # {"result": [{"bundle": ACC, "status": 200, "files": [{"type": "sra", "md5": ...}]}]},
+        # but NCBI also returns non-200 bundles for suppressed or restricted runs, multiple
+        # file entries for some accessions, and entries that carry no md5 at all.
+        try:
+            with open(params.md5sum) as sra_metadata_file:
+                sra_metadata_dict = json.load(sra_metadata_file)
+            bundles = sra_metadata_dict["result"]
+        except (OSError, ValueError, KeyError, TypeError) as e:
+            raise ConfigError(
+                f"Anvi'o asked NCBI for the md5 checksum of the accession {accession}, but could not make "
+                f"sense of the answer it got back. This usually means the request failed or NCBI returned "
+                f"something unexpected rather than its usual JSON document. The raw response is at "
+                f"'{params.md5sum}' and the log at '{log_path}' if you wish to take a look. This is what "
+                f"we know: {e}."
+            )
+
+        bundle = next((b for b in bundles if b.get("bundle") == accession), None)
+        if bundle is None and len(bundles) == 1:
+            bundle = bundles[0]
+        if bundle is None:
+            raise ConfigError(
+                f"NCBI did not return any information for the accession {accession} when anvi'o asked for "
+                f"its md5 checksum, even though `prefetch` was able to download it. You can see the raw "
+                f"response at '{params.md5sum}'."
+            )
+        if bundle.get("status") != 200:
+            raise ConfigError(
+                f"NCBI refused to give anvi'o the md5 checksum for the accession {accession}, and said this "
+                f"about it: \"{bundle.get('msg', 'no message')}\" (status code: {bundle.get('status')}). "
+                f"Accessions that are suppressed by NCBI or that require special access permissions often "
+                f"end up here."
+            )
+
+        files = bundle.get("files") or []
+        entry = next((f for f in files if f.get("type") == file_type), None)
+        expected_md5 = entry.get("md5") if entry else None
+
+        if not expected_md5:
+            run.warning(
+                f"NCBI did not report an md5 checksum for the '{file_type}' file of the accession "
+                f"{accession}, so anvi'o has no way to verify that this download is intact and will "
+                f"continue without checking it. Everything will likely be fine, but if you see strange "
+                f"things downstream for this accession, a truncated download is a suspect worth ruling out."
+            )
+            with open(log_path, "a") as log_file:
+                log_file.write("No md5 reported by NCBI for this file; verification skipped.\n")
+        else:
+            calculated_md5 = M.calculate_md5(file_path=sra_file)
+            if calculated_md5 != expected_md5:
+                raise ConfigError(
+                    f"The md5 checksum of the file anvi'o downloaded for the accession {accession} does not "
+                    f"match the one NCBI reports for it. NCBI expects '{expected_md5}' but the file at "
+                    f"'{sra_file}' hashes to '{calculated_md5}'. This means the download is incomplete or "
+                    f"corrupt. Removing that file and running the workflow again will download it afresh."
                 )
+            with open(log_path, "a") as log_file:
+                log_file.write(f"Checksums match: {calculated_md5}\n")
 
 
 rule fasterq_dump:
@@ -133,18 +198,20 @@ Threads:
         done=ancient(rules.check_md5sum.output.md5sum_DONE),
     output:
         FASTERQDUMP_DONE=touch(
-            os.path.join(dirs_dict["FASTAS"], "{accession}-fasterq-dump.done")
+            os.path.join(dirs_dict["FASTQ_DIR"], "{accession}-fasterq-dump.done")
         ),
         FASTERQDUMP_TEMP=temp(directory("FASTERQDUMP_TEMP/{accession}")),
     log:
         rule_log("fasterq_dump", "{accession}_fasterq_dump"),
+    wildcard_constraints:
+        accession=ACCESSION_RE,
     threads: M.T("fasterq_dump")
     resources:
         nodes=M.T("fasterq_dump"),
     params:
         SRA_INPUT_DIR=os.path.join(dirs_dict["SRA_prefetch"], "{accession}"),
-        OUTPUT_DIR=dirs_dict["FASTAS"],
-        FASTERQDUMP_TEMP=temp(os.path.join(os.getcwd(), "FASTERQDUMP_TEMP")),
+        OUTPUT_DIR=dirs_dict["FASTQ_DIR"],
+        REMOVE_SRA_FILES=remove_tmp,
     run:
         shell(
             "fasterq-dump {params.SRA_INPUT_DIR} -t {output.FASTERQDUMP_TEMP} --outdir {params.OUTPUT_DIR} --split-3 --verbose --progress --threads {threads} >> {log} 2>&1"
@@ -155,9 +222,35 @@ Threads:
         with open(log_path, "r") as log_file:
             log_contents = log_file.read()
             if error_message in log_contents:
-                raise Exception(
-                    "fasterq-dump encountered a Disk quota exceeded when processing {wildcards.accession}"
+                raise ConfigError(
+                    f"fasterq-dump ran out of disk space while processing the accession "
+                    f"{wildcards.accession}. You can see the details in the log file at '{log_path}'."
                 )
+
+        produced = [
+            f
+            for f in fastq_candidates(wildcards.accession, params.OUTPUT_DIR)
+            if os.path.exists(f)
+        ]
+        if not produced:
+            raise ConfigError(
+                f"fasterq-dump finished working on the accession {wildcards.accession} without complaining, "
+                f"yet anvi'o cannot find a single FASTQ file for it in '{params.OUTPUT_DIR}'. The log file "
+                f"at '{log_path}' should have more to say about what happened here."
+            )
+
+        # The prefetched SRA archive has served its purpose once the reads are extracted from it.
+        # Only the archive itself goes, so the marker files snakemake tracks in the same directory
+        # survive and the workflow does not download this accession again on a subsequent run.
+        if params.REMOVE_SRA_FILES:
+            for extension in [".sra", ".sralite"]:
+                sra_file = os.path.join(
+                    dirs_dict["SRA_prefetch"],
+                    wildcards.accession,
+                    f"{wildcards.accession}{extension}",
+                )
+                if os.path.exists(sra_file):
+                    os.remove(sra_file)
 
 
 rule pigz:
@@ -167,31 +260,39 @@ Inputs:
 - FASTQ file(s) from the output of the fasterq_dump rule
 
 Outputs:
-- gzipped FASTQ file(s) in the FASTAS directory
+- gzipped FASTQ file(s) in the FASTQ directory
 
 Params:
-- READS: prefix of the FASTQ file(s) in the FASTAS directory
+- READS: the exact FASTQ file names this accession can have in the FASTQ directory
 
 Threads:
 - Number of threads specified in the M object
 
 example:
-    pigz --processes 8 --verbose 02_FASTA/ERR6450080*.fastq >> 00_LOGS/ERR6450080_pigz.log 2>&1
+    pigz --processes 8 --verbose 02_FASTQ/ERR6450080_1.fastq >> 00_LOGS/ERR6450080_pigz.log 2>&1
 
 """
     input:
         done=ancient(rules.fasterq_dump.output.FASTERQDUMP_DONE),
     output:
-        done=touch(os.path.join(dirs_dict["FASTAS"], "{accession}-pigz.done")),
+        done=touch(os.path.join(dirs_dict["FASTQ_DIR"], "{accession}-pigz.done")),
     log:
         rule_log("pigz", "{accession}_pigz"),
+    wildcard_constraints:
+        accession=ACCESSION_RE,
     threads: M.T("pigz")
     resources:
         nodes=M.T("pigz"),
     params:
-        READS=os.path.join(dirs_dict["FASTAS"], "{accession}*.fastq"),
+        READS=lambda wildcards: " ".join(
+            fastq_candidates(wildcards.accession, dirs_dict["FASTQ_DIR"])
+        ),
     shell:
-        "pigz --processes {threads} --verbose {params.READS} >> {log} 2>&1"
+        """
+        for f in $(ls -1 {params.READS} 2>/dev/null || true) ; do
+            pigz --processes {threads} --verbose "$f" >> {log} 2>&1 || exit 1
+        done
+        """
 
 
 rule generate_samples_txt:
@@ -201,7 +302,7 @@ Inputs:
 - gziped FASTQ file(s) from the output of the pigz rule
 
 Outputs:
-- samples.txt and samples_single_reads.txt in the FASTAS directory
+- samples.txt and samples_single_reads.txt in the FASTQ directory
 
 Params:
 - ACCESSION: list of accessions
@@ -212,11 +313,11 @@ Threads:
 """
     input:
         targets=expand(
-            os.path.join(dirs_dict["FASTAS"], "{accession}-pigz.done"),
+            os.path.join(dirs_dict["FASTQ_DIR"], "{accession}-pigz.done"),
             accession=M.accessions_list,
         ),
     output:
-        done=touch(os.path.join(dirs_dict["FASTAS"], "generate_samples_txt.done")),
+        done=touch(os.path.join(dirs_dict["FASTQ_DIR"], "generate_samples_txt.done")),
     log:
         rule_log("generate_samples_txt", "generate_samples_txt"),
     threads: 1
@@ -224,7 +325,7 @@ Threads:
         nodes=1,
     params:
         ACCESSION=M.accessions_list,
-        OUTPUT_DIR=dirs_dict["FASTAS"],
+        OUTPUT_DIR=dirs_dict["FASTQ_DIR"],
     run:
         paired_reads = []
         single_reads = []
