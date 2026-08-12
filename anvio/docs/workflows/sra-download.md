@@ -31,7 +31,7 @@ $ cat sra_download_config.json
     },
     "output_dirs": {
         "SRA_prefetch": "01_NCBI_SRA",
-        "FASTAS": "02_FASTA",
+        "FASTQ_DIR": "02_FASTQ",
         "LOGS_DIR": "00_LOGS"
     },
     "max_threads": "",
