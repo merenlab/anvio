@@ -2490,6 +2490,13 @@ class Mapper:
             else:
                 combo_colors[members] = kgml.canonical_color(color)
 
+        if not category_colors and not combo_colors:
+            self.progress.end()
+            raise ConfigError(
+                f"The colors file given to '{flag}', at '{path}', has its header but no rows, so "
+                f"it gives no color to anything. Each row should name a category in its first "
+                f"column and give its color hex code in the '{CATEGORY_COLORS_COLUMN}' column."
+            )
         if not category_colors:
             self.progress.end()
             raise ConfigError(
@@ -4162,9 +4169,10 @@ class Mapper:
                 f"{combos_shown}. Anvi'o blends the colors given by '{flag}' to derive them, and "
                 f"refuses past {MAX_CATEGORY_COLOR_COMBOS} combinations, well beyond the handful "
                 f"that any color scale could tell apart. Color by count instead with "
-                f"'{scheme_options['by_count']}', which needs just {count_scale_top} colors and "
-                f"takes them from a colormap rather than from '{flag}', or reduce the number of "
-                f"categories, for example by grouping them."
+                f"'{scheme_options['by_count']}' and drop '{flag}', since a count takes its colors "
+                f"from a colormap and the two cannot both be honored; it needs just "
+                f"{count_scale_top} colors. Alternatively, reduce the number of categories, for "
+                f"example by grouping them."
             )
 
         category_combos: List[Tuple[str]] = []
@@ -4211,9 +4219,9 @@ class Mapper:
                 f"assigned. Coloring by membership needs a distinct color for every combination of "
                 f"the {len(categories)} categories, which is {len(category_combos)} of them, and "
                 f"the colors from '{flag}' came to only {distinct}.{blend_clause} Alternatively, "
-                f"color by count with '{scheme_options['by_count']}', which needs just "
-                f"{count_scale_top} colors and takes them from a colormap rather than from "
-                f"'{flag}'."
+                f"color by count with '{scheme_options['by_count']}' and drop '{flag}', since a "
+                f"count takes its colors from a colormap and the two cannot both be honored; it "
+                f"needs just {count_scale_top} colors."
             )
 
         return 'by_membership', color_priorities, category_combos, None
@@ -5889,8 +5897,9 @@ class ColorbarDrawer:
         Orientation of the colobar.
 
     tick_fontsize : Union[int, None]
-        If None, dynamically set the font size of each color segment to fit between ticks, else set
-        to the provided value.
+        If None, tick labels are sized to fit the bar: to one color segment on a discrete bar
+        ('draw_discrete'), and to 'max_tick_fontsize' on a continuous one, whose few labels always
+        have the room. Otherwise set to the provided value.
 
     tick_fontsize_segment_fraction : float
         How much of one color segment a dynamically sized tick label is allowed to fill, since
@@ -6083,8 +6092,14 @@ class ColorbarDrawer:
                 ticks = list(range(lower, upper, stride)) + [upper]
             cb.set_ticks(ticks)
 
-        if self.tick_fontsize is not None:
-            cb.ax.tick_params(labelsize=self.tick_fontsize)
+        # A continuous bar has no segments to fit labels between, and never more than
+        # 'max_integer_ticks' of them, so they take the largest a tick label is allowed — which is
+        # what 'draw_discrete' settles on for a bar with as few bands. Left to Matplotlib's default
+        # they would be a third the size of the label beside them, and a third the size of the ticks
+        # on the discrete bars a single run writes into the same directory.
+        cb.ax.tick_params(
+            labelsize=self.max_tick_fontsize if self.tick_fontsize is None else self.tick_fontsize
+        )
 
         if label:
             if self.label_rotation is None:

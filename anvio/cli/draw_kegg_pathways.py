@@ -450,9 +450,12 @@ def get_args() -> Namespace:
         "map; where they are groups, each group's own maps count that group's sources instead, and "
         "'--group-colormap category' is what carries the group's color onto them. Every category "
         "of the run needs a color; names in the file that are not categories of the run are "
-        "reported and ignored, so one file can serve runs drawing different subsets. Note that no "
-        "color scale can distinguish combinations of more than a handful of categories, and anvi'o "
-        "refuses rather than draw a scale whose bands cannot be told apart."
+        "reported and ignored, so one file can serve runs drawing different subsets. Note that "
+        "giving this file colors the layer by membership however many categories there are, rather "
+        "than by count above the three that would otherwise switch to counting: six categories "
+        "then take a 63-band scale of every combination of them rather than a six-band scale of "
+        "counts. Since no color scale can distinguish combinations of more than a handful of "
+        "categories, anvi'o refuses rather than draw a scale whose bands cannot be told apart."
     )
     groupCOLOR.add_argument(
         '--compound-category-colors', type=str, metavar='PATH', help=
@@ -767,10 +770,24 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
             return None, None
         if len(colormap_arg) == 1:
             return colormap_arg[0], None
+        # Given '--group-colormap category' the two numbers are not a fraction of a colormap at all,
+        # but how far from white a group's own ramp starts and stops, so the messages say what the
+        # numbers actually mean. The constraint on them is the same either way.
+        from_category = (
+            flag == '--group-colormap' and colormap_arg[0] == GROUP_COLORMAP_FROM_CATEGORY
+        )
+        limits_mean = (
+            "how far from white towards a group's own color its ramp starts and stops"
+            if from_category else "the fraction of the colormap to use"
+        )
         if len(colormap_arg) != 3:
+            example = (
+                f"'{GROUP_COLORMAP_FROM_CATEGORY} {DEFAULT_GROUP_TINT_SPAN[0]} "
+                f"{DEFAULT_GROUP_TINT_SPAN[1]}'"
+            ) if from_category else "'plasma 0.1 0.9'"
             raise ConfigError(
                 f"'{flag}' takes either a colormap name on its own, or a name followed by TWO "
-                f"decimal limits on the fraction of the colormap to use, such as 'plasma 0.1 0.9'. "
+                f"decimal values giving {limits_mean}, such as {example}. "
                 f"{len(colormap_arg)} values were given: {' '.join(colormap_arg)}."
             )
         try:
@@ -782,9 +799,8 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
             )
         if not 0.0 <= limits[0] <= limits[1] <= 1.0:
             raise ConfigError(
-                f"The two limits given to '{flag}' cut the colormap down to the fraction of it "
-                f"between them, so they must lie between 0.0 and 1.0 with the smaller one first. "
-                f"These do not: {limits[0]}, {limits[1]}."
+                f"The two limits given to '{flag}' say {limits_mean}, so they must lie between 0.0 "
+                f"and 1.0 with the smaller one first. These do not: {limits[0]}, {limits[1]}."
             )
         return colormap_arg[0], limits
 
@@ -1622,12 +1638,17 @@ def main() -> None:
         if args.group_colormap is not None and args.group_colormap[0] == (
             GROUP_COLORMAP_FROM_CATEGORY
         ) and args.reaction_category_colors is None and args.compound_category_colors is None:
+            # A database, pangenome or JSON run has a reaction layer alone, so pointing it at
+            # '--compound-category-colors' would only earn it a second error.
+            colors_flags = (
+                "'--reaction-category-colors'/'--compound-category-colors'" if is_txt_run
+                else "'--reaction-category-colors'"
+            )
             raise ConfigError(
                 f"'--group-colormap {GROUP_COLORMAP_FROM_CATEGORY}' colors each group's own maps "
                 f"by a ramp running from a pale tint to that group's own color, but no color was "
-                f"given for any group. Give one per group with "
-                f"'--reaction-category-colors'/'--compound-category-colors', or name a Matplotlib "
-                f"colormap for the group maps instead."
+                f"given for any group. Give one per group with {colors_flags}, or name a "
+                f"Matplotlib colormap for the group maps instead."
             )
         # Only a compound text file provides a compound layer, so every option that shapes one has
         # nothing to act on without it. The same goes for the sample and group summaries, which only

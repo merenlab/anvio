@@ -96,10 +96,12 @@ def oklab_to_hex(oklab: Tuple[float, float, float]) -> str:
     red = 4.0767416621 * long_cone - 3.3077115913 * medium_cone + 0.2309699292 * short_cone
     green = -1.2684380046 * long_cone + 2.6097574011 * medium_cone - 0.3413193965 * short_cone
     blue = -0.0041960863 * long_cone - 0.7034186147 * medium_cone + 1.7076147010 * short_cone
-    # A color mixed from two in-gamut colors is itself in gamut, so the clipping here only absorbs
-    # floating-point overshoot at the ends of the range, where a channel comes out as 1.0000000002.
-    # Coordinates that did not come from real colors can of course land outside it, and are pulled
-    # to the nearest value each channel can hold.
+    # The sRGB cube is not convex in Oklab, so a mix or a tint of colors that are themselves in
+    # gamut can land outside it: tinting a saturated red asks for a linear red channel of up to
+    # about 1.11. Clipping pulls each channel to the nearest value it can hold, which is what makes
+    # this total — 'rgb2hex' raises on a channel outside 0-1 rather than clamping it itself. The
+    # cost is that a clipped color is not exactly the one asked for, though the error stays far
+    # below what a reader could see at the ramp lengths anvi'o draws.
     return mcolors.rgb2hex(
         tuple(min(1.0, max(0.0, linear_to_srgb(channel))) for channel in (red, green, blue))
     )

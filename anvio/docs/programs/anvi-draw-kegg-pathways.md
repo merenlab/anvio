@@ -191,6 +191,20 @@ When comparing a larger number of contigs databases, it makes more sense to colo
 
 ![Three maps showing KOs from six contigs databases](../../images/anvi-draw-kegg-pathways/kos_six_contigs_dbs.png)
 
+##### Counts on a continuous scale
+
+`by_count` labels one band per count, which asks two things of the colorbar. It needs a distinguishable color for each count, and is refused when there are more categories than the colormap can supply — a few hundred at most. It also needs room to set every one of those labels: a label is sized to fit its band, so past about 40 bands they are too small to read. Asking for `by_count` above that draws the bands anyway, with a warning that the labels will be tiny.
+
+`by_count_continuous` colors counts from the same colormap but draws the colorbar as a gradient and not a discrete band per count, so it needs neither a color nor a label per count and works with any number of categories. It is chosen automatically, with a warning, wherever `by_count` would be refused or its labels would be unreadable.
+
+For a %(kegg-reaction-txt)s or %(kegg-compound-txt)s file this is the summaries' `count_continuous` rather than `--presence-colormap-scheme`; see [Compare samples in an input text file](#compare-samples-in-an-input-text-file). The count scale of a group's own maps has the same two choices under its own option, `--group-colormap-scheme`; see [counts in bands or on a gradient](#counts-in-bands-or-on-a-gradient).
+
+##### Where a count scale stops
+
+A count scale runs from 1 to a maximum set by `--count-scale-max`: `observed` (the default) stops at the highest count on the drawn maps, `total` runs to every category there is, and a number pins it, with higher counts assigned the top color.
+
+This matters for sparse data. With 100 samples and no compound in more than 10 of them, a scale to 100 draws every compound in nearly indistinguishable shades at the bottom of the colormap, while a scale to 10 spreads them across it. The cost of `observed` is that the scale depends on which maps were drawn, so use `total` or a number where figures have to be comparable between runs.
+
 #### Choose the color of each category yourself
 
 Instead of having anvi'o sample a colormap, a color can be given to each category — each contigs database, genome, sample, or group — in a %(kegg-category-colors-txt)s file, passed with `--reaction-category-colors` (and `--compound-category-colors` for the compound layer of a %(kegg-compound-txt)s file). This is what to reach for when a category's color has to mean the same thing across every figure in a paper.
@@ -211,20 +225,6 @@ anvi-draw-kegg-pathways --external-genomes %(external-genomes)s \
                         --draw-grid \
                         -o output_dir
 {{ codestop }}
-
-##### Counts on a continuous scale
-
-`by_count` labels one band per count, which asks two things of the colorbar. It needs a distinguishable color for each count, and is refused when there are more categories than the colormap can supply — a few hundred at most. It also needs room to set every one of those labels: a label is sized to fit its band, so past about 40 bands they are too small to read. Asking for `by_count` above that draws the bands anyway, with a warning that the labels will be tiny.
-
-`by_count_continuous` colors counts from the same colormap but draws the colorbar as a gradient and not a discrete band per count, so it needs neither a color nor a label per count and works with any number of categories. It is chosen automatically, with a warning, wherever `by_count` would be refused or its labels would be unreadable.
-
-For a %(kegg-reaction-txt)s or %(kegg-compound-txt)s file this is the summaries' `count_continuous` rather than `--presence-colormap-scheme`; see [Compare samples in an input text file](#compare-samples-in-an-input-text-file). The count scale of a group's own maps has the same two choices under its own option, `--group-colormap-scheme`; see [counts in bands or on a gradient](#counts-in-bands-or-on-a-gradient).
-
-##### Where a count scale stops
-
-A count scale runs from 1 to a maximum set by `--count-scale-max`: `observed` (the default) stops at the highest count on the drawn maps, `total` runs to every category there is, and a number pins it, with higher counts assigned the top color.
-
-This matters for sparse data. With 100 samples and no compound in more than 10 of them, a scale to 100 draws every compound in nearly indistinguishable shades at the bottom of the colormap, while a scale to 10 spreads them across it. The cost of `observed` is that the scale depends on which maps were drawn, so use `total` or a number where figures have to be comparable between runs.
 
 #### Reverse colormap
 
@@ -335,7 +335,7 @@ anvi-draw-kegg-pathways --external-genomes %(external-genomes)s \
                         -o output_dir
 {{ codestop }}
 
-The two decimal values `--group-colormap` also accepts then say how far from white each ramp starts and stops rather than which fraction of a colormap to use, defaulting to `0.25 1.0`. The pale end stops short of white on purpose: standard and overview maps keep white for their own unhighlighted elements, so a ramp reaching it could not be drawn there. Anvi'o checks every group's ramp against those reserved colors before writing any file, and says which limits to widen if one collides.
+The two decimal values `--group-colormap` also accepts then say how far from white each ramp starts and stops rather than which fraction of a colormap to use, defaulting to `0.25 1.0`. The pale end stops short of white on purpose: standard and overview maps keep white for their own unhighlighted elements, so a ramp reaching it could not be drawn there. Anvi'o checks every group's ramp against those reserved colors before writing any file, and if one collides it says to start the ramp further from white — that is, to raise the first of the two values.
 
 Since one scale styles every layer's group maps at once, a run whose reaction and compound layers give the same group different colors is refused; pointing both `--reaction-category-colors` and `--compound-category-colors` at a single file is the simplest way to keep them in step.
 
