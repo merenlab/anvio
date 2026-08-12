@@ -201,7 +201,7 @@ Instead of having anvi'o sample a colormap, a color can be given to each categor
 |E_faecalis_6255|#ff7f0e|
 |E_faecalis_6512|#2ca02c|
 
-Coloring by membership colors a reaction by exactly *which* categories contain it, so it needs a color per *combination* of them: a category on its own takes its own color, and a combination takes the perceptual blend of its members' colors, which a row naming the combination (its names separated by commas) overrides. The same colors also color each category's own map, so a panel of a grid says which category it is and matches the band it takes on the `unified` map.
+Coloring by membership colors a reaction by exactly *which* categories contain it, so it needs a color per *combination* of them: a category on its own takes its own color, and a combination takes the perceptual blend of its members' colors, which a row naming the combination (its names separated by commas) overrides. Where the categories are samples, databases or genomes, the same colors also color each category's own map, so a panel of a grid says which category it is and matches the band it takes on the `unified` map. Where they are groups, each group's own maps count that group's sources rather than showing which of them an element is in, so it is `--group-colormap category` that carries a group's color onto them.
 
 Because the colors answer the same question a colormap does, this replaces `--reaction-colormap` and cannot be combined with it. It also does not apply to coloring by *count*, which says how many categories contain a reaction rather than which, and so has no category whose color it could take.
 
@@ -341,7 +341,7 @@ Since one scale styles every layer's group maps at once, a run whose reaction an
 
 ##### Counts in bands or on a gradient
 
-A group's count scale is drawn in discrete bands, one per source in the group, or as a gradient from the lowest count to the highest — the same two choices `--presence-colormap-scheme` gives the `unified` map, under `--group-colormap-scheme`:
+A group's count scale is drawn in discrete bands, one per count the scale runs over — which is where `--count-scale-max` stops it, not how many sources the group has — or as a gradient over that same range. These are the two choices `--presence-colormap-scheme` gives the `unified` map, under `--group-colormap-scheme`:
 
 {{ codestart }}
 anvi-draw-kegg-pathways --external-genomes %(external-genomes)s \

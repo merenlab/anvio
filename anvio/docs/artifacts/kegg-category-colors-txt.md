@@ -36,7 +36,7 @@ A category on its own takes its own color. A combination takes the **blend** of 
 
 Because a combination is written this way, no category name may itself contain a comma.
 
-Two combinations can of course blend to the same color, and a discrete colorbar labels one band per combination — so anvi'o refuses to draw a scale whose bands cannot be told apart, and reports how many distinct colors it got. Adding rows for the offending combinations fixes it. Note that no color scale distinguishes combinations of more than a handful of categories in any case; past a few of them, color by count (`--presence-colormap-scheme by_count`) from a colormap instead.
+Two combinations can of course blend to the same color, and a discrete colorbar labels one band per combination — so anvi'o refuses to draw a scale whose bands cannot be told apart, and reports how many distinct colors it got. Adding rows for the offending combinations fixes it. Note that no color scale distinguishes combinations of more than a handful of categories in any case; past a few of them, color by count from a colormap instead — with `--presence-colormap-scheme by_count` for databases and pangenomes, or a `count` sample or group summary (such as `--reaction-sample-summary count`) for a text file, which rejects the former.
 
 ## Where the colors are used
 

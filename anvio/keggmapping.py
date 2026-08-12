@@ -1028,8 +1028,9 @@ class Mapper:
         ('_resolve_aggregation'), which requires the layer's file to have a value column. The
         default of None summarizes presence with the colormap scheme left unresolved, so that
         '_membership_layer_colors' picks it from the number of categories (by membership for ≤ 3, by
-        count > 3, and by a continuous count scale where the colormap runs out of distinguishable
-        colors).
+        count > 3, and by a continuous count scale where a discrete one would run out of
+        distinguishable colors or of room to label its bands, the latter past
+        'MAX_DISCRETE_COUNT_BANDS' of them).
 
         Parameters
         ==========
@@ -2395,7 +2396,7 @@ class Mapper:
         would otherwise derive.
 
         The names are not checked against the run's actual categories here, since a file is read
-        before they are all known; '_check_category_colors' does that.
+        before they are all known; '_resolve_category_colors' does that.
 
         Parameters
         ==========
@@ -2442,6 +2443,9 @@ class Mapper:
 
         category_colors: Dict[str, str] = {}
         combo_colors: Dict[Tuple[str, ...], str] = {}
+        # What each normalized key was written as in the file, for reporting two rows that mean one
+        # thing.
+        seen_rows: Dict[Tuple[str, ...], str] = {}
         for name, row in table.items():
             color = str(row[CATEGORY_COLORS_COLUMN]).strip()
             # Only hex codes are accepted, even though Matplotlib would also read a color name here:
@@ -2462,10 +2466,25 @@ class Mapper:
             if not members:
                 self.progress.end()
                 raise ConfigError(
-                    f"A row of the colors file given to '{flag}', at '{path}', names no category at "
-                    f"all in its first column. Every row should name a category, or a combination "
-                    f"of them separated by '{CATEGORY_COMBO_SEPARATOR}'."
+                    f"A row of the colors file given to '{flag}', at '{path}', names no category "
+                    f"at all in its first column. Every row should name a category, or a "
+                    f"combination of them separated by '{CATEGORY_COMBO_SEPARATOR}'."
                 )
+            # Two rows can name the same thing without being the same text — stray spaces around a
+            # name, or the members of a combination written in another order — and the duplicate
+            # check that reading the file has already done compares the text. Left alone, the later
+            # row would quietly replace the earlier one and the file would report a count that does
+            # not match its rows, so what the text meant is checked here too.
+            if members in seen_rows:
+                separator = f'{CATEGORY_COMBO_SEPARATOR} '
+                self.progress.end()
+                raise ConfigError(
+                    f"The colors file given to '{flag}', at '{path}', gives two colors to the same "
+                    f"{'combination' if len(members) > 1 else 'category'}: "
+                    f"'{seen_rows[members]}' and '{name}' both name "
+                    f"'{separator.join(members)}'. Please give it one row."
+                )
+            seen_rows[members] = name
             if len(members) == 1:
                 category_colors[members[0]] = kgml.canonical_color(color)
             else:
@@ -2484,25 +2503,27 @@ class Mapper:
             self.run.info(f"Category combinations recolored by '{flag}'", len(combo_colors))
         return category_colors, combo_colors
 
-    def _check_category_colors(
+    def _resolve_category_colors(
         self,
         layers: List[dict],
         categories: List[str], category_noun: str
     ) -> None:
         """
-        Check each layer's category colors against the categories the run actually has.
+        Reduce each layer's category colors to those the run will actually use.
 
         A category with no color of its own cannot be colored at all, so it is an error, reported
         for every such category at once. A color given for a name that is not a category, or for a
         combination naming one, describes something this run does not draw, so it is reported and
         ignored, as a groups file's extra items are ('_relate_samples_to_groups'): one file can then
-        cover a set of samples that different runs draw different subsets of.
+        cover a set of samples that different runs draw different subsets of. Ignoring such a color
+        means dropping it from the layer rather than merely reporting it, which is what makes the
+        colors that remain the colors of the run — everything downstream reads them as such.
 
         Parameters
         ==========
         layers : List[dict]
-            The layer models, whose 'category_colors'/'category_combo_colors' are checked. A layer
-            without colors of its own is skipped.
+            The layer models, whose 'category_colors'/'category_combo_colors' are checked against
+            the run and reduced to it in place. A layer without colors of its own is skipped.
 
         categories : List[str]
             The names of every category of the run.
@@ -2551,24 +2572,35 @@ class Mapper:
                 )
 
             extra = sorted(name for name in category_colors if name not in category_set)
-            unknown_combos = sorted(
-                f'{CATEGORY_COMBO_SEPARATOR} '.join(combo)
-                for combo in layer['category_combo_colors']
+            extra_combos = [
+                combo for combo in layer['category_combo_colors']
                 if not set(combo) <= category_set
-            )
+            ]
             if extra:
                 message = ', '.join(f"'{name}'" for name in extra)
                 self.run.warning(
                     f"The colors file given to '{flag}' colors the following names, which are not "
                     f"{category_noun}s of this run and so will not factor into the maps: {message}"
                 )
-            if unknown_combos:
-                message = ', '.join(f"'{combo}'" for combo in unknown_combos)
+            if extra_combos:
+                separator = f'{CATEGORY_COMBO_SEPARATOR} '
+                message = ', '.join(
+                    f"'{name}'" for name in sorted(separator.join(combo) for combo in extra_combos)
+                )
                 self.run.warning(
                     f"The colors file given to '{flag}' recolors the following combinations, which "
                     f"name at least one thing that is not a {category_noun} of this run, and so "
                     f"will not factor into the maps: {message}"
                 )
+
+            # Drop them, rather than only report them. Everything downstream reads what is left as
+            # the layer's colors: the check that no color is one a map reserves, and the check that
+            # the layers agree on each group's ramp. A color kept here for something the run does
+            # not draw could fail either check, refusing a run it has no part in.
+            for name in extra:
+                del category_colors[name]
+            for combo in extra_combos:
+                del layer['category_combo_colors'][combo]
 
     @staticmethod
     def _trim_colormap(
@@ -3018,7 +3050,7 @@ class Mapper:
                     f"per sample, database, genome, or group. Set the color of the single map with "
                     f"'--reaction-color'/'--compound-color' instead."
                 )
-            self._check_category_colors(colored_layers, categories, category_noun)
+            self._resolve_category_colors(colored_layers, categories, category_noun)
             group_ramps = grouped and (
                 grouped_membership['group_colormap'] == GROUP_COLORMAP_FROM_CATEGORY
             )
@@ -3848,8 +3880,12 @@ class Mapper:
                     f"with the category colors option of a layer colored by presence, or name a "
                     f"Matplotlib colormap for the group maps instead."
                 )
+            # A ramp is built only for the groups whose own maps are drawn, so they are the only ones
+            # the layers must agree about: a group the run has but draws no map for has no ramp to
+            # disagree over. Every one of them is guaranteed a color by '_resolve_category_colors'.
             for layer in colored_layers:
-                for group, color in layer['category_colors'].items():
+                for group in draw_categories:
+                    color = layer['category_colors'][group]
                     if group_colors.setdefault(group, color) != color:
                         self.progress.end()
                         raise ConfigError(
@@ -3931,16 +3967,26 @@ class Mapper:
             group_distinct_colors[group] = len(set(colors))
 
         # Two things stop a band per count from being drawn: a ramp with too few DISTINCT colors to
-        # tell the bands apart, and more bands than a colorbar can label in type large enough to read
-        # ('MAX_DISCRETE_COUNT_BANDS'). The scheme is settled once for the whole run rather than per
-        # group, so that every panel of a grid carries the same kind of bar; the group that runs
-        # furthest past a limit decides it, since a scheme good for that one is good for the rest.
-        short_groups = [
+        # tell the bands apart, and more bands than a colorbar can label in type large enough to
+        # read ('MAX_DISCRETE_COUNT_BANDS'). The scheme is settled once for the whole run rather
+        # than per group, so that every panel of a grid carries the same kind of bar; the group that
+        # runs furthest past a limit decides it, since a scheme good for that one is good for the
+        # rest. A group with nothing of its own on the drawn maps colors nothing, and under the
+        # default its scale top is not a count that occurs but a stand-in for the scale it cannot
+        # otherwise have ('_resolve_count_scale_top'). Letting that stand-in decide would hand every
+        # other group a gradient on account of a group with nothing to show, and name the empty one
+        # as the reason, so it sits the decision out. A top that was asked for outright still
+        # counts: its bands are really drawn to it, however little lands on them.
+        deciding_groups = [
             group for group in draw_categories
+            if count_scale_max != 'observed' or group_observed_counts.get(group, 0) > 0
+        ] or list(draw_categories)
+        short_groups = [
+            group for group in deciding_groups
             if group_distinct_colors[group] < group_scale_tops[group]
         ]
         crowded_groups = [
-            group for group in draw_categories
+            group for group in deciding_groups
             if group_scale_tops[group] > MAX_DISCRETE_COUNT_BANDS
         ]
         scheme = requested_scheme
@@ -4363,9 +4409,11 @@ class Mapper:
                 f"reaction layer and a compound layer you may see this twice, once per layer.",
                 progress=self.progress
             )
-        elif too_many_bands:
+        elif too_many_bands and not short_colors:
             # The bands were asked for outright. Unlike a colormap short of colors, which cannot
-            # draw them at all, this only makes them hard to read, so they are drawn as asked.
+            # draw them at all, this only makes them hard to read, so they are drawn as asked — so
+            # a colormap that is ALSO short of colors is left to the refusal below, which is what
+            # actually happens next, rather than being told here that the bands are drawn.
             self.run.warning(
                 f"The {layer['element_type']} layer was asked to color counts running up to "
                 f"{count_scale_top} in discrete bands, which is more bands than a colorbar can "
@@ -5930,14 +5978,19 @@ class ColorbarDrawer:
             if self.tick_fontsize is None:
                 # Fit the tick labels to one color segment, which is 1 in the data coordinates of a
                 # colorbar built on integer boundaries. Labels sit one segment apart, so type as
-                # tall as a segment would leave neighbors touching.
-                origin_in_points = ax.transData.transform((0, 0))
+                # tall as a segment would leave neighbors touching. 'transData' lands in display
+                # coordinates, which are pixels at the figure's dpi, while a font size is in points,
+                # so the segment is converted rather than handed over as it stands: without that the
+                # type comes out dpi/72 too large, and changes size with a Matplotlib setting that
+                # has nothing to do with the geometry of the PDF.
+                origin_in_pixels = ax.transData.transform((0, 0))
                 if self.orientation == 'vertical':
-                    segment_in_points = (ax.transData.transform((0, 1)) - origin_in_points)[1]
+                    segment_in_pixels = (ax.transData.transform((0, 1)) - origin_in_pixels)[1]
                 elif self.orientation == 'horizontal':
-                    segment_in_points = (ax.transData.transform((1, 0)) - origin_in_points)[0]
+                    segment_in_pixels = (ax.transData.transform((1, 0)) - origin_in_pixels)[0]
                 else:
                     raise AssertionError
+                segment_in_points = segment_in_pixels * 72 / fig.dpi
                 tick_fontsize = min(
                     segment_in_points * self.tick_fontsize_segment_fraction,
                     self.max_tick_fontsize

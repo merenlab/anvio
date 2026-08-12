@@ -1,6 +1,11 @@
 #!/bin/bash
 source 00.sh
 
+# Several draw commands below are piped into 'tee' so that a warning can be matched against the log
+# afterwards. Without this, such a pipeline exits with the status of 'tee', which always succeeds,
+# so the 'set -e' of 00.sh would not see a failed draw and the test would pass on a crash.
+set -o pipefail
+
 SETUP_WITH_OUTPUT_DIR $1 $2 $3
 
 rn_python_script=$(readlink -f run_component_tests_for_reaction_network)
@@ -434,7 +439,16 @@ args+=( "--output-dir" ${output_dir}/draw_txt_samples_category_colors_combo )
 # Draws the global map too, for colors given per category, blends included.
 args+=( "--pathway-numbers" "${global_pathway_numbers[@]}" )
 args+=( "--no-progress" )
-anvi-draw-kegg-pathways "${args[@]}"
+anvi-draw-kegg-pathways "${args[@]}" 2>&1 | tee draw_txt_samples_combo.log
+# A combination whose members do not parse back to the run's samples is reported and ignored rather
+# than refused, so the run would exit 0 with the row silently unused and the combination drawn in
+# the blend it was written to override. Its absence from the log is what says the row was taken.
+if tr '\n' ' ' < draw_txt_samples_combo.log \
+    | grep -q "name at least one thing that is not a sample of this run"
+then
+    echo "ERROR: the combination row was ignored rather than recoloring the combination."
+    exit 1
+fi
 
 INFO "Testing that colors given per sample also color a compound layer, independently of the \
 reaction layer, so that the two layers drawn on one map keep their own scales"
@@ -534,6 +548,38 @@ fi
 if grep -q "could supply only" <<< "${flattened_groups60_log}"
 then
     echo "ERROR: the fallback blamed the colors when it was the labels that did not fit."
+    exit 1
+fi
+
+INFO "Testing that asking for the discrete bands outright keeps them for a group whose scale runs \
+over more counts than its colorbar can label, warning that the labels will be small — the colormap \
+has a distinguishable color for every one of those counts, so nothing stops them being drawn"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples60.reaction.txt" )
+args+=( "--groups-txt" "draw-sample-group-information-60.txt" )
+args+=( "--group-threshold" "0.5" )
+args+=( "--count-scale-max" "total" )
+args+=( "--group-colormap-scheme" "by_count" )
+args+=( "--output-dir" ${output_dir}/draw_txt_groups60_scheme_bands )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}" 2>&1 | tee draw_txt_groups60_scheme_bands.log
+flattened_groups60_bands_log=$(tr '\n' ' ' < draw_txt_groups60_scheme_bands.log)
+if ! grep -q "The bands are drawn as asked" <<< "${flattened_groups60_bands_log}"
+then
+    echo "ERROR: insisting on bands too many to label did not warn that they were drawn anyway."
+    exit 1
+fi
+if grep -q "drawn on a CONTINUOUS color scale" <<< "${flattened_groups60_bands_log}"
+then
+    echo "ERROR: the discrete bands were asked for but the continuous scale was drawn."
+    exit 1
+fi
+# The colormap has a color for every count here, so the OTHER limit must not be what is reported.
+if grep -q "could supply only" <<< "${flattened_groups60_bands_log}"
+then
+    echo "ERROR: the warning blamed the colors when it was the labels that did not fit."
     exit 1
 fi
 
