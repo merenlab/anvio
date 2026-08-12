@@ -615,6 +615,90 @@ HUMAN		GRCh38_latest_genomic.fna.gz
 
 </div>
 
+### Downloading metagenomes from the SRA (and not keeping them)
+
+Sometimes the metagenomes you want to work with are not on your computer, and you have no particular wish to keep them there. You want to know whether a set of organisms shows up in a thousand public metagenomes, you have a server with a few hundred gigabytes of free space, and the thousand metagenomes will not fit on it no matter how you arrange them.
+
+The metagenomics workflow can download reads from the SRA itself, use them, and delete them as it goes. Instead of file paths, your %(samples-txt)s names SRA run accessions:
+
+```
+sample	sra_accession
+S01	ERR6450080
+S02	ERR6450081
+```
+
+and your %(workflow-config)s says how much disk space anvi'o may use for reads while it works:
+
+```json
+    (...)
+    "download_reads": {
+        "max_disk_gb": 500,
+        "keep_reads": "none",
+        "safety_factor": 1.3,
+        "metadata_cache": "SRA-METADATA.txt"
+    },
+    (...)
+```
+
+That is the whole setup. Everything else — quality filtering, assembly, mapping, profiling — works exactly as it does for reads that were already on your disk.
+
+#### How the disk budget works
+
+`max_disk_gb` is a promise about a moment in time, not a total: it is the most disk space that downloaded reads will occupy *at once*. The thousand metagenomes still all get processed; there are just never more than `max_disk_gb` worth of them sitting around while it happens.
+
+Anvi'o keeps that promise by making a sample's download wait for an earlier sample's reads to have been used up and deleted. It works out how much space each sample needs from what NCBI reports about it (the number of bases it holds, the size of its archive) plus room for the intermediate files that exist while it is being unpacked and quality filtered, and multiplies the result by `safety_factor` to leave itself some slack.
+
+{:.notice}
+Setting `max_disk_gb` is optional, and anvi'o will warn you if you leave it out. Without a budget it downloads as fast as it can, which is exactly what you want if you have the room — reads are still deleted the moment nothing needs them anymore.
+
+If your budget is too small to hold even one sample, anvi'o says so before downloading anything, and tells you how many GB that sample actually needs. The same is true of a co-assembly group: everything that goes into one assembly has to be on disk at the same time, so a group's samples count against the budget together.
+
+#### Keeping the reads after all
+
+`keep_reads` decides what survives:
+
+|keep_reads|What stays on disk|
+|:--|:--|
+|`none`|Nothing. The default.|
+|`raw`|The reads as they were downloaded|
+|`qc`|The quality-filtered reads|
+|`both`|Both of the above|
+
+{:.warning}
+Anything you keep is, by definition, not deleted, so `max_disk_gb` no longer describes your total disk use — only the transient files. Anvi'o will remind you of this when you set `keep_reads` to anything other than `none`.
+
+#### What anvi'o needs to know about your accessions, and how it finds out
+
+An accession by itself does not say whether a run is paired-end, whether it came off a long-read instrument, or how big it is, and the workflow needs all three before it can start. So the first time anvi'o sees a new accession it asks NCBI, and writes what it learns into a %(sra-metadata-txt)s (`SRA-METADATA.txt` by default). After that it reads the file and leaves NCBI alone.
+
+The file is meant to be looked at and, where necessary, corrected — NCBI's description of a run is written by whoever submitted it, and is sometimes wrong. Anvi'o only ever looks up accessions that are missing from the file, so anything you edit stays edited.
+
+Two things anvi'o will tell you about after that lookup:
+
+* **Single-end short reads.** The metagenomics workflow does not handle these, so anvi'o stops and names the accessions before downloading anything, rather than after.
+* **PacBio runs of unclear chemistry.** Nanopore runs are unambiguous, and so are several PacBio instruments, but a Sequel II was used for both CLR and HiFi sequencing and NCBI's metadata does not say which. Anvi'o warns rather than stops, because if all your long-read samples came off the same kind of machine you can simply set the presets in your config file as usual. If they did not, add an `lr_technology` column to your %(samples-txt)s or fill it in in the metadata file.
+
+#### Samples made of several runs
+
+A sample sequenced across several runs is described by several accessions, separated by commas. Anvi'o downloads each of them and puts them together into one set of reads for that sample. Since it knows what each accession holds, a sample can name a short-read run and a long-read run at once and become a hybrid sample:
+
+```
+sample	sra_accession
+S01	ERR6450080,ERR6450082
+S02	ERR6450081,SRR11951439
+```
+
+#### Two combinations anvi'o will refuse
+
+* **`all_against_all` together with assembly.** Mapping every sample against every assembly means no sample's reads can be deleted until every assembly exists, and no assembly can be built until its reads are downloaded — so every metagenome you have would need to be on disk at once, which is the very thing this feature exists to avoid. In references mode, where the references come from a %(fasta-txt)s rather than from the reads, `all_against_all` is perfectly fine.
+* **Reference-based read removal with quality filtering turned off.** In that combination the read removal step consumes the downloaded files themselves rather than a filtered copy, leaving nothing for the steps that come after it.
+
+#### Where things end up
+
+Downloads live under `01_SRA` while they are being worked on: each run in `01_SRA/runs/`, and the finished per-sample reads in `01_SRA/reads/`. You will also find `01_SRA/samples-txt-with-downloaded-reads.txt`, which is your samples-txt with the accessions replaced by the paths anvi'o gave them — handy for seeing what it decided each sample was made of.
+
+If you watch that directory while a workflow runs, you will see files appear and disappear as the workflow moves through your samples. At the end of a run with `keep_reads: none` it is empty, and everything you actually wanted — profiles, contigs databases, merged profiles — is where it always is.
+
 ## Frequently Asked Questions
 
 If you need something, send your question to us and we will do our best to add the solution down below.
