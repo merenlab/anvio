@@ -65,6 +65,24 @@ class QCModule(WorkflowSuperClass):
         """
         return os.path.join(self.dirs_dict["QC_DIR"], f"{readset}-FILTERED_LR.fastq.gz")
 
+    def get_samples_txt_path_for_qc(self):
+        """The samples-txt that QC tools should read.
+
+        Normally this is the user's own file. When reads are downloaded from the SRA the user's
+        file names accessions rather than paths, so QC is given anvi'o's rewritten version of it
+        instead, in which every sample points at the files the workflow is going to produce."""
+        return getattr(self, 'derived_samples_txt_path', None) or self.get_param_value_from_config(['samples_txt'])
+
+    def qc_output_is_temporary(self):
+        """Whether quality-filtered reads should be deleted once nothing needs them anymore.
+
+        This is the case when reference-based read removal will supersede them, and also when the
+        reads were downloaded from the SRA and the user did not ask to keep them."""
+        if getattr(self, 'remove_short_reads_based_on_references', None):
+            return True
+
+        return getattr(self, 'sra_mode', False) and getattr(self, 'keep_reads', 'none') not in ('qc', 'both')
+
     def get_fastq(self, readset, pre_ref_removal=False):
         """Return FASTQ paths for a readset.
 
@@ -368,10 +386,14 @@ class QCModule(WorkflowSuperClass):
                 "for NanoPlot to run on — it will be skipped."
             )
 
-        if getattr(self, 'run_filtlong', False):
+        if getattr(self, 'run_filtlong', False) and not self.qc_output_is_temporary():
             # NB: the duplicate-read-name validation is NOT done here — it runs as the
             # check_lr_read_names rule (which gates filtlong), so full long-read files are not
             # re-scanned at parse time on every dry run / DAG rebuild.
+            #
+            # These are left out entirely when the filtered reads are meant to be deleted, since
+            # snakemake never removes a temp() file that is also something the workflow was asked
+            # to produce. The rules that consume them still pull them into the workflow.
             for rs_id in self.get_lr_readset_ids():
                 targets.append(self.filtered_lr_path(rs_id))
 
