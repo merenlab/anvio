@@ -1196,6 +1196,46 @@ then
     exit 1
 fi
 
+INFO "Testing that a database run rejects the group-map coloring options where no individual group \
+maps are drawn for them to style, as a text run does (each command below is expected to fail)"
+
+# Without a grouping there are no group maps at all, whatever else is drawn.
+if anvi-draw-kegg-pathways --external-genomes external-genomes.txt --draw-grid \
+    --group-colormap-scheme by_count_continuous \
+    --output-dir ${output_dir}/draw_db_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: '--group-colormap-scheme' without a grouping should have failed."
+    exit 1
+fi
+
+# Grouped, but nothing asks for the individual group maps the options would style.
+if anvi-draw-kegg-pathways --external-genomes external-genomes.txt \
+    --groups-txt contigs-db-group-information.txt --group-threshold 0.5 \
+    --group-colormap viridis \
+    --output-dir ${output_dir}/draw_db_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: '--group-colormap' without individual group maps should have failed."
+    exit 1
+fi
+
+# The whole family is covered, not just the option this check was added for.
+if anvi-draw-kegg-pathways --external-genomes external-genomes.txt --draw-grid \
+    --group-reverse-overlay \
+    --output-dir ${output_dir}/draw_db_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: '--group-reverse-overlay' without a grouping should have failed."
+    exit 1
+fi
+
+# A pangenome run takes the same check.
+if anvi-draw-kegg-pathways --pan-db TEST-PAN.db --genomes-storage TEST-GENOMES.db \
+    --group-colormap-scheme by_count \
+    --output-dir ${output_dir}/draw_db_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: '--group-colormap-scheme' on an ungrouped pangenome should have failed."
+    exit 1
+fi
+
 INFO "Testing mapping KOs from a genomic contigs database"
 args=()
 args+=( "--contigs-dbs" "E_faecalis_6240.db" )

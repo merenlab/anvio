@@ -1688,6 +1688,37 @@ def main() -> None:
                 "('--compound-txt')."
             )
 
+        # The group-map coloring options style the individual maps of each group, which are drawn
+        # only for a grouped run that asks for them. Rather than accepting them and doing nothing,
+        # say so — as a text run does from 'map_txt_data', and a reaction-network-JSON run from its
+        # own dispatcher, which refuses the whole family outright for want of any categories at all.
+        # Note that a static reaction color does not make them idle: a group's own map still counts
+        # the group's databases or genomes, and still takes a colorbar of its own.
+        if args.contigs_dbs is not None or args.pan_db is not None:
+            group_flags = [flag for present_flag, flag in (
+                (args.group_colormap is not None, '--group-colormap'),
+                (args.group_colormap_scheme is not None, '--group-colormap-scheme'),
+                (args.group_reverse_overlay, '--group-reverse-overlay')
+            ) if present_flag]
+            draws_category_maps = (
+                args.draw_individual_files is not None or args.draw_grid is not None
+            )
+            if group_flags and not (args.groups_txt is not None and draws_category_maps):
+                message = ', '.join(f"'{flag}'" for flag in group_flags)
+                missing = (
+                    "the databases or genomes are not grouped ('--groups-txt')"
+                    if args.groups_txt is None else
+                    "no maps for individual groups were asked for "
+                    "('--draw-individual-files'/'--draw-grid')"
+                )
+                raise ConfigError(
+                    f"Group-map coloring options were given ({message}), but they style the "
+                    f"individual maps of each group, and here {missing}. Add what is missing, or "
+                    f"drop these options: the 'unified' map summarizing every group is colored by "
+                    f"'--reaction-colormap'/'--reaction-category-colors' and "
+                    f"'--presence-colormap-scheme' instead."
+                )
+
         # Categorical grouping of contigs databases or pan genomes pairs '--groups-txt' with the
         # presence/absence '--group-threshold' (both or neither). A text run's grouping depends on
         # each layer's auto-detected mode, so its group-option checks live in 'map_txt_data'.
