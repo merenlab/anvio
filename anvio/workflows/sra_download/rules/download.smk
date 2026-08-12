@@ -198,7 +198,7 @@ Threads:
         done=ancient(rules.check_md5sum.output.md5sum_DONE),
     output:
         FASTERQDUMP_DONE=touch(
-            os.path.join(dirs_dict["FASTAS"], "{accession}-fasterq-dump.done")
+            os.path.join(dirs_dict["FASTQ_DIR"], "{accession}-fasterq-dump.done")
         ),
         FASTERQDUMP_TEMP=temp(directory("FASTERQDUMP_TEMP/{accession}")),
     log:
@@ -210,7 +210,7 @@ Threads:
         nodes=M.T("fasterq_dump"),
     params:
         SRA_INPUT_DIR=os.path.join(dirs_dict["SRA_prefetch"], "{accession}"),
-        OUTPUT_DIR=dirs_dict["FASTAS"],
+        OUTPUT_DIR=dirs_dict["FASTQ_DIR"],
         REMOVE_SRA_FILES=remove_tmp,
     run:
         shell(
@@ -260,22 +260,22 @@ Inputs:
 - FASTQ file(s) from the output of the fasterq_dump rule
 
 Outputs:
-- gzipped FASTQ file(s) in the FASTAS directory
+- gzipped FASTQ file(s) in the FASTQ directory
 
 Params:
-- READS: the exact FASTQ file names this accession can have in the FASTAS directory
+- READS: the exact FASTQ file names this accession can have in the FASTQ directory
 
 Threads:
 - Number of threads specified in the M object
 
 example:
-    pigz --processes 8 --verbose 02_FASTA/ERR6450080_1.fastq >> 00_LOGS/ERR6450080_pigz.log 2>&1
+    pigz --processes 8 --verbose 02_FASTQ/ERR6450080_1.fastq >> 00_LOGS/ERR6450080_pigz.log 2>&1
 
 """
     input:
         done=ancient(rules.fasterq_dump.output.FASTERQDUMP_DONE),
     output:
-        done=touch(os.path.join(dirs_dict["FASTAS"], "{accession}-pigz.done")),
+        done=touch(os.path.join(dirs_dict["FASTQ_DIR"], "{accession}-pigz.done")),
     log:
         rule_log("pigz", "{accession}_pigz"),
     wildcard_constraints:
@@ -285,7 +285,7 @@ example:
         nodes=M.T("pigz"),
     params:
         READS=lambda wildcards: " ".join(
-            fastq_candidates(wildcards.accession, dirs_dict["FASTAS"])
+            fastq_candidates(wildcards.accession, dirs_dict["FASTQ_DIR"])
         ),
     shell:
         """
@@ -302,7 +302,7 @@ Inputs:
 - gziped FASTQ file(s) from the output of the pigz rule
 
 Outputs:
-- samples.txt and samples_single_reads.txt in the FASTAS directory
+- samples.txt and samples_single_reads.txt in the FASTQ directory
 
 Params:
 - ACCESSION: list of accessions
@@ -313,11 +313,11 @@ Threads:
 """
     input:
         targets=expand(
-            os.path.join(dirs_dict["FASTAS"], "{accession}-pigz.done"),
+            os.path.join(dirs_dict["FASTQ_DIR"], "{accession}-pigz.done"),
             accession=M.accessions_list,
         ),
     output:
-        done=touch(os.path.join(dirs_dict["FASTAS"], "generate_samples_txt.done")),
+        done=touch(os.path.join(dirs_dict["FASTQ_DIR"], "generate_samples_txt.done")),
     log:
         rule_log("generate_samples_txt", "generate_samples_txt"),
     threads: 1
@@ -325,7 +325,7 @@ Threads:
         nodes=1,
     params:
         ACCESSION=M.accessions_list,
-        OUTPUT_DIR=dirs_dict["FASTAS"],
+        OUTPUT_DIR=dirs_dict["FASTQ_DIR"],
     run:
         paired_reads = []
         single_reads = []

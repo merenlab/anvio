@@ -37,27 +37,27 @@ anvi-run-workflow -w sra_download -c sra_download_config.json --save-workflow-gr
 # the list. Compressing FASTQ files by globbing on the accession would sweep this file up along
 # with the real ones, so it must still be sitting here, uncompressed, once the workflow is done.
 INFO "Planting a decoy FASTQ file to make sure accessions only claim their own reads"
-mkdir -p 02_FASTA
-touch 02_FASTA/SRR59656231_1.fastq
+mkdir -p 02_FASTQ
+touch 02_FASTQ/SRR59656231_1.fastq
 
 INFO "Running workflow graph sra_download workflow"
 anvi-run-workflow -w sra_download -c sra_download_config.json
 
 INFO "Making sure the decoy FASTQ file was left alone"
-ASSERT_FILE_EXISTS 02_FASTA/SRR59656231_1.fastq
-ASSERT_FILE_MISSING 02_FASTA/SRR59656231_1.fastq.gz
+ASSERT_FILE_EXISTS 02_FASTQ/SRR59656231_1.fastq
+ASSERT_FILE_MISSING 02_FASTQ/SRR59656231_1.fastq.gz
 
 INFO "Making sure every accession got the FASTQ files it was supposed to get"
-ASSERT_FILE_EXISTS 02_FASTA/ERR6450080_1.fastq.gz
-ASSERT_FILE_EXISTS 02_FASTA/ERR6450080_2.fastq.gz
-ASSERT_FILE_EXISTS 02_FASTA/ERR6450081_1.fastq.gz
-ASSERT_FILE_EXISTS 02_FASTA/ERR6450081_2.fastq.gz
-ASSERT_FILE_EXISTS 02_FASTA/SRR5965623.fastq.gz
+ASSERT_FILE_EXISTS 02_FASTQ/ERR6450080_1.fastq.gz
+ASSERT_FILE_EXISTS 02_FASTQ/ERR6450080_2.fastq.gz
+ASSERT_FILE_EXISTS 02_FASTQ/ERR6450081_1.fastq.gz
+ASSERT_FILE_EXISTS 02_FASTQ/ERR6450081_2.fastq.gz
+ASSERT_FILE_EXISTS 02_FASTQ/SRR5965623.fastq.gz
 
 INFO "Making sure no uncompressed FASTQ file was left behind"
-ASSERT_FILE_MISSING 02_FASTA/ERR6450080_1.fastq
-ASSERT_FILE_MISSING 02_FASTA/ERR6450081_1.fastq
-ASSERT_FILE_MISSING 02_FASTA/SRR5965623.fastq
+ASSERT_FILE_MISSING 02_FASTQ/ERR6450080_1.fastq
+ASSERT_FILE_MISSING 02_FASTQ/ERR6450081_1.fastq
+ASSERT_FILE_MISSING 02_FASTQ/SRR5965623.fastq
 
 # `Remove_unzipped_SRA_files` defaults to true, so the prefetched archives must be gone once the
 # reads have been extracted from them, while the marker files snakemake tracks in the very same
