@@ -98,6 +98,19 @@ minimal_enzymes_input.txt > draw_kos_samples_coverage.reaction.txt
 awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","coverage"} NR>1{print $2,$1,1}' \
 minimal_enzymes_input.txt > draw_kos_constant_coverage.reaction.txt
 
+# A value column of negative numbers, cycling from -2 down to -6, as log-transformed abundances are.
+# Used to limit a color scale with negative limits, which is what such a column asks for, and which
+# the command line has to carry through argparse without mistaking them for option names.
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","log_abundance"} NR>1{print $2,$1,-((NR-2)%9)/2-2}' \
+minimal_enzymes_input.txt > draw_kos_negative.reaction.txt
+
+# A signed value column with a 'sample' column, cycling from -2 up to +6, as a log ratio between two
+# conditions is: it can come out either way, but here it leans well to the positive side. Both of
+# its color scales therefore sit off zero, which is what centering them puts right, and both are
+# lopsided enough that centering visibly moves them.
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","sample","log_ratio"} NR>1{s=((NR-2)%3)+1; print $2,$1,"SAMPLE_"s,(((NR-2)%17)-4)/2}' \
+minimal_enzymes_input.txt > draw_kos_samples_log_ratio.reaction.txt
+
 # Reaction-level (KEGG reaction IDs) and compound-level fixtures (KEGG IDs present on the tested maps).
 printf 'accession\tvalue\nR01068\t5\nR00710\t10\nR00229\t15\nR00755\t25\nR00431\t40\nR00014\t30\n' > draw_reactions.reaction.txt
 # A reaction file and a compound file drawn together as two quantitative layers.
@@ -290,6 +303,210 @@ args+=( "--draw-individual-files" )
 args+=( "--draw-grid" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing limits on the two color scales of a value column, which are set separately: the \
+'unified' map's scale, of means across samples, and the scale its per-sample maps share, of the \
+samples' own values. Both are truncated at both ends here, so that a few extreme elements stop \
+stretching the colors over a range in which the rest cannot be told apart, and both colorbars mark \
+the truncated ends '<=' and '>='"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples_coverage.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_samples_kos_value_limits )
+args+=( "--reaction-gene-aggregation" "mean" )
+args+=( "--reaction-sample-summary" "mean" )
+args+=( "--reaction-value-limits" "5" "40" )
+args+=( "--reaction-category-value-limits" "5" "40" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing limits that no value crosses, which therefore truncate nothing: both scales still \
+span their own values and neither colorbar is marked, which is what lets one set of limits be \
+carried from dataset to dataset without rescaling the ones it was never needed for"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples_coverage.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_samples_kos_value_limits_inert )
+args+=( "--reaction-gene-aggregation" "mean" )
+args+=( "--reaction-sample-summary" "mean" )
+args+=( "--reaction-value-limits" "0" "200" )
+args+=( "--reaction-category-value-limits" "0" "200" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing negative limits, which is what a log-transformed value column asks for, with one end \
+of the scale left open by 'none'. A layer with no 'sample' column has the one scale, so \
+'--reaction-value-limits' bounds it and no second pair of limits is wanted"
+args=()
+args+=( "--reaction-txt" "draw_kos_negative.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_kos_negative_value_limits )
+args+=( "--reaction-gene-aggregation" "mean" )
+args+=( "--reaction-accession-aggregation" "mean" )
+args+=( "--reaction-value-limits" "-5" "none" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing that limiting one of two scales that both color by value warns about the other, \
+which goes on spanning whatever its own values reach"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --output-dir ${output_dir}/draw_txt_samples_kos_value_limits_one \
+    --reaction-gene-aggregation mean --reaction-sample-summary mean \
+    --reaction-value-limits 5 40 --pathway-numbers "${pathway_numbers[@]}" --draw-grid \
+    --no-progress 2>&1 | tee draw_txt_value_limits_one.log
+if ! tr '\n' ' ' < draw_txt_value_limits_one.log \
+    | grep -q "still spans whatever its own values happen to reach"
+then
+    echo "ERROR: limiting one of two scales colored by value did not warn about the other."
+    exit 1
+fi
+
+INFO "Testing centering the two color scales of a signed value column on zero, given as a bare \
+flag, with the diverging colormap that centering is for. The values lean well to the positive \
+side, so each scale is widened downwards until it runs the same distance either side of zero, and \
+the neutral middle color of the colormap comes to stand for zero on both the 'unified' map and the \
+maps of the individual samples"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples_log_ratio.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_samples_kos_value_center )
+args+=( "--reaction-gene-aggregation" "mean" )
+args+=( "--reaction-accession-aggregation" "mean" )
+args+=( "--reaction-sample-summary" "mean" )
+args+=( "--reaction-colormap" "RdBu_r" )
+args+=( "--reaction-value-center" )
+args+=( "--reaction-category-value-center" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing centering a color scale on a number of its own rather than on zero, which is what a \
+quantity read against some other reference asks for, and centering the compound layer of a second \
+file at the same time: the two layers are colored on independent scales, so each takes its own \
+center"
+args=()
+args+=( "--reaction-txt" "draw_kos_negative.reaction.txt" )
+args+=( "--compound-txt" "draw_compounds.compound.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_both_layers_value_center )
+args+=( "--reaction-gene-aggregation" "mean" )
+args+=( "--reaction-accession-aggregation" "mean" )
+args+=( "--reaction-colormap" "coolwarm" )
+args+=( "--compound-colormap" "PuOr" )
+args+=( "--reaction-value-center" "-4" )
+args+=( "--compound-value-center" "9" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing a centered scale whose longer side is trimmed back by a limit, which is how a \
+centered scale is kept from wasting most of its colormap on a lopsided tail: the limits truncate \
+what the values reach and the center then widens whichever side falls short, so the scale comes \
+out centered on zero, over a good deal less than the values span, with its top marked '>='"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples_log_ratio.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_samples_kos_value_center_limits )
+args+=( "--reaction-gene-aggregation" "mean" )
+args+=( "--reaction-accession-aggregation" "mean" )
+args+=( "--reaction-sample-summary" "mean" )
+args+=( "--reaction-colormap" "RdBu_r" )
+args+=( "--reaction-value-center" )
+args+=( "--reaction-category-value-center" )
+args+=( "--reaction-value-limits" "none" "3" )
+args+=( "--reaction-category-value-limits" "none" "3" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing that centering one of two scales that both color by value warns about the other, \
+which goes on sitting wherever its own values leave it while one colormap colors both"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_log_ratio.reaction.txt \
+    --output-dir ${output_dir}/draw_txt_samples_kos_value_center_one \
+    --reaction-gene-aggregation mean --reaction-sample-summary mean \
+    --reaction-colormap RdBu_r --reaction-value-center \
+    --pathway-numbers "${pathway_numbers[@]}" --draw-grid \
+    --no-progress 2>&1 | tee draw_txt_value_center_one.log
+if ! tr '\n' ' ' < draw_txt_value_center_one.log \
+    | grep -q "still sits wherever its own values leave it"
+then
+    echo "ERROR: centering one of two scales colored by value did not warn about the other."
+    exit 1
+fi
+
+INFO "Testing that centering a scale drawn from a sequential colormap warns, that colormap having \
+no middle for a centered value to take, and that values lying entirely on one side of the center \
+warn too, half of the colormap then going unused"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --output-dir ${output_dir}/draw_txt_kos_value_center_warnings \
+    --reaction-gene-aggregation mean --reaction-accession-aggregation mean \
+    --reaction-value-center --pathway-numbers "${pathway_numbers[@]}" \
+    --no-progress 2>&1 | tee draw_txt_value_center_warnings.log
+for phrase in "is not a diverging one" "all lie on one side of it"
+do
+    if ! tr '\n' ' ' < draw_txt_value_center_warnings.log | grep -q "${phrase}"
+    then
+        echo "ERROR: centering a sequential colormap over one-sided values did not warn (${phrase})."
+        exit 1
+    fi
+done
+
+INFO "Testing that centering a scale drawn from a diverging colormap trimmed off-center warns, the \
+neutral color no longer being in the middle of what is drawn"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_negative.reaction.txt \
+    --output-dir ${output_dir}/draw_txt_kos_value_center_trim \
+    --reaction-gene-aggregation mean --reaction-accession-aggregation mean \
+    --reaction-colormap RdBu_r 0.2 1.0 --reaction-value-center -4 \
+    --pathway-numbers "${pathway_numbers[@]}" \
+    --no-progress 2>&1 | tee draw_txt_value_center_trim.log
+if ! tr '\n' ' ' < draw_txt_value_center_trim.log | grep -q "That trimming is not symmetric"
+then
+    echo "ERROR: centering a scale on an off-center trim of a diverging colormap did not warn."
+    exit 1
+fi
+
+INFO "Testing a centered scale with nothing left to span, every value being the center itself: the \
+colorbar is a single band, and it takes the middle color of the colormap rather than its top color, \
+that middle being what the centering asked for"
+args=()
+args+=( "--reaction-txt" "draw_kos_constant_coverage.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_kos_value_center_degenerate )
+args+=( "--reaction-gene-aggregation" "max" )
+args+=( "--reaction-accession-aggregation" "max" )
+args+=( "--reaction-colormap" "RdBu_r" )
+args+=( "--reaction-value-center" "1" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing a colormap for the scale the per-sample maps share that differs from the one \
+coloring the 'unified' map. The samples are summarized by their standard deviation, so the \
+'unified' map shows how much they disagree rather than how large they are, and giving that \
+spread its own colormap keeps the two from being read as the same quantity. The second \
+colormap is trimmed, as the first can be, and each scale writes its own colorbar"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples_coverage.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_samples_kos_category_colormap )
+args+=( "--reaction-gene-aggregation" "mean" )
+args+=( "--reaction-sample-summary" "std" )
+args+=( "--reaction-colormap" "viridis" )
+args+=( "--reaction-category-colormap" "RdYlGn" "0.1" "0.9" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+if [ ! -s ${output_dir}/draw_txt_samples_kos_category_colormap/colorbar_reactions.pdf ] \
+    || [ ! -s ${output_dir}/draw_txt_samples_kos_category_colormap/colorbar_reactions_samples.pdf ]
+then
+    echo "ERROR: two colormaps for one layer should have written a colorbar for each scale."
+    exit 1
+fi
 
 INFO "Testing summarizing samples by count rather than by membership, overriding the default for \
 three or fewer samples"
@@ -654,6 +871,56 @@ args+=( "--draw-grid" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
 
+INFO "Testing that each layer's scales are limited on their own, four of them in one run. The \
+reaction layer's two scales and the compound layer's per-sample scale are each truncated at both \
+ends. The compound layer's unified scale is instead given a minimum equal to the highest value it \
+has, which leaves it a single value: its colorbar is one band marked <=, standing for that value \
+and everything below it."
+args=()
+args+=( "--reaction-txt" "draw_kos_samples_coverage.reaction.txt" )
+args+=( "--compound-txt" "draw_compounds_samples.compound.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_both_layers_value_limits )
+args+=( "--reaction-gene-aggregation" "mean" )
+args+=( "--reaction-sample-summary" "mean" )
+args+=( "--compound-sample-summary" "max" )
+args+=( "--reaction-value-limits" "5" "40" )
+args+=( "--reaction-category-value-limits" "5" "40" )
+args+=( "--compound-value-limits" "55" "none" )
+args+=( "--compound-category-value-limits" "20" "40" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing that each layer's TWO colormaps are chosen on their own as well, giving the run four \
+color scales in all: a 'unified' map and a set of per-sample maps for each of the two layers, each \
+scale with its own colormap and its own colorbar"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples_coverage.reaction.txt" )
+args+=( "--compound-txt" "draw_compounds_samples.compound.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_both_layers_category_colormap )
+args+=( "--reaction-gene-aggregation" "mean" )
+args+=( "--reaction-sample-summary" "std" )
+args+=( "--compound-sample-summary" "std" )
+args+=( "--reaction-colormap" "viridis" )
+args+=( "--reaction-category-colormap" "RdYlGn" )
+args+=( "--compound-colormap" "cividis" )
+args+=( "--compound-category-colormap" "PuOr" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+for colorbar in reactions reactions_samples compounds compounds_samples
+do
+    if [ ! -s ${output_dir}/draw_txt_both_layers_category_colormap/colorbar_${colorbar}.pdf ]
+    then
+        echo "ERROR: two layers with two colormaps each should have written four colorbars."
+        exit 1
+    fi
+done
+
 INFO "Testing an aggregation outside the validated names, resolved through pandas ('var' within \
 a sample), together with one that maps disagreement among samples ('std' across them), including \
 accessions for which the standard deviation is undefined and are therefore left uncolored"
@@ -696,6 +963,29 @@ args+=( "--draw-individual-files" )
 args+=( "--draw-grid" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
+
+INFO "Testing a colormap of their own for the maps of the individual groups, whose scale is the \
+groups' pooled sample values, alongside a different colormap for the 'unified' map, whose scale \
+pools those group values in turn"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples_coverage.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_groups_kos_category_colormap )
+args+=( "--groups-txt" "draw-sample-group-information.txt" )
+args+=( "--reaction-sample-summary" "mean" )
+args+=( "--reaction-group-summary" "std" )
+args+=( "--reaction-colormap" "cividis" )
+args+=( "--reaction-category-colormap" "RdBu_r" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+if [ ! -s ${output_dir}/draw_txt_groups_kos_category_colormap/colorbar_reactions_groups.pdf ]
+then
+    echo "ERROR: a grouped run with two colormaps should have written a per-group colorbar."
+    exit 1
+fi
 
 INFO "Testing summarizing the samples of a value-column layer by presence at both levels, where \
 the group maps show within-group sample counts and the value column goes unused"
@@ -1196,6 +1486,210 @@ then
     exit 1
 fi
 
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-value-limits 40 5 \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: value limits given the wrong way around should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-value-limits none none \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: value limits leaving both ends open should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-value-limits not_a_number 40 \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a value limit that is neither a number nor 'none' should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --compound-txt draw_compounds.compound.txt \
+    --reaction-value-limits 5 40 \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: limits for a layer with no file should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
+    --reaction-value-limits 5 40 \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: limits for a layer with no value column should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-category-value-limits 5 40 \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: limits on the individual maps' scale where the file has no 'sample' column should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-category-value-limits 5 40 --pathway-numbers "${pathway_numbers[@]}" \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: limits on the individual maps' scale where no individual map is drawn should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-sample-summary count --reaction-value-limits 5 40 \
+    --pathway-numbers "${pathway_numbers[@]}" \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: limits on a 'unified' map colored by presence rather than value should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-gene-aggregation mean --reaction-sample-summary mean \
+    --reaction-value-limits 1000 2000 --pathway-numbers "${pathway_numbers[@]}" \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: limits lying entirely outside the values should have failed but did not."
+    exit 1
+fi
+
+# A center is refused in all the same situations a pair of value limits is: no file, no value
+# column, no 'sample' column, no individual maps to draw, or a scale that is not colored by value.
+# It is refused again where it clashes with the limits on the same scale.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-value-center not_a_number \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a value center that is not a number should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --compound-txt draw_compounds.compound.txt \
+    --reaction-value-center \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a center for a layer with no file should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
+    --reaction-value-center \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a center for a layer with no value column should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-category-value-center \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a center on the individual maps' scale where the file has no 'sample' column should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-category-value-center --pathway-numbers "${pathway_numbers[@]}" \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a center on the individual maps' scale where no individual map is drawn should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-sample-summary count --reaction-value-center \
+    --pathway-numbers "${pathway_numbers[@]}" \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a center on a 'unified' map colored by presence rather than value should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-value-center 100 --reaction-value-limits 5 40 \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a center lying outside the limits on the same scale should have failed but did not."
+    exit 1
+fi
+
+# The limits truncate first and the center widens afterwards, so a center can push an end of a scale back past
+# a limit that was holding a tail in check. That undoes what the limit was for, and is refused rather
+# than carried out quietly.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_log_ratio.reaction.txt \
+    --reaction-gene-aggregation mean --reaction-accession-aggregation mean \
+    --reaction-sample-summary mean --reaction-value-center --reaction-value-limits -1 none \
+    --pathway-numbers "${pathway_numbers[@]}" \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: centering a scale past a limit that was truncating should have failed but did not."
+    exit 1
+fi
+
+# The colormap for the maps of the individual samples or groups is refused wherever there is no such
+# scale to color: no file, no value column, no 'sample' column, or a scale that is not colored by
+# value.
+if anvi-draw-kegg-pathways --compound-txt draw_compounds.compound.txt \
+    --reaction-category-colormap viridis \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a category colormap for a layer with no file should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --reaction-category-colormap viridis --pathway-numbers "${pathway_numbers[@]}" \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a category colormap for a layer with no value column should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-category-colormap viridis \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a category colormap where the file has no 'sample' column should have failed."
+    exit 1
+fi
+
+# Grouped, the per-group maps are colored by value only where the sample summary pools values;
+# summarized by presence they show within-group sample counts, which '--group-colormap' styles.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0.5 \
+    --reaction-category-colormap viridis --pathway-numbers "${pathway_numbers[@]}" \
+    --draw-individual-files \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a category colormap for group maps colored by presence should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-category-colormap viridis 0.9 0.1 --pathway-numbers "${pathway_numbers[@]}" \
+    --draw-individual-files \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: category colormap fractions the wrong way around should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-category-colormap viridis 0.1 0.5 0.9 --pathway-numbers "${pathway_numbers[@]}" \
+    --draw-individual-files \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a category colormap given three numbers should have failed but did not."
+    exit 1
+fi
+
 INFO "Testing that a database run rejects the group-map coloring options where no individual group \
 maps are drawn for them to style, as a text run does (each command below is expected to fail)"
 
@@ -1224,6 +1718,26 @@ if anvi-draw-kegg-pathways --external-genomes external-genomes.txt --draw-grid \
     --output-dir ${output_dir}/draw_db_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: '--group-reverse-overlay' without a grouping should have failed."
+    exit 1
+fi
+
+# A database run colors elements by how many databases or genomes contain them rather than by a
+# value, so there is no scale of values for limits to bound.
+if anvi-draw-kegg-pathways --external-genomes external-genomes.txt \
+    --reaction-value-limits 5 40 \
+    --output-dir ${output_dir}/draw_db_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: value limits on a database run should have failed but did not."
+    exit 1
+fi
+
+# Nor is there one for a second colormap to color: a database run's individual maps show one
+# database or genome each, in a single color rather than along a scale.
+if anvi-draw-kegg-pathways --external-genomes external-genomes.txt --draw-individual-files \
+    --reaction-category-colormap viridis \
+    --output-dir ${output_dir}/draw_db_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a category colormap on a database run should have failed but did not."
     exit 1
 fi
 

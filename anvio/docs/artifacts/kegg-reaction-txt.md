@@ -41,6 +41,12 @@ Per-gene values are aggregated to a per-accession value, and a map element's con
 
 With a `sample` column, `--draw-individual-files` and/or `--draw-grid` color maps of value column data that share a single `colorbar_reactions_samples.pdf` so that samples are comparable on the same scale. How the `unified` map, and with %(groups-txt)s the per-group maps, summarize samples is a separate choice (see below).
 
+Each of these scales spans exactly the values it is given, which a few extreme elements can stretch until the rest cannot be told apart. `--reaction-value-limits` bounds the `unified` map's scale and `--reaction-category-value-limits` the scale its per-sample or per-group maps share. These parameters take an argument of two values, a minimum and a maximum, either of which can be `none` to leave that end open while truncating the other. A limit only truncates where the values actually cross it, and a truncated end of the colorbar is marked `≤` or `≥`, since its color then stands for that value or anything past it.
+
+A scale also sits wherever its own values leave it, which for a signed quantity means the neutral middle color of a diverging colormap lands somewhere other than zero. `--reaction-value-center` and `--reaction-category-value-center` put a value at the middle of those two scales: used as a bare flag each centers its scale on 0, and each takes a number as an argument to center it on that instead. The scale is only ever widened to make room, running the same distance either side of the center and staying linear, so nothing is clipped that was not clipped already.
+
+The two scales are colored by one colormap, `--reaction-colormap`, unless `--reaction-category-colormap` gives the per-sample or per-group scale one of its own. That is worth doing where the two show quantities of different kinds: with `--reaction-sample-summary std` the `unified` map shows how much samples disagree rather than how large their values are, so drawing it in the colors that show magnitude on the per-sample maps invites mistaking one scale for the other.
+
 ## Summarizing across samples and groups
 
 There are four distinct reductions, each with its own option. The first two apply whenever the file has a value column; the last two need a `sample` column:

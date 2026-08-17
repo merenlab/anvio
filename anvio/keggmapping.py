@@ -69,6 +69,33 @@ repeating_colormaps: List[str] = [
     'prism'
 ]
 
+# A colormap cut down to a fraction of itself is renamed by '_trim_colormap', which is the only
+# place that name is written; this reads the name of the colormap it was cut from back out of it, so
+# that what a trimmed colormap is made of is still knowable downstream. The two must be changed
+# together.
+TRIMMED_COLORMAP_PATTERN = re.compile(r'^trunc\((?P<name>.+),[0-9.]+,[0-9.]+\)$')
+
+# Colormaps whose colors run from a neutral middle out to two opposed extremes, which is what makes
+# the middle of a color scale mean anything and so what the '--*-value-center' options are for.
+# Matplotlib groups these in its documentation but does not publish the grouping programmatically,
+# so the names of its diverging class are listed here. A reversed colormap ('RdBu_r') diverges
+# exactly as the colormap it reverses does, so only the base names are needed
+# ('_is_diverging_colormap').
+DIVERGING_COLORMAPS: Tuple[str, ...] = (
+    'BrBG',
+    'PRGn',
+    'PiYG',
+    'PuOr',
+    'RdBu',
+    'RdGy',
+    'RdYlBu',
+    'RdYlGn',
+    'Spectral',
+    'bwr',
+    'coolwarm',
+    'seismic'
+)
+
 # Functions for reducing a sequence of numeric values to a single value in quantitative coloring.
 # Keys match the recommended choices of the '--*-gene-aggregation'/'--*-accession-aggregation'
 # arguments, which reduce the values of a gene's rows into a per-accession value and the values of a
@@ -190,6 +217,18 @@ GROUP_SCHEME_OPTIONS = {
 # interpolates in sRGB between the samples, so the count is set high enough that the difference
 # between neighbors is invisible and the bar matches the colors drawn on the map.
 GROUP_RAMP_COLORMAP_SIZE = 256
+
+# What labels the end of a color scale that a value limit truncated ('_make_quantitative_norm'). The
+# color there stands for that value or anything past it, since everything beyond the limit is drawn
+# in it, and a bare number would claim the color means that value exactly.
+CLAMPED_MIN_PREFIX = '≤ '
+CLAMPED_MAX_PREFIX = '≥ '
+
+# How close to a truncated end of a continuous colorbar, as a fraction of the bar, an automatic tick
+# may fall before it is dropped in favor of the label marking that end ('draw_continuous'). The two
+# would otherwise be set almost on top of each other, and the '≤'/'≥' label is the one a reader
+# needs, so it is the one that stays.
+MIN_TICK_SEPARATION_FRACTION = 0.08
 
 # Subdirectories of the output directory, one per role a map file can have: the map pooling every
 # source, the map of one individual source, and the grid comparing them. Every name directly in the
@@ -1065,6 +1104,258 @@ class Mapper:
             )
         return 'value', Mapper._resolve_aggregation(summary, flag), None
 
+    @staticmethod
+    def _resolve_value_limits(
+        limits: Union[Tuple[Union[float, None], Union[float, None]], None], flag: str
+    ) -> Union[Tuple[Union[float, None], Union[float, None]], None]:
+        """
+        Validate the limits a color scale of values may span.
+
+        A limit truncates a scale only where the values cross it ('_make_quantitative_norm'), so
+        either end can be left open with None. A pair leaving both ends open would do nothing at
+        all, which is likelier a mistake than an intention, and so is refused rather than accepted
+        in silence.
+
+        Parameters
+        ==========
+        limits : Union[Tuple[Union[float, None], Union[float, None]], None]
+            The (minimum, maximum) requested for the scale, either of which can be None to leave
+            that end wherever the values put it. None means no limits were requested at all.
+
+        flag : str
+            The command-line flag the limits come from, used in error messages.
+
+        Returns
+        =======
+        Union[Tuple[Union[float, None], Union[float, None]], None]
+            The limits as floats, either or both of them None, or None if none were requested.
+        """
+        if limits is None:
+            return None
+        try:
+            limit_min, limit_max = limits
+        except (TypeError, ValueError):
+            raise ConfigError(
+                f"'{flag}' takes two limits, a minimum and a maximum, either of which can be left "
+                f"open. Anvi'o could not read a pair of them out of this: {limits}"
+            )
+        resolved = []
+        for limit, end in ((limit_min, 'minimum'), (limit_max, 'maximum')):
+            if limit is None:
+                resolved.append(None)
+                continue
+            try:
+                number = float(limit)
+            except (TypeError, ValueError):
+                raise ConfigError(
+                    f"The {end} given to '{flag}' must be a number, or left open, but anvi'o got "
+                    f"this instead: '{limit}'."
+                )
+            if not np.isfinite(number):
+                raise ConfigError(
+                    f"The {end} given to '{flag}' must be a finite number, since it is a place a "
+                    f"color scale stops, but anvi'o got this instead: '{limit}'."
+                )
+            resolved.append(number)
+        limit_min, limit_max = resolved
+        if limit_min is None and limit_max is None:
+            raise ConfigError(
+                f"'{flag}' was given with neither a minimum nor a maximum, so there is nothing for "
+                f"it to limit. Please give a number to at least one of its two ends, or drop the "
+                f"option."
+            )
+        if limit_min is not None and limit_max is not None and limit_min >= limit_max:
+            raise ConfigError(
+                f"The minimum given to '{flag}' ({limit_min:g}) must be less than its maximum "
+                f"({limit_max:g}). A color scale runs from its minimum up to its maximum, so the "
+                f"two cannot be equal, nor the wrong way around."
+            )
+        return limit_min, limit_max
+
+    @staticmethod
+    def _resolve_value_center(
+        center: Union[float, str, None],
+        flag: str,
+        limits: Union[Tuple[Union[float, None], Union[float, None]], None] = None,
+        limits_flag: Union[str, None] = None
+    ) -> Union[float, None]:
+        """
+        Validate the value a color scale is centered on.
+
+        A centered scale runs the same distance either side of this value
+        ('_make_quantitative_norm'), which puts it at the middle of the colormap however lopsided
+        the values around it are. A center lying outside the limits bounding the same scale is
+        refused here, before any value is read: those limits declare it out of the scale's reach, so
+        centering that scale on it cannot be what was meant.
+
+        Parameters
+        ==========
+        center : Union[float, str, None]
+            The value requested at the middle of the scale, or None for a scale centered wherever
+            its own values leave it.
+
+        flag : str
+            The command-line flag the center comes from, used in error messages.
+
+        limits : Union[Tuple[Union[float, None], Union[float, None]], None], None
+            The limits bounding the same scale, as '_resolve_value_limits' returns them, or None
+            where the scale is not limited.
+
+        limits_flag : Union[str, None], None
+            The command-line flag those limits come from, used in an error message.
+
+        Returns
+        =======
+        Union[float, None]
+            The center as a float, or None if none was requested.
+        """
+        if center is None:
+            return None
+        try:
+            number = float(center)
+        except (TypeError, ValueError):
+            raise ConfigError(
+                f"'{flag}' takes the one value that a color scale is centered on, which must be a "
+                f"number, but anvi'o got this instead: '{center}'. Give the option no value at all "
+                f"to center the scale on zero."
+            )
+        if not np.isfinite(number):
+            raise ConfigError(
+                f"The value given to '{flag}' must be a finite number, since it is a place in the "
+                f"middle of a color scale, but anvi'o got this instead: '{center}'."
+            )
+        if limits is not None:
+            limit_min, limit_max = limits
+            if limit_min is not None and number < limit_min:
+                raise ConfigError(
+                    f"'{flag}' centers a color scale on {number:g}, while '{limits_flag}' gives "
+                    f"that same scale a minimum of {limit_min:g}, which lies above it. A scale "
+                    f"cannot be centered on a value it is not allowed to reach. Please move one of "
+                    f"the two."
+                )
+            if limit_max is not None and number > limit_max:
+                raise ConfigError(
+                    f"'{flag}' centers a color scale on {number:g}, while '{limits_flag}' gives "
+                    f"that same scale a maximum of {limit_max:g}, which lies below it. A scale "
+                    f"cannot be centered on a value it is not allowed to reach. Please move one of "
+                    f"the two."
+                )
+        return number
+
+    @staticmethod
+    def _base_colormap_name(cmap: mcolors.Colormap) -> str:
+        """
+        Return the name of the colormap this one was made from.
+
+        A colormap cut down to a fraction of itself is renamed after the colormap it was cut from
+        ('_trim_colormap'), and that wrapper is what this unwinds, so that messages can name the
+        colormap the user actually asked for.
+
+        Parameters
+        ==========
+        cmap : matplotlib.colors.Colormap
+            The colormap to name.
+
+        Returns
+        =======
+        str
+            The name of the colormap it was cut from, or its own name if it was not cut.
+        """
+        trimmed = TRIMMED_COLORMAP_PATTERN.match(cmap.name)
+        return cmap.name if trimmed is None else trimmed.group('name')
+
+    @staticmethod
+    def _is_diverging_colormap(cmap: mcolors.Colormap) -> bool:
+        """
+        Report whether a colormap runs from a neutral middle out to two opposed extremes.
+
+        Only such a colormap gives the middle of a color scale a meaning of its own, which is what
+        the '--*-value-center' options put a value at. The name is matched against
+        'DIVERGING_COLORMAPS' with any '_r' reversal suffix dropped, a reversed colormap diverging
+        exactly as the colormap it reverses does, and with the wrapper a trimmed colormap carries
+        unwound first ('TRIMMED_COLORMAP_PATTERN'), a cut of a diverging colormap being made of the
+        same two ramps. Whether the trimming left the middle of what remains neutral is a separate
+        question, asked where this is used.
+
+        Parameters
+        ==========
+        cmap : matplotlib.colors.Colormap
+            The colormap to classify.
+
+        Returns
+        =======
+        bool
+            True if the colormap is one of the diverging ones.
+        """
+        name = Mapper._base_colormap_name(cmap)
+        return (name[:-2] if name.endswith('_r') else name) in DIVERGING_COLORMAPS
+
+    def _check_centered_colormap(
+        self,
+        cmap: mcolors.Colormap,
+        colormap_limits: Union[Tuple[float, float], None],
+        center: Union[float, None],
+        center_flag: str,
+        colormap_flag: str,
+        subject: str
+    ) -> None:
+        """
+        Warn where centering a color scale asks more of a colormap than it can give.
+
+        Putting a value at the middle of a scale only says something to a reader if the middle of
+        the colormap looks like a middle: a diverging colormap's neutral center, with its two
+        extremes either side. A sequential colormap has no such landmark, and trimming a diverging
+        one off-center ('_trim_colormap') moves the neutral color away from the middle of what is
+        actually drawn. Neither is an error, since the scale is still centered where it was asked to
+        be, and the colorbar labels the center either way.
+
+        Parameters
+        ==========
+        cmap : matplotlib.colors.Colormap
+            The colormap coloring the centered scale, already trimmed.
+
+        colormap_limits : Union[Tuple[float, float], None]
+            The fractions of the colormap that were kept, or None for all of it.
+
+        center : Union[float, None]
+            The value put at the middle of the scale, or None where the scale is not centered.
+
+        center_flag : str
+            The command-line flag the center comes from.
+
+        colormap_flag : str
+            The command-line flag the colormap comes from.
+
+        subject : str
+            What the colormap colors, e.g. "reactions on the 'unified' map".
+        """
+        if center is None:
+            return
+        colormap_name = self._base_colormap_name(cmap)
+        if not self._is_diverging_colormap(cmap):
+            self.run.warning(
+                f"'{center_flag}' puts {center:g} at the middle of the color scale of {subject}, "
+                f"but the colormap coloring that scale, '{colormap_name}', is not a diverging one: "
+                f"its colors run from one end to the other rather than out from a neutral middle, "
+                f"so there is no color there for the centered value to take, and a reader cannot "
+                f"see where the middle of the scale is except from the colorbar. A diverging "
+                f"colormap given to '{colormap_flag}' — e.g., 'RdYlGn', 'RdYlBu_r — is what makes "
+                f"a centered scale legible."
+            )
+        elif colormap_limits is not None and abs(
+            (colormap_limits[0] + colormap_limits[1]) / 2 - 0.5
+        ) > 1e-9:
+            self.run.warning(
+                f"'{center_flag}' puts {center:g} at the middle of the color scale of {subject}, "
+                f"which is drawn in the middle color of '{colormap_name}' as it was trimmed by "
+                f"'{colormap_flag}' to the fraction between {colormap_limits[0]:g} and "
+                f"{colormap_limits[1]:g}. That trimming is not symmetric, so the neutral color "
+                f"this diverging colormap has at its own middle is no longer in the middle of what "
+                f"is drawn, and the centered value takes some other color of the two ramps "
+                f"instead. Trim the same amount off each end, or none at all, to keep the neutral "
+                f"color where the centered value is."
+            )
+
     def _build_txt_model(
         self,
         name: str,
@@ -1075,12 +1366,18 @@ class Mapper:
         color: str,
         colormap: Union[bool, str, mcolors.Colormap, None],
         colormap_limits: Union[Tuple[float, float], None],
+        category_colormap: Union[str, mcolors.Colormap, None],
+        category_colormap_limits: Union[Tuple[float, float], None],
         category_colors_txt: Union[str, None],
         reverse_overlay: bool,
         all_sample_names: Union[List[str], None],
         group_samples: Union[Dict[str, List[str]], None],
         sample_summary: Union[str, None],
-        group_summary: Union[str, None]
+        group_summary: Union[str, None],
+        value_limits: Union[Tuple[Union[float, None], Union[float, None]], None] = None,
+        category_value_limits: Union[Tuple[Union[float, None], Union[float, None]], None] = None,
+        value_center: Union[float, None] = None,
+        category_value_center: Union[float, None] = None
     ) -> dict:
         """
         Build one layer's coloring model for '_map_elements' from a per-layer reader result.
@@ -1116,10 +1413,23 @@ class Mapper:
 
         Notes
         =====
-        'aggregation'/'color'/'colormap'/'colormap_limits'/'category_colors_txt'/'reverse_overlay'/
-        'sample_summary'/'group_summary' are this layer's per-layer parameters; 'all_sample_names'/
-        'group_samples' carry the shared sample space and grouping. Returns the layer model dict
-        '_map_elements' consumes.
+        'aggregation'/'color'/'colormap'/'colormap_limits'/'category_colormap'/
+        'category_colormap_limits'/'category_colors_txt'/'reverse_overlay'/'sample_summary'/
+        'group_summary' are this layer's per-layer parameters; 'all_sample_names'/'group_samples'
+        carry the shared sample space and grouping. Returns the layer model dict '_map_elements'
+        consumes. 'value_limits' and 'category_value_limits' bound the two quantitative scales
+        independently — the 'unified' map's and the one its per-sample or per-group maps share —
+        since a summary can put the two on quite different scales. Each is refused where its own
+        context is not colored by value, and setting one of the two while both contexts are colored
+        by value earns a warning, the other scale being an easy one to forget. 'category_colormap'
+        colors that same per-sample/per-group scale from a colormap of its own: where the 'unified'
+        map shows a summary of a different kind from the values behind it — their spread rather than
+        their magnitude, for example — one colormap across both invites reading the two as the same
+        quantity. Left unset, both contexts share the layer's 'colormap', and it is refused wherever
+        the per-sample/per-group context is not colored by value. 'value_center' and
+        'category_value_center' put a value at the middle of those same two scales, each of which
+        then runs the same distance either side of it however lopsided its own values are, and are
+        refused and warned about on exactly the same footing as the limits.
         """
         element_type = data['element_type']
         use_reaction_attribute = data['reaction_source'] == 'Reaction'
@@ -1147,6 +1457,74 @@ class Mapper:
             )
             common['category_colors'] = category_colors
             common['category_combo_colors'] = combo_colors
+
+        # Limits and centers are checked before any value is read, so that a pair or a center anvi'o
+        # cannot make sense of is reported as the configuration error it is rather than surfacing
+        # later as a strange scale. What each can shape at all is settled here too; which context is
+        # actually colored by value is not known until the summaries below have chosen the modes.
+        # The centers are resolved against the limits, which is where a center placed out of a
+        # limited scale's reach is caught, so the limits are resolved first.
+        value_limits_flag = f'--{element_type}-value-limits'
+        category_value_limits_flag = f'--{element_type}-category-value-limits'
+        value_center_flag = f'--{element_type}-value-center'
+        category_value_center_flag = f'--{element_type}-category-value-center'
+        value_limits = self._resolve_value_limits(value_limits, value_limits_flag)
+        category_value_limits = self._resolve_value_limits(
+            category_value_limits, category_value_limits_flag
+        )
+        value_center = self._resolve_value_center(
+            value_center, value_center_flag, value_limits, value_limits_flag
+        )
+        category_value_center = self._resolve_value_center(
+            category_value_center, category_value_center_flag, category_value_limits,
+            category_value_limits_flag
+        )
+        if value_column is None:
+            for setting, flag, verb in (
+                (value_limits, value_limits_flag, 'bound'),
+                (category_value_limits, category_value_limits_flag, 'bound'),
+                (value_center, value_center_flag, 'center'),
+                (category_value_center, category_value_center_flag, 'center')
+            ):
+                if setting is not None:
+                    raise ConfigError(
+                        f"'{flag}' {verb}s the color scale spanning the values of the "
+                        f"{element_type} layer, but the file at '{path}' has no value column, so "
+                        f"that layer is colored by presence and has no scale of values to {verb}."
+                    )
+        if not has_sample:
+            for setting, flag, single_scale_flag, verb in (
+                (category_value_limits, category_value_limits_flag, value_limits_flag, 'bound'),
+                (category_value_center, category_value_center_flag, value_center_flag, 'center')
+            ):
+                if setting is not None:
+                    raise ConfigError(
+                        f"'{flag}' {verb}s the color scale shared by the maps of the individual "
+                        f"samples or groups of the {element_type} layer, but the file at '{path}' "
+                        f"has no 'sample' column, so it draws no such maps and its values take a "
+                        f"single scale. {verb.capitalize()} that one with '{single_scale_flag}'."
+                    )
+
+        # The colormap of the per-sample/per-group scale is settled on the same footing as the limits
+        # on it: what it can color at all is checked here, before any value is read, while whether
+        # that context is colored by value at all waits on the summaries below.
+        category_colormap_flag = f'--{element_type}-category-colormap'
+        colormap_flag = f'--{element_type}-colormap'
+        if category_colormap is not None:
+            if value_column is None:
+                raise ConfigError(
+                    f"'{category_colormap_flag}' colors the maps of the individual samples or "
+                    f"groups of the {element_type} layer by value, but the file at '{path}' has no "
+                    f"value column, so that layer is colored by presence rather than along a scale "
+                    f"of values. '{colormap_flag}' is what colors a presence scale."
+                )
+            if not has_sample:
+                raise ConfigError(
+                    f"'{category_colormap_flag}' colors the maps of the individual samples or "
+                    f"groups of the {element_type} layer, but the file at '{path}' has no 'sample' "
+                    f"column, so it draws no such maps and its values take a single scale. Color "
+                    f"that one with '{colormap_flag}'."
+                )
 
         if color == 'original':
             # A reaction presence layer highlighted in the reference map's colors
@@ -1183,6 +1561,26 @@ class Mapper:
                     f"'--original-color' takes both its colors and its drawing order from the "
                     f"reference map, so there is no color left to choose. Please use only one of "
                     f"them."
+                )
+            for setting, flag, verb in (
+                (value_limits, value_limits_flag, 'bound'),
+                (category_value_limits, category_value_limits_flag, 'bound'),
+                (value_center, value_center_flag, 'center'),
+                (category_value_center, category_value_center_flag, 'center')
+            ):
+                if setting is not None:
+                    raise ConfigError(
+                        f"'{flag}' {verb}s a color scale spanning a layer's values, but "
+                        f"'--original-color' takes both its colors and its drawing order from the "
+                        f"reference map, so nothing is colored by value and there is no scale to "
+                        f"{verb}. Please use only one of them."
+                    )
+            if category_colormap is not None:
+                raise ConfigError(
+                    f"'{category_colormap_flag}' colors the maps of the individual samples or "
+                    f"groups along a scale of values, but '--original-color' takes both its colors "
+                    f"and its drawing order from the reference map, so nothing is colored by value "
+                    f"and there is no scale to color. Please use only one of them."
                 )
             if has_sample:
                 membership, source_accessions = self._relate_accessions_to_samples(
@@ -1227,19 +1625,31 @@ class Mapper:
                 df, value_column, gene_aggregation, path, undefined
             )
             self._warn_undefined_values(undefined, gene_aggregation, path)
+            cmap = self._resolve_sequential_colormap(
+                colormap if colormap is not None else 'plasma_r', colormap_limits,
+                subject=f'{element_type}s'
+            )
+            self._check_centered_colormap(
+                cmap, colormap_limits, value_center, value_center_flag, colormap_flag,
+                subject=f'{element_type}s'
+            )
             return {
                 **common,
                 'unified_mode': 'quantitative',
                 'category_mode': 'quantitative',
-                'cmap': self._resolve_sequential_colormap(
-                    colormap if colormap is not None else 'plasma_r', colormap_limits,
-                    subject=f'{element_type}s'
-                ),
+                'cmap': cmap,
+                # There are no per-sample maps to give a colormap of their own — a category colormap
+                # was refused above — so the one map's scale serves both contexts.
+                'category_cmap': cmap,
                 'reverse_overlay': reverse_overlay,
                 'unified_values': unified_values,
                 'category_values': None,
                 'aggregate': aggregate,
-                'colorbar_label': value_column
+                'colorbar_label': value_column,
+                'value_limits': value_limits,
+                'category_value_limits': None,
+                'value_center': value_center,
+                'category_value_center': None
             }
 
         # Resolve the two summaries into the mode of each map context. Ungrouped, the per-sample
@@ -1301,11 +1711,112 @@ class Mapper:
                 for name, scheme in SUMMARY_PRESENCE_SCHEMES.items()
             },
             'reverse_overlay': reverse_overlay,
-            'category_values': None
+            'category_values': None,
+            'value_limits': value_limits,
+            'category_value_limits': category_value_limits,
+            'value_center': value_center,
+            'category_value_center': category_value_center
         }
 
         if value_column is None:
             return model
+
+        # A limit bounds, and a center centers, a scale that colors by value, so a context colored
+        # by presence, or in one static color, offers nothing for either to act on. Which of the two
+        # it is decides what the user should reach for instead, so each case names what put that
+        # context where it is.
+        for setting, flag, other_flag, verb in (
+            (value_limits, value_limits_flag, category_value_limits_flag, 'bound'),
+            (value_center, value_center_flag, category_value_center_flag, 'center')
+        ):
+            if setting is not None and model['unified_mode'] != 'quantitative':
+                reason = (
+                    f"a single static color was chosen for it with '--{element_type}-color'"
+                    if model['unified_mode'] == 'static' else
+                    f"'{summary_flag}' summarizes presence rather than pooling values"
+                )
+                raise ConfigError(
+                    f"'{flag}' {verb}s the color scale of values on the 'unified' map, but that "
+                    f"map is not colored by value here: {reason}. Color it by value, or {verb} the "
+                    f"scale of the maps of the individual samples or groups with '{other_flag}' "
+                    f"instead."
+                )
+        for setting, flag, other_flag, verb in (
+            (category_value_limits, category_value_limits_flag, value_limits_flag, 'bound'),
+            (category_value_center, category_value_center_flag, value_center_flag, 'center')
+        ):
+            if setting is not None and model['category_mode'] != 'quantitative':
+                raise ConfigError(
+                    f"'{flag}' {verb}s the color scale shared by the maps of the individual "
+                    f"groups, but those maps are not colored by value here: "
+                    f"'--{element_type}-sample-summary' summarizes each group's samples by "
+                    f"presence rather than by pooling their values. Set it to an aggregation such "
+                    f"as 'mean' to color the group maps by value, or {verb} the 'unified' map's "
+                    f"own scale with '{other_flag}'."
+                )
+        if category_colormap is not None and model['category_mode'] != 'quantitative':
+            raise ConfigError(
+                f"'{category_colormap_flag}' colors the scale shared by the maps of the individual "
+                f"groups, but those maps are not colored along a scale of values here: "
+                f"'--{element_type}-sample-summary' summarizes each group's samples by presence "
+                f"rather than by pooling their values, and presence there is colored by "
+                f"'--group-colormap'. Set the sample summary to an aggregation such as 'mean' to "
+                f"color the group maps by value, or color the 'unified' map's own scale with "
+                f"'{colormap_flag}'."
+            )
+
+        # The two scales are bounded separately because a summary can put them on quite different
+        # footings: a mean across samples spans a good deal less than the samples themselves do. The
+        # flip side is that a limit on one says nothing about the other, and the scale left alone is
+        # an easy one to overlook, so bounding exactly one of two scales that both color by value is
+        # worth saying out loud. It is a legitimate thing to ask for, so this is not an error.
+        if (
+            model['unified_mode'] == 'quantitative' and model['category_mode'] == 'quantitative'
+            and (value_limits is None) != (category_value_limits is None)
+        ):
+            if value_limits is None:
+                given_flag, other_flag = category_value_limits_flag, value_limits_flag
+                other_subject = "the 'unified' map"
+            else:
+                given_flag, other_flag = value_limits_flag, category_value_limits_flag
+                other_subject = f"the maps of the individual {'groups' if grouped else 'samples'}"
+            self.run.warning(
+                f"'{given_flag}' bounds the color scale of the {element_type} layer, but "
+                f"'{other_flag}' was not given, so the scale of {other_subject} still spans "
+                f"whatever its own values happen to reach. The two are bounded separately because "
+                f"they can differ a great deal -- a summary such as a mean across samples spans "
+                f"less than the samples themselves do -- so this may well be what you intend. If "
+                f"it is not, give '{other_flag}' limits of its own."
+            )
+
+        # Centering exactly one of two scales that both color by value is worth saying out loud for
+        # the same reason, and for one more: unless a colormap was given to the per-sample/per-group
+        # scale of its own, the two are drawn from the same colormap, and then the middle color
+        # means the centered value on the one map and whatever the values happen to leave in the
+        # middle on the other.
+        if (
+            model['unified_mode'] == 'quantitative' and model['category_mode'] == 'quantitative'
+            and (value_center is None) != (category_value_center is None)
+        ):
+            if value_center is None:
+                given_flag, other_flag = category_value_center_flag, value_center_flag
+                given_center = category_value_center
+                other_subject = "the 'unified' map"
+            else:
+                given_flag, other_flag = value_center_flag, category_value_center_flag
+                given_center = value_center
+                other_subject = f"the maps of the individual {'groups' if grouped else 'samples'}"
+            self.run.warning(
+                f"'{given_flag}' centers the color scale of the {element_type} layer on "
+                f"{given_center:g}, but '{other_flag}' was not given, so the scale of "
+                f"{other_subject} still sits wherever its own values leave it. Where one colormap "
+                f"colors both scales, which is what happens unless "
+                f"'{category_colormap_flag}' gives one of them a colormap of its own, the very "
+                f"same color then means the centered value on the one map and something else "
+                f"entirely on the other. The two are centered separately because a summary can put "
+                f"them on quite different footings, so this may well be what you intend. If it is "
+                f"not, center the other with '{other_flag}'."
+            )
 
         # Per-sample values: each sample's rows reduced to one value per accession by the
         # within-sample aggregation. These are computed even when no context is colored by value, so
@@ -1366,6 +1877,37 @@ class Mapper:
             colormap if colormap is not None else 'plasma_r', colormap_limits,
             subject=f'{element_type}s'
         )
+        # The maps of the individual samples or groups take a colormap of their own where one was
+        # given, so that a 'unified' map showing a summary of another kind than the values behind it
+        # — their spread rather than their magnitude — is not read as more of the same quantity.
+        # Left unset, the layer's one colormap serves both contexts, and is resolved once so that a
+        # warning about it is given once.
+        category_subject = (
+            f"{element_type}s on the maps of the individual "
+            f"{'groups' if grouped else 'samples'}"
+        )
+        model['category_cmap'] = model['cmap'] if category_colormap is None else (
+            self._resolve_sequential_colormap(
+                category_colormap, category_colormap_limits, subject=category_subject
+            )
+        )
+        # Whether a centered scale's colormap has a middle worth putting a value at is asked of each
+        # scale's own colormap, and only where that scale both colors by value and was centered. The
+        # two questions are asked separately even where one colormap serves both, since a scale that
+        # was not centered has nothing to ask.
+        if model['unified_mode'] == 'quantitative':
+            self._check_centered_colormap(
+                model['cmap'], colormap_limits, value_center, value_center_flag, colormap_flag,
+                subject=f"{element_type}s on the 'unified' map"
+            )
+        if model['category_mode'] == 'quantitative':
+            self._check_centered_colormap(
+                model['category_cmap'],
+                colormap_limits if category_colormap is None else category_colormap_limits,
+                category_value_center, category_value_center_flag,
+                colormap_flag if category_colormap is None else category_colormap_flag,
+                subject=category_subject
+            )
         model['aggregate'] = aggregate
         model['colorbar_label'] = value_column
         return model
@@ -1391,12 +1933,24 @@ class Mapper:
         compound_color: str = "#e239af",
         reaction_colormap: Union[bool, str, mcolors.Colormap] = None,
         reaction_colormap_limits: Tuple[float, float] = None,
+        reaction_category_colormap: Union[str, mcolors.Colormap] = None,
+        reaction_category_colormap_limits: Tuple[float, float] = None,
         reaction_category_colors: str = None,
         reaction_reverse_overlay: bool = False,
+        reaction_value_limits: Tuple[Union[float, None], Union[float, None]] = None,
+        reaction_category_value_limits: Tuple[Union[float, None], Union[float, None]] = None,
+        reaction_value_center: Union[float, None] = None,
+        reaction_category_value_center: Union[float, None] = None,
         compound_colormap: Union[bool, str, mcolors.Colormap] = None,
         compound_colormap_limits: Tuple[float, float] = None,
+        compound_category_colormap: Union[str, mcolors.Colormap] = None,
+        compound_category_colormap_limits: Tuple[float, float] = None,
         compound_category_colors: str = None,
         compound_reverse_overlay: bool = False,
+        compound_value_limits: Tuple[Union[float, None], Union[float, None]] = None,
+        compound_category_value_limits: Tuple[Union[float, None], Union[float, None]] = None,
+        compound_value_center: Union[float, None] = None,
+        compound_category_value_center: Union[float, None] = None,
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
         group_colormap_limits: Tuple[float, float] = None,
         group_reverse_overlay: bool = False,
@@ -1469,6 +2023,53 @@ class Mapper:
         compound_category_colors : str, None
             The same colors for the compound layer.
 
+        reaction_category_colormap : Union[str, matplotlib.colors.Colormap], None
+            The colormap of the single color scale shared by the reaction layer's per-sample or
+            per-group maps, which 'reaction_category_colormap_limits' trims as
+            'reaction_colormap_limits' trims 'reaction_colormap'. The default of None gives both map
+            contexts the layer's own 'reaction_colormap', and a colormap here separates them, so
+            that a 'unified' map summarizing the samples by a statistic of another kind than the
+            values themselves — their standard deviation, say — is not drawn in the colors that
+            stand for magnitude on the per-sample maps.
+
+        compound_category_colormap : Union[str, matplotlib.colors.Colormap], None
+            The same colormap for the compound layer's per-sample or per-group scale.
+
+        reaction_value_limits : Tuple[Union[float, None], Union[float, None]], None
+            The (minimum, maximum) the reaction layer's color scale may span on the 'unified' map,
+            either end of which can be None to leave it wherever the values put it. A limit
+            truncates the scale only where the values cross it, and the colorbar then marks that end
+            '<=' or '>=' ('_make_quantitative_norm').
+
+        reaction_category_value_limits : Tuple[Union[float, None], Union[float, None]], None
+            The same limits for the scale shared by the reaction layer's per-sample or per-group
+            maps, which is bounded separately because a summary can put it and the 'unified' map's
+            scale on quite different footings.
+
+        compound_value_limits : Tuple[Union[float, None], Union[float, None]], None
+            The same limits for the compound layer's 'unified' map scale.
+
+        compound_category_value_limits : Tuple[Union[float, None], Union[float, None]], None
+            The same limits for the compound layer's per-sample or per-group scale.
+
+        reaction_value_center : Union[float, None], None
+            The value put at the middle of the reaction layer's color scale on the 'unified' map.
+            The scale then runs the same distance either side of it, so that the middle color of a
+            diverging colormap stands for this value however lopsided the values around it are
+            ('_make_quantitative_norm'). The default of None leaves the scale spanning its own
+            values from end to end.
+
+        reaction_category_value_center : Union[float, None], None
+            The same center for the scale shared by the reaction layer's per-sample or per-group
+            maps, which is centered separately because a summary can put it and the 'unified' map's
+            scale on quite different footings.
+
+        compound_value_center : Union[float, None], None
+            The same center for the compound layer's 'unified' map scale.
+
+        compound_category_value_center : Union[float, None], None
+            The same center for the compound layer's per-sample or per-group scale.
+
         Notes
         =====
         The remaining parameters carry the shared groups, per-layer colors/colormaps, and drawing
@@ -1495,10 +2096,16 @@ class Mapper:
                 'color': reaction_color,
                 'colormap': reaction_colormap,
                 'colormap_limits': reaction_colormap_limits,
+                'category_colormap': reaction_category_colormap,
+                'category_colormap_limits': reaction_category_colormap_limits,
                 'category_colors_txt': reaction_category_colors,
                 'reverse_overlay': reaction_reverse_overlay,
                 'sample_summary': reaction_sample_summary,
-                'group_summary': reaction_group_summary
+                'group_summary': reaction_group_summary,
+                'value_limits': reaction_value_limits,
+                'category_value_limits': reaction_category_value_limits,
+                'value_center': reaction_value_center,
+                'category_value_center': reaction_category_value_center
             })
         if compound_txt is not None:
             raw_layers.append({
@@ -1512,10 +2119,16 @@ class Mapper:
                 'color': compound_color,
                 'colormap': compound_colormap,
                 'colormap_limits': compound_colormap_limits,
+                'category_colormap': compound_category_colormap,
+                'category_colormap_limits': compound_category_colormap_limits,
                 'category_colors_txt': compound_category_colors,
                 'reverse_overlay': compound_reverse_overlay,
                 'sample_summary': compound_sample_summary,
-                'group_summary': compound_group_summary
+                'group_summary': compound_group_summary,
+                'value_limits': compound_value_limits,
+                'category_value_limits': compound_category_value_limits,
+                'value_center': compound_value_center,
+                'category_value_center': compound_category_value_center
             })
         if not raw_layers:
             raise ConfigError(
@@ -2754,32 +3367,172 @@ class Mapper:
                 f"names were not recognized as any of the {subject}: {message}"
             )
 
-    @staticmethod
     def _make_quantitative_norm(
-        values: List[float]
-    ) -> Tuple[Union[mcolors.Normalize, None], Union[float, None], Union[float, None]]:
+        self,
+        values: List[float],
+        limits: Union[Tuple[Union[float, None], Union[float, None]], None] = None,
+        flag: Union[str, None] = None,
+        center: Union[float, None] = None,
+        center_flag: Union[str, None] = None,
+        subject: str = 'these maps'
+    ) -> Tuple[Union[mcolors.Normalize, None], Union[float, None], Union[float, None], bool, bool]:
         """
         Make a normalization over reaction values for quantitative coloring.
+
+        'limits' truncate the range the scale spans, but only where the values actually cross them:
+        a limit no value passes leaves the scale exactly where the values put it, so that a limit
+        set to guard against a long tail does not stretch a scale that turns out not to have one.
+        Where a limit does truncate, every value beyond it takes the color of that end of the scale,
+        which 'clip=True' on the normalization arranges, and the caller labels that end of the
+        colorbar '<=' or '>=' so that its color reads as "this value or past it" rather than as an
+        exact value.
+
+        'center' then widens whichever side of the range falls short, until the range runs the same
+        distance either side of it. That is what puts the centered value at the middle of the
+        colormap — the neutral color of a diverging one — however lopsided the values around it are,
+        and it keeps the scale linear, so that the same distance in color goes on meaning the same
+        distance in value on either side. Widening comes after truncating, so a limit that was
+        holding a tail in check can be pushed past by the other side of the range; that undoes what
+        the limit was asked to do, and is refused rather than carried out quietly.
 
         Parameters
         ==========
         values : List[float]
             All per-reaction values that will be colored on the maps sharing this normalization.
 
+        limits : Union[Tuple[Union[float, None], Union[float, None]], None], None
+            The (minimum, maximum) the scale may span, as '_resolve_value_limits' returns them.
+            Either end can be None to leave it wherever the values put it, and None means the scale
+            is not limited at all.
+
+        flag : Union[str, None], None
+            The command-line flag 'limits' came from, used in an error message.
+
+        center : Union[float, None], None
+            The value to put at the middle of the scale, as '_resolve_value_center' returns it, or
+            None to leave the scale wherever the values and limits leave it.
+
+        center_flag : Union[str, None], None
+            The command-line flag 'center' came from, used in messages.
+
+        subject : str, 'these maps'
+            What the scale colors, e.g. "the 'unified' map", for messages about the centering.
+
         Returns
         =======
-        Tuple[Union[matplotlib.colors.Normalize, None], Union[float, None], Union[float, None]]
-            The normalization and its (vmin, vmax). All three are None if 'values' is empty. The
-            normalization is None but vmin and vmax are set (and equal) if all values are equal, a
-            degenerate range in which callers map every reaction to the top of the colormap.
+        Tuple[Union[matplotlib.colors.Normalize, None],
+              Union[float, None], Union[float, None], bool, bool]
+            The normalization, its (vmin, vmax), and whether values fall below the bottom and above
+            the top of the range, which is where the colorbar is marked '<=' or '>='. The first
+            three are None if 'values' is empty. The normalization is None but vmin and vmax are set
+            (and equal) if the range is a single value, degenerate because all values are equal,
+            because a limit landed on the far end of them, or because a centered scale has nothing
+            but its own center to span, in which case callers map every reaction to one end of the
+            colormap, or to its middle where the scale is centered.
         """
         if not values:
-            return None, None, None
-        vmin = min(values)
-        vmax = max(values)
+            return None, None, None, False, False
+        vmin = data_min = min(values)
+        vmax = data_max = max(values)
+        limit_min, limit_max = (None, None) if limits is None else limits
+        if limit_min is not None and data_min < limit_min:
+            vmin = limit_min
+        if limit_max is not None and data_max > limit_max:
+            vmax = limit_max
+        if vmin > vmax:
+            # A limit lies past the far end of the values, so nothing is left between the two ends
+            # of the scale for it to span. Only one of the two limits can be at fault: a pair whose
+            # minimum is below its maximum ('_resolve_value_limits') can miss the values only by
+            # sitting wholly to one side of them, so the end that does is the one named.
+            if limit_min is not None and limit_min > data_max:
+                end_noun, limit, side, remedy = 'minimum', limit_min, 'below', f'below {data_max:g}'
+            else:
+                end_noun, limit, side, remedy = 'maximum', limit_max, 'above', f'above {data_min:g}'
+            raise ConfigError(
+                f"'{flag}' was given a {end_noun} of {limit:g}, but every value coloring these "
+                f"maps falls {side} it -- they run from {data_min:g} to {data_max:g}. That leaves "
+                f"the color scale nothing to span: every element would take the same end color, "
+                f"and the map could not tell one from another. Please set the {end_noun} {remedy}, "
+                f"or drop the limits."
+            )
+        if center is not None:
+            # The farther of the two ends from the center sets how far the scale reaches on both
+            # sides. Only one of the two distances can be negative, which happens when the whole
+            # range lies to one side of the center, so the larger of them is never negative.
+            low_distance = center - vmin
+            high_distance = vmax - center
+            half_range = max(low_distance, high_distance)
+            centered_min, centered_max = center - half_range, center + half_range
+            for (
+                limit, distance, centered_end, data_end, end_noun, other_end_noun, comparison,
+                loosen_verb
+            ) in (
+                (
+                    limit_min, low_distance, centered_min, data_min, 'minimum', 'maximum', 'below',
+                    'lower'
+                ),
+                (
+                    limit_max, high_distance, centered_max, data_max, 'maximum', 'minimum', 'above',
+                    'raise'
+                )
+            ):
+                # A limit is undone here only when two things are both true. It has to have been
+                # truncating something to begin with: a limit no value crossed is doing nothing
+                # already, by design, so centering takes nothing away from it. And this end has to
+                # be the nearer of the two to the center, since centering leaves the farther end
+                # exactly where it is and stretches only the nearer one out to match. That is what
+                # 'half_range > distance' asks, of the distances rather than of the widened end, so
+                # that no end has to be recomputed to answer it.
+                if limit is None:
+                    continue
+                truncating = data_end < limit if comparison == 'below' else data_end > limit
+                if not (truncating and half_range > distance):
+                    continue
+                # The two ways out that keep a limit are worth working out for the user rather than
+                # describing: where the centered scale ends, which is as far as this limit can be
+                # moved, and the mirror of the limit about the center, which is the other limit that
+                # would truncate a centered scale evenly.
+                mirrored = 2 * center - limit
+                other_end = vmax if comparison == 'below' else vmin
+                raise ConfigError(
+                    f"'{flag}' gives the color scale of {subject} a {end_noun} of {limit:g}, which "
+                    f"truncates values reaching {data_end:g}, while '{center_flag}' centers that "
+                    f"same scale on {center:g}. The two cannot both be had: with its other end at "
+                    f"{other_end:g}, a scale centered on {center:g} has its {end_noun} at "
+                    f"{centered_end:g}, which lies {comparison} the limit and undoes the "
+                    f"truncation the limit was for. Three things would settle it: {loosen_verb} "
+                    f"the {end_noun} to {centered_end:g}, which is where a centered scale ends "
+                    f"here; give the scale a {other_end_noun} of {mirrored:g} as well, the same "
+                    f"distance from {center:g} as the {end_noun}, which truncates a centered scale "
+                    f"at both ends; or drop the {end_noun} and let that end fall where the values "
+                    f"put it."
+                )
+            vmin, vmax = centered_min, centered_max
+            # A scale that came out with nothing to span at all is a single band on the center
+            # itself, where there is no unused half to speak of.
+            if half_range > 0 and (data_min >= center or data_max <= center):
+                values_phrase = (
+                    f"which are every one of them {data_min:g}" if data_min == data_max else
+                    f"which run from {data_min:g} to {data_max:g}"
+                )
+                self.run.warning(
+                    f"'{center_flag}' puts {center:g} at the middle of the color scale of "
+                    f"{subject}, but the values it colors, {values_phrase}, all lie on one side of "
+                    f"it. Half of the colormap therefore goes unused and the values are squeezed "
+                    f"into the other half. This may well be what you intend — it is what keeps one "
+                    f"scale comparable across datasets that straddle the center to different "
+                    f"degrees — but if the values here are not meant to be read against that "
+                    f"center, drop the option and let the scale span the values themselves."
+                )
+        # Which ends the colorbar marks is asked of the range that ended up being drawn, so that a
+        # mark means what it says: values do lie past this end. Centering can widen a truncated end
+        # past every value, at which point there is nothing beyond it to mark.
+        clamped_low = data_min < vmin
+        clamped_high = data_max > vmax
         if vmin == vmax:
-            return None, vmin, vmax
-        return mcolors.Normalize(vmin=vmin, vmax=vmax, clip=True), vmin, vmax
+            return None, vmin, vmax, clamped_low, clamped_high
+        norm = mcolors.Normalize(vmin=vmin, vmax=vmax, clip=True)
+        return norm, vmin, vmax, clamped_low, clamped_high
 
     @staticmethod
     def _get_entry_kegg_ids(entry: kgml.Entry, use_reaction_attribute: bool = False) -> List[str]:
@@ -2863,7 +3616,10 @@ class Mapper:
         vmax: float,
         out_path: str,
         label: str,
-        integer_ticks: bool = False
+        integer_ticks: bool = False,
+        clamped_low: bool = False,
+        clamped_high: bool = False,
+        center: Union[float, None] = None
     ) -> None:
         """
         Draw a continuous colorbar for quantitative coloring, or a single-value colorbar when the
@@ -2889,14 +3645,35 @@ class Mapper:
         integer_ticks : bool, False
             If True, label the bar at whole numbers spanning the range rather than at Matplotlib's
             automatic ticks, for a range that counts things rather than measuring them.
+
+        clamped_low : bool, False
+            If True, a value limit truncated the bottom of the range, so values below 'vmin' are
+            drawn in the color at that end and its label is marked accordingly.
+
+        clamped_high : bool, False
+            The same for the top of the range and values above 'vmax'.
+
+        center : Union[float, None], None
+            The value the range was centered on, which the bar is ticked at so that a reader can see
+            where the middle of the scale is, and which is the one value a degenerate centered range
+            can have left.
         """
         if vmin == vmax:
+            # A single band, either because every value is the same or because a limit landed on the
+            # far end of them; in the latter case the band stands for everything past the limit too.
+            # A centered range that collapsed has collapsed onto its center, so the band takes the
+            # middle color rather than the top one.
+            prefix = CLAMPED_MIN_PREFIX if clamped_low else (
+                CLAMPED_MAX_PREFIX if clamped_high else ''
+            )
             self.colorbar_drawer.draw_discrete(
-                [mcolors.rgb2hex(cmap(1.0))], out_path, color_labels=[f'{vmin:g}'], label=label
+                [mcolors.rgb2hex(cmap(0.5 if center is not None else 1.0))], out_path,
+                color_labels=[f'{prefix}{vmin:g}'], label=label
             )
         else:
             self.colorbar_drawer.draw_continuous(
-                cmap, vmin, vmax, out_path, label=label, integer_ticks=integer_ticks
+                cmap, vmin, vmax, out_path, label=label, integer_ticks=integer_ticks,
+                clamped_low=clamped_low, clamped_high=clamped_high, center=center
             )
 
     def _map_elements(
@@ -2952,17 +3729,21 @@ class Mapper:
             every context (except that a 'static'/'original' layer renders as within-group source
             counts on grouped individual maps). Mode-specific keys: quantitative -> 'cmap',
             'reverse_overlay', 'unified_values', 'category_values' (or None), 'aggregate',
-            'colorbar_label'; membership/static/original -> 'membership', 'source_accessions',
-            'color_hexcode', and (membership) 'colormap'/'colormap_limits'/'colormap_scheme'/
-            'scheme_options'/'reverse_overlay'; single -> 'accessions', 'color_hexcode'.
-            'scheme_options' names the option that chooses this layer's presence scheme, which
-            differs by input ('PRESENCE_SCHEME_OPTIONS'). A layer that is quantitative in one
-            context and membership in the other carries the keys of both, plus 'accessions' for
-            finding the entries whose values set the ranges. A membership layer may carry a color
-            per category instead of a colormap, as 'category_colors' with the
-            'category_combo_colors' overriding combinations of them and the 'category_colors_flag'
-            they came from; those colors then color the membership scale and each category's own
-            map, and are checked against the categories here.
+            'colorbar_label', the optional 'value_limits'/'category_value_limits' bounding each
+            context's scale and 'value_center'/'category_value_center' putting a value at the middle
+            of it ('_make_quantitative_norm'), and the optional 'category_cmap' coloring the
+            per-category scale from a colormap of its own rather than from 'cmap';
+            membership/static/original -> 'membership', 'source_accessions', 'color_hexcode', and
+            (membership) 'colormap'/'colormap_limits'/'colormap_scheme'/'scheme_options'/
+            'reverse_overlay'; single -> 'accessions', 'color_hexcode'. 'scheme_options' names the
+            option that chooses this layer's presence scheme, which differs by input
+            ('PRESENCE_SCHEME_OPTIONS'). A layer that is quantitative in one context and membership
+            in the other carries the keys of both, plus 'accessions' for finding the entries whose
+            values set the ranges. A membership layer may carry a color per category instead of a
+            colormap, as 'category_colors' with the 'category_combo_colors' overriding combinations
+            of them and the 'category_colors_flag' they came from; those colors then color the
+            membership scale and each category's own map, and are checked against the categories
+            here.
 
         output_dir : str
             Path to the output directory in which pathway map and colorbar PDF files are drawn.
@@ -2995,6 +3776,10 @@ class Mapper:
                 layer['category_mode'] = (
                     'membership' if layer['mode'] in ('static', 'original') else layer['mode']
                 )
+            # A colormap for the category scale alone is optional: without one, the two contexts are
+            # colored from the layer's single 'cmap'.
+            if layer['category_mode'] == 'quantitative' and 'category_cmap' not in layer:
+                layer['category_cmap'] = layer['cmap']
 
         original_run = any(layer['unified_mode'] == 'original' for layer in layers)
         static = any(layer['unified_mode'] in ('static', 'original') for layer in layers)
@@ -3042,6 +3827,39 @@ class Mapper:
         draw_category_maps = has_categories and (
             draw_individual_files is not False or draw_grid is not False
         )
+
+        # Limits on, and a center for, the scale the individual maps share have nothing to act on
+        # when this run draws no individual map, just as the group-map coloring options have nothing
+        # to act on then. Either one accepted and quietly dropped would look, from the output,
+        # exactly like a limit that did nothing because no value crossed it, so say which it is.
+        if not draw_category_maps:
+            for model_key, flag_suffix, subject_phrase, remedy_phrase in (
+                (
+                    'category_value_limits', 'category-value-limits',
+                    'Limits were given for', 'bound'
+                ),
+                (
+                    'category_value_center', 'category-value-center',
+                    'A center was given for', 'center'
+                )
+            ):
+                affected_layers = [
+                    layer for layer in layers if layer.get(model_key) is not None
+                ]
+                if not affected_layers:
+                    continue
+                flags = ', '.join(
+                    f"'--{layer['element_type']}-{flag_suffix}'" for layer in affected_layers
+                )
+                raise ConfigError(
+                    f"{subject_phrase} the color scale shared by the maps of the individual "
+                    f"samples or groups ({flags}), but this run draws no such maps, so that scale "
+                    f"is never drawn and this would go nowhere. Ask for those maps with "
+                    f"'--draw-individual-files' and/or '--draw-grid', or {remedy_phrase} the scale "
+                    f"of the 'unified' map instead, with "
+                    f"'--reaction-{flag_suffix.replace('category-', '')}'/"
+                    f"'--compound-{flag_suffix.replace('category-', '')}'."
+                )
 
         # Colors given per category name are checked against the categories the run has, and against
         # what this run would actually do with them, before anything is drawn. A layer whose contexts
@@ -3172,19 +3990,43 @@ class Mapper:
                         f"instance."
                     )
                 if layer['unified_mode'] == 'quantitative':
-                    norm, vmin, vmax = self._make_quantitative_norm(layer['_unified_vals'])
+                    norm, vmin, vmax, clamped_low, clamped_high = self._make_quantitative_norm(
+                        layer['_unified_vals'], layer.get('value_limits'),
+                        f"--{layer['element_type']}-value-limits",
+                        center=layer.get('value_center'),
+                        center_flag=f"--{layer['element_type']}-value-center",
+                        subject=(
+                            f"the {layer['element_type']} layer of the 'unified' map"
+                            if has_categories else f"the {layer['element_type']} layer"
+                        )
+                    )
                     layer['_unified_norm'] = norm
                     layer['_unified_range'] = (vmin, vmax)
+                    layer['_unified_clamped'] = (clamped_low, clamped_high)
+                    layer['_unified_center'] = layer.get('value_center')
                 if layer['category_mode'] != 'quantitative':
                     continue
                 if has_categories and layer['category_values'] is not None:
-                    norm, vmin, vmax = self._make_quantitative_norm(layer['_category_vals'])
+                    norm, vmin, vmax, clamped_low, clamped_high = self._make_quantitative_norm(
+                        layer['_category_vals'], layer.get('category_value_limits'),
+                        f"--{layer['element_type']}-category-value-limits",
+                        center=layer.get('category_value_center'),
+                        center_flag=f"--{layer['element_type']}-category-value-center",
+                        subject=(
+                            f"the {layer['element_type']} layer of the maps of the individual "
+                            f"{category_noun}s"
+                        )
+                    )
                     layer['_category_norm'] = norm
                     layer['_category_range'] = (vmin, vmax)
+                    layer['_category_clamped'] = (clamped_low, clamped_high)
+                    layer['_category_center'] = layer.get('category_value_center')
                 else:
                     # A layer without a category dimension is constant across the category maps.
                     layer['_category_norm'] = layer['_unified_norm']
                     layer['_category_range'] = layer['_unified_range']
+                    layer['_category_clamped'] = layer['_unified_clamped']
+                    layer['_category_center'] = layer['_unified_center']
 
         # A context colored by membership needs its by-count/by-membership color scheme over the
         # categories. Only the 'unified' map draws such a scale (and its colorbar) from the
@@ -3235,13 +4077,15 @@ class Mapper:
                 )
             )
 
-        def _reaction_derived(layer, mode):
+        def _reaction_derived(layer, mode, cmap_key='cmap'):
             # How a reaction layer derives compound colors on a reaction-only global/overview map.
+            # The derived colors come from the same scale as the reactions they are derived from, so
+            # the caller names the context's colormap: the two can differ ('category_cmap').
             if layer['element_type'] != 'reaction':
                 return None
             if mode == 'quantitative':
-                cmap = layer['cmap'].reversed() if layer['reverse_overlay'] else layer['cmap']
-                return ('average', cmap)
+                cmap = layer[cmap_key]
+                return ('average', cmap.reversed() if layer['reverse_overlay'] else cmap)
             return ('high', None)
 
         def _unified_spec(layer):
@@ -3254,7 +4098,7 @@ class Mapper:
                     'colorer': self._quantitative_colorer(
                         layer['unified_values'], layer['_unified_norm'], layer['cmap'],
                         layer['reverse_overlay'], layer['aggregate'],
-                        layer['use_reaction_attribute']
+                        layer['use_reaction_attribute'], center=layer['_unified_center']
                     ),
                     'derived_compound': _reaction_derived(layer, mode)
                 }
@@ -3292,10 +4136,11 @@ class Mapper:
                     'use_reaction_attribute': layer['use_reaction_attribute'],
                     'entry_keys': values,
                     'colorer': self._quantitative_colorer(
-                        values, layer['_category_norm'], layer['cmap'], layer['reverse_overlay'],
-                        layer['aggregate'], layer['use_reaction_attribute']
+                        values, layer['_category_norm'], layer['category_cmap'],
+                        layer['reverse_overlay'], layer['aggregate'],
+                        layer['use_reaction_attribute'], center=layer['_category_center']
                     ),
-                    'derived_compound': _reaction_derived(layer, mode)
+                    'derived_compound': _reaction_derived(layer, mode, 'category_cmap')
                 }
             if mode == 'single':
                 return {
@@ -3303,7 +4148,7 @@ class Mapper:
                     'use_reaction_attribute': layer['use_reaction_attribute'],
                     'entry_keys': layer['accessions'],
                     'colorer': self._single_color_colorer(layer['color_hexcode']),
-                    'derived_compound': _reaction_derived(layer, mode)
+                    'derived_compound': _reaction_derived(layer, mode, 'category_cmap')
                 }
             # Ungrouped membership/static: an individual source's map colors that source's elements
             # in one fixed color (the grouped case is precomputed below). With a color per category,
@@ -3319,7 +4164,7 @@ class Mapper:
                 'use_reaction_attribute': layer['use_reaction_attribute'],
                 'entry_keys': accessions,
                 'colorer': self._single_color_colorer(color_hexcode),
-                'derived_compound': _reaction_derived(layer, mode)
+                'derived_compound': _reaction_derived(layer, mode, 'category_cmap')
             }
 
         self._check_reserved_colors(
@@ -3335,10 +4180,13 @@ class Mapper:
             if layer['unified_mode'] == 'quantitative':
                 vmin, vmax = layer['_unified_range']
                 if vmin is not None:
+                    clamped_low, clamped_high = layer['_unified_clamped']
                     self._draw_quantitative_colorbar(
                         layer['cmap'], vmin, vmax,
                         os.path.join(output_dir, f"colorbar_{layer['name']}.pdf"),
-                        layer['colorbar_label']
+                        layer['colorbar_label'],
+                        clamped_low=clamped_low, clamped_high=clamped_high,
+                        center=layer['_unified_center']
                     )
             elif layer['unified_mode'] == 'membership':
                 scheme, color_priorities, category_combos, presence_cmap = layer['_colors']
@@ -3373,12 +4221,15 @@ class Mapper:
             ):
                 vmin, vmax = layer['_category_range']
                 if vmin is not None:
+                    clamped_low, clamped_high = layer['_category_clamped']
                     self._draw_quantitative_colorbar(
-                        layer['cmap'], vmin, vmax,
+                        layer['category_cmap'], vmin, vmax,
                         os.path.join(
                             output_dir, f"colorbar_{layer['name']}_{colorbar_category_suffix}.pdf"
                         ),
-                        layer['colorbar_label']
+                        layer['colorbar_label'],
+                        clamped_low=clamped_low, clamped_high=clamped_high,
+                        center=layer['_category_center']
                     )
 
         # Draw the unified map (the single map when there are no categories).
@@ -3621,15 +4472,17 @@ class Mapper:
             # Every color the layer can stage: sampled from its colormap at the values it will color
             # by, taken from the scale it colors presence by, or its one fixed color.
             staged: Set[str] = set()
-            for norm_key, values_key in (
-                ('_unified_norm', '_unified_vals'), ('_category_norm', '_category_vals')
+            for norm_key, values_key, cmap_key in (
+                ('_unified_norm', '_unified_vals', 'cmap'),
+                ('_category_norm', '_category_vals', 'category_cmap')
             ):
                 if norm_key not in layer:
                     continue
                 norm = layer[norm_key]
+                cmap = layer[cmap_key]
                 for value in layer[values_key]:
                     fraction = 1.0 if norm is None else float(norm(value))
-                    staged.add(mcolors.rgb2hex(layer['cmap'](fraction)))
+                    staged.add(mcolors.rgb2hex(cmap(fraction)))
             if '_colors' in layer:
                 staged.update(color for color, _ in layer['_colors'][1])
             if layer.get('category_colors') is not None:
@@ -4769,7 +5622,8 @@ class Mapper:
         cmap: mcolors.Colormap,
         reverse_overlay: bool,
         aggregate,
-        use_reaction_attribute: bool
+        use_reaction_attribute: bool,
+        center: Union[float, None] = None
     ):
         """
         Build a colorer that colors an Entry by the continuous value of its accessions.
@@ -4777,7 +5631,10 @@ class Mapper:
         See '_draw_map_elements' for the colorer contract. An Entry's value is the 'aggregate' of
         its accessions' values; None (no accession has a value) leaves the Entry uncolored. The
         color is 'cmap' sampled at the normalized value, and the priority is that fraction, or its
-        complement under 'reverse_overlay', which 'clip=True' on the norm keeps in [0, 1].
+        complement under 'reverse_overlay', which 'clip=True' on the norm keeps in [0, 1]. A
+        degenerate range (no norm) leaves every element at the top of the colormap, except on a
+        centered scale, where the one value the range collapsed to is the center itself and so takes
+        the middle color, the very color the centering was asked for.
         """
         def colorer(entry: kgml.Entry) -> Union[Tuple[str, float], None]:
             value = self._reduce_entry_value(
@@ -4785,7 +5642,10 @@ class Mapper:
             )
             if value is None:
                 return None
-            fraction = 1.0 if norm is None else float(norm(value))
+            if norm is None:
+                fraction = 0.5 if center is not None else 1.0
+            else:
+                fraction = float(norm(value))
             priority = (1.0 - fraction) if reverse_overlay else fraction
             return mcolors.rgb2hex(cmap(fraction)), priority
         return colorer
@@ -6037,7 +6897,10 @@ class ColorbarDrawer:
         vmax: float,
         out_path: str,
         label: str = None,
-        integer_ticks: bool = False
+        integer_ticks: bool = False,
+        clamped_low: bool = False,
+        clamped_high: bool = False,
+        center: Union[float, None] = None
     ) -> None:
         """
         Save a standalone continuous colorbar to a file.
@@ -6066,6 +6929,21 @@ class ColorbarDrawer:
             ticks can fall between whole numbers and leave the ends of the range unlabeled, which
             are the two values a reader most needs in order to tell what a color stands for. The
             range is assumed to run between whole numbers, as a count does.
+
+        clamped_low : bool, False
+            If True, a value limit truncated the bottom of the range, so 'vmin' is labeled with
+            'CLAMPED_MIN_PREFIX': its color is what everything below it is drawn in, and a bare
+            number there would claim the color stands for that value alone.
+
+        clamped_high : bool, False
+            The same for the top of the range, labeling 'vmax' with 'CLAMPED_MAX_PREFIX'.
+
+        center : Union[float, None], None
+            The value the range was centered on, which is ticked and labeled wherever it falls.
+            Without it a reader has only the two ends to go by, and a center that is not a round
+            number, or a colormap whose middle color is not obvious, leaves the middle of the scale
+            impossible to place. A centered range is symmetric about this value, which therefore
+            always lies strictly inside it.
         """
         fig = Figure(figsize=self.figsize)
         ax = fig.subplots()
@@ -6091,6 +6969,46 @@ class ColorbarDrawer:
                 stride = math.ceil((upper - lower) / (self.max_integer_ticks - 1))
                 ticks = list(range(lower, upper, stride)) + [upper]
             cb.set_ticks(ticks)
+
+        if clamped_low or clamped_high or center is not None:
+            # A truncated end is labeled with the value it stops at, marked '≤' or '≥' because its
+            # color is what everything past the limit is drawn in, and a centered range is labeled
+            # at its center, which is otherwise the one place on the bar a reader cannot find. The
+            # rest of the bar keeps Matplotlib's own ticks, run through the bar's own formatter, so
+            # that such a bar is typeset exactly like a plain one; any of them falling all but on
+            # top of one of these labels is dropped, since of the two labels in that spot, this is
+            # the one a reader needs. A tick landing on an end that was NOT marked is kept, which is
+            # what labels that end of the bar.
+            span = vmax - vmin
+            marked = (
+                ([vmin] if clamped_low else [])
+                + ([center] if center is not None else [])
+                + ([vmax] if clamped_high else [])
+            )
+            kept = [
+                tick for tick in cb.get_ticks()
+                if vmin <= tick <= vmax
+                and all(
+                    abs(tick - value) >= MIN_TICK_SEPARATION_FRACTION * span for value in marked
+                )
+            ]
+            ticks = sorted(kept + marked)
+            formatter = cb.formatter
+            formatter.set_locs(ticks)
+            if formatter.get_offset():
+                # The formatter wants to set a shared offset or multiplier beside the bar, which the
+                # fixed labels below would drop, taking the meaning of every tick with it. Spelling
+                # the numbers out in full is longer but says what it means without it.
+                formatter.set_useOffset(False)
+                formatter.set_scientific(False)
+                formatter.set_locs(ticks)
+            tick_labels = [formatter(tick) for tick in ticks]
+            if clamped_low:
+                tick_labels[0] = f'{CLAMPED_MIN_PREFIX}{tick_labels[0]}'
+            if clamped_high:
+                tick_labels[-1] = f'{CLAMPED_MAX_PREFIX}{tick_labels[-1]}'
+            cb.set_ticks(ticks)
+            cb.set_ticklabels(tick_labels)
 
         # A continuous bar has no segments to fit labels between, and never more than
         # 'max_integer_ticks' of them, so they take the largest a tick label is allowed — which is
