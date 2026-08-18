@@ -242,8 +242,8 @@ GRID_SUBDIR = 'grid'
 COLLATED_SUBDIR = 'by_map'
 
 # Where '--categorize-files' nests map files in BRITE subdirectories, this subdirectory of links
-# gathers every one of them back into a single place to browse ('_symlink_map').
-FLAT_SUBDIR = 'symlink'
+# gathers every one of them back into a single place to browse ('_link_map_flat').
+FLAT_SUBDIR = 'all_maps'
 
 # The colorbar keying the maps of one individual source, written beside them in its directory.
 CATEGORY_COLORBAR_BASENAME = 'colorbar.pdf'
@@ -1000,7 +1000,7 @@ class Mapper:
 
         No name is reserved. Categories are drawn into '<output directory>/individual', which anvi'o
         creates for that purpose alone, so a category may be named after anything anvi'o puts in the
-        output directory itself — 'unified', 'grid', 'by_map', 'symlink', or a BRITE category such
+        output directory itself — 'unified', 'grid', 'by_map', 'all_maps', or a BRITE category such
         as 'Metabolism' — without the two ever meeting.
 
         Parameters
@@ -6360,28 +6360,25 @@ class Mapper:
         if self.pathway_categorization is None:
             return
 
-        self._symlink_map(output_dir, out_path)
+        self._link_map_flat(output_dir, out_path)
 
-    def _symlink_map(self, output_dir: str, map_path: str) -> None:
+    def _link_map_flat(self, output_dir: str, map_path: str) -> None:
         """
-        Make a symlink for a map file in a dedicated symlink directory.
+        Link to a map file from the flat directory, which gathers all maps in a single directory.
+
+        Where '--categorize-files' nests map files in BRITE subdirectories, the flat directory
+        contains all of the files for easier browsing.
 
         Parameters
         ==========
         output_dir : str
-            Path to the output directory in which the map file was drawn (potentially in a
-            subdirectory). A subdirectory called 'symlink' is created if it does not already exist.
+            Path to the output directory the map file was drawn in, whether directly or in a
+            subdirectory of it. The flat directory is made there if it does not already exist.
 
         map_path : str
-            Map file path to be symlinked.
+            Path of the map file to link to.
         """
-        symlink_dir = os.path.join(output_dir, FLAT_SUBDIR)
-        os.makedirs(symlink_dir, exist_ok=True)
-        map_basename = os.path.basename(map_path)
-        symlink_path = os.path.join(symlink_dir, map_basename)
-        if os.path.exists(symlink_path):
-            os.remove(symlink_path)
-        os.symlink(os.path.abspath(map_path), symlink_path)
+        self._link_map(map_path, os.path.join(output_dir, FLAT_SUBDIR, os.path.basename(map_path)))
 
     def _collate_maps_by_map(self, output_dir: str, categories: List[str]) -> int:
         """
@@ -6665,12 +6662,12 @@ class Mapper:
                     out_path = os.path.join(out_dir, pathway_basename)
                 self.grid_drawer.draw(in_paths, out_path, labels=labels)
                 if self.pathway_categorization is not None:
-                    self._symlink_map(grid_dir, out_path)
+                    self._link_map_flat(grid_dir, out_path)
                 drawn['grid'][pathway_number] = True
 
         self.progress.end()
 
-        # Remove individual maps and symlinks that were only needed for map grids.
+        # Remove individual maps and their links that were only needed for map grids.
         for path in paths_to_remove:
             os.remove(path)
         for category in set(draw_categories).difference(set(draw_files_categories)):
