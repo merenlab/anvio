@@ -61,17 +61,18 @@ This program requires the path to a directory as an argument to `-o` or `--outpu
 
 ### Directory layout
 
-Map files are sorted into up to three subdirectories, one for each kind of map:
+Map files are sorted into up to four subdirectories, one for each kind of map:
 
 |Subdirectory|Contents|
 |:--|:--|
 |`unified`|The type of map drawn from all of the data at once. With a single source — a %(kegg-reaction-txt)s and/or %(kegg-compound-txt)s with no `sample` column, one %(contigs-db)s, or one %(reaction-network-json)s — these maps per pathway are the only ones drawn.|
 |`individual`|One subdirectory per data source, named after it: each sample of a text file, each contigs database, each genome of a pangenome, or, when they are grouped with a %(groups-txt)s file, each group instead. Drawn on request with `--draw-individual-files`.|
 |`grid`|The map grids, each showing the `unified` map alongside the individual ones. Drawn on request with `--draw-grid`.|
+|`by_map`|The same individual maps arranged the other way round: one subdirectory per map, each holding one file per data source, named after it. Written on request with `--collate-files-by-map`.|
 
 Colorbars, which are keys to the colors of every map in the run, are written at the top of the output directory beside these subdirectories.
 
-Because the names in `individual` come from your own data, they are kept in that subdirectory of their own: a sample, genome, or group may be named anything at all — including `unified`, `grid`, `symlink`, or `Metabolism` — without ever colliding with a directory this program creates for itself.
+Because the names in `individual` come from your own data, they are kept in that subdirectory of their own: a sample, genome, or group may be named anything at all — including `unified`, `grid`, `by_map`, `symlink`, or `Metabolism` — without ever colliding with a directory this program creates for itself.
 
 The one requirement is that a name becoming a subdirectory has to work as a directory name, so a name containing a path separator, such as `Rhizobium meliloti RU11/001`, is refused. This only applies to the sources that are actually drawn individually: a source summarized on the `unified` map contributes color rather than a path, so its name is never used as one, and a source left out of a subset requested with `--draw-individual-files` or `--draw-grid` is not checked either.
 
@@ -86,6 +87,14 @@ The `--categorize-files` flag categorizes output map files into a subdirectory s
 Here is a simple example of the output file structure produced with `--name-files` and `--categorize-files` in the course of `anvi-self-test --suite kegg-mapping` (with the `-o` option to save the temporary directories in the test from removal).
 
 ![Output options](../../images/anvi-draw-kegg-pathways/output_options.png){:.center-img .width-50}
+
+### Gathering files by map
+
+`--draw-individual-files` writes one subdirectory per data source, each holding that source's whole set of maps. That is the right arrangement for reading everything about one sample, and the wrong one for comparing a single map across samples, which means opening one file in each of those subdirectories. The `--collate-files-by-map` flag adds the transposed view: a subdirectory named after each map, holding one file per source, named after the source.
+
+With samples `A` through `E`, `by_map/kos_00010` holds `A.pdf` through `E.pdf`, `by_map/kos_00020` holds another five files, and so on. Selecting everything in one of those subdirectories and stepping through it with a file browser's preview shows the colors of a single map changing from sample to sample, like an animation. Files are sorted by the name of their source, so name your samples in the order in which you would like to step through them.
+
+This is a second arrangement of the same files rather than a replacement: the subdirectory per source stays where it is, and the gathered files are links to the maps already drawn there, so they take up no disk space of their own. `--name-files` and `--categorize-files` apply here as they do elsewhere in the output, so with both of them a gathered map would be found at, say, `by_map/Metabolism/Carbohydrate_metabolism/kos_00010_Glycolysis_Gluconeogenesis/SAMPLE_1.pdf`.
 
 ## Mapping reaction and compound occurrence
 

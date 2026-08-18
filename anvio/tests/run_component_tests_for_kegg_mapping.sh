@@ -1114,8 +1114,109 @@ args+=( "--draw-individual-files" "SAMPLE_1" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
 
+INFO "Testing gathering the maps of individual samples into a directory per map, so that one map \
+can be stepped through sample by sample"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_collate_by_map )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" )
+args+=( "--collate-files-by-map" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+for sample in SAMPLE_1 SAMPLE_2 SAMPLE_3
+do
+    if [ ! -s ${output_dir}/draw_txt_collate_by_map/by_map/kos_00010/${sample}.pdf ]
+    then
+        echo "ERROR: the map gathered by map is missing the file of ${sample}."
+        exit 1
+    fi
+done
+
+# The gathered files are links to the maps already drawn rather than copies of them.
+if ! [ ${output_dir}/draw_txt_collate_by_map/by_map/kos_00010/SAMPLE_1.pdf \
+    -ef ${output_dir}/draw_txt_collate_by_map/individual/SAMPLE_1/kos_00010.pdf ]
+then
+    echo "ERROR: a map gathered by map should be a link to the map drawn for the sample."
+    exit 1
+fi
+
+INFO "Testing that gathering by map keeps the BRITE subdirectories and the named files used \
+everywhere else in the output, and leaves the flat directory of links out of it"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples.reaction.txt" )
+args+=( "--output-dir" ${output_dir}/draw_txt_collate_by_map_categorized )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--name-files" )
+args+=( "--categorize-files" )
+args+=( "--draw-individual-files" )
+args+=( "--draw-grid" )
+args+=( "--collate-files-by-map" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+collated_dir=${output_dir}/draw_txt_collate_by_map_categorized/by_map
+if [ ! -s ${collated_dir}/Metabolism/Carbohydrate_metabolism/kos_00010_Glycolysis_Gluconeogenesis/SAMPLE_1.pdf ]
+then
+    echo "ERROR: gathering by map did not keep the BRITE subdirectories of the map."
+    exit 1
+fi
+if [ -e ${collated_dir}/symlink ]
+then
+    echo "ERROR: the flat directory of links was gathered as if it held maps of its own."
+    exit 1
+fi
+
+INFO "Testing that gathering by map takes only the maps of the groups asked for individually, and \
+neither the colorbar beside them nor the maps drawn as grid panels alone"
+args=()
+args+=( "--reaction-txt" "draw_kos_samples.reaction.txt" )
+args+=( "--groups-txt" "draw-sample-group-information.txt" )
+args+=( "--group-threshold" "0" )
+args+=( "--output-dir" ${output_dir}/draw_txt_collate_by_map_groups )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--draw-individual-files" "G1" )
+args+=( "--draw-grid" )
+args+=( "--collate-files-by-map" )
+args+=( "--no-progress" )
+anvi-draw-kegg-pathways "${args[@]}"
+
+collated_dir=${output_dir}/draw_txt_collate_by_map_groups/by_map
+if [ ! -s ${collated_dir}/kos_00010/G1.pdf ]
+then
+    echo "ERROR: the group asked for individually was not gathered by map."
+    exit 1
+fi
+if [ -e ${collated_dir}/kos_00010/G2.pdf ]
+then
+    echo "ERROR: a group drawn as a grid panel alone was gathered by map."
+    exit 1
+fi
+if [ -e ${collated_dir}/colorbar ]
+then
+    echo "ERROR: a group's colorbar was gathered by map as if it were one of its maps."
+    exit 1
+fi
+
 INFO "Testing that the draw-kegg-pathways text file input rejects invalid files and argument \
 combinations (each command below is expected to fail)"
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --collate-files-by-map \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: gathering by map with no individual maps to gather should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
+    --draw-individual-files --collate-files-by-map \
+    --output-dir ${output_dir}/draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: gathering by map for a file with no 'sample' column should have failed."
+    exit 1
+fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_unusable_sample_names.reaction.txt \
     --draw-individual-files \
@@ -1747,6 +1848,15 @@ if anvi-draw-kegg-pathways --pan-db TEST-PAN.db --genomes-storage TEST-GENOMES.d
     --output-dir ${output_dir}/draw_db_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: '--group-colormap-scheme' on an ungrouped pangenome should have failed."
+    exit 1
+fi
+
+# A single database is drawn on one map per pathway, leaving no individual maps to gather by map.
+if anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db \
+    --draw-individual-files --collate-files-by-map \
+    --output-dir ${output_dir}/draw_db_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: gathering by map for a single contigs database should have failed."
     exit 1
 fi
 
