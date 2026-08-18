@@ -320,14 +320,15 @@ def get_args() -> Namespace:
     groupOUT.add_argument(
         '--categorize-files', action='store_true', default=False, help=
         "Categorize output files by pathway map within subdirectories corresponding to the BRITE "
-        "hierarchy of maps (see https://www.genome.jp/brite/br08901). Symlinks to these files are "
-        "also created for easier browsing. For example, if drawing a map file for 'Glycolysis / "
-        "Gluconeogenesis', '00010', then the file will be written to subdirectory "
-        "'Metabolism/Carbohydrate_metabolism' of the output directory, and a symlink with the same "
-        "basename as the file will be created in subdirectory 'symlink' of the output directory. "
-        "If drawing a map grid for 'Quorum sensing', '02024', then the file will be written to a "
-        "subdirectory named 'grid/Cellular_Processes/Cellular_community_prokaryotes', and a "
-        "symlink will be created in a subdirectory named 'grid/symlink'."
+        "hierarchy of maps (see https://www.genome.jp/brite/br08901). Links to these files are "
+        "also gathered in one directory for easier browsing. For example, if drawing a map file "
+        "for 'Glycolysis / Gluconeogenesis', '00010', then the file will be written to "
+        "subdirectory 'Metabolism/Carbohydrate_metabolism' of the output directory, and a link "
+        "with the same basename as the file will be created in subdirectory 'all_maps' of the "
+        "output directory. If drawing a map grid for 'Quorum sensing', '02024', then the file will "
+        "be written to a subdirectory named "
+        "'grid/Cellular_Processes/Cellular_community_prokaryotes', and a hard link will be created "
+        "in a subdirectory named 'grid/all_maps'."
     )
     groupOUT.add_argument(
         '--draw-individual-files', nargs='*', help=

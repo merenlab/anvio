@@ -149,7 +149,7 @@ printf 'accession\tconcentration\nC00031\t10\nC00031\t30\n' > draw_bad_repeated_
 
 # Samples named after the output directory's own subdirectories and after a BRITE category: these
 # are drawn under 'individual', so they cannot collide with anything anvi'o creates for itself.
-printf 'accession\tsample\nK00844\tMetabolism\nK00845\tsymlink\nK02358\tgrid\nK00844\tunified\n' > draw_kos_awkward_sample_names.reaction.txt
+printf 'accession\tsample\nK00844\tMetabolism\nK00845\tall_maps\nK02358\tgrid\nK00844\tunified\nK02358\tby_map\n' > draw_kos_awkward_sample_names.reaction.txt
 
 # A sample whose name cannot be a directory name, alongside one that can. Only a sample drawn on its
 # own maps becomes a subdirectory, so this file is fine until such maps are asked for it.
@@ -1083,8 +1083,8 @@ args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
 
 INFO "Testing samples whose names match the output directory's own subdirectories ('unified', \
-'grid', 'symlink') and a BRITE category ('Metabolism'), which are drawn under 'individual' and so \
-cannot collide with them"
+'grid', 'by_map', 'all_maps') and a BRITE category ('Metabolism'), which are drawn under \
+'individual' and so cannot collide with them"
 args=()
 args+=( "--reaction-txt" "draw_kos_awkward_sample_names.reaction.txt" )
 args+=( "--categorize-files" )
@@ -1162,9 +1162,18 @@ then
     echo "ERROR: gathering by map did not keep the BRITE subdirectories of the map."
     exit 1
 fi
-if [ -e ${collated_dir}/symlink ]
+if [ -e ${collated_dir}/all_maps ]
 then
     echo "ERROR: the flat directory of links was gathered as if it held maps of its own."
+    exit 1
+fi
+
+# The flat directory holds links to the categorized maps rather than copies of them.
+categorized_dir=${output_dir}/draw_txt_collate_by_map_categorized/unified
+if ! [ ${categorized_dir}/all_maps/ko00010_Glycolysis_Gluconeogenesis.pdf \
+    -ef ${categorized_dir}/Metabolism/Carbohydrate_metabolism/ko00010_Glycolysis_Gluconeogenesis.pdf ]
+then
+    echo "ERROR: the flat directory should hold a link to each categorized map, not a copy."
     exit 1
 fi
 
