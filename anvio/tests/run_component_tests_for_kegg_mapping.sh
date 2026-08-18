@@ -1127,7 +1127,7 @@ anvi-draw-kegg-pathways "${args[@]}"
 
 for sample in SAMPLE_1 SAMPLE_2 SAMPLE_3
 do
-    if [ ! -s ${output_dir}/draw_txt_collate_by_map/by_map/kos_00010/${sample}.pdf ]
+    if [ ! -s ${output_dir}/draw_txt_collate_by_map/by_map/ko00010/${sample}.pdf ]
     then
         echo "ERROR: the map gathered by map is missing the file of ${sample}."
         exit 1
@@ -1135,8 +1135,8 @@ do
 done
 
 # The gathered files are links to the maps already drawn rather than copies of them.
-if ! [ ${output_dir}/draw_txt_collate_by_map/by_map/kos_00010/SAMPLE_1.pdf \
-    -ef ${output_dir}/draw_txt_collate_by_map/individual/SAMPLE_1/kos_00010.pdf ]
+if ! [ ${output_dir}/draw_txt_collate_by_map/by_map/ko00010/SAMPLE_1.pdf \
+    -ef ${output_dir}/draw_txt_collate_by_map/individual/SAMPLE_1/ko00010.pdf ]
 then
     echo "ERROR: a map gathered by map should be a link to the map drawn for the sample."
     exit 1
@@ -1157,7 +1157,7 @@ args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
 
 collated_dir=${output_dir}/draw_txt_collate_by_map_categorized/by_map
-if [ ! -s ${collated_dir}/Metabolism/Carbohydrate_metabolism/kos_00010_Glycolysis_Gluconeogenesis/SAMPLE_1.pdf ]
+if [ ! -s ${collated_dir}/Metabolism/Carbohydrate_metabolism/ko00010_Glycolysis_Gluconeogenesis/SAMPLE_1.pdf ]
 then
     echo "ERROR: gathering by map did not keep the BRITE subdirectories of the map."
     exit 1
@@ -1183,12 +1183,12 @@ args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
 
 collated_dir=${output_dir}/draw_txt_collate_by_map_groups/by_map
-if [ ! -s ${collated_dir}/kos_00010/G1.pdf ]
+if [ ! -s ${collated_dir}/ko00010/G1.pdf ]
 then
     echo "ERROR: the group asked for individually was not gathered by map."
     exit 1
 fi
-if [ -e ${collated_dir}/kos_00010/G2.pdf ]
+if [ -e ${collated_dir}/ko00010/G2.pdf ]
 then
     echo "ERROR: a group drawn as a grid panel alone was gathered by map."
     exit 1

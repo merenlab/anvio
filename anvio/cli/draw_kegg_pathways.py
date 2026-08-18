@@ -309,13 +309,13 @@ def get_args() -> Namespace:
         '--name-files', action='store_true', default=False, help=
         "Include the pathway name along with the number in output map file names. For example, in "
         "drawing KO presence/absence data, by default, the 'Glycolysis / Gluconeogenesis' map "
-        "would be saved to a file named 'kos_00010.pdf', but, with this flag, the map would be "
-        "saved to a file named 'kos_00010_Glycolysis_Gluconeogenesis.pdf'. To further illustrate "
-        "how special characters in pathway names are translated to characters in file paths, the "
-        "file name for 'Glycosylphosphatidylinositol (GPI)-anchor biosynthesis' would be "
-        "'kos_00563_Glycosylphosphatidylinositol_(GPI)_anchor_biosynthesis.pdf', and the file name "
+        "would be saved to a file named 'ko00010.pdf', but, with this flag, the map would be saved "
+        "to a file named 'ko00010_Glycolysis_Gluconeogenesis.pdf'. To further illustrate how "
+        "special characters in pathway names are translated to characters in file paths, the file "
+        "name for 'Glycosylphosphatidylinositol (GPI)-anchor biosynthesis' would be "
+        "'ko00563_Glycosylphosphatidylinositol_(GPI)_anchor_biosynthesis.pdf', and the file name "
         "for 'Biosynthesis of 12-, 14- and 16-membered macrolides' would be "
-        "'kos_00522_Biosynthesis_of_12_14_and_16_membered_macrolides.pdf' with this flag."
+        "'ko00522_Biosynthesis_of_12_14_and_16_membered_macrolides.pdf' with this flag."
     )
     groupOUT.add_argument(
         '--categorize-files', action='store_true', default=False, help=
@@ -365,8 +365,8 @@ def get_args() -> Namespace:
         "compared across sources by stepping through one directory, as a file browser's preview "
         "moves from one file to the next. For example, with samples 'A' through 'E', the "
         "'Glycolysis / Gluconeogenesis' map would be gathered into a directory named "
-        "'by_map/kos_00010' holding files named 'A.pdf' through 'E.pdf', or "
-        "'by_map/kos_00010_Glycolysis_Gluconeogenesis' with '--name-files'. With "
+        "'by_map/ko00010' holding files named 'A.pdf' through 'E.pdf', or "
+        "'by_map/ko00010_Glycolysis_Gluconeogenesis' with '--name-files'. With "
         "'--categorize-files', the BRITE subdirectories precede each map's directory, just as "
         "they precede each map file elsewhere in the output. The gathered files are links to the "
         "maps already drawn, so they take up no disk space of their own."
