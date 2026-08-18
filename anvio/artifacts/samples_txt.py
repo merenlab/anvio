@@ -97,7 +97,7 @@ class SamplesTxt:
             raise ConfigError(f"A samples txt file is supposed to have at least the columns {', '.join(expected_columns)}.")
 
         # Warn about extras columns
-        possible_columns = set([self._first_col, "r1", "r2", "lr", "lr_technology", "group"])
+        possible_columns = set([self._first_col, "r1", "r2", "lr", "lr_technology", "group", "sra_accession"])
         extra_columns = set(self._columns_found) - possible_columns
         if extra_columns:
             self.run.warning(f"Your samples txt file contains {terminal.pluralize('extra column', len(extra_columns))}: "
@@ -463,8 +463,12 @@ class SamplesTxt:
                 if not lr:
                     raise ConfigError(f"[{sample}] Hybrid expected: require 'lr' with at least one path.")
             elif mode == "free":
-                if not (r1 or r2 or lr):
-                    raise ConfigError(f"[{sample}] Free mode: provide at least one of 'lr' or 'r1' (with optional 'r2').")
+                # A row that names SRA accessions is describing reads that do not exist yet: the
+                # workflow will download them and fill in the paths itself. Such a row is allowed
+                # to leave r1/r2/lr empty, and it is the only kind of row that may.
+                if not (r1 or r2 or lr) and not self.sra_accessions_for_sample(sample):
+                    raise ConfigError(f"[{sample}] Free mode: provide at least one of 'lr' or 'r1' (with optional "
+                                      f"'r2'), or an 'sra_accession' for anvi'o to download.")
                 if r2 and not r1:
                     raise ConfigError(f"[{sample}] Free mode: 'r2' provided without 'r1'.")
                 if r1 and r2 and len(r1) != len(r2):
@@ -656,6 +660,29 @@ class SamplesTxt:
     def _is_single_end_sr(info: dict) -> bool:
         """A row is single-end SR if it has r1 and no r2 (lr may or may not exist)."""
         return bool(info.get("r1")) and not bool(info.get("r2"))
+
+    def sra_accessions_for_sample(self, sample) -> list:
+        """Return the SRA run accessions listed for one sample, if any.
+
+        A sample may name more than one accession (comma-separated), which is how a sample whose
+        reads are spread over several sequencing runs is described, and also how a sample with
+        both short and long reads is described."""
+
+        return self._split_paths((self._data.get(sample) or {}).get("sra_accession"))
+
+    def has_sra_accessions(self) -> bool:
+        """True if any sample names at least one SRA accession."""
+
+        return any(self.sra_accessions_for_sample(s) for s in self._data)
+
+    def all_sra_accessions(self) -> list:
+        """Every SRA accession named in the file, in the order they appear, without duplicates."""
+
+        accessions = []
+        for sample in self._data:
+            accessions.extend(self.sra_accessions_for_sample(sample))
+
+        return list(dict.fromkeys(accessions))
 
     def has_any_sr(self) -> bool:
         """Return True if at least one sample row has short-reads."""
