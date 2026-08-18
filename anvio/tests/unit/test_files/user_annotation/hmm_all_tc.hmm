@@ -1,0 +1,10 @@
+HMMER3/f [3.3.2 | Nov 2020]
+NAME  ModelA
+ACC   ACC001
+TC    20.00 20.00;
+//
+HMMER3/f [3.3.2 | Nov 2020]
+NAME  ModelB
+ACC   ACC002
+TC    15.00 15.00;
+//
