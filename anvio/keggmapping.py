@@ -230,14 +230,23 @@ CLAMPED_MAX_PREFIX = '≥ '
 # needs, so it is the one that stays.
 MIN_TICK_SEPARATION_FRACTION = 0.08
 
-# Subdirectories of the output directory, one per role a map file can have: the map pooling every
-# source, the map of one individual source, and the grid comparing them. Every name directly in the
-# output directory is therefore anvi'o's own, while the names that come from user data — samples,
-# contigs databases, genomes, groups — are confined to 'individual', where they cannot collide with
-# anything anvi'o creates for itself.
+# Subdirectories of the output directory, one per role a map file can have: the map unifying every
+# source, the map of one individual source, and the grid comparing them. A fourth holds those
+# individual maps a second time, arranged into a directory per map rather than per source. Every
+# name directly in the output directory is therefore anvi'o's own, while the names that come from
+# user data — samples, contigs databases, genomes, groups — are confined to 'individual', where
+# they cannot collide with anything anvi'o creates for itself.
 UNIFIED_SUBDIR = 'unified'
 INDIVIDUAL_SUBDIR = 'individual'
 GRID_SUBDIR = 'grid'
+COLLATED_SUBDIR = 'by_map'
+
+# Where '--categorize-files' nests map files in BRITE subdirectories, this subdirectory of links
+# gathers every one of them back into a single place to browse ('_symlink_map').
+FLAT_SUBDIR = 'symlink'
+
+# The colorbar keying the maps of one individual source, written beside them in its directory.
+CATEGORY_COLORBAR_BASENAME = 'colorbar.pdf'
 
 class Mapper:
     """
@@ -268,6 +277,10 @@ class Mapper:
         Categorize output files by pathway map within subdirectories corresponding to the BRITE
         hierarchy of maps (see https://www.genome.jp/brite/br08901).
 
+    collate_files_by_map : bool
+        Alongside the maps drawn for each individual source in a directory of its own, gather those
+        same maps into a directory per map, each holding one file per source.
+
     pathway_categorization : dict[str, list[str]]
         Maps pathway numbers to categorization, with categories listed from general to specific.
 
@@ -295,6 +308,7 @@ class Mapper:
         overwrite_output: bool = FORCE_OVERWRITE,
         name_files: bool = False,
         categorize_files: bool = False,
+        collate_files_by_map: bool = False,
         run: terminal.Run = terminal.Run(),
         progress: terminal.Progress = terminal.Progress(),
         quiet: bool = QUIET
@@ -316,6 +330,10 @@ class Mapper:
         categorize_files : bool, False
             Categorize output files by pathway map within subdirectories corresponding to the BRITE
             hierarchy of maps (see https://www.genome.jp/brite/br08901).
+
+        collate_files_by_map : bool, False
+            Alongside the maps drawn for each individual source in a directory of its own, gather
+            those same maps into a directory per map, each holding one file per source.
 
         run : anvio.terminal.Run, anvio.terminal.Run()
             This object prints run information to the terminal.
@@ -365,6 +383,7 @@ class Mapper:
 
         self.name_files = name_files
         self.categorize_files = categorize_files
+        self.collate_files_by_map = collate_files_by_map
         self.pathway_categorization = self._categorize_pathways() if categorize_files else None
         self.overwrite_output = overwrite_output
         self.run = run
@@ -971,7 +990,9 @@ class Mapper:
         output directory, and once map grids are drawn the subdirectories of categories that were
         only needed for a grid are deleted ('_draw_map_grids'). A name that is not a plain directory
         name would therefore write, or delete, outside the output directory: names come from a text
-        file's 'sample' column or a groups file, so they cannot be trusted to be safe paths.
+        file's 'sample' column or a groups file, so they cannot be trusted to be safe paths. The
+        same names become file names where the maps are gathered by map rather than by category
+        ('_collate_maps_by_map'), which the very same requirement makes safe.
 
         Only the categories actually getting maps are checked, since a category summarized on the
         'unified' map alone contributes color rather than a path, and its name is never joined onto
@@ -979,8 +1000,8 @@ class Mapper:
 
         No name is reserved. Categories are drawn into '<output directory>/individual', which anvi'o
         creates for that purpose alone, so a category may be named after anything anvi'o puts in the
-        output directory itself -- 'unified', 'grid', 'symlink', or a BRITE category such as
-        'Metabolism' -- without the two ever meeting.
+        output directory itself — 'unified', 'grid', 'by_map', 'symlink', or a BRITE category such
+        as 'Metabolism' — without the two ever meeting.
 
         Parameters
         ==========
@@ -4302,7 +4323,7 @@ class Mapper:
                 group_specs, category_color_priorities, category_scale_top = (
                     group_layer_membership[category]
                 )
-                colorbar_path = os.path.join(category_output_dir, 'colorbar.pdf')
+                colorbar_path = os.path.join(category_output_dir, CATEGORY_COLORBAR_BASENAME)
                 if group_colormap_scheme == 'by_count_continuous':
                     # The same color per count that the discrete bands assign, shown as a gradient
                     # across the ramp from the lowest count to the highest rather than as one labeled
@@ -4375,6 +4396,16 @@ class Mapper:
                 source_type=grid_source_type if grid_source_type is not None else category_noun
             )
 
+        # The individual maps are gathered only once nothing else stands to change them: drawing the
+        # grids deletes the maps that were drawn as grid panels alone, along with the directories of
+        # the categories that were never asked for individually.
+        collated_count = 0
+        if self.collate_files_by_map and draw_files_categories:
+            self.progress.new(f"Gathering the maps of each {category_noun}")
+            self.progress.update("...")
+            collated_count = self._collate_maps_by_map(output_dir, draw_files_categories)
+            self.progress.end()
+
         count = sum(drawn['unified'].values()) if drawn['unified'] else 0
         self.run.info(
             f"Number of 'unified' maps drawn incorporating data from all {unified_plural}", count
@@ -4384,6 +4415,10 @@ class Mapper:
                 sum(d.values()) if d else 0 for d in drawn['individual'].values()
             ) if drawn['individual'] else 0
             self.run.info(f"Number of maps drawn for individual {category_noun}s", count)
+            if self.collate_files_by_map:
+                self.run.info(
+                    f"Number of maps gathered across individual {category_noun}s", collated_count
+                )
         count = sum(drawn['grid'].values()) if drawn['grid'] else 0
         self.run.info("Number of map grids drawn", count)
 
@@ -6346,13 +6381,95 @@ class Mapper:
         map_path : str
             Map file path to be symlinked.
         """
-        symlink_dir = os.path.join(output_dir, 'symlink')
+        symlink_dir = os.path.join(output_dir, FLAT_SUBDIR)
         os.makedirs(symlink_dir, exist_ok=True)
         map_basename = os.path.basename(map_path)
         symlink_path = os.path.join(symlink_dir, map_basename)
         if os.path.exists(symlink_path):
             os.remove(symlink_path)
         os.symlink(os.path.abspath(map_path), symlink_path)
+
+    def _collate_maps_by_map(self, output_dir: str, categories: List[str]) -> int:
+        """
+        Gather the maps drawn for individual categories into a directory per map.
+
+        Each map gets a directory holding one file per category, named after the category, so that a
+        single map can be compared across categories by stepping through one directory — the way a
+        file browser's preview moves from one file to the next — rather than by opening a file in
+        each category's own directory.
+
+        Every file gathered is a link to a map already drawn under 'individual', so this second
+        arrangement costs no disk space of its own.
+
+        Which maps to gather is read off the drawn files themselves rather than rebuilt from pathway
+        numbers, so it can neither disagree with what was drawn nor lose track of where
+        '--categorize-files' put it: a map's place within a category's directory becomes its place
+        here, BRITE subdirectories and all.
+
+        Parameters
+        ==========
+        output_dir : str
+            Path to the output directory holding the 'individual' subdirectory.
+
+        categories : List[str]
+            Names of the categories whose maps are gathered, each a subdirectory of 'individual'.
+
+        Returns
+        =======
+        int
+            The number of maps gathered, which is the number of directories written.
+        """
+        collated_dir = os.path.join(output_dir, COLLATED_SUBDIR)
+        map_dirs: Set[str] = set()
+        for category in categories:
+            self.progress.update(category)
+            category_dir = os.path.join(output_dir, INDIVIDUAL_SUBDIR, category)
+            for dir_path, subdir_names, basenames in os.walk(category_dir):
+                # Everything a category's directory holds is one of its maps, save for the colorbar
+                # keying them and the flat directory of links to those very same maps.
+                if FLAT_SUBDIR in subdir_names:
+                    subdir_names.remove(FLAT_SUBDIR)
+                relative_dir = os.path.relpath(dir_path, category_dir)
+                for basename in basenames:
+                    map_name, extension = os.path.splitext(basename)
+                    if extension != '.pdf' or basename == CATEGORY_COLORBAR_BASENAME:
+                        continue
+                    map_dir = os.path.normpath(os.path.join(collated_dir, relative_dir, map_name))
+                    map_dirs.add(map_dir)
+                    self._link_map(
+                        os.path.join(dir_path, basename),
+                        os.path.join(map_dir, f'{category}{extension}')
+                    )
+        return len(map_dirs)
+
+    def _link_map(self, map_path: str, link_path: str) -> None:
+        """
+        Link from elsewhere in the output to a map file that has already been drawn.
+
+        A hard link is made, which a file browser cannot tell from the map file itself and which
+        survives the output directory being moved or renamed. Where the filesystem refuses a hard
+        link, a relative symbolic link stands in: a file browser follows it just as readily, and it
+        holds for as long as the two files keep their places within the output directory.
+
+        Parameters
+        ==========
+        map_path : str
+            Path to the map file that was drawn.
+
+        link_path : str
+            Path of the link to make. Its directory is created if it does not already exist, and
+            whatever the path may already hold is replaced.
+        """
+        link_dir = os.path.dirname(link_path)
+        os.makedirs(link_dir, exist_ok=True)
+        # 'lexists' rather than 'exists', so that a link an earlier run left broken is replaced
+        # rather than left in place for the call below to trip over.
+        if os.path.lexists(link_path):
+            os.remove(link_path)
+        try:
+            os.link(map_path, link_path)
+        except OSError:
+            os.symlink(os.path.relpath(map_path, link_dir), link_path)
 
     def _draw_map_grids(
         self,
@@ -6478,7 +6595,7 @@ class Mapper:
                         )
                     paths_to_remove.append(out_path)
                     if self.categorize_files:
-                        paths_to_remove.append(os.path.join(out_dir, 'symlink', pathway_basename))
+                        paths_to_remove.append(os.path.join(out_dir, FLAT_SUBDIR, pathway_basename))
 
             self.progress = progress
             self.run = run

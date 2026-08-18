@@ -357,6 +357,21 @@ def get_args() -> Namespace:
         "maps in the grid."
     )
     groupOUT.add_argument(
+        '--collate-files-by-map', action='store_true', default=False, help=
+        "Gather the map files drawn by '--draw-individual-files' into a directory per map, each "
+        "holding one file per sample, group, contigs database, or pan genome named after it. This "
+        "is a second arrangement of the same files, standing beside the directory per source that "
+        "'--draw-individual-files' writes rather than replacing it, and it lets a single map be "
+        "compared across sources by stepping through one directory, as a file browser's preview "
+        "moves from one file to the next. For example, with samples 'A' through 'E', the "
+        "'Glycolysis / Gluconeogenesis' map would be gathered into a directory named "
+        "'by_map/kos_00010' holding files named 'A.pdf' through 'E.pdf', or "
+        "'by_map/kos_00010_Glycolysis_Gluconeogenesis' with '--name-files'. With "
+        "'--categorize-files', the BRITE subdirectories precede each map's directory, just as "
+        "they precede each map file elsewhere in the output. The gathered files are links to the "
+        "maps already drawn, so they take up no disk space of their own."
+    )
+    groupOUT.add_argument(
         '--draw-bare-maps', action='store_true', default=False, help=
         "By default, without this flag, only draw maps containing select input data. Even if "
         "pathway maps are given explicitly with '--pathway-numbers' (e.g., \"00010 01100\"), if "
@@ -792,6 +807,8 @@ def map_json_network_ko_data(args: Namespace, mapper: Mapper) -> None:
         unsupported_args.append('--draw-individual-files')
     if args.draw_grid is not None:
         unsupported_args.append('--draw-grid')
+    if args.collate_files_by_map:
+        unsupported_args.append('--collate-files-by-map')
     if args.reaction_colormap is not None:
         unsupported_args.append('--reaction-colormap')
     if args.compound_colormap is not None:
@@ -1996,10 +2013,43 @@ def main() -> None:
                 "must be provided."
             )
 
+        # One database and no '--reaction-colormap' takes the route below that draws only the
+        # 'unified' map: no individual maps, no grids. With a colormap it takes the route for
+        # several databases instead, which draws those too.
+        is_single_db_run = (
+            args.contigs_dbs is not None and
+            len(args.contigs_dbs) == 1 and
+            args.reaction_colormap is None
+        )
+
+        # Gathering the individual maps by map is a second arrangement of files that have to exist,
+        # so the flag is refused wherever the run draws none of them and it would otherwise go
+        # quietly ignored. Wherever a run does draw them, it is honored however few they are: one
+        # database or one sample gives a directory per map holding a single file, which is no less
+        # than '--draw-individual-files' gives there on its own. A reaction-network-JSON run is left
+        # to its own dispatcher, which refuses this flag along with the rest of the family, for want
+        # of any categories at all to draw individually.
+        if args.collate_files_by_map and args.reaction_network_json is None:
+            if args.draw_individual_files is None:
+                raise ConfigError(
+                    "'--collate-files-by-map' gathers the maps drawn for individual contigs "
+                    "databases, genomes, samples, or groups into a directory per map, but none "
+                    "were asked for. Please add '--draw-individual-files', or drop this flag."
+                )
+            if is_single_db_run:
+                raise ConfigError(
+                    "'--collate-files-by-map' gathers the maps drawn for individual contigs "
+                    "databases into a directory per map, but a lone database drawn in a single "
+                    "color has no individual maps to gather: the one map it draws per pathway is "
+                    "already the whole of the data. Please provide the other databases to compare "
+                    "it to, or drop this flag."
+                )
+
         mapper = Mapper(kegg_dir=args.kegg_dir,
                         overwrite_output=args.overwrite_output_destinations,
                         name_files=args.name_files,
-                        categorize_files=args.categorize_files)
+                        categorize_files=args.categorize_files,
+                        collate_files_by_map=args.collate_files_by_map)
         performed = False
 
         if is_txt_run:
@@ -2010,11 +2060,7 @@ def main() -> None:
             map_json_network_ko_data(args, mapper)
             performed = True
 
-        if (
-            args.contigs_dbs is not None and
-            len(args.contigs_dbs) == 1 and
-            args.reaction_colormap is None
-        ):
+        if is_single_db_run:
             map_single_contigs_db_ko_data(args, mapper)
             performed = True
         elif args.contigs_dbs is not None:
