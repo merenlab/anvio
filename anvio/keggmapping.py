@@ -2895,7 +2895,7 @@ class Mapper:
             False.
         """
         # Find the numeric IDs of the maps to draw.
-        pathway_numbers = self._find_maps(output_dir, 'kos', patterns=pathway_numbers)
+        pathway_numbers = self._find_maps(output_dir, patterns=pathway_numbers)
 
         filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
 
@@ -3947,7 +3947,7 @@ class Mapper:
             )
 
         unified_dir = os.path.join(output_dir, UNIFIED_SUBDIR)
-        pathway_numbers = self._find_maps(unified_dir, 'kos', patterns=pathway_numbers)
+        pathway_numbers = self._find_maps(unified_dir, patterns=pathway_numbers)
         filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
 
         drawn: Dict[Literal['unified', 'individual', 'grid'], Dict] = {
@@ -6132,19 +6132,15 @@ class Mapper:
                 f"'{pan_db}'"
             )
 
-    def _find_maps(self, output_dir: str, prefix: str, patterns: List[str] = None) -> List[str]:
+    def _find_maps(self, output_dir: str, patterns: List[str] = None) -> List[str]:
         """
-        Find the numeric IDs of maps to draw given the file prefix, checking that the map can be
-        drawn in the target output direcotry.
+        Find the numeric IDs of maps to draw, checking that the map can be drawn in the target
+        output directory.
 
         Parameters
         ==========
         output_dir : str
             Path to the output directory in which pathway map PDF files are drawn.
-
-        prefix : str
-            Output filenames are formatted as <prefix>_<pathway_number>.pdf or
-            <prefix>_<pathway_number>_<pathway_name>.pdf.
 
         patterns : List[str], None
             Regex patterns of pathway numbers, which are five digits.
@@ -6173,8 +6169,7 @@ class Mapper:
 
         if not self.overwrite_output:
             for pathway_number in pathway_numbers:
-                pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
-                out_basename = f'{prefix}_{pathway_number}{pathway_name}.pdf'
+                out_basename = self._map_basename(pathway_number)
                 if self.pathway_categorization is None:
                     out_path = os.path.join(output_dir, out_basename)
                 else:
@@ -6350,8 +6345,7 @@ class Mapper:
             Path to the output directory in which the pathway map PDF file is drawn. The directory
             is created if it does not exist.
         """
-        pathway_name = f'_{self._name_pathway(pathway.number)}' if self.name_files else ''
-        out_basename = f'kos_{pathway.number}{pathway_name}.pdf'
+        out_basename = self._map_basename(pathway.number)
 
         if self.pathway_categorization is None:
             out_dir = output_dir
@@ -6575,8 +6569,7 @@ class Mapper:
                 if set(drawn_category.values()) != set([True, False]):
                     continue
 
-                pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
-                pathway_basename = f'kos_{pathway_number}{pathway_name}.pdf'
+                pathway_basename = self._map_basename(pathway_number)
                 for category, drawn_map in drawn_category.items():
                     if drawn_map:
                         continue
@@ -6633,8 +6626,7 @@ class Mapper:
 
         for pathway_number in pathway_numbers:
             self.progress.update(pathway_number)
-            pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
-            pathway_basename = f'kos_{pathway_number}{pathway_name}.pdf'
+            pathway_basename = self._map_basename(pathway_number)
             unified_dir = os.path.join(output_dir, UNIFIED_SUBDIR)
             if self.pathway_categorization is None:
                 unified_map_path = os.path.join(unified_dir, pathway_basename)
@@ -6740,6 +6732,31 @@ class Mapper:
             self._zero_out_compound_rectangles(pathway)
 
         return pathway
+
+    def _map_basename(self, pathway_number: str) -> str:
+        """
+        Name the output file of a pathway map.
+
+        The name is the map's KEGG accession — its number under the 'ko' prefix of the reference
+        KGML files the maps are drawn from — and, with 'name_files', the pathway name as well.
+
+        Every context that draws a map or goes looking for one names it here, so the same map is
+        named the same under 'unified', 'individual', and 'grid'. That is how a grid finds the
+        panels it is made of.
+
+        Parameters
+        ==========
+        pathway_number : str
+            ID number of the pathway, which is five digits.
+
+        Returns
+        =======
+        str
+            The file name, e.g. 'ko00010.pdf', or 'ko00010_Glycolysis_Gluconeogenesis.pdf' where
+            file names carry pathway names.
+        """
+        pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
+        return f'ko{pathway_number}{pathway_name}.pdf'
 
     def _name_pathway(self, pathway_number: str) -> str:
         """
