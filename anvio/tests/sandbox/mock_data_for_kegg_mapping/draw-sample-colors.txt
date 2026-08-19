@@ -1,0 +1,4 @@
+category	color
+SAMPLE_1	#1f77b4
+SAMPLE_2	#ff7f0e
+SAMPLE_3	#2ca02c
