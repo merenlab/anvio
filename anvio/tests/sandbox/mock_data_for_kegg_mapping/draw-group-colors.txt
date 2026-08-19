@@ -1,0 +1,3 @@
+category	color
+G1	#1f77b4
+G2	#d62728
