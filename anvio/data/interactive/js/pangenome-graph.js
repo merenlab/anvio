@@ -3601,6 +3601,33 @@ class PangenomeGraphUserInterface {
             toastr.info('All genomes are switched off. Switch at least one back on, then hit Redraw.', 'Genomes deselected');
         });
 
+        // One handler for the whole row of ordering buttons; each carries its own key.
+        // Buttons whose key no numbers arrived for (the genomes storage is optional for
+        // anvi-display-pan-graph) are dropped rather than left there to do nothing.
+        const genome_stats = (this.data['meta'] && this.data['meta']['genome_stats']) || {};
+        $('.genome-order-btn').each(function () {
+            const key = $(this).data('order-key');
+            if (key === 'name') return;
+            const have_it = Object.values(genome_stats).some(v => Number.isFinite(v[key]));
+            if (!have_it) $(this).remove();
+        });
+
+        $('#genome-order-controls').on('click', '.genome-order-btn', (ev) => {
+            this.order_genomes($(ev.currentTarget).data('order-key'));
+        });
+
+        $('#genomes-order-descending').on('click', (ev) => {
+            $(ev.currentTarget).toggleClass('active');
+            // re-apply whatever ordering is on screen, now the other way round
+            this.order_genomes(this._genome_order_key || 'name');
+        });
+
+        $('#genomes-select-all').on('click', () => {
+            for (const genome of this.genomes) {
+                $('#flex' + genome).prop('checked', true).trigger('change');
+            }
+        });
+
         $('#apply-track-defaults').on('click', () => {
             const bgColor = $('#layer_color').attr('color');
             const lw = $('#track_line_width')[0].value;
@@ -3611,6 +3638,9 @@ class PangenomeGraphUserInterface {
             }
             this.main_draw();
         });
+        // which ordering the buttons last applied, so 'Descending' has something to flip
+        this._genome_order_key = null;
+
         this.settings_dict['condtr'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['grouping_threshold']))
         this.settings_dict['maxlength'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['max_edge_length']))
         this.settings_dict['groupcompress'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['group_compression']))
@@ -3645,6 +3675,53 @@ class PangenomeGraphUserInterface {
         $("#redraw").removeClass("disabled");
         $("#settings-content").removeClass("settings-loading").addClass("settings-loading-cleared");
     }
+
+    order_genomes(key) {
+        // Reorders the genome list in the settings panel, which is where genome order
+        // actually lives -- the drawing code reads it back out of the DOM on every draw
+        // (see generate_svg's `edgecoloring`). Every genome is reordered, switched on or
+        // off, since the order is a property of the list rather than of the selection.
+        const stats = (this.data['meta'] && this.data['meta']['genome_stats']) || {};
+        const descending = $('#genomes-order-descending').hasClass('active');
+
+        const by_name = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+
+        const sorted = this.genomes.slice().sort((a, b) => {
+            let cmp;
+            if (key === 'name') {
+                cmp = by_name(a, b);
+            } else {
+                // a genome with no number for this key sorts to the bottom either way,
+                // and ties fall back to the name so the result is never arbitrary
+                const va = (stats[a] || {})[key], vb = (stats[b] || {})[key];
+                const na = Number.isFinite(va) ? va : -Infinity;
+                const nb = Number.isFinite(vb) ? vb : -Infinity;
+                cmp = (na - nb) || by_name(a, b);
+            }
+            return descending ? -cmp : cmp;
+        });
+
+        const container = document.getElementById('genomecolors');
+        for (const genome of sorted) {
+            const row = document.getElementById(genome + '_row');
+            if (row) container.appendChild(row);
+        }
+
+        this._genome_order_key = key;
+
+        // The order no longer follows the dendrogram, so the dendrogram has to go --
+        // same rule the manual drag handler applies.
+        if ($('#flextree').prop('checked')) {
+            $('#flextree').prop('checked', false);
+            this.flextree_change({ currentTarget: document.getElementById('flextree') });
+            toastr.warning("As you have reordered the genomes, the dendrogram is removed from the display (anvi'o hopes you are happy).", 'Dendrogram removed');
+        }
+
+        // Ordering is a drawing concern only -- the graph itself is untouched, so this
+        // needs no trip to the server.
+        this.main_draw();
+    }
+
 
     flextree_change(instance) {
         if ($(instance.currentTarget).prop('checked') == true){
