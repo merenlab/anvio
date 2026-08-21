@@ -742,6 +742,17 @@
                     </div>
 
                     <hr/>
+                    <div><span style="font-size:1.0em; color:#888; margin-right:3px;">Order genomes by | <button id="genomes-order-descending" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:1.0em;" title="Flip the direction of the ordering. Stays lit while descending is on, and re-applies the ordering you last picked.">Descending</button></span></div>
+                    <div id="genome-order-controls" class="d-flex flex-wrap align-items-center gap-1 mt-2 mb-1 px-1">
+                      <button class="genome-order-btn btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:1.0em;" data-order-key="name" title="Order the genome list by name, numbers read as numbers (HIMB122 before HIMB1485)">Name</button>
+                      <button class="genome-order-btn btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:1.0em;" data-order-key="num_synteny_gene_clusters" title="Order by how many synteny gene clusters each genome takes part in, counted across the whole pan-graph">SynGCs</button>
+                      <button class="genome-order-btn btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:1.0em;" data-order-key="num_contigs" title="Order by number of contigs">Contigs</button>
+                      <button class="genome-order-btn btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:1.0em;" data-order-key="total_length" title="Order by total genome length">Length</button>
+                      <button class="genome-order-btn btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:1.0em;" data-order-key="num_genes" title="Order by number of gene calls">Genes</button>
+                      <button class="genome-order-btn btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:1.0em;" data-order-key="gc_content" title="Order by GC content">GC</button>
+                    </div>
+
+                    <hr/>
                     <div class="d-flex align-items-center gap-2 mt-2 mb-1 px-1" style="font-size:0.8em; color:#888;">
                       <span>Genome tracks background color: </span>
                       <div class="pangraph-colorpicker" id="layer_color" color="#F5F5F5" style="background-color:#F5F5F5;"></div>
