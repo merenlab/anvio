@@ -5303,8 +5303,11 @@ class PangenomeGraphUserInterface {
             return;
         }
 
+        // The rows are `.genome-row` (see initialize_user_interface). Filtering on any
+        // other class yields an empty list, which would quietly save a state with no
+        // genome settings in it at all.
         const genome_order = [...document.getElementById("genomecolors").children]
-            .filter(el => el.classList.contains("col-12"))
+            .filter(el => el.classList.contains("genome-row"))
             .map(el => el.id.replace('_row', ''));
 
         const genomes_state = {};
