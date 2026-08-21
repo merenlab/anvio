@@ -3953,7 +3953,6 @@ class PanGraphSuperclass(PanSuperclass):
 
         return export_dict
 
-    def init_pangenome_graph(self):
     def get_genome_stats(self):
         """Per-genome numbers the interface can sort its genome list by.
 
@@ -3995,11 +3994,65 @@ class PanGraphSuperclass(PanSuperclass):
         return self.genome_stats
 
 
+    def init_pangenome_graph(self, genomes_of_interest=None):
+        """Build the in-memory graph from the ``pan_graph_nodes``/``pan_graph_edges`` tables.
+
+        When `genomes_of_interest` is given, the graph is restricted to the subgraph
+        induced by those genomes: a node survives if at least one of them has a gene
+        call in it, and an edge survives if at least one of them walks it. Everything
+        the interface draws is derived from this graph downstream -- the layout comes
+        from `layout_all_components`, the regions and their backbone/variable calls
+        from `summarize_all_components` -- so a subset is laid out and summarized on
+        its own terms instead of inheriting the coordinates of the full genome set.
+        That is what makes it possible to watch a pangenome graph reorganize itself as
+        genomes come and go without recomputing anything from scratch.
+
+        Two things to keep in mind about what this is NOT. First, it is a subgraph of
+        the graph `anvi-pan-genome-graph` computed for ALL genomes in the pan-graph-db,
+        so the gene-endpoint fusion and remerge decisions baked into the node set still
+        reflect every one of those genomes -- this is not the same graph the engine
+        would build from the subset alone. Second, and in exchange, node ids stay
+        identical across subsets, which is precisely what makes successive subsets
+        comparable to one another.
+
+        Node types ARE recomputed, since 'core' has to mean "in every genome the user
+        is currently looking at" or the colors on the screen tell a lie.
+        """
+        if genomes_of_interest:
+            missing = sorted(set(genomes_of_interest) - set(self.genome_names))
+            if missing:
+                raise ConfigError(f"{len(missing)} of the genome names you asked this pan-graph to "
+                                  f"focus on are not in it: {', '.join(missing[:5])}"
+                                  f"{'...' if len(missing) > 5 else ''} :/")
+
+            # the db's genome order wins over whatever order the caller sent
+            requested = set(genomes_of_interest)
+            self.genomes_of_interest = [g for g in self.genome_names if g in requested]
+        else:
+            self.genomes_of_interest = list(self.genome_names)
+
+        genomes_to_keep = set(self.genomes_of_interest)
+        subsetting = len(genomes_to_keep) < len(self.genome_names)
+
+        # a fresh graph every time so this function can be called again to change the
+        # genome set without leaving nodes from a previous call behind
+        self.pangenome_graph = PangenomeGraphManager()
+
+        nodes_kept = set()
         for node, data in self.nodes.items():
+            gene_calls = json.loads(data['gene_calls_json'])
+            synteny = json.loads(data['synteny_position_json'])
+
+            if subsetting:
+                gene_calls = {g: v for g, v in gene_calls.items() if g in genomes_to_keep}
+                if not gene_calls:
+                    continue
+                synteny = {g: v for g, v in synteny.items() if g in genomes_to_keep}
+
             graph_data = {
                 'gene_cluster': data['gene_cluster_id'],
-                'gene_calls': json.loads(data['gene_calls_json']),
-                'synteny': json.loads(data['synteny_position_json']),
+                'gene_calls': gene_calls,
+                'synteny': synteny,
                 'type': data['node_type'],
                 'layer': self.items_additional_data_dict[node],
                 'position': (0, 0),
@@ -4008,11 +4061,24 @@ class PanGraphSuperclass(PanSuperclass):
                 'component_id': str(data['component_id']),
             }
             self.pangenome_graph.graph.add_node(node, **graph_data)
+            nodes_kept.add(node)
 
         for edge, data in self.edges.items():
+            genomes = json.loads(data['genomes_json'])
+            weight = data['weight']
+
+            if subsetting:
+                if data['source'] not in nodes_kept or data['target'] not in nodes_kept:
+                    continue
+                genomes = [g for g in genomes if g in genomes_to_keep]
+                if not genomes:
+                    continue
+                # the weight IS the number of genomes that walk this edge
+                weight = float(len(genomes))
+
             graph_data = {
-                'weight': data['weight'],
-                'genomes': json.loads(data['genomes_json']),
+                'weight': weight,
+                'genomes': genomes,
                 'name': edge,
                 'active': True,
                 'route': [],
@@ -4020,7 +4086,48 @@ class PanGraphSuperclass(PanSuperclass):
             }
             self.pangenome_graph.graph.add_edge(data['source'], data['target'], **graph_data)
 
+        if subsetting:
+            self.recompute_node_types()
+
         self.pangenome_graph_initialized = True
+
+
+    def recompute_node_types(self):
+        """Re-type the nodes of the current (subset) graph so that 'core' means "in
+        every genome currently in the graph" rather than "in every genome in the db".
+
+        The engine's `compute_node_types` does the actual work, in its 'global' scope,
+        with both of its inputs synthesized from the graph in memory:
+
+          * `line_to_genome` only matters here for the genome denominator, and the
+            function reads node membership from the mirrored `gene_calls` dicts, so a
+            self-map over the active genomes is all it needs.
+
+          * `gene_clusters` only feeds `parent_multi_copy`. Deriving it from the
+            surviving nodes means a genome counts as multi-copy for a parent GC when it
+            appears in two or more surviving super-nodes of that GC -- the same rule the
+            'component' scope uses. It differs from the pan-db-backed version, which
+            also counts genes that never made it into the graph, but this way the answer
+            follows from what the user is actually looking at.
+
+        `rna` is a call-type override the engine applied from the CONTIGS.dbs, which is
+        not something a genome subset can change, so those nodes keep their type.
+        """
+        from anvio.pangenomegraphengine import compute_node_types
+
+        G = self.pangenome_graph.graph
+
+        rna_nodes = {n for n, d in G.nodes(data=True) if d.get('type') == 'rna'}
+
+        line_to_genome = {g: g for g in self.genomes_of_interest}
+        gene_clusters = {(genome, gene_call): n.rsplit('_', 1)[0]
+                         for n, d in G.nodes(data=True)
+                         for genome, gene_call in d['gene_calls'].items()}
+
+        compute_node_types(G, line_to_genome, gene_clusters, scope='global')
+
+        for n in rna_nodes:
+            G.nodes[n]['type'] = 'rna'
 
     @property
     def gene_clusters(self):
