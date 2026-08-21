@@ -166,7 +166,7 @@ class PangenomeGraphUserInterface {
         var layer_color = $('#layer_color').attr('color');
         var back_color = $('#back_color').attr('color');
         var non_back_color = $('#non_back_color').attr('color');
-        var genome_size = this.genomes.length
+        var genome_size = this.active_genomes.length
         
         var theta = (end_angle - start_angle) / (this.global_x+1)
         
@@ -1486,6 +1486,16 @@ class PangenomeGraphUserInterface {
         new_settings_dict['maxlength'] = parseInt($('#maxlength')[0].value);
         new_settings_dict['groupcompress'] = parseFloat($('#groupcompress')[0].value);
         new_settings_dict['component'] = $('#component_select').val();
+        // Which genomes are switched on. Sending these lets the server rebuild the graph
+        // as the subgraph they induce and lay it out again, so switching a genome off
+        // reorganizes the picture instead of just hiding a track. Same as every other
+        // layout control here, it takes effect on the next Redraw.
+        new_settings_dict['genomes'] = this.genomes.filter(g => $('#flex' + g).prop('checked'));
+
+        if (!new_settings_dict['genomes'].length) {
+            toastr.warning('There is no such thing as a pangenome graph of zero genomes. Leave at least one of them on.', 'Nothing to draw');
+            return;
+        }
 
         if (JSON.stringify(this.settings_dict) !== JSON.stringify(new_settings_dict)) {
             this.rerun_JSON(new_settings_dict);
@@ -1594,7 +1604,7 @@ class PangenomeGraphUserInterface {
         var raw_type = this.data['nodes'][element_id]['type'];
         var gene_cluster = this.data['nodes'][element_id]['gene_cluster'];
         var num_genomes = Object.keys(this.data['nodes'][element_id]['gene_calls']).length;
-        var total_genomes = this.genomes.length;
+        var total_genomes = this.active_genomes.length;
 
         const type_labels = {
             'core':          'Core',
@@ -2182,7 +2192,7 @@ class PangenomeGraphUserInterface {
     
     main_draw() {
         var svg_core = this.generate_svg();
-        var genome_size = this.genomes.length;
+        var genome_size = this.active_genomes.length;
 
         // TODO this is just a temporary fix the whole generate_svg() has to be rewritten in either
         // createElementNS or raw html string fashion. FML.
@@ -2513,7 +2523,7 @@ class PangenomeGraphUserInterface {
         var rearranged_color = $('#rearranged_color').attr('color');
         var trna_color = $('#trna_color').attr('color');
 
-        var genome_size = this.genomes.length
+        var genome_size = this.active_genomes.length
         
         if ($('#flexsaturation').prop('checked') == true){
             var saturation = 1
@@ -2675,6 +2685,13 @@ class PangenomeGraphUserInterface {
         // this.layers = this.data['meta']['layers'].filter(item => item !== 'backbone');
         this.layers = this.data['meta']['layers'];
         this.genomes = this.data['meta']['genome_names'];
+        // The genomes the graph on screen is actually made of. `this.genomes` stays the
+        // full roster the db knows about, because the settings panel is built from it
+        // exactly once and has to keep a row for every genome so a hidden one can be
+        // switched back on. Anything that counts genomes -- prevalence shading, "N of M
+        // genomes" -- has to count these instead, or a subset graph reports its core
+        // nodes against a denominator that is no longer on the screen.
+        this.active_genomes = this.data['meta']['genomes_of_interest'] || this.genomes;
         this.functional_annotation_sources_available = this.data['meta']['gene_function_sources'];
 
         this.group_dict = {}
