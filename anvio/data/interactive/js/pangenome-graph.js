@@ -166,7 +166,7 @@ class PangenomeGraphUserInterface {
         var layer_color = $('#layer_color').attr('color');
         var back_color = $('#back_color').attr('color');
         var non_back_color = $('#non_back_color').attr('color');
-        var genome_size = this.genomes.length
+        var genome_size = this.active_genomes.length
         
         var theta = (end_angle - start_angle) / (this.global_x+1)
         
@@ -1486,6 +1486,16 @@ class PangenomeGraphUserInterface {
         new_settings_dict['maxlength'] = parseInt($('#maxlength')[0].value);
         new_settings_dict['groupcompress'] = parseFloat($('#groupcompress')[0].value);
         new_settings_dict['component'] = $('#component_select').val();
+        // Which genomes are switched on. Sending these lets the server rebuild the graph
+        // as the subgraph they induce and lay it out again, so switching a genome off
+        // reorganizes the picture instead of just hiding a track. Same as every other
+        // layout control here, it takes effect on the next Redraw.
+        new_settings_dict['genomes'] = this.genomes.filter(g => $('#flex' + g).prop('checked'));
+
+        if (!new_settings_dict['genomes'].length) {
+            toastr.warning('There is no such thing as a pangenome graph of zero genomes. Leave at least one of them on.', 'Nothing to draw');
+            return;
+        }
 
         if (JSON.stringify(this.settings_dict) !== JSON.stringify(new_settings_dict)) {
             this.rerun_JSON(new_settings_dict);
@@ -1502,6 +1512,13 @@ class PangenomeGraphUserInterface {
             success: (data) => {
                 this.data = data['data'];
                 this.initialize_variables();
+                // Dropping genomes can dissolve a component or split one in two, so the
+                // dropdown is rebuilt here rather than only at startup. The server has
+                // already fallen back to the lowest-numbered component if the one we
+                // asked for is gone, so follow whatever it decided to send back.
+                this.populate_component_select();
+                new_settings_dict['component'] = this.data['meta']['component'];
+                $('#component_select').val(new_settings_dict['component']);
                 this.settings_dict = JSON.parse(JSON.stringify(new_settings_dict));
                 this.main_draw();
                 $('#svgbox').css('opacity', '');
@@ -1594,7 +1611,7 @@ class PangenomeGraphUserInterface {
         var raw_type = this.data['nodes'][element_id]['type'];
         var gene_cluster = this.data['nodes'][element_id]['gene_cluster'];
         var num_genomes = Object.keys(this.data['nodes'][element_id]['gene_calls']).length;
-        var total_genomes = this.genomes.length;
+        var total_genomes = this.active_genomes.length;
 
         const type_labels = {
             'core':          'Core',
@@ -2182,7 +2199,7 @@ class PangenomeGraphUserInterface {
     
     main_draw() {
         var svg_core = this.generate_svg();
-        var genome_size = this.genomes.length;
+        var genome_size = this.active_genomes.length;
 
         // TODO this is just a temporary fix the whole generate_svg() has to be rewritten in either
         // createElementNS or raw html string fashion. FML.
@@ -2513,7 +2530,7 @@ class PangenomeGraphUserInterface {
         var rearranged_color = $('#rearranged_color').attr('color');
         var trna_color = $('#trna_color').attr('color');
 
-        var genome_size = this.genomes.length
+        var genome_size = this.active_genomes.length
         
         if ($('#flexsaturation').prop('checked') == true){
             var saturation = 1
@@ -2675,6 +2692,13 @@ class PangenomeGraphUserInterface {
         // this.layers = this.data['meta']['layers'].filter(item => item !== 'backbone');
         this.layers = this.data['meta']['layers'];
         this.genomes = this.data['meta']['genome_names'];
+        // The genomes the graph on screen is actually made of. `this.genomes` stays the
+        // full roster the db knows about, because the settings panel is built from it
+        // exactly once and has to keep a row for every genome so a hidden one can be
+        // switched back on. Anything that counts genomes -- prevalence shading, "N of M
+        // genomes" -- has to count these instead, or a subset graph reports its core
+        // nodes against a denominator that is no longer on the screen.
+        this.active_genomes = this.data['meta']['genomes_of_interest'] || this.genomes;
         this.functional_annotation_sources_available = this.data['meta']['gene_function_sources'];
 
         this.group_dict = {}
@@ -2959,6 +2983,15 @@ class PangenomeGraphUserInterface {
             $('#' + genome + 'trackbg').colpickSetColor(tbc.replace('#', ''));
             $('#' + genome + 'tracklw')[0].value = gdata['track_line_width'] ?? gt['line_width'];
             genome_order.push(genome);
+        }
+
+        // Genome order lives in the DOM order of the rows, so restoring a state has to
+        // put them back in the order it was saved in -- otherwise an ordering survives
+        // the save but not the load.
+        const genomecolors = document.getElementById('genomecolors');
+        for (const genome of genome_order) {
+            const row = document.getElementById(genome + '_row');
+            if (row) genomecolors.appendChild(row);
         }
 
         // imported_layers
@@ -3554,6 +3587,47 @@ class PangenomeGraphUserInterface {
             }
         });
 
+        // Switch every genome off / back on at once. The graph is not redrawn here --
+        // like every other control in this panel, the change lands on the next Redraw.
+        // That is the point: deselect all, switch one genome on, Redraw, switch the next
+        // one on, Redraw, and the graph rebuilds and re-lays out at each step.
+        // `.trigger('change')` so the per-genome handler still does its bookkeeping
+        // (hiding the track, dropping the dendrogram); it only warns about the
+        // dendrogram once, since the first genome to go clears the checkbox.
+        $('#genomes-deselect-all').on('click', () => {
+            for (const genome of this.genomes) {
+                $('#flex' + genome).prop('checked', false).trigger('change');
+            }
+            toastr.info('All genomes are switched off. Switch at least one back on, then hit Redraw.', 'Genomes deselected');
+        });
+
+        // One handler for the whole row of ordering buttons; each carries its own key.
+        // Buttons whose key no numbers arrived for (the genomes storage is optional for
+        // anvi-display-pan-graph) are dropped rather than left there to do nothing.
+        const genome_stats = (this.data['meta'] && this.data['meta']['genome_stats']) || {};
+        $('.genome-order-btn').each(function () {
+            const key = $(this).data('order-key');
+            if (key === 'name') return;
+            const have_it = Object.values(genome_stats).some(v => Number.isFinite(v[key]));
+            if (!have_it) $(this).remove();
+        });
+
+        $('#genome-order-controls').on('click', '.genome-order-btn', (ev) => {
+            this.order_genomes($(ev.currentTarget).data('order-key'));
+        });
+
+        $('#genomes-order-descending').on('click', (ev) => {
+            $(ev.currentTarget).toggleClass('active');
+            // re-apply whatever ordering is on screen, now the other way round
+            this.order_genomes(this._genome_order_key || 'name');
+        });
+
+        $('#genomes-select-all').on('click', () => {
+            for (const genome of this.genomes) {
+                $('#flex' + genome).prop('checked', true).trigger('change');
+            }
+        });
+
         $('#apply-track-defaults').on('click', () => {
             const bgColor = $('#layer_color').attr('color');
             const lw = $('#track_line_width')[0].value;
@@ -3564,6 +3638,9 @@ class PangenomeGraphUserInterface {
             }
             this.main_draw();
         });
+        // which ordering the buttons last applied, so 'Descending' has something to flip
+        this._genome_order_key = null;
+
         this.settings_dict['condtr'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['grouping_threshold']))
         this.settings_dict['maxlength'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['max_edge_length']))
         this.settings_dict['groupcompress'] = JSON.parse(JSON.stringify(this.data['states']['graph_layout']['group_compression']))
@@ -3598,6 +3675,53 @@ class PangenomeGraphUserInterface {
         $("#redraw").removeClass("disabled");
         $("#settings-content").removeClass("settings-loading").addClass("settings-loading-cleared");
     }
+
+    order_genomes(key) {
+        // Reorders the genome list in the settings panel, which is where genome order
+        // actually lives -- the drawing code reads it back out of the DOM on every draw
+        // (see generate_svg's `edgecoloring`). Every genome is reordered, switched on or
+        // off, since the order is a property of the list rather than of the selection.
+        const stats = (this.data['meta'] && this.data['meta']['genome_stats']) || {};
+        const descending = $('#genomes-order-descending').hasClass('active');
+
+        const by_name = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+
+        const sorted = this.genomes.slice().sort((a, b) => {
+            let cmp;
+            if (key === 'name') {
+                cmp = by_name(a, b);
+            } else {
+                // a genome with no number for this key sorts to the bottom either way,
+                // and ties fall back to the name so the result is never arbitrary
+                const va = (stats[a] || {})[key], vb = (stats[b] || {})[key];
+                const na = Number.isFinite(va) ? va : -Infinity;
+                const nb = Number.isFinite(vb) ? vb : -Infinity;
+                cmp = (na - nb) || by_name(a, b);
+            }
+            return descending ? -cmp : cmp;
+        });
+
+        const container = document.getElementById('genomecolors');
+        for (const genome of sorted) {
+            const row = document.getElementById(genome + '_row');
+            if (row) container.appendChild(row);
+        }
+
+        this._genome_order_key = key;
+
+        // The order no longer follows the dendrogram, so the dendrogram has to go --
+        // same rule the manual drag handler applies.
+        if ($('#flextree').prop('checked')) {
+            $('#flextree').prop('checked', false);
+            this.flextree_change({ currentTarget: document.getElementById('flextree') });
+            toastr.warning("As you have reordered the genomes, the dendrogram is removed from the display (anvi'o hopes you are happy).", 'Dendrogram removed');
+        }
+
+        // Ordering is a drawing concern only -- the graph itself is untouched, so this
+        // needs no trip to the server.
+        this.main_draw();
+    }
+
 
     flextree_change(instance) {
         if ($(instance.currentTarget).prop('checked') == true){
@@ -5179,8 +5303,11 @@ class PangenomeGraphUserInterface {
             return;
         }
 
+        // The rows are `.genome-row` (see initialize_user_interface). Filtering on any
+        // other class yields an empty list, which would quietly save a state with no
+        // genome settings in it at all.
         const genome_order = [...document.getElementById("genomecolors").children]
-            .filter(el => el.classList.contains("col-12"))
+            .filter(el => el.classList.contains("genome-row"))
             .map(el => el.id.replace('_row', ''));
 
         const genomes_state = {};
