@@ -3707,6 +3707,9 @@ class PanGraphSuperclass(PanSuperclass):
         # sets this; it is every genome in the db unless someone asked for a subset.
         self.genomes_of_interest = list(self.genome_names)
 
+        # lazily filled by `get_genome_stats`
+        self.genome_stats = None
+
         self.synteny_gene_clusters_gene_alignments_available = self.p_meta['gene_alignments_computed']
 
         if not self.synteny_gene_cluster_names:
@@ -3951,6 +3954,46 @@ class PanGraphSuperclass(PanSuperclass):
         return export_dict
 
     def init_pangenome_graph(self):
+    def get_genome_stats(self):
+        """Per-genome numbers the interface can sort its genome list by.
+
+        Everything here is computed over EVERY genome in the db and EVERY node in the
+        nodes table, deliberately -- NOT over whatever subset is currently on screen.
+        A genome's contig count is a property of the genome, and how many synteny gene
+        clusters it participates in is a property of the pan-graph; neither should
+        change because the user switched a different genome off. Keeping them fixed is
+        also what stops an ordering built on them from reshuffling underfoot as genomes
+        come and go.
+
+        `num_synteny_gene_clusters` always comes back. The rest are read from the
+        genomes storage, which is optional for `anvi-display-pan-graph`, so they are
+        simply absent when it was not provided -- the interface hides the buttons it
+        has no numbers for.
+        """
+        if self.genome_stats is not None:
+            return self.genome_stats
+
+        stats = {genome: {'num_synteny_gene_clusters': 0} for genome in self.genome_names}
+
+        for _, data in self.nodes.items():
+            for genome in json.loads(data['gene_calls_json']):
+                if genome in stats:
+                    stats[genome]['num_synteny_gene_clusters'] += 1
+
+        if self.genomes_storage_is_available:
+            keys = ['num_contigs', 'total_length', 'num_genes', 'gc_content',
+                    'percent_completion', 'percent_redundancy']
+            for genome, info in self.genomes_storage.genomes_info.items():
+                if genome not in stats:
+                    continue
+                for key in keys:
+                    if info.get(key) is not None:
+                        stats[genome][key] = info[key]
+
+        self.genome_stats = stats
+
+        return self.genome_stats
+
 
         for node, data in self.nodes.items():
             graph_data = {
