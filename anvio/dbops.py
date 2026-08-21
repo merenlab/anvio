@@ -3703,6 +3703,10 @@ class PanGraphSuperclass(PanSuperclass):
         self.pangenome_graph = PangenomeGraphManager()
         self.pangenome_graph_initialized = False
 
+        # which genomes the in-memory graph currently covers. `init_pangenome_graph`
+        # sets this; it is every genome in the db unless someone asked for a subset.
+        self.genomes_of_interest = list(self.genome_names)
+
         self.synteny_gene_clusters_gene_alignments_available = self.p_meta['gene_alignments_computed']
 
         if not self.synteny_gene_cluster_names:
@@ -3783,7 +3787,32 @@ class PanGraphSuperclass(PanSuperclass):
         self.p_meta['component'] = str(component)
 
 
-    def rerun_state(self, gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter, component='CP_0001'):
+    def rerun_state(self, gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter, component='CP_0001', genomes=None):
+        """Recompute the layout, and optionally the graph itself, for the interface.
+
+        `genomes` restricts the graph to a subset of the db's genomes (see
+        `init_pangenome_graph`). The graph is only rebuilt when that set actually
+        changed, so an ordinary redraw stays as cheap as it has always been.
+        """
+        # `None` means the caller didn't ask for a subset at all; an EMPTY list means
+        # they asked for nothing, which is a different thing and is an error.
+        if genomes is None:
+            requested = list(self.genome_names)
+        else:
+            unknown = sorted(set(genomes) - set(self.genome_names))
+            if unknown:
+                raise ConfigError(f"{len(unknown)} of the genomes you asked this pan-graph to show "
+                                  f"are not in it: {', '.join(unknown[:5])}"
+                                  f"{'...' if len(unknown) > 5 else ''} :/")
+
+            requested = [g for g in self.genome_names if g in set(genomes)]
+
+            if not requested:
+                raise ConfigError("There is no such thing as a pangenome graph of zero genomes, so "
+                                  "anvi'o is going to need you to leave at least one of them on :/")
+
+        if requested != self.genomes_of_interest:
+            self.init_pangenome_graph(genomes_of_interest=requested)
 
         args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
         items_layer_order = TableForLayerOrders(args)
@@ -3807,6 +3836,14 @@ class PanGraphSuperclass(PanSuperclass):
         region_sides_df, _ = self.pangenome_graph.summarize_all_components(
             scope=self.p_meta.get('region_scope', 'global'))
         self._refresh_region_caches(region_sides_df)
+
+        # dropping genomes can dissolve a component entirely, so the one the
+        # interface last asked for may no longer be there to show
+        components = {str(d.get('component_id', 'CP_0001'))
+                      for _, d in self.pangenome_graph.graph.nodes(data=True)}
+        if str(component) not in components and components:
+            component = sorted(components, key=lambda cid: int(cid.split('_')[1]))[0]
+
         self.p_meta['component'] = str(component)
 
 
@@ -3895,6 +3932,13 @@ class PanGraphSuperclass(PanSuperclass):
 
         meta = dict(self.p_meta)
         meta['components_summary'] = components_summary
+
+        # `genome_names` stays the full roster the db knows about -- the settings panel
+        # is built from it once and must keep a row for every genome so a hidden one can
+        # be brought back. `genomes_of_interest` is the subset the graph on screen is
+        # actually made of, and it is what the drawing code should count against.
+        meta['genomes_of_interest'] = list(self.genomes_of_interest)
+        meta['genome_stats'] = self.get_genome_stats()
 
         export_dict = {
             'meta': meta,
