@@ -1512,6 +1512,13 @@ class PangenomeGraphUserInterface {
             success: (data) => {
                 this.data = data['data'];
                 this.initialize_variables();
+                // Dropping genomes can dissolve a component or split one in two, so the
+                // dropdown is rebuilt here rather than only at startup. The server has
+                // already fallen back to the lowest-numbered component if the one we
+                // asked for is gone, so follow whatever it decided to send back.
+                this.populate_component_select();
+                new_settings_dict['component'] = this.data['meta']['component'];
+                $('#component_select').val(new_settings_dict['component']);
                 this.settings_dict = JSON.parse(JSON.stringify(new_settings_dict));
                 this.main_draw();
                 $('#svgbox').css('opacity', '');
@@ -2978,6 +2985,15 @@ class PangenomeGraphUserInterface {
             genome_order.push(genome);
         }
 
+        // Genome order lives in the DOM order of the rows, so restoring a state has to
+        // put them back in the order it was saved in -- otherwise an ordering survives
+        // the save but not the load.
+        const genomecolors = document.getElementById('genomecolors');
+        for (const genome of genome_order) {
+            const row = document.getElementById(genome + '_row');
+            if (row) genomecolors.appendChild(row);
+        }
+
         // imported_layers
         const il = state['imported_layers'] || {};
         for (const [layer, ldata] of Object.entries(il)) {
@@ -3569,6 +3585,20 @@ class PangenomeGraphUserInterface {
             } else {
                 $('#flex' + genome + 'layer').prop('checked', true);
             }
+        });
+
+        // Switch every genome off / back on at once. The graph is not redrawn here --
+        // like every other control in this panel, the change lands on the next Redraw.
+        // That is the point: deselect all, switch one genome on, Redraw, switch the next
+        // one on, Redraw, and the graph rebuilds and re-lays out at each step.
+        // `.trigger('change')` so the per-genome handler still does its bookkeeping
+        // (hiding the track, dropping the dendrogram); it only warns about the
+        // dendrogram once, since the first genome to go clears the checkbox.
+        $('#genomes-deselect-all').on('click', () => {
+            for (const genome of this.genomes) {
+                $('#flex' + genome).prop('checked', false).trigger('change');
+            }
+            toastr.info('All genomes are switched off. Switch at least one back on, then hit Redraw.', 'Genomes deselected');
         });
 
         $('#apply-track-defaults').on('click', () => {
