@@ -157,6 +157,82 @@ PRESENCE_SCHEME_OPTIONS = {
     scheme: f'--presence-colormap-scheme {scheme}' for scheme in SUMMARY_PRESENCE_SCHEMES.values()
 }
 
+# The statistic a normalization compares each element's value against, computed over the categories
+# in which that element has a value at all. These reduce a list like
+# 'AGGREGATION_FUNCTIONS' do: they are applied to one element's values across the samples or groups
+# rather than through pandas.
+ELEMENT_NORMALIZATION_REFERENCES = {
+    'mean': lambda values: float(np.mean(values)),
+    'median': lambda values: float(np.median(values)),
+    'max': lambda values: float(np.max(values)),
+    'total': lambda values: float(np.sum(values))
+}
+
+# The normalizations of '--*-element-normalization', which rescale a map element's value in each
+# sample or group against the same element's values across all of them. This transformation is not a
+# reduction like an aggregation or a summary. Normalized values are displayed on sample or group
+# maps. 'form' is how a value is compared to the reference ('_element_normalization_function'), and
+# 'reference' is the statistic it is compared against, one of 'ELEMENT_NORMALIZATION_REFERENCES' or
+# None for a form needing none. 'centered' says whether zero is the neutral middle of the resulting
+# quantity, which triggers a diverging colormap and a scale centered on zero by default. 'label'
+# names the quantity on the colorbar, with '{value}' standing in for the value column's own name.
+ELEMENT_NORMALIZATIONS = {
+    'relative_to_mean': {
+        'form': 'relative', 'reference': 'mean', 'centered': True,
+        'label': '{value} relative to mean'
+    },
+    'relative_to_median': {
+        'form': 'relative', 'reference': 'median', 'centered': True,
+        'label': '{value} relative to median'
+    },
+    'difference_from_mean': {
+        'form': 'difference', 'reference': 'mean', 'centered': True,
+        'label': '{value} - mean'
+    },
+    'difference_from_median': {
+        'form': 'difference', 'reference': 'median', 'centered': True,
+        'label': '{value} - median'
+    },
+    'log2_ratio_to_mean': {
+        'form': 'log2_ratio', 'reference': 'mean', 'centered': True,
+        'label': 'log2({value} / mean)'
+    },
+    'log2_ratio_to_median': {
+        'form': 'log2_ratio', 'reference': 'median', 'centered': True,
+        'label': 'log2({value} / median)'
+    },
+    'z_score': {
+        'form': 'z_score', 'reference': 'mean', 'centered': True,
+        'label': '{value} z-score'
+    },
+    'rank': {
+        'form': 'rank', 'reference': None, 'centered': False,
+        'label': '{value} rank'
+    },
+    'fraction_of_max': {
+        'form': 'fraction', 'reference': 'max', 'centered': False,
+        'label': '{value} / max'
+    },
+    'fraction_of_total': {
+        'form': 'fraction', 'reference': 'total', 'centered': False,
+        'label': '{value} / total'
+    }
+}
+
+# The normalization names as a phrase for messages that list them.
+ELEMENT_NORMALIZATION_PHRASE = ', '.join(repr(name) for name in ELEMENT_NORMALIZATIONS)
+
+# The forms whose reference has to be positive for the comparison to mean anything: dividing by a
+# reference of zero has no scale to measure against, and dividing by a negative one inverts the sign
+# of every deviation, so that a value above the reference would be drawn as though it were below it.
+# An element whose reference is not positive gets no value under these forms and is left uncolored.
+ELEMENT_NORMALIZATION_POSITIVE_FORMS = ('relative', 'log2_ratio', 'fraction')
+
+# The colormap the per-sample or per-group scale takes when a normalization centered on zero colors
+# it and no colormap was named for it. A normalized value says which side of the element's own
+# reference a sample falls on, which a diverging colormap shows, unlike the sequential default.
+DEFAULT_CENTERED_COLORMAP = 'RdYlGn'
+
 # The name a category colors file gives its color column. Its other column holds category names and
 # can be headed anything, exactly as the item column of a groups-txt file can, so that one file can
 # describe samples in one run and groups in another without being renamed.
@@ -824,6 +900,250 @@ class Mapper:
         return aggregate
 
     @staticmethod
+    def _element_normalization_function(form: str, reference: Union[str, None]) -> Callable:
+        """
+        Build the function behind one of 'ELEMENT_NORMALIZATIONS'.
+
+        The function takes one map element's values in the categories that have one, in order, and
+        returns a new value for each of them, in the same order. A value it cannot define is
+        returned as 'nan' or as an infinity, either of which leaves that element uncolored on that
+        category's map, exactly as an undefined aggregation leaves it uncolored
+        ('_reduce_entry_value').
+
+        Parameters
+        ==========
+        form : str
+            How a value is compared to the reference: the 'form' of an 'ELEMENT_NORMALIZATIONS'
+            entry.
+
+        reference : Union[str, None]
+            The statistic to compare against, named among 'ELEMENT_NORMALIZATION_REFERENCES', or
+            None for a form that needs no reference.
+
+        Returns
+        =======
+        Callable
+            Maps a sequence of values to a NumPy array of normalized values of the same length.
+        """
+        needs_positive = form in ELEMENT_NORMALIZATION_POSITIVE_FORMS
+        statistic = None if reference is None else ELEMENT_NORMALIZATION_REFERENCES[reference]
+
+        def normalize(values) -> np.ndarray:
+            # NumPy is asked not to raise or warn on the divisions and logarithms below, so that a
+            # reference or a value that leaves one element undefined is returned as 'nan' or an
+            # infinity for that element alone rather than interrupting a run over thousands of them.
+            with np.errstate(all='ignore'):
+                array = np.asarray(values, dtype=float)
+                if form == 'rank':
+                    # Ties share the average of the ranks they span, as pandas ranks by default.
+                    return pd.Series(array).rank().to_numpy()
+                undefined = np.full(array.shape, np.nan)
+                center = statistic(array)
+                if not np.isfinite(center) or (needs_positive and center <= 0):
+                    return undefined
+                if form == 'relative':
+                    return (array - center) / center
+                if form == 'difference':
+                    return array - center
+                if form == 'log2_ratio':
+                    return np.log2(array / center)
+                if form == 'fraction':
+                    return array / center
+                if form == 'z_score':
+                    # The spread of a single value is undefined, and a spread of zero would divide
+                    # deviations that are themselves all zero by it.
+                    if array.size < 2:
+                        return undefined
+                    spread = float(np.std(array, ddof=1))
+                    if not np.isfinite(spread) or spread == 0:
+                        return undefined
+                    return (array - center) / spread
+                raise ConfigError(
+                    f"_element_normalization_function :: '{form}' is not a form of comparison "
+                    f"anvi'o knows how to make. This is worth reporting as a bug."
+                )
+
+        return normalize
+
+    @staticmethod
+    def _resolve_element_normalization(
+        normalization: str,
+        flag: str,
+        element_type: str
+    ) -> Tuple[Callable, str, bool]:
+        """
+        Resolve a normalization name into a function rescaling one element's per-category values.
+
+        The recommended names are the keys of 'ELEMENT_NORMALIZATIONS'. Any other name is taken to
+        be a pandas Series method that transforms the values it is given into one new value each,
+        such as 'abs', and is probed here, before any data is touched, so that a name pandas does
+        not recognize, or one that does something other than transform, is reported as a
+        configuration error rather than failing deep in a drawing loop. This mirrors
+        '_resolve_aggregation' one rung up, and the two are opposites: an aggregation must reduce a
+        set of values to one number and so refuses a name that transforms, while a normalization
+        must return one value per category and so refuses a name that reduces.
+
+        Probes ask four things of a name. It must return a Series of one value per category, with
+        the same index in the same order — a name that reorders or drops categories would hand a
+        sample another sample's value undetected. It must return numbers, which alone can go on a
+        color scale. It must give the same answer twice for the same values, since the range of the
+        scale and the colors on the maps are worked out in separate passes. And it must not depend
+        on the order the categories come in, which is an artifact of how the samples happen to be
+        named and listed and says nothing about the data: 'cumsum' and 'ffill' answer differently
+        for a sample depending on what precedes it, so are refused. What a name MAKES of the values
+        is its own business, as it is for an aggregation: a name that transforms each value without
+        reference to the others, such as 'abs', is accepted, and the colorbar says which name was
+        used.
+
+        Parameters
+        ==========
+        normalization : str
+            The requested normalization name.
+
+        flag : str
+            The command-line flag the name comes from, used in error messages.
+
+        element_type : str
+            'reaction' or 'compound', naming the layer in error messages.
+
+        Returns
+        =======
+        Tuple[Callable, str, bool]
+            The normalizing function, the colorbar label with '{value}' standing in for the value
+            column's name, and whether zero is the neutral middle of the quantity it makes.
+        """
+        try:
+            preset = ELEMENT_NORMALIZATIONS[normalization]
+        except KeyError:
+            pass
+        else:
+            return (
+                Mapper._element_normalization_function(preset['form'], preset['reference']),
+                preset['label'],
+                preset['centered']
+            )
+
+        def refuse(reason: str) -> None:
+            raise ConfigError(
+                f"'{flag}' was given as '{normalization}', which {reason}. It takes one of "
+                f"anvi'o's normalizations ({ELEMENT_NORMALIZATION_PHRASE}), or the name of any "
+                f"pandas Series method that transforms the values it is given into one new value "
+                f"each, such as 'abs'. A name that reduces a set of values to a single number, "
+                f"such as 'mean', belongs to '--{element_type}-sample-summary' instead, which is "
+                f"what summarizes samples."
+            )
+
+        if not hasattr(pd.Series(dtype=float), normalization):
+            refuse("is neither one of anvi'o's normalizations nor a method pandas offers a Series")
+
+        def apply(series: pd.Series) -> pd.Series:
+            return getattr(series, normalization)()
+
+        def as_floats(result: pd.Series) -> np.ndarray:
+            # A nullable dtype ('convert_dtypes') carries a missing value that no array of plain
+            # floats can hold, which is a refusal rather than an error raised from the probes.
+            try:
+                return result.to_numpy(dtype=float)
+            except (TypeError, ValueError):
+                refuse(
+                    "returns values of a kind that cannot be made into the plain numbers a color "
+                    "scale is drawn from"
+                )
+
+        # The probes give the categories names rather than positions, and names whose alphabetical
+        # order differs from the order they are in, so that a name sorting by either the values or
+        # the index ('sort_values', 'sort_index') disagrees with the order it was handed. Ties in
+        # the values unmask a name that quietly drops repeated values ('drop_duplicates'). A missing
+        # value unmasks a name that drops categories ('dropna') or fills one from its neighbors
+        # ('ffill'), which are no-ops on a complete set of values. The last two probes are a pair and
+        # a single value: two categories are the fewest a normalization across them can say
+        # anything about, and one is what an element found in a single sample gives it, which is
+        # where a name that collapses to a scalar ('squeeze') would otherwise fail mid-drawing.
+        probe_index = ['SAMPLE_2', 'SAMPLE_1', 'SAMPLE_10', 'SAMPLE_3', 'SAMPLE_20', 'SAMPLE_4']
+        probe_values = [3.5, 11.25, 0.75, 7.0, 2.25, 19.5]
+        tied_values = [3.0, 3.0, 7.0, 7.0, 1.0, 9.0]
+        missing_values = [3.5, float('nan'), 0.75, 7.0, 2.25, 19.5]
+        for values in (
+            probe_values, tied_values, missing_values, probe_values[:2], probe_values[:1]
+        ):
+            index = probe_index[:len(values)]
+
+            try:
+                result = apply(pd.Series(values, index=index, dtype=float))
+            except Exception:
+                refuse("pandas could not apply to a set of category values")
+
+            if isinstance(result, (float, int, np.number)) or np.isscalar(result):
+                refuse(
+                    "reduces a set of values to a single number rather than giving each of them a "
+                    "new value"
+                )
+
+            if not isinstance(result, pd.Series):
+                refuse("does not give each category a value of its own")
+
+            if list(result.index) != index:
+                refuse(
+                    "does not return the values of the same categories in the same order, so "
+                    "anvi'o cannot tell to which of them each value belongs"
+                )
+
+            if not pd.api.types.is_numeric_dtype(result):
+                refuse("does not return numbers, so its results cannot be put on a color scale")
+
+            # The range of the scale and the colors of the maps are worked out in two passes over
+            # the maps, so a name that answers differently each time would color the maps on a scale
+            # that does not span them.
+            again = apply(pd.Series(values, index=index, dtype=float))
+            if not np.allclose(
+                as_floats(result), as_floats(again), rtol=1e-12, atol=0, equal_nan=True
+            ):
+                refuse("does not give the same answer twice for the same values")
+
+        # Reversing the categories, rotating them by one, and swapping the first two catch a
+        # dependence on their order that any single rearrangement might leave looking the same. The
+        # tied values are probed as well, since a name can answer the same for values that all
+        # differ and still turn on which of two equal ones comes first ('duplicated'), and so is
+        # the missing value, since a name that fills a category from its neighbors only reveals
+        # that it does so when there is something to fill.
+        for values in (probe_values, tied_values, missing_values):
+            index = probe_index[:len(values)]
+            probe = pd.Series(values, index=index, dtype=float)
+            given = as_floats(apply(probe))
+            positions = list(range(len(values)))
+            for order in (
+                positions[::-1], positions[1:] + positions[:1], [1, 0] + positions[2:]
+            ):
+                try:
+                    rearranged = apply(probe.iloc[order]).reindex(index)
+                except Exception:
+                    refuse("pandas could not apply to a set of category values")
+
+                if not np.allclose(
+                    given, as_floats(rearranged), rtol=1e-12, atol=0, equal_nan=True
+                ):
+                    refuse(
+                        "answers differently when the categories are given in a different order, "
+                        "and their order says nothing about the data — it is an artifact of how "
+                        "the samples happen to be named — so its results would depend on those "
+                        "names"
+                    )
+
+        def normalize(values) -> np.ndarray:
+            # The categories are numbered here rather than named, since a name that survived the
+            # probes above answers the same whatever their labels are, and numbering is cheaper.
+            result = apply(pd.Series(np.asarray(values, dtype=float)))
+            if len(result) != len(values):
+                raise ConfigError(
+                    f"'{flag}' was given as '{normalization}', which passed anvi'o's checks but "
+                    f"has now returned {len(result)} values for a map element with "
+                    f"{len(values)} of them. This is worth reporting as a bug."
+                )
+            return result.to_numpy(dtype=float)
+
+        return normalize, '{value} (' + normalization + ')', False
+
+    @staticmethod
     def _finite_values(values: Dict[str, float], undefined: Set[str] = None) -> Dict[str, float]:
         """
         Drop the accessions whose aggregated value is not a finite number.
@@ -1398,7 +1718,9 @@ class Mapper:
         value_limits: Union[Tuple[Union[float, None], Union[float, None]], None] = None,
         category_value_limits: Union[Tuple[Union[float, None], Union[float, None]], None] = None,
         value_center: Union[float, None] = None,
-        category_value_center: Union[float, None] = None
+        category_value_center: Union[float, None] = None,
+        element_normalization: Union[str, None] = None,
+        element_normalization_label: Union[str, None] = None
     ) -> dict:
         """
         Build one layer's coloring model for '_map_elements' from a per-layer reader result.
@@ -1451,6 +1773,17 @@ class Mapper:
         'category_value_center' put a value at the middle of those same two scales, each of which
         then runs the same distance either side of it however lopsided its own values are, and are
         refused and warned about on exactly the same footing as the limits.
+
+        'element_normalization' rescales each sample's or group's value for a map element against
+        the same element's values across all samples or groups ('_resolve_element_normalization').
+        This allows the enrichment or depletion of an element in a sample to be displayed rather
+        than how much of it there is. Therefore, normalization requires a value column and samples.
+        Normalization applies to the per-sample/per-group context alone, while the 'unified' map
+        summarizes the unnormalized category values. A normalization whose neutral value is zero
+        uses a centered scale on the diverging colormap, 'DEFAULT_CENTERED_COLORMAP', unless
+        overridden by 'category_value_center' and 'category_colormap'. 'element_normalization_label'
+        names the rescaled quantity on that scale's colorbar in place of the label the normalization
+        derives for itself.
         """
         element_type = data['element_type']
         use_reaction_attribute = data['reaction_source'] == 'Reaction'
@@ -1493,11 +1826,70 @@ class Mapper:
         category_value_limits = self._resolve_value_limits(
             category_value_limits, category_value_limits_flag
         )
+
+        # The normalization is settled before the centers are, since one whose neutral value is zero
+        # centers the per-sample/per-group scale on zero unless asked for another center, and that
+        # default has to be validated against the limits on that scale like any other center. It
+        # rescales the value of each sample or group against the element's values across all samples
+        # or groups, so it needs both a value column to rescale and samples.
+        element_normalization_flag = f'--{element_type}-element-normalization'
+        element_normalize = None
+        element_normalization_label_template = None
+        # Whether the center of the per-sample/per-group scale came from a normalization rather than
+        # from the user, which the warning about centering one scale and not the other has to know:
+        # nobody asked for this center, so there is nothing inconsistent about the other scale
+        # lacking one.
+        center_from_normalization = False
+        if element_normalization is None and element_normalization_label is not None:
+            raise ConfigError(
+                f"A label was given for what '{element_normalization_flag}' would put on the "
+                f"colorbar of the {element_type} layer, but no normalization was given for it to "
+                f"label. That colorbar is labeled by the value column of the file at '{path}' when "
+                f"nothing rescales it."
+            )
+        if element_normalization_label is not None and not element_normalization_label.strip():
+            raise ConfigError(
+                f"The label given to '{element_normalization_flag}' for the colorbar of the "
+                f"{element_type} layer's rescaled scale is blank, so nothing would say what that "
+                f"scale shows. Give the option a label with something in it, or give it the "
+                f"normalization alone and let anvi'o compose one."
+            )
+        if element_normalization is not None:
+            if value_column is None:
+                raise ConfigError(
+                    f"'{element_normalization_flag}' rescales the values of the {element_type} "
+                    f"layer, but the file at '{path}' has no value column, so that layer is "
+                    f"colored by presence and has no values to rescale."
+                )
+            if not has_sample:
+                raise ConfigError(
+                    f"'{element_normalization_flag}' rescales the value of each sample or group "
+                    f"against the values of all of them, but the file at '{path}' has no 'sample' "
+                    f"column, so there is a single set of values with nothing to compare them "
+                    f"against. Add a 'sample' column to compare samples."
+                )
+            element_normalize, element_normalization_label_template, centered = (
+                self._resolve_element_normalization(
+                    element_normalization, element_normalization_flag, element_type
+                )
+            )
+            if centered and category_value_center is None:
+                category_value_center = 0.0
+                center_from_normalization = True
+            if category_colormap is None and centered:
+                category_colormap = DEFAULT_CENTERED_COLORMAP
+
         value_center = self._resolve_value_center(
             value_center, value_center_flag, value_limits, value_limits_flag
         )
+        # A center that came from a centered normalization rather than from the user is reported
+        # under the normalization's own flag: nobody gave a center, so naming the center's flag
+        # would name a flag that was never used.
+        category_center_source_flag = (
+            element_normalization_flag if center_from_normalization else category_value_center_flag
+        )
         category_value_center = self._resolve_value_center(
-            category_value_center, category_value_center_flag, category_value_limits,
+            category_value_center, category_center_source_flag, category_value_limits,
             category_value_limits_flag
         )
         if value_column is None:
@@ -1667,6 +2059,10 @@ class Mapper:
                 'category_values': None,
                 'aggregate': aggregate,
                 'colorbar_label': value_column,
+                # A normalization was refused above, there being no samples to rescale against, so
+                # the one scale of this layer carries the value column's own name.
+                'category_colorbar_label': value_column,
+                'element_normalize': None,
                 'value_limits': value_limits,
                 'category_value_limits': None,
                 'value_center': value_center,
@@ -1733,6 +2129,7 @@ class Mapper:
             },
             'reverse_overlay': reverse_overlay,
             'category_values': None,
+            'element_normalize': element_normalize,
             'value_limits': value_limits,
             'category_value_limits': category_value_limits,
             'value_center': value_center,
@@ -1741,6 +2138,22 @@ class Mapper:
 
         if value_column is None:
             return model
+
+        # A normalization rescales the values that color the maps of the individual samples or
+        # groups, so it has nothing to act on where those maps are not colored by value. Grouped,
+        # that is what a sample summary of presence leaves them: each map shows how many of a
+        # group's samples contain an element rather than how much of it there is. This is checked
+        # before the limits and the center below, since a centered normalization supplies a center
+        # of its own and their messages would name that center rather than what put it there.
+        if element_normalization is not None and model['category_mode'] != 'quantitative':
+            raise ConfigError(
+                f"'{element_normalization_flag}' rescales the values that color the maps of the "
+                f"individual groups, but those maps are not colored by value here: "
+                f"'--{element_type}-sample-summary' summarizes each group's samples by presence "
+                f"rather than by pooling their values, so each map shows how many of a group's "
+                f"samples contain an element rather than how much of it there is. Set the sample "
+                f"summary to an aggregation such as 'mean' to color the group maps by value."
+            )
 
         # A limit bounds, and a center centers, a scale that colors by value, so a context colored
         # by presence, or in one static color, offers nothing for either to act on. Which of the two
@@ -1814,10 +2227,13 @@ class Mapper:
         # the same reason, and for one more: unless a colormap was given to the per-sample/per-group
         # scale of its own, the two are drawn from the same colormap, and then the middle color
         # means the centered value on the one map and whatever the values happen to leave in the
-        # middle on the other.
+        # middle on the other. A center that a normalization supplied is left out of this: it was not
+        # asked for, so the other scale not having one is nothing to reconcile, and a centered
+        # normalization uses a scale on a diverging colormap that is not shared with the summary.
         if (
             model['unified_mode'] == 'quantitative' and model['category_mode'] == 'quantitative'
             and (value_center is None) != (category_value_center is None)
+            and not center_from_normalization
         ):
             if value_center is None:
                 given_flag, other_flag = category_value_center_flag, value_center_flag
@@ -1931,6 +2347,17 @@ class Mapper:
             )
         model['aggregate'] = aggregate
         model['colorbar_label'] = value_column
+        # The 'unified' map is derived from the values themselves, so only the scale that the
+        # per-sample or per-group maps share is relabeled by a normalization. Every normalization
+        # composes its label from the value column's name: one anvi'o knows names the quantity it
+        # makes ('{value} - mean'), and any other is named by the pandas method it is
+        # ('{value} (abs)').
+        model['category_colorbar_label'] = (
+            value_column if element_normalization_label_template is None
+            else element_normalization_label_template.format(value=value_column)
+        )
+        if element_normalization_label is not None:
+            model['category_colorbar_label'] = element_normalization_label
         return model
 
     def map_kegg_pathways_txt(
@@ -1962,6 +2389,8 @@ class Mapper:
         reaction_category_value_limits: Tuple[Union[float, None], Union[float, None]] = None,
         reaction_value_center: Union[float, None] = None,
         reaction_category_value_center: Union[float, None] = None,
+        reaction_element_normalization: Union[str, None] = None,
+        reaction_element_normalization_label: Union[str, None] = None,
         compound_colormap: Union[bool, str, mcolors.Colormap] = None,
         compound_colormap_limits: Tuple[float, float] = None,
         compound_category_colormap: Union[str, mcolors.Colormap] = None,
@@ -1972,6 +2401,8 @@ class Mapper:
         compound_category_value_limits: Tuple[Union[float, None], Union[float, None]] = None,
         compound_value_center: Union[float, None] = None,
         compound_category_value_center: Union[float, None] = None,
+        compound_element_normalization: Union[str, None] = None,
+        compound_element_normalization_label: Union[str, None] = None,
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
         group_colormap_limits: Tuple[float, float] = None,
         group_reverse_overlay: bool = False,
@@ -2091,6 +2522,26 @@ class Mapper:
         compound_category_value_center : Union[float, None], None
             The same center for the compound layer's per-sample or per-group scale.
 
+        reaction_element_normalization : Union[str, None], None
+            How to rescale each sample's or group's value for a reaction element against the same
+            element's values across all samples or groups. This allows the enrichment or depletion
+            of an element in a sample to be displayed rather than how much of it there is. The
+            argument must be one of 'ELEMENT_NORMALIZATIONS' or the name of a pandas Series method
+            that transforms each value into another value ('_resolve_element_normalization'). It
+            rescales the maps of the individual samples or groups, while the 'unified' map
+            summarizes the unnormalized values of the categories. The default of None draws each
+            sample's own values.
+
+        reaction_element_normalization_label : Union[str, None], None
+            What the colorbar of the rescaled reaction scale is labeled, in place of the label the
+            normalization derives from the value column's name.
+
+        compound_element_normalization : Union[str, None], None
+            The same normalization for the compound layer.
+
+        compound_element_normalization_label : Union[str, None], None
+            The same colorbar label for the compound layer's rescaled scale.
+
         Notes
         =====
         The remaining parameters carry the shared groups, per-layer colors/colormaps, and drawing
@@ -2126,7 +2577,9 @@ class Mapper:
                 'value_limits': reaction_value_limits,
                 'category_value_limits': reaction_category_value_limits,
                 'value_center': reaction_value_center,
-                'category_value_center': reaction_category_value_center
+                'category_value_center': reaction_category_value_center,
+                'element_normalization': reaction_element_normalization,
+                'element_normalization_label': reaction_element_normalization_label
             })
         if compound_txt is not None:
             raw_layers.append({
@@ -2149,7 +2602,9 @@ class Mapper:
                 'value_limits': compound_value_limits,
                 'category_value_limits': compound_category_value_limits,
                 'value_center': compound_value_center,
-                'category_value_center': compound_category_value_center
+                'category_value_center': compound_category_value_center,
+                'element_normalization': compound_element_normalization,
+                'element_normalization_label': compound_element_normalization_label
             })
         if not raw_layers:
             raise ConfigError(
@@ -3630,6 +4085,94 @@ class Mapper:
         value = aggregate(entry_values)
         return value if np.isfinite(value) else None
 
+    @staticmethod
+    def _normalize_entry_value(
+        entry: kgml.Entry,
+        category_values: Dict[str, Dict[str, float]],
+        categories: Iterable[str],
+        aggregate,
+        normalize,
+        use_reaction_attribute: bool = False,
+        cache: Union[Dict[Tuple[str, ...], Dict[str, float]], None] = None
+    ) -> Dict[str, float]:
+        """
+        Rescale an Entry's value in each category against its values across all of them.
+
+        This is the one place a map element's values in different samples or groups meet: an
+        element's value is the aggregate of the accessions it stands for, and which accessions an
+        element stands for is known only from the KEGG map itself, so a ratio against the element's
+        mean, for instance, is a ratio of sums that no arithmetic on single accessions could produce
+        beforehand.
+
+        The values the normalization sees are those of the categories in which the element has a
+        value at all, so a sample with no row for any of the element's accessions is not counted as
+        a zero — the same rule a sample or group summary follows.
+
+        Parameters
+        ==========
+        entry : kgml.Entry
+            An Entry (ortholog or compound) whose accessions are read by '_get_entry_kegg_ids'.
+
+        category_values : Dict[str, Dict[str, float]]
+            Per-accession values keyed by category (sample or group) name, as the layer model's
+            'category_values'.
+
+        categories : Iterable[str]
+            The categories to normalize across, in the order they are colored in.
+
+        aggregate : callable
+            Reduces the values of an element's accessions to the element's value in one category
+            (see 'AGGREGATION_FUNCTIONS').
+
+        normalize : callable
+            Rescales an element's values across the categories that have one
+            ('_resolve_element_normalization').
+
+        use_reaction_attribute : bool, False
+            Passed to '_get_entry_kegg_ids' to read reaction IDs rather than KO/compound IDs.
+
+        cache : Union[Dict[Tuple[str, ...], Dict[str, float]], None], None
+            Results already worked out for this layer, keyed by an Entry's accessions, which is all
+            an answer depends on once the layer's values, aggregation and normalization are fixed. A
+            normalized value needs every category's value for the element, so the map of each
+            category would otherwise work out every other category's values again; the
+            range-finding pass fills this in beforehand, leaving the drawing passes nothing to
+            recompute. Pass None to work every answer out afresh.
+
+        Returns
+        =======
+        Dict[str, float]
+            The normalized value per category, holding only the categories the normalization
+            defined one for. Empty if the element has no value in any category.
+        """
+        key = None
+        if cache is not None:
+            key = tuple(Mapper._get_entry_kegg_ids(entry, use_reaction_attribute))
+            if key in cache:
+                return cache[key]
+        values: Dict[str, float] = {}
+        for category in categories:
+            value = Mapper._reduce_entry_value(
+                entry, category_values[category], aggregate,
+                use_reaction_attribute=use_reaction_attribute
+            )
+            if value is not None:
+                values[category] = value
+        if not values:
+            normalized_values: Dict[str, float] = {}
+        else:
+            # A normalization can be undefined for the values of this element even where it is
+            # defined elsewhere on the map (a z-score needs more than one value, and a ratio needs a
+            # positive reference), in which case the element has no value and is left uncolored.
+            normalized = normalize(list(values.values()))
+            normalized_values = {
+                category: float(value)
+                for category, value in zip(values, normalized) if np.isfinite(value)
+            }
+        if cache is not None:
+            cache[key] = normalized_values
+        return normalized_values
+
     def _draw_quantitative_colorbar(
         self,
         cmap: mcolors.Colormap,
@@ -3752,8 +4295,11 @@ class Mapper:
             'reverse_overlay', 'unified_values', 'category_values' (or None), 'aggregate',
             'colorbar_label', the optional 'value_limits'/'category_value_limits' bounding each
             context's scale and 'value_center'/'category_value_center' putting a value at the middle
-            of it ('_make_quantitative_norm'), and the optional 'category_cmap' coloring the
-            per-category scale from a colormap of its own rather than from 'cmap';
+            of it ('_make_quantitative_norm'), the optional 'category_cmap' coloring the
+            per-category scale from a colormap of its own rather than from 'cmap', the optional
+            'element_normalize' rescaling each category's value for an element against all of them
+            ('_normalize_entry_value'), and 'category_colorbar_label' naming what the per-category
+            scale then shows, which a normalization makes a quantity of another kind entirely;
             membership/static/original -> 'membership', 'source_accessions', 'color_hexcode', and
             (membership) 'colormap'/'colormap_limits'/'colormap_scheme'/'scheme_options'/
             'reverse_overlay'; single -> 'accessions', 'color_hexcode'. 'scheme_options' names the
@@ -3854,6 +4400,25 @@ class Mapper:
         # to act on then. Either one accepted and quietly dropped would look, from the output,
         # exactly like a limit that did nothing because no value crossed it, so say which it is.
         if not draw_category_maps:
+            # A normalization is checked before the limits and the center are, since one centered on
+            # zero supplies a center of its own.
+            normalized_layers = [
+                layer for layer in layers if layer.get('element_normalize') is not None
+            ]
+            if normalized_layers:
+                flags = ', '.join(
+                    f"'--{layer['element_type']}-element-normalization'"
+                    for layer in normalized_layers
+                )
+                raise ConfigError(
+                    f"A normalization was given for the values of the individual samples or groups "
+                    f"({flags}), which rescales each of their values against the values of all of "
+                    f"them, but this run draws no map for any individual sample or group, so there "
+                    f"is nowhere for a rescaled value to be drawn. Ask for those maps with "
+                    f"'--draw-individual-files' and/or '--draw-grid'. Note that the 'unified' map "
+                    f"summarizes the unnormalized sample or group values, so it is never "
+                    f"rescaled."
+                )
             for model_key, flag_suffix, subject_phrase, remedy_phrase in (
                 (
                     'category_value_limits', 'category-value-limits',
@@ -3967,6 +4532,10 @@ class Mapper:
             for layer in norm_layers:
                 layer['_unified_vals'] = []
                 layer['_category_vals'] = []
+                # Shared with the drawing passes below, which then have nothing left to work out:
+                # this pass asks for the normalized values of every element of every drawn map, and
+                # a normalized value covers all of the categories at once.
+                layer['_normalized_cache'] = {}
             for pathway_number in pathway_numbers:
                 self.progress.update(pathway_number)
                 pathway = self._get_pathway(pathway_number)
@@ -3977,6 +4546,7 @@ class Mapper:
                         has_categories and layer['category_mode'] == 'quantitative'
                         and layer['category_values'] is not None
                     )
+                    normalize = layer.get('element_normalize')
                     for entry in self._find_element_entries(
                         pathway, use_reaction, layer['accessions']
                     ):
@@ -3987,7 +4557,18 @@ class Mapper:
                             )
                             if value is not None:
                                 layer['_unified_vals'].append(value)
-                        if per_category:
+                        if per_category and normalize is not None:
+                            # A normalization sets each category's value from all of them at once,
+                            # so the scale must span the calculated normalized values.
+                            layer['_category_vals'].extend(
+                                self._normalize_entry_value(
+                                    entry, layer['category_values'], categories,
+                                    layer['aggregate'], normalize,
+                                    use_reaction_attribute=use_reaction,
+                                    cache=layer['_normalized_cache']
+                                ).values()
+                            )
+                        elif per_category:
                             for category_name in categories:
                                 category_value = self._reduce_entry_value(
                                     entry, layer['category_values'][category_name],
@@ -4000,8 +4581,24 @@ class Mapper:
                 # No values at all means no element of any drawn map has one, so the layer colors
                 # nothing and gets no colorbar: either its accessions are absent from these maps, or
                 # its aggregation was undefined everywhere (the standard deviation of a single
-                # value, say). Say so rather than leaving a blank map to be puzzled over.
-                if not layer['_unified_vals'] and not layer['_category_vals']:
+                # value, say). Say so rather than leaving a blank map to be puzzled over. Where a
+                # normalization colors those maps it is named first, and is asked about on its own:
+                # the maps it colors come out blank whether or not the 'unified' map has values,
+                # that map being drawn from the unnormalized values, so a test of both together
+                # would let a blank set of individual maps pass unremarked.
+                if layer.get('element_normalize') is not None and not layer['_category_vals']:
+                    self.run.warning(
+                        f"Nothing on the maps of the individual {category_noun}s could be colored "
+                        f"by '--{layer['element_type']}-element-normalization', so those maps "
+                        f"carry no colors from the '{layer['colorbar_label']}' column of the "
+                        f"{layer['element_type']} layer and no scale was drawn for them. Either "
+                        f"none of the drawn maps contains its accessions, or the normalization is "
+                        f"undefined for every map element: a ratio is undefined wherever the value "
+                        f"it is measured against is not a positive number, and a z-score wherever "
+                        f"an element is found in a single {category_noun}. The 'unified' map is "
+                        f"unaffected, being drawn from the unnormalized values."
+                    )
+                elif not layer['_unified_vals'] and not layer['_category_vals']:
                     self.run.warning(
                         f"Nothing on the maps could be colored by the values of the "
                         f"'{layer['colorbar_label']}' column of the {layer['element_type']} layer, "
@@ -4152,15 +4749,28 @@ class Mapper:
                     layer['unified_values'] if layer['category_values'] is None
                     else layer['category_values'][category]
                 )
-                return {
-                    'element_type': layer['element_type'],
-                    'use_reaction_attribute': layer['use_reaction_attribute'],
-                    'entry_keys': values,
-                    'colorer': self._quantitative_colorer(
+                normalize = layer.get('element_normalize')
+                if normalize is None:
+                    colorer = self._quantitative_colorer(
                         values, layer['_category_norm'], layer['category_cmap'],
                         layer['reverse_overlay'], layer['aggregate'],
                         layer['use_reaction_attribute'], center=layer['_category_center']
-                    ),
+                    )
+                else:
+                    colorer = self._normalized_quantitative_colorer(
+                        layer['category_values'], categories, category, layer['_category_norm'],
+                        layer['category_cmap'], layer['reverse_overlay'], layer['aggregate'],
+                        normalize, layer['use_reaction_attribute'],
+                        center=layer['_category_center'], cache=layer['_normalized_cache']
+                    )
+                return {
+                    'element_type': layer['element_type'],
+                    'use_reaction_attribute': layer['use_reaction_attribute'],
+                    # The elements this map colors are those this category has a value for, a
+                    # normalization giving a category no value where it had nothing to rescale or
+                    # where the rescaling itself was undefined.
+                    'entry_keys': values,
+                    'colorer': colorer,
                     'derived_compound': _reaction_derived(layer, mode, 'category_cmap')
                 }
             if mode == 'single':
@@ -4248,7 +4858,7 @@ class Mapper:
                         os.path.join(
                             output_dir, f"colorbar_{layer['name']}_{colorbar_category_suffix}.pdf"
                         ),
-                        layer['colorbar_label'],
+                        layer.get('category_colorbar_label', layer['colorbar_label']),
                         clamped_low=clamped_low, clamped_high=clamped_high,
                         center=layer['_category_center']
                     )
@@ -5681,6 +6291,51 @@ class Mapper:
                 fraction = 0.5 if center is not None else 1.0
             else:
                 fraction = float(norm(value))
+            priority = (1.0 - fraction) if reverse_overlay else fraction
+            return mcolors.rgb2hex(cmap(fraction)), priority
+        return colorer
+
+    def _normalized_quantitative_colorer(
+        self,
+        category_values: Dict[str, Dict[str, float]],
+        categories: Iterable[str],
+        category: str,
+        norm: Union[mcolors.Normalize, None],
+        cmap: mcolors.Colormap,
+        reverse_overlay: bool,
+        aggregate,
+        normalize,
+        use_reaction_attribute: bool,
+        center: Union[float, None] = None,
+        cache: Union[Dict[Tuple[str, ...], Dict[str, float]], None] = None
+    ):
+        """
+        Build a colorer that colors an Entry by its value in one category, rescaled across all
+        categories.
+
+        See '_draw_map_elements' for the colorer contract, and '_quantitative_colorer' for the plain
+        version of it. The difference is what an Entry's value is: here it is the value of this
+        category rescaled against the same Entry's values in every category
+        ('_normalize_entry_value'), so the colorer reads all of them and keeps the one it draws.
+        That is why the whole of 'category_values' is closed over rather than one category's share
+        of it. An Entry the normalization gives this category no value for is left uncolored, either
+        because the category had nothing to rescale or because the rescaling was undefined.
+
+        Reading every category to draw one of them would have each category's map work out all of
+        the others again, so the 'cache' (the layer's, shared with the range-finding pass and with
+        the colorers of the other categories) holds each answer once.
+        """
+        def colorer(entry: kgml.Entry) -> Union[Tuple[str, float], None]:
+            values = self._normalize_entry_value(
+                entry, category_values, categories, aggregate, normalize,
+                use_reaction_attribute=use_reaction_attribute, cache=cache
+            )
+            if category not in values:
+                return None
+            if norm is None:
+                fraction = 0.5 if center is not None else 1.0
+            else:
+                fraction = float(norm(values[category]))
             priority = (1.0 - fraction) if reverse_overlay else fraction
             return mcolors.rgb2hex(cmap(fraction)), priority
         return colorer

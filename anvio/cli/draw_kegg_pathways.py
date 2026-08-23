@@ -17,9 +17,9 @@ from anvio import A, K, __version__ as VERSION
 from anvio.metabolism.context import KeggContext
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.keggmapping import (
-    AGGREGATION_FUNCTIONS, DEFAULT_GROUP_TINT_SPAN, GROUP_COLORMAP_FROM_CATEGORY,
-    GROUP_SCHEME_OPTIONS, MAX_DISCRETE_COUNT_BANDS, SUMMARY_PRESENCE_PHRASE,
-    SUMMARY_PRESENCE_SCHEMES, Mapper
+    AGGREGATION_FUNCTIONS, DEFAULT_CENTERED_COLORMAP, DEFAULT_GROUP_TINT_SPAN,
+    ELEMENT_NORMALIZATION_PHRASE, GROUP_COLORMAP_FROM_CATEGORY, GROUP_SCHEME_OPTIONS,
+    MAX_DISCRETE_COUNT_BANDS, SUMMARY_PRESENCE_PHRASE, SUMMARY_PRESENCE_SCHEMES, Mapper
 )
 
 
@@ -678,6 +678,36 @@ def get_args() -> Namespace:
         "Like '--reaction-category-value-center', but for the compound layer: the scale shared by "
         "the compound colors of the individual sample or group maps."
     )
+    groupCOLOR.add_argument(
+        '--reaction-element-normalization', nargs='+', metavar='NAME', help=
+        f"Color each sample's or group's map by how much more or less than usual a reaction "
+        f"element is in it, rather than by how much of it there is: each element's value is "
+        f"rescaled against that same element's values across all of the samples. Under "
+        f"'relative_to_mean', +0.25 means 25%% more of the element than it averages across "
+        f"samples, and -0.31 means 31%% less. Anvi'o defines these normalizations: "
+        f"{ELEMENT_NORMALIZATION_PHRASE}. Any other name is taken to be a pandas Series method "
+        f"that gives each value a new value of its own, such as 'abs', and is checked before "
+        f"anything is drawn. A second value labels the colorbar of the rescaled scale, in place "
+        f"of the label anvi'o composes from the normalization and the value column; quote it if "
+        f"it has spaces, as in 'relative_to_mean \"%% change vs. mean\"'. Only the maps of the "
+        f"individual samples or groups are rescaled, so this needs '--draw-individual-files' "
+        f"and/or '--draw-grid'; the 'unified' map summarizes the unnormalized values. With "
+        f"'--groups-txt', the rescaling happens across the groups, so '--reaction-sample-summary' "
+        f"has to pool each group's samples into a value: left at its default it counts them, and a "
+        f"count is not something to rescale. A normalization whose neutral value is zero also "
+        f"centers the rescaled scale on zero and colors it with the diverging colormap "
+        f"'{DEFAULT_CENTERED_COLORMAP}', which '--reaction-category-value-center' and "
+        f"'--reaction-category-colormap' override. An element the normalization cannot value is "
+        f"left uncolored: a ratio needs a positive value to measure against, and a z-score needs "
+        f"an element found in more than one sample."
+    )
+    groupCOLOR.add_argument(
+        '--compound-element-normalization', nargs='+', metavar='NAME', help=
+        "Like '--reaction-element-normalization', but for the compound layer of a '--compound-txt' "
+        "file colored by a value column. The two layers are rescaled independently, each on its "
+        "own scale and with its own colorbar, so each takes its own normalization and its own "
+        "label."
+    )
     groupGROUP.add_argument(
         '--group-colormap', nargs='+', help=
         f"This option is like '--reaction-colormap', but only applies to drawing files for "
@@ -950,6 +980,24 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 f"and 1.0 with the smaller one first. These do not: {limits[0]}, {limits[1]}."
             )
         return colormap_arg[0], limits
+
+    def _resolve_element_normalization(normalization_arg, flag):
+        # '--*-element-normalization' is an 'nargs' arg: a normalization on its own, or one followed
+        # by the label its colorbar takes. The normalization itself goes to the mapper as it was
+        # typed, so that it is checked by the one place that knows the names,
+        # 'Mapper._resolve_element_normalization', and the two cannot drift apart.
+        if normalization_arg is None:
+            return None, None
+        if len(normalization_arg) == 1:
+            return normalization_arg[0], None
+        if len(normalization_arg) == 2:
+            return normalization_arg[0], normalization_arg[1]
+        raise ConfigError(
+            f"'{flag}' takes either a normalization on its own, or a normalization followed by the "
+            f"label its colorbar takes, such as 'relative_to_mean \"% change vs. "
+            f"mean\"'. {len(normalization_arg)} values were given: {' '.join(normalization_arg)}. "
+            f"If the label contains spaces, it has to be quoted so that it arrives as one value."
+        )
 
     def _resolve_value_limits(limits_arg):
         # '--*-value-limits' are two-value args: a minimum and then a maximum, either of which can
@@ -1274,6 +1322,35 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"'--{element_type}-value-{'limits' if verb == 'bound' else 'center'}'."
                 )
 
+        # A normalization needs the same things: the layer's file, a value column to rescale, and
+        # the samples to rescale each value against. It also needs maps for those samples to be
+        # drawn at all, which the mapper checks once it knows what this run draws.
+        for normalization, element_type, file_flag, layer in (
+            (args.reaction_element_normalization, 'reaction', '--reaction-txt', reaction),
+            (args.compound_element_normalization, 'compound', '--compound-txt', compound)
+        ):
+            if normalization is None:
+                continue
+            flag = f'--{element_type}-element-normalization'
+            if layer is None:
+                raise ConfigError(
+                    f"'{flag}' rescales the values of the {element_type} layer, but no "
+                    f"{element_type} file ('{file_flag}') was provided."
+                )
+            if layer['mode'] != 'quantitative':
+                raise ConfigError(
+                    f"'{flag}' rescales the values of the {element_type} layer, but its file has "
+                    f"no value column, so the layer is colored by presence and has no values to "
+                    f"rescale."
+                )
+            if not layer['has_sample']:
+                raise ConfigError(
+                    f"'{flag}' rescales the value of each sample or group against the values of "
+                    f"all of them, but the {element_type} file has no 'sample' column, so there is "
+                    f"a single set of values with nothing to compare them against. Add a 'sample' "
+                    f"column to compare samples."
+                )
+
         # A colormap for the scale the individual maps share needs the same things that pair of
         # limits needs: the layer's file, a value column to put those maps on a scale, and the
         # samples they are drawn for. Whether that scale ends up colored by value once the summaries
@@ -1442,6 +1519,16 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
     group_colormap, group_colormap_limits = _resolve_colormap(
         args.group_colormap, '--group-colormap'
     )
+    reaction_element_normalization, reaction_element_normalization_label = (
+        _resolve_element_normalization(
+            args.reaction_element_normalization, '--reaction-element-normalization'
+        )
+    )
+    compound_element_normalization, compound_element_normalization_label = (
+        _resolve_element_normalization(
+            args.compound_element_normalization, '--compound-element-normalization'
+        )
+    )
 
     # Presence colors: '--original-color' routes the reaction layer through the reference-color
     # drawer; otherwise '--reaction-color'/'--compound-color' set each layer's single presence color
@@ -1480,6 +1567,10 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         'reaction_category_value_center': args.reaction_category_value_center,
         'compound_value_center': args.compound_value_center,
         'compound_category_value_center': args.compound_category_value_center,
+        'reaction_element_normalization': reaction_element_normalization,
+        'reaction_element_normalization_label': reaction_element_normalization_label,
+        'compound_element_normalization': compound_element_normalization,
+        'compound_element_normalization_label': compound_element_normalization_label,
         'group_reverse_overlay': args.group_reverse_overlay,
         'group_colormap_scheme': args.group_colormap_scheme,
         'draw_maps_lacking_data': args.draw_bare_maps
@@ -1948,18 +2039,22 @@ def main() -> None:
                 (args.compound_category_value_center is not None,
                  '--compound-category-value-center'),
                 (args.reaction_category_colormap is not None, '--reaction-category-colormap'),
-                (args.compound_category_colormap is not None, '--compound-category-colormap')
+                (args.compound_category_colormap is not None, '--compound-category-colormap'),
+                (args.reaction_element_normalization is not None,
+                 '--reaction-element-normalization'),
+                (args.compound_element_normalization is not None,
+                 '--compound-element-normalization')
             ) if present_flag]
             if compound_only_flags:
                 message = ', '.join(f"'{flag}'" for flag in compound_only_flags)
                 raise ConfigError(
                     f"These options were given: {message}. They color a compound layer, or "
-                    f"summarize the samples of a draw-kegg-pathways text file, or bound, center or "
-                    f"color a scale of values, all of which only '--reaction-txt'/'--compound-txt' "
-                    f"provide. Database, pangenome and reaction-network-JSON inputs have a "
-                    f"reaction layer alone, drawn from one source per database or genome and "
-                    f"colored by how many of them contain an element rather than by a value, so "
-                    f"none of these can apply."
+                    f"summarize the samples of a draw-kegg-pathways text file, or bound, center, "
+                    f"color or rescale a scale of values, all of which only "
+                    f"'--reaction-txt'/'--compound-txt' provide. Database, pangenome and "
+                    f"reaction-network-JSON inputs have a reaction layer alone, drawn from one "
+                    f"source per database or genome and colored by how many of them contain an "
+                    f"element rather than by a value, so none of these can apply."
                 )
         # '--original-color' draws only the reaction layer (its compounds follow in the reference
         # colors on global/overview maps); it cannot also stage an explicit compound file.

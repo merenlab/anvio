@@ -80,6 +80,11 @@ minimal_enzymes_input.txt > draw_kos_sparse300.reaction.txt
 # more accessions, would differ from the rest.)
 awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","coverage"} NR>1{print $2,$1,1}' \
 minimal_enzymes_input.txt > draw_kos_constant_coverage.reaction.txt
+# Log abundances spread over three samples, negative throughout. Every element's mean is therefore
+# negative, and a ratio measured against it is undefined for all of them, so a normalization leaves
+# every map of an individual sample blank.
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","sample","log_abundance"} NR>1{s=((NR-2)%3)+1; print $1,$2,sprintf("SAMPLE_%d",s),$3}' \
+draw_kos_negative.reaction.txt > draw_kos_samples_negative.reaction.txt
 printf 'category\tcolor\nSAMPLE_1\t#1f77b4\nSAMPLE_2\t#ff7f0e\nSAMPLE_3\t#2ca02c\nSAMPLE_1, SAMPLE_2\t#7d5ba6\n' > draw-sample-colors-combo.txt
 printf 'category\tcolor\nSAMPLE_1\t#1f77b4\nSAMPLE_2\t#ff7f0e\n' > draw-sample-colors-incomplete.txt
 # Two samples given the same color, so that two of the seven combinations of three samples come out
@@ -104,6 +109,7 @@ for fixture in contigs-db-group-information.txt draw_kos_samples300.reaction.txt
               draw_kos_samples60.reaction.txt draw-sample-group-information-60.txt \
               draw_kos_sparse300.reaction.txt draw_compounds_samples300.compound.txt \
               draw-sample-group-information-300.txt draw_kos_constant_coverage.reaction.txt \
+              draw_kos_samples_negative.reaction.txt \
               draw-sample-colors-combo.txt draw-sample-colors-incomplete.txt draw-sample-colors-clashing.txt \
               draw_kos_awkward_sample_names.reaction.txt draw_kos_unusable_sample_names.reaction.txt \
               draw_bad_mixed_kr.reaction.txt draw_bad_repeated_rows.reaction.txt \
@@ -1298,6 +1304,16 @@ then
     exit 1
 fi
 
+# The same goes for a normalization, which rescales the values of a value column that only the input
+# text files carry.
+if anvi-draw-kegg-pathways --external-genomes external-genomes.txt --draw-grid \
+    --reaction-element-normalization relative_to_mean \
+    --output-dir draw_db_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a normalization on a database run should have failed but did not."
+    exit 1
+fi
+
 # Nor is there one for a second colormap to color: a database run's individual maps show one
 # database or genome each, in a single color rather than along a scale.
 if anvi-draw-kegg-pathways --external-genomes external-genomes.txt --draw-individual-files \
@@ -1323,6 +1339,149 @@ if anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db \
     --output-dir draw_db_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: gathering by map for a single contigs database should have failed."
+    exit 1
+fi
+
+INFO "Testing that a normalization of element values is refused where it has nothing to act on"
+# A normalization rescales only the maps of the individual samples or groups, so asking for one
+# without asking for those maps would go nowhere.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-element-normalization relative_to_mean \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a normalization with no individual maps should have failed."
+    exit 1
+fi
+
+# Without a 'sample' column there is a single set of values with nothing to rescale them against.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-element-normalization relative_to_mean \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a normalization without a 'sample' column should have failed."
+    exit 1
+fi
+
+# Without a value column the layer is colored by presence, so there is nothing to rescale.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --reaction-element-normalization relative_to_mean --draw-individual-files \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a normalization without a value column should have failed."
+    exit 1
+fi
+
+# A normalization can be undefined for every element it is asked about, which is not a refusal: the
+# maps of the individual samples simply come out blank. The 'unified' map is drawn from the
+# unnormalized values and is unaffected, so the warning has to name the normalization rather than
+# the accessions or the aggregation, which are both fine here.
+INFO "Testing the warning that a normalization was undefined for every element"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_negative.reaction.txt \
+    --output-dir draw_txt_samples_kos_normalization_undefined \
+    --reaction-element-normalization relative_to_mean \
+    --pathway-numbers $pathway_numbers --draw-individual-files \
+    --no-progress 2>&1 | tee draw_txt_normalization_undefined.log
+if ! tr '\n' ' ' < draw_txt_normalization_undefined.log \
+    | grep -q "the normalization is undefined for every map element"
+then
+    echo "ERROR: a normalization undefined everywhere did not warn about the normalization."
+    exit 1
+fi
+if [ -s draw_txt_samples_kos_normalization_undefined/colorbar_reactions_samples.pdf ]
+then
+    echo "ERROR: a normalization undefined everywhere should have drawn no per-sample colorbar."
+    exit 1
+fi
+
+# A pandas Series method that gives each value a new value of its own works as a normalization too,
+# and takes the label anvi'o composes from the method's own name. This is the incidental way to ask
+# for one, the named normalizations being the way it is meant to be used, so it is checked here
+# rather than in the packaged suite.
+INFO "Testing a pandas transform used in place of a named normalization"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --output-dir draw_txt_samples_kos_element_normalization_transform \
+    --reaction-element-normalization abs \
+    --pathway-numbers $pathway_numbers --draw-individual-files \
+    --no-progress
+if [ ! -s draw_txt_samples_kos_element_normalization_transform/colorbar_reactions_samples.pdf ]
+then
+    echo "ERROR: a pandas transform used as a normalization should have written a colorbar."
+    exit 1
+fi
+
+INFO "Testing the names a normalization cannot be given"
+# Each of these is a name that does the wrong thing with a set of values, and each is caught by a
+# different probe. A reduction such as 'mean' summarizes samples rather than rescaling each of them,
+# which is what '--reaction-sample-summary' is for. A name that reorders the categories would hand a
+# sample another sample's value. A name that reads one category against its neighbors reads an order
+# that is an artifact of how the samples happen to be named. 'duplicated' answers for one of two
+# equal samples according to which came first, which values that all differ never reveal. 'squeeze'
+# returns a bare number for the single value that an element found in one sample alone gives it,
+# which is commonplace and would otherwise fail in the middle of drawing. 'convert_dtypes' answers
+# in a nullable dtype, whose missing value no array of plain floats holds.
+for normalization in not_a_pandas_method mean idxmax sort_values cumsum pct_change duplicated \
+                     squeeze convert_dtypes
+do
+    if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+        --reaction-element-normalization $normalization --draw-individual-files \
+        --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+    then
+        echo "ERROR: '$normalization' should have failed as a normalization but did not."
+        exit 1
+    fi
+done
+
+# A colorbar labeled with nothing says nothing about what it shows.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-element-normalization relative_to_mean "   " --draw-individual-files \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a blank colorbar label should have failed but did not."
+    exit 1
+fi
+
+# A normalization whose neutral value is zero centers the rescaled scale there, which means the run
+# holds a center that nobody asked for. Wherever that center is reported, the message has to name
+# the normalization that supplied it rather than the option for giving one by hand: naming
+# '--reaction-category-value-center' would send the reader to an option they never used. The two
+# places it is reported are a per-group scale that is not colored by value at all, and a scale whose
+# limits leave no room for the center.
+INFO "Testing that a center supplied by a normalization is reported against the normalization"
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0.5 --draw-grid \
+    --reaction-element-normalization relative_to_mean \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_normalization_grouped.log 2>&1
+then
+    echo "ERROR: a normalization over groups summarized by presence should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_normalization_grouped.log \
+    | grep -q "reaction-element-normalization"
+then
+    echo "ERROR: the refusal over presence-summarized groups did not name the normalization."
+    exit 1
+fi
+if tr '\n' ' ' < draw_txt_normalization_grouped.log \
+    | grep -q "reaction-category-value-center"
+then
+    echo "ERROR: the refusal over presence-summarized groups blamed a center nobody gave."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-element-normalization relative_to_mean \
+    --reaction-category-value-limits 1 5 --draw-individual-files \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_normalization_center.log 2>&1
+then
+    echo "ERROR: a centered normalization under limits excluding zero should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_normalization_center.log \
+    | grep -q "reaction-element-normalization"
+then
+    echo "ERROR: a center from a normalization was not reported against the normalization."
     exit 1
 fi
 
