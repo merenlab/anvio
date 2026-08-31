@@ -455,7 +455,7 @@ class KOfamDownload(KeggSetup):
                               f"function: {tuple_of_seqs}. No alignment, no HMM. Sorry!")
 
         m = Muscle(progress=progress_quiet, run=run_quiet)
-        aligned_sequences = m.run_stdin(tuple_of_seqs, debug=anvio.DEBUG)
+        aligned_sequences = m.run_default(tuple_of_seqs, debug=anvio.DEBUG)
         fasta_alignment = ''.join(['>%s\n%s\n' % (seq_id, seq) for seq_id, seq in aligned_sequences.items()])
 
         hmmbuild_cmd_line = ['hmmbuild', '-n', hmm_name, '--informat', 'afa', hmm_output_file, '-'] # sending '-' in place of an alignment file so it reads from stdin

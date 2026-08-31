@@ -348,8 +348,17 @@ rule align_sequences:
         additional_params=M.get_param_value_from_config(
             ["align_sequences", "additional_params"]
         ),
-    shell:
-        "muscle -in {input} -out {output} {params.additional_params} -verbose 2> {log}"
+    run:
+        from anvio.drivers.muscle import Muscle
+
+        Muscle()
+        additional_params = params.additional_params or ""
+
+        if "-super5" in additional_params.split():
+            additional_params = " ".join([param for param in additional_params.split() if param != "-super5"])
+            shell("muscle -super5 {input.source} -output {output.fasta} {additional_params} 2> {log}")
+        else:
+            shell("muscle -align {input.source} -output {output.fasta} {additional_params} 2> {log}")
 
 
 rule trim_alignment:

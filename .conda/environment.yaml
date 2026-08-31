@@ -9,7 +9,7 @@ dependencies:
 - prodigal
 - idba
 - mcl
-- muscle=3.8.1551
+- "muscle>=5"
 - famsa
 - hmmer
 - diamond

@@ -58,7 +58,7 @@
         },
         "align_sequences": {
             "threads":           {"type": "int", "default": 5},
-            "additional_params": {"type": "str", "default": "-maxiters 1 -diags -sv -distance1 kbit20_3"}
+            "additional_params": {"type": "str", "default": ""}
         },
         "trim_alignment": {
             "threads":           {"type": "int",  "default": 5},
