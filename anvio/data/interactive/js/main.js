@@ -1248,7 +1248,6 @@ function isCollapsedLabelTaken(label, skipIndex) {
 function markCollapsedNodesChanged(redraw=false) {
     $('#tree_modified_warning').show();
     $('#btn_draw_tree').addClass('glowingbutton');
-    $('#draw-btn').addClass('glowingbutton');
 
     if (redraw) {
         drawTree();
@@ -2182,7 +2181,6 @@ function drawTree() {
     tree_type = settings['tree-type'];
 
     $('#btn_draw_tree').removeClass('glowingbutton');
-    $('#draw-btn').removeClass('glowingbutton');
     $('#draw_delta_time').html('');
     $('#btn_draw_tree').prop('disabled', true);
     $('#bin_settings_tab').removeClass("disabled"); // enable bins tab

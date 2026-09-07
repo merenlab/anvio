@@ -77,6 +77,14 @@ function switchNavigationTabs(tab_number) {
                 $(tab_number).addClass('active');
                 $(tab_number).tab('show');
             }
+            // anchors that act as buttons (`href="#"` or `href=""`) resolve to the
+            // page URL itself, so they would match `window.location.href` and light
+            // up as if they were the selected tab. only anchors that address a tab
+            // pane take part in the active/inactive bookkeeping.
+            var href = $(this).attr('href');
+            if (!href || href.length < 2 || href.charAt(0) != '#')
+                return;
+
             if ($(this).prop('href') == window.location.href) {
                 $(this).addClass('active');
                 $(this).parents('li').addClass('active');
