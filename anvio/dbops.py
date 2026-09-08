@@ -3700,7 +3700,7 @@ class PanGraphSuperclass(PanSuperclass):
         self.genome_distances = pan_graph_db.db.get_table_as_dict(t.pan_graph_genome_distances_table_name)
         self.states = pan_graph_db.db.get_table_as_dict(t.states_table_name)
 
-        self.pangenome_graph = PangenomeGraphManager()
+        self.pangenome_graph = PangenomeGraphManager(run=self.run, progress=self.progress)
         self.pangenome_graph_initialized = False
 
         # which genomes the in-memory graph currently covers. `init_pangenome_graph`
@@ -4036,7 +4036,7 @@ class PanGraphSuperclass(PanSuperclass):
 
         # a fresh graph every time so this function can be called again to change the
         # genome set without leaving nodes from a previous call behind
-        self.pangenome_graph = PangenomeGraphManager()
+        self.pangenome_graph = PangenomeGraphManager(run=self.run, progress=self.progress)
 
         nodes_kept = set()
         for node, data in self.nodes.items():

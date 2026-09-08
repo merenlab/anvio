@@ -104,6 +104,7 @@ class PangenomeGraphSubGraph:
         self.graph_nodes = A('graph_nodes').split(',') if A('graph_nodes') else None
         self.output_dir = A('output_dir')
         self.external_genomes_file_path = A('external_genomes')
+        self.reset_gene_caller_ids = A('reset_gene_caller_ids')
 
         # the user gives region coordinates as plain numbers (e.g. `--component-id 1 --region-id 5`),
         # but internally the pangenome graph db keys everything on the padded name strings
@@ -262,6 +263,9 @@ class PangenomeGraphSubGraph:
         self.run.info('Pangenome graph database', pangraph.p_meta['project_name'])
         self.run.info("Pan graph database", self.pan_graph_db_path)
         self.run.info("Nodes to export", ', '.join(self.graph_nodes))
+        self.run.info("Gene caller ids", "Reset to start from 0 in each output database" if self.reset_gene_caller_ids
+                                          else "Kept as they are to match the source contigs databases",
+                      mc="red" if self.reset_gene_caller_ids else "green")
         self.run.info("Loci", '')
 
         d = {}
@@ -303,6 +307,7 @@ class PangenomeGraphSubGraph:
                                             output_file_prefix=genome_name,
                                             delimiter=',',
                                             never_reverse_complement=True,
+                                            reset_gene_caller_ids=self.reset_gene_caller_ids,
                                             include_fasta_output=False)
 
             # let's go
@@ -313,14 +318,24 @@ class PangenomeGraphSubGraph:
 
 
 class RarefactionAnalysis:
-    """Takes in a pangenome, calculates rarefaction curves and Heaps' Law fit to assess the openness of the pangenome.
+    """Takes in a pan-db (or a pan-graph-db), calculates rarefaction curves and Heaps' Law fit.
 
         >>> import argparse
-        >>> args = argparse.Namespace(pan_db="PATH/TO/PAN.db", iterations=100, output_file='rarefaction_curves.svg')
+        >>> args = argparse.Namespace(pan_or_pan_graph_db="PATH/TO/PAN.db")
         >>> rarefaction_curves = RarefactionAnalysis(args)
         >>> k, alpha = rarefaction_curves.process()
 
-    A client of this class is the program `anvi-compute-rarefaction-curves`
+    A pan-graph-db goes through the very same parameter and works exactly the same way, except
+    that the thing which accumulates as genomes are added is the synteny gene cluster (SynGC)
+    rather than the GCs.
+
+    A caller that is describing a specific set of genomes rather than a whole database can
+    narrow the analysis down with `genome_names`, which also fixes the order they are reported
+    in:
+
+        >>> args = argparse.Namespace(pan_or_pan_graph_db="PATH/TO/PAN-GRAPH.db", genome_names=['g1', 'g2', 'g3'])
+
+    Default clients of this class are the programs `anvi-compute-rarefaction-curves and `anvi-script-gen-pan-graph-video`.
     """
 
     def __init__(self, args, run=run, progress=progress):
@@ -329,32 +344,153 @@ class RarefactionAnalysis:
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.pan_db_path = A('pan_db')
-        self.iterations = A('iterations') or 100
+        self.pan_or_pan_graph_db_path = A('pan_or_pan_graph_db')
+        self.genome_names_of_interest = A('genome_names')
+        self.iterations = A('iterations') if A('iterations') is not None else 100
         self.output_file_prefix = A('output_file_prefix')
         self.skip_output_files= A('skip_output_files')
 
-        # to be filled from the pan-db
-        self.gene_cluster_data = None
+        # to be filled from the input database by `load_data`
+        self.db_path = None
+        self.db_type = None
+        self.item_name = None            # what a single accumulating thing is called, for messages and plots
+        self.item_label = None           # its short form, for `run.info` lines that have no room for the long one
+        self.item_name_for_axis = None   # its plural, title-cased the way an axis label wants it
+        self.presence = None             # boolean genomes-by-items matrix; the only thing the math needs
+        self.project_name = None
         self.unique_genomes = None
         self.num_genomes = None
+        self.num_items = None
 
-        # Load gene cluster data
+        # Load gene cluster (or SynGC) data
         self.load_data()
 
 
-    def load_data(self):
-        """Load gene cluster data from pan-db, setup essential variables, sanity check."""
+    def resolve_input(self):
+        """Here be figuring out what to call the things in our database"""
 
-        utils.is_pan_db(self.pan_db_path)
+        if not self.pan_or_pan_graph_db_path:
+            raise ConfigError("This program needs a pan-db or a pan-graph-db to compute rarefaction curves "
+                              "for, but it was given NEITHER :/")
 
-        # let's learn a few things form the pan-db.
-        pan_db = dbops.PanDatabase(self.pan_db_path)
-        self.gene_cluster_data = pan_db.db.get_some_columns_from_table(t.pan_gene_clusters_table_name, "gene_cluster_id, genome_name", as_data_frame=True)
-        self.unique_genomes = self.gene_cluster_data["genome_name"].unique()
-        self.num_genomes = len(self.unique_genomes)
-        self.pan_project_name = pan_db.meta['project_name']
+        self.db_path = self.pan_or_pan_graph_db_path
+        self.db_type = DBInfo(self.db_path, expecting=['pan', 'pan-graph']).db_type
+
+        if self.db_type == 'pan-graph':
+            self.item_name, self.item_label, self.item_name_for_axis = 'SynGC', 'SynGC', 'SynGCs'
+        else:
+            self.item_name, self.item_label, self.item_name_for_axis = 'gene cluster', 'GC', 'Gene Clusters'
+
+
+    def get_presence_matrix_from_pan_db(self):
+        """Gets genome names, and a boolean genomes-by-gene-clusters presence matrix from a pan-db"""
+
+        pan_db = dbops.PanDatabase(self.db_path)
+        self.project_name = pan_db.meta['project_name']
+        entries = pan_db.db.get_some_columns_from_table(t.pan_gene_clusters_table_name, "gene_cluster_id, genome_name", unique=True)
         pan_db.disconnect()
+
+        return self.presence_matrix_from_pairs(entries)
+
+
+    def get_presence_matrix_from_pan_graph_db(self):
+        """Just like its sister above, but works with a pan-graph-db.
+
+        There is a nuance, though:
+
+        A SynGC holds at most one gene per genome (that is what makes it a SynGC), so the
+        `gene_calls_json` of a node is already exactly the set of genomes it is present in,
+        and there is nothing to count. Nodes carrying the `GC_00000000` placeholder gene
+        cluster id are not real clusters and are skipped, the same way
+        `PanGraphSuperclass.init_synteny_gene_clusters` skips them."""
+
+        pan_graph_db = dbops.PanGraphDatabase(self.db_path)
+        self.project_name = pan_graph_db.meta['project_name']
+        genome_names = [g.strip() for g in pan_graph_db.meta['genome_names'].split(',') if g.strip()]
+        nodes = pan_graph_db.db.get_some_columns_from_table(t.pan_graph_nodes_table_name, "node_id, gene_cluster_id, gene_calls_json")
+        pan_graph_db.disconnect()
+
+        pairs = []
+        for node_id, gene_cluster_id, gene_calls_json in nodes:
+            if gene_cluster_id == 'GC_00000000':
+                continue
+
+            for genome_name in json.loads(gene_calls_json):
+                pairs.append((node_id, genome_name))
+
+        # unlike the pan-db case, the denominator here is every genome the graph was built
+        # from, whether or not it ended up with a gene in one of the surviving SynGCs
+        return self.presence_matrix_from_pairs(pairs, genome_names=genome_names)
+
+
+    def presence_matrix_from_pairs(self, pairs, genome_names=None):
+        """A boolean genomes-by-items matrix from `(item_id, genome_name)` pairs.
+
+        This is the ONLY representation of the data the rarefaction math ever needs to be able
+        to work with both database types AND what makes it blazing fast"""
+
+        genome_index = {genome_name: i for i, genome_name in enumerate(sorted(genome_names))} if genome_names else {}
+        item_index = {}
+
+        rows, columns = [], []
+        for item_id, genome_name in pairs:
+            if genome_name not in genome_index:
+                if genome_names:
+                    raise ConfigError(f"The genome name '{genome_name}' shows up in the items of "
+                                      f"'{self.db_path}', but is not among the genomes the database says it was "
+                                      f"built from. Anvi'o is confused, and would rather stop than compute "
+                                      f"rarefaction curves it does not believe in :/")
+                genome_index[genome_name] = len(genome_index)
+
+            if item_id not in item_index:
+                item_index[item_id] = len(item_index)
+
+            rows.append(genome_index[genome_name])
+            columns.append(item_index[item_id])
+
+        if not item_index:
+            raise ConfigError(f"There is not a single {self.item_name} in '{self.db_path}' to compute "
+                              f"rarefaction curves with :(")
+
+        # genomes on the ROWS, so that sampling a set of genomes is a contiguous row gather
+        presence = np.zeros((len(genome_index), len(item_index)), dtype=bool)
+        presence[np.array(rows, dtype=np.int64), np.array(columns, dtype=np.int64)] = True
+
+        genomes = np.array(sorted(genome_index, key=genome_index.get))
+
+        return genomes, presence
+
+
+    def load_data(self):
+        """Load the data from the input database, setup essential variables, do sanity check."""
+
+        # learn thyself (and your items and stuff)
+        self.resolve_input()
+
+        if self.iterations < 1:
+            raise ConfigError(f"`--iterations` is how many times each genome count is subsampled, so it has to be "
+                              f"at least 1, and really it should be at least 10 if not 100. Anvi'o REJECTS your "
+                              f"'{self.iterations}' (and wishes you that this shall be the worst rejection you "
+                              f"ever get in science <3).")
+
+        # get what you need
+        if self.db_type == 'pan-graph':
+            self.unique_genomes, self.presence = self.get_presence_matrix_from_pan_graph_db()
+        else:
+            self.unique_genomes, self.presence = self.get_presence_matrix_from_pan_db()
+
+        # remove genomes we don't want
+        if self.genome_names_of_interest:
+            self.restrict_to_genomes(self.genome_names_of_interest)
+
+        self.num_genomes, self.num_items = self.presence.shape
+
+        # lol sanity .. still needed
+        if self.num_genomes < 3:
+            raise ConfigError(f"Rarefaction curves describe how a pangenome grows as genomes are added to it, and "
+                              f"'{self.db_path}' has only {self.num_genomes} genome(s) in it. There is no growth "
+                              f"to describe, and certainly no meaningful Heaps' Law fit to report, with fewer than "
+                              f"three genomes :/")
 
         # here we will set the output file prefix (so we can define all the output file names already)
         if self.skip_output_files:
@@ -363,8 +499,8 @@ class RarefactionAnalysis:
             if self.output_file_prefix:
                 self.run.info("Output file prefix", self.output_file_prefix, mc='green')
             else:
-                self.run.info("Output file prefix", f"{self.pan_project_name} (automatically set by anvi'o)", mc="cyan")
-                self.output_file_prefix = self.pan_project_name
+                self.run.info("Output file prefix", f"{self.project_name} (automatically set by anvi'o)", mc="cyan")
+                self.output_file_prefix = self.project_name
 
         # output file paths -- whether they will be used or not
         J = lambda x: None if self.skip_output_files else os.path.join(self.output_file_prefix.rstrip('/') + '-' + x)
@@ -380,42 +516,77 @@ class RarefactionAnalysis:
             filesnpaths.is_output_file_writable(self.rarefaction_pangenome_txt)
 
         # some insights into what's up on the terminal
-        self.run.info("Number of genomes found", self.num_genomes)
-        self.run.info("Number of iterations to run", self.iterations)
+        self.run.info("Input database type", self.db_type)
+        self.run.info("Num genomes found", self.num_genomes)
+        self.run.info(f"Num {self.item_label}s found", self.num_items)
+        self.run.info("Num iterations to run", self.iterations)
 
 
-    def calc_rarefaction_curve(self, target="all"):
-        """Calculates rarefaction curves for all gene clusters (target='all') or core gene clusters (target='core')."""
+    def restrict_to_genomes(self, genome_names):
+        """Narrow the analysis down to `genome_names`, in the order given.
 
-        if target not in ['all', 'core']:
-            raise ConfigError("The target variable must either be set to 'all', or 'core'. It is not negotiable!")
+        Please note that we drop 'items' here that are not encoded by any of the genomes that remain in our
+        analysis after going through this filter."""
 
-        results = []
-        iteration_results = []  # we store individual individual iteration values to be able to plot them later
+        known = set(self.unique_genomes)
+        missing = [genome_name for genome_name in genome_names if genome_name not in known]
+        if missing:
+            raise ConfigError(f"{P('genome', len(missing))} you asked anvi'o to restrict this rarefaction "
+                              f"analysis to {P('is', len(missing), alt='are')} not in '{self.db_path}': "
+                              f"{', '.join(missing[:5])}{' (and more)' if len(missing) > 5 else ''}.")
+
+        repeated = sorted({g for g in genome_names if genome_names.count(g) > 1})
+        if repeated:
+            raise ConfigError(f"The genome names to restrict this rarefaction analysis to include "
+                              f"{P('name', len(repeated))} more than once: {', '.join(repeated)}.")
+
+        index = {genome_name: i for i, genome_name in enumerate(self.unique_genomes)}
+
+        self.presence = self.presence[[index[genome_name] for genome_name in genome_names]]
+        self.presence = self.presence[:, self.presence.any(axis=0)]
+        self.unique_genomes = np.array(list(genome_names))
+
+
+    def calc_rarefaction_curves(self):
+        """Calculate both rarefaction curves: for all items, and core items.
+
+        Returns `(all_items_counts, core_items_counts)`, each an `num_genomes` x `iterations` array
+        whose row `n - 1` holds every count observed while sampling `n` genomes."""
+
+        all_items_counts = np.zeros((self.num_genomes, self.iterations), dtype=np.int64)
+        core_items_counts = np.zeros((self.num_genomes, self.iterations), dtype=np.int64)
 
         for n in range(1, self.num_genomes + 1):
-            sampled_cluster_counts = []
+            self.progress.update(f"Sampling {n} of {self.num_genomes} genomes, {self.iterations} times")
+            self.progress.increment()
 
             for i in range(self.iterations):
-                self.progress.increment()
-                self.progress.update(f"Processing {target} gene clusters in {n} genomes of {self.num_genomes} total at iteration {i + 1} of {self.iterations}")
-                sampled_genomes = np.random.choice(self.unique_genomes, n, replace=False)
-                sampled_data = self.gene_cluster_data[self.gene_cluster_data["genome_name"].isin(sampled_genomes)]
+                sampled_genomes = np.random.choice(self.num_genomes, n, replace=False)
+                counts = self.presence[sampled_genomes].sum(axis=0)
 
-                cluster_counts = sampled_data.groupby("gene_cluster_id")["genome_name"].nunique()
+                all_items_counts[n - 1][i] = np.count_nonzero(counts)
+                core_items_counts[n - 1][i] = np.count_nonzero(counts == n)
 
-                if target == "core":
-                    count = sum(cluster_counts == n)
-                else:
-                    count = cluster_counts.shape[0]
+        return all_items_counts, core_items_counts
 
-                sampled_cluster_counts.append(count)
-                iteration_results.append([n, count])  # Store each iteration result
 
-            results.append([n, np.mean(sampled_cluster_counts), np.std(sampled_cluster_counts)])
+    def summarize_counts(self, counts):
+        """The two tables `anvi-compute-rarefaction-curves` reports and plots, from one array of
+        subsample counts: per-genome-count averages, and every individual observation.
 
-        df_summary = pd.DataFrame(results, columns=["num_genomes", "avg_num_gene_clusters", "standard_deviation"])
-        df_iterations = pd.DataFrame(iteration_results, columns=["num_genomes", "GeneClusters"])
+        The column names are the same whichever database the counts came from. A pan-graph-db
+        run fills `avg_num_gene_clusters` and `GeneClusters` with SynGC counts, which is a
+        liberty taken on purpose: anything that parses these files should not have to care
+        which kind of pangenome produced them."""
+
+        genome_counts = np.arange(1, self.num_genomes + 1)
+
+        df_summary = pd.DataFrame({"num_genomes": genome_counts,
+                                   "avg_num_gene_clusters": counts.mean(axis=1),
+                                   "standard_deviation": counts.std(axis=1)})
+
+        df_iterations = pd.DataFrame({"num_genomes": np.repeat(genome_counts, self.iterations),
+                                      "GeneClusters": counts.reshape(-1)})
 
         return df_summary, df_iterations
 
@@ -460,17 +631,17 @@ class RarefactionAnalysis:
 
         # Plot individual iteration points with transparency
         sns.scatterplot(x="num_genomes", y="GeneClusters", data=self.iterations_pangenome, color="blue", alpha=0.05)
-        sns.lineplot(x="num_genomes", y="avg_num_gene_clusters", data=self.rarefaction_pangenome, color="blue", label="All gene clusters")
+        sns.lineplot(x="num_genomes", y="avg_num_gene_clusters", data=self.rarefaction_pangenome, color="blue", label=f"All {self.item_name}s")
 
         sns.scatterplot(x="num_genomes", y="GeneClusters", data=self.iterations_core, color="red", alpha=0.05)
-        sns.lineplot(x="num_genomes", y="avg_num_gene_clusters", data=self.rarefaction_core, color="red", label="Core gene clusters")
+        sns.lineplot(x="num_genomes", y="avg_num_gene_clusters", data=self.rarefaction_core, color="red", label=f"Core {self.item_name}s")
 
         # Overlay Heaps’ Law fit
         plt.plot(x_fit, y_fit, color="green", linestyle="dashed", label=f"Heaps’ Law Fit (K={self.k:.2f}, α={self.alpha:.2f})")
 
         plt.title(f"Rarefaction Curves with Heaps' Law Fit (with {self.iterations} iterations)")
         plt.xlabel("Number of Genomes")
-        plt.ylabel("Number of Gene Clusters")
+        plt.ylabel(f"Number of {self.item_name_for_axis}")
         plt.legend()
         plt.grid()
         plt.savefig(self.rarefaction_curves_figure)
@@ -491,21 +662,23 @@ class RarefactionAnalysis:
 
         self.run.warning(None, header="OUTPUT FILES", lc="cyan")
         self.run.info("Rarefaction curves", self.rarefaction_curves_figure)
-        self.run.info("GC gain per genome for core (averages)", self.rarefaction_core_txt)
-        self.run.info("GC gain per genome for core (each iteration)", self.iterations_core_txt)
-        self.run.info("GC gain per genome for all (averages)", self.rarefaction_pangenome_txt)
-        self.run.info("GC gain per genome for all (each iteration)", self.iterations_pangenome_txt)
+        self.run.info(f"{self.item_label} gain per genome for core (averages)", self.rarefaction_core_txt)
+        self.run.info(f"{self.item_label} gain per genome for core (each iteration)", self.iterations_core_txt)
+        self.run.info(f"{self.item_label} gain per genome for all (averages)", self.rarefaction_pangenome_txt)
+        self.run.info(f"{self.item_label} gain per genome for all (each iteration)", self.iterations_pangenome_txt)
 
 
     def process(self):
         """Calculates rarefaction curves, plots the results into self.output_file, and returns K and alpha for Heaps' Law fit."""
 
         # get all the data needed to calculate Heaps' Law fit and visualize things
-        self.progress.new("Calculating Rarefaction Curves", progress_total_items=(self.num_genomes * self.iterations * 2))
+        self.progress.new("Calculating Rarefaction Curves", progress_total_items=self.num_genomes)
         self.progress.update('...')
-        self.rarefaction_pangenome, self.iterations_pangenome = self.calc_rarefaction_curve(target="all")
-        self.rarefaction_core, self.iterations_core = self.calc_rarefaction_curve(target="core")
+        all_items_counts, core_items_counts = self.calc_rarefaction_curves()
         self.progress.end()
+
+        self.rarefaction_pangenome, self.iterations_pangenome = self.summarize_counts(all_items_counts)
+        self.rarefaction_core, self.iterations_core = self.summarize_counts(core_items_counts)
 
         # Fit Heaps' Law
         self.k, self.alpha = self.fit_heaps_law(self.rarefaction_pangenome)
@@ -1758,7 +1931,7 @@ class PangenomeGraph():
         self.version = anvio.__pangraph__version__
         self.functional_annotation_sources_available = DBInfo(self.genomes_storage, expecting='genomestorage').get_functional_annotation_sources() or [] if self.genomes_storage else []
         self.seed = None
-        self.pangenome_graph = PangenomeGraphManager()
+        self.pangenome_graph = PangenomeGraphManager(run=self.run, progress=self.progress)
 
         self.newick = ''
         self.meta = {}
@@ -1814,7 +1987,7 @@ class PangenomeGraph():
     def layout_pangenome_graph(self):
         self.run.warning(None, header="Running maximum force layout algorithm", lc="green")
 
-        node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(
+        node_positions, edge_positions, node_groups = TopologicalLayout(r=self.run, p=self.progress).run_synteny_layout_algorithm(
             F=self.pangenome_graph.graph,
             gene_cluster_grouping_threshold=self.gene_cluster_grouping_threshold,
             groupcompress=self.groupcompress,
@@ -2106,6 +2279,7 @@ class PangenomeGraph():
             },
             'genome_tracks': {
                 'line_width': track_line_width,
+                'height': tracks_layer,
                 'background_color': '#F5F5F5',
                 'genomes': {
                     genome: {
@@ -2113,7 +2287,7 @@ class PangenomeGraph():
                         'show': True,
                         'track_height': tracks_layer,
                         'track_bg_color': '#F5F5F5',
-                        'track_line_width': 5,
+                        'track_line_width': track_line_width,
                         'show_track': True
                     } for genome in self.genome_names
                 }
@@ -2281,13 +2455,23 @@ class PangenomeGraph():
         self.progress.update('...')
 
         table_for_distances = TableForGenomeDistances(self.pan_graph_db_path, run=self.run, progress=self.progress)
-        for genome_a in self.distance_matrix.index:
-            for genome_b in self.distance_matrix.columns:
+
+        # iterating over the underlying numpy array rather than asking pandas for
+        # `.loc[genome_a, genome_b]` per cell is over 10x faster for large genome
+        # sets  (pandas posion everything for a negligible convenience and Meren
+        # believes that we should get rid of pandas entirely from anvi'o, but
+        # that is a separate discussion):
+        genome_names_a = list(self.distance_matrix.index)
+        genome_names_b = list(self.distance_matrix.columns)
+        distances = self.distance_matrix.to_numpy()
+
+        for i, genome_a in enumerate(genome_names_a):
+            for j, genome_b in enumerate(genome_names_b):
                 if genome_a == genome_b:
                     continue
                 table_for_distances.add({'genome_a': genome_a,
                                          'genome_b': genome_b,
-                                         'distance': float(self.distance_matrix.loc[genome_a, genome_b])})
+                                         'distance': float(distances[i, j])})
 
         self.progress.end()
 

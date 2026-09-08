@@ -1036,6 +1036,13 @@ class LocusSplitter:
         self.include_fasta_output = A('include_fasta_output') or True
         self.is_in_flank_mode = bool(A('flank_mode'))
 
+        # should the gene caller ids in the output contigs databases be reset to start from 0, or
+        # should they be preserved to match those in the source contigs database? when the argument
+        # is not provided at all (e.g., callers that predate this option), we default to `True` to
+        # retain the historical behavior of resetting gene caller ids.
+        reset_gene_caller_ids = A('reset_gene_caller_ids')
+        self.reset_gene_caller_ids = True if reset_gene_caller_ids is None else reset_gene_caller_ids
+
         if A('list_hmm_sources'):
             dbops.ContigsDatabase(self.input_contigs_db_path).list_available_hmm_sources()
             sys.exit()
@@ -1479,14 +1486,18 @@ class LocusSplitter:
         gene_calls_list = list(gene_calls.keys())
         if reverse_complement:
             sequence = utils.rev_comp(sequence)
-            gene_calls, gene_caller_id_conversion_dict = utils.rev_comp_gene_calls_dict(gene_calls, sequence)
-        else:
+            gene_calls, gene_caller_id_conversion_dict = utils.rev_comp_gene_calls_dict(gene_calls, sequence, preserve_gene_caller_ids=not self.reset_gene_caller_ids)
+        elif self.reset_gene_caller_ids:
             gene_caller_id_conversion_dict = dict([(gene_calls_list[g], g) for g in range(0, len(gene_calls_list))])
             new_gene_calls = {}
             for g in range(0, len(gene_calls_list)):
                 gene_call = copy.deepcopy(gene_calls[gene_calls_list[g]])
                 new_gene_calls[g] = gene_call
             gene_calls = new_gene_calls
+        else:
+            # preserve the original gene caller ids: the conversion dict is an identity mapping and
+            # the gene calls dict is kept as-is (its keys are the original gene caller ids)
+            gene_caller_id_conversion_dict = dict([(g, g) for g in gene_calls_list])
 
         # write the sequence as a temporary FASTA file since the design of ContigsDatabase::create
         # will work seamlessly with this approach:

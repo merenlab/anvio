@@ -147,7 +147,6 @@ class PangenomeGraphUserInterface {
         var node_size = parseFloat($('#size')[0].value);
         var node_thickness = parseFloat($('#circ')[0].value);
         var edge_thickness = parseFloat($('#edge')[0].value);
-        var track_line_width = parseFloat($('#track_line_width')[0].value);
         var node_distance_x = parseFloat($('#distx')[0].value);
         var node_distance_y = parseFloat($('#disty')[0].value);
         var num_position = parseFloat($('#num_position')[0].value);
@@ -163,9 +162,9 @@ class PangenomeGraphUserInterface {
         var accessory_color = $('#accessory_color').attr('color');
         var rearranged_color = $('#rearranged_color').attr('color');
         var trna_color = $('#trna_color').attr('color');
-        var layer_color = $('#layer_color').attr('color');
         var back_color = $('#back_color').attr('color');
         var non_back_color = $('#non_back_color').attr('color');
+        var track_state = this.data['states']['genome_tracks'] || {};
         var genome_size = this.active_genomes.length
         
         var theta = (end_angle - start_angle) / (this.global_x+1)
@@ -559,10 +558,14 @@ class PangenomeGraphUserInterface {
 
                 var [layer_width, layer_start, layer_stop] = middle_layers[layer_name]
 
-                // per-genome track appearance, falling back to globals
-                var genome_bg_color = ($('#' + genome + 'trackbg').attr('color') || '').trim() || layer_color;
+                // Track appearance is a per-genome property, read off that genome's own
+                // row. The 'edit genome tracks' block writes into those rows when Apply
+                // is clicked, and is deliberately not consulted here -- were it a
+                // fallback, editing it would reach genomes nobody selected. An empty row
+                // falls back to the state, which is where the row's number came from.
+                var genome_bg_color = ($('#' + genome + 'trackbg').attr('color') || '').trim() || (track_state['background_color'] || '#F5F5F5');
                 var genome_track_lw_raw = parseFloat($('#' + genome + 'tracklw')[0].value);
-                var genome_track_lw = isNaN(genome_track_lw_raw) ? track_line_width : genome_track_lw_raw;
+                var genome_track_lw = isNaN(genome_track_lw_raw) ? (track_state['line_width'] ?? 5) : genome_track_lw_raw;
 
                 if (linear == 0){
                     var [circle_a_x, circle_a_y] = this.circle_transform(0-0.5, layer_start, theta, start_angle)
@@ -2862,8 +2865,42 @@ class PangenomeGraphUserInterface {
                 this._init_search_colorpicker();
                 return;
             }
+            // The swatch of the 'edit genome tracks' block is not a color the graph is
+            // drawn with -- it is the color the Apply button hands to the selected
+            // genomes. So picking one redraws nothing until Apply says so.
+            if (el.id === 'layer_color') {
+                this._init_swatch_colorpicker('#layer_color', () => this._set_track_edit_unapplied(true));
+                return;
+            }
             this._init_colorpicker('#' + el.id);
         });
+    }
+
+    // A color picker that does nothing but keep its own swatch up to date -- for
+    // swatches whose color reaches the graph through some other control (see the
+    // 'edit genome tracks' block in the Genomes tab).
+    _init_swatch_colorpicker(selector, on_edit) {
+        $(selector).colpick({
+            layout: 'hex',
+            submit: 0,
+            colorScheme: 'light',
+            onChange: (hsb, hex, rgb, el, bySetColor) => {
+                $(el).css('background-color', '#' + hex);
+                $(el).attr('color', '#' + hex);
+                // `bySetColor` is us filling the swatch in from a state, rather than
+                // someone picking a color -- not an edit anyone needs to be told about.
+                if (on_edit && !bySetColor) on_edit();
+            }
+        });
+    }
+
+    // Edits in the 'edit genome tracks' block do nothing until Apply is clicked, so
+    // while any are waiting the Apply button wears the same rainbow glow the Draw
+    // button wears on hover -- the one control and the other are the same promise:
+    // what you set is not on the screen yet.
+    _set_track_edit_unapplied(unapplied) {
+        this._track_edit_unapplied = unapplied;
+        $('#apply-track-defaults').toggleClass('track-edit-unapplied', unapplied);
     }
 
     // The search-hit color doesn't affect generate_svg, so instead of the
@@ -2968,6 +3005,12 @@ class PangenomeGraphUserInterface {
         const bgColor = gt['background_color'];
         $('#layer_color').css('background-color', bgColor).attr('color', bgColor);
         $('#layer_color').colpickSetColor(bgColor.replace('#', ''));
+        // The height of the 'edit genome tracks' block is a newcomer: states saved
+        // before it existed get the height of the first genome track instead, so the
+        // widget opens on a number that means something for this pangraph.
+        const gt_genomes = Object.values(gt['genomes'] || {});
+        $('#track_height')[0].value = gt['height'] ?? (gt_genomes.length ? gt_genomes[0]['track_height'] : 0);
+        this._set_track_edit_unapplied(false);
 
         const genome_order = [];
         for (const [genome, gdata] of Object.entries(gt['genomes'])) {
@@ -2981,8 +3024,26 @@ class PangenomeGraphUserInterface {
             const tbc = gdata['track_bg_color'] ?? bgColor;
             $('#' + genome + 'trackbg').css('background-color', tbc).attr('color', tbc);
             $('#' + genome + 'trackbg').colpickSetColor(tbc.replace('#', ''));
-            $('#' + genome + 'tracklw')[0].value = gdata['track_line_width'] ?? gt['line_width'];
+            // Every default state used to carry a hardcoded per-genome line width of 5,
+            // whatever the layout asked for, while the global line width sitting next to
+            // it was the number the rest of the defaults were tuned against. States that
+            // predate the 'edit genome tracks' block (no global height in them) get that
+            // global, so a row does not open on a number this pangraph never asked for.
+            let track_lw = gdata['track_line_width'] ?? gt['line_width'];
+            if (!('height' in gt) && track_lw === 5) track_lw = gt['line_width'];
+            $('#' + genome + 'tracklw')[0].value = track_lw;
             genome_order.push(genome);
+        }
+
+        // A genome the state says nothing about (a state saved for another pangraph, or
+        // one saved before this genome joined the party) keeps its row, and that row is
+        // given the state's global track properties rather than left on stale defaults.
+        for (const genome of this.genomes) {
+            if (genome in gt['genomes']) continue;
+            $('#' + genome + 'trackbg').css('background-color', bgColor).attr('color', bgColor);
+            $('#' + genome + 'trackbg').colpickSetColor(bgColor.replace('#', ''));
+            $('#' + genome + 'layer')[0].value = $('#track_height')[0].value;
+            $('#' + genome + 'tracklw')[0].value = gt['line_width'];
         }
 
         // Genome order lives in the DOM order of the rows, so restoring a state has to
@@ -3178,8 +3239,13 @@ class PangenomeGraphUserInterface {
         $('#title-panel-first-line').text(this.data['meta']['project_name']);
         $('#title-panel-second-line').text('Pangraph Detail');
         
-        const default_track_bg = $('#layer_color').attr('color') || '#F5F5F5';
-        const default_track_lw = $('#track_line_width')[0].value || '5';
+        // The genome rows open on the numbers carried by the state that is about to be
+        // applied, rather than on whatever happens to sit in the HTML: a row and the
+        // 'edit genome tracks' block below it should never disagree about the default.
+        const gt_defaults = this.data['states']['genome_tracks'] || {};
+        const default_track_bg = gt_defaults['background_color'] || '#F5F5F5';
+        const default_track_lw = gt_defaults['line_width'] ?? 5;
+        const default_track_height = gt_defaults['height'] ?? 0;
 
         // if (!$('#genomecolors').children().length) {
         for (var genome of this.genomes) {
@@ -3209,7 +3275,7 @@ class PangenomeGraphUserInterface {
                     ).append(
                         $('<span class="ms-1">&nbsp;Height:&nbsp;</span>')
                     ).append(
-                        $('<input type="text" class="form-control text-end p-0 border-0 genome-row-input" id="' + genome + 'layer" name="' + genome + 'layer" value=0 title="Track height">')
+                        $('<input type="text" class="form-control text-end p-0 border-0 genome-row-input" id="' + genome + 'layer" name="' + genome + 'layer" value="' + default_track_height + '" title="Track height">')
                     ).append(
                         $('<span class="ms-1">&nbsp;Line W:&nbsp;</span>')
                     ).append(
@@ -3628,14 +3694,62 @@ class PangenomeGraphUserInterface {
             }
         });
 
+        // The 'edit genome tracks' block at the bottom of the Genomes tab: whatever is
+        // set there lands on the genomes that are switched on in the list above, and
+        // only when Apply is clicked -- nothing in that block draws anything by itself,
+        // which is what keeps it from touching the genomes one did not select.
+        //
+        // The Display switch is the same property as each row's 'Display Genome Track',
+        // and when it is off the properties next to it have nothing left to describe:
+        // they are dimmed out and left alone, and Apply only switches the tracks off.
+        const track_edit_props_enabled = () => {
+            const on = $('#track_edit_show').prop('checked');
+            $('#track_edit_props').toggleClass('track-edit-disabled', !on);
+            $('#track_height, #track_line_width').prop('disabled', !on);
+        };
+        $('#track_edit_show').on('change', () => {
+            track_edit_props_enabled();
+            this._set_track_edit_unapplied(true);
+        });
+        $('#track_height, #track_line_width').on('input change', () => this._set_track_edit_unapplied(true));
+        track_edit_props_enabled();
+        this._set_track_edit_unapplied(false);
+
         $('#apply-track-defaults').on('click', () => {
-            const bgColor = $('#layer_color').attr('color');
-            const lw = $('#track_line_width')[0].value;
-            for (const genome of this.genomes) {
-                $('#' + genome + 'trackbg').css('background-color', bgColor).attr('color', bgColor);
-                $('#' + genome + 'trackbg').colpickSetColor(bgColor.replace('#', ''));
-                $('#' + genome + 'tracklw')[0].value = lw;
+            const selected = this.genomes.filter(genome => $('#flex' + genome).prop('checked'));
+
+            if (!selected.length) {
+                toastr.warning('Not a single genome is switched on in the list above, so there is no genome track to edit here.', 'No genomes selected');
+                return;
             }
+
+            const show_track = $('#track_edit_show').prop('checked');
+            const bg_color = $('#layer_color').attr('color');
+            const height = $('#track_height')[0].value;
+            const line_width = $('#track_line_width')[0].value;
+
+            if (show_track && !(Number(height) >= 0)) {
+                toastr.error('The track height needs to be a number that is zero or larger.', 'Invalid height');
+                return;
+            }
+
+            if (show_track && !(Number(line_width) >= 0)) {
+                toastr.error('The track line width needs to be a number that is zero or larger.', 'Invalid line width');
+                return;
+            }
+
+            for (const genome of selected) {
+                $('#flex' + genome + 'layer').prop('checked', show_track);
+
+                if (!show_track) continue;
+
+                $('#' + genome + 'trackbg').css('background-color', bg_color).attr('color', bg_color);
+                $('#' + genome + 'trackbg').colpickSetColor(bg_color.replace('#', ''));
+                $('#' + genome + 'layer')[0].value = height;
+                $('#' + genome + 'tracklw')[0].value = line_width;
+            }
+
+            this._set_track_edit_unapplied(false);
             this.main_draw();
         });
         // which ordering the buttons last applied, so 'Descending' has something to flip
@@ -5389,6 +5503,7 @@ class PangenomeGraphUserInterface {
             },
             genome_tracks: {
                 line_width: Number($('#track_line_width')[0].value),
+                height: Number($('#track_height')[0].value),
                 background_color: $('#layer_color').attr('color'),
                 genomes: genomes_state
             },

@@ -268,6 +268,53 @@
     position: static;
   }
 
+  /* The Display switch of the 'edit genome tracks' block, laid out like the ones
+     in the genome rows (no Bootstrap indent, no float). */
+  .track-edit-switch {
+    padding-left: 0;
+    margin-left: 6px;
+    margin-right: 6px;
+  }
+
+  .track-edit-switch .form-check-input {
+    margin-left: 0;
+    float: none;
+    position: static;
+  }
+
+  /* Display switched off: the track properties have nothing to describe, so they
+     are dimmed and taken out of reach until it comes back on. */
+  .track-edit-disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  /* Edits sitting in the 'edit genome tracks' block that have not been applied to the
+     selected genomes yet: the Apply button wears the same rainbow glow the Draw button
+     wears on hover (see .glow-on-hover in main.css, whose `glowing` keyframes this
+     borrows), except this one stays lit until the edits land. The white face is what
+     keeps the blurred gradient at the edges of the button rather than behind its text. */
+  #apply-track-defaults.track-edit-unapplied {
+    position: relative;
+    z-index: 0;
+    background-color: #fff;
+  }
+
+  #apply-track-defaults.track-edit-unapplied:before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    width: calc(100% + 4px);
+    height: calc(100% + 4px);
+    z-index: -1;
+    border-radius: 5px;
+    background: linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000);
+    background-size: 300%;
+    filter: blur(5px);
+    animation: glowing 20s linear infinite;
+  }
+
   .p-0 {
     padding: 3px !important;
     height: 22px;

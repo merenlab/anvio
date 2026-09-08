@@ -753,13 +753,28 @@
                     </div>
 
                     <hr/>
-                    <div class="d-flex align-items-center gap-2 mt-2 mb-1 px-1" style="font-size:0.8em; color:#888;">
-                      <span>Genome tracks background color: </span>
-                      <div class="pangraph-colorpicker" id="layer_color" color="#F5F5F5" style="background-color:#F5F5F5;"></div>
-                      <span class="ms-1">Line Width: </span>
-                      <input type="text" class="form-control text-end p-0 border-0" style="background-color:#e9ecef; width:36px;" id="track_line_width" name="track_line_width" value=5>
-                      <button id="apply-track-defaults" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1" style="font-size:1.4em; margin-left: 9px;">Apply to all</button>
+                    <div class="mt-2 mb-1 px-1" style="font-size:0.8em; color:#888;">
+                      <div class="mb-2">Edit genome tracks of selected genomes:</div>
+                      <div class="d-flex align-items-center flex-wrap">
+                        <span>Display:</span>
+                        <div class="form-switch mb-0 track-edit-switch">
+                          <input class="form-check-input" type="checkbox" id="track_edit_show" checked title="Whether the genome tracks of the selected genomes are drawn at all. Switch it off, and the properties on the right have nothing left to describe">
+                        </div>
+                        <span id="track_edit_props" class="d-flex align-items-center flex-wrap">
+                          <span>Color</span>
+                          <div class="pangraph-colorpicker" id="layer_color" color="#F5F5F5" style="background-color:#F5F5F5;" title="Background color of the genome tracks"></div>
+                          <span class="ms-1">Height:&nbsp;</span>
+                          <input type="text" class="form-control text-end p-0 border-0" style="background-color:#e9ecef; width:36px;" id="track_height" name="track_height" value=0 title="Height of the genome tracks, in pixels">
+                          <span class="ms-2">Line W:&nbsp;</span>
+                          <input type="text" class="form-control text-end p-0 border-0" style="background-color:#e9ecef; width:36px;" id="track_line_width" name="track_line_width" value=5 title="Line width of the genome tracks, in pixels">
+                        </span>
+                      </div>
+                      <div class="d-flex align-items-center gap-2 mt-2 mb-1">
+                        <button id="apply-track-defaults" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:1.0em;" title="Apply these properties to the genome tracks of the genomes that are switched on in the list above">Apply</button>
+                      </div>
                     </div>
+
+                    <hr/>
                   </div>
                 </div>
               </div>

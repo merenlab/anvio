@@ -316,7 +316,7 @@ class PangenomeGraphManager():
         merged_edges = {}
         merged_groups = {}
         for cid in range(n_components):
-            pos, epos, grps = TopologicalLayout().run_synteny_layout_algorithm(
+            pos, epos, grps = TopologicalLayout(r=self.run, p=self.progress).run_synteny_layout_algorithm(
                 F=self.graph,
                 gene_cluster_grouping_threshold=gene_cluster_grouping_threshold,
                 groupcompress=groupcompress,
@@ -748,43 +748,39 @@ class PangenomeGraphManager():
         # order (process-dependent) would reshuffle the genome ordering every run.
         genome_names = sorted(set(it.chain(*[list(d.keys()) for node, d in self.graph.nodes(data='gene_calls')])))
 
-        X = np.zeros([len(genome_names), len(genome_names)])
-        min_pair = max_pair = None
-        min_dist = float('inf')
-        max_dist = float('-inf')
-        for genome_i, genome_j in it.combinations(genome_names, 2):
-            nodes_similar = 0
-            edges_similar = 0
-            nodes_unsimilar = 0
-            edges_unsimilar = 0
-            for _, data in self.graph.nodes(data=True):
-                if genome_i in data['gene_calls'].keys() and genome_j in data['gene_calls'].keys():
-                    nodes_similar += 1
-                elif genome_i in data['gene_calls'].keys() or genome_j in data['gene_calls'].keys():
-                    nodes_unsimilar += 1
-            for _, _, data in self.graph.edges(data=True):
-                edge_genomes = set(data.get('genomes', []))
-                if genome_i in edge_genomes and genome_j in edge_genomes:
-                    edges_similar += 1
-                elif genome_i in edge_genomes or genome_j in edge_genomes:
-                    edges_unsimilar += 1
+        # The distance between two genomes is the Jaccard distance over the set of graph
+        # elements, and the entire matrix is simply a single dot product, as in, there is
+        # no reason to loop over pairs of genomes here (see commit logs for these lines
+        # for details).
+        genome_index = {genome_name: i for i, genome_name in enumerate(genome_names)}
 
-            i = genome_names.index(genome_i)
-            j = genome_names.index(genome_j)
+        # one row per graph element (nodes first, then edges), one column per genome
+        memberships = [d or {} for _, d in self.graph.nodes(data='gene_calls')] \
+                    + [d.get('genomes') or [] for _, _, d in self.graph.edges(data=True)]
 
-            elements_similar = nodes_similar + edges_similar
-            elements_unsimilar = nodes_unsimilar + edges_unsimilar
+        M = np.zeros((len(memberships), len(genome_names)))
+        for row, members in enumerate(memberships):
+            columns = [genome_index[genome_name] for genome_name in members if genome_name in genome_index]
+            if columns:
+                M[row, columns] = 1.0
 
-            d = elements_unsimilar / (elements_similar + elements_unsimilar)
-            X[i][j] = d
-            X[j][i] = d
+        num_shared = M.T @ M                                    # elements both genomes are in
+        num_elements = M.sum(axis=0)                            # elements each genome is in
+        num_total = num_elements[:, None] + num_elements[None, :]
+        num_union = num_total - num_shared                      # similar + unsimilar
 
-            if d < min_dist:
-                min_dist, min_pair = d, (genome_i, genome_j)
-            if d > max_dist:
-                max_dist, max_pair = d, (genome_i, genome_j)
+        # building a sparse distance matrix here
+        X = np.divide(num_total - 2 * num_shared, num_union, out=np.zeros_like(num_union), where=num_union > 0)
+        np.fill_diagonal(X, 0.0)
 
-        if min_pair is not None:
+        if len(genome_names) > 1:
+            upper_i, upper_j = np.triu_indices(len(genome_names), k=1)
+            distances = X[upper_i, upper_j]
+            argmin, argmax = distances.argmin(), distances.argmax()
+            min_dist, max_dist = distances[argmin], distances[argmax]
+            min_pair = (genome_names[upper_i[argmin]], genome_names[upper_j[argmin]])
+            max_pair = (genome_names[upper_i[argmax]], genome_names[upper_j[argmax]])
+
             self.run.info('Smallest distance', f"d({min_pair[0]},{min_pair[1]}) = {round(min_dist, 3)}")
             self.run.info('Largest distance',  f"d({max_pair[0]},{max_pair[1]}) = {round(max_dist, 3)}")
             self.run.info_single("full matrix written to the pan-graph-db", cut_after=None)
