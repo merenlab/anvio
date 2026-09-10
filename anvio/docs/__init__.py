@@ -48,6 +48,32 @@ ANVIO_WORKFLOWS = {
             "contigs database + merged profile database pair. Oh, and since this workflow internally uses the contigs "
             "workflow, you can optionally run annotation programs on your contigs database as well.")
     },
+    "pangenomics": {
+        "authors": ['ShaiberAlon', 'meren', 'Kekananen'],
+        "artifacts_produced": ['genomes-storage-db', 'pan-db'],
+        "artifacts_accepted": ['fasta-txt', 'internal-genomes', 'external-genomes'],
+        "anvio_workflows_inherited": ['contigs', 'phylogenomics'],
+        "third_party_programs_used": [
+            ('Sequence search for gene clusters', ['DIAMOND']),
+            ('Clustering of gene similarities', ['MCL']),
+            ('Align amino acid sequences', ['muscle', 'famsa']),
+            ('HMM search', ['HMMER']),
+            ('Trim multiple sequence alignment', ['trimal']),
+            ('Calculate phylogenetic tree', ['IQ-TREE']),
+            ('Estimate genome similarity (i.e., ANI)', ['pyANI', 'fastANI']),
+            ('Calculate mash distance between genomes', ['sourmash']),
+            ],
+        "one_sentence_summary": "From FASTA files and/or anvi'o contigs databases to an anvi'o pangenome",
+        "one_paragraph_summary": ("This workflow takes you from a set of genomes all the way to a pangenome you can "
+            "visualize with anvi-display-pan. Since it inherits the contigs workflow, it can start from FASTA files "
+            "and generate and annotate the contigs databases for you, but it is just as happy to work with contigs "
+            "databases you already have. It then builds a genomes storage from your genomes, computes gene clusters "
+            "across them, and gives you a pan database. On top of that, it can optionally infer a phylogenetic tree "
+            "for your genomes (either from gene clusters or from HMM hits) and import it into your pangenome so you "
+            "can order your genomes by their phylogenetic relationships, and estimate genome similarity (i.e., ANI) "
+            "across your genomes.")
+    },
+
     "ecophylo": {
         "authors": ['FlorianTrigodet', 'Kekananen', 'mschecht'],
         "artifacts_accepted": ['samples-txt', 'hmm-list', 'external-genomes', 'metagenomes'],
@@ -138,10 +164,15 @@ THIRD_PARTY_PROGRAMS = {
     'centrifuge': {'link': 'https://github.com/DaehwanKimLab/centrifuge'},
     'DIAMOND': {'link': 'https://uni-tuebingen.de/fakultaeten/mathematisch-naturwissenschaftliche-fakultaet/fachbereiche/informatik/lehrstuehle/algorithms-in-bioinformatics/software/diamond/'},
     'MMseqs2': {'link': 'https://github.com/soedinglab/MMseqs2'},
+    'MCL': {'link': 'https://micans.org/mcl/'},
     'muscle': {'link': 'http://www.drive5.com/muscle/'},
+    'famsa': {'link': 'https://github.com/refresh-bio/FAMSA'},
     'FastTree': {'link': 'http://www.microbesonline.org/fasttree/'},
     'IQ-TREE': {'link': 'https://github.com/Cibiv/IQ-TREE'},
     'trimal': {'link': 'https://github.com/inab/trimal'},
+    'pyANI': {'link': 'https://github.com/widdowquinn/pyani'},
+    'fastANI': {'link': 'https://github.com/ParBLiSS/FastANI'},
+    'sourmash': {'link': 'https://sourmash.readthedocs.io/en/latest/'},
     'pigz': {'link': 'https://zlib.net/pigz/'},
     'prefetch': {'link': 'https://github.com/ncbi/sra-tools'},
     'fasterq-dump': {'link': 'https://github.com/ncbi/sra-tools'}
