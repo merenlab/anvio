@@ -27,7 +27,7 @@ def main():
     run = terminal.Run()
 
     run.warning('If you publish results from this workflow, please do not forget to cite Snakemake '
-                '(doi:10.1093/bioinformatics/bts480)', lc = 'yellow')
+                '(doi:10.1093/bioinformatics/bts480)', lc = 'green', header='CITATION')
 
     try:
         workflows_dict = w.get_workflow_module_dict()
