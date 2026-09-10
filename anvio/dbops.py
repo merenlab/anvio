@@ -5712,8 +5712,14 @@ class ContigsDatabase:
         return time.time()
 
 
-    def get_hash(self):
-        return 'hash' + str('%08x' % random.randrange(16**8))
+    def get_hash(self, contig_digests=None):
+        """Returns the deterministic hash that describes the identity of this contigs database.
+
+        Please see `utils.get_contigs_db_hash` to learn what goes into this hash. The database
+        must have its contig sequences, splits, and gene calls in place before this is called.
+        """
+
+        return utils.get_contigs_db_hash(self.db, contig_digests=contig_digests)
 
 
     def touch(self, db_variant='unknown'):
@@ -6025,10 +6031,6 @@ class ContigsDatabase:
         self.db.set_meta_value('project_name', project_name)
         self.db.set_meta_value('description', description)
 
-        # this will be the unique information that will be passed downstream whenever this db is used:
-        contigs_db_hash = self.get_hash()
-        self.db.set_meta_value('contigs_db_hash', contigs_db_hash)
-
         # set split length variable in the meta table
         self.db.set_meta_value('split_length', split_length)
 
@@ -6089,6 +6091,13 @@ class ContigsDatabase:
         # here we will process each item in the contigs fasta file.
         fasta = u.SequenceSource(contigs_fasta)
         db_entries_contig_sequences = []
+
+        # here we define a variable to keep per-contig digests so we can compute a structurally
+        # deterministic / meaningful hash for this contigs database once it is created. we will
+        # collect the digest in the South Loop below (so it is more ridiculously expensive)
+        # rather than reading all sequences back from the database later since we are already
+        # going through every sequence there anyway
+        contig_digests = []
 
         contigs_kmer_table = KMerTablesForContigsAndSplits('kmer_contigs', k=kmer_size)
         splits_kmer_table = KMerTablesForContigsAndSplits('kmer_splits', k=kmer_size)
@@ -6151,6 +6160,7 @@ class ContigsDatabase:
                 splits_info_table.append(split_name, contig_sequence[start:end], order, start, end, contig_gc_content, contig_name)
 
             db_entries_contig_sequences.append((contig_name, contig_sequence), )
+            contig_digests.append(utils.get_digest_for_contig_sequence(contig_name, contig_sequence))
 
         self.progress.end()
 
@@ -6162,6 +6172,12 @@ class ContigsDatabase:
         splits_info_table.store(self.db)
 
         self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.contig_sequences_table_name, db_entries_contig_sequences)
+
+        # at this point we know the contig sequences, the splits, and the gene calls, and we are
+        # read to compute the hash that describes the identity of this contigs-db, and set it
+        # for good
+        contigs_db_hash = self.get_hash(contig_digests=contig_digests)
+        self.db.set_meta_value('contigs_db_hash', contigs_db_hash)
 
         # set some useful meta values:
         self.db.set_meta_value('num_contigs', contigs_info_table.total_contigs)
@@ -6190,7 +6206,8 @@ class ContigsDatabase:
         if not skip_gene_calling:
             gene_calls_tables.populate_genes_in_splits_tables()
 
-        self.run.info('Contigs database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
+        self.run.info('Contigs database', f'A new db has been created at {self.db_path}', quiet=self.quiet)
+        self.run.info('Identity hash', contigs_db_hash, quiet=self.quiet)
         self.run.info('Number of contigs', contigs_info_table.total_contigs, quiet=self.quiet)
         self.run.info('Number of splits', splits_info_table.total_splits, quiet=self.quiet)
         self.run.info('Total number of nucleotides', contigs_info_table.total_nts, quiet=self.quiet)
@@ -6391,7 +6408,13 @@ class TRNASeqDatabase:
             self.db.set_meta_value(key, meta_values[key])
 
         self.db.set_meta_value('creation_date', time.time())
-        self.db.set_meta_value(self.db_type + '_db_hash', 'hash' + str('%08x' % random.randrange(16**8)))
+
+        # here we set the hash for the trnaseq-db. unlike the way we do it for contigs-db
+        # files (which allows us to be extremely specific to the content and structure), the
+        # hash for trnaseq-db is just random. that is OK, but if we end up generating
+        # hundreds of thousands of these databases at some point, we may want to be a bit
+        # more careful here to avoid unintended collisions
+        self.db.set_meta_value(self.db_type + '_db_hash', utils.get_random_hash())
 
         # know thyself
         self.db.set_meta_value('db_type', self.db_type)
