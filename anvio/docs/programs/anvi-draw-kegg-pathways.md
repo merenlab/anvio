@@ -582,6 +582,55 @@ Here the `unified` map draws the standard deviation across samples on a sequenti
 
 The compound layer takes `--compound-category-colormap` on its own independent scales, so a run drawing both layers across samples can have four colormaps and four colorbars. A category colormap applies only where those individual maps are actually colored by value: the file needs a value column and a `sample` column, and under a %(groups-txt)s the sample summary must pool each group's values rather than summarize their presence, which `--group-colormap` colors instead.
 
+#### Normalize each sample against the element's own values
+
+A per-sample map colored by a value column shows **how much** of an element there is in that sample. Often the more useful question is **how enriched** reactions and compounds are in this sample versus the others — rather than highlighting reactions and compounds that are always abundant, show which change the most.
+
+`--reaction-element-normalization` and `--compound-element-normalization` answer that. Each map element's value in a sample is rescaled against that same element's values across all of the samples. Normalizing `relative_to_mean`, a value of +0.25 has 25%% more of the element in this sample than the average across samples, and a value of -0.31 means 31%% less.
+
+{{ codestart }}
+anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
+                        --reaction-element-normalization relative_to_mean \
+                        --draw-individual-files \
+                        --draw-grid \
+                        -o output_dir
+{{ codestop }}
+
+Element normalization **cannot be handled as values in the input file**. The value being rescaled belongs to a map element, not to an accession. Each element in a map is associated with one or more accessions, so an element value is not calculated until a map is drawn, and accessions are associated with different elements in different maps.
+
+The following normalizations encoded by anvi'o can be provided to `--*-element-normalization`:
+
+|Name|What each sample's value becomes|
+|:--|:--|
+|`relative_to_mean`|`(value − mean) / mean` — the signed fraction more or less than the element's mean|
+|`relative_to_median`|the same against the median, which a single extreme sample does not pull|
+|`difference_from_mean`|`value − mean`, in the units of the value column|
+|`difference_from_median`|`value − median`|
+|`log2_ratio_to_mean`|`log2(value / mean)`, so that a doubling and a halving are equal distances|
+|`log2_ratio_to_median`|`log2(value / median)`|
+|`z_score`|`(value − mean) / standard deviation` across samples|
+|`rank`|the element's rank among the samples, 1 being the sample with the least, ties sharing the average rank|
+|`fraction_of_max`|`value / max`, running to 1 in the sample with the most|
+|`fraction_of_total`|`value / total`, the sample's share of the element value summed across samples|
+
+Any other name given to `--*-element-normalization` is taken to be a **pandas Series method** that transforms each value into a new value, such as `abs`. Method names are checked immediately to catch errors in the form of the function, such as aggregation functions that reduce a set of values to a single number and would work with `--*-sample-summary` instead, and functions that transform values on the order of the samples (`cumsum`, `diff`, `ffill`), which are refused since sample order is an artifact of how samples happen to be named rather than inherent to the data.
+
+**Only the individual sample and group maps are rescaled**, so this option needs `--draw-individual-files` and/or `--draw-grid`. The `unified` map summarizes samples using unnormalized values, so is unaffected by normalization. With a %(groups-txt)s the rescaling happens across **groups**, each group's value being whatever `--reaction-sample-summary` pooled from its samples — that summary must therefore pool values rather than falling back to the group default of counting samples containing an element, so that group maps are colored by counts not suitable for normalization rescaling.
+
+A normalization whose neutral value is zero also **centers the rescaled scale on zero** and colors it with the diverging colormap `RdYlGn`, so that one color means "no different from usual" and the two ramps either side of it mean more and less. `--reaction-category-value-center` and `--reaction-category-colormap` override each of those independently.
+
+The colorbar of the rescaled scale is relabeled to say what it now shows — e.g., `coverage relative to mean` rather than `coverage` — since it and the `unified` map's colorbar are quantities of different kinds. A second value after the normalization replaces that label with one of your own; quote it if it contains spaces.
+
+{{ codestart }}
+anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
+                        --reaction-element-normalization log2_ratio_to_mean "log2 fold change" \
+                        --reaction-category-colormap coolwarm \
+                        --draw-individual-files \
+                        -o output_dir
+{{ codestop }}
+
+An element the normalization cannot give a value to is left uncolored, just as one with an undefined aggregation is, and where no element can be given one a warning says so rather than leaving every individual map blank unexplained. A ratio needs the value it is measured against to be **positive**: an element whose values are negative throughout has none, because +25%% of a negative mean would describe a *decrease* while reading as an increase. `difference_from_mean`, `difference_from_median`, `z_score`, and `rank` measure no ratio against the reference and so are defined for signed data — a z-score divides by the spread of the values, which is positive wherever they differ at all. A z-score also needs an element found in more than one sample, and an element found in only one sample is exactly as much as it usually is, so the mean-relative normalizations put it at zero.
+
 ### Mixed coloring across reaction and compound layers
 
 Because each file is colored independently by its own mode, one map can mix a value-colored layer with a presence- or membership-colored layer. For example, the presence/absence of KOs in a genome (a %(kegg-reaction-txt)s file with no value column) can be displayed alongside quantitative metabolomics of compounds (a %(kegg-compound-txt)s file with a value column), each layer getting its own colorbar. When only one layer carries a `sample` column, that layer drives the per-sample (or per-group) maps and the other layer is drawn identically on every one of them, as would apply in the example with metabolomes measured from different treatments of an organism.

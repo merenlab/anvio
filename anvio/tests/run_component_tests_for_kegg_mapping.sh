@@ -285,6 +285,66 @@ then
     exit 1
 fi
 
+## NORMALIZING ELEMENT VALUES ACROSS SAMPLES
+# Each sample's map shows how much more or less than usual an element is in that sample, rather than
+# how much of it there is. The element values being sums of the values of the KOs an element stands
+# for, this cannot be worked out per accession in the input file. The 'unified' map is unaffected:
+# it summarizes the very samples the normalization compares, so it goes on showing coverage itself.
+INFO "Rescaling each sample's element values against the element's mean across samples"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+                        --output-dir draw_txt_samples_kos_element_normalization \
+                        --reaction-element-normalization relative_to_mean \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
+if [ ! -s draw_txt_samples_kos_element_normalization/colorbar_reactions_samples.pdf ]
+then
+    echo "ERROR: a normalized run should have written a colorbar for the per-sample scale."
+    exit 1
+fi
+
+# A label of the normalization's own goes on the colorbar in place of the one anvi'o derives, and
+# both layers can be rescaled at once, each on its own scale.
+INFO "Rescaling both layers, with a colorbar label given for one of them"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+                        --compound-txt draw_compounds_samples.compound.txt \
+                        --output-dir draw_txt_both_layers_element_normalization \
+                        --reaction-element-normalization log2_ratio_to_mean "log2 fold change" \
+                        --compound-element-normalization z_score \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+if [ ! -s draw_txt_both_layers_element_normalization/colorbar_compounds_samples.pdf ]
+then
+    echo "ERROR: a normalized compound layer should have written a per-sample colorbar."
+    exit 1
+fi
+
+# Under a groups-txt the rescaling happens across the GROUPS rather than across the samples, each
+# group's value being what the sample summary pooled from its samples, so both summaries have to
+# pool values: by presence the group maps would be colored by sample counts, with nothing to
+# rescale, and the 'unified' map would need a presence threshold.
+INFO "Rescaling each group's element values against the element's mean across groups"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+                        --groups-txt draw-sample-group-information.txt \
+                        --output-dir draw_txt_groups_kos_element_normalization \
+                        --reaction-sample-summary mean \
+                        --reaction-group-summary mean \
+                        --reaction-element-normalization z_score "coverage z-score across groups" \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
+if [ ! -s draw_txt_groups_kos_element_normalization/colorbar_reactions_groups.pdf ]
+then
+    echo "ERROR: a normalized grouped run should have written a colorbar for the per-group scale."
+    exit 1
+fi
+
 ## PRESENCE COLORING
 INFO "Mixing presence coloring of reactions with value coloring of compounds"
 anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
