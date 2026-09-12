@@ -16,6 +16,35 @@ from anvio.argparse import ArgumentParser
 from anvio import A, K, __version__ as VERSION
 from anvio.metabolism.context import KeggContext
 from anvio.errors import ConfigError, FilesNPathsError
+
+
+def check_package_dependencies():
+    missing_packages = []
+    for package_name in ('Bio', 'reportlab', 'fitz'):
+        try:
+            importlib.import_module(package_name)
+        except ImportError:
+            missing_packages.append(package_name)
+
+    if missing_packages:
+        message = ', '.join(f"'{package_name}'" for package_name in missing_packages)
+        # Printed rather than raised: this runs at import time, where there is no handler to turn
+        # a ConfigError into the message alone rather than into a traceback.
+        print(ConfigError(
+            f"The following Python packages required to run `anvi-draw-kegg-pathways` could not be "
+            f"imported: {message}. All Python dependencies of anvi'o are described in its "
+            f"`pyproject.toml`, and can be installed by running the command `pip install -e .` in "
+            f"the top directory of the anvi'o codebase, which may have a location like "
+            f"'~/github/anvio' in your file system if you followed the anvio.org installation "
+            f"instructions."
+        ))
+        sys.exit(-1)
+
+# Checked before the import below rather than from within main: 'anvio.keggmapping' imports 'fitz'
+# and, through 'anvio.kgml', 'reportlab', so by the time main runs a missing one of those has
+# already reached the user as an ImportError traceback.
+check_package_dependencies()
+
 from anvio.keggmapping import (
     AGGREGATION_FUNCTIONS, DEFAULT_CENTERED_COLORMAP, DEFAULT_GROUP_TINT_SPAN,
     ELEMENT_NORMALIZATION_PHRASE, GROUP_COLORMAP_FROM_CATEGORY, GROUP_SCHEME_OPTIONS,
@@ -777,25 +806,6 @@ def get_args() -> Namespace:
 
     args = parser.get_args(parser)
     return args
-
-
-def check_package_dependencies():
-    missing_packages = []
-    for package_name in ('Bio', 'reportlab', 'fitz'):
-        try:
-            importlib.import_module(package_name)
-        except ImportError:
-            missing_packages.append(package_name)
-
-    if missing_packages:
-        message = ', '.join(f"'{package_name}'" for package_name in missing_packages)
-        raise ConfigError(
-            f"The following Python packages required to run `anvi-draw-kegg-pathways` could not be "
-            f"imported: {message}. All Python dependencies of anvi'o can be installed by running "
-            f"the command `pip install -r requirements.txt` in the top directory of the anvi'o "
-            f"codebase, which may have a location like '~/github/anvio' in your file system if you "
-            f"followed the anvio.org installation instructions."
-        )
 
 def check_kegg_data(args: Namespace) -> None:
     kegg_args = Namespace()
@@ -1879,7 +1889,6 @@ def main() -> None:
     args = get_args()
 
     try:
-        check_package_dependencies()
         check_kegg_data(args)
         consolidate_contigs_dbs(args)
 
