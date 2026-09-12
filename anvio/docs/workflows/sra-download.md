@@ -1,5 +1,8 @@
 The `sra_download` workflow is a Snakemake workflow that downloads FASTQ files from SRA-accessions from [NCBI](https://www.ncbi.nlm.nih.gov/sra) e.g. SRR000001 and ERR000001. using [NCBI sra-tools wiki](https://github.com/ncbi/sra-tools/wiki/08.-prefetch-and-fasterq-dump), verifies the downlaod the MD5 checksum, gzips them using [pigz](https://zlib.net/pigz/), and provides a %(samples-txt)s. You will need to have these tools installed before you start.
 
+{:.notice}
+This workflow downloads reads and keeps them, which is what you want when the reads themselves are the point. If instead you are after what the reads tell you — mapping a large set of public metagenomes against some references, say — the [metagenomics workflow](../metagenomics) can download them itself and delete each one as soon as it is done with it, so that you never need room for more than a few at a time. See its section on downloading metagenomes from the SRA.
+
 Let's get started.
 
 ## Required input

@@ -1,0 +1,407 @@
+{
+    "gen_external_genome_file": {
+        "threads": 1
+    },
+    "anvi_script_reformat_fasta": {
+        "threads": 1,
+        "run": true,
+        "--keep-ids": null,
+        "--exclude-ids": null,
+        "--min-len": null,
+        "--max-len": null,
+        "--prefix": "{group}",
+        "--simplify-names": true,
+        "--seq-type": null
+    },
+    "anvi_gen_contigs_database": {
+        "threads": 1,
+        "--project-name": "{group}",
+        "--description": null,
+        "--skip-gene-calling": null,
+        "--ignore-internal-stop-codons": null,
+        "--skip-mindful-splitting": null,
+        "--contigs-fasta": null,
+        "--split-length": null,
+        "--kmer-size": null,
+        "--skip-predict-frame": null,
+        "--prodigal-translation-table": null
+    },
+    "export_gene_calls_for_centrifuge": {
+        "threads": 1
+    },
+    "centrifuge": {
+        "threads": 2,
+        "run": false,
+        "db": null
+    },
+    "anvi_import_taxonomy_for_genes": {
+        "threads": 1
+    },
+    "anvi_run_scg_taxonomy": {
+        "threads": 6,
+        "run": true,
+        "--scgs-taxonomy-data-dir": null
+    },
+    "anvi_run_trna_scan": {
+        "threads": 6,
+        "run": false,
+        "--trna-cutoff-score": null,
+        "--trna-model": null
+    },
+    "anvi_run_hmms": {
+        "threads": 5,
+        "run": true,
+        "--installed-hmm-profile": null,
+        "--hmm-profile-dir": null,
+        "--also-scan-trnas": true,
+        "--add-to-functions-table": null,
+        "--just-do-it": null
+    },
+    "anvi_run_ncbi_cogs": {
+        "threads": 5,
+        "run": true,
+        "--cog-data-dir": null,
+        "--temporary-dir-path": "",
+        "--search-with": null
+    },
+    "annotate_contigs_database": {
+        "threads": 1
+    },
+    "anvi_get_sequences_for_gene_calls": {
+        "threads": 1
+    },
+    "emapper": {
+        "threads": 1,
+        "--database": "bact",
+        "--usemem": true,
+        "--override": true,
+        "path_to_emapper_dir": null
+    },
+    "anvi_script_run_eggnog_mapper": {
+        "threads": 1,
+        "run": false,
+        "--cog-data-dir": null,
+        "--drop-previous-annotations": null,
+        "--use-version": "0.12.6"
+    },
+    "reformat_external_gene_calls_table": {
+        "threads": 1
+    },
+    "reformat_external_functions": {
+        "threads": 1
+    },
+    "import_external_functions": {
+        "threads": 1
+    },
+    "anvi_run_pfams": {
+        "threads": 1,
+        "run": false,
+        "--pfam-data-dir": null
+    },
+    "anvi_run_kegg_kofams": {
+        "threads": 4,
+        "run": true,
+        "--kegg-data-dir": null,
+        "--hmmer-program": null,
+        "--keep-all-hits": null,
+        "--log-bitscores": null,
+        "--just-do-it": null
+    },
+    "sra_prefetch": {
+        "threads": 2,
+        "--max-size": "40g"
+    },
+    "sra_fasterq_dump": {
+        "threads": 6
+    },
+    "sra_gather_reads": {
+        "threads": 1
+    },
+    "iu_gen_configs": {
+        "threads": 1,
+        "--r1-prefix": null,
+        "--r2-prefix": null
+    },
+    "iu_filter_quality_minoche": {
+        "threads": 1,
+        "run": true,
+        "--visualize-quality-curves": null,
+        "--ignore-deflines": true,
+        "--limit-num-pairs": null,
+        "--print-qual-scores": null,
+        "--store-read-fate": null
+    },
+    "gen_qc_report": {
+        "threads": 1
+    },
+    "gzip_fastqs": {
+        "threads": 1,
+        "run": true
+    },
+    "fastqc": {
+        "threads": 1,
+        "run": false,
+        "run_on_raw": false,
+        "run_on_filtered": false,
+        "conda_yaml": "",
+        "use_anvio_conda_yaml": false,
+        "conda_env": "",
+        "additional_params": ""
+    },
+    "filtlong": {
+        "threads": 1,
+        "run": false,
+        "conda_yaml": "",
+        "use_anvio_conda_yaml": false,
+        "conda_env": "",
+        "--min-length": null,
+        "--max-length": null,
+        "--target-bases": null,
+        "--keep-percent": null,
+        "--min-mean-q": null,
+        "additional_params": ""
+    },
+    "nanoplot": {
+        "threads": 2,
+        "run": false,
+        "run_on_raw": false,
+        "run_on_filtered": false,
+        "conda_yaml": "",
+        "use_anvio_conda_yaml": false,
+        "conda_env": "",
+        "additional_params": ""
+    },
+    "multiqc": {
+        "threads": 1,
+        "run": false,
+        "conda_yaml": "",
+        "use_anvio_conda_yaml": false,
+        "conda_env": "",
+        "additional_params": ""
+    },
+    "merge_fastqs_for_co_assembly": {},
+    "merge_fastas_for_co_assembly": {},
+    "megahit": {
+        "threads": 7,
+        "run": true,
+        "conda_yaml": null,
+        "use_anvio_conda_yaml": false,
+        "conda_env": null,
+        "--min-contig-len": 1000,
+        "--min-count": null,
+        "--k-min": null,
+        "--k-max": null,
+        "--k-step": null,
+        "--k-list": null,
+        "--no-mercy": null,
+        "--no-bubble": null,
+        "--merge-level": null,
+        "--prune-level": null,
+        "--prune-depth": null,
+        "--low-local-ratio": null,
+        "--max-tip-len": null,
+        "--no-local": null,
+        "--kmin-1pass": null,
+        "--presets": null,
+        "--memory": 0.4,
+        "--mem-flag": null,
+        "--use-gpu": null,
+        "--gpu-mem": null,
+        "--keep-tmp-files": null,
+        "--tmp-dir": null,
+        "--continue": null,
+        "--verbose": null
+    },
+    "metaspades": {
+        "threads": 7,
+        "run": null,
+        "conda_yaml": null,
+        "use_anvio_conda_yaml": false,
+        "conda_env": null,
+        "additional_params": "--only-assembler",
+        "use_scaffolds": null
+    },
+    "idba_ud": {
+        "threads": 7,
+        "run": null,
+        "conda_yaml": null,
+        "use_anvio_conda_yaml": false,
+        "conda_env": null,
+        "--mink": null,
+        "--maxk": null,
+        "--step": null,
+        "--inner_mink": null,
+        "--inner_step": null,
+        "--prefix": null,
+        "--min_count": null,
+        "--min_support": null,
+        "--seed_kmer": null,
+        "--min_contig": 1000,
+        "--similar": null,
+        "--max_mismatch": null,
+        "--min_pairs": null,
+        "--no_bubble": null,
+        "--no_local": null,
+        "--no_coverage": null,
+        "--no_correct": null,
+        "--pre_correction": null,
+        "use_scaffolds": null
+    },
+    "flye": {
+        "threads": 7,
+        "run": false,
+        "conda_yaml": null,
+        "use_anvio_conda_yaml": false,
+        "conda_env": null,
+        "--meta": true,
+        "--pacbio-raw": null,
+        "--pacbio-corr": null,
+        "--pacbio-hifi": null,
+        "--nano-raw": null,
+        "--nano-corr": null,
+        "--nano-hq": null,
+        "--genome-size": null,
+        "--iterations": null,
+        "--min-overlap": null,
+        "--read-error": null,
+        "--keep-haplotypes": null,
+        "--no-alt-contigs": null,
+        "--scaffold": null,
+        "--polish-target": null,
+        "additional_params": ""
+    },
+    "bowtie_build": {
+        "threads": 1,
+        "additional_params": ""
+    },
+    "bowtie": {
+        "threads": 3,
+        "conda_yaml": null,
+        "use_anvio_conda_yaml": false,
+        "conda_env": null,
+        "additional_params": "--no-unal"
+    },
+    "minimap2_index": {
+        "threads": 1,
+        "additional_params": ""
+    },
+    "minimap2": {
+        "threads": 3,
+        "preset": "",
+        "conda_yaml": null,
+        "use_anvio_conda_yaml": false,
+        "conda_env": null,
+        "additional_params": "--secondary-seq"
+    },
+    "samtools_view": {
+        "threads": 1,
+        "additional_params": "-F 4"
+    },
+    "anvi_profile": {
+        "threads": 3,
+        "--overwrite-output-destinations": true,
+        "--report-variability-full": null,
+        "--skip-SNV-profiling": null,
+        "--profile-SCVs": null,
+        "--description": null,
+        "--skip-hierarchical-clustering": null,
+        "--distance": null,
+        "--linkage": null,
+        "--min-contig-length": null,
+        "--min-mean-coverage": null,
+        "--min-coverage-for-variability": null,
+        "--cluster-contigs": null,
+        "--contigs-of-interest": null,
+        "--queue-size": null,
+        "--write-buffer-size": null,
+        "--write-buffer-size-per-thread": null,
+        "--fetch-filter": null,
+        "--min-percent-identity": null,
+        "--max-contig-length": null
+    },
+    "anvi_merge": {
+        "threads": 1,
+        "--sample-name": "{group}",
+        "--description": null,
+        "--skip-hierarchical-clustering": null,
+        "--enforce-hierarchical-clustering": null,
+        "--distance": null,
+        "--linkage": null,
+        "--overwrite-output-destinations": true
+    },
+    "import_percent_of_reads_mapped": {
+        "threads": 1,
+        "run": true
+    },
+    "anvi_cluster_contigs": {
+        "threads": 1,
+        "run": null,
+        "--collection-name": "{driver}",
+        "--driver": null,
+        "--just-do-it": null,
+        "--additional-params-concoct": null,
+        "--additional-params-metabat2": null,
+        "--additional-params-maxbin2": null,
+        "--additional-params-dastool": null,
+        "--additional-params-binsanity": null
+    },
+    "anvi_summarize": {
+        "threads": 1,
+        "run": null,
+        "additional_params": ""
+    },
+    "anvi_split": {
+        "threads": 1,
+        "run": null,
+        "additional_params": ""
+    },
+    "krakenuniq": {
+        "threads": 3,
+        "run": null,
+        "--db": null,
+        "--gzip-compressed": true,
+        "additional_params": ""
+    },
+    "krakenuniq_mpa_report": {
+        "threads": 1
+    },
+    "import_krakenuniq_taxonomy": {
+        "threads": 1,
+        "--min-abundance": null
+    },
+    "remove_short_reads_based_on_references": {
+        "threads": 1,
+        "dont_remove_just_map": null,
+        "references_for_removal_txt": null,
+        "delimiter-for-iu-remove-ids-from-fastq": " "
+    },
+    "fasta_txt": "",
+    "samples_txt": "samples-paired.txt",
+    "references_mode": null,
+    "all_against_all": true,
+    "kraken_txt": null,
+    "collections_txt": null,
+    "read_type_suffix": "auto",
+    "download_reads": {
+        "max_disk_gb": 0.5,
+        "keep_reads": "none",
+        "safety_factor": 1.3,
+        "metadata_cache": "SRA-METADATA.txt"
+    },
+    "max_threads": "",
+    "output_dirs": {
+        "FASTA_DIR": "02_FASTA-all-against-all-tight",
+        "CONTIGS_DIR": "03_CONTIGS-all-against-all-tight",
+        "QC_DIR": "01_QC-all-against-all-tight",
+        "MAPPING_DIR": "04_MAPPING-all-against-all-tight",
+        "PROFILE_DIR": "05_ANVIO_PROFILE-all-against-all-tight",
+        "MERGE_DIR": "06_MERGED-all-against-all-tight",
+        "SRA_DIR": "01_SRA-all-against-all-tight",
+        "TAXONOMY_DIR": "07_TAXONOMY-all-against-all-tight",
+        "SUMMARY_DIR": "08_SUMMARY-all-against-all-tight",
+        "SPLIT_PROFILES_DIR": "09_SPLIT_PROFILES-all-against-all-tight",
+        "LOGS_DIR": "00_LOGS-all-against-all-tight"
+    },
+    "config_version": "6",
+    "workflow_name": "metagenomics"
+}

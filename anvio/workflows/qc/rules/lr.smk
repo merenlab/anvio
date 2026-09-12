@@ -104,7 +104,11 @@ rule filtlong:
         names_ok=os.path.join(dirs_dict["QC_DIR"], "{readset}-LR_NAMES_OK.flag"),
     output:
         # the {readset} wildcard passes through the helper as a literal for Snakemake to expand
-        filtered=M.filtered_lr_path("{readset}"),
+        filtered=(
+            temp(M.filtered_lr_path("{readset}"))
+            if M.qc_output_is_temporary()
+            else M.filtered_lr_path("{readset}")
+        ),
     log:
         rule_log("filtlong", "{readset}-filtlong"),
     wildcard_constraints:

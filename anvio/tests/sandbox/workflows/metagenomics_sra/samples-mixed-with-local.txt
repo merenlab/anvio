@@ -1,0 +1,3 @@
+sample	r1	r2	sra_accession
+S01			ERR6450080
+S_local	three_samples_example/sample-01-R1.fastq.gz	three_samples_example/sample-01-R2.fastq.gz	

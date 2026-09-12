@@ -15,6 +15,7 @@ from anvio.workflows import WorkflowSuperClass, get_lr_preset, get_valid_lr_tech
 from anvio.workflows.contigs import ContigsDBWorkflow
 from anvio.workflows.qc import QCModule
 from anvio.workflows.read_recruitment import ReadRecruitmentModule
+from anvio.workflows.sra_reads import SRAReadsModule
 from anvio.errors import ConfigError
 from anvio.artifacts.samples_txt import SamplesTxt
 
@@ -31,7 +32,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, WorkflowSuperClass):
+class MetagenomicsWorkflow(SRAReadsModule, QCModule, ReadRecruitmentModule, ContigsDBWorkflow, WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.init_workflow_super_class(args, workflow_name='metagenomics')
 
@@ -55,6 +56,7 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         ContigsDBWorkflow.__init__(self)
         ReadRecruitmentModule.__init__(self)
         QCModule.__init__(self)
+        SRAReadsModule.__init__(self)
 
         self.rules.extend(['merge_fastqs_for_co_assembly', 'megahit', 'merge_fastas_for_co_assembly',
                      'idba_ud', 'metaspades', 'flye',
@@ -82,6 +84,12 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         # loading the samples.txt file
         samples_txt_file = self.get_param_value_from_config(['samples_txt'])
         self.samples_txt = SamplesTxt(samples_txt_file, expected_format="free")
+
+        # samples that name SRA accessions rather than files describe reads that do not exist
+        # yet. This replaces those accessions with the paths of the FASTQ files this workflow is
+        # going to download, so everything below here works as if they had been there all along.
+        self.samples_txt = self.init_sra_reads(self.samples_txt)
+
         self.samples_information = self.samples_txt.as_df()
         # get a list of the sample names
         self.sample_names = self.samples_txt.samples()
@@ -195,6 +203,10 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         # here surfaces the error before the DAG is built (see the method for why).
         self.sanity_check_lr_group_read_types()
 
+        # now that the assembly groups are known, we can work out which samples have to be on
+        # disk at the same time, and therefore how far ahead of itself the workflow may download
+        self.init_sra_download_units()
+
         # Set the PROFILE databases paths variable:
         for group in self.group_names:
             if self.group_sizes[group] > 1:
@@ -237,6 +249,10 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         target_files.extend(contigs_annotated)
 
         target_files.extend(self.get_qc_target_files())
+
+        # the release markers are what pull the download machinery into the workflow, and what
+        # guarantee that anvi'o notices if reads were downloaded but never used by anything
+        target_files.extend(self.get_sra_target_files())
 
         if self.references_for_removal_txt:
             filter_report = os.path.join(self.dirs_dict["QC_DIR"], "short-read-removal-report.txt")

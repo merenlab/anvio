@@ -1,0 +1,2 @@
+name	path
+SRAREF	sra-reference.fa.gz
