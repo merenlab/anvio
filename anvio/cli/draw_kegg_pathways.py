@@ -602,7 +602,7 @@ def get_args() -> Namespace:
         f"reads as a position along the range rather than as an exact count; it is chosen "
         f"automatically, with a warning, wherever 'by_count' would be refused or its labels would "
         f"be unreadable. In contrast, coloring by membership means reaction color is determined by "
-        f"membership in a database/group or combination of databases/groups, so a quantitative "
+        f"membership in a database/group or combination of databases/groups, so a qualitative "
         f"colormap can be used instead of a sequential colormap, as by default with 2 or 3 "
         f"categories, to give a distinct color to each membership category."
     )
