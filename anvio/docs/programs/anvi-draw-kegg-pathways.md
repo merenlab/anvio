@@ -65,9 +65,9 @@ Map files are sorted into up to four subdirectories, one for each kind of map:
 
 |Subdirectory|Contents|
 |:--|:--|
-|`unified`|The type of map drawn from all of the data at once. With a single source — a %(kegg-reaction-txt)s and/or %(kegg-compound-txt)s with no `sample` column, one %(contigs-db)s, or one %(reaction-network-json)s — these maps per pathway are the only ones drawn.|
+|`unified`|The type of map drawn from all of the data at once. With a single source — a %(kegg-reaction-txt)s and/or %(kegg-compound-txt)s with no `sample` column, one %(contigs-db)s, or one %(reaction-network-json)s — these maps per pathway are the only ones drawn. Not written at all with `--skip-unified-maps`.|
 |`individual`|One subdirectory per data source, named after it: each sample of a text file, each contigs database, each genome of a pangenome, or, when they are grouped with a %(groups-txt)s file, each group instead. Drawn on request with `--draw-individual-files`.|
-|`grid`|The map grids, each showing the `unified` map alongside the individual ones. Drawn on request with `--draw-grid`.|
+|`grid`|The map grids, each showing the `unified` map alongside the individual ones, or the individual ones alone with `--skip-unified-maps`. Drawn on request with `--draw-grid`.|
 |`by_map`|The same individual maps arranged the other way round: one subdirectory per map, each holding one file per data source, named after it. Written on request with `--collate-files-by-map`.|
 
 Colorbars, which are keys to the colors of every map in the run, are written at the top of the output directory beside these subdirectories.
@@ -83,6 +83,12 @@ By default, an output file is named after the map's KEGG accession, e.g., `ko000
 ### File categorization
 
 The `--categorize-files` flag categorizes output map files into a subdirectory structure based on the KEGG [BRITE hierarchy of pathways](https://www.genome.jp/brite/br08901). For example, a `Glycolysis / Gluconeogenesis` map would be placed in a directory named `Metabolism/Carbohydrate_metabolism`, as would a `Citrate cycle (TCA cycle)` map, whereas an `RNA polymerase` map would be placed in a directory named `Genetic_Information_Processing/Transcription`. These category directories are built inside each of the subdirectories described above, so a categorized map of one sample would be found at, say, `individual/SAMPLE_1/Metabolism/Carbohydrate_metabolism/ko00010.pdf`. Within `unified`, `individual`, and `grid`, a subdirectory named `all_maps` is created alongside them, holding a hard link to every one of that directory's maps so that they can also be reached from a single place.
+
+### Skipping the summary map
+
+The `unified` map summarizes every sample, group, contigs database, or genome at once. A run draws it even when no summary was asked for. By default the sources are summarized by presence. That summary is not always wanted, and it can claim more than the data supports. Pooling values is only meaningful across commensurable samples. Presence in any one sample says little when the point is to compare the samples.
+
+`--skip-unified-maps` leaves that map out. The `unified` subdirectory is not written. The colorbar for that map is not written either, unless the same scale also colors the individual maps, which would otherwise have no key anywhere in the output. The maps of the individual sources are all that is left, so `--draw-individual-files` and/or `--draw-grid` are required. Each grid holds the individual maps alone, without the first 'unified' map panel labeled `all` (or `pangenome`).
 
 Here is a simple example of the output file structure produced with `--name-files` and `--categorize-files` in the course of `anvi-self-test --suite kegg-mapping` (with the `-o` option to save the temporary directories in the test from removal).
 

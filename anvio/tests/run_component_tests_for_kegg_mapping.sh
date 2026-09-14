@@ -467,6 +467,40 @@ then
     exit 1
 fi
 
+INFO "Skipping the 'unified' map so that only the individual samples are drawn"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+                        --output-dir draw_txt_skip_unified \
+                        --pathway-numbers $pathway_numbers \
+                        --skip-unified-maps \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
+if [ -e draw_txt_skip_unified/unified ]
+then
+    echo "ERROR: the 'unified' map was drawn for a run that skipped it."
+    exit 1
+fi
+# The colorbar keying the summary sits at the top of the output directory rather than beside the
+# map it keys, so not drawing that map has to take the bar with it.
+if [ -e draw_txt_skip_unified/colorbar_reactions.pdf ]
+then
+    echo "ERROR: the colorbar keying the skipped 'unified' map was drawn."
+    exit 1
+fi
+if [ ! -s draw_txt_skip_unified/individual/SAMPLE_1/ko00010.pdf ]
+then
+    echo "ERROR: skipping the 'unified' map should leave the maps of the individual samples."
+    exit 1
+fi
+# The grid leads with the 'unified' map, so a run skipping it has to go on drawing grids from the
+# individual maps alone rather than quietly drawing none.
+if [ ! -s draw_txt_skip_unified/grid/ko00010.pdf ]
+then
+    echo "ERROR: skipping the 'unified' map should leave a grid of the individual samples."
+    exit 1
+fi
+
 ## CONTIGS DATABASE INPUT
 INFO "Mapping KOs from a genomic contigs database"
 anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db \

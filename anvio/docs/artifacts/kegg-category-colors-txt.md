@@ -42,7 +42,7 @@ Two combinations can of course blend to the same color, and a discrete colorbar 
 
 **The 'unified' map and its colorbar.** Each combination of categories takes its color as described above.
 
-**Each category's own map.** With `--draw-individual-files` or `--draw-grid`, a category's map is drawn in that category's own color rather than in one shared color, so a panel of a grid says which category it is and matches the band it takes on the 'unified' map.
+**Each category's own map.** With `--draw-individual-files` or `--draw-grid`, a category's map is drawn in that category's own color rather than in one shared color, so a panel of a grid says which category it is and matches the band it takes on the 'unified' map. (With `--skip-unified-maps` there is no 'unified' map and no band to match, but each panel still shows its own category's color.)
 
 **Each group's own map, on request.** When a %(groups-txt)s groups the categories, a group's own map is colored by how many of the group's samples, databases, or genomes contain an element — a magnitude rather than an identity — and takes its colors from `--group-colormap`, which is unaffected by this file by default. Giving `--group-colormap category` instead builds each group's scale as a ramp running from a pale tint to that group's own color, binding the two: every group's ramp is built the same way, so the panels of a grid stay comparable while each says which group it is.
 

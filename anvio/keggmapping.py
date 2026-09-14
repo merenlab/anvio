@@ -1308,15 +1308,14 @@ class Mapper:
 
         A category (sample, source, or group) drawn on its own maps gets its own subdirectory of the
         output directory, and once map grids are drawn the subdirectories of categories that were
-        only needed for a grid are deleted ('_draw_map_grids'). A name that is not a plain directory
-        name would therefore write, or delete, outside the output directory: names come from a text
-        file's 'sample' column or a groups file, so they cannot be trusted to be safe paths. The
-        same names become file names where the maps are gathered by map rather than by category
-        ('_collate_maps_by_map'), which the very same requirement makes safe.
-
-        Only the categories actually getting maps are checked, since a category summarized on the
-        'unified' map alone contributes color rather than a path, and its name is never joined onto
-        one.
+        only needed for a grid are deleted ('_draw_map_grids'). Category names must be checked to
+        ensure that they form proper paths that lie within the output directory: names come from a
+        text file's 'sample' column or a groups file, so they cannot be trusted to be safe paths
+        (for example, a sample named "Station 5/Depth 10" is not safe). The same names become file
+        names where the maps are gathered by map rather than by category ('_collate_maps_by_map'),
+        which the same requirement makes safe. Only categories getting individual maps as
+        independent files or as part of a grid are checked, not those that are only summarized on a
+        'unified' map.
 
         No name is reserved. Categories are drawn into '<output directory>/individual', which anvi'o
         creates for that purpose alone, so a category may be named after anything anvi'o puts in the
@@ -1346,16 +1345,13 @@ class Mapper:
 
         if not problems:
             return
+        plural = len(problems) > 1
         raise ConfigError(
             f"Each {category_noun} drawn on its own maps gets its own subdirectory of the output "
             f"directory, so its name must be usable as a directory name. "
-            f"{'These names cannot be used' if len(problems) > 1 else 'This name cannot be used'}: "
-            f"{', '.join(problems)}. Please rename {'them' if len(problems) > 1 else 'it'} in the "
-            f"input, using single words without path separators, such as 'SAMPLE_1' or "
-            f"'HIGH_TEMPERATURE'. Alternatively, leave {'them' if len(problems) > 1 else 'it'} out "
-            f"of the {category_noun}s requested with '--draw-individual-files'/'--draw-grid': a "
-            f"{category_noun} that is only summarized on the 'unified' map does not need a name "
-            f"that works as a directory."
+            f"{'These names' if plural else 'This name'} cannot be used: {', '.join(problems)}. "
+            f"Please rename {'them' if plural else 'it'} in the input, using single words without "
+            f"path separators, such as 'SAMPLE_1' or 'HIGH_TEMPERATURE'."
         )
 
     @staticmethod
@@ -2375,6 +2371,7 @@ class Mapper:
         groups_txt: str = None,
         group_threshold: float = None,
         pathway_numbers: Iterable[str] = None,
+        draw_unified_maps: bool = True,
         draw_individual_files: Union[Iterable[str], bool] = False,
         draw_grid: Union[Iterable[str], bool] = False,
         reaction_color: str = '#2ca02c',
@@ -2555,7 +2552,9 @@ class Mapper:
         Returns
         =======
         Dict[Literal['unified', 'individual', 'grid'], Dict]
-            The record returned by '_map_elements'.
+            The record returned by '_map_elements'. All three keys are always present. The
+            dictionary under 'unified' is empty when 'draw_unified_maps' is False, since no
+            'unified' map is drawn.
         """
         raw_layers: List[dict] = []
         if reaction_txt is not None:
@@ -2685,6 +2684,7 @@ class Mapper:
             membership_singular='sample',
             grouped_membership=grouped_membership,
             count_scale_max=count_scale_max,
+            draw_unified_maps=draw_unified_maps,
             draw_individual_files=draw_individual_files,
             draw_grid=draw_grid,
             draw_maps_lacking_data=draw_maps_lacking_data
@@ -2697,6 +2697,7 @@ class Mapper:
         groups_txt: str = None,
         group_threshold: float = None,
         pathway_numbers: Iterable[str] = None,
+        draw_unified_maps: bool = True,
         draw_individual_files: Union[Iterable[str], bool] = False,
         draw_grid: Union[Iterable[str], bool] = False,
         reaction_colormap: Union[bool, str, mcolors.Colormap] = True,
@@ -2781,12 +2782,12 @@ class Mapper:
         =====
         The dynamic-coloring and drawing options ('reaction_colormap', 'reaction_colormap_limits',
         'colormap_scheme', 'reaction_category_colors', 'reaction_reverse_overlay',
-        'draw_individual_files', 'draw_grid', and the group colormap options) mirror the categorical
-        engine; see the CLI help and '_map_element_membership'. 'reaction_category_colors' is the
-        path to a kegg-category-colors-txt file giving a color per category — per source, or per
-        group when the sources are grouped — which colors the layer by membership in place of a
-        colormap, and colors each category's own map. 'group_colormap' may be
-        'GROUP_COLORMAP_FROM_CATEGORY' to color each group's own maps by a ramp running to that
+        'draw_unified_maps', 'draw_individual_files', 'draw_grid', and the group colormap options)
+        mirror the categorical engine; see the CLI help and '_map_element_membership'.
+        'reaction_category_colors' is the path to a kegg-category-colors-txt file giving a color per
+        category — per source, or per group when the sources are grouped — which colors the layer by
+        membership in place of a colormap, and colors each category's own map. 'group_colormap' may
+        be 'GROUP_COLORMAP_FROM_CATEGORY' to color each group's own maps by a ramp running to that
         group's own color instead of by a named colormap, in which case 'group_colormap_limits' is
         how far from white that ramp runs ('_group_map_colors'). 'group_colormap_scheme' draws the
         count scale of every group's maps in discrete bands ('by_count') or as a gradient
@@ -2797,7 +2798,9 @@ class Mapper:
         Dict[Literal['unified', 'individual', 'grid'], Dict]
             The record returned by '_map_element_membership': 'unified' maps show all contigs
             databases or groups, 'individual' maps show single databases or groups, and 'grid'
-            images show both. See '_map_element_membership' for the nested structure.
+            images show both. See '_map_element_membership' for the nested structure. All three
+            keys are always present. The dictionary under 'unified' is empty when
+            'draw_unified_maps' is False, since no 'unified' map is drawn.
         """
         # This method loads KO membership from contigs databases and hands off the drawing of
         # unified, individual, and grid maps to '_map_element_membership'.
@@ -2820,10 +2823,20 @@ class Mapper:
 
         self.progress.end()
 
-        # Load groups.
-        if (
-            (groups_txt is None and group_threshold is not None) or
-            (groups_txt is not None and group_threshold is None)
+        # Load groups. A threshold decides when a group counts as containing an element. Only the
+        # 'unified' map uses that. A group's own map counts the group's own databases whatever the
+        # threshold is. A run not drawing the 'unified' map therefore refuses a threshold rather
+        # than accepting one that decides nothing. Such a run may give 'groups_txt' on its own.
+        if group_threshold is not None and not draw_unified_maps:
+            raise ConfigError(
+                "A 'group_threshold' was given, which sets the proportion of a group's contigs "
+                "databases that must contain an element for the group to count as containing it. "
+                "Only the 'unified' map uses that threshold. A group's own map counts the group's "
+                "own databases whatever the threshold is. This run does not draw the 'unified' "
+                "map. Please pass 'group_threshold' or set 'draw_unified_maps' to False, not both."
+            )
+        if (groups_txt is None and group_threshold is not None) or (
+            groups_txt is not None and group_threshold is None and draw_unified_maps
         ):
             raise ConfigError(
                 "To group contigs databases, arguments to both 'groups_txt' and 'group_threshold' "
@@ -2833,7 +2846,7 @@ class Mapper:
         source_group: Dict[str, str] = None
         group_sources: Dict[str, List[str]] = None
         if groups_txt is not None:
-            if not 0 <= group_threshold <= 1:
+            if group_threshold is not None and not 0 <= group_threshold <= 1:
                 raise ConfigError(
                     f"'group_threshold' must be a number between 0 and 1, not {group_threshold}"
                 )
@@ -2945,6 +2958,7 @@ class Mapper:
             group_sources=group_sources,
             group_threshold=group_threshold,
             pathway_numbers=pathway_numbers,
+            draw_unified_maps=draw_unified_maps,
             draw_individual_files=draw_individual_files,
             draw_grid=draw_grid,
             group_colormap=group_colormap,
@@ -2966,6 +2980,7 @@ class Mapper:
         consensus_threshold: float = None,
         discard_ties: bool = None,
         pathway_numbers: Iterable[str] = None,
+        draw_unified_maps: bool = True,
         draw_individual_files: Union[Iterable[str], bool] = False,
         draw_grid: Union[Iterable[str], bool] = False,
         reaction_colormap: Union[bool, str, mcolors.Colormap] = True,
@@ -3070,12 +3085,12 @@ class Mapper:
         =====
         The dynamic-coloring and drawing options ('reaction_colormap', 'reaction_colormap_limits',
         'colormap_scheme', 'reaction_category_colors', 'reaction_reverse_overlay',
-        'draw_individual_files', 'draw_grid', and the group colormap options) mirror the categorical
-        engine; see the CLI help and '_map_element_membership'. 'reaction_category_colors' is the
-        path to a kegg-category-colors-txt file giving a color per category — per source, or per
-        group when the sources are grouped — which colors the layer by membership in place of a
-        colormap, and colors each category's own map. 'group_colormap' may be
-        'GROUP_COLORMAP_FROM_CATEGORY' to color each group's own maps by a ramp running to that
+        'draw_unified_maps', 'draw_individual_files', 'draw_grid', and the group colormap options)
+        mirror the categorical engine; see the CLI help and '_map_element_membership'.
+        'reaction_category_colors' is the path to a kegg-category-colors-txt file giving a color per
+        category — per source, or per group when the sources are grouped — which colors the layer by
+        membership in place of a colormap, and colors each category's own map. 'group_colormap' may
+        be 'GROUP_COLORMAP_FROM_CATEGORY' to color each group's own maps by a ramp running to that
         group's own color instead of by a named colormap, in which case 'group_colormap_limits' is
         how far from white that ramp runs ('_group_map_colors'). 'group_colormap_scheme' draws the
         count scale of every group's maps in discrete bands ('by_count') or as a gradient
@@ -3086,7 +3101,9 @@ class Mapper:
         Dict[Literal['unified', 'individual', 'grid'], Dict]
             The record returned by '_map_element_membership': 'unified' maps show all genomes or
             groups, 'individual' maps show single genomes or groups, and 'grid' images show both.
-            See '_map_element_membership' for the nested structure.
+            See '_map_element_membership' for the nested structure. All three keys are always
+            present. The dictionary under 'unified' is empty when 'draw_unified_maps' is False,
+            since no 'unified' map is drawn.
         """
         # This method loads consensus-KO membership from a pangenome and hands off the drawing
         # of unified, individual, and grid maps to '_map_element_membership'.
@@ -3139,10 +3156,20 @@ class Mapper:
                 "default if this were not the case is False, or do not discard ties.)"
             )
 
-        # Load groups.
-        if (
-            (groups_txt is None and group_threshold is not None) or
-            (groups_txt is not None and group_threshold is None)
+        # Load groups. A threshold decides when a group counts as containing an element. Only the
+        # 'unified' map uses that. A group's own map counts the group's own genomes whatever the
+        # threshold is. A run not drawing the 'unified' map therefore refuses a threshold rather
+        # than accepting one that decides nothing. Such a run may give 'groups_txt' on its own.
+        if group_threshold is not None and not draw_unified_maps:
+            raise ConfigError(
+                "A 'group_threshold' was given, which sets the proportion of a group's genomes "
+                "that must contain an element for the group to count as containing it. Only the "
+                "'unified' map uses that threshold. A group's own map counts the group's own "
+                "genomes whatever the threshold is. This run does not draw the 'unified' map. "
+                "Please pass 'group_threshold' or set 'draw_unified_maps' to False, not both."
+            )
+        if (groups_txt is None and group_threshold is not None) or (
+            groups_txt is not None and group_threshold is None and draw_unified_maps
         ):
             raise ConfigError(
                 "To group genomes, arguments to both 'groups_txt' and 'group_threshold' must be "
@@ -3152,7 +3179,7 @@ class Mapper:
         source_group: Dict[str, str] = None
         group_sources: Dict[str, List[str]] = None
         if groups_txt is not None:
-            if not 0 <= group_threshold <= 1:
+            if group_threshold is not None and not 0 <= group_threshold <= 1:
                 raise ConfigError(
                     f"'group_threshold' must be a number between 0 and 1, not {group_threshold}"
                 )
@@ -3294,6 +3321,7 @@ class Mapper:
             group_sources=group_sources,
             group_threshold=group_threshold,
             pathway_numbers=pathway_numbers,
+            draw_unified_maps=draw_unified_maps,
             draw_individual_files=draw_individual_files,
             draw_grid=draw_grid,
             group_colormap=group_colormap,
@@ -3350,7 +3378,7 @@ class Mapper:
             False.
         """
         # Find the numeric IDs of the maps to draw.
-        pathway_numbers = self._find_maps(output_dir, patterns=pathway_numbers)
+        pathway_numbers = self._find_maps([output_dir], patterns=pathway_numbers)
 
         filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
 
@@ -3602,7 +3630,9 @@ class Mapper:
     def _resolve_category_colors(
         self,
         layers: List[dict],
-        categories: List[str], category_noun: str
+        categories: List[str],
+        category_noun: str,
+        draw_unified_maps: bool = True
     ) -> None:
         """
         Reduce each layer's category colors to those the run will actually use.
@@ -3613,7 +3643,9 @@ class Mapper:
         ignored, as a groups file's extra items are ('_relate_samples_to_groups'): one file can then
         cover a set of samples that different runs draw different subsets of. Ignoring such a color
         means dropping it from the layer rather than merely reporting it, which is what makes the
-        colors that remain the colors of the run — everything downstream reads them as such.
+        colors that remain the colors of the run — everything downstream reads them as such. A
+        color naming a combination of categories is dropped the same way where the 'unified' map is
+        not drawn: only that map's scale gives a combination a color of its own.
 
         Parameters
         ==========
@@ -3626,6 +3658,11 @@ class Mapper:
 
         category_noun : str
             What one category is called, for error messages, e.g. 'sample' or 'group'.
+
+        draw_unified_maps : bool, True
+            If True, the 'unified' map is drawn. If False, it is not. Only that map's color scale
+            blends a combination of categories. When it is not drawn, a color given for a
+            combination is reported and dropped.
         """
         category_set = set(categories)
         # A combination is written as its names separated by 'CATEGORY_COMBO_SEPARATOR', so a name
@@ -3697,6 +3734,28 @@ class Mapper:
                 del category_colors[name]
             for combo in extra_combos:
                 del layer['category_combo_colors'][combo]
+
+            # Only the 'unified' map's scale blends a combination of categories, so a color
+            # overriding one of those blends has nothing to act on where that map is not drawn.
+            # The rows go with a word rather than refusing the run: the colors given per category
+            # still draw the individual maps, so one file can serve a run that draws the 'unified'
+            # map and a run that does not.
+            combo_colors = layer['category_combo_colors']
+            if not draw_unified_maps and combo_colors:
+                separator = f'{CATEGORY_COMBO_SEPARATOR} '
+                message = ', '.join(
+                    f"'{name}'" for name in
+                    sorted(separator.join(combo) for combo in combo_colors)
+                )
+                self.run.warning(
+                    f"The colors file given to '{flag}' recolors the following combinations of "
+                    f"{category_noun}s: {message}. A combination takes a color only on the "
+                    f"'unified' map, where an element is colored by exactly which {category_noun}s "
+                    f"contain it. That map is not drawn here, so these rows are ignored. The "
+                    f"colors given to single {category_noun}s are unaffected. Each one still draws "
+                    f"that {category_noun}'s own map."
+                )
+                combo_colors.clear()
 
     @staticmethod
     def _trim_colormap(
@@ -4256,6 +4315,7 @@ class Mapper:
         membership_singular: Union[str, None] = None,
         grouped_membership: Union[dict, None] = None,
         count_scale_max: Union[str, int] = 'observed',
+        draw_unified_maps: bool = True,
         draw_individual_files: Union[Iterable[str], bool] = False,
         draw_grid: Union[Iterable[str], bool] = False,
         draw_maps_lacking_data: bool = False
@@ -4357,6 +4417,14 @@ class Mapper:
             layer['category_mode'] == 'membership' for layer in layers
         )
 
+        def _unified_scale_drawn(layer: dict) -> bool:
+            # A layer with no category dimension of its own colors the individual maps from the
+            # 'unified' scale. That scale is therefore still worked out where the 'unified' map is
+            # not drawn. The options bounding and centering it still apply.
+            return draw_unified_maps or (
+                layer['category_mode'] == 'quantitative' and layer['category_values'] is None
+            )
+
         def _dedup(items: List[str]) -> List[str]:
             seen: Set[str] = set()
             return [item for item in items if not (item in seen or seen.add(item))]
@@ -4387,6 +4455,24 @@ class Mapper:
             # after the subset checks so that a name that is not a category at all is reported as
             # unrecognized rather than as unusable.
             self._check_category_names(draw_categories, category_noun)
+            # Every category reaches an ordinary run's output, if only as color on the 'unified'
+            # map. Without that map, the ones left out of a subset request are drawn nowhere at
+            # all.
+            if not draw_unified_maps and len(draw_categories) < len(set(categories)):
+                self.run.warning(
+                    f"Maps were asked for {len(draw_categories)} of the {len(set(categories))} "
+                    f"{category_noun}s. The 'unified' map is not drawn in this run, so the other "
+                    f"{category_noun}s appear nowhere in the output."
+                )
+            # Without the 'unified' map's panel, a grid of one category holds a single map. That
+            # is not an error, but it is worth saying what the file will look like.
+            if not draw_unified_maps and len(draw_grid_categories) == 1:
+                self.run.warning(
+                    f"The 'unified' map is not drawn in this run, so no grid leads with its "
+                    f"panel. Only one {category_noun} was named for the grid. Each grid will hold "
+                    f"a single map on a page. It is the same map that '--draw-individual-files' "
+                    f"writes, with the {category_noun}'s name over it."
+                )
         else:
             draw_files_categories = []
             draw_grid_categories = []
@@ -4394,6 +4480,23 @@ class Mapper:
         draw_category_maps = has_categories and (
             draw_individual_files is not False or draw_grid is not False
         )
+
+        # The 'unified' map is what a run draws when it is asked for nothing else. Leaving it out
+        # means the individual maps are the whole of the output. Without them there is no output at
+        # all. Say so before an empty directory is created.
+        if not draw_unified_maps and not draw_categories:
+            if has_categories:
+                raise ConfigError(
+                    f"No maps would be drawn. The 'unified' map summarizing every {category_noun} "
+                    f"is not drawn here. Neither is a map for any individual {category_noun}. Ask "
+                    f"for those maps with '--draw-individual-files' and/or '--draw-grid', or let "
+                    f"the 'unified' map be drawn."
+                )
+            raise ConfigError(
+                "No maps would be drawn. The 'unified' map is not drawn here. This run has a "
+                "single source of data, so that map is the only one it has to draw. Please let it "
+                "be drawn."
+            )
 
         # Limits on, and a center for, the scale the individual maps share have nothing to act on
         # when this run draws no individual map, just as the group-map coloring options have nothing
@@ -4447,6 +4550,31 @@ class Mapper:
                     f"'--compound-{flag_suffix.replace('category-', '')}'."
                 )
 
+        # The options bounding and centering the 'unified' map's own scale are the mirror case. A
+        # run leaving out that map never draws that scale. The exception is a layer with no category
+        # dimension. Its individual maps take that very scale, so the options still apply.
+        if not draw_unified_maps:
+            for model_key, flag_suffix, subject_phrase, remedy_phrase in (
+                ('value_limits', 'value-limits', 'Limits were given for', 'Bound'),
+                ('value_center', 'value-center', 'A center was given for', 'Center')
+            ):
+                affected_layers = [
+                    layer for layer in layers
+                    if layer.get(model_key) is not None and not _unified_scale_drawn(layer)
+                ]
+                if not affected_layers:
+                    continue
+                flags = ', '.join(
+                    f"'--{layer['element_type']}-{flag_suffix}'" for layer in affected_layers
+                )
+                raise ConfigError(
+                    f"{subject_phrase} the color scale of the 'unified' map ({flags}). That map is "
+                    f"not drawn here, so its scale is never drawn either. {remedy_phrase} the "
+                    f"scale shared by the maps of the individual {category_noun}s instead, with "
+                    f"'--reaction-category-{flag_suffix}'/'--compound-category-{flag_suffix}', or "
+                    f"let the 'unified' map be drawn."
+                )
+
         # Colors given per category name are checked against the categories the run has, and against
         # what this run would actually do with them, before anything is drawn. A layer whose contexts
         # are all colored some other way would leave them unused, which is worth an error rather than
@@ -4461,15 +4589,21 @@ class Mapper:
                     f"per sample, database, genome, or group. Set the color of the single map with "
                     f"'--reaction-color'/'--compound-color' instead."
                 )
-            self._resolve_category_colors(colored_layers, categories, category_noun)
+            self._resolve_category_colors(
+                colored_layers, categories, category_noun, draw_unified_maps=draw_unified_maps
+            )
             group_ramps = grouped and (
                 grouped_membership['group_colormap'] == GROUP_COLORMAP_FROM_CATEGORY
             )
             for layer in colored_layers:
-                # Where the colors land: the combinations of the 'unified' map's membership scale,
-                # the one color of each category's own map when the categories are not grouped, and
-                # the ramp of each group's own maps when they are and that ramp was asked for.
-                if layer['unified_mode'] == 'membership':
+                # These colors are used in two places. The first is the 'unified' map's membership
+                # scale. That scale gives a band to each category, and to each combination of them.
+                # The second is the individual maps. Without groups, each category's own map is
+                # drawn in that category's color. With groups, each group's own map is drawn in a
+                # ramp running to the group's color, but only when '--group-colormap category' asked
+                # for that ramp. The two checks below skip a layer whose colors reach either place.
+                # A layer reaching neither would leave its colors file unused.
+                if draw_unified_maps and layer['unified_mode'] == 'membership':
                     continue
                 if layer['category_mode'] == 'membership' and draw_category_maps and (
                     group_ramps if grouped else True
@@ -4491,7 +4625,27 @@ class Mapper:
                     f"color this layer by presence."
                 )
 
-        if static and grouped:
+        # With groups, a static color or reference map colors only apply to the 'unified' map. A
+        # group map colored by source count cannot utilize a static color or the reference map color
+        # scheme, so leaving out the 'unified' map refuses these options.
+        static_layers = [
+            layer for layer in layers if layer['unified_mode'] in ('static', 'original')
+        ]
+        if static_layers and grouped and not draw_unified_maps:
+            flags = ', '.join(_dedup([
+                "'--original-color'" if layer['unified_mode'] == 'original'
+                else f"'--{layer['element_type']}-color'" for layer in static_layers
+            ]))
+            raise ConfigError(
+                f"A static color or reference map colors were requested ({flags}). The only map "
+                f"these can color is the 'unified' map, and that map is not drawn here. One color "
+                f"cannot distinguish a group's {membership_singular}s. Each group's own map is "
+                f"instead colored by the number of the group's {membership_singular}s containing "
+                f"an element, styled by '--group-colormap'/'--group-reverse-overlay'. Please drop "
+                f"the color, or let the 'unified' map be drawn."
+            )
+
+        if static and grouped and draw_unified_maps:
             # The individual group maps are the exception to "static overrides dynamic": a single
             # color cannot distinguish a group's sources, so those maps fall back to within-group
             # source counts. Only say so when such maps are actually requested.
@@ -4511,8 +4665,18 @@ class Mapper:
                 f"presence/absence in any {membership_singular}.{group_map_clause}"
             )
 
+        # The overwrite check looks at every directory this run writes map files into. Checking
+        # the 'unified' directory alone is not enough. A run skipping the 'unified' map writes no
+        # such directory, so that check would pass while individual maps and grids were
+        # overwritten.
         unified_dir = os.path.join(output_dir, UNIFIED_SUBDIR)
-        pathway_numbers = self._find_maps(unified_dir, patterns=pathway_numbers)
+        check_dirs = [unified_dir] if draw_unified_maps else []
+        check_dirs += [
+            os.path.join(output_dir, INDIVIDUAL_SUBDIR, category) for category in draw_categories
+        ]
+        if draw_grid is not False:
+            check_dirs.append(os.path.join(output_dir, GRID_SUBDIR))
+        pathway_numbers = self._find_maps(check_dirs, patterns=pathway_numbers)
         filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
 
         drawn: Dict[Literal['unified', 'individual', 'grid'], Dict] = {
@@ -4541,7 +4705,9 @@ class Mapper:
                 pathway = self._get_pathway(pathway_number)
                 for layer in norm_layers:
                     use_reaction = layer['use_reaction_attribute']
-                    unified_valued = layer['unified_mode'] == 'quantitative'
+                    unified_valued = (
+                        layer['unified_mode'] == 'quantitative' and _unified_scale_drawn(layer)
+                    )
                     per_category = (
                         has_categories and layer['category_mode'] == 'quantitative'
                         and layer['category_values'] is not None
@@ -4577,6 +4743,9 @@ class Mapper:
                                 if category_value is not None:
                                     layer['_category_vals'].append(category_value)
             self.progress.end()
+            unaffected_clause = (
+                " The 'unified' map is unaffected, being drawn from the unnormalized values."
+            ) if draw_unified_maps else ""
             for layer in norm_layers:
                 # No values at all means no element of any drawn map has one, so the layer colors
                 # nothing and gets no colorbar: either its accessions are absent from these maps, or
@@ -4595,8 +4764,7 @@ class Mapper:
                         f"none of the drawn maps contains its accessions, or the normalization is "
                         f"undefined for every map element: a ratio is undefined wherever the value "
                         f"it is measured against is not a positive number, and a z-score wherever "
-                        f"an element is found in a single {category_noun}. The 'unified' map is "
-                        f"unaffected, being drawn from the unnormalized values."
+                        f"an element is found in a single {category_noun}.{unaffected_clause}"
                     )
                 elif not layer['_unified_vals'] and not layer['_category_vals']:
                     self.run.warning(
@@ -4607,7 +4775,7 @@ class Mapper:
                         f"for every map element — the standard deviation of a single value, for "
                         f"instance."
                     )
-                if layer['unified_mode'] == 'quantitative':
+                if layer['unified_mode'] == 'quantitative' and _unified_scale_drawn(layer):
                     norm, vmin, vmax, clamped_low, clamped_high = self._make_quantitative_norm(
                         layer['_unified_vals'], layer.get('value_limits'),
                         f"--{layer['element_type']}-value-limits",
@@ -4649,8 +4817,12 @@ class Mapper:
         # A context colored by membership needs its by-count/by-membership color scheme over the
         # categories. Only the 'unified' map draws such a scale (and its colorbar) from the
         # categories themselves; the presence coloring of grouped individual maps counts each
-        # group's own sources, precomputed below.
-        membership_layers = [layer for layer in layers if layer['unified_mode'] == 'membership']
+        # group's own sources, precomputed below. A run leaving that map out works out no such
+        # scale. The limits that keep such a scale legible do not apply to it.
+        membership_layers = [
+            layer for layer in layers
+            if draw_unified_maps and layer['unified_mode'] == 'membership'
+        ]
         group_membership_layers = [
             layer for layer in layers if layer['category_mode'] == 'membership'
         ]
@@ -4800,15 +4972,19 @@ class Mapper:
 
         self._check_reserved_colors(
             layers, pathway_numbers, group_color_priorities=group_color_priorities,
-            group_element_types={layer['element_type'] for layer in group_membership_layers}
+            group_element_types={layer['element_type'] for layer in group_membership_layers},
+            drawn_categories=draw_categories
         )
 
         # Per-layer colorbars for the unified map (layer-prefixed so two layers do not collide),
         # plus a shared colorbar for the category maps of each layer colored quantitatively there.
         # Each context is keyed by its own mode, so a layer summarized by presence in the unified
-        # map gets a presence colorbar there and a continuous one for its category maps.
+        # map gets a presence colorbar there and a continuous one for its category maps. A run
+        # leaving out the unified map draws neither of its bars. The exception is a layer with no
+        # category dimension of its own. Its individual maps take the unified scale, so that
+        # colorbar is drawn as the only key to their colors.
         for layer in layers:
-            if layer['unified_mode'] == 'quantitative':
+            if layer['unified_mode'] == 'quantitative' and _unified_scale_drawn(layer):
                 vmin, vmax = layer['_unified_range']
                 if vmin is not None:
                     clamped_low, clamped_high = layer['_unified_clamped']
@@ -4819,7 +4995,7 @@ class Mapper:
                         clamped_low=clamped_low, clamped_high=clamped_high,
                         center=layer['_unified_center']
                     )
-            elif layer['unified_mode'] == 'membership':
+            elif layer['unified_mode'] == 'membership' and draw_unified_maps:
                 scheme, color_priorities, category_combos, presence_cmap = layer['_colors']
                 count_scale_top = layer['_count_scale_top']
                 colorbar_path = os.path.join(output_dir, f"colorbar_{layer['name']}.pdf")
@@ -4864,24 +5040,25 @@ class Mapper:
                     )
 
         # Draw the unified map (the single map when there are no categories).
-        self.progress.new(
-            f"Drawing 'unified' map incorporating data from all {unified_plural}"
-            if has_categories else "Drawing map"
-        )
-        unified_specs = None if original_run else [_unified_spec(layer) for layer in layers]
-        for pathway_number in pathway_numbers:
-            self.progress.update(pathway_number)
-            if original_run:
-                drawn['unified'][pathway_number] = self._draw_map_kos_original_color(
-                    pathway_number, set(layers[0]['membership']), unified_dir,
-                    draw_map_lacking_data=draw_maps_lacking_data
-                )
-            else:
-                drawn['unified'][pathway_number] = self._draw_map_elements(
-                    pathway_number, unified_specs, unified_dir,
-                    draw_map_lacking_data=draw_maps_lacking_data
-                )
-        self.progress.end()
+        if draw_unified_maps:
+            self.progress.new(
+                f"Drawing 'unified' map incorporating data from all {unified_plural}"
+                if has_categories else "Drawing map"
+            )
+            unified_specs = None if original_run else [_unified_spec(layer) for layer in layers]
+            for pathway_number in pathway_numbers:
+                self.progress.update(pathway_number)
+                if original_run:
+                    drawn['unified'][pathway_number] = self._draw_map_kos_original_color(
+                        pathway_number, set(layers[0]['membership']), unified_dir,
+                        draw_map_lacking_data=draw_maps_lacking_data
+                    )
+                else:
+                    drawn['unified'][pathway_number] = self._draw_map_elements(
+                        pathway_number, unified_specs, unified_dir,
+                        draw_map_lacking_data=draw_maps_lacking_data
+                    )
+            self.progress.end()
 
         if not draw_categories:
             count = sum(drawn['unified'].values()) if drawn['unified'] else 0
@@ -5003,7 +5180,8 @@ class Mapper:
                 group_cmaps=group_cmaps,
                 group_colormap_scheme=group_colormap_scheme,
                 check_maps_lacking_kos=not draw_maps_lacking_data,
-                source_type=grid_source_type if grid_source_type is not None else category_noun
+                source_type=grid_source_type if grid_source_type is not None else category_noun,
+                include_unified=draw_unified_maps
             )
 
         # The individual maps are gathered only once nothing else stands to change them: drawing the
@@ -5016,10 +5194,12 @@ class Mapper:
             collated_count = self._collate_maps_by_map(output_dir, draw_files_categories)
             self.progress.end()
 
-        count = sum(drawn['unified'].values()) if drawn['unified'] else 0
-        self.run.info(
-            f"Number of 'unified' maps drawn incorporating data from all {unified_plural}", count
-        )
+        if draw_unified_maps:
+            count = sum(drawn['unified'].values()) if drawn['unified'] else 0
+            self.run.info(
+                f"Number of 'unified' maps drawn incorporating data from all {unified_plural}",
+                count
+            )
         if draw_individual_files:
             count = sum(
                 sum(d.values()) if d else 0 for d in drawn['individual'].values()
@@ -5038,6 +5218,7 @@ class Mapper:
         self,
         layers: List[dict],
         pathway_numbers: List[str],
+        drawn_categories: List[str],
         group_color_priorities: Dict[str, List[Tuple[str, float]]] = None,
         group_element_types: Set[str] = None
     ) -> None:
@@ -5061,6 +5242,11 @@ class Mapper:
             The maps about to be drawn, whose classes decide which colors are reserved: global maps
             recolor to gray, overview maps to black reactions and white compounds, and standard maps
             to white.
+
+        drawn_categories : List[str]
+            The categories drawn on their own maps. A category color is the color of that
+            category's own map, so only these colors are checked here. Where the 'unified' map is
+            drawn, its own scale is checked as well, and that scale carries every category's color.
 
         group_color_priorities : Dict[str, List[Tuple[str, float]]], None
             The colors of each group's individual maps ('_group_map_colors'), which belong to no one
@@ -5130,8 +5316,9 @@ class Mapper:
                     staged.add(mcolors.rgb2hex(cmap(fraction)))
             if '_colors' in layer:
                 staged.update(color for color, _ in layer['_colors'][1])
-            if layer.get('category_colors') is not None:
-                staged.update(layer['category_colors'].values())
+            category_colors = layer.get('category_colors')
+            if category_colors is not None:
+                staged.update(category_colors[category] for category in drawn_categories)
             if layer.get('color_hexcode') is not None:
                 staged.add(layer['color_hexcode'])
 
@@ -5975,6 +6162,7 @@ class Mapper:
         group_sources: Dict[str, List[str]] = None,
         group_threshold: float = None,
         pathway_numbers: Iterable[str] = None,
+        draw_unified_maps: bool = True,
         draw_individual_files: Union[Iterable[str], bool] = False,
         draw_grid: Union[Iterable[str], bool] = False,
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
@@ -6072,6 +6260,7 @@ class Mapper:
             membership_singular=singular,
             grouped_membership=grouped_membership,
             count_scale_max=count_scale_max,
+            draw_unified_maps=draw_unified_maps,
             draw_individual_files=draw_individual_files,
             draw_grid=draw_grid,
             draw_maps_lacking_data=draw_maps_lacking_data
@@ -6787,15 +6976,17 @@ class Mapper:
                 f"'{pan_db}'"
             )
 
-    def _find_maps(self, output_dir: str, patterns: List[str] = None) -> List[str]:
+    def _find_maps(self, check_dirs: List[str], patterns: List[str] = None) -> List[str]:
         """
-        Find the numeric IDs of maps to draw, checking that the map can be drawn in the target
-        output directory.
+        Find the numeric IDs of maps to draw, checking that the maps can be drawn without
+        overwriting output already there.
 
         Parameters
         ==========
-        output_dir : str
-            Path to the output directory in which pathway map PDF files are drawn.
+        check_dirs : List[str]
+            The directories this run writes map files into. Each is checked for files that would
+            be overwritten. A run gives every one of them, so that the check covers everything it
+            is about to write.
 
         patterns : List[str], None
             Regex patterns of pathway numbers, which are five digits.
@@ -6823,20 +7014,21 @@ class Mapper:
                 )
 
         if not self.overwrite_output:
-            for pathway_number in pathway_numbers:
-                out_basename = self._map_basename(pathway_number)
-                if self.pathway_categorization is None:
-                    out_path = os.path.join(output_dir, out_basename)
-                else:
-                    out_path = os.path.join(
-                        output_dir, *self.pathway_categorization[pathway_number], out_basename
-                    )
-                if os.path.exists(out_path):
-                    raise ConfigError(
-                        f"Output files would be overwritten in the output directory, {output_dir}. "
-                        "Either delete the contents of the directory, or use the option to "
-                        "overwrite output destinations."
-                    )
+            for check_dir in check_dirs:
+                for pathway_number in pathway_numbers:
+                    out_basename = self._map_basename(pathway_number)
+                    if self.pathway_categorization is None:
+                        out_path = os.path.join(check_dir, out_basename)
+                    else:
+                        out_path = os.path.join(
+                            check_dir, *self.pathway_categorization[pathway_number], out_basename
+                        )
+                    if os.path.exists(out_path):
+                        raise ConfigError(
+                            f"Output files would be overwritten in {check_dir}. Either delete the "
+                            f"contents of that directory, or use the option to overwrite output "
+                            f"destinations."
+                        )
 
         return pathway_numbers
 
@@ -7130,7 +7322,8 @@ class Mapper:
         group_cmaps: Dict[str, mcolors.Colormap] = None,
         group_colormap_scheme: str = None,
         check_maps_lacking_kos: bool = True,
-        source_type: str = 'unknown'
+        source_type: str = 'unknown',
+        include_unified: bool = True
     ) -> None:
         """
         Make map grids from arbitrary categories of data sources or groups of data sources, where
@@ -7194,6 +7387,11 @@ class Mapper:
             The kind of source a group is made of, which labels the per-group colorbars of source
             counts. The text engine passes 'sample', including for a grouped run, since a group is
             made of samples.
+
+        include_unified : bool, True
+            If True, each grid leads with the 'unified' map summarizing every category, labeled
+            'all' or 'pangenome'. If False, a grid holds the individual maps alone. The run has not
+            drawn the 'unified' map.
         """
         self.progress.new("Drawing map grid")
         self.progress.update("...")
@@ -7278,20 +7476,30 @@ class Mapper:
 
         for pathway_number in pathway_numbers:
             self.progress.update(pathway_number)
-            pathway_basename = self._map_basename(pathway_number)
-            unified_dir = os.path.join(output_dir, UNIFIED_SUBDIR)
-            if self.pathway_categorization is None:
-                unified_map_path = os.path.join(unified_dir, pathway_basename)
-            else:
-                out_dir = os.path.join(unified_dir, *self.pathway_categorization[pathway_number])
-                unified_map_path = os.path.join(out_dir, pathway_basename)
-            if not os.path.exists(unified_map_path):
+            # With the 'unified' map left out, a grid whose every panel would be a blank filler has
+            # nothing to show. The pathway's data is in a category this grid does not hold. Fillers
+            # even out a grid that has content. They do not make a grid out of nothing.
+            if not include_unified and not any(
+                drawn['individual'].get(category, {}).get(pathway_number, False)
+                for category in draw_grid_categories
+            ):
                 continue
-            in_paths = [unified_map_path]
-            if source_type == 'pangenome':
-                labels = ['pangenome']
-            else:
-                labels = ['all']
+            pathway_basename = self._map_basename(pathway_number)
+            in_paths: List[str] = []
+            labels: List[str] = []
+            if include_unified:
+                unified_dir = os.path.join(output_dir, UNIFIED_SUBDIR)
+                if self.pathway_categorization is None:
+                    unified_map_path = os.path.join(unified_dir, pathway_basename)
+                else:
+                    out_dir = os.path.join(
+                        unified_dir, *self.pathway_categorization[pathway_number]
+                    )
+                    unified_map_path = os.path.join(out_dir, pathway_basename)
+                if not os.path.exists(unified_map_path):
+                    continue
+                in_paths.append(unified_map_path)
+                labels.append('pangenome' if source_type == 'pangenome' else 'all')
 
             for category in draw_grid_categories:
                 if self.pathway_categorization is None:
