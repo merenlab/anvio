@@ -42,7 +42,7 @@ For the example config file shown above, this command will generate something si
 [![DAG-contigs](../../images/workflows/contigs/DAG-contigs.png)]( ../../images/workflows/contigs/DAG-contigs.png){:.center-img .width-50}
 
 {:.notice}
-Please note that the generation of this workflow graph requires the usage of a program called [dot](https://en.wikipedia.org/wiki/DOT_(graph_description_language)). If you are using MAC OSX, you can use [dot](https://en.wikipedia.org/wiki/DOT_(graph_description_language)) by installing [graphviz](http://www.graphviz.org/) through `brew` or `conda`.
+Please note that the generation of this workflow graph requires the usage of a program called [dot](https://en.wikipedia.org/wiki/DOT_(graph_description_language)). If you are using MAC OSX, you can use [dot](https://en.wikipedia.org/wiki/DOT_(graph_description_language)) by installing [graphviz](http://www.graphviz.org/) through `brew` or `conda`, , and if you are on WSL, you can install `graphviz` through `sudo apt install`.
 
 If everything looks alright, you can run this workflow the following way:
 
