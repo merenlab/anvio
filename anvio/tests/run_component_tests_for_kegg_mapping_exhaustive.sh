@@ -556,6 +556,31 @@ do
     fi
 done
 
+# The compound file has a value column and no 'sample' column, so the compound layer has no scale
+# of its own over the samples: every individual map takes its compound colors from the scale of the
+# 'unified' map. Skipping that map therefore has to leave its colorbar behind, that bar being the
+# only key to the colors on the maps that are drawn.
+INFO "Testing that skipping the 'unified' map keeps the colorbar of the scale its maps borrow"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+                        --compound-txt draw_compounds.compound.txt \
+                        --output-dir draw_txt_skip_unified_borrowed_scale \
+                        --pathway-numbers $pathway_numbers \
+                        --compound-value-limits 1 6 \
+                        --skip-unified-maps \
+                        --draw-individual-files \
+                        --no-progress
+
+if [ ! -s draw_txt_skip_unified_borrowed_scale/colorbar_compounds.pdf ]
+then
+    echo "ERROR: skipping the 'unified' map should keep the colorbar its individual maps borrow."
+    exit 1
+fi
+if [ -e draw_txt_skip_unified_borrowed_scale/colorbar_reactions.pdf ]
+then
+    echo "ERROR: the colorbar of the skipped 'unified' map's own scale should not be drawn."
+    exit 1
+fi
+
 # An aggregation outside the validated names, resolved through pandas ('var' within a sample),
 # together with one that maps disagreement among samples ('std' across them), including accessions
 # for which the standard deviation is undefined and are therefore left uncolored.
@@ -705,6 +730,49 @@ then
     echo "ERROR: a grid panel for a sample whose name cannot be a directory name should have failed."
     exit 1
 fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --skip-unified-maps \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: skipping the 'unified' map with no other maps asked for should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
+    --skip-unified-maps --draw-individual-files \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: skipping the 'unified' map of a file with no 'sample' column should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --skip-unified-maps --draw-grid --reaction-sample-summary count \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a sample summary for a skipped 'unified' map should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --groups-txt draw-sample-group-information.txt --reaction-group-summary count \
+    --skip-unified-maps --draw-grid \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a group summary for a skipped 'unified' map should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0 \
+    --skip-unified-maps --draw-grid \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a group threshold for a skipped 'unified' map should have failed."
+    exit 1
+fi
+
 if anvi-draw-kegg-pathways --reaction-txt draw_bad_mixed_kr.reaction.txt \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
