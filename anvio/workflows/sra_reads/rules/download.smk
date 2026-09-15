@@ -12,10 +12,6 @@
 # when its output is finally consumed) but the `gate` input below: it makes a download wait for
 # an earlier sample's reads to have been released.
 
-import glob
-import shutil
-
-
 # Paired-end and long-read runs are dumped by two different rules, because a rule's outputs have
 # to be known from its wildcards alone and these two produce a different number of files. Each
 # rule only ever matches the accessions of its own kind.

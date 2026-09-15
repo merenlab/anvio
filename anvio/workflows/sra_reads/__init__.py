@@ -72,6 +72,7 @@ class SRAReadsModule:
         self.max_disk_gb = None
         self.keep_reads = 'none'
         self.sra_metadata_cache_path = None
+        self.derived_samples_txt = None
         self.derived_samples_txt_path = None
 
         self.rules.extend(['sra_prefetch', 'sra_fasterq_dump', 'sra_gather_reads'])
@@ -136,13 +137,10 @@ class SRAReadsModule:
         derived = SamplesTxt(self.get_derived_samples_txt_data(samples_txt), expected_format="free",
                              skip_check_sanity=True, run=self.run)
 
-        # `iu-gen-configs` reads a samples-txt of its own to learn where the reads of each sample
-        # are, and it insists that the directory holding them already exists (the files need not).
-        # Both of those are taken care of here, once, rather than from within a rule.
-        os.makedirs(os.path.join(self.dirs_dict["SRA_DIR"], "reads"), exist_ok=True)
-
+        # Only the path is settled here. Writing it waits until the checks that can still refuse
+        # this run have had their say (see `write_derived_samples_txt`).
+        self.derived_samples_txt = derived
         self.derived_samples_txt_path = os.path.join(self.dirs_dict["SRA_DIR"], "samples-txt-with-downloaded-reads.txt")
-        derived.write_tsv(self.derived_samples_txt_path, absolute_paths=False, include_extras=False)
 
         return derived
 
@@ -428,6 +426,25 @@ class SRAReadsModule:
         self.sanity_check_disk_budget()
         self.download_unit_gates = self.compute_download_gates()
 
+        self.write_derived_samples_txt()
+
+
+    def write_derived_samples_txt(self):
+        """Put the samples-txt anvi'o actually works with on disk.
+
+        This waits until everything that can refuse the run has had its say, so that a config
+        anvi'o turns down leaves nothing behind. It still happens on a dry run: the file is an
+        input of the rule that generates `iu-gen-configs` configs, so snakemake has to see it to
+        build a graph at all.
+
+        The directory the reads will land in is made here too, because `iu-gen-configs` insists
+        that the directory holding a sample's files already exists, though the files need not."""
+
+        os.makedirs(os.path.join(self.dirs_dict["SRA_DIR"], "reads"), exist_ok=True)
+
+        self.derived_samples_txt.write_tsv(self.derived_samples_txt_path, absolute_paths=False,
+                                           include_extras=False)
+
 
     def warn_about_qc_output_of_local_samples(self):
         """Say that quality-filtered reads go for every sample, not only the downloaded ones.
@@ -647,11 +664,20 @@ class SRAReadsModule:
 
 
     def get_gate_flag_for_accession(self, accession):
-        """The release flag a run's download has to wait for, if any."""
+        """The release flag a run's download has to wait for, if any.
 
-        for sample, accessions in self.sra_accessions_by_sample.items():
-            if accession in accessions:
-                return self.get_gate_flag_for_sample(sample)
+        More than one sample can name the same accession. The run is downloaded once and its
+        reads then stay until the last sample that wants them is done, so what governs when the
+        download may start is the *earliest* unit that needs it. Waiting on any later one would
+        be a promise anvi'o cannot keep: that unit's gate may well be the earlier unit itself,
+        whose reads cannot be released until this very download has happened."""
+
+        for unit in self.download_units:
+            if any(accession in self.sra_accessions_by_sample.get(sample, [])
+                   for sample in self.download_unit_members[unit]):
+                gate = self.download_unit_gates.get(unit)
+
+                return [self.get_release_flag_path(gate)] if gate else []
 
         return []
 
@@ -794,6 +820,13 @@ class SRAReadsModule:
 
         archive = self.find_sra_archive(prefetch_dir)
         scratch_dir = os.path.join(output_dir, "scratch")
+
+        if not archive:
+            raise ConfigError(f"Anvi'o was about to extract the reads of the SRA run {accession} from its archive, "
+                              f"and there is no archive in '{prefetch_dir}' to extract them from. Since `prefetch` "
+                              f"checks for one before it reports success, the likeliest explanation is that "
+                              f"something removed it afterwards. Deleting that directory and running the workflow "
+                              f"again will download it afresh.")
 
         shell(f"fasterq-dump {archive} --outdir {output_dir} --temp {scratch_dir} --split-3 "
               f"--threads {threads} >> {log_path} 2>&1")

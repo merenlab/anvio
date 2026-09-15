@@ -250,19 +250,22 @@ def fetch_runinfo(accessions, run=run, progress=progress, on_batch=None):
     entries = {}
 
     progress.new('Asking NCBI about SRA runs', progress_total_items=len(chunks))
-    for i, chunk in enumerate(chunks):
-        progress.update(f"Batch {i + 1} of {len(chunks)} ({len(chunk)} accessions) ...")
-        progress.increment(increment_to=i + 1)
+    try:
+        for i, chunk in enumerate(chunks):
+            progress.update(f"Batch {i + 1} of {len(chunks)} ({len(chunk)} accessions) ...")
+            progress.increment(increment_to=i + 1)
 
-        answers = _fetch_runinfo_for_one_batch(chunk, progress=progress)
-        entries.update(answers)
+            answers = _fetch_runinfo_for_one_batch(chunk, progress=progress)
+            entries.update(answers)
 
-        if on_batch:
-            on_batch(answers)
+            if on_batch:
+                on_batch(answers)
 
-        if i < len(chunks) - 1:
-            time.sleep(SECONDS_BETWEEN_REQUESTS)
-    progress.end()
+            if i < len(chunks) - 1:
+                time.sleep(SECONDS_BETWEEN_REQUESTS)
+    finally:
+        # A lookup that gives up partway through still has to hand the terminal back.
+        progress.end()
 
     run.info('SRA runs described by NCBI', f"{len(entries)} of {len(accessions)}")
 

@@ -183,8 +183,36 @@ ASSERT_FILE_CONTAINS dag-no-sra.txt "Would remove temporary output 01_QC-nosra"
 INFO "Co-assembled samples share a single release unit"
 SNAKEMAKE_DAG config-co-assembly.json > dag-co-assembly.txt
 ASSERT_FILE_CONTAINS dag-co-assembly.txt "01_SRA-co-assembly/released/CO.released"
-if grep -c "sra_reads_released *1$" dag-co-assembly.txt > /dev/null; then
-    echo "Both samples of the co-assembly group are released together, as they should be."
+# ... and released together means released once: neither of them gets a unit of its own.
+if grep -qE "released/S0[12]\.released" dag-co-assembly.txt; then
+    echo "FAIL: a co-assembled sample was given a release unit of its own."
+    grep -E "released/S0[12]\.released" dag-co-assembly.txt
+    exit 1
+fi
+
+# An accession can be named by more than one sample. The download happens once, so it has to
+# wait for the earliest unit that wants it -- waiting on a later one deadlocks, because that
+# unit's gate can be the earlier unit, whose reads this very download is needed to produce.
+INFO "An accession shared by samples in different groups does not deadlock the workflow"
+printf 'sample\tgroup\tsra_accession\n' > samples-shared-accession.txt
+printf 'A\tG1\tERR6450080\n' >> samples-shared-accession.txt
+printf 'B\tG2\tERR6450081\n' >> samples-shared-accession.txt
+printf 'C\tG1\tERR6450081\n' >> samples-shared-accession.txt
+$ANVIO_PYTHON -c "
+import json
+config = json.load(open('config-co-assembly.json'))
+config['samples_txt'] = 'samples-shared-accession.txt'
+config['download_reads']['max_disk_gb'] = 0.9
+config['output_dirs'] = {k: v.replace('-co-assembly', '-shared') for k, v in config['output_dirs'].items()}
+json.dump(config, open('config-shared-accession.json', 'w'), indent=4)
+"
+# A cyclic graph makes snakemake exit non-zero, which `set -e` would turn into an abort with no
+# explanation, so let it fail and let the check below say what actually went wrong.
+SNAKEMAKE_DAG config-shared-accession.json > dag-shared.txt 2>&1 || true
+if grep -qi "cyclic" dag-shared.txt; then
+    echo "FAIL: an accession named by two samples produced a cyclic workflow."
+    grep -i -A3 "cyclic" dag-shared.txt
+    exit 1
 fi
 
 # Mapping every sample against every assembly leaves anvi'o no room to download a few samples at
