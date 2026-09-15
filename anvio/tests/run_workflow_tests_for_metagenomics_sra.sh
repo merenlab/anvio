@@ -67,6 +67,50 @@ INFO "A PacBio run whose chemistry cannot be told from its metadata gets a warni
 DRY_RUN config-pacbio.json > pacbio-output.txt 2>&1
 ASSERT_FILE_CONTAINS pacbio-output.txt "SRR11951439"
 
+# Anvi'o either knows the technology of every long-read sample or of none of them. Knowing
+# some would mean processing the rest with another sample's presets, so it is refused -- and
+# when it knows none, it must not leave behind an lr_technology column that merely looks filled
+# in, because the checks that make sure config presets are set would then skip themselves.
+INFO "A long-read technology anvi'o cannot determine leaves no lr_technology column behind"
+DRY_RUN config-pacbio.json
+if grep -q "lr_technology" 01_SRA-pacbio/samples-txt-with-downloaded-reads.txt; then
+    echo "FAIL: an lr_technology column was declared when anvi'o knows no technologies at all."
+    cat 01_SRA-pacbio/samples-txt-with-downloaded-reads.txt
+    exit 1
+fi
+
+INFO "Knowing some long-read technologies but not all of them is refused"
+printf 'sample\tlr\tlr_technology\tsra_accession\n' > samples-half-known.txt
+printf 'S_local\tthree_samples_example/sample-01-LR.fastq.gz\tont\t\n' >> samples-half-known.txt
+printf 'S05\t\t\tSRR11951439\n' >> samples-half-known.txt
+$ANVIO_PYTHON -c "
+import json
+config = json.load(open('config-pacbio.json'))
+config['samples_txt'] = 'samples-half-known.txt'
+json.dump(config, open('config-half-known.json', 'w'), indent=4)
+"
+EXPECT_FAIL "a set of long-read samples whose technologies are only partly known" \
+    anvi-run-workflow -w metagenomics -c config-half-known.json --dry-run
+
+# ... and once the gap is filled, what the user declared by hand is what gets used.
+INFO "A technology declared by hand survives into the derived samples-txt"
+cp SRA-METADATA.txt SRA-METADATA-filled.txt
+$ANVIO_PYTHON -c "
+import io
+path = 'SRA-METADATA-filled.txt'
+text = io.open(path).read().replace('SRR11951439\tLR\t\t', 'SRR11951439\tLR\tpb-hifi\t')
+io.open(path, 'w').write(text)
+
+import json
+config = json.load(open('config-half-known.json'))
+config['download_reads']['metadata_cache'] = 'SRA-METADATA-filled.txt'
+config['output_dirs'] = {k: v.replace('-pacbio', '-halfknown') for k, v in config['output_dirs'].items()}
+json.dump(config, open('config-half-known-filled.json', 'w'), indent=4)
+"
+DRY_RUN config-half-known-filled.json
+ASSERT_FILE_CONTAINS 01_SRA-halfknown/samples-txt-with-downloaded-reads.txt "ont"
+ASSERT_FILE_CONTAINS 01_SRA-halfknown/samples-txt-with-downloaded-reads.txt "pb-hifi"
+
 INFO "One sample can be made of a short-read run and a long-read run at once"
 DRY_RUN config-hybrid.json
 ASSERT_FILE_CONTAINS 01_SRA-hybrid/samples-txt-with-downloaded-reads.txt "S06_R1.fastq.gz"

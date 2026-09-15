@@ -26,6 +26,7 @@ import anvio.sra as sra
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
+from anvio.workflows import get_valid_lr_technologies
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -70,6 +71,7 @@ class SRAReadsModule:
         self.download_unit_gates = {}
         self.max_disk_gb = None
         self.keep_reads = 'none'
+        self.sra_metadata_cache_path = None
         self.derived_samples_txt_path = None
 
         self.rules.extend(['sra_prefetch', 'sra_fasterq_dump', 'sra_gather_reads'])
@@ -104,6 +106,7 @@ class SRAReadsModule:
                               f"one of 'none', 'raw', 'qc', or 'both'. You have '{self.keep_reads}' in there.")
 
         cache_path = self.get_param_value_from_config(['download_reads', 'metadata_cache']) or 'SRA-METADATA.txt'
+        self.sra_metadata_cache_path = cache_path
         samples_txt_path = self.get_param_value_from_config(['samples_txt'])
 
         self.sra_metadata = sra.get_metadata_for_accessions(samples_txt.all_sra_accessions(),
@@ -252,12 +255,14 @@ class SRAReadsModule:
 
         derived = {}
 
-        # The lr_technology column is all-or-nothing, so it only goes into the derived file when
-        # every long-read sample in it has a technology to declare. Otherwise the workflow falls
-        # back on the presets in the config file, which is the documented behavior when the
-        # column is absent (and `warn_about_long_read_technologies` has already said as much).
+        # The lr_technology column is all-or-nothing. Anvi'o can either say what every long-read
+        # sample was sequenced with, or say nothing and leave the presets to the config file —
+        # which is the right answer when every long-read sample came off the same machine, and
+        # what `warn_about_long_read_technologies` has already pointed at. Knowing some but not
+        # all of them is neither, and is refused rather than papered over.
         technologies = self.get_long_read_technologies(samples_txt)
-        declare_technologies = all(technologies.values()) if technologies else False
+        self.sanity_check_long_read_technologies(technologies)
+        declare_technologies = bool(technologies) and all(technologies.values())
 
         for sample in samples_txt.samples():
             info = samples_txt.get_sample(sample)
@@ -266,8 +271,7 @@ class SRAReadsModule:
             row = {'group': info.get('group'),
                    'r1': list(info.get('r1') or []),
                    'r2': list(info.get('r2') or []),
-                   'lr': list(info.get('lr') or []),
-                   'lr_technology': info.get('lr_technology')}
+                   'lr': list(info.get('lr') or [])}
 
             if accessions:
                 self.sra_accessions_by_sample[sample] = accessions
@@ -279,16 +283,48 @@ class SRAReadsModule:
                 if self.get_accessions_for_sample(sample, sra.LONG_READS):
                     row['lr'] = [self.get_reads_path(sample, 'LR')]
 
-            if row['lr'] and declare_technologies and not row['lr_technology']:
+            # The key is left out altogether when there is no column to declare. Its mere
+            # presence would tell the rest of anvi'o that this samples-txt has an lr_technology
+            # column, and the checks that make sure long-read presets are set would then skip
+            # themselves, leaving a run to fail later and more obscurely than it needs to.
+            if declare_technologies:
                 row['lr_technology'] = technologies.get(sample)
 
             derived[sample] = row
 
-        if not declare_technologies:
-            for row in derived.values():
-                row['lr_technology'] = None
-
         return derived
+
+
+    def sanity_check_long_read_technologies(self, technologies):
+        """Refuse a run where anvi'o knows some long-read technologies but not all of them.
+
+        The two workable states are knowing all of them, in which case every long-read tool is
+        given presets chosen per sample, and knowing none of them, in which case the config file
+        decides for everybody. Half an answer is neither: anvi'o would have to either throw away
+        what it does know or process one sample's reads with another sample's settings, and both
+        of those are worse than saying so."""
+
+        if not technologies or all(technologies.values()) or not any(technologies.values()):
+            return
+
+        known = sorted(f"{s} ({t})" for s, t in technologies.items() if t)
+        unknown = sorted(s for s, t in technologies.items() if not t)
+
+        raise ConfigError(f"Anvi'o knows which sequencing technology some of your long-read samples were produced "
+                          f"with, but not all of them, and it cannot work with half an answer. Long-read mapping "
+                          f"and assembly presets are chosen from that technology one sample at a time, so the "
+                          f"{terminal.pluralize('sample', len(unknown))} anvi'o is unsure about would have to be "
+                          f"processed with some other sample's settings — which is how nanopore reads end up being "
+                          f"mapped as though they were PacBio HiFi.\n\n"
+                          f"It knows about: {', '.join(known[:10])}{' (and more)' if len(known) > 10 else ''}.\n"
+                          f"It does not know about: {', '.join(unknown[:10])}"
+                          f"{' (and more)' if len(unknown) > 10 else ''}.\n\n"
+                          f"Please fill in the gap. For a sample whose reads are files on your disk, add an "
+                          f"`lr_technology` column to your samples-txt. For one anvi'o is downloading, you can do "
+                          f"that too, or fill in the `lr_technology` column of "
+                          f"{repr(self.sra_metadata_cache_path) if self.sra_metadata_cache_path else 'your SRA metadata file'} "
+                          f"for the accessions in question. Valid values are "
+                          f"{', '.join(repr(t) for t in sorted(get_valid_lr_technologies()))}.")
 
 
     def get_long_read_technologies(self, samples_txt):
