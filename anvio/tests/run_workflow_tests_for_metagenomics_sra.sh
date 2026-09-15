@@ -52,7 +52,7 @@ INFO "With room for one sample at a time, the second download waits for the firs
 $ANVIO_PYTHON -c "
 import json
 config = json.load(open('config-references.json'))
-config['download_reads']['max_disk_gb'] = 1.0
+config['download_reads']['max_disk_gb'] = 0.5
 json.dump(config, open('config-one-at-a-time.json', 'w'), indent=4)
 "
 SNAKEMAKE_DAG config-one-at-a-time.json > dag-tight.txt

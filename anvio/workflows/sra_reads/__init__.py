@@ -411,6 +411,38 @@ class SRAReadsModule:
                               "keep the reads.")
 
 
+    def get_predicted_sizes_gb(self, unit):
+        """The archive and uncompressed-FASTQ sizes a release unit's peak estimate is built from."""
+
+        accessions = [a for sample in self.download_unit_members[unit]
+                        for a in self.sra_accessions_by_sample.get(sample, [])]
+
+        archive_gb = sum(sra.predict_archive_bytes(self.sra_metadata[a]) for a in accessions) / (1024 ** 3)
+        fastq_gb = sum(sra.predict_fastq_bytes(self.sra_metadata[a]) for a in accessions) / (1024 ** 3)
+
+        return archive_gb, fastq_gb
+
+
+    def explain_disk_estimate(self, unit, subject):
+        """Say where a unit's predicted size came from, in GB anyone can check against NCBI.
+
+        These predictions are several times larger than the download sizes NCBI advertises, and
+        the first thing anyone does with a budget error is compare the two and wonder which of
+        them is wrong. Neither is: the difference is compression, and this explains that with the
+        actual numbers rather than leaving it to be guessed at."""
+
+        archive_gb, fastq_gb = self.get_predicted_sizes_gb(unit)
+        safety_factor = self.get_param_value_from_config(['download_reads', 'safety_factor']) or 1.3
+
+        return (f"If these numbers look far larger than the download sizes NCBI advertises, that is because an "
+                f"SRA archive is compressed and this workflow works with uncompressed FASTQ. {subject} arrive as "
+                f"about {archive_gb:.1f} GB of archives and unpack to about {fastq_gb:.1f} GB of FASTQ. What "
+                f"anvi'o counts is the archive, the scratch space `fasterq-dump` needs while it unpacks it, and "
+                f"the FASTQ itself, since all three are on disk at the same moment — and then multiplies the "
+                f"total by `safety_factor` (currently {safety_factor}). The reads do not stay that large: they "
+                f"are compressed as soon as they have been extracted.")
+
+
     def sanity_check_disk_budget(self):
         """Make sure the budget can actually fit what it is being asked to fit."""
 
@@ -434,12 +466,15 @@ class SRAReadsModule:
                               f"{suggested_disk_budget(needed)} GB. There is no "
                               f"way to do this run with less, so please either raise `max_disk_gb` to at least that "
                               f"much, or reconsider `all_against_all`: with it turned off, anvi'o can work through "
-                              f"your samples a few at a time and fit into whatever budget you have.")
+                              f"your samples a few at a time and fit into whatever budget you have.\n\n"
+                              f"{self.explain_disk_estimate(EVERY_SAMPLE_AT_ONCE, 'Your samples')}")
 
         offenders = '\n'.join(f"    {u} needs about {gb:.1f} GB "
                               f"({terminal.pluralize('sample', len(self.download_unit_members[u]))}: "
                               f"{', '.join(self.download_unit_members[u][:5])})"
                               for u, gb in sorted(too_big.items(), key=lambda x: -x[1])[:10])
+
+        biggest = max(too_big, key=lambda u: too_big[u])
 
         co_assembly_note = ("" if self.references_mode else
                             "\n\nSome of these are co-assembly groups rather than single samples. Everything that "
@@ -452,7 +487,8 @@ class SRAReadsModule:
                           f"finish:\n\n{offenders}\n\nPlease raise `max_disk_gb` to at least "
                           f"{suggested_disk_budget(max(too_big.values()))} GB, or leave the biggest of "
                           f"these out."
-                          f"{co_assembly_note}")
+                          f"{co_assembly_note}\n\n"
+                          f"{self.explain_disk_estimate(biggest, 'The reads of ' + biggest)}")
 
 
     def compute_download_gates(self):

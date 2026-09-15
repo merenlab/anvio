@@ -383,7 +383,7 @@
     "collections_txt": null,
     "read_type_suffix": "auto",
     "download_reads": {
-        "max_disk_gb": 1.0,
+        "max_disk_gb": 0.5,
         "keep_reads": "none",
         "safety_factor": 1.3,
         "metadata_cache": "SRA-METADATA.txt"

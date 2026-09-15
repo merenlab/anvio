@@ -173,20 +173,29 @@ def predict_fastq_bytes(entry):
     return size_mb * 1024 * 1024 * ARCHIVE_TO_FASTQ_EXPANSION
 
 
+def predict_archive_bytes(entry):
+    """How big the `.sra` archive of a run is, as NCBI reports it."""
+
+    return (entry.get('size_mb') or 0) * 1024 * 1024
+
+
 def predict_peak_disk_usage_in_gb(entry, safety_factor=1.3):
     """Estimate the most disk space a single run will occupy at any one moment.
 
-    A run does not simply appear as a FASTQ file. It arrives as an `.sra` archive, is unpacked
-    into FASTQ (while `fasterq-dump` keeps scratch space of its own roughly the size of the
-    output), gets compressed, and is then quality filtered into a second copy. The peak is what
-    matters for a disk budget, so this counts the archive, the scratch space, the uncompressed
-    FASTQ and one filtered copy of it."""
+    A run does not simply appear as a FASTQ file. It arrives as an `.sra` archive and is unpacked
+    into FASTQ, while `fasterq-dump` keeps scratch space of its own roughly the size of the
+    output. That moment — archive, scratch and FASTQ all on disk together — is the peak, and it
+    is what this counts.
+
+    The quality-filtered copy that QC makes later does not add to it: the reads are compressed as
+    soon as they have been extracted, so by the time anything is filtered the uncompressed FASTQ
+    this estimate is built around is long gone."""
 
     fastq_bytes = predict_fastq_bytes(entry)
-    archive_bytes = (entry.get('size_mb') or 0) * 1024 * 1024
+    archive_bytes = predict_archive_bytes(entry)
 
-    # archive + fasterq-dump scratch + the FASTQ itself + a quality-filtered copy
-    peak_bytes = archive_bytes + (fastq_bytes * 3)
+    # archive + fasterq-dump scratch + the FASTQ itself
+    peak_bytes = archive_bytes + (fastq_bytes * 2)
 
     return (peak_bytes / (1024 ** 3)) * safety_factor
 
