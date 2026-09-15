@@ -85,6 +85,13 @@ EUTILS_URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/'
 ACCESSIONS_PER_REQUEST = 100
 SECONDS_BETWEEN_REQUESTS = 0.4
 
+# How many times to ask for the same batch before giving up, and how long to wait before the
+# first retry (each further one waits proportionally longer). eutils turns requests away when it
+# is busy, and a lookup that covers a thousand accessions takes ten of them: without retries, one
+# unlucky moment ends a workflow that was about to run for days.
+REQUEST_ATTEMPTS = 4
+SECONDS_BEFORE_RETRY = 3
+
 # A FASTQ file holds each base twice (once as a nucleotide, once as a quality score) plus the
 # read names, so it lands at roughly this many bytes per base once uncompressed.
 BYTES_PER_BASE_IN_FASTQ = 2.2
@@ -96,6 +103,15 @@ ARCHIVE_TO_FASTQ_EXPANSION = 4.0
 # What is left of a FASTQ file once it has been gzipped, which is the form reads are kept in
 # when a user asks for them to be kept.
 FASTQ_GZIP_RATIO = 0.25
+
+
+class NCBIIsBusy(Exception):
+    """Raised when a request to eutils did not come back with what was asked for.
+
+    Kept separate from ConfigError on purpose: this is the kind of failure that is worth trying
+    again, while a ConfigError raised while making sense of NCBI's answer is not."""
+
+    pass
 
 
 def is_valid_accession(accession):
@@ -214,12 +230,17 @@ def predict_peak_disk_usage_in_gb(entry, safety_factor=1.3):
     return (peak_bytes / (1024 ** 3)) * safety_factor
 
 
-def fetch_runinfo(accessions, run=run, progress=progress):
+def fetch_runinfo(accessions, run=run, progress=progress, on_batch=None):
     """Ask NCBI for what it knows about a list of SRA run accessions.
 
     Returns {accession: {...}} using anvi'o's own vocabulary. Accessions NCBI has nothing to say
     about are simply absent from the result: it is the caller's job to notice and complain, since
-    what to do about a missing accession depends on why it was asked for."""
+    what to do about a missing accession depends on why it was asked for.
+
+    `on_batch`, when given, is handed each batch of answers as it arrives. A thousand accessions
+    take ten round trips, and a caller that keeps a cache file uses this to write down what it
+    has learned as it goes, so that a lookup which dies on the ninth trip does not throw away the
+    eight that worked."""
 
     accessions = list(dict.fromkeys(accessions))
     chunks = [accessions[i:i + ACCESSIONS_PER_REQUEST] for i in range(0, len(accessions), ACCESSIONS_PER_REQUEST)]
@@ -231,8 +252,11 @@ def fetch_runinfo(accessions, run=run, progress=progress):
         progress.update(f"Batch {i + 1} of {len(chunks)} ({len(chunk)} accessions) ...")
         progress.increment(increment_to=i + 1)
 
-        for accession, entry in _fetch_runinfo_for_one_batch(chunk).items():
-            entries[accession] = entry
+        answers = _fetch_runinfo_for_one_batch(chunk, progress=progress)
+        entries.update(answers)
+
+        if on_batch:
+            on_batch(answers)
 
         if i < len(chunks) - 1:
             time.sleep(SECONDS_BETWEEN_REQUESTS)
@@ -243,33 +267,71 @@ def fetch_runinfo(accessions, run=run, progress=progress):
     return entries
 
 
-def _fetch_runinfo_for_one_batch(accessions):
-    """Run a single esearch/efetch round trip for a batch of accessions."""
+def _fetch_runinfo_for_one_batch(accessions, progress=None):
+    """Ask NCBI about one batch of accessions, and do not give up on the first refusal.
+
+    Under load eutils does not fail outright so much as decline to help: the reply arrives with a
+    perfectly good HTTP status and simply does not contain what was asked for. So a retry here has
+    to cover both a request that raised and one that came back with nothing in it."""
+
+    last_complaint, came_back_empty = None, False
+
+    for attempt in range(1, REQUEST_ATTEMPTS + 1):
+        try:
+            answers = _try_one_runinfo_request(accessions)
+        except NCBIIsBusy as e:
+            last_complaint, came_back_empty = str(e), False
+        else:
+            if answers:
+                return answers
+
+            last_complaint, came_back_empty = "the table describing them came back empty", True
+
+        if attempt < REQUEST_ATTEMPTS:
+            seconds = SECONDS_BEFORE_RETRY * attempt
+
+            if progress:
+                progress.update(f"NCBI did not come through (attempt {attempt} of {REQUEST_ATTEMPTS}); "
+                                f"trying again in {seconds} seconds ...")
+
+            time.sleep(seconds)
+
+    # An empty table is also what a batch of withdrawn accessions or typos looks like, and the
+    # caller says so far more helpfully than a complaint about the network would.
+    if came_back_empty:
+        return {}
+
+    raise ConfigError(f"Anvi'o asked NCBI about a batch of your SRA accessions {REQUEST_ATTEMPTS} times, waiting a "
+                      f"little longer between each try, and came away empty-handed every time. The last thing to go "
+                      f"wrong was that {last_complaint}. NCBI's eutils service turns requests away when it is busy, "
+                      f"so trying again in a few minutes is often all this needs. If you are on a computer without "
+                      f"internet access, you can build the metadata file elsewhere with "
+                      f"`anvi-script-get-sra-metadata` and bring it along.")
+
+
+def _try_one_runinfo_request(accessions):
+    """One esearch/efetch round trip. Raises NCBIIsBusy if NCBI did not come through."""
 
     search_url = f"{EUTILS_URL}esearch.fcgi?db=sra&usehistory=y&retmax={len(accessions)}&term={'+OR+'.join(accessions)}"
 
     try:
         search_response = utils.get_remote_file_content(search_url, timeout=60)
     except Exception as e:
-        raise ConfigError(f"Anvi'o could not reach NCBI to look up the metadata of your SRA accessions. If you are "
-                          f"on a computer without internet access, you can generate the metadata file elsewhere with "
-                          f"`anvi-script-get-sra-metadata` and bring it along. This is what we know: {e}")
+        raise NCBIIsBusy(f"the search for them failed ({e})")
 
     query_key = _read_xml_value(search_response, 'QueryKey')
     web_env = _read_xml_value(search_response, 'WebEnv')
 
     if not query_key or not web_env:
-        raise ConfigError("NCBI's answer to anvi'o's search for your SRA accessions did not include the bits anvi'o "
-                          "needs to ask its follow-up question (namely a query key and a web environment). This "
-                          "usually means NCBI is having a moment; trying again in a few minutes tends to work.")
+        raise NCBIIsBusy("the answer to anvi'o's search did not include the query key and web environment anvi'o "
+                         "needs to ask its follow-up question")
 
     fetch_url = f"{EUTILS_URL}efetch.fcgi?db=sra&query_key={query_key}&WebEnv={web_env}&rettype=runinfo&retmode=csv"
 
     try:
         runinfo = utils.get_remote_file_content(fetch_url, timeout=120)
     except Exception as e:
-        raise ConfigError(f"Anvi'o found your SRA accessions at NCBI, but then failed to download the table that "
-                          f"describes them. This is what we know: {e}")
+        raise NCBIIsBusy(f"the request for the table describing them failed ({e})")
 
     return _parse_runinfo(runinfo)
 
@@ -408,11 +470,27 @@ def get_metadata_for_accessions(accessions, cache_path, source_of_accessions, fe
 
     if missing:
         run.warning(f"Anvi'o is about to ask NCBI about {terminal.pluralize('SRA run', len(missing))} it has not "
-                    f"seen before. The answers will be kept in '{cache_path}', so this only happens once.",
-                    header="REACHING OUT TO NCBI", lc="green")
+                    f"seen before. The answers are written to '{cache_path}' as they arrive, so this only happens "
+                    f"once — and if something goes wrong along the way, running again carries on from where it "
+                    f"stopped rather than starting over.", header="REACHING OUT TO NCBI", lc="green")
 
-        entries.update(fetch_runinfo(missing, run=run, progress=progress))
-        write_cache(cache_path, entries)
+        def remember(answers):
+            entries.update(answers)
+            write_cache(cache_path, entries)
+
+        try:
+            fetch_runinfo(missing, run=run, progress=progress, on_batch=remember)
+        except ConfigError:
+            learned = [a for a in missing if a in entries]
+
+            if learned:
+                run.warning(f"Before this went wrong, anvi'o had already learned about "
+                            f"{terminal.pluralize('accession', len(learned))} and written "
+                            f"{'them' if len(learned) > 1 else 'it'} to '{cache_path}'. Running this again will ask "
+                            f"NCBI only about what is still missing, so none of that work is lost.",
+                            header="NOT ALL OF IT WAS WASTED", lc="yellow")
+
+            raise
 
     still_missing = [a for a in accessions if a not in entries]
     if still_missing:
