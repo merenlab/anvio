@@ -243,18 +243,8 @@ class AnvioPrograms(AnvioAuthors):
                     self.run.info_single("    pip install -e .",
                                          overwrite_verbose=True, nl_after=1, level=0, pretty_indentation=False)
                     self.run.info_single("This will synchronize your anvi'o codebase with its installed version in your active "
-                                         "Python environment: reinstalling anvi'o removes the program shortcuts that are no longer "
-                                         "described in the `pyproject.toml` file, and creates the ones that are missing. In the "
-                                         "unlikely event that the command above does not resolve the mismatch, you can ask `pip` to "
-                                         "reinstall anvi'o even if it thinks there is nothing to do, while leaving every dependency "
-                                         "in your environment untouched:", overwrite_verbose=True, nl_after=1, level=0)
-                    self.run.info_single("    pip install -e . --force-reinstall --no-deps",
-                                         overwrite_verbose=True, nl_after=1, level=0, pretty_indentation=False)
-                    self.run.info_single("Please note that dropping `--no-deps` from that last command would tell `pip` to reinstall "
-                                         "every single one of anvi'o dependencies from scratch, and to replace the unpinned ones with "
-                                         "their most recent versions, which is a very effective way to turn a cosmetic mismatch into "
-                                         "an environment that no longer works. All this is indeed very annoying, since you will likely "
-                                         "have to do it again when you go back to another branch, but this is how it goes. It is also a "
+                                         "Python environment. This is indeed very annoying, since you will likely have to do it "
+                                         "again when you go back to another branch, but this is how it goes. It is also a "
                                          "viable alternative to ignore this message, if you think this mismatch is not a concern "
                                          "for you at this stage.", overwrite_verbose=True, level=0)
 
