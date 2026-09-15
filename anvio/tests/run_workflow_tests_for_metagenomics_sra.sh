@@ -111,6 +111,35 @@ DRY_RUN config-half-known-filled.json
 ASSERT_FILE_CONTAINS 01_SRA-halfknown/samples-txt-with-downloaded-reads.txt "ont"
 ASSERT_FILE_CONTAINS 01_SRA-halfknown/samples-txt-with-downloaded-reads.txt "pb-hifi"
 
+# A row that names an accession has no `lr` paths yet, so declaring the technology on it is the
+# only way to say what is coming -- and anvi'o tells people to do exactly that, so it has to work.
+INFO "A sample anvi'o is downloading may declare its long-read technology in the samples-txt"
+printf 'sample\tlr\tlr_technology\tsra_accession\n' > samples-declared-on-sra.txt
+printf 'S_local\tthree_samples_example/sample-01-LR.fastq.gz\tont\t\n' >> samples-declared-on-sra.txt
+printf 'S05\t\tpb-hifi\tSRR11951439\n' >> samples-declared-on-sra.txt
+$ANVIO_PYTHON -c "
+import json
+config = json.load(open('config-pacbio.json'))
+config['samples_txt'] = 'samples-declared-on-sra.txt'
+config['output_dirs'] = {k: v.replace('-pacbio', '-declared') for k, v in config['output_dirs'].items()}
+json.dump(config, open('config-declared-on-sra.json', 'w'), indent=4)
+"
+DRY_RUN config-declared-on-sra.json
+ASSERT_FILE_CONTAINS 01_SRA-declared/samples-txt-with-downloaded-reads.txt "pb-hifi"
+ASSERT_FILE_CONTAINS 01_SRA-declared/samples-txt-with-downloaded-reads.txt "ont"
+
+# The samples-txt cannot tell whether an accession holds long reads, so the check that a declared
+# technology belongs to a sample that actually has some happens once NCBI has been asked.
+printf 'sample\tlr_technology\tsra_accession\nS01\tont\tERR6450080\n' > samples-bogus-technology.txt
+$ANVIO_PYTHON -c "
+import json
+config = json.load(open('config-references.json'))
+config['samples_txt'] = 'samples-bogus-technology.txt'
+json.dump(config, open('config-bogus-technology.json', 'w'), indent=4)
+"
+EXPECT_FAIL "an lr_technology declared for a sample whose accessions are short reads" \
+    anvi-run-workflow -w metagenomics -c config-bogus-technology.json --dry-run
+
 INFO "One sample can be made of a short-read run and a long-read run at once"
 DRY_RUN config-hybrid.json
 ASSERT_FILE_CONTAINS 01_SRA-hybrid/samples-txt-with-downloaded-reads.txt "S06_R1.fastq.gz"

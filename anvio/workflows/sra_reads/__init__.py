@@ -117,6 +117,7 @@ class SRAReadsModule:
 
         sra.sanity_check_read_types_are_known(self.sra_metadata, cache_path)
         self.sanity_check_sra_read_types(samples_txt_path)
+        self.sanity_check_declared_technologies_have_long_reads(samples_txt, samples_txt_path)
         self.sanity_check_samples_do_not_mix_sources(samples_txt, samples_txt_path)
 
         sra.warn_about_long_read_technologies(self.sra_metadata, run=self.run, cache_path=cache_path)
@@ -207,6 +208,38 @@ class SRAReadsModule:
                               f"{'these accessions' if len(single_end) > 1 else 'this accession'} from your "
                               f"samples-txt file. Anvi'o is sorry to be the bearer of this news, and would rather "
                               f"tell you now than after downloading everything else.")
+
+
+    def sanity_check_declared_technologies_have_long_reads(self, samples_txt, samples_txt_path):
+        """Catch an `lr_technology` declared for a sample that turns out to have no long reads.
+
+        A samples-txt makes this check itself for rows that name files, but it cannot make it for
+        rows that name accessions: when it runs, nobody knows yet what kind of reads an accession
+        holds. By now anvi'o does, so this is where that row gets looked at."""
+
+        offenders = []
+
+        for sample in samples_txt.samples():
+            info = samples_txt.get_sample(sample)
+
+            if not info.get('lr_technology') or info.get('lr'):
+                continue
+
+            accessions = samples_txt.sra_accessions_for_sample(sample)
+
+            if not any(self.sra_metadata[a]['read_type'] == sra.LONG_READS for a in accessions):
+                offenders.append(sample)
+
+        if not offenders:
+            return
+
+        raise ConfigError(f"{terminal.pluralize('sample', len(offenders))} in '{samples_txt_path}' "
+                          f"{'declare' if len(offenders) > 1 else 'declares'} an `lr_technology`, but "
+                          f"{'none of them hold' if len(offenders) > 1 else 'it does not hold'} any long reads: "
+                          f"{', '.join(sorted(offenders)[:10])}. NCBI describes every accession "
+                          f"{'they name' if len(offenders) > 1 else 'it names'} as short reads, and there are no "
+                          f"long-read files either. `lr_technology` only means something for samples that have "
+                          f"long reads, so please clear it, or check that the accessions are the ones you meant.")
 
 
     def sanity_check_samples_do_not_mix_sources(self, samples_txt, samples_txt_path):
@@ -317,9 +350,10 @@ class SRAReadsModule:
                           f"It knows about: {', '.join(known[:10])}{' (and more)' if len(known) > 10 else ''}.\n"
                           f"It does not know about: {', '.join(unknown[:10])}"
                           f"{' (and more)' if len(unknown) > 10 else ''}.\n\n"
-                          f"Please fill in the gap. For a sample whose reads are files on your disk, add an "
-                          f"`lr_technology` column to your samples-txt. For one anvi'o is downloading, you can do "
-                          f"that too, or fill in the `lr_technology` column of "
+                          f"Please fill in the gap: add an `lr_technology` column to your samples-txt and give "
+                          f"every long-read sample a value there — a sample anvi'o is downloading may declare one "
+                          f"just as a sample whose reads are already on disk does. For a downloaded sample you can "
+                          f"instead fill in the `lr_technology` column of "
                           f"{repr(self.sra_metadata_cache_path) if self.sra_metadata_cache_path else 'your SRA metadata file'} "
                           f"for the accessions in question. Valid values are "
                           f"{', '.join(repr(t) for t in sorted(get_valid_lr_technologies()))}.")
@@ -677,17 +711,6 @@ class SRAReadsModule:
                    for sample in self.download_unit_members[unit]):
                 gate = self.download_unit_gates.get(unit)
 
-                return [self.get_release_flag_path(gate)] if gate else []
-
-        return []
-
-
-    def get_gate_flag_for_sample(self, sample):
-        """The release flag a sample's download has to wait for, if any."""
-
-        for unit, members in self.download_unit_members.items():
-            if sample in members:
-                gate = self.download_unit_gates.get(unit)
                 return [self.get_release_flag_path(gate)] if gate else []
 
         return []

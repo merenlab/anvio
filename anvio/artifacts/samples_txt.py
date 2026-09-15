@@ -491,7 +491,11 @@ class SamplesTxt:
                     f"fill in the 'lr_technology' value for '{sample}', or remove the column entirely "
                     f"to fall back to the presets set in your workflow config file."
                 )
-            if lr_technology and not lr:
+            # A row that names accessions has no 'lr' paths yet — the workflow fills those in
+            # once it knows what each run holds — so declaring a technology on one is the only
+            # way to say what is coming. Whether those accessions really are long reads is not
+            # knowable here, and is checked once NCBI has been asked.
+            if lr_technology and not lr and not self.sra_accessions_for_sample(sample):
                 raise ConfigError(
                     f"Anvi'o is confused. The sample '{sample}' in your samples-txt file has an "
                     f"'lr_technology' value of '{lr_technology}', but there are no long-read file paths "
