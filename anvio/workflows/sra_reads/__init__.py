@@ -20,6 +20,7 @@ needs all of its input at once.
 """
 
 import os
+import math
 
 import anvio.sra as sra
 import anvio.terminal as terminal
@@ -39,6 +40,17 @@ run = terminal.Run()
 # contains a character that anvi'o does not allow in sample or group names, so it can never be
 # mistaken for one of them.
 EVERY_SAMPLE_AT_ONCE = 'every-sample-at-once'
+
+
+def suggested_disk_budget(gb):
+    """Turn a predicted size into a `max_disk_gb` value that will actually hold it.
+
+    A message that says "raise your budget to at least this much" has to round *up*: a suggestion
+    that rounds down is still too small for what it is describing, and the user who follows it
+    lands back on the very same error. Budgets are compared with a strict `>`, so a suggestion
+    that falls exactly on the predicted size is accepted."""
+
+    return f"{math.ceil(gb * 10) / 10:g}"
 
 
 class SRAReadsModule:
@@ -418,7 +430,8 @@ class SRAReadsModule:
                               f"section of your config file) is not enough for this workflow. Because you asked for "
                               f"every sample to be mapped against every assembly (`all_against_all`), all "
                               f"{terminal.pluralize('sample', len(self.samples_txt.samples()))} have to be on disk "
-                              f"at the same time, and anvi'o expects that to need about {needed:.0f} GB. There is no "
+                              f"at the same time, and anvi'o expects that to need about "
+                              f"{suggested_disk_budget(needed)} GB. There is no "
                               f"way to do this run with less, so please either raise `max_disk_gb` to at least that "
                               f"much, or reconsider `all_against_all`: with it turned off, anvi'o can work through "
                               f"your samples a few at a time and fit into whatever budget you have.")
@@ -437,7 +450,8 @@ class SRAReadsModule:
                           f"of your config file) is smaller than what anvi'o will need to hold at one moment for "
                           f"{terminal.pluralize('sample or group', len(too_big))}, so this workflow could never "
                           f"finish:\n\n{offenders}\n\nPlease raise `max_disk_gb` to at least "
-                          f"{max(too_big.values()):.0f} GB, or leave the biggest of these out."
+                          f"{suggested_disk_budget(max(too_big.values()))} GB, or leave the biggest of "
+                          f"these out."
                           f"{co_assembly_note}")
 
 
