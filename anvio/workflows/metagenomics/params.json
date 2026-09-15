@@ -5,9 +5,23 @@
         "all_against_all":  {"type": "bool", "default": null},
         "kraken_txt":       {"type": "str",  "default": null},
         "collections_txt":  {"type": "str",  "default": null},
-        "read_type_suffix": {"type": "str",  "default": "auto"}
+        "read_type_suffix": {"type": "str",  "default": "auto"},
+        "download_reads":   {"type": "dict", "default": {"max_disk_gb": null,
+                                                         "keep_reads": "none",
+                                                         "safety_factor": 1.3,
+                                                         "metadata_cache": "SRA-METADATA.txt"}}
     },
     "rules": {
+        "sra_prefetch": {
+            "threads":    {"type": "int", "default": 2},
+            "--max-size": {"type": "str", "default": "40g"}
+        },
+        "sra_fasterq_dump": {
+            "threads": {"type": "int", "default": 6}
+        },
+        "sra_gather_reads": {
+            "threads": {"type": "int", "default": 1}
+        },
         "iu_gen_configs": {
             "threads":      {"type": "int", "default": 1},
             "--r1-prefix":  {"type": "str", "default": null},
