@@ -116,6 +116,9 @@ class SRAReadsModule:
 
         sra.warn_about_long_read_technologies(self.sra_metadata, run=self.run, cache_path=cache_path)
 
+        if self.keep_reads != 'none':
+            self.warn_about_kept_reads()
+
         if not self.max_disk_gb:
             self.run.warning(f"Anvi'o is going to download the reads of "
                              f"{terminal.pluralize('sample', len(samples_txt.samples()))} from the SRA, and you have "
@@ -138,6 +141,33 @@ class SRAReadsModule:
         derived.write_tsv(self.derived_samples_txt_path, absolute_paths=False, include_extras=False)
 
         return derived
+
+
+    def warn_about_kept_reads(self):
+        """Say how much room the reads a user asked to keep are going to need.
+
+        Kept reads are by definition not deleted as the workflow moves through the samples, so
+        they pile up for the whole run. For a large set of samples that total is far larger than
+        anything a disk budget ever allows on disk at one moment, and it is worth hearing before
+        a thousand metagenomes are downloaded rather than after."""
+
+        descriptions = {'raw': "the reads as they were downloaded",
+                        'qc': "the quality-filtered reads",
+                        'both': "both the reads as they were downloaded and the quality-filtered ones"}
+
+        copies = 2 if self.keep_reads == 'both' else 1
+        kept_gb = copies * sum(sra.predict_gzipped_fastq_bytes(e)
+                               for e in self.sra_metadata.values()) / (1024 ** 3)
+
+        budget_note = (" A disk budget cannot speak for them, either: `max_disk_gb` governs only the files "
+                       "anvi'o is free to delete, and these are not among them." if self.max_disk_gb else "")
+
+        self.run.warning(f"You have set `keep_reads` to '{self.keep_reads}', so anvi'o will hold on to "
+                         f"{descriptions[self.keep_reads]} rather than deleting them once nothing needs them "
+                         f"anymore. Unlike everything else this workflow downloads, these accumulate for the "
+                         f"whole run: by the end of it anvi'o expects them to come to roughly "
+                         f"{kept_gb:.1f} GB.{budget_note}",
+                         header="THE READS YOU ARE KEEPING NEED ROOM OF THEIR OWN", lc="yellow")
 
 
     def sanity_check_sra_programs(self):

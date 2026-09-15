@@ -76,6 +76,18 @@ INFO "Downloaded reads and reads that were already on disk can be mixed in one s
 DRY_RUN config-mixed-with-local.json
 ASSERT_FILE_CONTAINS 01_SRA-mixed-with-local/samples-txt-with-downloaded-reads.txt "sample-01-R1.fastq.gz"
 
+# Reads that are kept are not deleted as the workflow goes, so they pile up for the whole run
+# and a disk budget has nothing to say about them. Anvi'o says so, with a number.
+INFO "Asking anvi'o to keep the reads gets a warning about what they will cost"
+$ANVIO_PYTHON -c "
+import json
+config = json.load(open('config-references.json'))
+config['download_reads']['keep_reads'] = 'both'
+json.dump(config, open('config-keep-reads.json', 'w'), indent=4)
+"
+DRY_RUN config-keep-reads.json > keep-reads-output.txt 2>&1
+ASSERT_FILE_CONTAINS keep-reads-output.txt "THE READS YOU ARE KEEPING NEED ROOM OF THEIR OWN"
+
 # Samples that are co-assembled have to be on disk at the same time, so they are released
 # together rather than one by one.
 INFO "Co-assembled samples share a single release unit"

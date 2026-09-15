@@ -93,6 +93,10 @@ BYTES_PER_BASE_IN_FASTQ = 2.2
 # compressed, and assume it expands by about this much.
 ARCHIVE_TO_FASTQ_EXPANSION = 4.0
 
+# What is left of a FASTQ file once it has been gzipped, which is the form reads are kept in
+# when a user asks for them to be kept.
+FASTQ_GZIP_RATIO = 0.25
+
 
 def is_valid_accession(accession):
     """Return True if this looks like an SRA run accession."""
@@ -171,6 +175,16 @@ def predict_fastq_bytes(entry):
         return bases * BYTES_PER_BASE_IN_FASTQ
 
     return size_mb * 1024 * 1024 * ARCHIVE_TO_FASTQ_EXPANSION
+
+
+def predict_gzipped_fastq_bytes(entry):
+    """Estimate how much room a run's reads take up once they have been compressed.
+
+    This is the form reads are kept in, so it is what matters for a user who asked anvi'o not to
+    delete them. It is not what matters for a disk budget: the peak a run passes through while it
+    is being unpacked is several times larger (see `predict_peak_disk_usage_in_gb`)."""
+
+    return predict_fastq_bytes(entry) * FASTQ_GZIP_RATIO
 
 
 def predict_archive_bytes(entry):
