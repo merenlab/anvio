@@ -665,7 +665,9 @@ If your budget is too small to hold even one sample, anvi'o says so before downl
 |`both`|Both of the above|
 
 {:.warning}
-Anything you keep is, by definition, not deleted, so `max_disk_gb` no longer describes your total disk use — only the transient files. Anvi'o will remind you of this when you set `keep_reads` to anything other than `none`.
+Anything you keep is, by definition, not deleted, so `max_disk_gb` no longer describes your total disk use — only the transient files. Anvi'o will remind you of this when you set `keep_reads` to anything other than `none`, and tell you roughly how much the reads you are keeping will come to.
+
+One thing to know if your %(samples-txt)s mixes downloaded reads with reads that were already on your disk: `keep_reads` is not decided per sample. Snakemake works out whether a step's output is temporary when it reads the workflow, not when it runs a job, so with `keep_reads: none` the quality-filtered reads of *every* sample are deleted once nothing needs them anymore — including the samples you supplied yourself. The files you pointed anvi'o at are never touched, and quality filtering can always be done again from them, but if you want the filtered copies of your own samples kept, set `keep_reads` to `qc` or `both`. Anvi'o warns you when this applies to your run.
 
 #### What anvi'o needs to know about your accessions, and how it finds out
 

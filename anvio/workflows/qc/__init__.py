@@ -392,8 +392,8 @@ class QCModule(WorkflowSuperClass):
             # re-scanned at parse time on every dry run / DAG rebuild.
             #
             # These are left out entirely when the filtered reads are meant to be deleted, since
-            # snakemake never removes a temp() file that is also something the workflow was asked
-            # to produce. The rules that consume them still pull them into the workflow.
+            # asking for them would not keep them: snakemake removes a temp() file even when it is
+            # a requested target. The rules that consume them still pull them into the workflow.
             for rs_id in self.get_lr_readset_ids():
                 targets.append(self.filtered_lr_path(rs_id))
 

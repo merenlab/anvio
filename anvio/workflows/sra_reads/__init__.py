@@ -393,6 +393,47 @@ class SRAReadsModule:
         self.download_unit_gates = self.compute_download_gates()
 
 
+    def warn_about_qc_output_of_local_samples(self):
+        """Say that quality-filtered reads go for every sample, not only the downloaded ones.
+
+        Snakemake decides whether a rule's output is temporary when it reads the rule, not when it
+        runs a job, so `temp()` cannot be applied to one sample's quality-filtered reads and not
+        another's. In a samples-txt that mixes downloaded reads with reads that were already on
+        disk, that means the filtered copies of the local samples are deleted too. Nothing the
+        user supplied is touched, and the filtering can be redone from files that never went
+        anywhere, but it is not what anyone would predict from a setting named `keep_reads`."""
+
+        if not self.sra_mode or self.keep_reads in ('qc', 'both'):
+            return
+
+        # Reference-based removal makes these files temporary on its own, and says so itself.
+        # The surprise worth naming is the one that downloading reads brought with it.
+        if getattr(self, 'remove_short_reads_based_on_references', None):
+            return
+
+        if not (getattr(self, 'run_qc', False) or getattr(self, 'run_filtlong', False)):
+            return
+
+        local = [s for s in self.samples_txt.samples() if s not in self.sra_accessions_by_sample]
+
+        if not local:
+            return
+
+        self.run.warning(f"Your samples-txt mixes reads anvi'o is going to download with reads that were "
+                         f"already on your disk, and `keep_reads` is set to '{self.keep_reads}'. Quality-"
+                         f"filtered reads are deleted once nothing needs them anymore, and snakemake decides "
+                         f"that per rule rather than per sample, so it applies to every sample in this run — "
+                         f"the {terminal.pluralize('sample', len(local))} whose reads were yours to begin with "
+                         f"included: {', '.join(local[:5])}{' (and more)' if len(local) > 5 else ''}.\n\n"
+                         f"Nothing you supplied is touched. The FASTQ files you pointed anvi'o at stay exactly "
+                         f"where they are, and it is only the quality-filtered copies anvi'o made of them that "
+                         f"go. If you would rather keep those, set `keep_reads` to 'qc' or 'both' in the "
+                         f"`download_reads` section of your config file — bearing in mind that this keeps the "
+                         f"quality-filtered reads of the downloaded samples as well, which is the disk the "
+                         f"budget was there to save.",
+                         header="FILTERED READS GO FOR YOUR OWN SAMPLES TOO", lc="yellow")
+
+
     def everything_must_be_downloaded_at_once(self):
         """Whether this workflow leaves anvi'o no room to download samples a few at a time.
 

@@ -207,6 +207,10 @@ class MetagenomicsWorkflow(SRAReadsModule, QCModule, ReadRecruitmentModule, Cont
         # disk at the same time, and therefore how far ahead of itself the workflow may download
         self.init_sra_download_units()
 
+        # QC runs the same way for every sample, so downloading some of them has consequences for
+        # the ones that were already here. This is where that can first be worked out.
+        self.warn_about_qc_output_of_local_samples()
+
         # Set the PROFILE databases paths variable:
         for group in self.group_names:
             if self.group_sizes[group] > 1:

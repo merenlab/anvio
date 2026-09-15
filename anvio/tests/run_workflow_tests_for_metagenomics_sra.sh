@@ -73,8 +73,23 @@ ASSERT_FILE_CONTAINS 01_SRA-hybrid/samples-txt-with-downloaded-reads.txt "S06_R1
 ASSERT_FILE_CONTAINS 01_SRA-hybrid/samples-txt-with-downloaded-reads.txt "S06_LR.fastq.gz"
 
 INFO "Downloaded reads and reads that were already on disk can be mixed in one samples-txt"
-DRY_RUN config-mixed-with-local.json
+DRY_RUN config-mixed-with-local.json > mixed-output.txt 2>&1
 ASSERT_FILE_CONTAINS 01_SRA-mixed-with-local/samples-txt-with-downloaded-reads.txt "sample-01-R1.fastq.gz"
+
+# Quality filtering is one rule for the whole run, and snakemake decides whether a rule's output
+# is temporary before it knows which sample it is working on. So the filtered reads of a sample
+# that was never downloaded go along with everyone else's, and anvi'o says so rather than letting
+# it be discovered afterwards.
+ASSERT_FILE_CONTAINS mixed-output.txt "FILTERED READS GO FOR YOUR OWN SAMPLES TOO"
+
+# A sample with nothing to download has nothing to release, so it gets no release unit of its own.
+INFO "A sample that was already on disk does not become a release unit"
+SNAKEMAKE_DAG config-mixed-with-local.json > dag-mixed.txt
+ASSERT_FILE_CONTAINS dag-mixed.txt "01_SRA-mixed-with-local/released/S01.released"
+if grep -q "released/S_local.released" dag-mixed.txt; then
+    echo "FAIL: a sample whose reads were already on disk was given a release unit."
+    exit 1
+fi
 
 # Reads that are kept are not deleted as the workflow goes, so they pile up for the whole run
 # and a disk budget has nothing to say about them. Anvi'o says so, with a number.
