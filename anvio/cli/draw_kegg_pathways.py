@@ -236,9 +236,10 @@ def get_args() -> Namespace:
         "rather than the items. For a draw-kegg-pathways text file, how each group's samples and "
         "how the groups themselves are summarized are set by "
         "'--reaction-sample-summary'/'--compound-sample-summary' and "
-        "'--reaction-group-summary'/'--compound-group-summary'; whenever the groups are summarized "
+        "'--reaction-group-summary'/'--compound-group-summary'. Whenever the groups are summarized "
         "by presence, which is the default, '--group-threshold' must also be given to define when "
-        "a group contains an element."
+        "a group contains a map element, unless '--skip-unified-maps' is also used, in which case "
+        "'--group-threshold' is invalid, as it only applies to the 'unified' map."
     }))
     groupGROUP.add_argument(
         '--group-threshold', type=float, metavar='FLOAT', help=
@@ -263,7 +264,9 @@ def get_args() -> Namespace:
         "and for a draw-kegg-pathways text layer whose "
         "'--reaction-group-summary'/'--compound-group-summary' summarizes presence ('count', "
         "'count_continuous', or 'membership'), which is the default. It does not apply when every "
-        "text layer's groups are summarized by pooling values instead."
+        "text layer's groups are summarized by pooling values instead. It also does not apply with "
+        "'--skip-unified-maps', since only the 'unified' map uses the threshold, while a group's "
+        "own map counts the group's own sources whatever the threshold is."
     )
 
     groupSUMMARY = parser.add_argument_group(
@@ -301,7 +304,10 @@ def get_args() -> Namespace:
         f"would run out of distinguishable colors or of room to label its bands (above "
         f"{MAX_DISCRETE_COUNT_BANDS} of them). Presence is the default because it is meaningful "
         f"for any set of samples, whereas pooling values is only meaningful when the samples are "
-        f"commensurable, such as replicates of one condition."
+        f"commensurable, such as replicates of one condition. If no summary of the samples is "
+        f"meaningful or desired, use '--skip-unified-maps' to leave the map out. Without groups, "
+        f"'--reaction-sample-summary' colors the 'unified' map alone; an ungrouped run with "
+        f"'--skip-unified-maps' therefore refuses this option."
     )
     groupSUMMARY.add_argument(
         '--compound-sample-summary', metavar='NAME', help=
@@ -322,8 +328,10 @@ def get_args() -> Namespace:
         "that, and by a continuous count scale where a discrete one would run out of "
         "distinguishable colors or of room to label its bands. A useful combination for replicates "
         "is '--reaction-sample-summary mean --reaction-group-summary count': each group's map "
-        "shows the mean of its replicate samples, while the 'unified' map shows in how many groups "
-        "each element occurs."
+        "shows the mean of its replicate samples, while the 'unified' map shows the number of "
+        "groups in which each element occurs. If no summary of the groups is meaningful or "
+        "desired, use '--skip-unified-maps' to leave the map out, and without a map to color, "
+        "'--reaction-group-summary' is refused."
     )
     groupSUMMARY.add_argument(
         '--compound-group-summary', metavar='NAME', help=
@@ -373,18 +381,35 @@ def get_args() -> Namespace:
     groupOUT.add_argument(
         '--draw-grid', nargs='*', help=
         "Draw a grid for each pathway map. If using multiple ungrouped contigs databases, the grid "
-        "shows the unified map of data from all databases and maps for individual databases. If "
+        "shows the 'unified' map of data from all databases and maps for individual databases. If "
         "using an ungrouped pangenomic database, the grid shows the pangenomic map and maps for "
         "individual genomes. If using a draw-kegg-pathways text file with a 'sample' column, the "
-        "grid shows the unified map summarizing all of the samples and maps for individual "
+        "grid shows the 'unified' map summarizing all of the samples and maps for individual "
         "samples. The grid view facilitates identification of the contigs databases, genomes, or "
         "samples containing reactions highlighted in the integrative map. If used as a flag "
         "(without values), all of the contigs databases, genomes, or samples are included in the "
         "grid. Alternatively, the project names of a subset of contigs databases, or the names of "
         "a subset of genomes or samples, can be provided. If groups are defined by '--groups-txt', "
-        "then the grid instead shows the unified map alongside maps for individual contigs "
+        "then the grid instead shows the 'unified' map alongside maps for individual contigs "
         "database, pan genome, or sample groups. A subset of group names can be provided to select "
-        "maps in the grid."
+        "maps in the grid. With '--skip-unified-maps' each grid only shows the individual maps, "
+        "leaving out the first 'unified' map panel."
+    )
+    groupOUT.add_argument(
+        '--skip-unified-maps', action='store_true', default=False, help=
+        "Skip the 'unified' map. That map summarizes every sample, group, contigs database, or "
+        "genome at once. Skipping it drops the files written under 'unified' and the first panel "
+        "of each map grid. The summary is not always wanted. Pooling values is only meaningful "
+        "across commensurable samples. The default 'unified' map display of the presence of "
+        "sample or group sources says little when the point is to compare the samples or groups. A "
+        "run normally draws the map even when no summary was asked for. This option does not "
+        "affect the maps of individual samples or groups and the color scale they share. The "
+        "colorbar for the summary ('colorbar_reactions.pdf' or 'colorbar_compounds.pdf') is kept "
+        "only where the same scale also colors the individual maps. '--draw-individual-files' "
+        "and/or '--draw-grid' are therefore required with '--skip-unified-maps'. Options that only "
+        "shape the summary are refused: the sample and group summaries, "
+        "'--presence-colormap-scheme', and the limits and center of the summary's own value scale. "
+        "'--group-threshold' is also refused, though a grouped run otherwise requires it."
     )
     groupOUT.add_argument(
         '--collate-files-by-map', action='store_true', default=False, help=
@@ -560,24 +585,26 @@ def get_args() -> Namespace:
         f"either: by count in discrete bands, by count on a continuous scale, or by membership. "
         f"For a draw-kegg-pathways text file this choice is part of the sample and group summaries "
         f"instead ('--reaction-sample-summary' and the related options), so this option is "
-        f"rejected for a text run. By default, with 4 or more databases or groups, reactions are "
-        f"colored by count of database or group; with 2 or 3, reactions are colored explicitly by "
-        f"database or group membership. In coloring by count, the colormap should be sequential, "
-        f"such that the color of a reaction changes 'smoothly' with the count. Because its "
-        f"colorbar labels one band per count, 'by_count' additionally needs a distinguishable "
-        f"color for every count, and is refused when there are more databases or groups than the "
-        f"colormap can supply — with a few hundred of them no color scale could tell them apart "
-        f"anyway — and it needs room to set every one of those labels, so above about "
-        f"{MAX_DISCRETE_COUNT_BANDS} counts it warns that they will be too small to read. "
-        f"'by_count_continuous' colors counts from the same colormap in the same way but draws its "
-        f"colorbar as a gradient from the lowest count to the highest, which needs neither a "
-        f"distinguishable color nor a label per count, so a color there reads as a position along "
-        f"the range rather than as an exact count; it is chosen automatically, with a warning, "
-        f"wherever 'by_count' would be refused or its labels would be unreadable. In contrast, "
-        f"coloring by membership means reaction color is determined by membership in a "
-        f"database/group or combination of databases/groups, so a qualitative colormap can be used "
-        f"instead of a sequential colormap, as by default with 2 or 3 categories, to give a "
-        f"distinct color to each membership category."
+        f"rejected for a text run. It is also rejected with '--skip-unified-maps', which leaves no "
+        f"map for it to color. A group's own map is drawn by '--group-colormap-scheme'; a "
+        f"database's or genome's own map takes that one category's single color. By default, with "
+        f"4 or more databases or groups, reactions are colored by count of database or group; with "
+        f"2 or 3, reactions are colored explicitly by database or group membership. In coloring by "
+        f"count, the colormap should be sequential, such that the color of a reaction changes "
+        f"'smoothly' with the count. Because its colorbar labels one band per count, 'by_count' "
+        f"additionally needs a distinguishable color for every count, and is refused when there "
+        f"are more databases or groups than the colormap can supply — with a few hundred of them "
+        f"no color scale could tell them apart anyway — and it needs room to set every one of "
+        f"those labels, so above about {MAX_DISCRETE_COUNT_BANDS} counts it warns that they will "
+        f"be too small to read. 'by_count_continuous' colors counts from the same colormap in the "
+        f"same way but draws its colorbar as a gradient from the lowest count to the highest, "
+        f"which needs neither a distinguishable color nor a label per count, so a color there "
+        f"reads as a position along the range rather than as an exact count; it is chosen "
+        f"automatically, with a warning, wherever 'by_count' would be refused or its labels would "
+        f"be unreadable. In contrast, coloring by membership means reaction color is determined by "
+        f"membership in a database/group or combination of databases/groups, so a qualitative "
+        f"colormap can be used instead of a sequential colormap, as by default with 2 or 3 "
+        f"categories, to give a distinct color to each membership category."
     )
     groupCOLOR.add_argument(
         '--count-scale-max', metavar='NAME_OR_NUMBER', default='observed', help=
@@ -709,9 +736,9 @@ def get_args() -> Namespace:
     )
     groupCOLOR.add_argument(
         '--reaction-element-normalization', nargs='+', metavar='NAME', help=
-        f"Color the reaction elements of sample or group maps after a transformation "
-        f"comparing their levels to the other maps: each element's quantitative value is rescaled "
-        f"against that same element's values across all of the samples or groups. Given a value of "
+        f"Color the reaction elements of sample or group maps after a transformation comparing "
+        f"their levels to the other maps: each element's quantitative value is rescaled against "
+        f"that same element's values across all of the samples or groups. Given a value of "
         f"'relative_to_mean', a reaction element value of -0.26 means that the is 26%% less "
         f"abundant than the average value across samples. Certain normalizations including "
         f"'relative_to_mean' are defined: {ELEMENT_NORMALIZATION_PHRASE}. A pandas Series method "
@@ -901,6 +928,17 @@ def map_json_network_ko_data(args: Namespace, mapper: Mapper) -> None:
             f"multiple samples or groups, which is not supported for a reaction network JSON file "
             f"(a single source drawn in one color): {message}. Please remove these arguments; use "
             f"'--reaction-color' or '--original-color' to choose the color."
+        )
+
+    # Refused on its own rather than as another entry in the list above. That list says these
+    # options are about coloring across sources, and tells the user to pick a color instead.
+    # Neither fits here. The map being skipped is the only map this run draws.
+    if args.skip_unified_maps:
+        raise ConfigError(
+            "'--skip-unified-maps' skips the map summarizing every source at once. A reaction "
+            "network JSON file is a single source drawn in one color. That map is the only one "
+            "this run draws. Skipping it would leave an empty output directory. Please drop this "
+            "flag."
         )
 
     map_reaction_network_json_kos = mapper.map_reaction_network_json_kos
@@ -1228,6 +1266,24 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"no 'sample' column), which does not use them."
                 )
 
+        # Skipping the 'unified' map makes the maps of the individual samples or groups the whole
+        # of the output. The run therefore needs samples. It also needs those maps to be asked for.
+        if args.skip_unified_maps:
+            if not any_sample:
+                raise ConfigError(
+                    "'--skip-unified-maps' skips the map summarizing all of the samples. No input "
+                    "file has a 'sample' column, so there is only one map to draw. Skipping it "
+                    "would leave an empty output directory. Add a 'sample' column to compare "
+                    "origins, or drop this flag."
+                )
+            if draw_individual_files is False and draw_grid is False:
+                raise ConfigError(
+                    "'--skip-unified-maps' skips the map summarizing all of the samples. That "
+                    "leaves the maps of the individual samples or groups to be drawn. None were "
+                    "asked for. Please add '--draw-individual-files' and/or '--draw-grid', or drop "
+                    "this flag."
+                )
+
         # Individual maps and grids are drawn per sample, or per group of samples, so without a
         # 'sample' column there is nothing to draw.
         if (draw_individual_files is not False or draw_grid is not False) and not any_sample:
@@ -1448,8 +1504,8 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     raise ConfigError(
                         f"'{flag}' was given as '{summary}', but the samples here are grouped with "
                         f"'--groups-txt', and each group's map shows the count of that group's own "
-                        f"samples regardless of how presence is asked for — in discrete bands or on "
-                        f"a continuous scale, as '--group-colormap-scheme' says — so "
+                        f"samples regardless of how presence is asked for — in discrete bands or "
+                        f"on a continuous scale, as '--group-colormap-scheme' says — so "
                         f"{SUMMARY_PRESENCE_PHRASE} would all draw the same thing. Summarizing the "
                         f"samples by presence is already the default, so drop the option; use an "
                         f"aggregation such as 'mean' to color each group's map by pooled values "
@@ -1464,6 +1520,25 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                         f"'{flag}' summarizes the {element_type} layer's samples or groups, but "
                         f"'{static_flag}' colors that layer one static color for presence in any "
                         f"sample, which overrides the summary. Please use only one of them."
+                    )
+                # A summary reduces a set of samples or groups for the 'unified' map. With groups,
+                # the sample summary also colors each group's own map, so only the group summary
+                # has nothing left to do. Without groups, a per-sample map shows one sample, so
+                # neither summary colors it.
+                if args.skip_unified_maps and (level == 'group' or args.groups_txt is None):
+                    elsewhere = (
+                        f"Each group's own map is colored by '--{element_type}-sample-summary'. "
+                        f"That option summarizes the group's own samples."
+                    ) if level == 'group' else (
+                        "The map of an individual sample shows that one sample alone. It shows "
+                        "the sample's own values where the file has a value column, and its "
+                        "presence where it does not."
+                    )
+                    raise ConfigError(
+                        f"'{flag}' decides how the 'unified' map summarizes the {level}s of the "
+                        f"{element_type} layer. Nothing else uses it. {elsewhere} "
+                        f"'--skip-unified-maps' draws no 'unified' map to color. Please use "
+                        f"'{flag}' or '--skip-unified-maps', not both."
                     )
             if group_summary is not None and group_summary not in PRESENCE_SUMMARIES and (
                 sample_summary is None or sample_summary in PRESENCE_SUMMARIES
@@ -1490,7 +1565,15 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 "way here: either no samples are grouped with '--groups-txt', or every sampled "
                 "layer's '--*-group-summary' pools values instead."
             )
-        if group_presence and args.group_threshold is None:
+        if args.group_threshold is not None and args.skip_unified_maps:
+            raise ConfigError(
+                "'--group-threshold' sets the proportion of a group's samples in which an element "
+                "must occur for the group to count as containing it. Only the 'unified' map uses "
+                "that threshold. A group's own map counts that group's own samples whatever the "
+                "threshold is. '--skip-unified-maps' draws no 'unified' map. Please use "
+                "'--group-threshold' or '--skip-unified-maps', not both."
+            )
+        if group_presence and args.group_threshold is None and not args.skip_unified_maps:
             raise ConfigError(
                 "When grouping samples ('--groups-txt') whose groups are summarized by presence, "
                 "which is the default, '--group-threshold' must also be given: the proportion of a "
@@ -1560,6 +1643,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         'groups_txt': args.groups_txt,
         'group_threshold': args.group_threshold,
         'pathway_numbers': args.pathway_numbers,
+        'draw_unified_maps': not args.skip_unified_maps,
         'draw_individual_files': draw_individual_files,
         'draw_grid': draw_grid,
         'reaction_reverse_overlay': args.reaction_reverse_overlay,
@@ -1763,6 +1847,7 @@ def map_multiple_contigs_dbs_ko_data(args: Namespace, mapper: Mapper) -> None:
         groups_txt=args.groups_txt,
         group_threshold=args.group_threshold,
         pathway_numbers=args.pathway_numbers,
+        draw_unified_maps=not args.skip_unified_maps,
         reaction_reverse_overlay=args.reaction_reverse_overlay,
         group_reverse_overlay=args.group_reverse_overlay,
         group_colormap_scheme=args.group_colormap_scheme,
@@ -1802,7 +1887,8 @@ def map_pan_db_ko_data(args: Namespace, mapper: Mapper) -> None:
     )
 
     if args.reaction_colormap is None:
-        # Dynamically color reactions by genome or group in unified maps using the default colormap.
+        # Dynamically color reactions by genome or group in 'unified' maps using the default
+        # colormap.
         pass
     elif len(args.reaction_colormap) == 1:
         # Use the provided colormap name.
@@ -1878,6 +1964,7 @@ def map_pan_db_ko_data(args: Namespace, mapper: Mapper) -> None:
         consensus_threshold=args.consensus_threshold,
         discard_ties=args.discard_ties,
         pathway_numbers=args.pathway_numbers,
+        draw_unified_maps=not args.skip_unified_maps,
         reaction_reverse_overlay=args.reaction_reverse_overlay,
         group_reverse_overlay=args.group_reverse_overlay,
         group_colormap_scheme=args.group_colormap_scheme,
@@ -2109,9 +2196,11 @@ def main() -> None:
                 )
 
         # Categorical grouping of contigs databases or pan genomes pairs '--groups-txt' with the
-        # presence/absence '--group-threshold' (both or neither). A text run's grouping depends on
-        # each layer's auto-detected mode, so its group-option checks live in 'map_txt_data'.
-        if not is_txt_run and (
+        # presence/absence '--group-threshold' (both or neither). '--skip-unified-maps' is the
+        # exception, as the threshold only applies to 'unified' maps; '--groups-txt' may be used
+        # alone in this case. A text run's grouping depends on each layer's auto-detected mode, so
+        # its group-option checks live in 'map_txt_data'.
+        if not is_txt_run and not args.skip_unified_maps and (
             (args.groups_txt is None and args.group_threshold is not None) or
             (args.groups_txt is not None and args.group_threshold is None)
         ):
@@ -2150,6 +2239,45 @@ def main() -> None:
                     "color has no individual maps to gather: the one map it draws per pathway is "
                     "already the whole of the data. Please provide the other databases to compare "
                     "it to, or drop this flag."
+                )
+
+        # Skipping the 'unified' map makes the maps of the individual databases, genomes, or groups
+        # the whole of the output. The run therefore needs those maps, and has nothing to skip where
+        # the 'unified' map is all that should be drawn, as in the following cases. A text run is
+        # checked in 'map_txt_data', which alone knows whether any file has a 'sample' column, and a
+        # reaction-network-JSON run is checked in its own dispatcher.
+        if args.skip_unified_maps and not is_txt_run and args.reaction_network_json is None:
+            if is_single_db_run:
+                raise ConfigError(
+                    "'--skip-unified-maps' should be used to skip the map summarizing several "
+                    "sources at once, which does not apply to a single contigs database drawn in a "
+                    "single color. Please provide other databases to compare it to, or drop this "
+                    "flag."
+                )
+            if args.draw_individual_files is None and args.draw_grid is None:
+                raise ConfigError(
+                    "'--skip-unified-maps' skips the map summarizing every contigs database, "
+                    "genome, or group at once. That leaves the maps of the individual databases, "
+                    "genomes, or groups to be drawn. None were asked for. Please add "
+                    "'--draw-individual-files' and/or '--draw-grid', or drop this flag."
+                )
+            if args.group_threshold is not None:
+                raise ConfigError(
+                    "'--group-threshold' sets the proportion of a group's databases or genomes in "
+                    "which an element must occur for the group to count as containing it. Only "
+                    "the 'unified' map uses that threshold. A group's own map counts that group's "
+                    "own sources whatever the threshold is. '--skip-unified-maps' draws no "
+                    "'unified' map. Please use '--group-threshold' or '--skip-unified-maps', not "
+                    "both."
+                )
+            if args.presence_colormap_scheme is not None:
+                raise ConfigError(
+                    "'--presence-colormap-scheme' selects how the 'unified' map colors presence "
+                    "across contigs databases, genomes, or groups of either. Nothing else uses "
+                    "it. A group's own map is drawn by '--group-colormap'/"
+                    "'--group-colormap-scheme'. A database's or genome's own map takes that one "
+                    "category's single color. '--skip-unified-maps' draws no 'unified' map. "
+                    "Please use '--presence-colormap-scheme' or '--skip-unified-maps', not both."
                 )
 
         mapper = Mapper(kegg_dir=args.kegg_dir,
