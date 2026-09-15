@@ -103,6 +103,37 @@ json.dump(config, open('config-keep-reads.json', 'w'), indent=4)
 DRY_RUN config-keep-reads.json > keep-reads-output.txt 2>&1
 ASSERT_FILE_CONTAINS keep-reads-output.txt "THE READS YOU ARE KEEPING NEED ROOM OF THEIR OWN"
 
+# Downloading reads is what makes quality-filtered reads disposable. Reference-based read
+# removal makes that true of SHORT reads on its own, but it is a short-read step and has no say
+# over what filtlong makes, so a run with no SRA in it anywhere must keep its filtered long
+# reads -- which is what it did before this workflow learned to download anything.
+INFO "A run with no SRA accessions keeps its filtered long reads, even with reference removal"
+printf 'sample\tr1\tr2\tlr\n' > samples-no-sra.txt
+printf 'S_sr\tthree_samples_example/sample-01-R1.fastq.gz\tthree_samples_example/sample-01-R2.fastq.gz\t\n' >> samples-no-sra.txt
+printf 'S_lr\t\t\tthree_samples_example/sample-01-LR.fastq.gz\n' >> samples-no-sra.txt
+$ANVIO_PYTHON -c "
+import json
+config = json.load(open('config-references.json'))
+config['samples_txt'] = 'samples-no-sra.txt'
+config['references_mode'] = True
+config['filtlong'] = {'run': True, 'use_anvio_conda_yaml': True, '--min-length': 500}
+config['minimap2'] = dict(config.get('minimap2', {}), preset='map-ont')
+config['remove_short_reads_based_on_references'] = {
+    'threads': 1, 'dont_remove_just_map': None,
+    'references_for_removal_txt': 'references-for-removal.txt',
+    'delimiter-for-iu-remove-ids-from-fastq': ' '}
+config['output_dirs'] = {k: v.replace('-references', '-nosra') for k, v in config['output_dirs'].items()}
+json.dump(config, open('config-no-sra-lr.json', 'w'), indent=4)
+"
+SNAKEMAKE_DAG config-no-sra-lr.json > dag-no-sra.txt
+if grep -q "Would remove temporary output.*FILTERED_LR" dag-no-sra.txt; then
+    echo "FAIL: filtered long reads are deleted in a run that downloads nothing."
+    grep "Would remove temporary output.*FILTERED_LR" dag-no-sra.txt
+    exit 1
+fi
+# ... while the short reads of that same run are superseded by the removal step, as always.
+ASSERT_FILE_CONTAINS dag-no-sra.txt "Would remove temporary output 01_QC-nosra"
+
 # Samples that are co-assembled have to be on disk at the same time, so they are released
 # together rather than one by one.
 INFO "Co-assembled samples share a single release unit"

@@ -73,15 +73,32 @@ class QCModule(WorkflowSuperClass):
         instead, in which every sample points at the files the workflow is going to produce."""
         return getattr(self, 'derived_samples_txt_path', None) or self.get_param_value_from_config(['samples_txt'])
 
-    def qc_output_is_temporary(self):
-        """Whether quality-filtered reads should be deleted once nothing needs them anymore.
+    def downloaded_reads_are_temporary(self):
+        """Whether anything made from downloaded reads should be deleted along with them.
 
-        This is the case when reference-based read removal will supersede them, and also when the
-        reads were downloaded from the SRA and the user did not ask to keep them."""
+        Downloading reads inside a workflow only saves disk if what is made from them goes too,
+        so this is true whenever reads come from the SRA and the user did not ask to keep the
+        quality-filtered copies."""
+        return getattr(self, 'sra_mode', False) and getattr(self, 'keep_reads', 'none') not in ('qc', 'both')
+
+    def sr_qc_output_is_temporary(self):
+        """Whether quality-filtered SHORT reads should be deleted once nothing needs them.
+
+        Two things ask for that: reference-based read removal, which supersedes these files with
+        a filtered copy of its own, and reads that were downloaded from the SRA."""
         if getattr(self, 'remove_short_reads_based_on_references', None):
             return True
 
-        return getattr(self, 'sra_mode', False) and getattr(self, 'keep_reads', 'none') not in ('qc', 'both')
+        return self.downloaded_reads_are_temporary()
+
+    def lr_qc_output_is_temporary(self):
+        """Whether quality-filtered LONG reads should be deleted once nothing needs them.
+
+        Only downloading asks for that. Reference-based read removal is a short-read step — its
+        rule matches short-read readsets alone and produces only FILTERED_R1/R2 — so it has no
+        say over what filtlong makes, and a run that removes reads based on references keeps its
+        filtered long reads exactly as it would without that step."""
+        return self.downloaded_reads_are_temporary()
 
     def get_fastq(self, readset, pre_ref_removal=False):
         """Return FASTQ paths for a readset.
@@ -386,7 +403,7 @@ class QCModule(WorkflowSuperClass):
                 "for NanoPlot to run on — it will be skipped."
             )
 
-        if getattr(self, 'run_filtlong', False) and not self.qc_output_is_temporary():
+        if getattr(self, 'run_filtlong', False) and not self.lr_qc_output_is_temporary():
             # NB: the duplicate-read-name validation is NOT done here — it runs as the
             # check_lr_read_names rule (which gates filtlong), so full long-read files are not
             # re-scanned at parse time on every dry run / DAG rebuild.

@@ -406,15 +406,20 @@ class SRAReadsModule:
         if not self.sra_mode or self.keep_reads in ('qc', 'both'):
             return
 
-        # Reference-based removal makes these files temporary on its own, and says so itself.
-        # The surprise worth naming is the one that downloading reads brought with it.
-        if getattr(self, 'remove_short_reads_based_on_references', None):
-            return
-
-        if not (getattr(self, 'run_qc', False) or getattr(self, 'run_filtlong', False)):
-            return
-
         local = [s for s in self.samples_txt.samples() if s not in self.sra_accessions_by_sample]
+        affected = []
+
+        # Reference-based read removal already makes quality-filtered short reads temporary on
+        # its own and says so itself, so in a run that does it, short reads are not a surprise
+        # that downloading brought with it. It is a short-read step and has no say over what
+        # filtlong makes, so local long-read samples are one either way.
+        if getattr(self, 'run_qc', False) and not getattr(self, 'remove_short_reads_based_on_references', None):
+            affected.extend(s for s in local if self.samples_txt.get_sample(s).get('r1'))
+
+        if getattr(self, 'run_filtlong', False):
+            affected.extend(s for s in local if self.samples_txt.get_sample(s).get('lr'))
+
+        local = sorted(set(affected))
 
         if not local:
             return

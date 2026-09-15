@@ -106,7 +106,7 @@ rule filtlong:
         # the {readset} wildcard passes through the helper as a literal for Snakemake to expand
         filtered=(
             temp(M.filtered_lr_path("{readset}"))
-            if M.qc_output_is_temporary()
+            if M.lr_qc_output_is_temporary()
             else M.filtered_lr_path("{readset}")
         ),
     log:

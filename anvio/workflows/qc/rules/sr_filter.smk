@@ -82,8 +82,8 @@ rule iu_filter_quality_minoche:
     input:
         unpack(lambda wildcards: input_for_qc(wildcards.readset)),
     output:
-        r1=(temp(qc_output_r1) if M.qc_output_is_temporary() else qc_output_r1),
-        r2=(temp(qc_output_r2) if M.qc_output_is_temporary() else qc_output_r2),
+        r1=(temp(qc_output_r1) if M.sr_qc_output_is_temporary() else qc_output_r1),
+        r2=(temp(qc_output_r2) if M.sr_qc_output_is_temporary() else qc_output_r2),
         stats=dirs_dict["QC_DIR"] + "/{readset}-STATS.txt",
     log:
         rule_log("iu_filter_quality_minoche", "{readset}-iu_filter_quality_minoche"),
@@ -203,7 +203,7 @@ rule gzip_fastqs:
         fastq=os.path.join(dirs_dict["QC_DIR"], "{readset}-QUALITY_PASSED_{R}.fastq"),
     output:
         target=(
-            temp(gzip_fastq_output) if M.qc_output_is_temporary() else gzip_fastq_output
+            temp(gzip_fastq_output) if M.sr_qc_output_is_temporary() else gzip_fastq_output
         ),
     log:
         rule_log("gzip_fastqs", "{readset}-{R}-gzip"),
