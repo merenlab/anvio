@@ -192,6 +192,13 @@ D = {
              'required': True,
              'help': "Anvi'o pan database"}
                 ),
+    'pan-or-pan-graph-db': (
+            ['-p', '--pan-or-pan-graph-db'],
+            {'metavar': "PAN_OR_PAN_GRAPH_DB",
+             'required': True,
+             'help': "An anvi'o pan-db or pan-graph-db. Which one it is is worked out from the database "
+                     "itself, so either may be given here."}
+                ),
     'pan-or-profile-db': (
             ['-p', '--pan-or-profile-db'],
             {'metavar': "PAN_OR_PROFILE_DB",
@@ -2345,6 +2352,15 @@ D = {
              'required': False,
              'help': "Nodes in an anvi'o pangenome graph database..",
              'type': str}
+                ),
+    'reset-gene-caller-ids': (
+            ['--reset-gene-caller-ids'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, the gene caller ids in the resulting contigs databases will match those "
+                     "in the source contigs databases, so you can trace each gene back to where it came from. "
+                     "If you use this flag, anvi'o will instead reset the gene caller ids so they start from 0 "
+                     "in each output database (which was the historical default behavior)."}
                 ),
     'region-id': (
             ['--region-id'],

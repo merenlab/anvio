@@ -3345,7 +3345,7 @@ class PangraphInteractive(PanGraphSuperclass):
         if not self.pan_graph_db_path:
             raise ConfigError("Unfortunately you can only use this program with a pangenome graph database.")
 
-        PanGraphSuperclass.__init__(self, self.args)
+        PanGraphSuperclass.__init__(self, self.args, r=self.run, p=self.progress)
 
         self.collections = ccollections.Collections()
         self.collections.populate_collections_dict(self.pan_graph_db_path)
