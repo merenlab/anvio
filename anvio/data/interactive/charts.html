@@ -238,9 +238,12 @@
                   <br><br>
         </div>
 
-        <div class="btn-group sidebar-footer pr-3 pl-3 pt-3 pb-1" role="group">
-          <a type="button" class="btn btn-outline-secondary btn-sm" onclick="showLoadStateWindow();" data-help="load-state-button" data-original-title="" title=""><i class="bi bi-upload mr-1"></i>Load State</a>
-          <a type="button" class="btn btn-outline-secondary btn-sm mr-3" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true" data-original-title="" title=""><i class="bi bi-download mr-1"></i>Save State</a>
+        <div class="sidebar-footer pr-3 pl-3 pt-2 pb-2">
+          <div class="btn-group w-100 mb-1" role="group">
+            <a type="button" class="btn btn-outline-secondary btn-sm" onclick="showLoadStateWindow();" data-help="load-state-button" data-original-title="" title=""><i class="bi bi-upload mr-1"></i>Load State</a>
+            <a type="button" class="btn btn-outline-secondary btn-sm" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true" data-original-title="" title=""><i class="bi bi-download mr-1"></i>Save State</a>
+          </div>
+          <a type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="exportInspectSvg();"><i class="bi bi-image mr-1"></i>Export SVG</a>
         </div>
       </div>
 

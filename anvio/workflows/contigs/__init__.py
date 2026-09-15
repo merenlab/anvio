@@ -44,54 +44,9 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                            'anvi_script_run_eggnog_mapper', 'reformat_external_gene_calls_table',
                            'reformat_external_functions', 'import_external_functions', 'anvi_run_pfams', 'anvi_run_kegg_kofams'])
 
-        self.general_params.extend(["fasta_txt"])
-
         self.dirs_dict.update({"FASTA_DIR": "01_FASTA",
                                "CONTIGS_DIR": "02_CONTIGS"})
 
-        self.default_config.update({"fasta_txt": "fasta.txt",
-                                    "anvi_gen_contigs_database": {"--project-name": "{group}"},
-                                    "centrifuge": {"threads": 2},
-                                    "anvi_run_hmms": {"run": True, "threads": 5, "--also-scan-trnas": True},
-                                    "anvi_run_kegg_kofams": {"run": True, "threads": 4},
-                                    "anvi_run_ncbi_cogs": {"run": True, "threads": 5},
-                                    "anvi_run_scg_taxonomy": {"run": True, "threads": 6},
-                                    "anvi_run_trna_scan": {"run": False, "threads": 6},
-                                    "anvi_script_reformat_fasta": {"run": True, "--prefix": "{group}", "--simplify-names": True},
-                                    "emapper": {"--database": "bact", "--usemem": True, "--override": True},
-                                    "anvi_script_run_eggnog_mapper": {"--use-version": "0.12.6"}})
-
-        self.rule_acceptable_params_dict['anvi_run_ncbi_cogs'] = ['run', '--cog-data-dir', '--temporary-dir-path', '--search-with']
-
-        self.rule_acceptable_params_dict['anvi_run_scg_taxonomy'] = ['run', '--scgs-taxonomy-data-dir']
-
-        self.rule_acceptable_params_dict['anvi_run_trna_scan'] = ['run', '--trna-cutoff-score', '--trna-model']
-
-        self.rule_acceptable_params_dict['anvi_run_hmms'] = ['run', '--installed-hmm-profile', '--hmm-profile-dir', '--also-scan-trnas', '--add-to-functions-table', '--just-do-it']
-
-        self.rule_acceptable_params_dict['anvi_run_pfams'] = ['run', '--pfam-data-dir']
-
-        self.rule_acceptable_params_dict['anvi_run_kegg_kofams'] = ['run', '--kegg-data-dir', '--hmmer-program', '--keep-all-hits', '--log-bitscores', '--just-do-it']
-
-        self.rule_acceptable_params_dict['centrifuge'] = ['run', 'db']
-
-        self.rule_acceptable_params_dict['emapper'] = ['--database', '--usemem', '--override', 'path_to_emapper_dir']
-
-        self.rule_acceptable_params_dict['anvi_script_run_eggnog_mapper'] = ['run', '--cog-data-dir', '--drop-previous-annotations',
-                                         '--use-version']
-
-        self.rule_acceptable_params_dict['anvi_script_reformat_fasta'] = \
-                    ['run', '--keep-ids', '--exclude-ids', '--min-len', '--max-len', "--prefix", "--simplify-names", "--seq-type"]
-
-
-        gen_contigs_params = ['--description', '--skip-gene-calling',
-                              '--ignore-internal-stop-codons', '--skip-mindful-splitting',
-                              '--contigs-fasta', '--project-name',
-                              '--description', '--split-length', '--kmer-size',
-                              '--skip-mindful-splitting', '--skip-gene-calling',
-                              '--ignore-internal-stop-codons', '--skip-predict-frame', '--prodigal-translation-table']
-
-        self.rule_acceptable_params_dict['anvi_gen_contigs_database'] = gen_contigs_params
 
 
     def init(self):

@@ -27,4 +27,4 @@ Now, the program will rerun the analysis for gene 1 and will still add genes 4 a
 
 Both of these runs will have the same MODELLER parameters as your run of %(anvi-gen-structure-database)s. However, to get the raw outputs, you will need to use the parameter `--dump-dir`. You can also set a specific MODELLER program with `--modeller-executable`. Parameters for multi-threading would also have to be given again.
 {:.notice}
-Like %(anvi-gen-structure-database)s, this program also accepts %(external-structures)s.
+Like %(anvi-gen-structure-database)s, this program also accepts %(external-structures)s -- for a contigs-db or a pangenome structure database. When updating a pangenome structure database, anvi'o reconciles the surrogate protein ids by natural key, so adding or re-running structures never disturbs the ids already in the database.

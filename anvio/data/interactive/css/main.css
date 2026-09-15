@@ -479,6 +479,13 @@ html, body, #wrapper {
     top: 0px;
     left: 0px;
     opacity: 0.9;
+    transition: left 0.3s ease-out;
+}
+
+#panel-left.panel-closed {
+    /* slide by the sidebar's full width (#sidebar min-width: 560px), which is wider
+       than the 490px panel, so no sliver of the settings panel is left peeking out */
+    left: -560px;
 }
 
 #panel-center {
@@ -519,11 +526,13 @@ html, body, #wrapper {
     cursor: pointer;
     font-size: 10px;
     padding-top: 9px;
+    z-index: 10;   /* keep pill above #panel-left in both states */
+    left: 0;       /* closed/default position, flush to the left edge */
 }
 
-.toggle-panel-left-pos {
+/* ID+class so it wins over the base #toggle-panel-left { left: 0 } above */
+#toggle-panel-left.toggle-panel-left-pos {
     left: 560px;
-    z-index: 1;
 }
 
 #toggle-panel-left:hover {

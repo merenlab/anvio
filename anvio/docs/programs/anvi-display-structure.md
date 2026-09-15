@@ -13,6 +13,11 @@ To run this program, you'll need to have created a %(structure-db)s which can be
 You'll also need a %(profile-db)s that was created using %(anvi-profile)s's flag `--profile-SCVs`, which means that single codon variants (SCVs) have been profiled. Very sorry if this forces you to re-profile, but as of v6.2, this is now a very expedient process.
 
 
+### MODELLER and ColabFold structures
+
+%(anvi-display-structure)s works with a %(structure-db)s regardless of whether its structures were predicted by MODELLER (template-based homology modelling) or ColabFold (AlphaFold2). The interface adapts to the prediction engine: for MODELLER structures it reports the DOPE, GA341, and molpdf model scores along with the PDB templates that were used, while for ColabFold structures it reports the model's mean pLDDT and pTM (ColabFold is template-free, so no templates are shown). For ColabFold structures, the per-residue pLDDT confidence is also available as a variable you can color the protein by and filter variants on, just like the other residue-level annotations.
+
+
 ### Basic Run
 
 There are two ways to provide the variability information to this program.

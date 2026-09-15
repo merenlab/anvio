@@ -1,0 +1,9 @@
+# Standalone conda environment for the 'bowtie' rule (Bowtie2 short-read mapping).
+# Point a workflow config at this file via: "bowtie": {"conda_yaml": ".../bowtie.yaml"}
+# and run the workflow with `--use-conda` so Snakemake builds and uses this env.
+name: anvio-bowtie
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - bowtie2=2.5.4

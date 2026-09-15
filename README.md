@@ -16,7 +16,8 @@
 [![Tutorials](https://img.shields.io/badge/tutorials-available-brightgreen?logo=bookstack&logoColor=white&color=5865F2)](https://anvio.org/learn)
 [![Testimonials](https://img.shields.io/badge/user%20testimonials-%E2%9D%A4-red?color=5865F2)](http://merenlab.org/2017/07/12/testimonials/)
 
-[![Daily Component Tests and Migrations](https://github.com/merenlab/anvio/actions/workflows/component-tests-and-migrations.yaml/badge.svg)](https://github.com/merenlab/anvio/actions/workflows/component-tests-and-migrations.yaml)
+[![Daily Component Tests](https://github.com/merenlab/anvio/actions/workflows/component-tests.yaml/badge.svg)](https://github.com/merenlab/anvio/actions/workflows/component-tests.yaml)
+
 </div>
 
 ### Releases

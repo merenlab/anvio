@@ -656,6 +656,14 @@ anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                --quick-summary \
                --no-progress
 
+INFO "Run light summary of CONCOCT results"
+anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+               -c $output_dir/CONTIGS.db \
+               -o $output_dir/SAMPLES-MERGED-SUMMARY-LIGHT \
+               -C 'cmdline_concoct_RENAMED' \
+               --light-summary \
+               --no-progress
+
 INFO "Generate a SNV variabilty profile for PSAMPLES_Bin_00001 using a collection id"
 anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
                              -p $output_dir/SAMPLES-MERGED/PROFILE.db \
@@ -1078,9 +1086,9 @@ anvi-pan-genome -g $output_dir/TEST-GENOMES.db \
                 $thread_controller
 
 INFO "Generating hmm-hits matrix"
-anvi-script-gen-hmm-hits-matrix-across-genomes -o $output_dir/TEST-GENOME_MATRIX.txt \
-                                               -e $output_dir/external-genomes.txt \
-                                               --hmm-source Bacteria_71
+anvi-gen-hmm-hits-matrix -o $output_dir/TEST-GENOME_MATRIX.txt \
+                         -e $output_dir/external-genomes.txt \
+                         --hmm-source Bacteria_71
 
 INFO "Testing anvi-analyze-synteny with default parameters using a pangenome for annotations"
 anvi-analyze-synteny -g $output_dir/TEST-GENOMES.db \

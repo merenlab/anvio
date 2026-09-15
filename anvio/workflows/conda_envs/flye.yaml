@@ -1,0 +1,10 @@
+# Standalone conda environment for the 'flye' rule (long-read assembly).
+# Version matches the presets validated in anvio/workflows/lr_technology_presets.yaml.
+# Point a workflow config at this file via: "flye": {"conda_yaml": ".../flye.yaml"}
+# and run the workflow with `--use-conda` so Snakemake builds and uses this env.
+name: anvio-flye
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - flye=2.9.5

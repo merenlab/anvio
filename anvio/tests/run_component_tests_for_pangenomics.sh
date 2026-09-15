@@ -104,11 +104,34 @@ anvi-get-sequences-for-gene-clusters -p TEST-PAN.db \
                                      --report-DNA-sequences \
                                      --no-progress
 
+INFO "Exporting a representative amino acid sequence per gene cluster"
+anvi-get-sequences-for-gene-clusters -p TEST-PAN.db \
+                                     -g TEST-GENOMES.db \
+                                     -C test_collection \
+                                     -b GENE_CLUSTER_BIN_1_CORE \
+                                     --representative-sequences \
+                                     -o representative_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE.fa \
+                                     --no-progress
+
+mkdir SPLIT_GENE_CLUSTER_REPRESENTATIVES
+INFO "Exporting representative sequences as individual files, one per gene cluster"
+anvi-get-sequences-for-gene-clusters -p TEST-PAN.db \
+                                     -g TEST-GENOMES.db \
+                                     -C test_collection \
+                                     -b GENE_CLUSTER_BIN_1_CORE \
+                                     --representative-sequences \
+                                     --split-output-per-gene-cluster \
+                                     -O SPLIT_GENE_CLUSTER_REPRESENTATIVES/MY_PROJECT \
+                                     --no-progress
+
 INFO "First five line from the AA output"
 head -n 5 aligned_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE_AA.fa
 
 INFO "First five line from the DNA output"
 head -n 5 aligned_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE_DNA.fa
+
+INFO "First five lines from the representative-sequences output"
+head -n 5 representative_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE.fa
 
 INFO "Importing group information as misc data for layers"
 anvi-import-misc-data -p TEST-PAN.db \

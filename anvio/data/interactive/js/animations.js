@@ -33,12 +33,27 @@ function toggleLeftPanel() {
     const svgContainer = document.getElementById('svgbox');
     if (svgContainer) svgContainer.style.pointerEvents = 'none';
 
-    const onDone = () => {
+    let cleaned_up = false;
+    let fallback_timer = null;
+
+    const cleanup = () => {
+        if (cleaned_up) return;   // run exactly once (transitionend vs. fallback race)
+        cleaned_up = true;
+        if (fallback_timer !== null) clearTimeout(fallback_timer);
         panel.removeEventListener('transitionend', onDone);
         if (svgContainer) svgContainer.style.pointerEvents = '';
         is_left_panel_sliding = false;
     };
+
+    const onDone = (ev) => {
+        if (ev && ev.target !== panel) return;   // ignore transitions bubbling from descendants
+        cleanup();
+    };
+
     panel.addEventListener('transitionend', onDone);
+    // Fallback: if no CSS 'transition' is defined on #panel-left, transitionend never
+    // fires. Slightly longer than the 0.3s transition so the event wins when it exists.
+    fallback_timer = setTimeout(cleanup, 350);
 
     if (is_panel_open) {
         is_panel_open = false;

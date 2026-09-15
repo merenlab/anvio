@@ -20,12 +20,12 @@ __resources__ = [("A conceptual tutorial on the structural biology capabilities 
                   "http://merenlab.org/2018/09/04/structural-biology-with-anvio/"),
                  ("A practical tutorial section in the infant gut tutorial",
                   "http://merenlab.org/tutorials/infant-gut/#chapter-vii-linking-genomic-heterogeneity-to-protein-structures")]
-__requires__ = ['contigs-db']
-__can_use__ = ['pdb-db', 'genes-of-interest-txt']
+__requires__ = ['contigs-db', 'pan-db', 'genomes-storage-db']
+__can_use__ = ['pdb-db', 'genes-of-interest-txt', 'external-structures']
 __provides__ = ['structure-db']
-__description__ = ("Creates a database of protein structures. Predict protein structures using "
-                   "template-based homology modelling of genes in your contigs database, or import "
-                   "pre-computed PDB structures you already have.")
+__description__ = ("Creates a database of protein structures. Predict protein structures for the genes of a "
+                   "contigs database or a pangenome using either template-based homology modelling (MODELLER) "
+                   "or AlphaFold2 (ColabFold), or import pre-computed PDB structures you already have.")
 
 
 @terminal.time_program
@@ -49,8 +49,14 @@ def main():
 def get_args():
     parser = ArgumentParser(description=__description__)
 
-    groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
-    groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first. Provide '
+                                       'EITHER a contigs database (structures for its genes) OR a pangenome (--pan-db '
+                                       'plus its --genomes-storage; structures for the genes of your gene clusters).')
+    groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    # --pan-db is declared without its usual '-p' short flag here because '-p' is already taken by
+    # MODELLER's --percent-cutoff in this program.
+    groupD.add_argument('--pan-db', **anvio.K('pan-db', {'required': False}))
+    groupD.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
     groupD.add_argument("--pdb-db", type=str, default=None, help =
                         """By default, this program accesses the structure files it needs from an
                         internal anvi'o database that can be set up with anvi-setup-pdb-database. If
@@ -59,28 +65,46 @@ def get_args():
                         created a database and b) it exists in a custom location. In this case,
                         please provide that path here. Otherwise we vibing.""")
 
-    groupG = parser.add_argument_group('GENES', 'Specifying which genes you want to be modelled.')
+    groupG = parser.add_argument_group('GENES', 'Specifying which genes you want structures for. The first two options '
+                                       'apply to a contigs-db input; the last three apply to a pangenome input.')
     groupG.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
     groupG.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
+    groupG.add_argument(*anvio.A('gene-clusters-of-interest'), **anvio.K('gene-clusters-of-interest'))
+    groupG.add_argument(*anvio.A('gene-cluster-ids'), **anvio.K('gene-cluster-ids'))
+    groupG.add_argument(*anvio.A('select-representative'), **anvio.K('select-representative'))
 
     groupO = parser.add_argument_group('OUTPUT', 'Output file and output style.')
     groupO.add_argument(*anvio.A('output-db-path'), **anvio.K('output-db-path'))
     groupO.add_argument(*anvio.A('dump-dir'), **anvio.K('dump-dir'))
 
-    groupI = parser.add_argument_group('NON-MODELLER OPTIONS', 'Alternatives to using MODELLER')
-    groupI.add_argument(*anvio.A('external-structures'), **anvio.K('external-structures'))
+    groupN = parser.add_argument_group('ENGINE', 'Which structure-prediction engine should anvi\'o use?')
+    groupN.add_argument("--engine", type=str, default='modeller', choices=['modeller', 'colabfold'], help =
+                        """The structure-prediction engine to use. 'modeller' (the default) predicts
+                        structures with template-based homology modelling. 'colabfold' predicts structures
+                        with AlphaFold2 via ColabFold. Each engine has its own set of parameters (see the
+                        MODELLER PARAMS and COLABFOLD PARAMS groups), while a few parameters apply to both
+                        (see SHARED PREDICTION PARAMS). This has no effect if you import structures with
+                        --external-structures instead of predicting them.""")
 
-    groupM = parser.add_argument_group('MODELLER PARAMS', 'Parameters for MODELLER\'s homology modeling.')
-    groupM.add_argument("--num-models", "-N", type=int, default=1, help =
-                        """This parameter determines the number of predicted structures that are
-                        solved for a given protein.  The original atomic positions for each model
-                        are perturbed by an amount defined by --deviation, which leads to
-                        differences between each model. Therefore, whichever of the N models is
-                        chosen to be the "best" model is more likely to be accurate when
-                        --num-models is high, since more of the solution space is searched. It
-                        should be kept in mind that the largest determinant of a model's accuracy is
-                        determined by the protein templates used, so no need to go overboard with an
-                        excessively large --num-models. The default is %(default)d.""")
+    groupS = parser.add_argument_group('SHARED PREDICTION PARAMS', 'Parameters that apply to whichever '
+                                       'prediction engine you selected with --engine.')
+    groupS.add_argument("--num-models", "-N", type=int, default=1, help =
+                        """The number of structures ("models") to compute per protein; the best one is
+                        kept. For the MODELLER engine, each of the N models perturbs the initial atomic
+                        positions (by an amount set with --deviation) and is optimized independently, so a
+                        larger N searches more of the solution space (though template quality matters most,
+                        so there is no need to go overboard). For the ColabFold engine, this is the number
+                        of AlphaFold2 models (1-5) to run, and the highest-confidence one is kept. In both
+                        cases, fewer models is faster but explores less. The default is %(default)d.""")
+    groupS.add_argument("--skip-DSSP", action = "store_true", help =
+                        """Dictionary of Secondary Structure of Proteins (DSSP) is a program that takes
+                        as its input a protein structure file and outputs predicted secondary
+                        structure (alpha helix, beta strand, etc.), measures of solvent
+                        accessibility, and hydrogen bonds for each residue in the protein. If for
+                        some reason you don't want this, provide this flag.""")
+
+    groupM = parser.add_argument_group('MODELLER PARAMS', 'Parameters for MODELLER\'s homology modeling. '
+                                       'These only apply when `--engine modeller` (the default) is set.')
     groupM.add_argument("--deviation", "-d", type=float, default=4.0, help =
                         """Deviation (angstroms)""")
     groupM.add_argument("--modeller-database", "-D", type=str, default="pdb_95", help =
@@ -129,18 +153,10 @@ def get_args():
                         process all the templates that differ substantially from each other, if they
                         share approximately the same overall similarity to the target sequence.' The
                         default is %(default)d.""")
-
-    groupE = parser.add_argument_group('EXTRA', 'Everything else.')
-    groupE.add_argument("--skip-DSSP", action = "store_true", help =
-                        """Dictionary of Secondary Structure of Proteins (DSSP) is a program that takes
-                        as its input a protein structure file and outputs predicted secondary
-                        structure (alpha helix, beta strand, etc.), measures of solvent
-                        accessibility, and hydrogen bonds for each residue in the protein. If for
-                        some reason you don't want this, provide this flag.""")
-    groupE.add_argument("--modeller-executable", type=str, help =
+    groupM.add_argument("--modeller-executable", type=str, help =
                         """The MODELLER program to use. For example, `mod9.19`. Anvi'o will try and find
                         it if not provided""")
-    groupE.add_argument("--offline-mode", action = "store_true", help =
+    groupM.add_argument("--offline-mode", action = "store_true", help =
                         """Anvi'o first tries to obtain template structures from a database (see
                         --pdb-db for details). If the requested template does not exist in the
                         database, its structure will be downloaded from the RCSB PDB server.
@@ -148,6 +164,59 @@ def get_args():
                         provide this flag so that all operations of this program remain offline. If
                         the template structure is not in the database, then no template structure
                         for you.""")
+
+    groupC = parser.add_argument_group('COLABFOLD PARAMS', 'Parameters for structure prediction with ColabFold '
+                                       '(AlphaFold2). These only apply when `--engine colabfold` is set. ColabFold '
+                                       'is not assumed to be on your $PATH: provide the name of the conda environment '
+                                       'it is installed in with --colabfold-conda-env.')
+    groupC.add_argument("--colabfold-conda-env", type=str, default=None, metavar='ENV_NAME', help =
+                        """The name of the conda environment in which ColabFold (colabfold_batch /
+                        colabfold_search) is installed. Anvi'o will run every ColabFold command via
+                        `conda run -n ENV_NAME`. If you leave this blank, anvi'o will assume the ColabFold
+                        programs are directly available (e.g. on your $PATH).""")
+    groupC.add_argument("--colabfold-msa-server", action='store_true', help =
+                        """Use the public MMseqs2 MSA server hosted by the ColabFold team to generate the
+                        multiple sequence alignment (MSA) step online. This requires an internet connection
+                        and is fine for a handful of sequences. Mutually exclusive with --colabfold-db. You
+                        must choose one of the two.""")
+    groupC.add_argument("--colabfold-db", type=str, default=None, metavar='DB_DIR', help =
+                        """Generate the MSA step locally instead of using the public server, by searching a
+                        local ColabFold database in this directory (the one you set up with ColabFold's
+                        `setup_databases.sh`). Recommended when you have many sequences. Mutually exclusive
+                        with --colabfold-msa-server. You must choose one of the two.""")
+    groupC.add_argument("--num-recycle", type=int, default=None, metavar='INT', help =
+                        """Number of prediction recycles for ColabFold. Increasing this can improve prediction
+                        quality at the cost of runtime. If not set, ColabFold's default is used.""")
+    groupC.add_argument("--amber", action='store_true', help =
+                        """Relax the best predicted structure with OpenMM/Amber. This can improve the quality of
+                        side-chains at the cost of longer runtime.""")
+    groupC.add_argument("--colabfold-additional-parameters", type=str, default=None, metavar='CMD LINE PARAMS', help =
+                        """Additional parameters to pass verbatim to `colabfold_batch`, for anything not exposed
+                        as a dedicated flag above. Because the value itself begins with dashes, you must attach
+                        it with an equals sign so it is not mistaken for anvi'o's own flags, e.g.
+                        --colabfold-additional-parameters="--num-seeds 2 --use-dropout". Anvi'o does not validate
+                        these, so use with care.""")
+    groupC.add_argument("--only-msa", action='store_true', help =
+                        """Run only ColabFold's multiple sequence alignment (MSA) step and stop, writing the MSAs
+                        and a small checkpoint manifest into --dump-dir. This creates a resumable checkpoint so
+                        you can run the CPU-heavy MSA step and the GPU-heavy prediction step separately (e.g. on
+                        different cluster nodes). This only works with a local ColabFold database (--colabfold-db):
+                        the public MSA server (--colabfold-msa-server) generates the MSA and predicts the structure
+                        in a single step that cannot be split. No structure database is produced in this mode; you
+                        finish the job later with --only-predict. Requires --dump-dir.""")
+    groupC.add_argument("--only-predict", action='store_true', help =
+                        """Skip the MSA step and predict structures from an MSA checkpoint that an earlier
+                        --only-msa run wrote to --dump-dir, then build the structure database. You must provide the
+                        SAME --contigs-db and genes of interest as the --only-msa run: anvi'o verifies that the
+                        sequences match the checkpoint before predicting, and refuses to continue if they do not.
+                        Requires --dump-dir (pointing at the --only-msa output); the structure database goes to -o
+                        (default STRUCTURE.db). Mutually exclusive with --only-msa.""")
+
+    groupImport = parser.add_argument_group('IMPORT STRUCTURES', 'Instead of predicting structures, import '
+                                            'pre-computed ones. This bypasses the --engine choice entirely.')
+    groupImport.add_argument(*anvio.A('external-structures'), **anvio.K('external-structures'))
+
+    groupE = parser.add_argument_group('EXTRA', 'Everything else.')
     groupE.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
     params = {

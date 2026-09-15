@@ -1,0 +1,9 @@
+# Standalone conda environment for the 'megahit' rule (short-read assembly).
+# Point a workflow config at this file via: "megahit": {"conda_yaml": ".../megahit.yaml"}
+# and run the workflow with `--use-conda` so Snakemake builds and uses this env.
+name: anvio-megahit
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - megahit=1.2.9

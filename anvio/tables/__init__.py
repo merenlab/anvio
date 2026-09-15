@@ -44,16 +44,16 @@ pan_reaction_network_kegg_table_types            = [ 'text'  , 'text',  'text'  
 ####################################################################################################
 
 pan_graph_nodes_table_name           = 'pan_graph_nodes'
-pan_graph_nodes_table_structure      = ['node_id', 'node_type', 'region_id', 'gene_cluster_id', 'gene_calls_json', 'synteny_position_json', 'node_x' , 'node_y' , 'alignment_summary']
-pan_graph_nodes_table_types          = [  'str'  ,    'str'   ,  'numeric' ,       'str'      ,       'str'      ,          'str'         , 'numeric', 'numeric',        'str'       ]
+pan_graph_nodes_table_structure      = ['node_id', 'node_type', 'region_id', 'gene_cluster_id', 'gene_calls_json', 'synteny_position_json', 'node_x' , 'node_y' , 'alignment_summary', 'component_id']
+pan_graph_nodes_table_types          = [  'str'  ,    'str'   ,    'str'   ,       'str'      ,       'str'      ,          'str'         , 'numeric', 'numeric',        'str'       ,     'str'     ]
 
 pan_graph_edges_table_name           = 'pan_graph_edges'
-pan_graph_edges_table_structure      = ['edge_id', 'source', 'target', 'weight' , 'directions']
-pan_graph_edges_table_types          = [  'str'  ,   'str' ,   'str' , 'numeric',     'str'   ]
+pan_graph_edges_table_structure      = ['edge_id', 'source', 'target', 'weight' , 'genomes_json']
+pan_graph_edges_table_types          = [  'str'  ,   'str' ,   'str' , 'numeric',     'str'      ]
 
 pan_graph_regions_table_name         = 'pan_graph_regions'
-pan_graph_regions_table_structure    = ['region_id', 'region_type', 'x_min'  , 'x_max'  , 'num_synteny_gene_clusters', 'num_gene_clusters', 'num_gene_calls', 'max_expansion', 'min_expansion', 'complexity', 'complexity_normalized', 'diversity', 'diversity_normalized', 'weight' , 'weight_normalized', 'composite_variability_score', 'complexity_mm_scaled', 'diversity_mm_scaled', 'expansion_mm_scaled', 'weight_mm_scaled']
-pan_graph_regions_table_types        = [ 'numeric' ,     'str'    , 'numeric', 'numeric',          'numeric'         ,      'numeric'     ,     'numeric'   ,    'numeric'   ,    'numeric'   ,  'numeric'  ,        'numeric'       ,  'numeric' ,        'numeric'      , 'numeric',      'numeric'     ,            'numeric'         ,        'numeric'      ,        'numeric'     ,        'numeric'     ,      'numeric'    ]
+pan_graph_regions_table_structure    = ['component_id', 'region_id', 'region_type', 'x_min'  , 'x_max'  , 'num_synteny_gene_clusters', 'num_gene_clusters', 'num_gene_calls', 'max_expansion', 'min_expansion', 'complexity', 'complexity_normalized', 'diversity', 'diversity_normalized', 'weight' , 'weight_normalized', 'composite_variability_score', 'complexity_mm_scaled', 'diversity_mm_scaled', 'expansion_mm_scaled', 'weight_mm_scaled']
+pan_graph_regions_table_types        = [    'str'     ,    'str'   ,     'str'    , 'numeric', 'numeric',          'numeric'         ,      'numeric'     ,     'numeric'   ,    'numeric'   ,    'numeric'   ,  'numeric'  ,        'numeric'       ,  'numeric' ,        'numeric'      , 'numeric',      'numeric'     ,            'numeric'         ,        'numeric'      ,        'numeric'     ,        'numeric'     ,      'numeric'    ]
 
 pan_graph_genome_distances_table_name      = 'pan_graph_genome_distances'
 pan_graph_genome_distances_table_structure = ['genome_a', 'genome_b', 'distance']
@@ -302,21 +302,37 @@ genome_gene_function_calls_table_types     = [    'str'    , ] + gene_function_c
 #
 ####################################################################################################
 
+# `protein_id` is the structure DB's within-DB key for a protein. For a contigs-db input it equals the
+# gene_callers_id; for other input types (e.g. pangenome) it is an opaque surrogate whose provenance
+# (genome, gene cluster, source id) is recorded in the `proteins` table below. NOTE: this rename does
+# NOT extend to the variability tables (variable_codons/variable_nucleotides/indels above), which keep
+# their own `corresponding_gene_call` column — that is a separate namespace.
 pdb_data_table_name       = 'structures'
-pdb_data_table_structure  = ['corresponding_gene_call', 'pdb_content']
-pdb_data_table_types      = [         'integer'       ,    'blob'    ]
+pdb_data_table_structure  = ['protein_id', 'pdb_content']
+pdb_data_table_types      = [  'integer' ,    'blob'    ]
 
 templates_table_name       = 'templates'
-templates_table_structure  = ['corresponding_gene_call' , 'pdb_id' , 'chain_id' , 'proper_percent_similarity', 'percent_similarity', 'align_fraction']
-templates_table_types      = ['integer'                 , 'text'   , 'text'     , 'real',                      'real',               'real']
+templates_table_structure  = ['protein_id' , 'pdb_id' , 'chain_id' , 'proper_percent_similarity', 'percent_similarity', 'align_fraction']
+templates_table_types      = ['integer'    , 'text'   , 'text'     , 'real',                      'real',               'real']
 
+# the MODELLER-specific score columns (molpdf, GA341_score, DOPE_score) are left NULL for structures
+# predicted with ColabFold, whose native model-level metrics (mean_plddt, ptm) are stored instead
 models_table_name       = 'models'
-models_table_structure  = ['corresponding_gene_call' , 'molpdf' , 'GA341_score' , 'DOPE_score' , 'picked_as_best']
-models_table_types      = ['integer'                 , 'real'   , 'real'        , 'real'       , 'integer']
+models_table_structure  = ['protein_id' , 'molpdf' , 'GA341_score' , 'DOPE_score' , 'mean_plddt' , 'ptm'  , 'picked_as_best']
+models_table_types      = ['integer'    , 'real'   , 'real'        , 'real'       , 'real'       , 'real' , 'integer']
 
+# `plddt` holds the per-residue ColabFold confidence (NULL for MODELLER/external structures)
 residue_info_table_name       = 'residue_info'
-residue_info_table_structure  = ['corresponding_gene_call', 'codon_order_in_gene', 'contact_numbers', 'codon', 'amino_acid', 'codon_number', 'sec_struct' , 'rel_solvent_acc' , 'phi'  , 'psi'  , 'NH_O_1_index' , 'NH_O_1_energy' , 'O_NH_1_index' , 'O_NH_1_energy' , 'NH_O_2_index' , 'NH_O_2_energy' , 'O_NH_2_index' , 'O_NH_2_energy']
-residue_info_table_types      = [        'integer'        ,        'integer'     ,   'text'          , 'text',  'text',       'integer',      'text'       , 'real'            , 'real' , 'real' , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real']
+residue_info_table_structure  = ['protein_id', 'codon_order_in_gene', 'contact_numbers', 'codon', 'amino_acid', 'codon_number', 'sec_struct' , 'rel_solvent_acc' , 'phi'  , 'psi'  , 'plddt' , 'NH_O_1_index' , 'NH_O_1_energy' , 'O_NH_1_index' , 'O_NH_1_energy' , 'NH_O_2_index' , 'NH_O_2_energy' , 'O_NH_2_index' , 'O_NH_2_energy']
+residue_info_table_types      = [  'integer' ,        'integer'     ,   'text'          , 'text',  'text',       'integer',      'text'       , 'real'            , 'real' , 'real' , 'real'  , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real']
+
+# one row per protein that a structure was attempted for. `protein_id` is the surrogate key shared with
+# the four tables above; `input_type` records where the protein came from ('contigs_db', 'pangenome',
+# 'fasta'); the remaining columns hold that input type's natural identity (all nullable, only the ones
+# relevant to `input_type` are populated), and `has_structure` is 1 if a structure was produced, else 0.
+proteins_table_name       = 'proteins'
+proteins_table_structure  = ['protein_id', 'input_type', 'genome_name', 'gene_callers_id', 'gene_cluster_id', 'source_key', 'has_structure']
+proteins_table_types      = [  'integer' ,    'text'   ,    'text'    ,    'integer'     ,      'text'      ,    'text'   ,    'integer'   ]
 
 ####################################################################################################
 #
@@ -487,6 +503,7 @@ table_requires_unique_entry_id = {'self': False,
                                   gene_info_table_name: False,
                                   genome_gene_function_calls_table_name: True,
                                   pdb_data_table_name: False,
+                                  proteins_table_name: False,   # protein_id is unique (enforced by an index)
                                   'kegg_modules': False,        # no longer in use as of modules db v3
                                   module_table_name: False,
                                   pathway_table_name: False,

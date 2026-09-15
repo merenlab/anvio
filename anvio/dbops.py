@@ -58,8 +58,7 @@ from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
 
-from anvio.pangenomegraphmaster import PangenomeGraphManager
-from anvio.topologicallayout import TopologicalLayout
+from anvio.pangenomegraphmanager import PangenomeGraphManager
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -2120,7 +2119,13 @@ class PanSuperclass(object):
 
             for genome_name in gene_clusters_dict[gene_cluster_name]:
                 sequences[gene_cluster_name][genome_name] = {}
+                # non-coding gene calls (tRNA/rRNA) live in the pan-graph but
+                # have no entry in genomes-storage; skip them so the rest of
+                # the cluster still returns a usable dict.
+                known_gids = self.genomes_storage.gene_info.get(genome_name, {}) if no_sequence_GCs_are_OK else None
                 for gene_callers_id in gene_clusters_dict[gene_cluster_name][genome_name]:
+                    if known_gids is not None and gene_callers_id not in known_gids:
+                        continue
                     sequence = self.genomes_storage.get_gene_sequence(genome_name, gene_callers_id, report_DNA_sequences=report_DNA_sequences)
 
                     if not skip_alignments and self.gene_clusters_gene_alignments_available:
@@ -2132,6 +2137,113 @@ class PanSuperclass(object):
         self.progress.end()
 
         return sequences
+
+
+    def get_gene_cluster_representative_sequences(self, gene_clusters_dict=None, gene_cluster_names=set([])):
+        """Return a single representative amino acid sequence per gene cluster.
+
+        For each gene cluster this recovers the aligned amino acid sequences of its member genes and
+        hands them to `utils.get_representative_sequence_from_gene_cluster` to pick a medoid-like
+        representative. The selection logic lives in that shared utils function so that anvi'o's
+        structural-pangenome build path can reuse it and pick representatives identically.
+
+        You can call this function either with a `gene_clusters_dict`, or with a `gene_cluster_names`
+        set (see `get_sequences_for_gene_clusters` for the reasoning behind this design).
+
+        Returns
+        =======
+        representative_sequences : dict
+            A dictionary of the form
+            `{gene_cluster_name: {'align_sequence': <aligned AA sequence with gaps>, 'genome_name': <str>, 'gene_callers_id': <int>}}`,
+            where 'genome_name' and 'gene_callers_id' identify the source gene the representative was
+            picked from. Strip the gap characters from 'align_sequence' if you want the raw amino acid sequence.
+        """
+
+        if gene_clusters_dict and gene_cluster_names:
+            raise ConfigError("get_gene_cluster_representative_sequences is speaking: You can call this function either "
+                              "with a `gene_clusters_dict`, or with a `gene_cluster_names` set, but not both.")
+
+        if not self.genomes_storage_is_available:
+            raise ConfigError("You are asking anvi'o for gene cluster representative sequences, but there is no genomes "
+                              "storage available to recover the amino acid sequences from :/")
+
+        if not self.gene_clusters_gene_alignments_available:
+            raise ConfigError("Anvi'o can't pick representative sequences for your gene clusters because the gene "
+                              "alignments were not computed for this pangenome (it was most likely created with the "
+                              "flag `--skip-alignments`). The representative-picking strategy relies on the aligned "
+                              "sequences to find the one that best represents each gene cluster, so there is nothing "
+                              "anvi'o can do here without them. Sorry :/")
+
+        if gene_clusters_dict is None:
+            if not self.gene_clusters_initialized:
+                self.init_gene_clusters()
+            gene_clusters_dict = self.gene_clusters
+
+        if not gene_cluster_names:
+            gene_cluster_names = set(list(gene_clusters_dict.keys()))
+
+        representative_sequences = {}
+
+        self.progress.new('Picking gene cluster representatives', progress_total_items=len(gene_cluster_names))
+        # sort so the returned dict order (and thus any FASTA written from it) is deterministic across
+        # processes; gene_cluster_names is a set, whose iteration order varies run-to-run
+        for gene_cluster_name in sorted(gene_cluster_names):
+            self.progress.increment()
+            self.progress.update("processing '%s' ..." % gene_cluster_name)
+
+            sequence_entries = []
+            for genome_name in gene_clusters_dict[gene_cluster_name]:
+                for gene_callers_id in gene_clusters_dict[gene_cluster_name][genome_name]:
+                    aa_sequence = self.genomes_storage.get_gene_sequence(genome_name, gene_callers_id)
+                    alignment_summary = self.gene_clusters_gene_alignments[genome_name][gene_callers_id]
+                    sequence = utils.restore_alignment(aa_sequence, alignment_summary)
+                    is_partial = self.genomes_storage.is_partial_gene_call(genome_name, gene_callers_id)
+
+                    sequence_entries.append({
+                        'align_sequence': sequence,
+                        'length': len(aa_sequence),
+                        'gap_count': sequence.count('-'),
+                        'is_partial': bool(is_partial),
+                        'genome_name': genome_name,
+                        'gene_callers_id': gene_callers_id
+                    })
+
+            representative_entry = utils.get_representative_sequence_from_gene_cluster(sequence_entries)
+            representative_sequences[gene_cluster_name] = {
+                'align_sequence': representative_entry['align_sequence'],
+                'genome_name': representative_entry['genome_name'],
+                'gene_callers_id': representative_entry['gene_callers_id']
+            }
+
+        self.progress.end()
+
+        return representative_sequences
+
+
+    def write_gene_cluster_representative_sequences_to_file(self, gene_clusters_dict=None, gene_cluster_names=set([]), output_file_path=None):
+        """Write one representative amino acid sequence per gene cluster to a FASTA file.
+
+        The FASTA deflines are the gene cluster names, and the sequences are reported WITHOUT gap
+        characters.
+        """
+
+        if output_file_path:
+            filesnpaths.is_output_file_writable(output_file_path)
+
+        representative_sequences = self.get_gene_cluster_representative_sequences(gene_clusters_dict=gene_clusters_dict,
+                                                                                 gene_cluster_names=gene_cluster_names)
+
+        output_file = open(output_file_path, 'w')
+        for gene_cluster_name in representative_sequences:
+            sequence = representative_sequences[gene_cluster_name]['align_sequence'].replace('-', '')
+            output_file.write('>%s\n%s\n' % (gene_cluster_name, sequence))
+        output_file.close()
+
+        if len(representative_sequences) == 1:
+            self.run.info('Gene cluster name', list(representative_sequences.keys())[0])
+        self.run.info('Sequence type', 'Amino acid (gene cluster representatives)')
+        self.run.info('Num representative sequences reported', len(representative_sequences))
+        self.run.info('Output FASTA file', output_file_path, mc='green', nl_after=1)
 
 
     def compute_AAI_for_gene_cluster(self, gene_cluster):
@@ -2724,12 +2836,21 @@ class PanSuperclass(object):
             return
 
         # FIXME WE HAVE TO STORE AVAILABLE FUNCTIONS IN GENOMES STORAGE ATTRs!!!! THIS IS RIDICULOUS
+        # Non-coding gene calls (tRNAs, rRNAs) live in CONTIGS.db but have no
+        # amino-acid sequence and are therefore absent from genomes-storage.
+        # In the synteny pan-graph workflow these gids do appear in
+        # `self.gene_clusters[...]`, so skip any gid not in `gene_info` rather
+        # than crashing on the lookup. For the classic pan workflow every gid
+        # in `self.gene_clusters` has an AA sequence and the check is a no-op.
         self.gene_clusters_function_sources.clear()
         for gene_cluster_id in self.gene_clusters:
             self.gene_clusters_functions_dict[gene_cluster_id] = {}
             for genome_name in self.genome_names:
                 self.gene_clusters_functions_dict[gene_cluster_id][genome_name] = {}
+                known_gids = self.genomes_storage.gene_info.get(genome_name, {})
                 for gene_callers_id in self.gene_clusters[gene_cluster_id][genome_name]:
+                    if gene_callers_id not in known_gids:
+                        continue
                     functions = self.genomes_storage.get_gene_functions(genome_name, gene_callers_id)
                     self.gene_clusters_functions_dict[gene_cluster_id][genome_name][gene_callers_id] = functions
 
@@ -2744,7 +2865,8 @@ class PanSuperclass(object):
                                  "https://github.com/merenlab/anvio/issues/1196", nl_after=1, mc='green')
             for gene_cluster_id in self.gene_clusters:
                 for genome_name in self.genome_names:
-                    for gene_callers_id in self.gene_clusters[gene_cluster_id][genome_name]:
+                    # only tag gids we actually stored functions for above
+                    for gene_callers_id in self.gene_clusters_functions_dict[gene_cluster_id][genome_name]:
                         self.gene_clusters_functions_dict[gene_cluster_id][genome_name][gene_callers_id]['IDENTITY'] = '%s|||%s' % (gene_cluster_id, gene_cluster_id)
             self.gene_clusters_function_sources.update(['IDENTITY'])
 
@@ -3225,7 +3347,7 @@ class PanSuperclass(object):
                                                                       min_combined_homogeneity_index,
                                                                       max_combined_homogeneity_index)
 
-        # this is where we add the items in the resulting filtered dict into the items additonal data
+        # this is where we add the items in the resulting filtered dict into the items additional data
         # table:
         if add_into_items_additional_data_table:
             data_key = add_into_items_additional_data_table
@@ -3568,12 +3690,25 @@ class PanGraphSuperclass(PanSuperclass):
 
         self.nodes = pan_graph_db.db.get_table_as_dict(t.pan_graph_nodes_table_name)
         self.edges = pan_graph_db.db.get_table_as_dict(t.pan_graph_edges_table_name)
-        self.regions = pan_graph_db.db.get_table_as_dict(t.pan_graph_regions_table_name)
+        # region_id is a 1-based prefixed string ("R_1", "R_2", ...) per
+        # component since pangraph_db v7, and component_id is "CP_0001"/"CP_0002"/...;
+        # uniqueness comes from the (component_id, region_id) pair, so we
+        # avoid get_table_as_dict (which would collide on the first column).
+        regions_df = pan_graph_db.db.get_table_as_dataframe(t.pan_graph_regions_table_name, error_if_no_data=False)
+        self.regions = {(str(row['component_id']), str(row['region_id'])): row.to_dict()
+                        for _, row in regions_df.iterrows()}
         self.genome_distances = pan_graph_db.db.get_table_as_dict(t.pan_graph_genome_distances_table_name)
         self.states = pan_graph_db.db.get_table_as_dict(t.states_table_name)
 
-        self.pangenome_graph = PangenomeGraphManager()
+        self.pangenome_graph = PangenomeGraphManager(run=self.run, progress=self.progress)
         self.pangenome_graph_initialized = False
+
+        # which genomes the in-memory graph currently covers. `init_pangenome_graph`
+        # sets this; it is every genome in the db unless someone asked for a subset.
+        self.genomes_of_interest = list(self.genome_names)
+
+        # lazily filled by `get_genome_stats`
+        self.genome_stats = None
 
         self.synteny_gene_clusters_gene_alignments_available = self.p_meta['gene_alignments_computed']
 
@@ -3643,24 +3778,44 @@ class PanGraphSuperclass(PanSuperclass):
         gene_cluster_grouping_threshold = state_dict['graph_layout']['grouping_threshold']
         max_edge_length_filter = state_dict['graph_layout']['max_edge_length']
         groupcompress = state_dict['graph_layout']['group_compression']
+        component = state_dict['graph_layout'].get('component', 'CP_0001')
 
-        node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(
-            F=self.pangenome_graph.graph,
-            gene_cluster_grouping_threshold=gene_cluster_grouping_threshold,
-            groupcompress=groupcompress,
-        )
-
-        self.pangenome_graph.set_edge_positions(edge_positions)
-        self.pangenome_graph.set_node_positions(node_positions)
-        self.pangenome_graph.set_node_groups(node_groups)
+        self.pangenome_graph.layout_all_components(
+            gene_cluster_grouping_threshold, groupcompress)
         self.pangenome_graph.cut_edges(max_edge_length_filter)
 
-        region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize()
-        self.synteny_gene_cluster_summary_info = pd.merge(nodes_df.reset_index(drop=False), region_sides_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster').to_dict(orient='index')
-        self.region_sides_info = region_sides_df.reset_index()[['region_id', 'x_min', 'x_max', 'num_synteny_gene_clusters', 'region']].set_index('region_id').to_dict(orient='index')
+        region_sides_df, _ = self.pangenome_graph.summarize_all_components(
+            scope=self.p_meta.get('region_scope', 'global'))
+        self._refresh_region_caches(region_sides_df)
+        self.p_meta['component'] = str(component)
 
 
-    def rerun_state(self, gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter):
+    def rerun_state(self, gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter, component='CP_0001', genomes=None):
+        """Recompute the layout, and optionally the graph itself, for the interface.
+
+        `genomes` restricts the graph to a subset of the db's genomes (see
+        `init_pangenome_graph`). The graph is only rebuilt when that set actually
+        changed, so an ordinary redraw stays as cheap as it has always been.
+        """
+        # `None` means the caller didn't ask for a subset at all; an EMPTY list means
+        # they asked for nothing, which is a different thing and is an error.
+        if genomes is None:
+            requested = list(self.genome_names)
+        else:
+            unknown = sorted(set(genomes) - set(self.genome_names))
+            if unknown:
+                raise ConfigError(f"{len(unknown)} of the genomes you asked this pan-graph to show "
+                                  f"are not in it: {', '.join(unknown[:5])}"
+                                  f"{'...' if len(unknown) > 5 else ''} :/")
+
+            requested = [g for g in self.genome_names if g in set(genomes)]
+
+            if not requested:
+                raise ConfigError("There is no such thing as a pangenome graph of zero genomes, so "
+                                  "anvi'o is going to need you to leave at least one of them on :/")
+
+        if requested != self.genomes_of_interest:
+            self.init_pangenome_graph(genomes_of_interest=requested)
 
         args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
         items_layer_order = TableForLayerOrders(args)
@@ -3677,53 +3832,253 @@ class PanGraphSuperclass(PanSuperclass):
             # No layer order exists - keep current newick (likely empty)
             pass
 
-        node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(
-            F=self.pangenome_graph.graph,
-            gene_cluster_grouping_threshold=gene_cluster_grouping_threshold,
-            groupcompress=groupcompress,
-        )
-
-        self.pangenome_graph.set_edge_positions(edge_positions)
-        self.pangenome_graph.set_node_positions(node_positions)
-        self.pangenome_graph.set_node_groups(node_groups)
+        self.pangenome_graph.layout_all_components(
+            gene_cluster_grouping_threshold, groupcompress)
         self.pangenome_graph.cut_edges(max_edge_length_filter)
 
-        region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize()
-        self.synteny_gene_cluster_summary_info = pd.merge(nodes_df.reset_index(drop=False), region_sides_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster').to_dict(orient='index')
-        self.region_sides_info = region_sides_df.reset_index()[['region_id', 'x_min', 'x_max', 'num_synteny_gene_clusters', 'region']].set_index('region_id').to_dict(orient='index')
+        region_sides_df, _ = self.pangenome_graph.summarize_all_components(
+            scope=self.p_meta.get('region_scope', 'global'))
+        self._refresh_region_caches(region_sides_df)
+
+        # dropping genomes can dissolve a component entirely, so the one the
+        # interface last asked for may no longer be there to show
+        components = {str(d.get('component_id', 'CP_0001'))
+                      for _, d in self.pangenome_graph.graph.nodes(data=True)}
+        if str(component) not in components and components:
+            component = sorted(components, key=lambda cid: int(cid.split('_')[1]))[0]
+
+        self.p_meta['component'] = str(component)
+
+
+    def _refresh_region_caches(self, region_sides_df):
+        """Rebuild ``synteny_gene_cluster_summary_info`` and
+        ``region_sides_info`` from a freshly-computed all-components
+        ``region_sides_df``. Keyed by ``(component_id, region_id)`` so the
+        plain per-component region_ids don't collide across components.
+        """
+        if region_sides_df is None or region_sides_df.empty:
+            self.synteny_gene_cluster_summary_info = {}
+            self.region_sides_info = {}
+            return
+
+        nodes_rows = []
+        for node, data in self.pangenome_graph.graph.nodes(data=True):
+            rid = data.get('region_id')
+            if rid is None or rid == '':
+                continue
+            x, y = data.get('position', (0, 0))
+            nodes_rows.append({
+                'syn_cluster': node,
+                'component_id': str(data.get('component_id', 'CP_0001')),
+                'region_id': str(rid),
+                'x': x,
+                'y': y,
+            })
+
+        if nodes_rows:
+            nodes_df = pd.DataFrame(nodes_rows)
+            merged = pd.merge(
+                nodes_df,
+                region_sides_df.reset_index(),
+                how="left",
+                on=["component_id", "region_id"],
+            ).set_index('syn_cluster')
+            self.synteny_gene_cluster_summary_info = merged.to_dict(orient='index')
+        else:
+            self.synteny_gene_cluster_summary_info = {}
+
+        region_view = region_sides_df.reset_index()[
+            ['component_id', 'region_id', 'x_min', 'x_max', 'num_synteny_gene_clusters', 'region']
+        ]
+        self.region_sides_info = {
+            (str(row['component_id']), str(row['region_id'])): {
+                'x_min': row['x_min'],
+                'x_max': row['x_max'],
+                'num_synteny_gene_clusters': row['num_synteny_gene_clusters'],
+                'region': row['region'],
+            }
+            for _, row in region_view.iterrows()
+        }
 
     def get_json(self):
 
         state_dict = json.loads(self.states[self.p_meta['state']]['content'])
+        G = self.pangenome_graph.graph
+
+        active_component = str(self.p_meta.get('component', 'CP_0001'))
+
+        # Only the active component is shipped to the JS. All components
+        # were laid out and summarized server-side; the dropdown can still
+        # offer the others via meta.components_summary below, and switching
+        # triggers another rerun_state that updates self.p_meta['component'].
+        nodes = {n: d for n, d in G.nodes(data=True)
+                 if d.get('component_id', 'CP_0001') == active_component}
+        edges = {data['name']: {'source': u, 'target': v, **data}
+                 for u, v, data in G.edges(data=True)
+                 if u in nodes and v in nodes}
+
+        # Region_ids are per-component prefixed strings ("R_1", ...) since v7;
+        # strip the (component_id, region_id) tuple key down to just the
+        # region_id for the JS, which never sees a second component at once.
+        regions = {rid: info
+                   for (cid, rid), info in self.region_sides_info.items()
+                   if cid == active_component}
+
+        components_summary = {}
+        for _n, d in G.nodes(data=True):
+            cid = d.get('component_id', 'CP_0001')
+            components_summary[cid] = components_summary.get(cid, 0) + 1
+        # Sort by the numeric suffix so CP_0002 precedes CP_0010 (plain string sort
+        # would not).
+        components_summary = dict(sorted(components_summary.items(),
+                                         key=lambda kv: int(kv[0].split('_')[1])))
+
+        meta = dict(self.p_meta)
+        meta['components_summary'] = components_summary
+
+        # `genome_names` stays the full roster the db knows about -- the settings panel
+        # is built from it once and must keep a row for every genome so a hidden one can
+        # be brought back. `genomes_of_interest` is the subset the graph on screen is
+        # actually made of, and it is what the drawing code should count against.
+        meta['genomes_of_interest'] = list(self.genomes_of_interest)
+        meta['genome_stats'] = self.get_genome_stats()
+
         export_dict = {
-            'meta': self.p_meta,
+            'meta': meta,
             'states': state_dict,
-            'nodes': dict(self.pangenome_graph.graph.nodes(data=True)),
-            'edges': {data['name']: {'source': edge_i, 'target': edge_j, **data} for edge_i, edge_j, data in self.pangenome_graph.graph.edges(data=True)},
-            'regions': self.region_sides_info
+            'nodes': nodes,
+            'edges': edges,
+            'regions': regions,
         }
 
         return export_dict
 
-    def init_pangenome_graph(self):
+    def get_genome_stats(self):
+        """Per-genome numbers the interface can sort its genome list by.
 
+        Everything here is computed over EVERY genome in the db and EVERY node in the
+        nodes table, deliberately -- NOT over whatever subset is currently on screen.
+        A genome's contig count is a property of the genome, and how many synteny gene
+        clusters it participates in is a property of the pan-graph; neither should
+        change because the user switched a different genome off. Keeping them fixed is
+        also what stops an ordering built on them from reshuffling underfoot as genomes
+        come and go.
+
+        `num_synteny_gene_clusters` always comes back. The rest are read from the
+        genomes storage, which is optional for `anvi-display-pan-graph`, so they are
+        simply absent when it was not provided -- the interface hides the buttons it
+        has no numbers for.
+        """
+        if self.genome_stats is not None:
+            return self.genome_stats
+
+        stats = {genome: {'num_synteny_gene_clusters': 0} for genome in self.genome_names}
+
+        for _, data in self.nodes.items():
+            for genome in json.loads(data['gene_calls_json']):
+                if genome in stats:
+                    stats[genome]['num_synteny_gene_clusters'] += 1
+
+        if self.genomes_storage_is_available:
+            keys = ['num_contigs', 'total_length', 'num_genes', 'gc_content',
+                    'percent_completion', 'percent_redundancy']
+            for genome, info in self.genomes_storage.genomes_info.items():
+                if genome not in stats:
+                    continue
+                for key in keys:
+                    if info.get(key) is not None:
+                        stats[genome][key] = info[key]
+
+        self.genome_stats = stats
+
+        return self.genome_stats
+
+
+    def init_pangenome_graph(self, genomes_of_interest=None):
+        """Build the in-memory graph from the ``pan_graph_nodes``/``pan_graph_edges`` tables.
+
+        When `genomes_of_interest` is given, the graph is restricted to the subgraph
+        induced by those genomes: a node survives if at least one of them has a gene
+        call in it, and an edge survives if at least one of them walks it. Everything
+        the interface draws is derived from this graph downstream -- the layout comes
+        from `layout_all_components`, the regions and their backbone/variable calls
+        from `summarize_all_components` -- so a subset is laid out and summarized on
+        its own terms instead of inheriting the coordinates of the full genome set.
+        That is what makes it possible to watch a pangenome graph reorganize itself as
+        genomes come and go without recomputing anything from scratch.
+
+        Two things to keep in mind about what this is NOT. First, it is a subgraph of
+        the graph `anvi-pan-genome-graph` computed for ALL genomes in the pan-graph-db,
+        so the gene-endpoint fusion and remerge decisions baked into the node set still
+        reflect every one of those genomes -- this is not the same graph the engine
+        would build from the subset alone. Second, and in exchange, node ids stay
+        identical across subsets, which is precisely what makes successive subsets
+        comparable to one another.
+
+        Node types ARE recomputed, since 'core' has to mean "in every genome the user
+        is currently looking at" or the colors on the screen tell a lie.
+        """
+        if genomes_of_interest:
+            missing = sorted(set(genomes_of_interest) - set(self.genome_names))
+            if missing:
+                raise ConfigError(f"{len(missing)} of the genome names you asked this pan-graph to "
+                                  f"focus on are not in it: {', '.join(missing[:5])}"
+                                  f"{'...' if len(missing) > 5 else ''} :/")
+
+            # the db's genome order wins over whatever order the caller sent
+            requested = set(genomes_of_interest)
+            self.genomes_of_interest = [g for g in self.genome_names if g in requested]
+        else:
+            self.genomes_of_interest = list(self.genome_names)
+
+        genomes_to_keep = set(self.genomes_of_interest)
+        subsetting = len(genomes_to_keep) < len(self.genome_names)
+
+        # a fresh graph every time so this function can be called again to change the
+        # genome set without leaving nodes from a previous call behind
+        self.pangenome_graph = PangenomeGraphManager(run=self.run, progress=self.progress)
+
+        nodes_kept = set()
         for node, data in self.nodes.items():
+            gene_calls = json.loads(data['gene_calls_json'])
+            synteny = json.loads(data['synteny_position_json'])
+
+            if subsetting:
+                gene_calls = {g: v for g, v in gene_calls.items() if g in genomes_to_keep}
+                if not gene_calls:
+                    continue
+                synteny = {g: v for g, v in synteny.items() if g in genomes_to_keep}
+
             graph_data = {
                 'gene_cluster': data['gene_cluster_id'],
-                'gene_calls': json.loads(data['gene_calls_json']),
-                'synteny': json.loads(data['synteny_position_json']),
+                'gene_calls': gene_calls,
+                'synteny': synteny,
                 'type': data['node_type'],
                 'layer': self.items_additional_data_dict[node],
                 'position': (0, 0),
                 'group': '',
-                'alignment': json.loads(data['alignment_summary'])
+                'alignment': json.loads(data['alignment_summary']),
+                'component_id': str(data['component_id']),
             }
             self.pangenome_graph.graph.add_node(node, **graph_data)
+            nodes_kept.add(node)
 
         for edge, data in self.edges.items():
+            genomes = json.loads(data['genomes_json'])
+            weight = data['weight']
+
+            if subsetting:
+                if data['source'] not in nodes_kept or data['target'] not in nodes_kept:
+                    continue
+                genomes = [g for g in genomes if g in genomes_to_keep]
+                if not genomes:
+                    continue
+                # the weight IS the number of genomes that walk this edge
+                weight = float(len(genomes))
+
             graph_data = {
-                'weight': data['weight'],
-                'directions': json.loads(data['directions']),
+                'weight': weight,
+                'genomes': genomes,
                 'name': edge,
                 'active': True,
                 'route': [],
@@ -3731,7 +4086,48 @@ class PanGraphSuperclass(PanSuperclass):
             }
             self.pangenome_graph.graph.add_edge(data['source'], data['target'], **graph_data)
 
+        if subsetting:
+            self.recompute_node_types()
+
         self.pangenome_graph_initialized = True
+
+
+    def recompute_node_types(self):
+        """Re-type the nodes of the current (subset) graph so that 'core' means "in
+        every genome currently in the graph" rather than "in every genome in the db".
+
+        The engine's `compute_node_types` does the actual work, in its 'global' scope,
+        with both of its inputs synthesized from the graph in memory:
+
+          * `line_to_genome` only matters here for the genome denominator, and the
+            function reads node membership from the mirrored `gene_calls` dicts, so a
+            self-map over the active genomes is all it needs.
+
+          * `gene_clusters` only feeds `parent_multi_copy`. Deriving it from the
+            surviving nodes means a genome counts as multi-copy for a parent GC when it
+            appears in two or more surviving super-nodes of that GC -- the same rule the
+            'component' scope uses. It differs from the pan-db-backed version, which
+            also counts genes that never made it into the graph, but this way the answer
+            follows from what the user is actually looking at.
+
+        `rna` is a call-type override the engine applied from the CONTIGS.dbs, which is
+        not something a genome subset can change, so those nodes keep their type.
+        """
+        from anvio.pangenomegraphengine import compute_node_types
+
+        G = self.pangenome_graph.graph
+
+        rna_nodes = {n for n, d in G.nodes(data=True) if d.get('type') == 'rna'}
+
+        line_to_genome = {g: g for g in self.genomes_of_interest}
+        gene_clusters = {(genome, gene_call): n.rsplit('_', 1)[0]
+                         for n, d in G.nodes(data=True)
+                         for genome, gene_call in d['gene_calls'].items()}
+
+        compute_node_types(G, line_to_genome, gene_clusters, scope='global')
+
+        for n in rna_nodes:
+            G.nodes[n]['type'] = 'rna'
 
     @property
     def gene_clusters(self):
@@ -4064,14 +4460,15 @@ class ProfileSuperclass(object):
 
         self.progress.new('Initializing the profile database superclass')
         self.progress.update('Accessing the auxiliary data file')
-        self.auxiliary_data_path = get_auxiliary_data_path_for_profile_db(self.profile_db_path)
-        if not os.path.exists(self.auxiliary_data_path):
-            self.auxiliary_profile_data_available = False
-        else:
-            self.auxiliary_profile_data_available = True
-            self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path,
-                                                                                         self.p_meta['contigs_db_hash'],
-                                                                                         db_variant=self.p_meta['db_variant'])
+        if not getattr(self, 'quick', False):
+            self.auxiliary_data_path = get_auxiliary_data_path_for_profile_db(self.profile_db_path)
+            if not os.path.exists(self.auxiliary_data_path):
+                self.auxiliary_profile_data_available = False
+            else:
+                self.auxiliary_profile_data_available = True
+                self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path,
+                                                                                             self.p_meta['contigs_db_hash'],
+                                                                                             db_variant=self.p_meta['db_variant'])
 
         if self.collection_name and self.bin_names and len(self.bin_names) == 1 and not skip_consider_gene_dbs:
             self.progress.update('Accessing the genes database')
@@ -4716,7 +5113,7 @@ class ProfileSuperclass(object):
         return coverages_dict
 
 
-    def init_collection_profile(self, collection_name, calculate_Q2Q3_carefully=False):
+    def init_collection_profile(self, collection_name, calculate_Q2Q3_carefully=False, report_discov=False):
         profile_db = ProfileDatabase(self.profile_db_path, quiet=True)
 
         # we only have a self.collections instance if the profile super has been inherited by summary super class.
@@ -4733,11 +5130,14 @@ class ProfileSuperclass(object):
         for bin_id in collection:
             self.collection_profile[bin_id] = {}
 
-        table_names = [] if self.p_meta['blank'] else constants.essential_data_fields_for_anvio_profiles
+        if getattr(self, 'quick', False):
+            table_names = []
+        else:
+            table_names = [] if self.p_meta['blank'] else constants.essential_data_fields_for_anvio_profiles
 
         samples_template = dict([(s, []) for s in self.p_meta['samples']])
 
-        if calculate_Q2Q3_carefully:
+        if calculate_Q2Q3_carefully and not report_discov:
             self.run.warning("The anvi'o sumarizer class is instructed (hopefully by you) to calculate Q2Q3 mean "
                              "coverages carefully. This means, depending on the size of your dataset and the number "
                              "of contigs in your bins this step can take much much longer than usual, since anvi'o "
@@ -4755,7 +5155,8 @@ class ProfileSuperclass(object):
             table_data, _ = profile_db.db.get_view_data(f'{table_name}_splits')
 
             for bin_id in collection:
-                if calculate_Q2Q3_carefully and table_name == 'mean_coverage_Q2Q3':
+                # if we also have to report DisCov, we'll need to call CoverageStats on these arrays later anyway, so we skip it here
+                if calculate_Q2Q3_carefully and table_name == 'mean_coverage_Q2Q3' and not report_discov:
                     self.collection_profile[bin_id][table_name] = {}
                     # we need to do something specific here.
                     for sample_name in samples_template:
@@ -4793,12 +5194,11 @@ class ProfileSuperclass(object):
                     self.collection_profile[bin_id][table_name] = averages
 
         # generating precent recruitment of each bin plus __splits_not_binned__ in each sample:
-        coverage_table_data, _ = profile_db.db.get_view_data('mean_coverage_splits')
-
         self.bin_percent_recruitment_per_sample = {}
-        if self.p_meta['blank']:
+        if self.p_meta['blank'] or getattr(self, 'quick', False):
             pass
         else:
+            coverage_table_data, _ = profile_db.db.get_view_data('mean_coverage_splits')
             for sample in self.p_meta['samples']:
                 percents = {}
                 all_coverages_in_sample = sum([d[sample] for d in list(coverage_table_data.values())])
@@ -4871,7 +5271,8 @@ class DatabasesMetaclass(ProfileSuperclass, ContigsSuperclass, object):
         ContigsSuperclass.__init__(self, self.args, self.run, self.progress)
         ProfileSuperclass.__init__(self, self.args, self.run, self.progress)
 
-        self.init_split_sequences()
+        if not getattr(self, 'quick', False) and not getattr(self, 'light_summary', False):
+            self.init_split_sequences()
 
 
 ####################################################################################################
@@ -5311,8 +5712,14 @@ class ContigsDatabase:
         return time.time()
 
 
-    def get_hash(self):
-        return 'hash' + str('%08x' % random.randrange(16**8))
+    def get_hash(self, contig_digests=None):
+        """Returns the deterministic hash that describes the identity of this contigs database.
+
+        Please see `utils.get_contigs_db_hash` to learn what goes into this hash. The database
+        must have its contig sequences, splits, and gene calls in place before this is called.
+        """
+
+        return utils.get_contigs_db_hash(self.db, contig_digests=contig_digests)
 
 
     def touch(self, db_variant='unknown'):
@@ -5624,10 +6031,6 @@ class ContigsDatabase:
         self.db.set_meta_value('project_name', project_name)
         self.db.set_meta_value('description', description)
 
-        # this will be the unique information that will be passed downstream whenever this db is used:
-        contigs_db_hash = self.get_hash()
-        self.db.set_meta_value('contigs_db_hash', contigs_db_hash)
-
         # set split length variable in the meta table
         self.db.set_meta_value('split_length', split_length)
 
@@ -5688,6 +6091,13 @@ class ContigsDatabase:
         # here we will process each item in the contigs fasta file.
         fasta = u.SequenceSource(contigs_fasta)
         db_entries_contig_sequences = []
+
+        # here we define a variable to keep per-contig digests so we can compute a structurally
+        # deterministic / meaningful hash for this contigs database once it is created. we will
+        # collect the digest in the South Loop below (so it is more ridiculously expensive)
+        # rather than reading all sequences back from the database later since we are already
+        # going through every sequence there anyway
+        contig_digests = []
 
         contigs_kmer_table = KMerTablesForContigsAndSplits('kmer_contigs', k=kmer_size)
         splits_kmer_table = KMerTablesForContigsAndSplits('kmer_splits', k=kmer_size)
@@ -5750,6 +6160,7 @@ class ContigsDatabase:
                 splits_info_table.append(split_name, contig_sequence[start:end], order, start, end, contig_gc_content, contig_name)
 
             db_entries_contig_sequences.append((contig_name, contig_sequence), )
+            contig_digests.append(utils.get_digest_for_contig_sequence(contig_name, contig_sequence))
 
         self.progress.end()
 
@@ -5761,6 +6172,12 @@ class ContigsDatabase:
         splits_info_table.store(self.db)
 
         self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.contig_sequences_table_name, db_entries_contig_sequences)
+
+        # at this point we know the contig sequences, the splits, and the gene calls, and we are
+        # read to compute the hash that describes the identity of this contigs-db, and set it
+        # for good
+        contigs_db_hash = self.get_hash(contig_digests=contig_digests)
+        self.db.set_meta_value('contigs_db_hash', contigs_db_hash)
 
         # set some useful meta values:
         self.db.set_meta_value('num_contigs', contigs_info_table.total_contigs)
@@ -5789,7 +6206,8 @@ class ContigsDatabase:
         if not skip_gene_calling:
             gene_calls_tables.populate_genes_in_splits_tables()
 
-        self.run.info('Contigs database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
+        self.run.info('Contigs database', f'A new db has been created at {self.db_path}', quiet=self.quiet)
+        self.run.info('Identity hash', contigs_db_hash, quiet=self.quiet)
         self.run.info('Number of contigs', contigs_info_table.total_contigs, quiet=self.quiet)
         self.run.info('Number of splits', splits_info_table.total_splits, quiet=self.quiet)
         self.run.info('Total number of nucleotides', contigs_info_table.total_nts, quiet=self.quiet)
@@ -5990,7 +6408,13 @@ class TRNASeqDatabase:
             self.db.set_meta_value(key, meta_values[key])
 
         self.db.set_meta_value('creation_date', time.time())
-        self.db.set_meta_value(self.db_type + '_db_hash', 'hash' + str('%08x' % random.randrange(16**8)))
+
+        # here we set the hash for the trnaseq-db. unlike the way we do it for contigs-db
+        # files (which allows us to be extremely specific to the content and structure), the
+        # hash for trnaseq-db is just random. that is OK, but if we end up generating
+        # hundreds of thousands of these databases at some point, we may want to be a bit
+        # more careful here to avoid unintended collisions
+        self.db.set_meta_value(self.db_type + '_db_hash', utils.get_random_hash())
 
         # know thyself
         self.db.set_meta_value('db_type', self.db_type)

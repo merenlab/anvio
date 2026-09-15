@@ -43,46 +43,9 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
                            'import_phylogenetic_tree_to_pangenome',
                            'anvi_compute_genome_similarity'])
 
-        self.general_params.extend(["project_name",
-                                    "fasta_txt",
-                                    "internal_genomes",
-                                    "external_genomes",
-                                    "sequence_source_for_phylogeny"])
-
         self.dirs_dict.update({"FASTA_DIR": "01_FASTA",
                                "CONTIGS_DIR": "02_CONTIGS",
                                "PAN_DIR": "03_PAN"})
-
-        self.default_config.update({"fasta_txt": "fasta.txt",
-                                    "anvi_pan_genome": {"threads": 7},
-                                    "import_phylogenetic_tree_to_pangenome": {'tree_name': 'phylogeny'},
-                                    "anvi_compute_genome_similarity": {"run": False}})
-
-        pan_params = ["--project-name", "--genome-names", "--skip-alignments",
-                     "--align-with", "--exclude-partial-gene-calls", "--use-ncbi-blast",
-                     "--minbit", "--mcl-inflation", "--min-occurrence",
-                     "--min-percent-identity", "--description",
-                     "--overwrite-output-destinations", "--skip-hierarchical-clustering",
-                     "--enforce-hierarchical-clustering", "--distance", "--linkage", "--I-know-this-is-not-a-good-idea"]
-        self.rule_acceptable_params_dict['anvi_pan_genome'] = pan_params
-
-        storage_params = ["--gene-caller"]
-        self.rule_acceptable_params_dict['anvi_gen_genomes_storage'] = storage_params
-
-        seq_params = ["--gene-cluster-id", "--gene-cluster-ids-file",
-                      "--collection-name", "--bin-id",
-                      "--min-num-genomes-gene-cluster-occurs", "--max-num-genomes-gene-cluster-occurs",
-                      "--min-num-genes-from-each-genome", "--max-num-genes-from-each-genome",
-                      "--max-num-gene-clusters-missing-from-genome", "--min-functional-homogeneity-index",
-                      "--max-functional-homogeneity-index", "--min-geometric-homogeneity-index",
-                      "--max-geometric-homogeneity-index", "--add-into-items-additional-data-table",
-                      "--concatenate-gene-clusters", "--separator", "--align-with"]
-        self.rule_acceptable_params_dict['anvi_get_sequences_for_gene_clusters'] = seq_params
-
-        import_params = ['--just-do-it', 'tree_name']
-        self.rule_acceptable_params_dict['import_phylogenetic_tree_to_pangenome'] = import_params
-
-        self.rule_acceptable_params_dict['anvi_compute_genome_similarity'] = ['run', 'additional_params']
 
 
     def init(self):
