@@ -365,6 +365,14 @@ class SRAReadsModule:
         # is mapped against every assembly, there is no way to take them a few at a time at all,
         # so they all end up in a single unit (see `everything_must_be_downloaded_at_once`).
         for sample in self.samples_txt.samples():
+            # A sample whose reads were already on disk has nothing to download, and therefore
+            # nothing to release either. Release units are about downloaded reads alone, so it
+            # does not belong to one. A co-assembly group that mixes the two still becomes a
+            # unit, made up of the members that were actually downloaded: the assembly those
+            # reads feed is among the unit's consumers either way.
+            if not self.sra_accessions_by_sample.get(sample):
+                continue
+
             if self.everything_must_be_downloaded_at_once():
                 unit = EVERY_SAMPLE_AT_ONCE
             elif self.references_mode:
@@ -492,7 +500,8 @@ class SRAReadsModule:
             raise ConfigError(f"Your disk budget of {self.max_disk_gb} GB (`max_disk_gb` in the `download_reads` "
                               f"section of your config file) is not enough for this workflow. Because you asked for "
                               f"every sample to be mapped against every assembly (`all_against_all`), all "
-                              f"{terminal.pluralize('sample', len(self.samples_txt.samples()))} have to be on disk "
+                              f"{terminal.pluralize('downloaded sample', len(self.download_unit_members[EVERY_SAMPLE_AT_ONCE]))} "
+                              f"have to be on disk "
                               f"at the same time, and anvi'o expects that to need about "
                               f"{suggested_disk_budget(needed)} GB. There is no "
                               f"way to do this run with less, so please either raise `max_disk_gb` to at least that "
