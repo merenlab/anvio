@@ -148,10 +148,16 @@ def sanity_check_accessions(accessions, source_of_accessions):
 def infer_read_type(platform, library_layout, model):
     """Work out what kind of reads an SRA run holds, from NCBI's own description of it.
 
-    Returns a (read_type, lr_technology) tuple. `lr_technology` is one of anvi'o's long-read
-    technology tokens when it can be determined with confidence, and None otherwise (either
-    because these are short reads, or because the instrument model does not say which PacBio
-    chemistry was used)."""
+    Returns a (read_type, lr_technology) tuple, either of which may be None when NCBI's
+    description does not settle the question.
+
+    A None `read_type` means NCBI reports a sequencing platform anvi'o has not learned about.
+    Guessing there means running a short-read assembler on long reads, or the other way around,
+    so the run is instead written down with everything NCBI did say and an empty read_type for a
+    human to fill in; `sanity_check_read_types_are_known` is what stops a workflow until one
+    does. A None `lr_technology` means the technology could not be pinned down, either because
+    these are short reads or because the instrument model does not say which PacBio chemistry was
+    used."""
 
     platform = (platform or '').strip().upper()
     library_layout = (library_layout or '').strip().upper()
@@ -170,11 +176,7 @@ def infer_read_type(platform, library_layout, model):
     if platform in SHORT_READ_PLATFORMS:
         return (PAIRED_END_SHORT_READS if library_layout == 'PAIRED' else SINGLE_END_SHORT_READS), None
 
-    raise ConfigError(f"Anvi'o has no idea what to make of the sequencing platform '{platform}', which is what NCBI "
-                      f"reports for one of your accessions. It could be a platform anvi'o has not learned about yet. "
-                      f"If you know what kind of reads these are, you can say so yourself by editing the "
-                      f"`read_type` column of your SRA metadata file (use '{PAIRED_END_SHORT_READS}' for paired-end "
-                      f"short reads or '{LONG_READS}' for long reads), and anvi'o will take your word for it.")
+    return None, None
 
 
 def predict_fastq_bytes(entry):
@@ -425,7 +427,9 @@ def read_cache(cache_path):
                  'size_mb': _as_int(row.get('size_mb')),
                  'source': (row.get('source') or SOURCE_NCBI).strip()}
 
-        if entry['read_type'] not in (PAIRED_END_SHORT_READS, SINGLE_END_SHORT_READS, LONG_READS):
+        # An empty read_type is anvi'o's own way of saying it could not tell, and is left for
+        # `sanity_check_read_types_are_known` to complain about where the message can be useful.
+        if entry['read_type'] and entry['read_type'] not in (PAIRED_END_SHORT_READS, SINGLE_END_SHORT_READS, LONG_READS):
             raise ConfigError(f"The accession {accession} in your SRA metadata file at '{cache_path}' has a "
                               f"`read_type` of '{entry['read_type']}', which anvi'o does not recognize. It must be "
                               f"one of '{PAIRED_END_SHORT_READS}' (paired-end short reads), "
@@ -501,6 +505,37 @@ def get_metadata_for_accessions(accessions, cache_path, source_of_accessions, fe
                           f"https://www.ncbi.nlm.nih.gov/sra before trying again.")
 
     return {a: entries[a] for a in accessions}
+
+
+def sanity_check_read_types_are_known(entries, cache_path):
+    """Refuse to carry on while anvi'o does not know what kind of reads an accession holds.
+
+    This deliberately runs after the metadata file has been written rather than at the moment the
+    unfamiliar platform turned up. The row is on disk by now, carrying everything NCBI did say
+    about the run and an empty `read_type`, so the line this error asks someone to edit is a line
+    that actually exists."""
+
+    undetermined = sorted(a for a, e in entries.items() if not e['read_type'])
+
+    if not undetermined:
+        return
+
+    details = '\n'.join(f"    {a} ({entries[a]['platform'] or 'no platform reported'}, "
+                        f"{entries[a]['model'] or 'no model reported'})" for a in undetermined[:10])
+
+    raise ConfigError(f"NCBI describes {terminal.pluralize('accession', len(undetermined))} in your samples with a "
+                      f"sequencing platform anvi'o has not learned about, so it cannot tell what kind of reads "
+                      f"{'they hold' if len(undetermined) > 1 else 'it holds'}, and it would rather say so than "
+                      f"guess: reading long reads as short ones (or the other way around) goes wrong slowly and "
+                      f"expensively. Here {'they are' if len(undetermined) > 1 else 'it is'}:\n\n{details}\n\n"
+                      f"Anvi'o has written {'these rows' if len(undetermined) > 1 else 'this row'} to "
+                      f"'{cache_path}' with everything NCBI did say and an empty `read_type` column. If you know "
+                      f"what {'these are' if len(undetermined) > 1 else 'this is'}, fill that column in — "
+                      f"'{PAIRED_END_SHORT_READS}' for paired-end short reads, '{LONG_READS}' for long reads, or "
+                      f"'{SINGLE_END_SHORT_READS}' for single-end short reads (which the metagenomics workflow "
+                      f"cannot process anyway) — set `source` to '{SOURCE_USER}' on the "
+                      f"{'rows' if len(undetermined) > 1 else 'row'} you touch, and run this again. Anvi'o will "
+                      f"take your word for it, and will not overwrite what you wrote.")
 
 
 def warn_about_long_read_technologies(entries, run=run, cache_path=None):

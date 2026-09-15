@@ -111,6 +111,7 @@ class SRAReadsModule:
                                                             source_of_accessions=f"'{samples_txt_path}'",
                                                             run=self.run)
 
+        sra.sanity_check_read_types_are_known(self.sra_metadata, cache_path)
         self.sanity_check_sra_read_types(samples_txt_path)
         self.sanity_check_samples_do_not_mix_sources(samples_txt, samples_txt_path)
 

@@ -107,6 +107,23 @@ ASSERT_FILE_CONTAINS all-against-all-output.txt "EVERY SAMPLE WILL BE ON DISK AT
 SNAKEMAKE_DAG config-all-against-all.json > dag-all-against-all.txt
 ASSERT_FILE_CONTAINS dag-all-against-all.txt "01_SRA-all-against-all/released/every-sample-at-once.released"
 
+# A platform anvi'o has not learned about does not stop the lookup: the run is written down
+# with everything NCBI did say and an empty read_type, so that the row this error asks you to
+# edit is one that exists. The workflow then refuses until someone fills it in.
+INFO "An unfamiliar sequencing platform is written down with an empty read_type"
+cp SRA-METADATA.txt SRA-METADATA-unknown.txt
+printf 'SRR9999999\t\t\tHELICOS\tHeliscope\tSINGLE\t1000\t300000\t1\tncbi\n' >> SRA-METADATA-unknown.txt
+printf 'sample\tsra_accession\nS07\tSRR9999999\n' > samples-unknown-platform.txt
+$ANVIO_PYTHON -c "
+import json
+config = json.load(open('config-references.json'))
+config['samples_txt'] = 'samples-unknown-platform.txt'
+config['download_reads']['metadata_cache'] = 'SRA-METADATA-unknown.txt'
+json.dump(config, open('config-unknown-platform.json', 'w'), indent=4)
+"
+EXPECT_FAIL "an accession whose sequencing platform anvi'o does not recognize" \
+    anvi-run-workflow -w metagenomics -c config-unknown-platform.json --dry-run
+
 EXPECT_FAIL "single-end short reads, which this workflow cannot process" \
     anvi-run-workflow -w metagenomics -c config-single-end.json --dry-run
 

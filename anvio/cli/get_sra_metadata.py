@@ -51,7 +51,8 @@ def run_program():
 
     read_types = {}
     for entry in entries.values():
-        read_types[entry['read_type']] = read_types.get(entry['read_type'], 0) + 1
+        label = entry['read_type'] or 'could not be determined'
+        read_types[label] = read_types.get(label, 0) + 1
 
     total_gb = sum(sra.predict_peak_disk_usage_in_gb(e) for e in entries.values())
 
@@ -61,6 +62,16 @@ def run_program():
         run.info(f"  {read_type}", read_types[read_type])
     run.info('Peak disk space if all were downloaded at once', f"{total_gb:.1f} GB")
     run.info('Metadata file', args.output_file, nl_after=1)
+
+    undetermined = sorted(a for a, e in entries.items() if not e['read_type'])
+    if undetermined:
+        run.warning(f"NCBI describes {terminal.pluralize('run', len(undetermined))} in this set with a sequencing "
+                    f"platform anvi'o has not learned about, so it could not tell what kind of reads "
+                    f"{'they hold' if len(undetermined) > 1 else 'it holds'}: "
+                    f"{', '.join(undetermined[:10])}{' (and more)' if len(undetermined) > 10 else ''}. Their "
+                    f"`read_type` column in '{args.output_file}' is empty, and workflows will refuse to run until "
+                    f"it is filled in. If you know what these are, write '{sra.PAIRED_END_SHORT_READS}' or "
+                    f"'{sra.LONG_READS}' in there and set `source` to '{sra.SOURCE_USER}' on those rows.")
 
     if sra.SINGLE_END_SHORT_READS in read_types:
         run.warning(f"{terminal.pluralize('run', read_types[sra.SINGLE_END_SHORT_READS])} in this set "
