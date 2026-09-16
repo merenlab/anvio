@@ -656,6 +656,11 @@ class Pangenome(object):
 
         utils.is_program_exists('mcl')
 
+        if not self.skip_alignments:
+            # instantiating the aligner here is what makes anvi'o complain about a missing or
+            # unsupported alignment program at the very beginning of the analysis.
+            aligners.select(self.align_with, quiet=True)()
+
 
     def check_project_name(self):
         # check the project name:
