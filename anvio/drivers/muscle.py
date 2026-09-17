@@ -24,6 +24,9 @@ run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
 
+# asked about muscle version only once per process rather than once per alignment
+major_version_cache = {}
+
 
 class Muscle:
     def __init__(self, progress=progress, run=run, program_name = 'muscle'):
@@ -103,11 +106,15 @@ class Muscle:
     def get_major_version(self):
         """Get the MUSCLE major version."""
 
+        if self.program_name in major_version_cache:
+            return major_version_cache[self.program_name]
+
         output, ret_code = utils.get_command_output_from_shell('%s -version' % self.program_name)
         output = output.decode('utf-8', errors='replace') if isinstance(output, bytes) else output
         output = output.lower()
 
         if output.startswith('muscle 5') or output.startswith('muscle v5'):
+            major_version_cache[self.program_name] = 5
             return 5
 
         if output.startswith('muscle v3'):
