@@ -354,6 +354,11 @@ rule align_sequences:
         Muscle()
         additional_params = params.additional_params or ""
 
+        # snakemake reserves `threads` cores for this job, so MUSCLE is told to stay within
+        # them rather than reach for every core on the machine
+        if "-threads" not in additional_params.split():
+            additional_params = f"{additional_params} -threads {threads}".strip()
+
         if "-super5" in additional_params.split():
             additional_params = " ".join([param for param in additional_params.split() if param != "-super5"])
             shell("muscle -super5 {input.source} -output {output.fasta} {additional_params} 2> {log}")

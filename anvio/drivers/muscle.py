@@ -29,12 +29,18 @@ major_version_cache = {}
 
 
 class Muscle:
-    def __init__(self, progress=progress, run=run, program_name = 'muscle'):
+    def __init__(self, progress=progress, run=run, program_name = 'muscle', num_threads=1):
         """A class to take care of muscle alignments."""
         self.progress = progress
         self.run = run
 
         self.program_name = program_name
+
+        # MUSCLE 5 helps itself to every core on the machine unless it is told otherwise, and
+        # anvi'o already runs many of these alignments in parallel. one thread per alignment
+        # leaves the parallelism to the caller, who is the one that knows how much of the
+        # machine it is using.
+        self.num_threads = num_threads
 
         utils.is_program_exists(self.program_name)
 
@@ -78,6 +84,10 @@ class Muscle:
                 additional_params.remove('-super5')
 
             cmd_line += additional_params
+
+        # a user who asks for a specific number of threads through MUSCLE_PARAMS gets it
+        if '-threads' not in cmd_line:
+            cmd_line += ['-threads', str(self.num_threads)]
 
         ret_val = utils.run_command(cmd_line, log_file_path)
 
