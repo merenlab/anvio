@@ -859,6 +859,11 @@ class Pangenome(object):
 
         utils.is_program_exists('mcl')
 
+        if not self.skip_alignments:
+            # instantiating the aligner here is what makes anvi'o complain about a missing or
+            # unsupported alignment program at the very beginning of the analysis.
+            aligners.select(self.align_with, quiet=True)()
+
 
     def check_project_name(self):
         # check the project name:
@@ -1584,7 +1589,7 @@ class Pangenome(object):
             # everything goes into the trash bin. to prevent that, here we have a try/except
             # block with lots of warnings if something goes wrong.
             try:
-                alignments = aligner(run=r).run_stdin(gene_sequences_in_gene_cluster)
+                alignments = aligner(run=r).run_default(gene_sequences_in_gene_cluster)
                 alignment_was_successful = True
             except:
                 # realm of sad face. before we continue to spam the user with error messages,
