@@ -198,6 +198,13 @@ D = {
              'required': True,
              'help': "Anvi'o pan database"}
                 ),
+    'pan-or-pan-graph-db': (
+            ['-p', '--pan-or-pan-graph-db'],
+            {'metavar': "PAN_OR_PAN_GRAPH_DB",
+             'required': True,
+             'help': "An anvi'o pan-db or pan-graph-db. Which one it is is worked out from the database "
+                     "itself, so either may be given here."}
+                ),
     'pan-or-profile-db': (
             ['-p', '--pan-or-profile-db'],
             {'metavar': "PAN_OR_PROFILE_DB",
@@ -823,10 +830,21 @@ D = {
             ['-m', '--metagenome-mode'],
             {'default': False,
              'action': 'store_true',
-             'help': "[PER-CONTIG ESTIMATION] Treat a given contigs database as an unbinned metagenome rather than "
-                     "treating it as a single genome. Since we don't know which contigs go together, we'll estimate "
-                     "metabolism for each contig independently. Can be resource-intensive (particularly with memory). "
-                     "Not recommended to combine with --matrix-format or --get-raw-data-as-json."}
+             'help': "Treat a given contigs database as an unbinned metagenome rather than "
+                     "treating it as a single genome."}
+                ),
+    'per-contig-estimates': (
+            ['--per-contig-estimates'],
+            {'default': False,
+             'action': 'store_true',
+             'dest': 'metagenome_mode',
+             'help': "Treat each contigs database as an unbinned metagenome rather than treating it as a single "
+                     "genome, and estimate metabolism for each contig independently rather than for the (meta)genome "
+                     "as a whole. Since we don't know which contigs go together, we'll estimate metabolism for each "
+                     "contig independently. This flag is compatible with individual contigs databases, external genomes, "
+                     "or internal genomes input. However, please note that it can be resource-intensive (particularly with "
+                     " memory). It is therefore NOT recommended to combine this flag with --matrix-format or "
+                     "--get-raw-data-as-json when analyzing very large metagenomes."}
                 ),
     'scg-name-for-metagenome-mode': (
             ['-S','--scg-name-for-metagenome-mode'],
@@ -1334,6 +1352,23 @@ D = {
                      "different bins). Thus, when working on functional enrichment analyses or displaying functions "
                      "anvi'o will only use the best hit for any gene that has multiple hits by default. But you can turn "
                      "that behavior off explicitly and show anvi'o who is the boss by using this flag."}
+                ),
+    'add-per-population-copy-number': (
+            ['--add-per-population-copy-number'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Request an additional output matrix that reports the per-population copy number (PPCN) of each "
+                     "function in every metagenomic assembly (or long-read metagenome). anvi'o divides the frequency of a "
+                     "function in a given assembly by the number of populations estimated to be present in that same "
+                     "assembly (estimated from single-copy core genes: the mode of the number of hits to the single-copy "
+                     "core genes of each domain, summed across Bacteria, Archaea, and Eukarya, just like "
+                     "`anvi-display-contigs-stats` does). This normalization is useful for metagenomic assemblies, where the "
+                     "raw frequency of a function scales with the number of populations in the assembly and is therefore "
+                     "not comparable across samples of vastly different community sizes. It follows the per-population copy "
+                     "number normalization introduced by Iva Veseli (Veseli et al. 2025). It requires that your "
+                     "contigs databases have been annotated with single-copy core genes via `anvi-run-hmms`, and it works "
+                     "only with an external-genomes file (`-e`), since population normalization is meaningful for whole "
+                     "metagenomic assemblies but not for individual genomes or a genomes storage database."}
                 ),
 
     'include-gc-identity-as-function': (
@@ -1899,6 +1934,32 @@ D = {
             {'metavar': 'FILE_PATH',
              'help': "Text file for gene clusters (each line should contain be a unique gene cluster id)."}
                 ),
+    'gene-cluster-ids': (
+            ['--gene-cluster-ids'],
+            {'metavar': 'GENE_CLUSTER_IDS',
+             'type': str,
+             'help': "Gene cluster ids to focus on. Multiple of them can be declared, separated by a comma "
+                     "(e.g., --gene-cluster-ids GC_00000001,GC_00000002). This is the gene-cluster analogue of "
+                     "--gene-caller-ids. If you declare nothing, anvi'o may assume all of them, depending on the "
+                     "program."}
+                ),
+    'gene-clusters-of-interest': (
+            ['--gene-clusters-of-interest'],
+            {'metavar': 'FILE',
+             'help': "A file with anvi'o gene cluster ids. There should be only one column in the file, and each "
+                     "line should correspond to a unique gene cluster id (without a column header). This is the "
+                     "gene-cluster analogue of --genes-of-interest."}
+                ),
+    'select-representative': (
+            ['--select-representative'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Instead of selecting every gene in each gene cluster of interest, select a single "
+                     "representative gene per gene cluster. Anvi'o picks the representative using a medoid-based "
+                     "strategy over the aligned amino acid sequences (it discards length outliers and prefers "
+                     "complete gene calls), so this requires a pangenome for which gene-cluster alignments were "
+                     "computed. The representative is a real gene from the cluster (not a consensus sequence)."}
+                ),
     'split-output-per-gene-cluster': (
             ['--split-output-per-gene-cluster'],
             {'default': False,
@@ -1915,8 +1976,8 @@ D = {
                      "using a medoid-based strategy: it discards length outliers, prefers complete "
                      "(non-partial) gene calls, and selects the sequence that is most similar to the others "
                      "in the cluster. The resulting FASTA uses gene cluster names as deflines and contains "
-                     "no gap characters. This flag requires a pangenome for which gene alignments were "
-                     "computed (i.e., not created with `--skip-alignments`), and cannot be combined with "
+                     "no gap characters. This flag requires a pangenome for which gene alignments were computed "
+                     "(i.e., not created with `--skip-alignments`), and cannot be combined with "
                      "`--concatenate-gene-clusters` or `--report-DNA-sequences`."}
                 ),
     'bin-id': (
@@ -2264,17 +2325,32 @@ D = {
              'type': str,
              'help': "Directory path for output files"}
                 ),
-    'pan-graph-yaml': (
-            ['--pan-graph-yaml'],
-            {'metavar': 'YAML',
-             'type': str,
-             'help': "A yaml file containing raw gene cluster order for testing the anvi'o pan graph."}
-                ),
     'pan-graph-db': (
             ['-p', '--pan-graph-db'],
             {'metavar': "PAN_GRAPH_DB",
              'required': True,
              'help': "Anvi'o pangenome graph database."}
+                ),
+    'diamond-search-results': (
+            ['-d', '--diamond-search-results'],
+            {'metavar': 'TSV',
+             'type': str,
+             'help': "Path to anvi-pan-genome's diamond-search-results.txt "
+                     "(the fully-expanded, 12-column DIAMOND fmt 6 file; NOT "
+                     "the .unique version). The pan-graph engine consumes "
+                     "this to build cross-genome AAI edges."}
+                ),
+    'tables-dir': (
+            ['--tables-dir'],
+            {'metavar': 'DIR',
+             'default': None,
+             'type': str,
+             'help': "Optional directory to dump intermediate tables "
+                     "(lines.txt, edges.tsv, genome_map.tsv, "
+                     "orientation.tsv, ranking.tsv) produced by the pan-graph "
+                     "engine. These artifacts are not required by anvi'o "
+                     "downstream consumers; they are for inspection only. If "
+                     "unset, no tables are written."}
                 ),
     'graph-nodes': (
             ['--graph-nodes'],
@@ -2283,12 +2359,31 @@ D = {
              'help': "Nodes in an anvi'o pangenome graph database..",
              'type': str}
                 ),
+    'reset-gene-caller-ids': (
+            ['--reset-gene-caller-ids'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, the gene caller ids in the resulting contigs databases will match those "
+                     "in the source contigs databases, so you can trace each gene back to where it came from. "
+                     "If you use this flag, anvi'o will instead reset the gene caller ids so they start from 0 "
+                     "in each output database (which was the historical default behavior)."}
+                ),
     'region-id': (
             ['--region-id'],
-            {'metavar': "INT",
+            {'metavar': "REGION_ID",
              'required': False,
-             'help': "A region ID from an anvi'o pangenome graph database. The program will resolve the "
-                     "two boundary nodes (by position) of the region and export the loci between them.",
+             'help': "The number of a region within a component of an anvi'o pangenome graph database "
+                     "(e.g. '5' for the fifth region). Must be used together with `--component-id`. The "
+                     "program will resolve the two boundary nodes (by position) of the region and export "
+                     "the loci between them.",
+             'type': int}
+                ),
+    'component-id': (
+            ['--component-id'],
+            {'metavar': "COMPONENT_ID",
+             'required': False,
+             'help': "The number of a component in an anvi'o pangenome graph database (e.g. '1' for the "
+                     "first/largest component). Used together with `--region-id` to identify a region.",
              'type': int}
                 ),
     'output-file': (
@@ -2382,6 +2477,34 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Just store the raw output without any processing of the primary data structure."}
+                ),
+    'tree-output': (
+            ['--tree-output'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Rather than showing you a table where each row describes the entire lineage of a single "
+                     "item, display the results as a hierarchical tree in your terminal, where each node shows "
+                     "the number of items that were assigned to that taxon or to anything under it. This is a "
+                     "much better way to get a quick sense of the taxonomic make up of a metagenome (based on "
+                     "SCGs, anticodons, or who knows what else, since the items will depend on the program "
+                     "you use and your parameters). Declaring this flag will not influence any of the output "
+                     "files you may have asked for. While they will continue describing the very same results "
+                     "in their usual TAB-delimited fashion, this flag will add more fabulous to your terminal."}
+                ),
+    # NOTE: the default here is None rather than 't_genus' even though 't_genus' is the effective default
+    # (which lives in the class `TaxonomyTree`). This is the case just to make sure anvi'o can know if
+    # the user has EXPLICITLY asked for a taxonomic level, so it CAN complain confidently if they did it
+    # without also asking for a tree :) This is how we lay the path that leads to high quality complaints,
+    # of which we obviously are very proud :p
+    'tree-output-level': (
+            ['--tree-output-level'],
+            {'default': None,
+             'type': str,
+             'choices': constants.levels_of_taxonomy,
+             'help': "The deepest taxonomic level to show when you are asking for a tree with `--tree-output`. "
+                     "The default is 't_genus', which means the tree will not show you species names. Please "
+                     "note that this parameter has nothing to do with the parameter `--taxonomic-level`, and it "
+                     "will only influence the tree that is displayed in your terminal."}
                 ),
     'dry-run': (
             ['--dry-run'],
@@ -3002,14 +3125,6 @@ D = {
              'action': 'store_true',
              'help': "Use this flag to request that coverage and detection values be added as columns in long-format "
                      "output files. You must provide the profile database corresonding to your contigs db for this to work."}
-                ),
-    'add-copy-number': (
-            ['--add-copy-number'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "Use this flag to request that module copy number (the number of complete copies of a module, or path "
-                     "through a module) be added to your output files. In long-format mode, it will be an additional column. "
-                     "In matrix mode, it will be an additional matrix file."}
                 ),
     'include-kos-not-in-kofam': (
             ['--include-kos-not-in-kofam'],
@@ -4190,6 +4305,21 @@ D = {
              'help': "Set the minimum number of codons required in a gene. When functions are returned "
                      "rather than genes, this filter is applied to genes before grouping them as "
                      "functions."}
+        ),
+    'ignore-start-codons': (
+            ['--ignore-start-codons'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Ignore start codons in the analysis. Besides ATG, GTG and TTG are notable minority "
+                     "start codons in bacteria and archaea. With start codons removed, frequencies only "
+                     "represent elongation codons. This makes codon usage bias calculations more accurate, "
+                     "because initiation GTG and TTG, like ATG, encode fMet in bacteria and Met in archaea "
+                     "and eukaryotes, but anvi'o treats them like elongation codons encoding Val and Leu, "
+                     "respectively, in the standard genetic code. ATG does not contribute to codon usage "
+                     "bias given the standard genetic code, because it lacks synonymous codons, being the "
+                     "only Met codon. Note that `--ignore-start-codons` removes start codons from genes in "
+                     "the earliest steps of the analysis, which influences `--gene-min-codons`: the number "
+                     "of codons in a gene never counts the start codon."}
         ),
     'relative': (
             ['--relative'],

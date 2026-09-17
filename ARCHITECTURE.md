@@ -93,7 +93,7 @@ The core data model. Each analysis type has its own versioned SQLite database fi
 | `profile` | 40 | `ProfileDatabase` | Per-sample coverage/variability from BAM files |
 | `pan` | 21 | `PanDatabase` | Gene clusters from pangenomics |
 | `genes` | 6 | `GenesDatabase` | Gene-level stats split out from profile |
-| `structure` | 2 | `StructureDatabase` | Protein 3D structure predictions |
+| `structure` | 4 | `StructureDatabase` | Protein 3D structure predictions |
 | `trnaseq` | 2 | `TRNASeqDatabase` | tRNA-seq profiling |
 | `genomestorage` | 7 | (HDF5-based) | Multi-genome storage for pangenomics |
 

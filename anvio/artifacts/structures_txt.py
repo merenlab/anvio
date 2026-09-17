@@ -3,15 +3,10 @@
 Generic loader for the anvi'o `structures-txt` artifact: a two-column TSV that
 maps a gene identifier to the path of a predicted-protein-structure file.
 
-Two consumers exist today:
-- `anvi-pan-genome` (structure-informed pangenomics) where the IDs are gene
-  cluster IDs (the FASTA defline of the GC representative).
-- `anvi-gen-structure-database` (single-genome structure DB) where the IDs are
-  gene-caller-ids in a contigs-db. That consumer subclasses StructuresTxt as
-  `ExternalStructuresFile` and adds contigs-db-aware sanity checks.
+The consumer today is `anvi-pan-genome` (structure-informed pangenomics),
+where the IDs are gene cluster IDs (the FASTA defline of the GC representative).
 
-The legacy column header `gene_callers_id` from the `external-structures`
-artifact is accepted as an alias of `gene_id`.
+The column header `gene_callers_id` is accepted as an alias of `gene_id`.
 """
 
 import anvio.terminal as terminal

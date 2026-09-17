@@ -9,17 +9,16 @@ The file has exactly two columns:
 |GC_00000003|path/to/structures/GC_00000003.cif.gz|
 |(...)|(...)|
 
-The meaning of `gene_id` is set by whichever anvi'o program is consuming the file:
+The meaning of `gene_id` is set by whichever anvi'o program is consuming the file. For %(anvi-pan-genome)s in structure-informed pangenomics, `gene_id` is a **gene cluster ID** (the FASTA defline of the GC representative emitted by the conventional pangenome).
 
-- For %(anvi-pan-genome)s in structure-informed pangenomics, `gene_id` is a **gene cluster ID** (the FASTA defline of the GC representative emitted by the conventional pangenome).
-- For %(anvi-gen-structure-database)s and %(anvi-update-structure-database)s, `gene_id` is a **gene-callers-id** in the source %(contigs-db)s. The legacy column header `gene_callers_id` is also accepted for backward compatibility — see %(external-structures)s for the structure-db-specific notes.
+If you want to import pre-computed structures into a %(structure-db)s instead, that is a different artifact with its own header layouts: see %(external-structures)s.
 
 ### Format and sanity checks
 
 Anvi'o validates a `structures-txt` file with the following rules:
 
 - The file must be tab-delimited and have exactly two columns.
-- The first column header must be `gene_id` (the legacy `gene_callers_id` is still accepted for the structure-db workflow).
+- The first column header must be `gene_id` (`gene_callers_id` is accepted as an alias).
 - The second column header must be `path`.
 - Each `gene_id` must appear at most once.
 - Each row must have a non-empty `gene_id` and a non-empty `path`.

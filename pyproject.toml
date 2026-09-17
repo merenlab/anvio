@@ -76,7 +76,8 @@ dependencies = [
     "biopython",
     "reportlab",
     "pymupdf",
-    "tomli==2.2.1"
+    "tomli==2.2.1",
+    "pyyaml"
 ]
 
 [project.urls]
@@ -153,9 +154,11 @@ Contact = "https://anvio.org/people"
 "anvi-export-table"                                 = "anvio.cli.export_table:main"
 "anvi-gen-contigs-database"                         = "anvio.cli.gen_contigs_database:main"
 "anvi-gen-fixation-index-matrix"                    = "anvio.cli.gen_fixation_index_matrix:main"
+"anvi-gen-function-matrix"                          = "anvio.cli.gen_function_matrix:main"
 "anvi-gen-gene-consensus-sequences"                 = "anvio.cli.gen_gene_consensus_sequences:main"
 "anvi-gen-gene-level-stats-databases"               = "anvio.cli.gen_gene_level_stats_databases:main"
 "anvi-gen-genomes-storage"                          = "anvio.cli.gen_genomes_storage:main"
+"anvi-gen-hmm-hits-matrix"                          = "anvio.cli.gen_hmm_hits_matrix:main"
 "anvi-gen-network"                                  = "anvio.cli.gen_network:main"
 "anvi-gen-pan-representative"                       = "anvio.cli.gen_pan_representative:main"
 "anvi-gen-phylogenomic-tree"                        = "anvio.cli.gen_phylogenomic_tree:main"
@@ -278,6 +281,7 @@ Contact = "https://anvio.org/people"
 "anvi-script-get-collection-info"                        = "anvio.cli.get_collection_info:main"
 "anvi-script-get-coverage-from-bam"                      = "anvio.cli.get_coverage_from_bam:main"
 "anvi-script-get-hmm-hits-per-gene-call"                 = "anvio.cli.get_hmm_hits_per_gene_call:main"
+"anvi-script-get-sra-metadata"                           = "anvio.cli.get_sra_metadata:main"
 "anvi-script-hmm-to-hmm-directory"                       = "anvio.cli.hmm_to_hmm_directory:main"
 "anvi-script-kofam-accessions-to-hmms-directory"         = "anvio.cli.kofam_accessions_to_hmms_directory:main"
 "anvi-script-merge-collections"                          = "anvio.cli.merge_collections:main"
@@ -294,6 +298,7 @@ Contact = "https://anvio.org/people"
 "anvi-script-variability-to-vcf"                         = "anvio.cli.variability_to_vcf:main"
 "anvi-script-gen-fasta-txt"                              = "anvio.cli.gen_fasta_txt:main"
 "anvi-script-mod-config-json"                            = "anvio.cli.mod_config_json:main"
+"anvi-script-gen-pan-graph-video"                        = "anvio.cli.gen_pan_graph_video:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

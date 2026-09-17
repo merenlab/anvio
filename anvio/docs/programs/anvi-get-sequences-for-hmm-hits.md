@@ -27,7 +27,7 @@ anvi-get-sequences-for-hmm-hits -c %(contigs-db)s \
 
 ### Learn available genes in a given HMM source
 
-Please note that the flag `--list-available-gene-names` will give you the list of genes in an **HMM collection** (for example, for `Bacteria_71` in the following use case), and it will not give you the list of genes in your genomes or metagenomes that are matching to them. You can generate a table of HMMs across your genomes or metagenomes with another program, %(anvi-script-gen-hmm-hits-matrix-across-genomes)s.
+Please note that the flag `--list-available-gene-names` will give you the list of genes in an **HMM collection** (for example, for `Bacteria_71` in the following use case), and it will not give you the list of genes in your genomes or metagenomes that are matching to them. You can generate a table of HMMs across your genomes or metagenomes with another program, %(anvi-gen-hmm-hits-matrix)s.
 
 {{ codestart }}
 anvi-get-sequences-for-hmm-hits -c %(contigs-db)s \
@@ -308,12 +308,12 @@ If you want to keep only the strongest hit for each gene within a *contig* you c
 
 ### Performance optimization for aligners by passing additional params
 
-When `--concatenate-genes` flag is used for phylogenomics applications, %(anvi-gen-phylogenomic-tree)s relies on sequence alignment using `muscle` by default. For very large number of sequences this step may fail due to various reasons, such as running out of memory, exceeding the time allocated for the job, etc. If you are having such performance issues, you may want to pass additional parameters to the aligner. For this, you can use BASH environmental variables. For instance, if you wish `muscle` to do only two iterations of alignment and stop after, you can pass that request to the anvi'o driver for `muscle` the following way by exporting a shell varaible called `MUSCLE_PARAMS`:
+When `--concatenate-genes` flag is used for phylogenomics applications, %(anvi-gen-phylogenomic-tree)s relies on sequence alignment using `muscle` by default. For very large number of sequences this step may fail due to various reasons, such as running out of memory, exceeding the time allocated for the job, etc. If you are having such performance issues, you may want to pass additional parameters to the aligner. For this, you can use BASH environmental variables. For instance, if you wish MUSCLE 5 to use the Super5 algorithm, you can pass that request to the anvi'o driver for `muscle` the following way by exporting a shell variable called `MUSCLE_PARAMS`:
 
 ``` bash
 # export a shell variable with additional params you learned from
 # the help menu of muscle:
-export MUSCLE_PARAMS="-maxiters 2"
+export MUSCLE_PARAMS="-super5"
 
 # then run anvi-get-sequences-for-hmm-hits exactly the same way
 anvi-get-sequences-for-hmm-hits (...)

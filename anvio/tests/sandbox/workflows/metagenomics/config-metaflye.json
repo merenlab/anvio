@@ -151,7 +151,7 @@
         "--meta": true,
         "--pacbio-raw": "",
         "--pacbio-corr": "",
-        "--pacbio-hifi": false,
+        "--pacbio-hifi": "",
         "--nano-raw": true,
         "--nano-corr": "",
         "--nano-hq": "",
@@ -342,6 +342,6 @@
         "LOGS_DIR": "00_LOGS-metaflye"
     },
     "max_threads": "",
-    "config_version": "5",
+    "config_version": "6",
     "workflow_name": "metagenomics"
 }

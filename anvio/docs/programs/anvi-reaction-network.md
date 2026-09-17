@@ -59,7 +59,6 @@ The resulting JSON file can be directly used by %(anvi-draw-kegg-pathways)s via 
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-network-json /path/to/network.json \
-                        --ko \
                         -o output_maps/
 {{ codestop }}
 

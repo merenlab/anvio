@@ -34,8 +34,15 @@ from anvio.workflows.snakemake_utils import (
     D as D,
     regex_from_ids as regex_from_ids,
     get_conda_yaml_path as get_conda_yaml_path,
+    get_anvio_conda_yaml_path as get_anvio_conda_yaml_path,
     get_conda_env_prefix as get_conda_env_prefix,
     gunzip_file as gunzip_file,
+    get_lr_technology_presets as get_lr_technology_presets,
+    get_lr_technology_map as get_lr_technology_map,
+    get_valid_lr_technologies as get_valid_lr_technologies,
+    get_lr_preset as get_lr_preset,
+    warn_if_tool_version_untested as warn_if_tool_version_untested,
+    FLYE_READ_TYPE_FLAGS as FLYE_READ_TYPE_FLAGS,
 )
 
 
@@ -354,6 +361,30 @@ class WorkflowSuperClass:
             return global_max_threads_value
 
 
+    def pre_execution_checks(self):
+        """Hook for checks/notices that should run only on a real execution.
+
+        Called by go() after the dry-run early return, so it runs once in the driver process and
+        NOT during dry runs or Snakemake DAG rebuilds. Subclasses override; the base is a no-op.
+        """
+        pass
+
+    def config_requires_use_conda(self):
+        """Whether Snakemake should be run with '--use-conda' for this config.
+
+        True when at least one rule that is NOT explicitly disabled ('run': false) asks for a
+        conda YAML — a user 'conda_yaml' path, or the anvi'o-shipped env via 'use_anvio_conda_yaml'.
+        We key on the user's config (not merged defaults) so legacy configs without these keys are
+        unaffected, and we ignore rules with 'run': false so a disabled rule that merely carries
+        'use_anvio_conda_yaml: true' (e.g. the optional QC rules) does not force '--use-conda' onto
+        an otherwise conda-free run. Rules with no 'run' key (e.g. minimap2/bowtie, which run
+        conditionally on the data) still count. 'conda_env' does NOT trigger this — it is handled
+        by a `conda run -n` prefix, not --use-conda.
+        """
+        return any(isinstance(v, dict) and v.get('run') is not False
+                   and (v.get('conda_yaml') or v.get('use_anvio_conda_yaml') is True)
+                   for v in (self.config or {}).values())
+
     def go(self, skip_dry_run=False):
         """Do the actual running"""
 
@@ -366,6 +397,9 @@ class WorkflowSuperClass:
 
         if self.dry_run_only:
             return
+
+        # real run only (past the dry-run early return): emit any run-time-only notices once
+        self.pre_execution_checks()
 
         workflow_manifest_path = None
         original_manifest_env_var = os.environ.get('ANVIO_WORKFLOW_MANIFEST_PATH')
@@ -393,8 +427,9 @@ class WorkflowSuperClass:
             sys.argv.extend(['--log-handler-script',
                              os.path.join(get_path_to_workflows_dir(), 'scripts', 'snakemake_log_handler.py')])
 
-        # if any conda yaml is provided for a rule, then add '--use-conda' to the snakemake command:
-        if any(isinstance(v, dict) and v.get('conda_yaml') for v in (self.config or {}).values()):
+        # if any enabled rule uses a conda YAML, add '--use-conda' so Snakemake builds/activates it
+        # (see config_requires_use_conda() for the exact rule).
+        if self.config_requires_use_conda():
             sys.argv.append('--use-conda')
 
         if self.additional_params:
@@ -466,8 +501,8 @@ class WorkflowSuperClass:
         args = ['snakemake', '--snakefile', get_workflow_snake_file_path(self.name),
                 '--configfile', self.config_file, '--dryrun', '--quiet']
 
-        # if any conda yaml is provided for a rule, then add '--use-conda' to the snakemake command:
-        if any(isinstance(v, dict) and v.get('conda_yaml') for v in (self.config or {}).values()):
+        # add '--use-conda' when an enabled rule needs it (see config_requires_use_conda()).
+        if self.config_requires_use_conda():
             args.append('--use-conda')
 
         if self.save_workflow_graph:
