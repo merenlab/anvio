@@ -1,6 +1,7 @@
 """Interface to muscle."""
 
 import os
+import re
 import shutil
 
 import anvio
@@ -121,21 +122,42 @@ class Muscle:
 
         output, ret_code = utils.get_command_output_from_shell('%s -version' % self.program_name)
         output = output.decode('utf-8', errors='replace') if isinstance(output, bytes) else output
-        output = output.lower()
 
-        if output.startswith('muscle 5') or output.startswith('muscle v5'):
-            major_version_cache[self.program_name] = 5
-            return 5
+        # MUSCLE reports itself as `muscle 5.3.osx64 []` or `MUSCLE v3.8.1551 by Robert C. Edgar`.
+        # anything else the shell has to say (an environment activation notice, a warning about a
+        # library) is merged into this output too, so the version is looked for on every line
+        # rather than only at the very beginning of it.
+        major_version = None
+        for line in output.lower().splitlines():
+            version_match = re.search(r'^muscle\s+v?(\d+)', line.strip())
+            if version_match:
+                major_version = int(version_match.group(1))
+                break
 
-        if output.startswith('muscle v3'):
+        if major_version == 5:
+            major_version_cache[self.program_name] = major_version
+            return major_version
+
+        if major_version and major_version < 5:
             raise ConfigError("Anvi'o recently started using a newer version of MUSCLE (you know, the "
-                              "sequence alignment software), but your installed version in this environment "
-                              "appears have the old version still :/ You can solve this issue by simply "
-                              "installing MUSCLE v5 or newer. If you are in a conda environment, you can "
-                              "try running the following: `conda install -c conda-forge -c bioconda ""\"muscle>=5\"`.")
+                              "sequence alignment software), but the one in this environment is still "
+                              "MUSCLE v%d :/ You can solve this issue by simply installing MUSCLE v5. "
+                              "If you are in a conda environment, you can try running the following: "
+                              "`conda install -c conda-forge -c bioconda \"muscle>=5,<6\"`." % major_version)
 
-        raise ConfigError("The anvi'o MUSCLE driver requires MUSCLE 5, but failed to recognize the installed "
-                          "MUSCLE version from `muscle -version` output: %s" % output)
+        if major_version:
+            raise ConfigError("The anvi'o MUSCLE driver knows how to talk to MUSCLE v5, and the one in this "
+                              "environment is MUSCLE v%d :/ Every major version of MUSCLE so far has come "
+                              "with its own command line, so anvi'o would rather say this out loud than "
+                              "assume it knows how to run this one and risk making a mess of your "
+                              "alignments. Installing MUSCLE v5 will get you going. We would also love to "
+                              "hear about this at https://github.com/merenlab/anvio/issues so the driver "
+                              "can catch up with MUSCLE." % major_version)
+
+        raise ConfigError("The anvi'o MUSCLE driver requires MUSCLE v5, but it could not tell which "
+                          "version of MUSCLE is installed in this environment. This is what `%s -version` "
+                          "had to say for itself (with an exit code of %d): \"%s\"." \
+                                % (self.program_name, ret_code, output.strip() or '(nothing at all)'))
 
 
     def get_additional_params_from_shell(self):
