@@ -283,16 +283,18 @@ It's common that not all genomes or metagenomes will have the gene family of int
 
 ### Multiple sequence alignment step with MUSCLE
 
-One step of ecophylo is to perform a multiple sequence alignment of the recruited homologs and depending on your application, this could recruit thousands of ORFs which make the MSA a challenging feat. By default, ecophylo does not pass additional parameters to MUSCLE 5:
+One step of ecophylo is to perform a multiple sequence alignment of the recruited homologs and depending on your application, this could recruit thousands of ORFs which make the MSA a challenging feat. By default, the %(workflow-config)s file asks MUSCLE 5 for the Super5 algorithm, which is the one MUSCLE 5 offers for large numbers of sequences:
 
 ```bash
 "align_sequences": {
     "threads": 5,
-    "additional_params": ""
+    "additional_params": "-super5"
 },
 ```
 
-However, the default may not be optimal for your use case. For example, maybe you are trying to explore branches patterns of a specific protein family and would prefer to have multiple iterations of the MSA. Please explore the MUSCLE 5 documentation to customize the MSA step for your needs. For MUSCLE 5, you can use `-super5` in `additional_params` to run the Super5 algorithm.
+The default MUSCLE 5 algorithm (which you get by setting `additional_params` to an empty string) is more thorough, but both its running time and its memory use grow steeply with the number of sequences, so it is a better fit for a few hundred sequences than for the thousands ecophylo often recruits.
+
+The default may not be optimal for your use case, though. For example, maybe you are trying to explore branching patterns of a specific protein family, and would rather have a more thorough MSA of a smaller set of sequences. Please explore the [MUSCLE 5 documentation](https://drive5.com/muscle5/) to customize the MSA step for your needs, and replace `additional_params` with whatever MUSCLE 5 parameters are best for you.
 
 ## tree-mode: Insights into the evolutionary patterns of target genes
 
