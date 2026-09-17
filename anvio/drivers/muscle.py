@@ -73,45 +73,66 @@ class Muscle:
 
         sequences_data = ''.join(['>%s\n%s\n' % (t[0], t[1]) for t in sequences_list])
 
-        with open(input_file_path, 'w') as input_file:
-            input_file.write(sequences_data)
+        # the temporary directory is removed on the way out whether the alignment works or not,
+        # so that a MUSCLE that fails for every single one of thousands of gene clusters does not
+        # leave a directory behind for each one of them. anyone who wants to keep them can ask for
+        # it by setting `debug`, and whatever MUSCLE had to say is quoted in the errors below.
+        try:
+            with open(input_file_path, 'w') as input_file:
+                input_file.write(sequences_data)
 
-        cmd_line = [self.program_name, '-align', input_file_path, '-output', output_file_path]
+            cmd_line = [self.program_name, '-align', input_file_path, '-output', output_file_path]
 
-        additional_params = self.get_additional_params_from_shell()
-        if additional_params:
-            if '-super5' in additional_params:
-                cmd_line = [self.program_name, '-super5', input_file_path, '-output', output_file_path]
-                additional_params.remove('-super5')
+            additional_params = self.get_additional_params_from_shell()
+            if additional_params:
+                if '-super5' in additional_params:
+                    cmd_line = [self.program_name, '-super5', input_file_path, '-output', output_file_path]
+                    additional_params.remove('-super5')
 
-            cmd_line += additional_params
+                cmd_line += additional_params
 
-        # a user who asks for a specific number of threads through MUSCLE_PARAMS gets it
-        if '-threads' not in cmd_line:
-            cmd_line += ['-threads', str(self.num_threads)]
+            # a user who asks for a specific number of threads through MUSCLE_PARAMS gets it
+            if '-threads' not in cmd_line:
+                cmd_line += ['-threads', str(self.num_threads)]
 
-        ret_val = utils.run_command(cmd_line, log_file_path)
+            ret_val = utils.run_command(cmd_line, log_file_path)
 
-        if ret_val:
-            raise ConfigError("Drivers::Muscle: Something went wrong with this alignment that was working on %d "
-                              "sequences :/ You can find the output in this log file: %s" % (len(sequences_list), log_file_path))
+            if ret_val:
+                raise ConfigError("Drivers::Muscle: Something went wrong with this alignment that was working on %d "
+                                  "sequences :/ This is what %s had to say about it: \"%s\"."
+                                        % (len(sequences_list), self.program_name, self.get_log_file_content(log_file_path)))
 
-        if not os.path.exists(output_file_path) or os.path.getsize(output_file_path) == 0:
-            raise ConfigError("Drivers::Muscle: Something went wrong with this alignment that was working on %d "
-                              "sequences :/ You can find the output in this log file: %s" % (len(sequences_list), log_file_path))
+            if not os.path.exists(output_file_path) or os.path.getsize(output_file_path) == 0:
+                raise ConfigError("Drivers::Muscle: Something went wrong with this alignment that was working on %d "
+                                  "sequences :/ It did not leave an alignment behind, and this is what %s had to "
+                                  "say about it: \"%s\"."
+                                        % (len(sequences_list), self.program_name, self.get_log_file_content(log_file_path)))
 
-        alignments = {}
+            alignments = {}
 
-        # parse the output, and fill alignments
-        output = f.SequenceSource(output_file_path)
+            # parse the output, and fill alignments
+            output = f.SequenceSource(output_file_path)
 
-        while next(output):
-            alignments[output.id] = output.seq
+            while next(output):
+                alignments[output.id] = output.seq
 
-        if not debug:
-            shutil.rmtree(tmp_dir)
+            return alignments
+        finally:
+            if not debug:
+                shutil.rmtree(tmp_dir, ignore_errors=True)
 
-        return alignments
+
+    def get_log_file_content(self, log_file_path):
+        """Get what MUSCLE wrote to its log file, to quote it before the log file is removed."""
+
+        if not os.path.exists(log_file_path):
+            return '(nothing at all)'
+
+        with open(log_file_path) as log_file:
+            content = ' '.join(log_file.read().split())
+
+        # the interesting part of a MUSCLE failure is at the end of what it printed
+        return content[-500:] if content else '(nothing at all)'
 
 
     def get_major_version(self):
