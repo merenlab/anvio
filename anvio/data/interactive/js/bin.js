@@ -107,6 +107,7 @@ Bins.prototype.NewBin = function(id, binState) {
     const binData = this._prepareBinData(id, binState);
     const template = this._generateBinTemplate(binData);
 
+
     this.container.insertAdjacentHTML('beforeend', template);
     this.SelectLastRadio();
 
@@ -173,7 +174,7 @@ Bins.prototype._generateBinTemplate = function(binData) {
             </td>`;
 
     // Mode-specific columns
-    if (mode === 'pan') {
+    if (mode === 'pan' || mode === 'structure') {
         template += this._getPanModeColumns(id, binData);
     } else if (mode === 'codon-frequencies') {
         template += this._getCodonFrequencyColumns(id, binData);
@@ -894,7 +895,7 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
     bin_list = bin_list || Object.keys(this.selections);
 
     for (const bin_id of bin_list) {
-        if (mode === 'pan') {
+        if (mode === 'pan' || mode === 'structure') {
             this._updatePanModeStatistics(bin_id);
         } else if (mode === 'codon-frequencies') {
             this._updateCodonFrequencyStatistics(bin_id);
