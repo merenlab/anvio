@@ -8,17 +8,27 @@ on:
 permissions:
   contents: read
 
+env:
+  KEGG_ARCHIVE: ${{ runner.temp }}/KEGG_archive.tar.gz
+  KEGG_ARCHIVE_URL: https://cloud.uol.de/public.php/dav/files/KRA5koHkaF7dBtC
+  KEGG_DATA_DIR: ${{ runner.temp }}/anvio-kegg/KEGG
+
 jobs:
   test:
     uses: ./.github/workflows/test-base.yaml
     with:
       test-name: "Component Tests"
+      # Download & setup KEGG data
+      pre-test-commands: |
+        cd "${{ runner.temp }}"
+        curl --retry 3 "$KEGG_ARCHIVE_URL" --output "$KEGG_ARCHIVE"
+
+        mkdir -p "$(dirname "$KEGG_DATA_DIR")"
+        anvi-setup-kegg-data --kegg-archive "$KEGG_ARCHIVE" --kegg-data-dir "$$KEGG_DATA_DIR"
+        test -s "$kegg_data_dir/MODULES.db"
+        test -s "$kegg_data_dir/orphan_data/estimated_thresholds_for_stray_kos.txt"
       test-commands: |
         anvi-self-test --suite metagenomics-full --no-interactive
         anvi-self-test --suite pangenomics --no-interactive
         anvi-self-test --suite inversions --no-interactive
-
-# the following step cause our actions to fail on GitHub runners
-# due to space limitations :/ please do not uncomment this until we
-# have a solution for this :/
-    #   anvi-self-test --suite metabolism --no-interactive
+        anvi-self-test --suite metabolism --no-interactive
