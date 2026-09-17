@@ -874,6 +874,31 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
         self.run.info('Summary output directory', self.output_directory, nl_before=1, mc='green')
 
 
+    @staticmethod
+    def _short_component_id(component_id):
+        """'CP_0001' -> 1: strip the padded prefix so summary tables carry the plain component number.
+
+           Region/component ids are name strings internally (e.g. 'CP_0001'), but users find bare
+           numbers less confusing in the output tables. Returns '' for missing values, and leaves
+           anything that doesn't parse untouched."""
+        if component_id is None or component_id == '':
+            return ''
+        try:
+            return int(str(component_id).split('_')[-1])
+        except (ValueError, IndexError):
+            return component_id
+
+    @staticmethod
+    def _short_region_id(region_id):
+        """'CP_0001_5' -> 5: keep just the region number within its component. See _short_component_id."""
+        if region_id is None or region_id == '':
+            return ''
+        try:
+            return int(str(region_id).rsplit('_', 1)[-1])
+        except (ValueError, IndexError):
+            return region_id
+
+
     def _build_node_to_bin_map(self):
         node_to_bin = {node_id: '' for node_id in self.synteny_gene_cluster_names}
         if self.collection_dict:
@@ -889,11 +914,12 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
 
         path = os.path.join(self.output_directory, 'SYNGCs.txt')
 
-        header = ['node_id', 'bin_name', 'source_gene_cluster_id', 'node_type', 'region_id', 'region_type',
+        header = ['node_id', 'bin_name', 'source_gene_cluster_id', 'node_type', 'component_id', 'region_id', 'region_type',
                   'node_x', 'node_y', 'num_genomes_present', 'genomes_present']
 
-        # items_additional_data layers (e.g. backbone), in stable order
-        layer_keys = list(self.items_additional_data_keys) if self.items_additional_data_keys else []
+        # items_additional_data layers (e.g. backbone), sorted for a stable column order
+        # so per-run SYNGCs.txt files can be combined positionally without scrambling.
+        layer_keys = sorted(self.items_additional_data_keys) if self.items_additional_data_keys else []
         header += layer_keys
 
         # function consensus columns: ACC + annotation per source
@@ -911,7 +937,12 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
             for node_id in sorted(self.nodes.keys()):
                 node = self.nodes[node_id]
                 region_id = node.get('region_id')
-                region_row = self.regions.get(region_id) if region_id is not None else None
+                component_id = node.get('component_id')
+                # region_id is plain per-component since v7 -- look up by
+                # the (component_id, region_id) composite key.
+                region_row = (self.regions.get((str(component_id), str(region_id)))
+                              if region_id is not None and component_id is not None
+                              else None)
                 region_type = region_row['region_type'] if region_row else ''
 
                 genomes_present = sorted([g for g, gcs in self.synteny_gene_clusters.get(node_id, {}).items() if gcs])
@@ -920,7 +951,8 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
                        node_to_bin.get(node_id, ''),
                        node.get('gene_cluster_id', ''),
                        node.get('node_type', ''),
-                       region_id if region_id is not None else '',
+                       self._short_component_id(component_id),
+                       self._short_region_id(region_id),
                        region_type,
                        node.get('node_x', ''),
                        node.get('node_y', ''),
@@ -955,7 +987,7 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
         function_sources = sorted(self.gene_function_sources)
 
         header = ['node_id', 'bin_name', 'source_gene_cluster_id', 'genome_name', 'gene_caller_id',
-                  'region_id', 'region_type']
+                  'component_id', 'region_id', 'region_type']
         for source in function_sources:
             header.append(source + '_ACC')
             header.append(source)
@@ -975,7 +1007,10 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
                 node = self.nodes[node_id]
                 gene_cluster_id = node.get('gene_cluster_id', '')
                 region_id = node.get('region_id')
-                region_row = self.regions.get(region_id) if region_id is not None else None
+                component_id = node.get('component_id')
+                region_row = (self.regions.get((str(component_id), str(region_id)))
+                              if region_id is not None and component_id is not None
+                              else None)
                 region_type = region_row['region_type'] if region_row else ''
                 bin_name = node_to_bin.get(node_id, '')
 
@@ -983,7 +1018,8 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
                 for genome_name in self.genome_names:
                     for gene_caller_id in per_genome.get(genome_name, []):
                         row = [node_id, bin_name, gene_cluster_id, genome_name, gene_caller_id,
-                               region_id if region_id is not None else '',
+                               self._short_component_id(component_id),
+                               self._short_region_id(region_id),
                                region_type]
 
                         # per-call functions if available
@@ -1020,9 +1056,17 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
             self.run.info_single("No regions in the pan-graph-db; skipping REGIONS.txt")
             return
 
-        df = pd.DataFrame.from_dict(self.regions, orient='index')
-        df.index.name = 'region_id'
-        df.to_csv(path, sep='\t')
+        # self.regions is keyed by (component_id, region_id) since v7. Both
+        # are already columns on each row dict, so a straight construction
+        # gives us a flat frame -- no need to lift the tuple key.
+        df = pd.DataFrame(list(self.regions.values()))
+        # match the plain-number component/region ids written into SYNGCs.txt and
+        # GENESxSYNGCs.txt so the three tables stay joinable on the same values
+        if 'component_id' in df.columns:
+            df['component_id'] = df['component_id'].map(self._short_component_id)
+        if 'region_id' in df.columns:
+            df['region_id'] = df['region_id'].map(self._short_region_id)
+        df.to_csv(path, sep='\t', index=False)
 
         self.summary['files']['REGIONS'] = os.path.basename(path)
         self.run.info('Regions file', path)

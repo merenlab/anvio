@@ -55,7 +55,8 @@ The most basic use-case for this program is when you have one contigs database d
 anvi-estimate-metabolism -c %(contigs-db)s
 {{ codestop }}
 
-In some cases -- for instance, to compute community-level pathway copy numbers -- it is also appropriate to do this for unbinned metagenome assemblies.
+{:.notice}
+You can also use this strategy on unbinned metagenome assemblies, in which case all gene annotations coming from all populations within the metagenomic community will be combined to produce community-level estimates. Module copy numbers (and per-population copy numbers) are reliable for this situation, but please note that module completeness scores will likely be overestimated and/or completely meaningless (as the enzymes will in reality be coming from multiple different populations). If you prefer to use a more granular approach for your unbinned metagenomes, you can try the `--per-contig-estimates` flag (described below) instead.
 
 ### Estimation for bins in a metagenome
 
@@ -91,14 +92,14 @@ bin_5
 
 ### Estimation for contigs in a metagenome assembly
 
-If you have an unbinned metagenome assembly, you can estimate metabolism for it using `--metagenome-mode`. In this case, since there is no way to determine which contigs belong to which microbial populations in the sample, estimation will be done on a per-contig basis; that is, for each contig, only the genes present on that contig will be used to determine pathway completeness within the contig.
+If you have an unbinned metagenome assembly, you can estimate metabolism for it using `--per-contig-estimates`. In this case, since there is no way to determine which contigs belong to which microbial populations in the sample, estimation will be done on a per-contig basis; that is, for each contig, only the genes present on that contig will be used to determine pathway completeness within the contig.
 
 {{ codestart }}
-anvi-estimate-metabolism -c %(contigs-db)s --metagenome-mode
+anvi-estimate-metabolism -c %(contigs-db)s --per-contig-estimates
 {{ codestop }}
 
 {:.notice}
-In metagenome mode, this program will estimate metabolism for each contig in the metagenome separately. This will tend to underestimate module completeness because it is likely that many modules will be broken up across multiple contigs belonging to the same population. If you prefer to instead treat all enzyme annotations in the metagenome as belonging to one collective genome, you can do so by simply leaving out the `--metagenome-mode` flag (to effectively pretend that you are doing estimation for a single genome, although in your heart you will know that your contigs database really contains a metagenome). Please note that this will result in the opposite tendency to overestimate module completeness (as the enzymes will in reality be coming from multiple different populations), and there will be a lot of redundancy. We are working on improving our estimation algorithm for metagenome mode. In the meantime, if you are worried about the misleading results from either of these situations, we suggest binning your metagenomes first and running estimation for the bins as described below.
+With `--per-contig-estimates`, this program will estimate metabolism for each contig in the metagenome separately. This will tend to underestimate module completeness because it is likely that many modules will be broken up across multiple contigs belonging to the same population. If you prefer to instead treat all enzyme annotations in the metagenome as belonging to one collective genome, you can do so by simply leaving out the `--per-contig-estimates` flag and focus on the module redundancy metrics (copy numbers).
 
 
 ### Estimation for gene cluster bins in a pangenome
@@ -109,7 +110,7 @@ You can estimate the metabolisms collectively encoded by a set of gene clusters 
 anvi-estimate-metabolism --pan-db %(pan-db)s -g %(genomes-storage-db)s -C COLLECTION_NAME
 {{ codestop }}
 
-In this case, the program will estimate metabolism for each bin of gene clusters independently, by considering the set of enzyme annotations encoded within the set of gene clusters in the bin. Each gene cluster typically includes more than one gene from different genomes, and can therefore have multiple functions associated with it. To select which annotation is most relevant for estimation purposes, we pick the dominant function from each annotation source -- for instance, the KOfam with the highest number of annotations within the cluster and the COG with the highest number of annotations. Please note that this means that a gene cluster can still have multple annotations associated with it (a maximum of one per annotation source), so we don't allow calculation of copy numbers for pangenomes (i.e., you can't use the `--add-copy-number` flag for this input type).
+In this case, the program will estimate metabolism for each bin of gene clusters independently, by considering the set of enzyme annotations encoded within the set of gene clusters in the bin. Each gene cluster typically includes more than one gene from different genomes, and can therefore have multiple functions associated with it. To select which annotation is most relevant for estimation purposes, we pick the dominant function from each annotation source -- for instance, the KOfam with the highest number of annotations within the cluster and the COG with the highest number of annotations. Please note that this means that a gene cluster can still have multple annotations associated with it (a maximum of one per annotation source), so module copy numbers (and per-population copy numbers) are not calculated or reported for pangenome input.
 
 Want to run the estimation on all the gene clusters in the pangenome? You should add a default collection first using %(anvi-script-add-default-collection)s.
 
@@ -179,11 +180,27 @@ anvi-estimate-metabolism -i internal-genomes.txt
 
 ### Estimation for multiple metagenomes
 
-Multiple metagenomes can be analyzed with the same command by providing a metagenomes input file. Metagenome mode will be used to analyze each contigs database in the file. To see the required format for the metagenomes file, see %(metagenomes)s.
+If you are working with multiple metagenomes, you can also analyze them all at once by creating an %(external-genomes)s file for them (the name 'external genomes' is just a name -- in most cases, anvi'o doesn't distinguish between contigs databases that contain genomes and those that contain metagenomes). For metagenomes, you have three options.
+
+Option 1: get community-level estimates by pooling all gene annotations from the entire metagenomic assembly. This results in overestimated completeness scores, but reliable copy numbers.
 
 {{ codestart }}
-anvi-estimate-metabolism -M metagenomes.txt
+anvi-estimate-metabolism -e external-genomes.txt # here the external genomes file contains metagenome contigs DBs
 {{ codestop }}
+
+Option 2: get contig-level estimates for each contig in each metagenome assembly by combining the `--per-contig-estimates` flag (described above) with an %(external-genomes)s file. This typically results in underestimated completeness scores for many modules whose component genes are distributed across multiple contigs, but can be useful for finding metabolic modules encoded in operons or conserved gene neighborhoods, or for targeted binning of contigs containing metabolic pathways of interest.
+
+{{ codestart }}
+anvi-estimate-metabolism -e external-genomes.txt --per-contig-estimates
+{{ codestop }}
+
+Option 3: you want contig-level estimates, but don't care about all contigs in your metagenome assembly? Maybe you only want to focus on the bacterial contigs, or contigs classified as a particular taxa? Then you can bin your contigs of interest, and combine the `--per-contig-estimates` flag with an %(internal-genomes)s file:
+
+{{ codestart }}
+anvi-estimate-metabolism -i internal-genomes.txt --per-contig-estimates
+{{ codestop }}
+
+Please note that it doesn't matter how you bin your contigs -- all contigs of interest could be in a single bin, or each one could be in its own bin. Since the metabolism results are reported per-contig, the output will be the same regardless of how many bins they are divided into.
 
 ## Adjustable Parameters
 
@@ -195,7 +212,7 @@ As explained in the [technical details section](#how-is-the-module-completeness-
 
 Changing this parameter _usually_ doesn't have any effect other than changing the proportions of 'True' and 'False' values in the `module_is_complete` column of long-format modules mode output (or the proportion of 1s and 0s in the module presence-absence matrix for `--matrix-format` output). It does _not_ alter completeness scores. It also does not affect which modules are printed to the output file, unless you use the `--only-complete` flag (described in a later section). Therefore, the purpose of changing this threshold is usually so that you can filter the output later somehow (i.e., by searching for 'True' values in the long-format output).
 
-The one exception is when `--add-copy-number` is used. We use the module completeness threshold to determine pathwise copy number of a module, which is based on the number of complete copies of paths through a module. So if you change this threshold, you can expect to see some differences in pathwise copy number values (which are found in certain long-format and matrix output files).
+The one exception is module copy number. We use the module completeness threshold to determine pathwise copy number of a module, which is based on the number of complete copies of paths through a module. So if you change this threshold, you can expect to see some differences in pathwise copy number values (which are found in certain long-format and matrix output files), and, if you are also using `--add-per-population-copy-number`, in the corresponding pathwise per-population copy number values.
 
 In this example, we change the threshold to 50 percent.
 
@@ -332,7 +349,7 @@ As you can see, this flag is also useful when you want to quickly look up the de
 
 For each header, the output mode(s) that it is applicable to are listed after the description. The headers you can choose from for `modules_custom` output end in either `[modules output mode]` or `[all output modes]`.
 
-Just as with `--list-available-modes`, you must provide your input file(s) for this to work. In fact, some headers will change depending on which input types you provide. You will see additional possible headers if you use the `--add-copy-number` or `--add-coverage` flags (though this only works for single sample inputs, not for Multi Mode - if you wish to get custom output for Multi Mode, it is best to construct your custom header list by looking at the possible headers for your given parameter set for a SINGLE sample from your input file).
+Just as with `--list-available-modes`, you must provide your input file(s) for this to work. In fact, some headers will change depending on which input types you provide. You will see additional possible headers if you use the `--add-per-population-copy-number` or `--add-coverage` flags (though this only works for single sample inputs, not for multi-mode - if you wish to get custom output for multi-mode, it is best to construct your custom header list by looking at the possible headers for your given parameter set for a SINGLE sample from your input file).
 
 **Using custom output mode**
 
@@ -350,17 +367,21 @@ By default, modules with completeness scores of 0 are not printed to the output 
 anvi-estimate-metabolism -c %(contigs-db)s --include-zeros
 {{ codestop }}
 
-**Including module copy number in long-format output**
+**Normalizing module copy number by estimated population count (PPCN)**
 
-You can ask this program to count the number of copies of each module in your input samples by providing the `--add-copy-number` flag:
+Raw module copy number scales with the number of populations present in a (meta)genome assembly, which makes it hard to compare across samples that describe communities of very different sizes. To address this, you can ask this program to additionally report the *per-population copy number* (PPCN) of each module: the module copy number divided by the number of populations estimated to be present in the same (meta)genome, using the same [per-population copy number](https://elifesciences.org/reviewed-preprints/89862) strategy used by [anvi-gen-function-matrix](https://anvio.org/help/main/programs/anvi-gen-function-matrix/#per-population-copy-number-normalization-for-metagenomic-assemblies) (based on counts of single-copy core genes, or SCGs).
 
 {{ codestart }}
-anvi-estimate-metabolism -c %(contigs-db)s --output-modes modules,module_paths,module_steps --add-copy-number
+anvi-estimate-metabolism -c %(contigs-db)s --add-per-population-copy-number
 {{ codestop }}
 
-Just like module completeness, copy number can be calculated using two different strategies. You can find information about the calculations in the technical details section below, and information about what copy number output looks like in %(kegg-metabolism)s.
+This flag requires that your %(contigs-db)s has been annotated with single-copy core genes via %(anvi-run-hmms)s. It only works when your input represents one or more whole (meta)genomes: a single contigs database (`-c`) or an %(external-genomes)s file (`-e`). Since population normalization is only meaningful for a whole assembly, this flag cannot be combined with `--per-contig-estimates`, an %(internal-genomes)s file, or estimation on a %(collection)s/%(bin)s.
 
-This flag also works for matrix output.
+When you use this flag, anvi'o will report the estimated number of populations to the terminal (broken down by domain of life), and two new columns will appear in `modules` mode output: `pathwise_ppcn` and `stepwise_ppcn`. If a given (meta)genome's single-copy core gene annotations are too sparse to yield a reliable population estimate, these columns will be `NA` for that sample.
+
+In multi-mode, the population estimates for every %(external-genomes)s entry are also written to a dedicated `<output-prefix>-POPULATION-ESTIMATES.txt` file, which reports the per-domain and total population count used to normalize each (meta)genome (so that the numbers behind the PPCN values are reproducible).
+
+This flag also works for matrix output (see below).
 
 **Including coverage and detection in long-format output**
 
@@ -487,15 +508,15 @@ K00918	0	0	0
 [....]
 ```
 
-**Including copy number in matrix output**
+**Including per-population copy number (PPCN) in matrix output**
 
-The `--add-copy-number` flag, which was discussed above for including module copy number values in long-format output, also works for matrix output:
+The `--add-per-population-copy-number` flag, described above for long-format output, also works with `--matrix-format`. Since PPCN requires a whole (meta)genome as input, this only works with an %(external-genomes)s file (not %(internal-genomes)s):
 
 {{ codestart }}
-anvi-estimate-metabolism -i internal-genomes.txt --matrix-format --add-copy-number
+anvi-estimate-metabolism -e external-genomes.txt --matrix-format --add-per-population-copy-number
 {{ codestop }}
 
-When you use this flag, you will get matrices describing copy number statistics in addition to the typical set of matrix output files.
+When you use this flag with matrix output, you will get two additional matrix files describing pathwise and stepwise per-population copy number, in addition to the `<output-prefix>-POPULATION-ESTIMATES.txt` file described above.
 
 ### Other output options
 

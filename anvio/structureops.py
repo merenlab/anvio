@@ -2,11 +2,13 @@
 """Classes to make sense of genes and variability within the context of protein structure"""
 
 import os
+import sys
+import glob
+import json
 import time
 import numpy as np
 import shutil
 import pandas as pd
-import sqlite3
 import warnings
 import datetime
 
@@ -30,9 +32,11 @@ import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 import anvio.drivers.MODELLER as MODELLER
+import anvio.drivers.colabfold as colabfold
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.dbops import ContigsSuperclass
+from anvio.dbops import ContigsSuperclass, PanSuperclass
+from anvio.version import structure_db_version
 
 J = lambda x, y: os.path.join(x, y)
 
@@ -43,7 +47,7 @@ warnings.simplefilter(action='ignore', category=PDBConstructionWarning)
 class StructureDatabase(object):
     """Structure database operations"""
 
-    def __init__(self, file_path, db_hash=None, create_new=False, ignore_hash=False, run=terminal.Run(), progress=terminal.Progress(), quiet=False):
+    def __init__(self, file_path, db_hash=None, create_new=False, ignore_hash=False, input_type='contigs_db', run=terminal.Run(), progress=terminal.Progress(), quiet=False):
         self.db_type = 'structure'
         self.db_hash = str(db_hash)
         self.version = anvio.__structure__version__
@@ -52,6 +56,15 @@ class StructureDatabase(object):
         self.run = run
         self.progress = progress
         self.create_new = create_new
+
+        # the kind of input the proteins in this db come from ('contigs_db', 'pangenome', 'fasta'). It is
+        # supplied by the input source at creation time and stored in the self table; on open it is read
+        # back (see below). It governs how the contigs-db linkage is interpreted (see check_hash).
+        self.input_type = input_type
+
+        # provenance for each queried protein (protein_id -> spec dict), registered by the run and flushed
+        # to the `proteins` table by persist_proteins().
+        self.protein_specs = {}
 
         if not db_hash and create_new:
             raise ConfigError("You cannot create a Structure DB without supplying a DB hash.")
@@ -65,12 +78,13 @@ class StructureDatabase(object):
             self.genes_queried = set([])
         else:
             self.db_hash = str(self.db.get_meta_value('contigs_db_hash'))
+            self.input_type = self.db.get_meta_value('input_type', try_as_type_int=False, return_none_if_not_in_table=True) or 'contigs_db'
             self.genes_with_structure = self.get_genes_with_structure()
             self.genes_without_structure = self.get_genes_without_structure()
             self.genes_queried = self.get_genes_queried()
 
             if not len(self.genes_queried):
-                raise ConfigError("Interesting... This structure database has no gene caller ids. Anvi'o is"
+                raise ConfigError("Interesting... This structure database has no proteins in it. Anvi'o is "
                                   "not sure how you managed that. please send a report to the "
                                   "developers. Thank you.")
 
@@ -105,50 +119,101 @@ class StructureDatabase(object):
         return run_params_dict
 
 
-    def get_genes_with_structure(self):
-        """Returns set of gene caller ids that have a structure in the DB, queried from self table"""
+    def get_colabfold_run_params_dict(self):
+        """Return the ColabFold run parameters that were stored during the creation of this DB.
 
-        return set([int(x) for x in self.db.get_meta_value('genes_with_structure', try_as_type_int=False).split(',') if not x == ''])
+        These mirror the scientific-provenance parameters written by StructureSuperclass.get_colabfold_params.
+        The machine-specific parameters (conda env, local database path, MSA-server flag) are intentionally
+        not stored, so they are absent here and must be re-supplied on the command line during an update.
+        """
+
+        return {
+            'num_models': self.db.get_meta_value('num_models', try_as_type_int=True),
+            'num_recycle': self.db.get_meta_value('num_recycle', try_as_type_int=True, return_none_if_not_in_table=True),
+            'amber': bool(self.db.get_meta_value('amber', try_as_type_int=True)),
+            'colabfold_msa_source': self.db.get_meta_value('colabfold_msa_source', try_as_type_int=False),
+            'colabfold_additional_parameters': self.db.get_meta_value('colabfold_additional_parameters', try_as_type_int=False, return_none_if_not_in_table=True),
+        }
+
+
+    def get_genes_with_structure(self):
+        """Returns the set of protein ids that have a structure in the DB, queried from the proteins table"""
+
+        return set(self.db.get_single_column_from_table(t.proteins_table_name, 'protein_id', where_clause="has_structure = 1"))
 
 
     def get_genes_without_structure(self):
-        """Returns set of gene caller ids that failed to generate a structure, queried from self table"""
+        """Returns the set of protein ids that failed to generate a structure, queried from the proteins table"""
 
-        return set([int(x) for x in self.db.get_meta_value('genes_without_structure', try_as_type_int=False).split(',') if not x == ''])
+        return set(self.db.get_single_column_from_table(t.proteins_table_name, 'protein_id', where_clause="has_structure = 0"))
 
 
     def get_genes_queried(self):
-        """Returns set of all gene caller ids that structures were attempted for, regardless of success or failure
+        """Returns the set of all protein ids structures were attempted for, regardless of success or failure
 
-        Queried from self table
-
-        Notes
-        =====
-        - FIXME This inefficiency could pose problems in 2030 when we have structure dbs with
-          millions of structures
+        Every row in the proteins table is a protein that was queried, so this is simply the full set of
+        protein ids in that table.
         """
 
-        return self.get_genes_with_structure() | self.get_genes_without_structure()
+        return set(self.db.get_single_column_from_table(t.proteins_table_name, 'protein_id'))
 
 
-    def update_genes_with_and_without_structure(self):
-        """Writes genes_queried, genes_with_structure, and genes_without_structure entries in self table"""
+    def register_protein(self, spec):
+        """Record the provenance of a queried protein so it can be flushed to the proteins table
 
-        self.db.set_meta_value('genes_queried', ",".join(str(g) for g in self.genes_queried))
-        self.db.set_meta_value('genes_with_structure', ",".join(str(g) for g in self.genes_with_structure))
-        self.db.set_meta_value('genes_without_structure', ",".join(str(g) for g in self.genes_without_structure))
+        `spec` is a dict as returned by a StructureInputSource: keys protein_id, input_type, source_key,
+        gene_callers_id, genome_name, gene_cluster_id.
+        """
+
+        self.protein_specs[spec['protein_id']] = spec
+
+
+    def persist_proteins(self):
+        """Write a row per queried protein into the proteins table (create if new, overwrite if present)
+
+        has_structure is derived from the in-memory genes_with_structure set. Rows are written with INSERT
+        OR REPLACE keyed on the unique protein_id, so buffered flushes and --rerun re-writes are idempotent.
+        """
+
+        entries = []
+        for protein_id, spec in self.protein_specs.items():
+            entries.append((protein_id,
+                            spec['input_type'],
+                            spec.get('genome_name'),
+                            spec.get('gene_callers_id'),
+                            spec.get('gene_cluster_id'),
+                            spec['source_key'],
+                            1 if protein_id in self.genes_with_structure else 0))
+
+        if entries:
+            self.db._exec_many('''INSERT OR REPLACE INTO %s VALUES (%s)''' %
+                               (t.proteins_table_name, ','.join(['?'] * len(t.proteins_table_structure))), entries)
+
+
+    def get_proteins_dataframe(self):
+        """Return the full proteins table as a dataframe (provenance of every queried protein)"""
+
+        return self.db.get_table_as_dataframe(t.proteins_table_name)
 
 
     def create_tables(self):
         self.db.set_meta_value('db_type', self.db_type)
         self.db.set_meta_value('contigs_db_hash', self.db_hash)
+        self.db.set_meta_value('input_type', self.input_type)
         self.db.set_meta_value('creation_date', time.time())
 
         self.db.create_table(t.pdb_data_table_name, t.pdb_data_table_structure, t.pdb_data_table_types)
         self.db.create_table(t.templates_table_name, t.templates_table_structure, t.templates_table_types)
         self.db.create_table(t.models_table_name, t.models_table_structure, t.models_table_types)
         self.db.create_table(t.residue_info_table_name, t.residue_info_table_structure, t.residue_info_table_types)
+        self.db.create_table(t.proteins_table_name, t.proteins_table_structure, t.proteins_table_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
+
+        # protein_id is the surrogate key shared across the four structure tables and the proteins table.
+        # db.create_table cannot declare a primary key, so uniqueness (which INSERT OR REPLACE in
+        # persist_proteins relies on) is enforced with an explicit index. The v3->v4 migration creates an
+        # identical index so migrated and freshly-made databases behave the same.
+        self.db._exec('''CREATE UNIQUE INDEX IF NOT EXISTS proteins_protein_id_idx ON %s(protein_id)''' % t.proteins_table_name)
 
 
     def store_modeller_params(self, modeller_params):
@@ -174,6 +239,11 @@ class StructureDatabase(object):
 
 
     def check_hash(self):
+        # for a contigs-db input the db is linked to its contigs database through contigs_db_hash. Future
+        # input types (e.g. pangenome) will link through their own hash; that branch will go here.
+        if self.input_type != 'contigs_db':
+            return
+
         actual_db_hash = str(self.db.get_meta_value('contigs_db_hash'))
         if self.db_hash != actual_db_hash:
             raise ConfigError('The hash value inside Structure Database "%s" does not match with Contigs Database hash "%s",\
@@ -197,48 +267,50 @@ class StructureDatabase(object):
             raise ConfigError("store :: rows_data must be either a list of tuples or a pandas dataframe.")
 
 
-    def remove_gene(self, corresponding_gene_call, remove_from_self=True):
+    def remove_gene(self, protein_id, remove_from_self=True):
         """Remove a gene from the structure database"""
 
         # Remove from tables
         self.db.remove_some_rows_from_table(
             t.residue_info_table_name,
-            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+            where_clause="protein_id = %d" % protein_id,
         )
         self.db.remove_some_rows_from_table(
             t.templates_table_name,
-            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+            where_clause="protein_id = %d" % protein_id,
         )
         self.db.remove_some_rows_from_table(
             t.models_table_name,
-            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+            where_clause="protein_id = %d" % protein_id,
         )
 
         if remove_from_self:
-            # Remove from self entries
-            self.genes_queried.remove(corresponding_gene_call)
-            self.genes_with_structure.remove(corresponding_gene_call)
-            self.update_genes_with_and_without_structure()
+            # Remove from the in-memory sets and drop the protein's row from the proteins table
+            self.genes_queried.discard(protein_id)
+            self.genes_with_structure.discard(protein_id)
+            self.genes_without_structure.discard(protein_id)
+            self.protein_specs.pop(protein_id, None)
+            self.db.remove_some_rows_from_table(t.proteins_table_name, where_clause="protein_id = %d" % protein_id)
 
 
-    def get_pdb_content(self, corresponding_gene_call):
+    def get_pdb_content(self, protein_id):
         """Returns the file content (as a string) of a pdb for a given gene"""
 
-        if not corresponding_gene_call in self.genes_with_structure:
-            raise ConfigError('The gene caller id {} was not found in the structure database :('.format(corresponding_gene_call))
+        if not protein_id in self.genes_with_structure:
+            raise ConfigError('The gene caller id {} was not found in the structure database :('.format(protein_id))
 
         return self.db.get_single_column_from_table(
             t.pdb_data_table_name,
             'pdb_content',
-            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+            where_clause="protein_id = %d" % protein_id,
         )[0].decode('utf-8')
 
 
-    def export_pdb_content(self, corresponding_gene_call, filepath, ok_if_exists=False):
+    def export_pdb_content(self, protein_id, filepath, ok_if_exists=False):
         """Export the pdb of a gene to a filepath"""
 
         if filesnpaths.is_output_file_writable(filepath, ok_if_exists=ok_if_exists):
-            pdb_content = self.get_pdb_content(corresponding_gene_call)
+            pdb_content = self.get_pdb_content(protein_id)
             with open(filepath, 'w') as f:
                 f.write(pdb_content)
 
@@ -258,13 +330,13 @@ class StructureDatabase(object):
         self.run.info('PDB file output', output_dir)
 
 
-    def get_structure(self, corresponding_gene_call):
+    def get_structure(self, protein_id):
         """Return a anvio.structureops.Structure object for a given gene"""
 
-        return Structure(self.export_pdb_content(corresponding_gene_call, filesnpaths.get_temp_file_path()))
+        return Structure(self.export_pdb_content(protein_id, filesnpaths.get_temp_file_path()))
 
 
-    def get_residue_info_for_gene(self, corresponding_gene_call, drop_null=True):
+    def get_residue_info_for_gene(self, protein_id, drop_null=True):
         """Get residue info for gene as a dataframe
 
         Parameters
@@ -275,7 +347,7 @@ class StructureDatabase(object):
 
         return self.db.get_table_as_dataframe(
             table_name=t.residue_info_table_name,
-            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+            where_clause="protein_id = %d" % protein_id,
             drop_if_null=drop_null,
         )
 
@@ -295,12 +367,12 @@ class StructureDatabase(object):
         )
 
 
-    def get_template_info_for_gene(self, corresponding_gene_call):
+    def get_template_info_for_gene(self, protein_id):
         """Get template info for gene as a dataframe"""
 
         return self.db.get_table_as_dataframe(
             table_name=t.templates_table_name,
-            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+            where_clause="protein_id = %d" % protein_id,
         )
 
 
@@ -316,6 +388,529 @@ class StructureDatabase(object):
         self.db.disconnect()
 
 
+class StructureInputSource(object):
+    """Base class describing a source of proteins to predict (or import) structures for.
+
+    A structure database keys everything on an integer `protein_id`. How that surrogate id maps back to
+    a real-world protein is entirely the source's business, recorded per protein in the `proteins` table.
+    A source knows how to validate its input, enumerate the proteins of interest, describe each protein's
+    provenance (a "protein spec" dict), and hand back the amino-acid / nucleotide sequences anvi'o needs
+    to model and annotate a structure.
+
+    Two sources exist: ContigsDBSource (a single contigs database) and PangenomeSource (a pan database
+    plus its genomes storage); they are dispatched in StructureSuperclass.__init__. A subclass sets
+    `input_type` and implements the abstract methods below; the external-structures hooks
+    (accepted_external_formats / load_external_rows) are only needed to support importing pre-computed
+    structures for that input type.
+
+    A protein spec is a plain dict with the keys: 'protein_id' (int), 'input_type' (str), 'source_key'
+    (str, a stable human-readable handle), and the nullable natural-identity fields 'gene_callers_id'
+    (int), 'genome_name' (str) and 'gene_cluster_id' (str). Only the fields relevant to a given input
+    type are populated.
+    """
+
+    input_type = None
+
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        # populated only when structures are imported from an external-structures file (see
+        # load_external_rows / enumerate_candidate_proteins). external_rows holds the parsed, validated
+        # rows; external_path_map maps a minted protein_id to the PDB path to import for it.
+        self.external_rows = None
+        self.external_path_map = {}
+
+
+    @property
+    def hash(self):
+        """A hash uniquely identifying the input; stored in the structure db to link the two."""
+        raise NotImplementedError
+
+
+    def accepted_external_formats(self):
+        """Return the external-structures header layouts this source accepts (see ExternalStructuresFile)."""
+        raise NotImplementedError
+
+
+    def load_external_rows(self, external_format, content_df):
+        """Validate an external-structures file's rows against this input and stash them on the source.
+
+        Called once (from ExternalStructuresFile) before protein_ids are minted, so it must validate
+        natural-key existence only -- it must NOT call get_amino_acid_sequences, which needs the
+        protein_map that enumerate_candidate_proteins fills in later.
+        """
+        raise NotImplementedError
+
+
+    def get_external_structure_path(self, protein_id):
+        """Return the PDB path to import for a protein_id (external-structures mode only)."""
+        return self.external_path_map[protein_id]
+
+
+    def check_external_integrity(self, protein_ids):
+        """Verify each imported PDB's sequence matches this source's amino-acid sequence for that protein.
+
+        Source-agnostic: the reference sequences come from get_amino_acid_sequences, so it works for any
+        input type. Must run AFTER enumerate_candidate_proteins has populated the protein_map (that is
+        what get_amino_acid_sequences relies on for a pangenome).
+        """
+        reference_sequences = self.get_amino_acid_sequences(protein_ids)
+
+        self.progress.new('External structures', progress_total_items=len(protein_ids))
+        for protein_id in protein_ids:
+            self.progress.increment()
+            path = self.get_external_structure_path(protein_id)
+            structure_sequence = Structure(path).get_sequence()
+            if structure_sequence != reference_sequences[protein_id]:
+                self.progress.end()
+                raise ConfigError("The structure you provided at '%s' does not match the amino acid sequence anvi'o "
+                                  "has for this protein. The sequence in the structure file must be identical to the "
+                                  "sequence of the gene it is a structure for. This is a show stopper :/" % path)
+        self.progress.end()
+
+
+    def get_self_provenance(self):
+        """Return the dict of self-table meta keys (including `input_type`) to stamp into the structure db."""
+        raise NotImplementedError
+
+
+    def enumerate_candidate_proteins(self, existing_proteins=None, raise_if_none=False):
+        """Return the set of protein_ids to attempt structures for.
+
+        Each source reads its own selection flags from self.args. On update, `existing_proteins` is the
+        proteins-table dataframe of the structure database being updated: a source that mints surrogate
+        protein_ids uses it to reuse the ids already assigned to proteins it recognizes (and mint fresh
+        ids only for genuinely new ones), which is what keeps update/--rerun idempotent. Sources whose
+        protein_id is an identity mapping (e.g. contigs-db) ignore it.
+        """
+        raise NotImplementedError
+
+
+    def get_protein_spec(self, protein_id):
+        """Return the provenance dict for a protein_id (see the class docstring for its keys)."""
+        raise NotImplementedError
+
+
+    def write_amino_acid_fasta(self, protein_id, output_file_path, simple_headers=True):
+        """Write a single protein's amino-acid sequence to a FASTA file (used by the MODELLER path)."""
+        raise NotImplementedError
+
+
+    def get_amino_acid_sequences(self, protein_ids):
+        """Return {protein_id: amino_acid_sequence_string} for a collection of protein_ids."""
+        raise NotImplementedError
+
+
+    def get_nucleotide_sequence(self, protein_id):
+        """Return the nucleotide sequence string for a single protein (used for residue annotation)."""
+        raise NotImplementedError
+
+
+class ContigsDBSource(StructureInputSource):
+    """A structure input source backed by a single contigs database.
+
+    Proteins are the contigs-db gene calls, so the surrogate `protein_id` is simply the gene caller id
+    (an identity mapping). This is what keeps everything downstream that joins on the integer key -- most
+    notably the variability overlay -- working unchanged.
+    """
+
+    input_type = 'contigs_db'
+
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        StructureInputSource.__init__(self, args, run=run, progress=progress)
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.contigs_db_path = A('contigs_db')
+
+        utils.is_contigs_db(self.contigs_db_path)
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+        self.contigs_db_hash = contigs_db.meta['contigs_db_hash']
+        contigs_db.disconnect()
+
+        # the contigs superclass is kept quiet; the source's own run/progress are used for user-facing messages
+        self.contigs_super = ContigsSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+
+
+    @property
+    def hash(self):
+        return self.contigs_db_hash
+
+
+    def get_self_provenance(self):
+        return {'input_type': self.input_type, 'contigs_db_hash': self.contigs_db_hash}
+
+
+    def get_protein_spec(self, protein_id):
+        # for a contigs-db input the protein_id IS the gene caller id
+        return {'protein_id': protein_id,
+                'input_type': self.input_type,
+                'source_key': str(protein_id),
+                'gene_callers_id': protein_id,
+                'genome_name': None,
+                'gene_cluster_id': None}
+
+
+    def accepted_external_formats(self):
+        return ['contigs']
+
+
+    def load_external_rows(self, external_format, content_df):
+        # a contigs-db external-structures file lists gene caller ids; validate each exists in the contigs
+        # database (a non-coding gene with no amino-acid sequence is caught later by check_external_integrity)
+        genes_in_contigs_database = set(self.contigs_super.genes_in_contigs_dict.keys())
+
+        rows = []
+        for _, row in content_df.iterrows():
+            gene_callers_id = int(row['gene_callers_id'])
+            if gene_callers_id not in genes_in_contigs_database:
+                raise ConfigError("The gene caller id '%d' in your external-structures file is not known to this "
+                                  "contigs database." % gene_callers_id)
+            rows.append({'gene_callers_id': gene_callers_id, 'path': row['path']})
+
+        self.external_rows = rows
+
+
+    def enumerate_candidate_proteins(self, existing_proteins=None, raise_if_none=False):
+        # external-structures mode: the file itself is the selection, and the protein_id is the gene
+        # caller id (identity), so there is nothing to reconcile against an existing structure db.
+        if self.external_rows is not None:
+            genes_of_interest = set()
+            for row in self.external_rows:
+                self.external_path_map[row['gene_callers_id']] = row['path']
+                genes_of_interest.add(row['gene_callers_id'])
+            return genes_of_interest
+
+        # a contigs-db protein_id is the gene caller id itself (identity), so there is nothing to
+        # reconcile against an existing structure db: existing_proteins is intentionally ignored.
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        genes_of_interest_path = A('genes_of_interest')
+        gene_caller_ids = A('gene_caller_ids')
+
+        genes_of_interest = None
+
+        # identify the gene caller ids of all genes available
+        genes_in_contigs_database = set(self.contigs_super.genes_in_contigs_dict.keys())
+
+        if not genes_in_contigs_database:
+            raise ConfigError("This contigs database does not contain any identified genes...")
+
+        # settling genes of interest
+        if genes_of_interest_path and gene_caller_ids:
+            raise ConfigError("You can't provide a gene caller id from the command line, and a list of gene caller ids "
+                              "as a file at the same time, obviously.")
+
+        if gene_caller_ids:
+            gene_caller_ids = set([x.strip() for x in gene_caller_ids.split(',')])
+
+            genes_of_interest = []
+            for gene in gene_caller_ids:
+                try:
+                    genes_of_interest.append(int(gene))
+                except:
+                    raise ConfigError("Anvi'o does not like your gene caller id '%s'..." % str(gene))
+
+            genes_of_interest = set(genes_of_interest)
+
+        elif genes_of_interest_path:
+            filesnpaths.is_file_tab_delimited(genes_of_interest_path, expected_number_of_fields=1)
+
+            try:
+                genes_of_interest = set([int(s.strip()) for s in open(genes_of_interest_path).readlines()])
+            except ValueError:
+                raise ConfigError("Well. Anvi'o was working on your genes of interest ... and ... those gene IDs did not "
+                                  "look like anvi'o gene caller ids :/ Anvi'o is now sad.")
+
+        if not genes_of_interest:
+            if raise_if_none:
+                raise ConfigError("You gotta supply some genes of interest.")
+
+            # no genes of interest are specified. Assuming all, which could be innumerable--raise warning
+            genes_of_interest = genes_in_contigs_database
+            self.run.warning("You did not specify any genes of interest, so anvi'o will assume all of them are of interest.")
+
+        # Check for genes that do not appear in the contigs database
+        bad_gene_caller_ids = [g for g in genes_of_interest if g not in genes_in_contigs_database]
+        if bad_gene_caller_ids:
+            raise ConfigError(("This gene caller id you provided is" if len(bad_gene_caller_ids) == 1 else
+                               "These gene caller ids you provided are") + " not known to this contigs database: {}.\
+                               You have only 2 lives left. 2 more mistakes, and anvi'o will automatically uninstall \
+                               itself. Yes, seriously :(".format(", ".join([str(x) for x in bad_gene_caller_ids])))
+
+        return genes_of_interest
+
+
+    def write_amino_acid_fasta(self, protein_id, output_file_path, simple_headers=True):
+        self.contigs_super.get_sequences_for_gene_callers_ids([protein_id],
+                                                              output_file_path=output_file_path,
+                                                              report_aa_sequences=True,
+                                                              simple_headers=simple_headers)
+
+
+    def get_amino_acid_sequences(self, protein_ids):
+        _, aa_sequences = self.contigs_super.get_sequences_for_gene_callers_ids(list(protein_ids), report_aa_sequences=True)
+        return {protein_id: aa_sequences[protein_id]['aa_sequence'] for protein_id in protein_ids}
+
+
+    def get_nucleotide_sequence(self, protein_id):
+        _, gene_sequences = self.contigs_super.get_sequences_for_gene_callers_ids([protein_id])
+        return gene_sequences[protein_id]['sequence']
+
+
+class PangenomeSource(StructureInputSource):
+    """A structure input source backed by a pangenome (a pan database + its genomes storage).
+
+    A pangenome gene is identified by a (genome_name, gene_callers_id) pair that is only unique *within* a
+    genome, so -- unlike the contigs-db source -- the gene caller id cannot double as the structure
+    database's protein_id. This source therefore mints a fresh surrogate integer protein_id per selected
+    protein and records the real provenance (genome_name, gene_callers_id, gene_cluster_id) in the
+    proteins table. Amino-acid and nucleotide sequences are fetched from the genomes storage.
+
+    Two selection modes (set on the command line):
+      - all members (default): every gene of every selected gene cluster becomes a protein.
+      - representative (--select-representative): a single medoid-like representative gene is picked per
+        gene cluster (see utils.get_representative_sequence_from_gene_cluster). The representative is a
+        real gene from the cluster, so it still resolves to a concrete (genome_name, gene_callers_id).
+
+    On update, protein_ids are reconciled against the existing proteins table by the natural key
+    (genome_name, gene_callers_id) -- which is populated in *both* modes -- so re-running or adding
+    clusters never re-mints or reshuffles ids already in the database.
+    """
+
+    input_type = 'pangenome'
+
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        StructureInputSource.__init__(self, args, run=run, progress=progress)
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.pan_db_path = A('pan_db')
+        self.genomes_storage_path = A('genomes_storage')
+        self.select_representative = A('select_representative')
+        self.gene_cluster_ids = A('gene_cluster_ids')
+        self.gene_clusters_of_interest_path = A('gene_clusters_of_interest')
+
+        if not self.pan_db_path:
+            raise ConfigError("A pangenome input requires a pan database (--pan-db).")
+        utils.is_pan_db(self.pan_db_path)
+
+        if not self.genomes_storage_path:
+            raise ConfigError("A pangenome input requires the genomes storage (--genomes-storage / -g) that goes with "
+                              "your pan database. The pan database only stores gene-cluster membership; the amino acid "
+                              "and nucleotide sequences anvi'o needs to model structures live in the genomes storage.")
+        utils.is_genome_storage(self.genomes_storage_path)
+
+        # PanSuperclass reads gene-cluster membership from the pan db and sequences from the genomes storage.
+        # It is kept quiet; the source's own run/progress carry the user-facing messages.
+        self.pan_super = PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+        self.pan_super.init_gene_clusters()
+
+        if not self.pan_super.genomes_storage_is_available:
+            raise ConfigError("Anvi'o could not access the genomes storage for this pangenome, so it cannot recover the "
+                              "sequences it needs. Please double-check your --genomes-storage.")
+
+        if self.select_representative and not self.pan_super.gene_clusters_gene_alignments_available:
+            raise ConfigError("You asked for one representative gene per gene cluster (--select-representative), but this "
+                              "pangenome was created without gene-cluster alignments (most likely with --skip-alignments). "
+                              "The representative is picked from the aligned sequences, so there is nothing anvi'o can do "
+                              "without them. Either recompute the pangenome with alignments, or drop --select-representative "
+                              "to model every gene in each cluster.")
+
+        # surrogate protein_id -> provenance dict, filled by enumerate_candidate_proteins
+        self.protein_map = {}
+
+
+    @property
+    def hash(self):
+        # the genomes storage is where the sequences come from, so its hash identifies the input's provenance
+        return self.pan_super.p_meta['genomes_storage_hash']
+
+
+    def get_self_provenance(self):
+        return {'input_type': self.input_type, 'contigs_db_hash': self.hash}
+
+
+    def _selected_gene_cluster_names(self):
+        """Resolve the gene clusters of interest from the command line (or fall back to all of them)."""
+        all_gene_clusters = set(self.pan_super.gene_clusters.keys())
+
+        if self.gene_cluster_ids and self.gene_clusters_of_interest_path:
+            raise ConfigError("You can't provide gene cluster ids on the command line (--gene-cluster-ids) and a file of "
+                              "gene cluster ids (--gene-clusters-of-interest) at the same time. Pick one.")
+
+        gene_clusters_of_interest = None
+        if self.gene_cluster_ids:
+            gene_clusters_of_interest = set([x.strip() for x in self.gene_cluster_ids.split(',') if x.strip()])
+        elif self.gene_clusters_of_interest_path:
+            filesnpaths.is_file_tab_delimited(self.gene_clusters_of_interest_path, expected_number_of_fields=1)
+            gene_clusters_of_interest = set([s.strip() for s in open(self.gene_clusters_of_interest_path).readlines() if s.strip()])
+
+        if not gene_clusters_of_interest:
+            gene_clusters_of_interest = all_gene_clusters
+            self.run.warning("You did not specify any gene clusters of interest, so anvi'o will assume all %d of them are "
+                             "of interest." % len(all_gene_clusters))
+
+        bad = [gc for gc in gene_clusters_of_interest if gc not in all_gene_clusters]
+        if bad:
+            raise ConfigError("%d of the gene cluster ids you provided are not known to this pangenome. Here are a few: %s."
+                              % (len(bad), ", ".join(map(str, bad[:5]))))
+
+        return gene_clusters_of_interest
+
+
+    def _target_genes(self, gene_cluster_names):
+        """Return the list of (genome_name, gene_callers_id, gene_cluster_id) triples to model, per mode."""
+        targets = []
+        if self.select_representative:
+            reps = self.pan_super.get_gene_cluster_representative_sequences(gene_cluster_names=set(gene_cluster_names))
+            for gc_id, rep in reps.items():
+                targets.append((rep['genome_name'], rep['gene_callers_id'], gc_id))
+        else:
+            for gc_id in gene_cluster_names:
+                for genome_name in self.pan_super.gene_clusters[gc_id]:
+                    for gene_callers_id in self.pan_super.gene_clusters[gc_id][genome_name]:
+                        targets.append((genome_name, gene_callers_id, gc_id))
+
+        # sort into a deterministic, process-independent order before surrogate protein_ids are minted
+        # from this order in enumerate_candidate_proteins. Both branches above iterate a set of gene
+        # cluster names, whose order varies run-to-run (str hash randomization); without this, the same
+        # gene gets a different protein_id each run, which breaks the ColabFold --only-msa/--only-predict
+        # checkpoint (its FASTA-hash guard assumes a byte-identical regenerated FASTA).
+        targets.sort(key=lambda t: (t[2], t[0], int(t[1])))
+        return targets
+
+
+    def accepted_external_formats(self):
+        return ['pangenome_gene']
+
+
+    def load_external_rows(self, external_format, content_df):
+        # a pangenome external-structures file lists (genome_name, gene_callers_id); validate each gene
+        # exists in the genomes storage and DERIVE its gene cluster from the pangenome (the cluster is not
+        # in the file). Runs before ids are minted, so it validates by natural key -- never by sequence.
+        rows = []
+        for _, row in content_df.iterrows():
+            genome_name = str(row['genome_name'])
+            gene_callers_id = int(row['gene_callers_id'])
+
+            self.pan_super.genomes_storage.is_known_genome(genome_name)
+            self.pan_super.genomes_storage.is_known_gene_call(genome_name, gene_callers_id)
+
+            gc_id = self.pan_super.gene_callers_id_to_gene_cluster.get(genome_name, {}).get(gene_callers_id)
+            if gc_id is None:
+                raise ConfigError("Gene caller id '%d' of genome '%s' (from your external-structures file) is not part "
+                                  "of any gene cluster in this pangenome, so anvi'o cannot associate a structure with it "
+                                  "here." % (gene_callers_id, genome_name))
+
+            rows.append((genome_name, gene_callers_id, gc_id, row['path']))
+
+        self.external_rows = rows
+
+
+    def _mint_protein_ids(self, targets, existing_proteins, paths_by_natural_key=None):
+        """Assign a surrogate protein_id to each (genome_name, gene_callers_id, gene_cluster_id) target.
+
+        On update, `existing_proteins` (the proteins-table dataframe) seeds the natural-key -> id map so
+        proteins already in the db keep their id and only new ones get fresh, non-colliding ids -- this is
+        what keeps add/--rerun idempotent. When `paths_by_natural_key` is given (external-structures mode),
+        each protein's PDB path is recorded in external_path_map so it can be imported later.
+        """
+        natural_key_to_id = {}
+        next_id = 0
+        if existing_proteins is not None and len(existing_proteins):
+            for _, row in existing_proteins.iterrows():
+                natural_key_to_id[(row['genome_name'], int(row['gene_callers_id']))] = int(row['protein_id'])
+            next_id = max(natural_key_to_id.values()) + 1
+
+        self.protein_map = {}
+        protein_ids = set()
+        seen_natural_keys = set()
+        for genome_name, gene_callers_id, gc_id in targets:
+            natural_key = (genome_name, int(gene_callers_id))
+
+            # the same gene can appear under more than one selected cluster only in pathological input;
+            # keep the first occurrence so a gene maps to exactly one protein_id
+            if natural_key in seen_natural_keys:
+                continue
+            seen_natural_keys.add(natural_key)
+
+            if natural_key in natural_key_to_id:
+                protein_id = natural_key_to_id[natural_key]
+            else:
+                protein_id = next_id
+                next_id += 1
+
+            self.protein_map[protein_id] = {
+                'genome_name': genome_name,
+                'gene_callers_id': int(gene_callers_id),
+                'gene_cluster_id': gc_id,
+                'source_key': '%s:%s:%d' % (gc_id, genome_name, int(gene_callers_id)),
+            }
+            if paths_by_natural_key is not None:
+                self.external_path_map[protein_id] = paths_by_natural_key[natural_key]
+
+            protein_ids.add(protein_id)
+
+        return protein_ids
+
+
+    def enumerate_candidate_proteins(self, existing_proteins=None, raise_if_none=False):
+        # external-structures mode: the file is the selection. Restrict targets to its rows, remember each
+        # row's PDB path, and mint ids by the same natural-key reconciliation as the predict path.
+        if self.external_rows is not None:
+            targets = [(genome_name, gene_callers_id, gc_id)
+                       for genome_name, gene_callers_id, gc_id, _ in self.external_rows]
+            paths_by_natural_key = {(genome_name, int(gene_callers_id)): path
+                                    for genome_name, gene_callers_id, _, path in self.external_rows}
+            return self._mint_protein_ids(targets, existing_proteins, paths_by_natural_key=paths_by_natural_key)
+
+        if raise_if_none and not (self.gene_cluster_ids or self.gene_clusters_of_interest_path):
+            raise ConfigError("You gotta supply some gene clusters of interest (--gene-cluster-ids or "
+                              "--gene-clusters-of-interest) when updating a pangenome structure database.")
+
+        gene_cluster_names = self._selected_gene_cluster_names()
+        targets = self._target_genes(gene_cluster_names)
+
+        if not targets:
+            raise ConfigError("Anvi'o could not find any genes to model for the gene clusters you selected. That is "
+                              "unexpected -- are these gene clusters empty?")
+
+        return self._mint_protein_ids(targets, existing_proteins)
+
+
+    def get_protein_spec(self, protein_id):
+        info = self.protein_map[protein_id]
+        return {'protein_id': protein_id,
+                'input_type': self.input_type,
+                'source_key': info['source_key'],
+                'gene_callers_id': info['gene_callers_id'],
+                'genome_name': info['genome_name'],
+                'gene_cluster_id': info['gene_cluster_id']}
+
+
+    def _aa_sequence(self, protein_id):
+        info = self.protein_map[protein_id]
+        return self.pan_super.genomes_storage.get_gene_sequence(info['genome_name'], info['gene_callers_id'],
+                                                                report_DNA_sequences=False)
+
+
+    def write_amino_acid_fasta(self, protein_id, output_file_path, simple_headers=True):
+        sequence = self._aa_sequence(protein_id)
+        header = '%d' % protein_id if simple_headers else self.protein_map[protein_id]['source_key']
+        with open(output_file_path, 'w') as f:
+            f.write('>%s\n%s\n' % (header, sequence))
+
+
+    def get_amino_acid_sequences(self, protein_ids):
+        return {protein_id: self._aa_sequence(protein_id) for protein_id in protein_ids}
+
+
+    def get_nucleotide_sequence(self, protein_id):
+        info = self.protein_map[protein_id]
+        return self.pan_super.genomes_storage.get_gene_sequence(info['genome_name'], info['gene_callers_id'],
+                                                                report_DNA_sequences=True)
+
+
 class StructureSuperclass(object):
     """Structure operations
 
@@ -327,6 +922,10 @@ class StructureSuperclass(object):
         Whether or not the structure DB is going to be made or not. If False, it should already
         exist
     """
+
+    # name of the manifest file an --only-msa run writes into --dump-dir, and that an --only-predict
+    # run reads back to verify it is resuming from the right MSAs (see run_colabfold_batch)
+    COLABFOLD_CHECKPOINT_FILENAME = 'colabfold_checkpoint.json'
 
     def __init__(self, args, create=False, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
@@ -342,9 +941,17 @@ class StructureSuperclass(object):
         self.external_structures_path = A('external_structures', null)
         self.modeller_executable = A('modeller_executable', null)
         self.list_modeller_params = A('list_modeller_params', null)
-        self.full_modeller_output = A('dump_dir', null)
 
-        self.run_mode = 'modeller' if not self.external_structures_path else 'external'
+        # --dump-dir is the directory where the raw, unabridged output of whichever prediction engine
+        # is in use is kept (MODELLER's per-gene output, or ColabFold's raw run). For the ColabFold
+        # checkpoint flags it doubles as the on-disk handoff between --only-msa and --only-predict.
+        self.dump_dir = A('dump_dir', null)
+
+        # self.run_mode is determined further below, once the structure db is available (for updates,
+        # the engine is read back from the db). self.engine records which prediction engine produced
+        # (or will produce) the structures in the db: 'modeller', 'colabfold', or 'external'.
+        self.run_mode = None
+        self.engine = None
 
         self.num_threads = A('num_threads', int)
         self.queue_size = self.num_threads * 2
@@ -354,15 +961,31 @@ class StructureSuperclass(object):
         self.gene_caller_ids = A('gene_caller_ids', null)
         self.rerun_genes = A('rerun_genes', null)
 
-        utils.is_contigs_db(self.contigs_db_path)
-        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
-        self.contigs_db_hash = contigs_db.meta['contigs_db_hash']
-        contigs_db.disconnect()
+        # ColabFold checkpoint flags (see run_colabfold_batch). --only-msa generates the MSAs and stops
+        # without producing a structure database; --only-predict resumes from those MSAs to build one.
+        self.only_msa = A('only_msa', bool)
+        self.only_predict = A('only_predict', bool)
 
-        # init ContigsSuperClass
-        self.contigs_super = ContigsSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+        # the input source owns everything about where the proteins to model come from: validating the
+        # input, enumerating proteins, per-protein provenance, and fetching sequences. The source is picked
+        # from the arguments: a pangenome (--pan-db) uses PangenomeSource, otherwise it is a contigs db.
+        self.pan_db_path = A('pan_db', null)
 
-        if self.create:
+        if self.pan_db_path:
+            self.input_source = PangenomeSource(self.args, run=self.run, progress=self.progress)
+        else:
+            self.input_source = ContigsDBSource(self.args, run=self.run, progress=self.progress)
+
+        self.contigs_db_hash = self.input_source.hash
+
+        # thin alias so the external-structures path and residue-identity annotation can reach the contigs
+        # superclass directly; all other sequence access goes through self.input_source. It is None for
+        # input types (e.g. pangenome) that are not backed by a single contigs database.
+        self.contigs_super = getattr(self.input_source, 'contigs_super', None)
+
+        # --only-msa stops after the MSA step and never produces a structure database, so it neither
+        # requires nor creates one. Every other mode sets up the structure db here.
+        if self.create and not self.only_msa:
             # check database output
             if not self.structure_db_path:
                 self.structure_db_path = "STRUCTURE.db"
@@ -373,12 +996,59 @@ class StructureSuperclass(object):
 
             filesnpaths.is_output_file_writable(self.structure_db_path)
 
+        # init StructureDatabase. In create mode, --only-msa produces no database, so none is opened.
+        # In update mode the database already exists and we always open it, even for --only-msa, because
+        # we need to read back the engine and run parameters it was created with (--only-msa still writes
+        # nothing to it: run_colabfold_batch returns before the storing step).
+        self.structure_db = None if (self.create and self.only_msa) else \
+            StructureDatabase(self.structure_db_path, self.contigs_db_hash, create_new=create, input_type=self.input_source.input_type)
 
-        # init StructureDatabase
-        self.structure_db = StructureDatabase(self.structure_db_path, self.contigs_db_hash, create_new=create)
+        # determine the engine and the resulting run mode
+        if self.create:
+            engine = (A('engine', null) or 'modeller')
+            if self.external_structures_path and engine == 'colabfold':
+                raise ConfigError("You asked for the ColabFold engine (--engine colabfold) but also provided "
+                                  "--external-structures. These are mutually exclusive: either predict structures "
+                                  "with ColabFold, or import your own pre-computed structures, not both.")
+            if self.external_structures_path:
+                self.run_mode = 'external'
+            elif engine == 'colabfold':
+                self.run_mode = 'colabfold'
+            else:
+                self.run_mode = 'modeller'
+            self.engine = self.run_mode
+        else:
+            # updating an existing db: honor whatever engine it was created with (unless the user is
+            # importing external structures, which bypasses the prediction engine entirely)
+            self.engine = self.structure_db.db.get_meta_value('engine', return_none_if_not_in_table=True) or 'modeller'
+            self.run_mode = 'external' if self.external_structures_path else self.engine
+
+            # ColabFold parameters only make sense when updating a ColabFold database. Flag them clearly
+            # rather than silently ignoring them (e.g. if the user aimed a ColabFold command at a MODELLER db)
+            if self.run_mode != 'colabfold' and (A('colabfold_conda_env', null) or A('colabfold_db', null) or A('colabfold_msa_server', bool)):
+                if self.external_structures_path:
+                    raise ConfigError("You provided ColabFold parameters, but you also passed --external-structures, "
+                                      "which imports pre-computed structures and bypasses ColabFold (and any prediction "
+                                      "engine) entirely. Please drop the ColabFold parameters.")
+                raise ConfigError("You provided ColabFold parameters, but this structure database was created with the "
+                                  "'%s' engine, not ColabFold. Anvi'o updates a database with the same engine it was "
+                                  "created with, so these parameters do not apply here." % self.engine)
+
+        # the checkpoint flags only make sense for ColabFold, which is the only engine with a splittable
+        # MSA / prediction pipeline
+        if (self.only_msa or self.only_predict) and self.run_mode != 'colabfold':
+            if self.external_structures_path:
+                reason = "you also passed --external-structures, which imports pre-computed structures and bypasses ColabFold entirely"
+            elif not self.create:
+                reason = "this structure database was created with the '%s' engine, not ColabFold" % self.engine
+            else:
+                reason = "please add '--engine colabfold', or drop these flags"
+            raise ConfigError("--only-msa and --only-predict are specific to the ColabFold engine: they split "
+                              "ColabFold's MSA and prediction steps into a resumable checkpoint. But %s." % reason)
 
         if self.list_modeller_params:
-            params_dict = self.structure_db.get_run_params_dict()
+            params_dict = self.structure_db.get_colabfold_run_params_dict() if self.engine == 'colabfold' \
+                          else self.structure_db.get_run_params_dict()
             for param, value in params_dict.items():
                 self.run.info(param, value)
             import sys; sys.exit()
@@ -387,10 +1057,14 @@ class StructureSuperclass(object):
         # NOTE self.skip_DSSP is down here because get_modeller_params has the potential to
         # overwrite self.args.skip_DSSP if create=False
         self.modeller_params = self.get_modeller_params()
+        self.colabfold_params = self.get_colabfold_params() if self.run_mode == 'colabfold' else None
         self.skip_DSSP = A('skip_DSSP', bool)
 
-        if self.create:
+        if self.create and not self.only_msa:
+            self.structure_db.db.set_meta_value('engine', self.engine)
             self.structure_db.store_modeller_params(self.modeller_params)
+            if self.colabfold_params is not None:
+                self.structure_db.store_modeller_params(self.colabfold_params)
             self.structure_db.db.set_meta_value('skip_DSSP', self.skip_DSSP)
 
         # init annotation sources
@@ -444,6 +1118,45 @@ class StructureSuperclass(object):
             }
 
 
+    def get_colabfold_params(self):
+        """Parses self.args to return a dictionary of ColabFold parameters to store in the db
+
+        The conda environment name and local database path are intentionally not stored: they are
+        machine-specific and not part of the scientific provenance of the structures.
+
+        Notes
+        =====
+        - If self.create=False, the scientific parameters accessed by this function are first restored
+          from the database into self.args via self.set_prior_colabfold_params (mirroring how
+          get_modeller_params relies on self.set_prior_modeller_params).
+        """
+
+        if not self.create:
+            # updating an existing db: restore the scientific params it was created with, and reconcile
+            # the machine-specific MSA source the user supplied on the command line with the stored one
+            self.set_prior_colabfold_params()
+
+        A = lambda x, t: t(self.args.__dict__[x]) if x in self.args.__dict__ and self.args.__dict__[x] is not None else None
+        null = lambda x: x
+
+        if not self.create:
+            # the MSA source was fixed when the db was created; it is authoritative on update
+            msa_source = self.structure_db.db.get_meta_value('colabfold_msa_source', try_as_type_int=False)
+        else:
+            # --only-predict resumes from an --only-msa checkpoint, whose MSAs are always generated
+            # locally (the public server cannot be split), so the source is 'local' even though
+            # --colabfold-db is not re-supplied at prediction time
+            msa_source = 'local' if (A('colabfold_db', null) or self.only_predict) else 'server'
+
+        return {
+            'num_models': A('num_models', null),
+            'num_recycle': A('num_recycle', null),
+            'amber': A('amber', bool),
+            'colabfold_msa_source': msa_source,
+            'colabfold_additional_parameters': A('colabfold_additional_parameters', null),
+        }
+
+
     def set_prior_modeller_params(self):
         """Add the previous run parameters used during database creation into self.args
 
@@ -456,6 +1169,55 @@ class StructureSuperclass(object):
         run_params_dict = self.structure_db.get_run_params_dict()
         for param, value in run_params_dict.items():
             setattr(self.args, param, value)
+
+
+    def set_prior_colabfold_params(self):
+        """Restore the ColabFold run parameters from the database into self.args, and reconcile the
+        machine-specific MSA source the user supplied on the command line with the one stored in the db.
+
+        Like set_prior_modeller_params, this keeps an update consistent with how the database was
+        created: the scientific parameters (num_models, num_recycle, amber, additional parameters) come
+        from the db. The MSA source location, however, is machine-specific and was not stored, so the
+        user must re-supply it on the command line -- and anvi'o refuses to switch the source (local vs.
+        server) an existing database was built with, since that would mix provenance within one db.
+        """
+
+        run_params_dict = self.structure_db.get_colabfold_run_params_dict()
+        stored_source = run_params_dict.pop('colabfold_msa_source')
+
+        for param, value in run_params_dict.items():
+            setattr(self.args, param, value)
+
+        A = lambda x, t: t(self.args.__dict__[x]) if x in self.args.__dict__ and self.args.__dict__[x] is not None else None
+        null = lambda x: x
+
+        # --only-predict resumes from a local MSA checkpoint on disk regardless of how the db was built,
+        # so it needs no MSA source and there is nothing to reconcile here
+        if self.only_predict:
+            return
+
+        user_local_db = A('colabfold_db', null)
+        user_msa_server = A('colabfold_msa_server', bool)
+
+        if stored_source == 'local':
+            if user_msa_server:
+                raise ConfigError("This structure database was created by generating the MSA step locally (with a "
+                                  "local ColabFold database), but you asked to update it with the public MSA server "
+                                  "(--colabfold-msa-server). Anvi'o will not mix MSA sources within a single database. "
+                                  "Please update it with --colabfold-db pointing to a local ColabFold database instead.")
+            if not user_local_db:
+                raise ConfigError("This structure database was created by generating the MSA step locally, so updating "
+                                  "it also requires a local ColabFold database. The database path is machine-specific "
+                                  "and is not stored in the structure database, so you must provide it now with "
+                                  "--colabfold-db (the directory you set up with ColabFold's `setup_databases.sh`).")
+        else:
+            # stored_source == 'server'
+            if user_local_db:
+                raise ConfigError("This structure database was created using the public MSA server, but you provided a "
+                                  "local ColabFold database (--colabfold-db) to update it. Anvi'o will not mix MSA "
+                                  "sources within a single database. Please update it with --colabfold-msa-server instead.")
+            # the source is fixed by the db, so anvi'o sets the server flag for the user
+            self.args.colabfold_msa_server = True
 
 
     def sanity_check(self):
@@ -482,22 +1244,70 @@ class StructureSuperclass(object):
             self.modeller_executable = self.args.modeller_executable
             self.run.info_single("Anvi'o found the MODELLER executable %s, so will use it" % self.modeller_executable, nl_after=1, nl_before=1, mc='green')
 
-            # Check and populate modeller databases if required
+            # Check and populate modeller databases if required. This builds the databases once, in
+            # the main thread, so that the parallel workers spawned later find them ready and never
+            # race to build them concurrently.
             MODELLER.MODELLER(self.args, filesnpaths.get_temp_file_path(), check_db_only=True)
+
+            # Verify the pre-build above actually left a complete database in place. If a build step
+            # (binarization or DIAMOND makedb) failed silently, surface it here as a clear error
+            # instead of letting the parallel workers re-enter the build and fail obscurely.
+            modeller_database = self.modeller_params['modeller_database']
+            for db_file in [J(constants.default_modeller_database_dir, modeller_database + ext) for ext in ['.bin', '.dmnd']]:
+                if not os.path.exists(db_file):
+                    raise ConfigError("Anvi'o tried to set up the MODELLER database before modelling structures, but "
+                                      "the expected file '%s' is not there afterwards. This usually means the database "
+                                      "build (binarization or DIAMOND makedb) did not complete. Please take a look at "
+                                      "the binarize_database / diamond makedb output above for clues." % db_file)
+        elif self.run_mode == 'colabfold':
+            # for the checkpoint flags, --dump-dir is the on-disk handoff between the two steps, so it
+            # is required: --only-msa writes the MSAs there, --only-predict reads them back from there
+            if (self.only_msa or self.only_predict) and not self.dump_dir:
+                raise ConfigError("--only-msa and --only-predict use --dump-dir as the on-disk checkpoint that "
+                                  "connects the MSA and prediction steps, so you must provide one. For --only-msa "
+                                  "it is where anvi'o writes the MSAs; for --only-predict it is where anvi'o reads "
+                                  "them back from.")
+
+            if self.only_predict:
+                # --only-predict must resume from an existing checkpoint directory
+                if not filesnpaths.is_file_exists(self.dump_dir, dont_raise=True):
+                    raise ConfigError("The --dump-dir you provided ('%s') does not exist. --only-predict resumes from "
+                                      "the MSA checkpoint that an earlier --only-msa run wrote there, so the directory "
+                                      "must already exist." % self.dump_dir)
+            else:
+                # a full run or --only-msa writes fresh ColabFold output; refuse to overwrite an existing dir
+                if self.dump_dir and filesnpaths.is_file_exists(self.dump_dir, dont_raise=True):
+                    raise ConfigError("The --dump-dir you provided ('%s') already exists. Anvi'o will not overwrite it. "
+                                      "Please provide a path that does not exist yet." % self.dump_dir)
+
+            # instantiating the driver validates the conda env / ColabFold programs and the MSA source
+            # choice, so we do it up front (once) and reuse it during the batched run. We pass our own
+            # run/progress (not quiet ones) so the user sees the driver's messages -- notably the GPU
+            # check and the ColabFold prediction progress.
+            self.colabfold = colabfold.ColabFold(self.args, run=self.run, progress=self.progress)
+
+            self.run.warning("Anvi'o will use ColabFold to predict protein structures. If you publish your findings, "
+                             "please do not forget to properly credit the work behind it -- %s" % self.colabfold.citation,
+                             lc='green', header="CITATION")
+            self.run.info_single("Anvi'o is set up to predict structures with ColabFold using the %s MSA source"
+                                 % self.colabfold.msa_source, nl_after=1, nl_before=1, mc='green')
         elif self.run_mode == 'external':
             self.run.info_single("Anvi'o will attempt to generate a database using external structures", nl_after=1, nl_before=1, mc='green')
 
-            if self.full_modeller_output:
+            if self.dump_dir:
                 raise ConfigError("No sense providing a --dump-dir when --external-structures are provided.")
 
-            self.external_structures = ExternalStructuresFile(path=self.external_structures_path, contigs_db_path=self.contigs_db_path)
+            # constructed purely for its side effects: it parses and validates the file against whatever
+            # input source is active (contigs-db or pangenome) and hands its rows to that source, which
+            # mints protein_ids from them at enumerate time. The object itself is not needed afterwards.
+            ExternalStructuresFile(path=self.external_structures_path, input_source=self.input_source)
 
 
     def get_genes_of_interest(self, genes_of_interest_path=None, gene_caller_ids=None, raise_if_none=False):
-        """Nabs the genes of interest based on genes_of_interest_path, gene_caller_ids, and self.external_structures
+        """Nab the proteins of interest for this run.
 
-        If no genes of interest are provided through either genes_of_interest_path,
-        gene_caller_ids, or self.external_structures, all will be assumed
+        In external-structures mode the file (already parsed in sanity_check) is the selection. Otherwise
+        the input source enumerates them from its own selection flags; if none are given, all are assumed.
 
         Parameters
         ==========
@@ -508,62 +1318,30 @@ class StructureSuperclass(object):
         genes_of_interest = None
 
         if self.run_mode == 'external':
-            if genes_of_interest_path or gene_caller_ids:
-                raise ConfigError("You can't provide a --gene-caller-ids or --genes-of-interest concurrently with --external-structures. "
-                                  "If you are trying to create a database from a subset of structures in your external structures file, "
-                                  "please instead create an external structures file containing only those structures and use that instead."
-                                  "Sorry for the inconvenience.")
+            # the external-structures file is itself the selection; it must not be combined with any
+            # gene/gene-cluster selection flag (of either input type)
+            A = lambda x: self.args.__dict__.get(x)
+            if genes_of_interest_path or gene_caller_ids or A('gene_cluster_ids') or \
+               A('gene_clusters_of_interest') or A('select_representative'):
+                raise ConfigError("You can't combine --external-structures with a gene or gene-cluster selection "
+                                  "(--gene-caller-ids / --genes-of-interest / --gene-cluster-ids / "
+                                  "--gene-clusters-of-interest / --select-representative). The external-structures file "
+                                  "is itself the selection: put exactly the structures you want into it.")
 
-            genes_of_interest = self.external_structures.content['gene_callers_id']
+            # the source already parsed the file (in sanity_check) and stashed its rows; enumerate mints
+            # the protein_ids (reconciling against the existing db on update) and records each PDB path
+            existing_proteins = None if self.create else self.structure_db.get_proteins_dataframe()
+            genes_of_interest = self.input_source.enumerate_candidate_proteins(existing_proteins=existing_proteins,
+                                                                               raise_if_none=raise_if_none)
+            # every imported PDB's sequence must match the sequence anvi'o has for that protein
+            self.input_source.check_external_integrity(genes_of_interest)
             return genes_of_interest
 
-        # identify the gene caller ids of all genes available
-        genes_in_contigs_database = set(self.contigs_super.genes_in_contigs_dict.keys())
-
-        if not genes_in_contigs_database:
-            raise ConfigError("This contigs database does not contain any identified genes...")
-
-        # settling genes of interest
-        if genes_of_interest_path and gene_caller_ids:
-            raise ConfigError("You can't provide a gene caller id from the command line, and a list of gene caller ids "
-                              "as a file at the same time, obviously.")
-
-        if gene_caller_ids:
-            gene_caller_ids = set([x.strip() for x in gene_caller_ids.split(',')])
-
-            genes_of_interest = []
-            for gene in gene_caller_ids:
-                try:
-                    genes_of_interest.append(int(gene))
-                except:
-                    raise ConfigError("Anvi'o does not like your gene caller id '%s'..." % str(gene))
-
-            genes_of_interest = set(genes_of_interest)
-
-        elif genes_of_interest_path:
-            filesnpaths.is_file_tab_delimited(genes_of_interest_path, expected_number_of_fields=1)
-
-            try:
-                genes_of_interest = set([int(s.strip()) for s in open(genes_of_interest_path).readlines()])
-            except ValueError:
-                raise ConfigError("Well. Anvi'o was working on your genes of interest ... and ... those gene IDs did not "
-                                  "look like anvi'o gene caller ids :/ Anvi'o is now sad.")
-
-        if not genes_of_interest:
-            if raise_if_none:
-                raise ConfigError("You gotta supply some genes of interest.")
-
-            # no genes of interest are specified. Assuming all, which could be innumerable--raise warning
-            genes_of_interest = genes_in_contigs_database
-            self.run.warning("You did not specify any genes of interest, so anvi'o will assume all of them are of interest.")
-
-        # Check for genes that do not appear in the contigs database
-        bad_gene_caller_ids = [g for g in genes_of_interest if g not in genes_in_contigs_database]
-        if bad_gene_caller_ids:
-            raise ConfigError(("This gene caller id you provided is" if len(bad_gene_caller_ids) == 1 else
-                               "These gene caller ids you provided are") + " not known to this contigs database: {}.\
-                               You have only 2 lives left. 2 more mistakes, and anvi'o will automatically uninstall \
-                               itself. Yes, seriously :(".format(", ".join([str(x) for x in bad_gene_caller_ids])))
+        # every other mode enumerates the proteins of interest through the input source. On update, the
+        # existing proteins table lets a source with surrogate protein_ids (e.g. pangenome) reuse the ids
+        # it already assigned rather than minting fresh, colliding ones.
+        existing_proteins = None if self.create else self.structure_db.get_proteins_dataframe()
+        genes_of_interest = self.input_source.enumerate_candidate_proteins(existing_proteins=existing_proteins, raise_if_none=raise_if_none)
 
         # Finally, raise warning if number of genes is greater than 20 FIXME determine average time
         # per gene and describe here
@@ -579,8 +1357,8 @@ class StructureSuperclass(object):
     def worker(self, available_index_queue, output_queue):
         while True:
             try:
-                corresponding_gene_call = available_index_queue.get(True)
-                structure_info = self.process_gene(corresponding_gene_call)
+                protein_id = available_index_queue.get(True)
+                structure_info = self.process_gene(protein_id)
                 output_queue.put(structure_info)
             except Exception as e:
                 # This thread encountered an error. We send the error back to the main thread which
@@ -595,13 +1373,22 @@ class StructureSuperclass(object):
         """Calls either run_multi_thread or run_single_thread"""
 
         self.run.warning('', header='General info', nl_after=0, lc='green')
-        self.run.info('contigs_db', self.contigs_db_path)
-        self.run.info('contigs_db_hash', self.contigs_db_hash)
+        self.run.info('input_type', self.input_source.input_type)
+        if self.input_source.input_type == 'pangenome':
+            self.run.info('pan_db', self.pan_db_path)
+            self.run.info('genomes_storage', self.input_source.genomes_storage_path)
+            self.run.info('genomes_storage_hash', self.contigs_db_hash)
+            self.run.info('gene_cluster_ids', self.input_source.gene_cluster_ids)
+            self.run.info('gene_clusters_of_interest', self.input_source.gene_clusters_of_interest_path)
+            self.run.info('select_representative', self.input_source.select_representative)
+        else:
+            self.run.info('contigs_db', self.contigs_db_path)
+            self.run.info('contigs_db_hash', self.contigs_db_hash)
+            self.run.info('genes_of_interest', self.genes_of_interest_path)
+            self.run.info('gene_caller_ids', self.gene_caller_ids)
         self.run.info('structure_db_path', self.structure_db_path)
         self.run.info('num_threads', self.num_threads)
         self.run.info('write_buffer_size', self.write_buffer_size)
-        self.run.info('genes_of_interest', self.genes_of_interest_path)
-        self.run.info('gene_caller_ids', self.gene_caller_ids)
         self.run.info('skip_DSSP', self.skip_DSSP)
         self.run.info('run_mode', self.run_mode)
 
@@ -610,13 +1397,19 @@ class StructureSuperclass(object):
             self.run.info('modeller_executable', self.modeller_executable)
             for param, value in self.modeller_params.items():
                 self.run.info(param, value)
-            self.run.info('dump_dir', self.full_modeller_output, nl_after=1)
+            self.run.info('dump_dir', self.dump_dir, nl_after=1)
+
+        if self.run_mode == 'colabfold':
+            self.run.warning('', header='ColabFold parameters', nl_after=0, lc='green')
+            for param, value in self.colabfold_params.items():
+                self.run.info(param, value)
+            self.run.info('dump_dir', self.dump_dir, nl_after=1)
 
         if not anvio.DEBUG:
             self.run.warning("Do you want live info about how the modelling procedure is going for "
                              "each gene? Then restart this process with the --debug flag", lc='yellow')
 
-        if self.run_mode == 'modeller' and not self.full_modeller_output:
+        if self.run_mode == 'modeller' and not self.dump_dir:
             self.run.warning("When this finishes, do you want a potentially massive folder that "
                              "contains a murder of unorganized data in volumes that far exceed what "
                              "you could possibly want? Perfect, then restart this process and "
@@ -648,7 +1441,314 @@ class StructureSuperclass(object):
                                                                                 len(genes_already_in_db),
                                                                                 genes_already_in_db[:5]))
 
-        self.run_multi_thread(genes_of_interest) if self.num_threads > 1 else self.run_single_thread(genes_of_interest)
+        if self.run_mode == 'colabfold':
+            # ColabFold predicts all genes in a single batched run (best GPU utilization), so it does
+            # not use the per-gene threading path that MODELLER/external structures use
+            self.run_colabfold_batch(genes_of_interest)
+        else:
+            self.run_multi_thread(genes_of_interest) if self.num_threads > 1 else self.run_single_thread(genes_of_interest)
+
+
+    def run_colabfold_batch(self, genes_of_interest):
+        """Predict structures for all genes of interest in a single ColabFold run, then store them.
+
+        Unlike MODELLER (one process per gene), ColabFold is run once over a multi-sequence FASTA. The
+        predictor batches internally and reuses the compiled model across sequences, which is far more
+        efficient on a GPU. Per-gene output files are then located, parsed, and stored.
+
+        The optional checkpoint flags split this into two resumable steps: --only-msa runs only the
+        (CPU-heavy, local) MSA step and stops, and --only-predict resumes from those MSAs to run the
+        (GPU-heavy) prediction step and build the database. Genes are sorted so the query FASTA is
+        byte-identical across the two runs, which is how --only-predict confirms it is resuming from the
+        right MSAs (see load_and_validate_colabfold_checkpoint).
+        """
+
+        # sort so the FASTA is deterministic: its content hash is the checkpoint's integrity guard
+        genes_of_interest = sorted(genes_of_interest)
+
+        # ColabFold writes its output files here. For --only-msa / --only-predict this is the (required,
+        # already-validated) --dump-dir checkpoint; for a full run it is --dump-dir if given, else a
+        # temporary directory.
+        out_dir = self.dump_dir or filesnpaths.get_temp_directory_path()
+        filesnpaths.gen_output_directory(out_dir, delete_if_exists=False, dont_warn=True)
+
+        if self.only_predict:
+            # regenerate the query FASTA into a throwaway temp file used *only* to validate against the
+            # checkpoint: prediction itself reads the .a3m directory, not this FASTA, and a mismatch must
+            # leave the existing checkpoint (its own FASTA + MSAs) untouched
+            fasta_path = os.path.join(filesnpaths.get_temp_directory_path(), 'genes_of_interest.fa')
+        else:
+            # the query FASTA is part of the checkpoint (so --only-predict can regenerate and compare it),
+            # so for --only-msa / full runs it lives inside out_dir
+            fasta_path = os.path.join(out_dir, 'genes_of_interest.fa')
+
+        clean_genes = self.export_clean_genes_to_fasta(genes_of_interest, fasta_path)
+
+        if self.only_predict:
+            # make sure this checkpoint was built from exactly these sequences before predicting
+            self.load_and_validate_colabfold_checkpoint(out_dir, fasta_path)
+
+        if self.only_msa:
+            # generate the MSAs locally, record the checkpoint, and stop. No database is produced.
+            self.colabfold.process(fasta_path, out_dir)
+            self.write_colabfold_checkpoint_manifest(out_dir, clean_genes, fasta_path)
+            self.run.info_single("The MSA step is done. Anvi'o wrote the multiple sequence alignments and a checkpoint "
+                                 "manifest to '%s'. To predict structures from them, re-run this exact command with "
+                                 "--only-predict instead of --only-msa (optionally with -o to name the output structure "
+                                 "database; it defaults to STRUCTURE.db)." % out_dir, nl_before=1, nl_after=1, mc='green')
+            return
+
+        # run ColabFold (a full run does MSA + prediction; --only-predict skips straight to prediction,
+        # so its fasta_path is ignored by the driver -- run_batch reads the checkpoint's .a3m directory)
+        self.colabfold.process(fasta_path, out_dir)
+
+        # parse each gene's output and store it
+        num_with_structure = 0
+        self.progress.new('Storing ColabFold results', progress_total_items=len(clean_genes))
+        for i, gene in enumerate(clean_genes):
+            self.progress.increment(i + 1)
+            self.progress.update('Processing gene %d ...' % gene)
+
+            self.structure_db.genes_queried.add(gene)
+            self.structure_db.register_protein(self.input_source.get_protein_spec(gene))
+
+            structure_info = self.process_colabfold_gene(gene, out_dir)
+            self.store_gene(structure_info)
+
+            if structure_info['has_structure']:
+                num_with_structure += 1
+                self.structure_db.genes_with_structure.add(gene)
+            else:
+                self.structure_db.genes_without_structure.add(gene)
+
+            self.structure_db.persist_proteins()
+        self.progress.end()
+
+        # genes that were skipped for not being 'clean' were still attempted, so record them as queried
+        # but without a structure
+        for gene in genes_of_interest:
+            if gene not in clean_genes:
+                self.structure_db.genes_queried.add(gene)
+                self.structure_db.genes_without_structure.add(gene)
+                self.structure_db.register_protein(self.input_source.get_protein_spec(gene))
+        self.structure_db.persist_proteins()
+
+        if not num_with_structure:
+            raise ConfigError("Well this is really sad. ColabFold did not produce a structure for any of your genes, so "
+                              "there is nothing to do. Please check the ColabFold log file in the output directory to "
+                              "find out what happened. Bye :'(")
+
+        # clean up, unless the user is debugging. When no --dump-dir was given, out_dir is a temporary
+        # directory we own, so we remove it. When --dump-dir was given we leave it in place (the user
+        # asked to keep the raw output), but for --only-predict the query FASTA we regenerated lives in
+        # its own temp directory that we should still tidy up.
+        if not anvio.DEBUG:
+            if not self.dump_dir and filesnpaths.is_file_exists(out_dir, dont_raise=True):
+                shutil.rmtree(out_dir, ignore_errors=True)
+            elif self.only_predict and filesnpaths.is_file_exists(os.path.dirname(fasta_path), dont_raise=True):
+                shutil.rmtree(os.path.dirname(fasta_path), ignore_errors=True)
+
+        self.structure_db.disconnect()
+        self.run.info("Structure database", self.structure_db_path)
+
+        # we never delete a --dump-dir ourselves (the user asked to keep the raw output, and for the
+        # checkpoint flow they may still want the MSAs), but once the database is built its contents are
+        # no longer needed, so let the user know they can remove it if they like
+        if self.dump_dir:
+            self.run.info_single("Anvi'o kept the raw ColabFold output%s in '%s'. It is not needed now that the "
+                                 "structure database is built, so feel free to delete it if you want the space back "
+                                 "(anvi'o will not remove it for you)."
+                                 % (" (including the MSA checkpoint)" if self.only_predict else "", self.dump_dir),
+                                 nl_before=1, mc='yellow')
+
+
+    def export_clean_genes_to_fasta(self, genes_of_interest, fasta_path):
+        """Write the amino-acid FASTA of 'clean' genes of interest for ColabFold and return the list of
+        gene caller ids actually written.
+
+        Each FASTA header is a gene caller id, which becomes the ColabFold 'jobname' (and thus the prefix
+        of that gene's output files). This is shared by the full run, --only-msa, and --only-predict, so
+        all three produce an identical FASTA for the same inputs.
+        """
+
+        self.progress.new('ColabFold')
+        self.progress.update('Preparing amino acid sequences ...')
+        aa_sequences = self.input_source.get_amino_acid_sequences(genes_of_interest)
+        self.progress.end()
+
+        clean_genes = []
+        with open(fasta_path, 'w') as fasta:
+            for gene in genes_of_interest:
+                sequence = aa_sequences[gene]
+                if not sequence:
+                    self.run.warning("Anvi'o could not find an amino acid sequence for gene ID %d, so it will be "
+                                     "skipped." % gene)
+                    continue
+                if self.skip_gene_if_not_clean(gene, sequence=sequence):
+                    continue
+                fasta.write('>%d\n%s\n' % (gene, sequence))
+                clean_genes.append(gene)
+
+        if not clean_genes:
+            raise ConfigError("None of your genes of interest passed anvi'o's 'clean gene' checks, so there is nothing "
+                              "for ColabFold to predict. Bye :'(")
+
+        return clean_genes
+
+
+    def write_colabfold_checkpoint_manifest(self, out_dir, clean_genes, fasta_path):
+        """Write the --only-msa checkpoint manifest into out_dir.
+
+        The manifest lets a later --only-predict run confirm it is resuming from the right MSAs. Its
+        integrity guard is query_fasta_hash: --only-predict regenerates the FASTA from its own inputs and
+        refuses to continue unless the hash matches. The rest of the fields are diagnostics.
+        """
+
+        manifest = {
+            'anvio_version': anvio.__version__,
+            'structure_db_version': structure_db_version,
+            'contigs_db_hash': self.contigs_db_hash,
+            'clean_genes': sorted(clean_genes),
+            'query_fasta_hash': utils.get_file_md5(fasta_path),
+            'msa_source': 'local',
+            'colabfold_db': self.args.__dict__.get('colabfold_db'),
+            'num_threads': self.num_threads,
+            'created_at': datetime.datetime.now().isoformat(),
+            'command_line': ' '.join(sys.argv),
+        }
+
+        manifest_path = os.path.join(out_dir, self.COLABFOLD_CHECKPOINT_FILENAME)
+        with open(manifest_path, 'w') as manifest_file:
+            json.dump(manifest, manifest_file, indent=2)
+
+
+    def load_and_validate_colabfold_checkpoint(self, out_dir, fasta_path):
+        """Verify that an --only-predict run is resuming from a checkpoint built from exactly its inputs.
+
+        fasta_path is the FASTA just regenerated from the current --contigs-db and genes of interest.
+        Raises ConfigError (with no override) on any mismatch, since predicting against MSAs that belong
+        to different sequences would silently produce structures glued to the wrong genes.
+        """
+
+        manifest_path = os.path.join(out_dir, self.COLABFOLD_CHECKPOINT_FILENAME)
+        if not filesnpaths.is_file_exists(manifest_path, dont_raise=True):
+            raise ConfigError("Anvi'o could not find a ColabFold MSA checkpoint (a '%s' file) in the --dump-dir you "
+                              "provided ('%s'). --only-predict resumes from the MSAs that an earlier --only-msa run "
+                              "wrote there, so you need to run that step first." %
+                              (self.COLABFOLD_CHECKPOINT_FILENAME, out_dir))
+
+        with open(manifest_path) as manifest_file:
+            manifest = json.load(manifest_file)
+
+        # friendly, specific check first: is this even the same contigs database?
+        if manifest.get('contigs_db_hash') != self.contigs_db_hash:
+            raise ConfigError("The contigs database you gave --only-predict does not match the one the MSA checkpoint "
+                              "in '%s' was built from (checkpoint hash '%s', yours '%s'). --only-predict must be run "
+                              "with the same --contigs-db as the --only-msa step." %
+                              (out_dir, manifest.get('contigs_db_hash'), self.contigs_db_hash))
+
+        # the authoritative guard: the sequences to predict must be byte-identical to those the MSAs were
+        # generated from. This rests on export_clean_genes_to_fasta being fully deterministic for a given
+        # contigs-db -- i.e. get_sequences_for_gene_callers_ids and skip_gene_if_not_clean must always
+        # produce the same clean-gene set and byte order. If a future change makes either of those
+        # non-deterministic or dependent on args not captured by the checkpoint, resume will break here.
+        if manifest.get('query_fasta_hash') != utils.get_file_md5(fasta_path):
+            raise ConfigError("The genes and sequences --only-predict is about to work on do not match the ones the MSA "
+                              "checkpoint in '%s' was built from. This usually means the genes of interest changed, the "
+                              "genes were re-called, or the contigs database was edited between the --only-msa and "
+                              "--only-predict steps. Because ColabFold's MSAs are tied to the exact sequences they were "
+                              "generated from, anvi'o will not predict structures against a mismatched checkpoint. If "
+                              "your input really has changed, re-run --only-msa to regenerate the MSAs." % out_dir)
+
+        # finally, make sure the MSAs are actually present
+        msa_dir = os.path.join(out_dir, 'msas')
+        if not os.path.isdir(msa_dir) or not len(glob.glob(os.path.join(msa_dir, '*.a3m'))):
+            raise ConfigError("The MSA checkpoint in '%s' does not contain any MSA (.a3m) files under a 'msas/' "
+                              "subdirectory. The --only-msa step may not have finished successfully. Please re-run it "
+                              "before --only-predict." % out_dir)
+
+
+    def process_colabfold_gene(self, protein_id, out_dir):
+        """Locate and parse a single gene's ColabFold output into a structure_info dict"""
+
+        structure_info = {
+            'protein_id': protein_id,
+            'has_structure': False,
+        }
+
+        pdb_path, scores_path = self.colabfold.get_output_paths(out_dir, str(protein_id))
+
+        if not pdb_path:
+            self.run.warning("ColabFold did not produce a structure for gene ID %d. Anvi'o will move on to the next "
+                             "gene." % protein_id)
+            return structure_info
+
+        # parse the scores JSON once here and pass the dict to both consumers below
+        scores = self.read_colabfold_scores(scores_path)
+
+        structure_info['results'] = self.create_results_dict_for_colabfold_structure(protein_id, pdb_path, scores)
+        structure_info['has_structure'] = True
+
+        residue_info = self.get_gene_contribution_to_residue_info_table(
+            protein_id=protein_id,
+            pdb_filepath=pdb_path,
+        )
+        structure_info['residue_info'] = self.add_plddt_to_residue_info(residue_info, scores)
+
+        return structure_info
+
+
+    def create_results_dict_for_colabfold_structure(self, protein_id, pdb_path, scores):
+        """Build a results dict (mirroring the MODELLER/external contract) for a ColabFold structure
+
+        ColabFold reports confidence with per-residue pLDDT and model-level pTM instead of MODELLER's
+        DOPE/GA341/molpdf scores. Here we record the model-level metrics; per-residue pLDDT is added to
+        the residue_info table separately (see add_plddt_to_residue_info). `scores` is the parsed
+        ColabFold scores dict (or None if it was missing).
+        """
+
+        mean_plddt, ptm = None, None
+        if scores is not None:
+            plddt = scores.get('plddt', [])
+            if len(plddt):
+                mean_plddt = float(np.mean(plddt))
+            if scores.get('ptm', None) is not None:
+                ptm = float(scores['ptm'])
+
+        return {
+            'templates': {'pdb_id': ['none'], 'chain_id': ['none'], 'proper_percent_similarity': [0], 'percent_similarity': [0], 'align_fraction': [0]},
+            'models': {'mean_plddt': [mean_plddt], 'ptm': [ptm], 'picked_as_best': [True]},
+            'protein_id': protein_id,
+            'structure_exists': True,
+            'best_model_path': pdb_path,
+            'best_score': mean_plddt,
+        }
+
+
+    def add_plddt_to_residue_info(self, residue_info, scores):
+        """Attach ColabFold's per-residue pLDDT to the residue_info dataframe, aligned by codon_order_in_gene
+
+        `scores` is the parsed ColabFold scores dict (or None if it was missing).
+        """
+
+        if scores is None:
+            return residue_info
+
+        plddt = scores.get('plddt', [])
+        plddt_per_codon_order = {codon_order: value for codon_order, value in enumerate(plddt)}
+        residue_info['plddt'] = residue_info['codon_order_in_gene'].map(plddt_per_codon_order)
+
+        return residue_info
+
+
+    def read_colabfold_scores(self, scores_path):
+        """Load a ColabFold scores JSON file, or return None if it is missing"""
+
+        if not scores_path or not filesnpaths.is_file_exists(scores_path, dont_raise=True):
+            return None
+
+        with open(scores_path) as f:
+            return json.load(f)
 
 
     def run_multi_thread(self, genes_of_interest):
@@ -691,20 +1791,21 @@ class StructureSuperclass(object):
                     # If thread returns an exception, we raise it and kill the main thread.
                     raise structure_info
 
-                corresponding_gene_call = structure_info['corresponding_gene_call']
+                protein_id = structure_info['protein_id']
 
                 # Add it to the storage buffer
                 structure_infos.append(structure_info)
 
                 num_tried += 1
-                self.structure_db.genes_queried.add(corresponding_gene_call)
+                self.structure_db.genes_queried.add(protein_id)
+                self.structure_db.register_protein(self.input_source.get_protein_spec(protein_id))
 
                 if structure_info['has_structure']:
                     num_with_structure += 1
-                    self.structure_db.genes_with_structure.add(corresponding_gene_call)
+                    self.structure_db.genes_with_structure.add(protein_id)
                 else:
                     num_without_structure += 1
-                    self.structure_db.genes_without_structure.add(corresponding_gene_call)
+                    self.structure_db.genes_without_structure.add(protein_id)
 
                 if mem_tracker.measure():
                     mem_usage = mem_tracker.get_last()
@@ -724,7 +1825,7 @@ class StructureSuperclass(object):
                     structure_infos = []
 
                     # Update self table
-                    self.structure_db.update_genes_with_and_without_structure()
+                    self.structure_db.persist_proteins()
 
                     self.progress.update(msg)
 
@@ -751,7 +1852,7 @@ class StructureSuperclass(object):
         structure_infos = []
 
         # Update self table
-        self.structure_db.update_genes_with_and_without_structure()
+        self.structure_db.persist_proteins()
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
@@ -778,8 +1879,8 @@ class StructureSuperclass(object):
         self.progress.update(msg)
 
         try:
-            for corresponding_gene_call in genes_of_interest:
-                structure_info = self.process_gene(corresponding_gene_call)
+            for protein_id in genes_of_interest:
+                structure_info = self.process_gene(protein_id)
                 num_tried += 1
 
                 self.progress.increment(num_tried)
@@ -794,18 +1895,19 @@ class StructureSuperclass(object):
 
                 self.dump_raw_results(structure_info)
 
-                self.structure_db.genes_queried.add(corresponding_gene_call)
+                self.structure_db.genes_queried.add(protein_id)
+                self.structure_db.register_protein(self.input_source.get_protein_spec(protein_id))
 
                 if structure_info['has_structure']:
                     num_with_structure += 1
-                    self.structure_db.genes_with_structure.add(corresponding_gene_call)
+                    self.structure_db.genes_with_structure.add(protein_id)
                 else:
                     num_without_structure += 1
-                    self.structure_db.genes_without_structure.add(corresponding_gene_call)
+                    self.structure_db.genes_without_structure.add(protein_id)
 
                 # We update self.table every gene because there is no GIL cost with single thread and it
                 # allows user to CTRL+C and still have a valid DB
-                self.structure_db.update_genes_with_and_without_structure()
+                self.structure_db.persist_proteins()
         except KeyboardInterrupt:
             self.run.info_single("Anvi'o received SIGINT, terminating all processes...", nl_before=2)
 
@@ -823,9 +1925,9 @@ class StructureSuperclass(object):
         return '│ PROCESSED: %d/%d │ STRUCTURES: %d │ MEMORY: 🧠  %s (%s) │'
 
 
-    def process_gene(self, corresponding_gene_call):
+    def process_gene(self, protein_id):
         structure_info = {
-            'corresponding_gene_call': corresponding_gene_call,
+            'protein_id': protein_id,
             'has_structure': False,
         }
 
@@ -834,10 +1936,7 @@ class StructureSuperclass(object):
 
             # Export sequence
             target_fasta_path = filesnpaths.get_temp_file_path()
-            self.contigs_super.get_sequences_for_gene_callers_ids([corresponding_gene_call],
-                                                                  output_file_path=target_fasta_path,
-                                                                  report_aa_sequences=True,
-                                                                  simple_headers=True)
+            self.input_source.write_amino_acid_fasta(protein_id, target_fasta_path, simple_headers=True)
 
             try:
                 filesnpaths.is_file_fasta_formatted(target_fasta_path)
@@ -847,10 +1946,10 @@ class StructureSuperclass(object):
                                  "occassionally happens has not been investigated, but if it is any consolation, "
                                  "it is not your fault. You may want to try again, and maybe it will work. Or "
                                  "maybe it will not. Regardless, at this time anvi'o cannot model the gene. "
-                                 "Here is the temporary fasta file path: %s " % (corresponding_gene_call, target_fasta_path))
+                                 "Here is the temporary fasta file path: %s " % (protein_id, target_fasta_path))
                 return structure_info
 
-            if self.skip_gene_if_not_clean(corresponding_gene_call, fasta_path=target_fasta_path):
+            if self.skip_gene_if_not_clean(protein_id, fasta_path=target_fasta_path):
                 return structure_info
 
             # Model structure
@@ -858,31 +1957,31 @@ class StructureSuperclass(object):
 
         elif self.run_mode == 'external':
 
-            structure = self.external_structures.get_structure(corresponding_gene_call)
-            if self.skip_gene_if_not_clean(corresponding_gene_call, sequence=structure.get_sequence()):
+            structure = Structure(self.input_source.get_external_structure_path(protein_id))
+            if self.skip_gene_if_not_clean(protein_id, sequence=structure.get_sequence()):
                 return structure_info
 
-            structure_info['results'] = self.create_results_dict_for_external_structure(corresponding_gene_call)
+            structure_info['results'] = self.create_results_dict_for_external_structure(protein_id)
 
         # Annotate residues
         if structure_info['results']['structure_exists']:
             structure_info['has_structure'] = True
 
             structure_info['residue_info'] = self.get_gene_contribution_to_residue_info_table(
-                corresponding_gene_call=corresponding_gene_call,
+                protein_id=protein_id,
                 pdb_filepath=structure_info['results']['best_model_path'],
             )
 
         return structure_info
 
 
-    def create_results_dict_for_external_structure(self, corresponding_gene_call):
+    def create_results_dict_for_external_structure(self, protein_id):
         return {
             'templates': {'pdb_id': ['none'], 'chain_id': ['none'], 'proper_percent_similarity': [0], 'percent_similarity': [0], 'align_fraction': [0]},
             'models': {'molpdf': [0], 'GA341_score': [0], 'DOPE_score': [0], 'picked_as_best': [True]},
-            'corresponding_gene_call': corresponding_gene_call,
+            'protein_id': protein_id,
             'structure_exists': True,
-            'best_model_path': self.external_structures.get_path(corresponding_gene_call),
+            'best_model_path': self.input_source.get_external_structure_path(protein_id),
             'best_score': None,
             'scoring_method': self.modeller_params['scoring_method'],
             'percent_cutoff': self.modeller_params['percent_cutoff'],
@@ -892,12 +1991,12 @@ class StructureSuperclass(object):
         }
 
 
-    def skip_gene_if_not_clean(self, corresponding_gene_call, fasta_path=None, sequence=None):
+    def skip_gene_if_not_clean(self, protein_id, fasta_path=None, sequence=None):
         """Do not try modelling gene if it is not clean
 
         Parameters
         ==========
-        corresponding_gene_call : int
+        protein_id : int
             What is the gene callers id?
         fasta_path : str, None
             Provide either the path to the amino acid fasta
@@ -920,37 +2019,36 @@ class StructureSuperclass(object):
         except ConfigError as error:
             self.run.warning("You wanted to model a structure for gene ID %d, but it is not what anvi'o "
                              "considers a 'clean gene'. Anvi'o will move onto the next gene. Here is the "
-                             "error that was raised: \"%s\"" % (corresponding_gene_call, error.e))
+                             "error that was raised: \"%s\"" % (protein_id, error.e))
             return True
 
 
-    def get_gene_contribution_to_residue_info_table(self, corresponding_gene_call, pdb_filepath):
+    def get_gene_contribution_to_residue_info_table(self, protein_id, pdb_filepath):
         results = [
             self.dssp.run(pdb_filepath, dont_run=self.skip_DSSP, drop=['aa']),
             self.run_contact_map_annotation(pdb_filepath),
-            self.run_residue_identity_annotation(corresponding_gene_call, pdb_filepath),
+            self.run_residue_identity_annotation(protein_id, pdb_filepath),
         ]
         residue_annotation_for_gene = pd.concat(results, axis=1, sort=True)
 
-        # add corresponding_gene_call and codon_order_in_gene as 0th and 1st columns
-        residue_annotation_for_gene.insert(0, "corresponding_gene_call", corresponding_gene_call)
+        # add protein_id and codon_order_in_gene as 0th and 1st columns
+        residue_annotation_for_gene.insert(0, "protein_id", protein_id)
         residue_annotation_for_gene.insert(1, "codon_order_in_gene", residue_annotation_for_gene.index)
 
         return residue_annotation_for_gene
 
 
-    def run_residue_identity_annotation(self, corresponding_gene_call, pdb_filepath):
+    def run_residue_identity_annotation(self, protein_id, pdb_filepath):
         """A small routine to return a data frame containing codon numbers, codons, and amino acids"""
 
-        nt_sequence = self.contigs_super.get_sequences_for_gene_callers_ids([corresponding_gene_call])
-        nt_sequence = nt_sequence[1][corresponding_gene_call]['sequence']
+        nt_sequence = self.input_source.get_nucleotide_sequence(protein_id)
 
         seq_dict = {"codon_order_in_gene": [],
                     "codon_number":        [],
                     "codon":               [],
                     "amino_acid":          []}
 
-        last_codon = nt_sequence[:-3]
+        last_codon = nt_sequence[-3:]
         if last_codon in ['TAA', 'TAG', 'TGA']:
             gene_length_in_codons = len(nt_sequence)//3 - 1 # subtract 1 because it's the stop codon
         else:
@@ -989,15 +2087,18 @@ class StructureSuperclass(object):
 
 
     def dump_raw_results(self, structure_info):
-        """Dump all raw modeller output into output_gene_dir if self.full_modeller_output"""
+        """Dump all raw modeller output into output_gene_dir if a --dump-dir (self.dump_dir) was given"""
 
-        if not self.full_modeller_output:
+        if not self.dump_dir:
             return
 
         if 'results' not in structure_info:
             return
 
-        output_gene_dir = os.path.join(self.full_modeller_output, structure_info['results']['corresponding_gene_call'])
+        # the subdirectory is named after the protein (== gene caller id for a contigs-db input). We use
+        # the structure_info key rather than the prediction engine's own results key, which is engine
+        # specific (e.g. MODELLER derives it from the FASTA defline).
+        output_gene_dir = os.path.join(self.dump_dir, str(structure_info['protein_id']))
         shutil.move(structure_info['results']['directory'], output_gene_dir)
 
 
@@ -1008,42 +2109,51 @@ class StructureSuperclass(object):
             # There is nothing to store
             return
 
-        corresponding_gene_call = structure_info["corresponding_gene_call"]
+        protein_id = structure_info["protein_id"]
         results = structure_info['results']
 
         # If the gene is present in the database, remove it first
-        if corresponding_gene_call in self.structure_db.genes_with_structure:
+        if protein_id in self.structure_db.genes_with_structure:
             # We do not remove the gene from self because that is handled in _run
-            self.structure_db.remove_gene(corresponding_gene_call, remove_from_self=False)
+            self.structure_db.remove_gene(protein_id, remove_from_self=False)
 
         # templates is always added, even when structure was not modelled
         templates = pd.DataFrame(results['templates'])
-        templates.insert(0, 'corresponding_gene_call', corresponding_gene_call)
+        templates.insert(0, 'protein_id', protein_id)
         self.structure_db.entries[t.templates_table_name] = \
-            self.structure_db.entries[t.templates_table_name].append(templates)
+            pd.concat([self.structure_db.entries[t.templates_table_name], templates])
         self.structure_db.store(t.templates_table_name)
 
         # entries that are only added if a structure was modelled
         if results['structure_exists']:
 
-            # models
+            # models. Different engines populate different score columns (MODELLER: molpdf/GA341/DOPE;
+            # ColabFold: mean_plddt/ptm), so any column the engine did not produce is filled with NULL
             models = pd.DataFrame(results['models'])
-            models.insert(0, 'corresponding_gene_call', corresponding_gene_call)
+            models.insert(0, 'protein_id', protein_id)
+            for column in t.models_table_structure:
+                if column not in models.columns:
+                    models[column] = None
             self.structure_db.entries[t.models_table_name] = \
-                self.structure_db.entries[t.models_table_name].append(models)
+                pd.concat([self.structure_db.entries[t.models_table_name], models])
             self.structure_db.store(t.models_table_name)
 
             # pdb file data
             pdb_file = open(results['best_model_path'], 'rb')
             pdb_contents = pdb_file.read()
             pdb_file.close()
-            pdb_table_entry = (corresponding_gene_call, pdb_contents)
+            pdb_table_entry = (protein_id, pdb_contents)
             self.structure_db.entries[t.pdb_data_table_name].append(pdb_table_entry)
             self.structure_db.store(t.pdb_data_table_name)
 
-            # residue_info
+            # residue_info. The per-residue plddt column is only produced by ColabFold, so it is filled
+            # with NULL for other engines
+            residue_info = structure_info['residue_info']
+            for column in t.residue_info_table_structure:
+                if column not in residue_info.columns:
+                    residue_info[column] = None
             self.structure_db.entries[t.residue_info_table_name] = \
-                self.structure_db.entries[t.residue_info_table_name].append(structure_info['residue_info'])
+                pd.concat([self.structure_db.entries[t.residue_info_table_name], residue_info])
             self.structure_db.store(t.residue_info_table_name)
 
 
@@ -1634,12 +2744,8 @@ class PDBDatabase(object):
             pdb_db.create_table('structures', ['representative_id', 'pdb_content'], ['text', 'blob'])
             pdb_db.create_table('clusters', ['cluster', 'id', 'representative'], ['text', 'text', 'integer'])
 
-        try:
-            # Create an index for `representative_id` for fast lookup
-            pdb_db._exec("CREATE INDEX chain_index ON structures (representative_id);")
-        except sqlite3.OperationalError:
-            # The index has already been set
-            pass
+        # Create an index for `representative_id` for fast lookup
+        pdb_db._exec("CREATE INDEX IF NOT EXISTS chain_index ON structures (representative_id);")
 
         pdb_db.disconnect()
 
@@ -1916,128 +3022,85 @@ class Structure(object):
 
 
 class ExternalStructuresFile(object):
-    def __init__(self, path, contigs_db_path, lazy=False, p=terminal.Progress(), r=terminal.Run()):
-        """Check the integrity of an external structures file and provide contents as the attribute self.content
+    """Parse and validate a user-provided external-structures file for a given input source.
 
-        Parameters
-        ==========
-        contigs_db_path : str, None
-            The path to the corresponding contigs database.
-        lazy : bool, False
-            If false, each structure file will be opened and the sequence therein will be explicitly compared to
-            the amino acid of the gene callers id found in the contigs database. If True, only superficial checks
-            will be carried out, like making sure the file is tab-delimited and that all files pointed to actually
-            exist.
-        """
+    The file lists pre-computed structure (PDB) files to import instead of predicting structures. Its
+    header determines the format, and the format must be one the input source accepts:
+      - contigs-db:  gene_callers_id, path
+      - pangenome:   genome_name, gene_callers_id, path
 
+    This class is source-agnostic: it parses the TSV, auto-detects the format, checks for duplicates and
+    that every path exists, then hands the rows to the input source. The source validates natural-key
+    existence (and later mints protein_ids and checks each PDB's sequence via check_external_integrity).
+    This class reads no database itself.
+    """
+
+    # header layout -> ordered column names (the last column is always 'path'; the rest are the row's key)
+    FORMAT_HEADERS = {
+        'contigs':        ['gene_callers_id', 'path'],
+        'pangenome_gene': ['genome_name', 'gene_callers_id', 'path'],
+    }
+
+    def __init__(self, path, input_source, p=terminal.Progress(), r=terminal.Run()):
         self.run, self.progress = r, p
-
         self.path = path
-        self.contigs_db_path = contigs_db_path
+        self.input_source = input_source
 
-        utils.is_contigs_db(self.contigs_db_path)
         filesnpaths.is_file_tab_delimited(self.path)
-
         self.content = pd.read_csv(self.path, sep='\t')
 
-        self.is_header_ok()
+        if not len(self.content):
+            raise ConfigError("Your external-structures file ('%s') has a header but no rows, so there are no "
+                              "structures to import and nothing for anvi'o to do. Please add at least one structure "
+                              "to it, or drop --external-structures." % self.path)
+
+        self.format = self._detect_format()
+        accepted = input_source.accepted_external_formats()
+        if self.format not in accepted:
+            raise ConfigError("Your external-structures file is in the '%s' format, but a '%s' input expects one of "
+                              "these header layouts: %s. Please provide a file whose header matches your input type."
+                              % (self.format, input_source.input_type,
+                                 '; '.join('[%s]' % ', '.join(self.FORMAT_HEADERS[f]) for f in accepted)))
+
         self.is_duplicates()
-        self.is_gene_caller_ids_ok()
         self.is_files_exist()
-        if not lazy:
-            self.test_integrity()
+
+        # hand the validated rows to the source: it checks natural-key existence and stashes them for
+        # protein_id minting (see the source's load_external_rows / enumerate_candidate_proteins)
+        input_source.load_external_rows(self.format, self.content)
 
 
-    def get_structure(self, gene_callers_id):
-        """Return Structure object for given gene callers id"""
+    def _detect_format(self):
+        headers = list(self.content.columns)
+        for external_format, expected in self.FORMAT_HEADERS.items():
+            if headers == expected:
+                return external_format
 
-        path = self.get_path(gene_callers_id)
-        return Structure(path)
-
-
-    def get_path(self, gene_callers_id):
-        """Return Structure object for given gene callers id"""
-
-        result = self.content.loc[self.content['gene_callers_id'] == gene_callers_id, 'path']
-        if result.empty:
-            raise ConfigError(f"Structure.get_path :: Can't find gene callers id '{gene_callers_id}'.")
-        return result.iloc[0]
+        accepted = '; '.join('[%s]' % ', '.join(cols) for cols in self.FORMAT_HEADERS.values())
+        raise FilesNPathsError("Anvi'o could not recognize the header of your external-structures file. Its columns "
+                               "were '%s', but they must exactly match one of these layouts: %s."
+                               % (', '.join(str(h) for h in headers), accepted))
 
 
-    def is_header_ok(self):
-        headers_proper = ['gene_callers_id', 'path']
-        with open(self.path, 'r') as input_file:
-            headers = input_file.readline().strip().split('\t')
-            missing_headers = [h for h in headers_proper if h not in headers]
-
-            if len(headers) != 2:
-                raise FilesNPathsError("Your external structures file does not contain the right number of columns :/ Here are "
-                                       "what the header columns should be called, in this order: '%s'." % ', '.join(headers_proper))
-
-            if len(missing_headers):
-                raise FilesNPathsError("Your external structures file has the wrong headers. They should be: '%s', not '%s'." % (', '.join(headers_proper), ', '.join(headers)))
-
-        return True
+    def _key_columns(self):
+        # every column but 'path' identifies a row (the natural key for this format)
+        return [c for c in self.FORMAT_HEADERS[self.format] if c != 'path']
 
 
     def is_duplicates(self):
-        counts = self.content['gene_callers_id'].value_counts()
+        key_columns = self._key_columns()
+        counts = self.content.groupby(key_columns).size()
         multiple = counts[counts > 1].index.tolist()
         if len(multiple):
-            raise FilesNPathsError(f"Only one structure can be assigned to each gene callers id. But the following genes are present "
-                                   f"multiple times in your external structures file: {multiple}")
+            raise FilesNPathsError("Only one structure can be assigned to each %s. But the following are present multiple "
+                                   "times in your external-structures file: %s" % (' + '.join(key_columns), multiple))
 
 
     def is_files_exist(self):
         """Check that all files pointed to in the file actually exist"""
         for _, row in self.content.iterrows():
-            gene_callers_id, path = row['gene_callers_id'], row['path']
-            if not filesnpaths.is_file_exists(path, dont_raise=True):
-                raise FilesNPathsError(f"This is kind of an issue. Your external structures file points to the following path: {path}. "
-                                       f"for gene callers id {gene_callers_id}. Well that path is not a file :\\")
+            if not filesnpaths.is_file_exists(row['path'], dont_raise=True):
+                raise FilesNPathsError("Your external-structures file points to '%s', but that path is not a file :\\"
+                                       % row['path'])
 
-        return True
-
-
-    def is_gene_caller_ids_ok(self):
-        """Returns True if all gene_callers_ids in external structures file are in the contigs database and are coding"""
-
-        contigs_db = db.DB(self.contigs_db_path, client_version=None, ignore_version=True)
-        table = contigs_db.get_table_as_dataframe('gene_amino_acid_sequences')
-        genes_in_contigs_db_with_aa_seqs = table.loc[table['sequence'] != '', 'gene_callers_id'].tolist()
-        missing_in_contigs = [x for x in self.content['gene_callers_id'] if x not in genes_in_contigs_db_with_aa_seqs]
-
-        if len(missing_in_contigs):
-            raise ConfigError(f"Some gene caller ids in your external structures file are either missing from your contigs database "
-                              f"or are non-coding (they have no corresponding amino acid sequence). This is a show stopper. "
-                              f"Here are the gene caller ids: {missing_in_contigs}")
-
-
-    def test_integrity(self):
-        """Parse the sequence contents of each PDB and ensure it matches the sequences in the contigs database"""
-
-        # Fetch the amino acid sequences found in contigs database
-        contigs_db = db.DB(self.contigs_db_path, client_version=None, ignore_version=True)
-        table = contigs_db.get_table_as_dataframe('gene_amino_acid_sequences')
-        amino_acid_sequences = dict(zip(table['gene_callers_id'], table['sequence']))
-
-        self.progress.new('External structures', progress_total_items=self.content.shape[0])
-        self.progress.update('Testing personal integrity')
-
-        for _, row in self.content.iterrows():
-            gene_callers_id, path = row['gene_callers_id'], row['path']
-            s = Structure(path)
-            aa_seq_structure = s.get_sequence()
-            aa_seq_contigs = amino_acid_sequences[gene_callers_id]
-
-            if aa_seq_structure != aa_seq_contigs:
-                self.progress.end()
-                raise ConfigError(f"The sequence in the structure for gene callers id {gene_callers_id} ({path}) does not match the sequence "
-                                  f"found for this gene in the contigs database. Here is the sequence found in the structure: {aa_seq_structure}. "
-                                  f"And here is the sequence in the contigs database that anvi'o was expecting: {aa_seq_contigs}.")
-
-            self.progress.increment()
-            self.progress.update(self.progress.msg)
-
-        self.progress.end()
         return True

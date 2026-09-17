@@ -2312,46 +2312,67 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
 
 
     def get_model_info(self, gene_callers_id):
-        """Returns information about the protein model, e.g. template IDs, DOPE_score, etc"""
+        """Returns information about the protein model to display in the interface
+
+        What is reported depends on the engine that predicted the structure. MODELLER reports the
+        per-model DOPE/GA341/molpdf scores and the PDB templates it used. ColabFold is template-free
+        and reports mean pLDDT and pTM instead. External structures have neither scores nor templates.
+        """
 
         structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
+        engine = structure_db.db.get_meta_value('engine', return_none_if_not_in_table=True) or 'modeller'
 
-        models = structure_db.db.get_table_as_dataframe(
-            'models',
-            columns_of_interest=['GA341_score', 'DOPE_score', 'molpdf', 'picked_as_best'],
-            where_clause='corresponding_gene_call = %d' % gene_callers_id,
-        ).rename(columns={
-            'DOPE_score': 'DOPE',
-            'GA341_score': 'GA341',
-        })
-        models['Models tried'] = models.shape[0]
-        models = models.loc[models['picked_as_best'] == 1, ['DOPE', 'GA341', 'molpdf', 'Models tried']].reset_index(drop=True)
+        if engine == 'modeller':
+            models = structure_db.db.get_table_as_dataframe(
+                'models',
+                columns_of_interest=['GA341_score', 'DOPE_score', 'molpdf', 'picked_as_best'],
+                where_clause='protein_id = %d' % gene_callers_id,
+            ).rename(columns={
+                'DOPE_score': 'DOPE',
+                'GA341_score': 'GA341',
+            })
+            models['Models tried'] = models.shape[0]
+            models = models.loc[models['picked_as_best'] == 1, ['DOPE', 'GA341', 'molpdf', 'Models tried']].reset_index(drop=True)
 
-        templates = structure_db.db.get_table_as_dataframe(
-            'templates',
-            columns_of_interest=['pdb_id', 'chain_id'],
-            where_clause='corresponding_gene_call = %d' % gene_callers_id,
-        ).rename(columns={
-            'pdb_id': 'PDB',
-            'chain_id': 'Chain',
-        })
-
-        # Check if the columns exist before accessing them
-        if 'percent_similarity' in templates.columns and 'align_fraction' in templates.columns:
-            templates['%Identity'] = templates['percent_similarity']
-            templates['Align fraction'] = templates['align_fraction']
+            templates = structure_db.db.get_table_as_dataframe(
+                'templates',
+                columns_of_interest=['pdb_id', 'chain_id', 'percent_similarity', 'align_fraction'],
+                where_clause='protein_id = %d' % gene_callers_id,
+            ).rename(columns={
+                'pdb_id': 'PDB',
+                'chain_id': 'Chain',
+                'percent_similarity': '%Identity',
+                'align_fraction': 'Align fraction',
+            })
             templates = templates[['PDB', 'Chain', '%Identity', 'Align fraction']]
+
+        elif engine == 'colabfold':
+            models = structure_db.db.get_table_as_dataframe(
+                'models',
+                columns_of_interest=['mean_plddt', 'ptm', 'picked_as_best'],
+                where_clause='protein_id = %d' % gene_callers_id,
+            ).rename(columns={
+                'mean_plddt': 'Mean pLDDT',
+                'ptm': 'pTM',
+            })
+            models['Models tried'] = models.shape[0]
+            models = models.loc[models['picked_as_best'] == 1, ['Mean pLDDT', 'pTM', 'Models tried']].reset_index(drop=True)
+
+            # drop any confidence metric that was not stored, so the interface does not show it
+            models = models.dropna(axis=1, how='all')
+
+            # ColabFold is template-free
+            templates = pd.DataFrame({})
+
         else:
-            # Handle the case when columns are not present
-            # You can set default values or handle it in a way that makes sense for your application
-            templates['%Identity'] = 0
-            templates['Align fraction'] = 0
-            templates = templates[['PDB', 'Chain', '%Identity', 'Align fraction']]
-
+            # external structures have neither MODELLER-style scores nor templates
+            models = pd.DataFrame({})
+            templates = pd.DataFrame({})
 
         structure_db.disconnect()
 
         return {
+            'engine': engine,
             'models': models.to_json(orient='index'),
             'templates': templates.to_json(orient='index'),
         }
@@ -2624,6 +2645,18 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
                 'step': 0.01,
                 'min': 0,
                 'max': 1,
+            },
+            {
+                # only populated for ColabFold structures; dropped by the filter below for other
+                # engines because `plddt` is not among their variability data columns
+                'name': 'plddt',
+                'title': 'pLDDT',
+                'as_view': True,
+                'as_filter': 'slider',
+                'data_type': 'float',
+                'step': 1,
+                'min': 0,
+                'max': 100,
             },
             {
                 'name': 'sec_struct',
@@ -3055,7 +3088,7 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
         from_contigs_db = self.amino_acid_additional_data.get_gene_dataframe(gene_callers_id)
 
         residue_info = from_structure_db.merge(from_contigs_db, 'left', on='codon_order_in_gene')
-        residue_info.drop(['entry_id', 'corresponding_gene_call', 'codon_order_in_gene'], axis=1, inplace=True)
+        residue_info.drop(['entry_id', 'protein_id', 'codon_order_in_gene'], axis=1, inplace=True)
 
         residue_info_types = residue_info.drop('codon_number', axis=1).aggregate([numpy.min, numpy.max, numpy.dtype]).T
         residue_info_types['dtype'] = residue_info_types['dtype'].astype(str)
@@ -3312,7 +3345,7 @@ class PangraphInteractive(PanGraphSuperclass):
         if not self.pan_graph_db_path:
             raise ConfigError("Unfortunately you can only use this program with a pangenome graph database.")
 
-        PanGraphSuperclass.__init__(self, self.args)
+        PanGraphSuperclass.__init__(self, self.args, r=self.run, p=self.progress)
 
         self.collections = ccollections.Collections()
         self.collections.populate_collections_dict(self.pan_graph_db_path)

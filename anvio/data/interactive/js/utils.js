@@ -660,6 +660,25 @@ function showGeneClusterFunctionsSummaryTableDialog(title, content) {
 function showPangraphFunctionsSummaryTableDialog(title, content) {
     const noteHTML = `Functional annotations and metabolic module involvement for the synteny gene cluster(s) shown above.
                       Use the copy buttons below to export this data for further analysis.`;
+
+    // Tear down any existing modal of this class synchronously, then create
+    // the new one. Two reasons we can't go through .modal('hide'):
+    //   1. Bootstrap's hide is async; a same-title relaunch (id is derived
+    //      from title.hashCode()) collides with the still-present old element.
+    //   2. A second click during the hide animation never fires
+    //      hidden.bs.modal a second time, so any "wait then create" callback
+    //      is lost and the new modal never opens.
+    const $existing = $('.modal.geneClusterFunctionsSummaryDialog');
+    if ($existing.length) {
+        $existing.remove();
+        // If no other modals remain, clear Bootstrap's shared backdrop and
+        // the body lock so the next modal can initialize cleanly.
+        if (!$('.modal:visible').length) {
+            $('.modal-backdrop').remove();
+            $('body').removeClass('modal-open').css('padding-right', '');
+        }
+    }
+
     _createModalDialog({
         title,
         content,
