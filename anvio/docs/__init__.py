@@ -822,6 +822,18 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "trna-isoacceptor-frequencies-txt": {
+        "name": "TRNA ISOACCEPTOR FREQUENCIES",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "trna-modification-enzyme-list": {
+        "name": "TRNA MODIFICATION ENZYME LIST",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
     "aa-frequencies-txt": {
         "name": "AA FREQUENCIES",
         "type": "TXT",
