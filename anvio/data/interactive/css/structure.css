@@ -4,27 +4,6 @@ body {
     background-color: var(--solid-white);
 }
 
-.slider-selection {
-    background: linear-gradient(to bottom, var(--primary-800), var(--solid-white), var(--primary-800));
-}
-
-.slider.slider-horizontal .slider-track-high {
-    background: linear-gradient(to bottom, var(--primary-300), var(--solid-white), var(--primary-300));
-}
-
-.slider.slider-horizontal .slider-track-low {
-    background: linear-gradient(to bottom, var(--primary-300), var(--solid-white), var(--primary-300));
-}
-
-.slider-handle {
-    position: absolute;
-    top: 3px;
-    width: 12px;
-    height: 12px;
-    background-color: var(--primary-600);
-    border: 1px solid var(--black);
-}
-
 /* settings sit flat on the panel with the section headers doing the separating,
    as in the rest of anvi'o, so these groups only need vertical rhythm */
 .model-info-group,
@@ -37,20 +16,130 @@ body {
     margin-bottom: 6px;
 }
 
-.slider {
-    width: 100% !important;
+/* FILTERS */
+
+/* the histogram and its slider share one inset box, so the bars line up with
+   the track and the handles have room at both ends instead of being cut off */
+.filter-slider {
+    padding: 0px 8px;
 }
 
-.slider.slider-horizontal .slider-track {
-    height: 6px;
+.filter-histogram {
+    display: block;
     width: 100%;
-    margin-top: -4px;
-    top: 50%;
-    left: 0;
+    height: 30px;
 }
 
-.slider.slider-horizontal .slider-handle {
-    margin-left: -6px;
+.filter-histogram rect {
+    fill: var(--primary-500);
+}
+
+.filter-histogram rect.filtered-out {
+    fill: var(--secondary-300);
+}
+
+.filter-slider .slider.slider-horizontal {
+    width: 100% !important;
+    height: 16px;
+}
+
+.filter-slider .slider.slider-horizontal .slider-track {
+    height: 4px;
+    margin-top: -2px;
+    top: 50%;
+    background: var(--secondary-300);
+    background-image: none;
+    box-shadow: none;
+    border-radius: 2px;
+}
+
+.filter-slider .slider.slider-horizontal .slider-track-low,
+.filter-slider .slider.slider-horizontal .slider-track-high {
+    background: transparent;
+    background-image: none;
+}
+
+.filter-slider .slider-selection {
+    background: var(--primary-500);
+    background-image: none;
+    box-shadow: none;
+}
+
+.filter-slider .slider.slider-horizontal .slider-handle {
+    top: 1px;
+    width: 14px;
+    height: 14px;
+    margin-left: -7px;
+    background: var(--solid-white);
+    background-image: none;
+    border: 2px solid var(--primary-600);
+    box-shadow: none;
+}
+
+.filter-slider .slider-handle:hover {
+    background: var(--primary-100);
+}
+
+.filter-range {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    padding: 0px 8px;
+}
+
+.filter-range input {
+    width: 72px;
+}
+
+/* a header line that also carries the All / None links on its right */
+.settings-secondary-header.filter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.filter-header > span:first-child {
+    font-size: 1em;
+}
+
+.filter-all-none {
+    font-variant: normal;
+    font-size: 0.6em;
+}
+
+/* each choice is a pill around a hidden checkbox: filled while the value is
+   kept, outlined once it is filtered out */
+.filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding-left: 8px;
+}
+
+.filter-chip {
+    margin: 0px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.filter-chip input {
+    display: none;
+}
+
+.filter-chip span {
+    display: inline-block;
+    padding: 1px 9px;
+    font-size: 0.85em;
+    border: 1px solid var(--secondary-500);
+    border-radius: 12px;
+    background: var(--solid-white);
+    color: var(--body-text);
+}
+
+.filter-chip input:checked + span {
+    background: var(--primary-600);
+    border-color: var(--primary-600);
+    color: var(--solid-white);
 }
 
 .ngl-inner {

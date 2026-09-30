@@ -894,8 +894,9 @@ function serialize_filtering_widgets() {
 
         if (controller == 'slider') {
             output[column] = {}
-            output[column]["min_" + column] = $(widget).find('input').val().split(',')[0];
-            output[column]["max_" + column] = $(widget).find('input').val().split(',')[1];
+            let range = $(widget).find(`#${column}`).val().split(',');
+            output[column]["min_" + column] = range[0];
+            output[column]["max_" + column] = range[1];
         }
         else if (controller == 'checkbox') {
             output[column] = {}
@@ -1096,35 +1097,70 @@ function draw_histogram() {
         let bins = histogram_data[engine][column]['bins'];
         let counts = histogram_data[engine][column]['counts'];
 
-        var min_count = Math.min(...counts);
-        var max_count = Math.max(...counts);
-        var max_slider = parseFloat(document.getElementById(column).dataset.sliderMax);
-        var min_slider = parseFloat(document.getElementById(column).dataset.sliderMin);
+        let max_count = Math.max(...counts);
+        let max_slider = parseFloat(document.getElementById(column).dataset.sliderMax);
+        let min_slider = parseFloat(document.getElementById(column).dataset.sliderMin);
+        let x = (v) => ((v - min_slider) / (max_slider - min_slider)) * width;
 
-        let normalized_counts = counts.map(v => (v / max_count) * height);
-        let normalized_bins = bins.map(v => ((v - min_slider) / (max_slider - min_slider)) * width);
+        for (let i = 0; i < counts.length; i++) {
+            if (counts[i] == 0) {
+                continue;
+            }
 
-        let data_points = [];
+            let bar_height = (counts[i] / max_count) * height;
 
-        for (let i=0; i < normalized_counts.length; i++) {
-            data_points.push({'x': normalized_bins[i], 'y': height - normalized_counts[i]});
-            data_points.push({'x': normalized_bins[i+1], 'y': height - normalized_counts[i]});
+            svg.append('rect')
+                .attr('x', x(bins[i]))
+                .attr('y', height - bar_height)
+                .attr('width', Math.max(x(bins[i + 1]) - x(bins[i]) - 0.6, 0.4))
+                .attr('height', bar_height)
+                .attr('data-low', bins[i])
+                .attr('data-high', bins[i + 1]);
         }
-        data_points.push({'x': width, 'y': height})
 
-        var make_bar_chart = d3.line()
-                            .x(function(d) { return d.x; })
-                            .y(function(d) { return d.y; });
-
-        var bar_chart = make_bar_chart(data_points);
-        bar_chart += `L ${data_points[normalized_bins.length - 1]['x']} ${height} L ${data_points[0]['x']} ${height}`;
-
-        svg.append("path")
-            .style("fill","#337ab7")
-            .style("stroke","#182943")
-            .attr("d",function(d,i){ return bar_chart; });
+        shade_histogram(column);
     }
 };
+
+// bars that fall outside the slider's current range are drawn as filtered out
+function shade_histogram(column) {
+    let range = $(`#${column}`).val().split(',').map(parseFloat);
+
+    d3.selectAll(`#histogram_${column} rect`).classed('filtered-out', function() {
+        return parseFloat(this.dataset.high) <= range[0] || parseFloat(this.dataset.low) >= range[1];
+    });
+}
+
+// the two boxes under a slider show its range and accept a typed cut-off
+function sync_range_inputs(column) {
+    let slider = $(`#${column}`);
+    let step = parseFloat(slider.attr('data-slider-step'));
+    let decimals = step >= 1 ? 0 : Math.ceil(-Math.log10(step));
+    let range = slider.val().split(',').map(parseFloat);
+    let widget = slider.closest('.filter-control');
+
+    widget.find('.filter-range-min').val(range[0].toFixed(decimals));
+    widget.find('.filter-range-max').val(range[1].toFixed(decimals));
+}
+
+function on_range_input_change(input) {
+    let widget = $(input).closest('.filter-control');
+    let column = widget.attr('data-column');
+    let slider = $(`#${column}`);
+    let min_allowed = parseFloat(slider.attr('data-slider-min'));
+    let max_allowed = parseFloat(slider.attr('data-slider-max'));
+
+    let low = parseFloat(widget.find('.filter-range-min').val());
+    let high = parseFloat(widget.find('.filter-range-max').val());
+
+    if (!isNaN(low) && !isNaN(high) && low <= high) {
+        slider.slider('setValue', [Math.max(low, min_allowed), Math.min(high, max_allowed)]);
+    }
+
+    // put back what the slider actually holds, so a rejected or clamped value does not linger
+    sync_range_inputs(column);
+    shade_histogram(column);
+}
 
 
 function create_ui() {
@@ -1205,19 +1241,29 @@ function create_ui() {
 
                     $(container).append(`
                         <div class="filter-control" data-column="${item['name']}" data-controller="${item['as_filter']}">
-                            <span class="settings-secondary-header">${item['title']}</span><br />
-                            <svg id="histogram_${item['name']}" width="100%" height="30" style="position: relative; top: 6;" viewBox="0 0 200 30" preserveAspectRatio="none"></svg>
-                            <input id="${item['name']}"
-                                    type="${item['data_type']}"
-                                    data-provide="slider"
-                                    data-slider-min="${item['min']}"
-                                    data-slider-max="${item['max']}"
-                                    data-slider-step="${item['step']}"
-                                    data-slider-value="[${min_val},${max_val}]"
-                                    >
+                            <span class="settings-secondary-header">${item['title']}</span>
+                            <div class="filter-slider">
+                                <svg id="histogram_${item['name']}" class="filter-histogram" viewBox="0 0 200 30" preserveAspectRatio="none"></svg>
+                                <input id="${item['name']}"
+                                        type="${item['data_type']}"
+                                        data-provide="slider"
+                                        data-slider-min="${item['min']}"
+                                        data-slider-max="${item['max']}"
+                                        data-slider-step="${item['step']}"
+                                        data-slider-value="[${min_val},${max_val}]"
+                                        >
+                            </div>
+                            <div class="filter-range">
+                                <input class="form-control input-xs filter-range-min" type="text" onchange="on_range_input_change(this);">
+                                <input class="form-control input-xs filter-range-max" type="text" onchange="on_range_input_change(this);">
+                            </div>
                         </div>
                     `);
-                    $(`#${item['name']}`).slider({});
+                    $(`#${item['name']}`).slider({'tooltip': 'hide'}).on('slide change', function() {
+                        sync_range_inputs(this.id);
+                        shade_histogram(this.id);
+                    });
+                    sync_range_inputs(item['name']);
                 }
                 if (item['as_filter'] == 'checkbox') {
                     let checked_choices = item['choices'];
@@ -1228,17 +1274,19 @@ function create_ui() {
 
                     $(container).append(`
                         <div class="filter-control" data-column="${item['name']}" data-controller="${item['as_filter']}">
-                            <span class="settings-secondary-header">${item['title']}</span>
-                            <div class="ml-3 d-flex flex-wrap">
+                            <span class="settings-secondary-header filter-header">
+                                <span>${item['title']}</span>
+                                <span class="filter-all-none">
+                                    <a href="#" onclick="$(this).closest('.filter-control').find('input:checkbox').prop('checked', true); return false;">All</a> &middot;
+                                    <a href="#" onclick="$(this).closest('.filter-control').find('input:checkbox').prop('checked', false); return false;">None</a>
+                                </span>
+                            </span>
+                            <div class="filter-chips">
                             ${item['choices'].map((choice) => { return `
-                                <div class="mr-3">
-                                    <input class="form-check-input" type="checkbox" id="${item['name']}_${choice}" value="${choice}" ${ checked_choices.indexOf(choice) > -1 ? 'checked="checked"' : ''}>
-                                    <label class="form-check-label" for="${item['name']}_${choice}">${choice}</label>
-                                </div>`; }).join('')}
-                            </div>
-                            <div class="ml-3 mt-1">
-                                <button class="btn btn-xs btn-primary" onclick="$(this).closest('.filter-control').find('input:checkbox').prop('checked', true);">Check All</button>
-                                <button class="btn btn-xs btn-outline-danger" onclick="$(this).closest('.filter-control').find('input:checkbox').prop('checked', false);">Uncheck All</button>
+                                <label class="filter-chip">
+                                    <input type="checkbox" id="${item['name']}_${choice}" value="${choice}" ${ checked_choices.indexOf(choice) > -1 ? 'checked="checked"' : ''}>
+                                    <span>${choice}</span>
+                                </label>`; }).join('')}
                             </div>
                         </div>
                     `);
