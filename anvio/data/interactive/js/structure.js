@@ -130,6 +130,8 @@ $(document).ready(function() {
             let available_engines = data['available_engines'];
             sample_groups = data['sample_groups'];
 
+            $('#title-panel-first-line').text(data['title'] || 'Structure Display');
+
             available_gene_callers_ids.forEach(function(gene_callers_id) {
                 $('#gene_callers_id_list').append(`<option id=${gene_callers_id}>${gene_callers_id}</option>`);
             });
@@ -224,6 +226,19 @@ function resize_all_stages() {
     }
 }
 
+function update_title_subline() {
+    let gene = $('#gene_callers_id_list').val();
+    let engine = $('[name=engine]:checked').val();
+    let groups = $('[checkbox-for="group"]:checked').length;
+
+    let parts = [];
+    if (gene) parts.push('Gene ' + gene);
+    if (engine) parts.push(engine);
+    if (groups) parts.push(groups + (groups > 1 ? ' groups' : ' group'));
+
+    $('#title-panel-second-line').text(parts.join(' | '));
+}
+
 function apply_orientation_matrix_to_all_stages(orientationMatrix) {
     for (let group in stages) {
         stages[group].viewerControls.orient(orientationMatrix);
@@ -240,6 +255,8 @@ async function create_ngl_views(fetch_variability = true) {
     } else {
         $('#maximum_ngl_widgets_error').hide();
     }
+
+    update_title_subline();
 
     for (let group in stages) {
         stages[group].dispose();
