@@ -115,6 +115,10 @@ $(document).ready(function() {
         });
     });
 
+    $('#engine_list').on('change', function(ev) {
+        $.when({}).then(create_ui).then(() => { fetch_and_draw_variability(); });
+    });
+
     $('#sample_groups_list').on('change', function(ev) {
         backupGroupsWidget();
         $('.overlay').show();
@@ -139,7 +143,7 @@ $(document).ready(function() {
             $.when({}).then(load_protein).then(load_gene_function_info).then(load_model_info).then(() => {
                 let default_engine = available_engines[0];
                 available_engines.forEach(function(engine) {
-                    $('#engine_list').append(`<input type="radio" name="engine" onclick="$.when({}).then(create_ui).then(() => { fetch_and_draw_variability(); });" value="${engine}" id="engine_${engine}" ${engine == default_engine ? 'checked="checked"' : ''}><label for="engine_${engine}">${engine}</label>`);
+                    $('#engine_list').append(`<option value="${engine}" ${engine == default_engine ? 'selected="selected"' : ''}>${engine}</option>`);
                 });
                 create_ui();
 
@@ -228,7 +232,7 @@ function resize_all_stages() {
 
 function update_title_subline() {
     let gene = $('#gene_callers_id_list').val();
-    let engine = $('[name=engine]:checked').val();
+    let engine = $('#engine_list').val();
     let groups = $('[checkbox-for="group"]:checked').length;
 
     let parts = [];
@@ -513,7 +517,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                         <tr><td>Mean Entropy</td><td>${variability[group][residue]['entropy'].toFixed(2)}</td></tr>
                     `
                     // add engine-specific data
-                    if ($('[name=engine]:checked').val() == 'AA') {
+                    if ($('#engine_list').val() == 'AA') {
                         // append to body
                         tooltip_HTML_variant_body += `<tr><td>Mean BLOSUM90</td><td>${variability[group][residue]['BLOSUM90'].toFixed(1)}</td></tr>`
                     } else {
@@ -523,7 +527,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                     }
 
                     var tooltip_HTML_variant_freqs_title = `<h5>Variant frequencies</h5>`
-                    if ($('[name=engine]:checked').val() == 'AA') {
+                    if ($('#engine_list').val() == 'AA') {
                         var tooltip_HTML_variant_freqs_body = `
                             <tr><td>${variability[group][residue]['0_item']}</td><td>${variability[group][residue]['0_freq'].toFixed(3)}</td></tr>
                             <tr><td>${variability[group][residue]['1_item']}</td><td>${variability[group][residue]['1_freq'].toFixed(3)}</td></tr>
@@ -905,7 +909,7 @@ function serialize_filtering_widgets() {
 function fetch_and_draw_variability() {
     $('.overlay').show();
     let gene_callers_id = $('#gene_callers_id_list').val();
-    let engine = $('[name=engine]:checked').val();
+    let engine = $('#engine_list').val();
 
     // serialize options programatically
     let options = {
@@ -944,7 +948,7 @@ function fetch_and_draw_variability() {
 
 function draw_variability() {
     let gene_callers_id = $('#gene_callers_id_list').val();
-    let engine = $('[name=engine]:checked').val();
+    let engine = $('#engine_list').val();
 
     if (Object.keys(stages).length == 0)
         return;
@@ -1074,7 +1078,7 @@ function draw_variability() {
 
 
 function draw_histogram() {
-    let engine = $('[name=engine]:checked').val();
+    let engine = $('#engine_list').val();
 
     for (let column in histogram_data[engine]) {
         let svg = d3.select('#histogram_' + column);
@@ -1126,7 +1130,7 @@ function draw_histogram() {
 function create_ui() {
     var defer = $.Deferred();
     let gene_callers_id = $('#gene_callers_id_list').val();
-    let engine = $('[name=engine]:checked').val();
+    let engine = $('#engine_list').val();
 
     backupFilters();
 
@@ -1311,7 +1315,7 @@ function onTargetResidueInfoChange(element) {
 
 function onTargetColumnChange(element) {
     // this on change event is shared between color_target_column and size_target_column.
-    let engine = $('[name=engine]:checked').val();
+    let engine = $('#engine_list').val();
     let column = $(element).val();
     let selected_column_info = column_info.find(function(el) {if (el['name'] == column) {return el}})
 
@@ -1525,7 +1529,7 @@ function get_gene_functions_table_html_for_structure(gene){
 function store_variability() {
     $('.overlay').show();
     let gene_callers_id = $('#gene_callers_id_list').val();
-    let engine = $('[name=engine]:checked').val();
+    let engine = $('#engine_list').val();
     let output_path = $('#var_output_path').val();
 
     // serialize options programatically
@@ -1861,7 +1865,7 @@ function serializeState() {
     let state = {
         'version': '1',
         'gene_callers_id': $('#gene_callers_id_list').val(),
-        'engine': $('[name=engine]:checked').val(),
+        'engine': $('#engine_list').val(),
         'category': $('#sample_groups_list').val(),
         'sample_groups_backup': sample_groups_backup,
         'filter_backup': filter_backup,
@@ -1987,8 +1991,8 @@ function loadState()
                 $('#sample_groups_list').val(state['category']);
             }
 
-            if($(`[name=engine][value='${state['engine']}']`).length > 0) {
-                $(`[name=engine][value='${state['engine']}']`).prop('checked', true);
+            if($(`#engine_list option[value='${state['engine']}']`).length > 0) {
+                $('#engine_list').val(state['engine']);
             }
 
             if($(`#gene_callers_id_list option[id='${state['gene_callers_id']}']`).length > 0) {
