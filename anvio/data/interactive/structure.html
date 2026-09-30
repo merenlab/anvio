@@ -204,8 +204,8 @@
                                     </div>
                                 </div>
                                 <div class="static-color">
-                                    <div class="d-flex align-items-center mt-2 mb-2">
-                                        <span class="mr-2">Color:</span>
+                                    <div class="settings-inline-row">
+                                        <span class="settings-label">Color:</span>
                                         <div class="mr-4"><div class="colorpicker" id="color_static" color="#c80023" onchange="draw_variability();" style="background-color: #c80023;"></div></div>
                                     </div>
                                 </div>
@@ -216,30 +216,30 @@
                                             <select class="form-control" id="color_target_column" onChange="onTargetColumnChange(this);"></select>
                                         </div>
                                     </div>
-                                    <div class="d-flex align-items-center mt-2 mb-2">
-                                        <label class="mb-0 mr-2" for="show_3_color">3 color:</label>
+                                    <div class="settings-inline-row">
+                                        <label class="settings-label" for="show_3_color">3 color:</label>
                                         <span class="mr-4"><input type="checkbox" id="show_3_color" onclick="if ($(this).is(':checked')) {  $('.middle-color-settings').show(); } else { $('.middle-color-settings').hide(); }; draw_variability();" /></span>
                                     </div>
                                     <div id="color_numerical_panel">
                                         <span class="settings-secondary-header">Minimum</span>
-                                        <div class="d-flex align-items-center mt-2 mb-2">
-                                            <label class="mb-0 mr-2" for="color_min">Value:</label>
+                                        <div class="settings-inline-row">
+                                            <label class="settings-label" for="color_min">Value:</label>
                                             <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="color_min" onblur="draw_variability(); " value="0"></span>
-                                            <span class="mr-2">Color:</span>
+                                            <span class="settings-label">Color:</span>
                                             <div class="mr-4"><div class="colorpicker" id="color_start" color="#ffffed" onchange="draw_variability();" style="background-color: #ffffed"></div></div>
                                         </div>
                                         <div class="middle-color-settings" style="display: none">
                                             <span class="settings-secondary-header" id="middle-color">Middle</span>
-                                            <div class="d-flex align-items-center mt-2 mb-2">
-                                                <span class="mr-2">Color:</span>
+                                            <div class="settings-inline-row">
+                                                <span class="settings-label">Color:</span>
                                                 <div class="mr-4"><div class="colorpicker" id="color_middle" color="#38ba72" onchange="draw_variability();" style="background-color: #38ba72"></div></div>
                                             </div>
                                         </div>
                                         <span class="settings-secondary-header">Maximum</span>
-                                        <div class="d-flex align-items-center mt-2 mb-2">
-                                            <label class="mb-0 mr-2" for="color_max">Value:</label>
+                                        <div class="settings-inline-row">
+                                            <label class="settings-label" for="color_max">Value:</label>
                                             <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="color_max" onblur="draw_variability(); " value="1"></span>
-                                            <span class="mr-2">Color:</span>
+                                            <span class="settings-label">Color:</span>
                                             <div class="mr-4"><div class="colorpicker" id="color_end" color="#c80023" onchange="draw_variability();" style="background-color: #c80023"></div></div>
                                         </div>
                                         <div class="clearfix"></div>
@@ -260,8 +260,8 @@
                                     </div>
                                 </div>
                                 <div class="static-size">
-                                    <div class="d-flex align-items-center mt-2 mb-2">
-                                        <label class="mb-0 mr-2" for="size_static">Size:</label>
+                                    <div class="settings-inline-row">
+                                        <label class="settings-label" for="size_static">Size:</label>
                                         <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="size_static" onblur="draw_variability(); " value="0.75"></span>
                                     </div>
                                 </div>
@@ -274,17 +274,17 @@
                                     </div>
                                     <div id="size_numerical_panel">
                                         <span class="settings-secondary-header">Minimum</span>
-                                        <div class="d-flex align-items-center mt-2 mb-2">
-                                            <label class="mb-0 mr-2" for="size_min">Value:</label>
+                                        <div class="settings-inline-row">
+                                            <label class="settings-label" for="size_min">Value:</label>
                                             <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="size_min" onblur="draw_variability(); " value="0"></span>
-                                            <label class="mb-0 mr-2" for="size_start">Size:</label>
+                                            <label class="settings-label" for="size_start">Size:</label>
                                             <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="size_start" onblur="draw_variability(); " value="0.4"></span>
                                         </div>
                                         <span class="settings-secondary-header">Maximum</span>
-                                        <div class="d-flex align-items-center mt-2 mb-2">
-                                            <label class="mb-0 mr-2" for="size_max">Value:</label>
+                                        <div class="settings-inline-row">
+                                            <label class="settings-label" for="size_max">Value:</label>
                                             <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="size_max" onblur="draw_variability(); " value="1"></span>
-                                            <label class="mb-0 mr-2" for="size_end">Size:</label>
+                                            <label class="settings-label" for="size_end">Size:</label>
                                             <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="size_end" onblur="draw_variability(); " value="1.4"></span>
                                         </div>
                                         <div class="alert alert-danger mt-3" role="alert" style="display: none;" id="dynamic_size_error">Max Value must be greater than Min Value.</div>
@@ -300,8 +300,8 @@
                         <div class="collapse show" id="structure-collapse">
                             <div class="ml-2">
                                 <span class="settings-secondary-header">Backbone</span>
-                                <div class="d-flex align-items-center mt-2 mb-2">
-                                    <label class="mb-0 mr-2" for="show_backbone">Show:</label>
+                                <div class="settings-inline-row">
+                                    <label class="settings-label" for="show_backbone">Show:</label>
                                     <span class="mr-4"><input type="checkbox" id="show_backbone" onclick="create_ngl_views(fetch_variability=false); " checked="checked" /></span>
                                 </div>
                                 <div class="form-group form-margin">
@@ -337,8 +337,8 @@
                                     </div>
                                 </div>
                                 <div class="static-color-backbone" style="display: none;">
-                                    <div class="d-flex align-items-center mt-2 mb-2">
-                                        <span class="mr-2">Color:</span>
+                                    <div class="settings-inline-row">
+                                        <span class="settings-label">Color:</span>
                                         <div class="mr-4"><div class="colorpicker" id="color_static_backbone" color="#6a8dab" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #6a8dab;"></div></div>
                                     </div>
                                 </div>
@@ -351,17 +351,17 @@
                                     </div>
                                     <div id="backbone_color_numerical_panel">
                                         <span class="settings-secondary-header">Minimum</span>
-                                        <div class="d-flex align-items-center mt-2 mb-2">
-                                            <label class="mb-0 mr-2" for="backbone_color_min">Value:</label>
+                                        <div class="settings-inline-row">
+                                            <label class="settings-label" for="backbone_color_min">Value:</label>
                                             <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="backbone_color_min" onblur="create_ngl_views(fetch_variability=false);" value="0"></span>
-                                            <span class="mr-2">Color:</span>
+                                            <span class="settings-label">Color:</span>
                                             <div class="mr-4"><div class="colorpicker" id="backbone_color_start" color="#ffffed" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #ffffed"></div></div>
                                         </div>
                                         <span class="settings-secondary-header">Maximum</span>
-                                        <div class="d-flex align-items-center mt-2 mb-2">
-                                            <label class="mb-0 mr-2" for="backbone_color_max">Value:</label>
+                                        <div class="settings-inline-row">
+                                            <label class="settings-label" for="backbone_color_max">Value:</label>
                                             <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="backbone_color_max" onblur="create_ngl_views(fetch_variability=false);" value="1"></span>
-                                            <span class="mr-2">Color:</span>
+                                            <span class="settings-label">Color:</span>
                                             <div class="mr-4"><div class="colorpicker" id="backbone_color_end" color="#6a8dab" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #6a8dab"></div></div>
                                         </div>
                                         <div class="clearfix"></div>
@@ -372,12 +372,12 @@
                             <div class="clearfix"></div>
                             <div class="ml-2">
                                 <span class="settings-secondary-header">Surface</span>
-                                <div class="d-flex align-items-center mt-2 mb-2">
-                                    <label class="mb-0 mr-2" for="show_surface">Show:</label>
+                                <div class="settings-inline-row">
+                                    <label class="settings-label" for="show_surface">Show:</label>
                                     <span class="mr-4"><input type="checkbox" id="show_surface" onclick="create_ngl_views(fetch_variability=false);" checked="checked" /></span>
-                                    <label class="mb-0 mr-2" for="surface_opacity">Opacity:</label>
+                                    <label class="settings-label" for="surface_opacity">Opacity:</label>
                                     <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="text" id="surface_opacity" value="0.12" onblur="create_ngl_views(fetch_variability=false); " /></span>
-                                    <label class="mb-0 mr-2" for="surface_probe_radius">Probe radius:</label>
+                                    <label class="settings-label" for="surface_probe_radius">Probe radius:</label>
                                     <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="text" id="surface_probe_radius" value="1.4" onblur="create_ngl_views(fetch_variability=false); " /></span>
                                 </div>
                             </div>
@@ -400,8 +400,8 @@
                                     </div>
                                 </div>
                                 <div class="static-color-surface" style="display: none;">
-                                    <div class="d-flex align-items-center mt-2 mb-2">
-                                        <span class="mr-2">Color:</span>
+                                    <div class="settings-inline-row">
+                                        <span class="settings-label">Color:</span>
                                         <div class="mr-4"><div class="colorpicker" id="color_static_surface" color="#f7f2f2" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #f7f2f2;"></div></div>
                                     </div>
                                 </div>
@@ -414,17 +414,17 @@
                                     </div>
                                     <div id="surface_color_numerical_panel">
                                         <span class="settings-secondary-header">Minimum</span>
-                                        <div class="d-flex align-items-center mt-2 mb-2">
-                                            <label class="mb-0 mr-2" for="surface_color_min">Value:</label>
+                                        <div class="settings-inline-row">
+                                            <label class="settings-label" for="surface_color_min">Value:</label>
                                             <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="surface_color_min" onblur="create_ngl_views(fetch_variability=false);" value="0"></span>
-                                            <span class="mr-2">Color:</span>
+                                            <span class="settings-label">Color:</span>
                                             <div class="mr-4"><div class="colorpicker" id="surface_color_start" color="#ffffed" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #ffffed"></div></div>
                                         </div>
                                         <span class="settings-secondary-header">Maximum</span>
-                                        <div class="d-flex align-items-center mt-2 mb-2">
-                                            <label class="mb-0 mr-2" for="surface_color_max">Value:</label>
+                                        <div class="settings-inline-row">
+                                            <label class="settings-label" for="surface_color_max">Value:</label>
                                             <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="surface_color_max" onblur="create_ngl_views(fetch_variability=false);" value="1"></span>
-                                            <span class="mr-2">Color:</span>
+                                            <span class="settings-label">Color:</span>
                                             <div class="mr-4"><div class="colorpicker" id="surface_color_end" color="#c80023" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #c80023"></div></div>
                                         </div>
                                         <div class="clearfix"></div>
@@ -434,8 +434,8 @@
                             </div>
                             <div class="ml-2">
                                 <span class="settings-secondary-header">Ball-Stick</span>
-                                <div class="d-flex align-items-center mt-2 mb-2">
-                                    <label class="mb-0 mr-2" for="show_ballstick">Show:</label>
+                                <div class="settings-inline-row">
+                                    <label class="settings-label" for="show_ballstick">Show:</label>
                                     <span class="mr-4"><input type="checkbox" id="show_ballstick" onclick="create_ngl_views(fetch_variability=false); " /></span>
                                 </div>
                                 <div class="form-group form-margin">
@@ -453,8 +453,8 @@
                             </div>
                             <div class="ml-2">
                                 <span class="settings-secondary-header">Hover Tooltip</span>
-                                <div class="d-flex align-items-center mt-2 mb-2">
-                                    <label class="mb-0 mr-2" for="show_tooltip">Show:</label>
+                                <div class="settings-inline-row">
+                                    <label class="settings-label" for="show_tooltip">Show:</label>
                                     <span class="mr-4"><input type="checkbox" id="show_tooltip" onclick="create_ngl_views(fetch_variability=false); " checked="checked" /></span>
                                 </div>
                                 <div class="form-group form-margin">
@@ -469,8 +469,8 @@
                             </div>
                             <div class="ml-2">
                                 <span class="settings-secondary-header">Residue Labels</span>
-                                <div class="d-flex align-items-center mt-2 mb-2">
-                                    <label class="mb-0 mr-2" for="show_residue_labels">Show:</label>
+                                <div class="settings-inline-row">
+                                    <label class="settings-label" for="show_residue_labels">Show:</label>
                                     <span class="mr-4"><input type="checkbox" id="show_residue_labels" onclick="create_ngl_views(fetch_variability=false); " /></span>
                                 </div>
                             </div>

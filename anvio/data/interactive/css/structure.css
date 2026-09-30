@@ -79,6 +79,22 @@ body {
     top: 5px;
 }
 
+/* a row of short controls (checkboxes, small inputs, colour swatches), each
+   with its label beside it; spaced like a stacked label so both kinds of row
+   keep the same rhythm under a header */
+.settings-inline-row {
+    display: flex;
+    align-items: center;
+    padding-top: 12px;
+    margin-bottom: 1rem;
+}
+
+.settings-inline-row > .settings-label {
+    padding-top: 0px;
+    margin-bottom: 0px;
+    margin-right: 0.5rem;
+}
+
 #engine_list label {
     margin-left: 4px;
     margin-right: 12px;
