@@ -25,11 +25,16 @@ body {
     border: 1px solid var(--black);
 }
 
-.widget {
-    background-color: var(--secondary-50);
-    margin: 5px 0px;
-    padding: 8px 15px;
-    border: 1px solid var(--border);
+/* settings sit flat on the panel with the section headers doing the separating,
+   as in the rest of anvi'o, so these groups only need vertical rhythm */
+.model-info-group,
+.filter-control {
+    margin-bottom: 12px;
+}
+
+/* without the boxes these headers sat directly on top of their content */
+#sidebar .settings-secondary-header {
+    margin-bottom: 6px;
 }
 
 .slider {

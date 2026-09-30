@@ -774,7 +774,7 @@ function get_model_info_table_html(model_data) {
     var engine_labels = {'modeller': 'MODELLER', 'colabfold': 'ColabFold', 'external': 'External'};
     var engine = model_data['engine'];
     if (engine) {
-        geneModelHtml += '<div class="widget">'
+        geneModelHtml += '<div class="model-info-group">'
         geneModelHtml += '<span class="settings-secondary-header">Prediction engine</span>'
         geneModelHtml += '<p>' + (engine_labels[engine] || engine) + '</p>';
         geneModelHtml += "</div>";
@@ -783,7 +783,7 @@ function get_model_info_table_html(model_data) {
     /* TEMPLATES */
     // template-free engines (ColabFold) and external structures report no templates
     if (Object.keys(templates).length > 0) {
-        geneModelHtml += '<div class="widget">'
+        geneModelHtml += '<div class="model-info-group">'
         geneModelHtml += '<span class="settings-secondary-header">Templates Used</span>'
         geneModelHtml += '<table class="table table-sm table-responsive" id="model_info_table"><tbody>';
 
@@ -821,7 +821,7 @@ function get_model_info_table_html(model_data) {
     /* MODELS */
     // external structures carry no model scores
     if (models) {
-        geneModelHtml += '<div class="widget">'
+        geneModelHtml += '<div class="model-info-group">'
         geneModelHtml += '<span class="settings-secondary-header">Model Scores</span>'
         geneModelHtml += '<table class="table table-sm table-responsive" id="model_info_table"><tbody>';
 
@@ -867,7 +867,7 @@ function serialize_checked_groups() {
 function serialize_filtering_widgets() {
     let output = {};
 
-    $('#controls .widget').each((index, widget) => {
+    $('#controls .filter-control').each((index, widget) => {
         let column = $(widget).attr('data-column');
         let controller = $(widget).attr('data-controller');
 
@@ -1183,7 +1183,7 @@ function create_ui() {
                     }
 
                     $(container).append(`
-                        <div class="widget" data-column="${item['name']}" data-controller="${item['as_filter']}">
+                        <div class="filter-control" data-column="${item['name']}" data-controller="${item['as_filter']}">
                             <span class="settings-secondary-header">${item['title']}</span><br />
                             <svg id="histogram_${item['name']}" width="100%" height="30" style="position: relative; top: 6;" viewBox="0 0 200 30" preserveAspectRatio="none"></svg>
                             <input id="${item['name']}"
@@ -1206,19 +1206,18 @@ function create_ui() {
                     }
 
                     $(container).append(`
-                        <div class="widget" data-column="${item['name']}" data-controller="${item['as_filter']}">
-                            <span class="settings-secondary-header">${item['title']}</span><br />
-                            <div class="ml-3 d-flex">
+                        <div class="filter-control" data-column="${item['name']}" data-controller="${item['as_filter']}">
+                            <span class="settings-secondary-header">${item['title']}</span>
+                            <div class="ml-3 d-flex flex-wrap">
                             ${item['choices'].map((choice) => { return `
-                                <div>
+                                <div class="mr-3">
                                     <input class="form-check-input" type="checkbox" id="${item['name']}_${choice}" value="${choice}" ${ checked_choices.indexOf(choice) > -1 ? 'checked="checked"' : ''}>
-                                    <label class="form-check-label" for="${item['name']}_${choice}">${choice}</label>`; }).join('')}
-                                </div>    
-                                <br />
-                                <div>
-                                    <button class="btn btn-xs btn-primary" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', true);">Check All</button>
-                                    <button class="btn btn-xs btn-outline-danger" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', false);">Uncheck All</button>
-                                </div>
+                                    <label class="form-check-label" for="${item['name']}_${choice}">${choice}</label>
+                                </div>`; }).join('')}
+                            </div>
+                            <div class="ml-3 mt-1">
+                                <button class="btn btn-xs btn-primary" onclick="$(this).closest('.filter-control').find('input:checkbox').prop('checked', true);">Check All</button>
+                                <button class="btn btn-xs btn-outline-danger" onclick="$(this).closest('.filter-control').find('input:checkbox').prop('checked', false);">Uncheck All</button>
                             </div>
                         </div>
                     `);
