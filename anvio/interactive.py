@@ -3038,6 +3038,7 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
         output['available_gene_callers_ids'] = list(self.available_genes)
         output['available_engines'] = self.available_engines
         output['sample_groups'] = self.sample_groups
+        output['title'] = self.a_meta['project_name']
         return output
 
 
