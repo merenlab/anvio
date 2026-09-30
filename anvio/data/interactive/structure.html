@@ -46,14 +46,70 @@
         </div>
         <!-- LEFT MENU -->
         <div id="panel-left">
-            <div id="sidebar">
-                <ul class="nav nav-tabs" role="tablist">
-                  <li role="presentation" class="nav-item"><a class="nav-link active" href="#tab_main" aria-controls="main" role="tab" data-toggle="tab">Main</a></li>
-                  <li role="presentation" class="nav-item"><a class="nav-link" href="#tab_filters" aria-controls="filters" role="tab" data-toggle="tab">Filters</a></li>
-                  <li role="presentation" class="nav-item"><a class="nav-link" href="#tab_views" aria-controls="views" role="tab" data-toggle="tab">Views</a></li>
-                  <li role="presentation" class="nav-item ml-auto"><button type="button" class="btn btn-primary btn-sm" onclick="create_ngl_views(fetch_variability=true);">Redraw</button></li>
-                </ul>
-                <div class="tab-content">
+            <div class="d-flex" id="sidebar">
+                <div class="inner-wrapper d-flex" role="tabpanel">
+                    <nav id="inner-sidebar" onclick="switchNavigationTabs();">
+                        <ul class="list-unstyled components align-item-center text-center tab-elements" role="tablist" id="nav-tab">
+                            <li id="main_tab" role="presentation" class="nav-item navigation-tabs mt-1">
+                                <a href="#tab_main" aria-controls="tab_main" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block active">
+                                    <i class="nav-icon fs-2x bi bi-house-door"></i><i class="nav-icon-fill fs-2x bi bi-house-door-fill"></i><span class="d-block">Main</span>
+                                </a>
+                            </li>
+                            <li id="filters_tab" role="presentation" class="nav-item">
+                                <a href="#tab_filters" aria-controls="tab_filters" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block">
+                                    <i class="nav-icon fs-2x bi bi-funnel"></i><i class="nav-icon-fill fs-2x bi bi-funnel-fill"></i><span class="d-block">Filters</span>
+                                </a>
+                            </li>
+                            <li id="views_tab" role="presentation" class="nav-item">
+                                <a href="#tab_views" aria-controls="tab_views" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block">
+                                    <i class="nav-icon fs-2x bi bi-eye"></i><i class="nav-icon-fill fs-2x bi bi-eye-fill"></i><span class="d-block">Views</span>
+                                </a>
+                            </li>
+                            <div id="nav-bottom">
+                                <li class="nav-bottom-alignment">
+                                    <a href="#" id="redraw-btn" class="navbar-btn d-block glow-on-hover" onclick="create_ngl_views(fetch_variability=true); return false;">
+                                        <i class="icon-unlock bi bi-pencil fs-2x"></i><span class="d-block"><u>R</u>edraw</span>
+                                    </a>
+                                </li>
+                                <hr class="nav-bottom-alignment border-color">
+                                <p class="side-menu-text nav-bottom-alignment">State</p>
+                                <li class="nav-bottom-alignment">
+                                    <a href="#" class="navbar-btn d-block" onclick="showLoadStateWindow(); return false;" data-help="load-state-button">
+                                        <i class="icon-unlock bi bi-upload fs-2x"></i><span class="d-block">Load</span>
+                                    </a>
+                                </li>
+                                <li class="nav-bottom-alignment">
+                                    <a href="#" class="navbar-btn d-block" onclick="showSaveStateWindow(); return false;" data-help="save-state-button">
+                                        <i class="icon-unlock bi bi-download fs-2x"></i><span class="d-block">Save</span>
+                                    </a>
+                                </li>
+                                <hr class="nav-bottom-alignment border-color">
+                                <p class="side-menu-text nav-bottom-alignment">Output</p>
+                                <li class="nav-bottom-alignment">
+                                    <a href="#" class="navbar-btn d-block" onclick="showSaveVariantDataWindow(); return false;">
+                                        <i class="icon-unlock bi bi-table fs-2x"></i><span class="d-block">Data</span>
+                                    </a>
+                                </li>
+                                <li class="nav-bottom-alignment">
+                                    <a href="#" class="navbar-btn d-block" onclick="showRenderImagesWindow(); return false;">
+                                        <i class="icon-unlock bi bi-images fs-2x"></i><span class="d-block">Images</span>
+                                    </a>
+                                </li>
+                                <li class="nav-bottom-alignment">
+                                    <a href="#" class="navbar-btn d-block" onclick="showExportPdbWindow(); return false;">
+                                        <i class="icon-unlock bi bi-file-earmark-code fs-2x"></i><span class="d-block">PDB</span>
+                                    </a>
+                                </li>
+                                <li class="nav-bottom-alignment pb-2">
+                                    <a href="#" class="navbar-btn d-block" onclick="showPymolWindow(); return false;">
+                                        <i class="icon-unlock bi bi-code-square fs-2x"></i><span class="d-block">PyMOL</span>
+                                    </a>
+                                </li>
+                            </div>
+                        </ul>
+                    </nav>
+                </div>
+                <div class="col-11 tab-content ml-1">
                     <div id="tab_main" role="tabpanel" class="tab-pane fade show active">
                         <span class="settings-header mb-3 mt-3">Gene</span>
                         <div class="widget">
@@ -103,11 +159,6 @@
                             <div id="sample_groups">
 
                             </div>
-                        </div>
-                        <span class="settings-header mb-3 mt-3">Session</span>
-                        <div class="btn-group mb-0" role="group" style="width: 100%;">
-                            <button type="button" class="btn btn-outline-primary btn-sm mr-1" style="width: 50%;" onclick="showLoadStateWindow();" data-help="load-state-button"><span class="bi bi-upload" aria-hidden="true"></span> Load State</button>
-                            <button type="button" class="btn btn-outline-primary btn-sm" style="width: 50%;" onclick="showSaveStateWindow();" data-help="save-state-button"><span class="bi bi-download" aria-hidden="true"></span> Save State</button>
                         </div>
                     </div>
                     <div id="tab_filters" role="tabpanel" class="tab-pane fade">
