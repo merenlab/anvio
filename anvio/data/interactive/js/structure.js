@@ -885,6 +885,21 @@ function serialize_checked_groups() {
     return output;
 }
 
+// bootstrap-slider snaps its values to the step, so a handle left at the end of
+// the slider can sit just inside the data's real bound (0.80 for a column whose
+// minimum is 0.798) and would silently filter out the extreme residues. A handle
+// within half a step of its end therefore stands for the real bound.
+function get_filter_range(column) {
+    let slider = $(`#${column}`);
+    let min_allowed = parseFloat(slider.attr('data-slider-min'));
+    let max_allowed = parseFloat(slider.attr('data-slider-max'));
+    let half_step = parseFloat(slider.attr('data-slider-step')) / 2;
+    let range = slider.val().split(',').map(parseFloat);
+
+    return [range[0] - min_allowed <= half_step ? min_allowed : range[0],
+            max_allowed - range[1] <= half_step ? max_allowed : range[1]];
+}
+
 function serialize_filtering_widgets() {
     let output = {};
 
@@ -894,7 +909,7 @@ function serialize_filtering_widgets() {
 
         if (controller == 'slider') {
             output[column] = {}
-            let range = $(widget).find(`#${column}`).val().split(',');
+            let range = get_filter_range(column);
             output[column]["min_" + column] = range[0];
             output[column]["max_" + column] = range[1];
         }
