@@ -1849,13 +1849,20 @@ async function generate_summary() {
     $('.overlay').hide();
 }
 
+// the sections Save State records inputs for, keyed by the names state files use;
+// 'tab_output' holds the inputs of the Output actions' modals
+const AUXILIARY_INPUT_SECTIONS = {
+    'tab_views': '#tab_views',
+    'tab_output': '#modSaveVariantData, #modRenderImages, #modExportPdb',
+};
+
 function serializeAuxiliaryInputs() {
     let backup = {};
 
-    ['tab_views', 'tab_output'].forEach((tab) => {
+    Object.entries(AUXILIARY_INPUT_SECTIONS).forEach(([tab, containers]) => {
         backup[tab] = {};
 
-        $(`#${tab} :input`).each((index, elem) => {
+        $(containers).find(':input').each((index, elem) => {
             let tag = elem.tagName;
             let id = elem.getAttribute('id');
 
@@ -1875,7 +1882,7 @@ function serializeAuxiliaryInputs() {
                 }
             }
         });
-         $(`#${tab} .colorpicker`).each((index, elem) => {
+         $(containers).find('.colorpicker').each((index, elem) => {
             let id = elem.getAttribute('id');
             if (id) {
                 backup[tab][id] = $(elem).attr('color');
@@ -2063,11 +2070,15 @@ function loadState()
             }
 
             for (let tab_name in state['auxiliary']) {
-                for (let object_id in state['auxiliary'][tab_name]) {
-                    let selector = `#${tab_name} #${object_id}`;
+                if (!AUXILIARY_INPUT_SECTIONS.hasOwnProperty(tab_name)) {
+                    continue;
+                }
 
-                    if ($(selector).length > 0) {
-                        let elem = $(selector)[0];
+                for (let object_id in state['auxiliary'][tab_name]) {
+                    let found = $(AUXILIARY_INPUT_SECTIONS[tab_name]).find(`#${object_id}`);
+
+                    if (found.length > 0) {
+                        let elem = found[0];
 
                         if (elem.tagName == 'SELECT') {
                             $(elem).val(state['auxiliary'][tab_name][object_id]);
