@@ -128,20 +128,14 @@
                             <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
                         </span>
                         <div class="collapse show" id="gene-collapse">
-                            <div>
-                                <div class="row">
-                                    <div class="col-md-4 form-row-padding">
-                                        <label class="settings-label">Gene ID:</label>
-                                    </div>
-                                    <div class="col-md-8 form-row-padding">
-                                        <select class="form-control" serialize="true" id="gene_callers_id_list" style="width: 100%;"></select>
+                            <div class="ml-2">
+                                <div class="form-group form-margin">
+                                    <label class="settings-label" for="gene_callers_id_list">Gene ID</label>
+                                    <div class="col-10 menu-padding">
+                                        <select class="form-control" serialize="true" id="gene_callers_id_list"></select>
                                     </div>
                                 </div>
-                            </div>
-                            <div>
-                                <div class="row">
-                                    <div id="gene_function_info" class="col-md-12 form-row-padding"></div>
-                                </div>
+                                <div id="gene_function_info"></div>
                             </div>
                         </div>
                         <span id="toggle-chevron-protein-model" class="settings-header btn d-flex align-items-center" data-toggle="collapse" href="#protein-model-collapse" role="button" aria-expanded="true" aria-controls="protein-model-collapse" onclick="$('#toggle-chevron-protein-model').children('i').toggleClass('bi-chevron-up bi-chevron-down');">
@@ -149,7 +143,7 @@
                             <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
                         </span>
                         <div class="collapse show" id="protein-model-collapse">
-                            <div id="model_info">
+                            <div class="ml-2" id="model_info">
                             </div>
                         </div>
                         <span id="toggle-chevron-variant-type" class="settings-header btn d-flex align-items-center" data-toggle="collapse" href="#variant-type-collapse" role="button" aria-expanded="true" aria-controls="variant-type-collapse" onclick="$('#toggle-chevron-variant-type').children('i').toggleClass('bi-chevron-up bi-chevron-down');">
@@ -157,12 +151,10 @@
                             <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
                         </span>
                         <div class="collapse show" id="variant-type-collapse">
-                            <div>
-                                <div class="row">
-                                    <div class="col-md-4 form-row-padding">
-                                        <label class="col-md-4 settings-label">Engine:</label>
-                                    </div>
-                                    <div class="col-md-8 form-row-padding">
+                            <div class="ml-2">
+                                <div class="form-group form-margin">
+                                    <label class="settings-label">Engine</label>
+                                    <div class="col-10 menu-padding">
                                         <div id="engine_list"></div>
                                     </div>
                                 </div>
@@ -173,19 +165,15 @@
                             <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
                         </span>
                         <div class="collapse show" id="grouping-collapse">
-                            <div>
-                                <div class="row">
-                                    <div class="col-md-4 form-row-padding">
-                                        <label class="col-md-4 settings-label">Category:</label>
-                                    </div>
-                                    <div class="col-md-8 form-row-padding">
+                            <div class="ml-2">
+                                <div class="form-group form-margin">
+                                    <label class="settings-label" for="sample_groups_list">Category</label>
+                                    <div class="col-10 menu-padding">
                                         <select class="form-control" serialize="true" id="sample_groups_list">
 
                                         </select>
+                                        <div class="alert alert-danger mt-2" role="alert" style="display: none;" id="maximum_ngl_widgets_error">You can only select up to 16 groups at a time. Unselect some to add more.</div>
                                     </div>
-                                    <div class="clearfix"></div>
-                                    <div class="alert alert-danger m-2" role="alert" style="display: none;" id="maximum_ngl_widgets_error">You can only select up to 16 groups at a time. Unselect some to add more.</div>
-                                    <div class="clearfix"></div>
                                 </div>
                                 <div id="sample_groups">
 
@@ -204,57 +192,55 @@
                             <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
                         </span>
                         <div class="collapse show" id="variants-collapse">
-                            <div class="col-md-12">
+                            <div class="ml-2">
                                 <span class="settings-secondary-header">Color</span>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label">Rule: </label>
-                                    <div class="col-md-8">
-                                        <select id="color_type" onchange="if ($(this).val() == 'Static') { $('.static-color').show(); $('.dynamic-color').hide(); } else { $('.static-color').hide(); $('.dynamic-color').show(); }; draw_variability();">
+                                <div class="form-group form-margin">
+                                    <label class="settings-label" for="color_type">Rule</label>
+                                    <div class="col-10 menu-padding">
+                                        <select class="form-control" id="color_type" onchange="if ($(this).val() == 'Static') { $('.static-color').show(); $('.dynamic-color').hide(); } else { $('.static-color').hide(); $('.dynamic-color').show(); }; draw_variability();">
                                             <option>Static</option>
                                             <option>Dynamic</option>
                                         </select>
                                     </div>
                                 </div>
                                 <div class="static-color">
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label">Color: </label>
-                                        <div class="col-md-8"><div class="colorpicker" id="color_static" color="#c80023" onchange="draw_variability();" style="background-color: #c80023;"></div></div>
+                                    <div class="d-flex align-items-center mt-2 mb-2">
+                                        <span class="mr-2">Color:</span>
+                                        <div class="mr-4"><div class="colorpicker" id="color_static" color="#c80023" onchange="draw_variability();" style="background-color: #c80023;"></div></div>
                                     </div>
                                 </div>
                                 <div class="dynamic-color" style="display: none;">
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label">Color by: </label>
-                                        <div class="col-md-8"><select id="color_target_column" onChange="onTargetColumnChange(this);"></select></div>
+                                    <div class="form-group form-margin">
+                                        <label class="settings-label" for="color_target_column">Color by</label>
+                                        <div class="col-10 menu-padding">
+                                            <select class="form-control" id="color_target_column" onChange="onTargetColumnChange(this);"></select>
+                                        </div>
                                     </div>
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label">3 color: </label>
-                                        <div class="col-md-8"><input type="checkbox" id="show_3_color" onclick="if ($(this).is(':checked')) {  $('.middle-color-settings').show(); } else { $('.middle-color-settings').hide(); }; draw_variability();" /></div>
+                                    <div class="d-flex align-items-center mt-2 mb-2">
+                                        <label class="mb-0 mr-2" for="show_3_color">3 color:</label>
+                                        <span class="mr-4"><input type="checkbox" id="show_3_color" onclick="if ($(this).is(':checked')) {  $('.middle-color-settings').show(); } else { $('.middle-color-settings').hide(); }; draw_variability();" /></span>
                                     </div>
                                     <div id="color_numerical_panel">
                                         <span class="settings-secondary-header">Minimum</span>
-                                        <div class="col-md-12 d-flex">
-                                            <label class="col-md-4 settings-label">Value: </label>
-                                            <div class="col-md-8"><input type="input" id="color_min" onblur="draw_variability(); " value="0"></div>
-                                        </div>
-                                        <div class="col-md-12 d-flex">
-                                            <label class="col-md-4 settings-label">Color: </label>
-                                            <div class="col-md-8"><div class="colorpicker" id="color_start" color="#ffffed" onchange="draw_variability();" style="background-color: #ffffed"></div></div>
+                                        <div class="d-flex align-items-center mt-2 mb-2">
+                                            <label class="mb-0 mr-2" for="color_min">Value:</label>
+                                            <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="color_min" onblur="draw_variability(); " value="0"></span>
+                                            <span class="mr-2">Color:</span>
+                                            <div class="mr-4"><div class="colorpicker" id="color_start" color="#ffffed" onchange="draw_variability();" style="background-color: #ffffed"></div></div>
                                         </div>
                                         <div class="middle-color-settings" style="display: none">
                                             <span class="settings-secondary-header" id="middle-color">Middle</span>
-                                            <div class="col-md-12 d-flex">
-                                                <label class="col-md-4 settings-label">Color: </label>
-                                                <div class="col-md-8"><div class="colorpicker" id="color_middle" color="#38ba72" onchange="draw_variability();" style="background-color: #38ba72"></div></div>
+                                            <div class="d-flex align-items-center mt-2 mb-2">
+                                                <span class="mr-2">Color:</span>
+                                                <div class="mr-4"><div class="colorpicker" id="color_middle" color="#38ba72" onchange="draw_variability();" style="background-color: #38ba72"></div></div>
                                             </div>
                                         </div>
                                         <span class="settings-secondary-header">Maximum</span>
-                                        <div class="col-md-12 d-flex">
-                                            <label class="col-md-4 settings-label">Value: </label>
-                                            <div class="col-md-8"><input type="input" id="color_max" onblur="draw_variability(); " value="1"></div>
-                                        </div>
-                                        <div class="col-md-12 d-flex">
-                                            <label class="col-md-4 settings-label">Color: </label>
-                                            <div class="col-md-8"><div class="colorpicker" id="color_end" color="#c80023" onchange="draw_variability();" style="background-color: #c80023"></div></div>
+                                        <div class="d-flex align-items-center mt-2 mb-2">
+                                            <label class="mb-0 mr-2" for="color_max">Value:</label>
+                                            <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="color_max" onblur="draw_variability(); " value="1"></span>
+                                            <span class="mr-2">Color:</span>
+                                            <div class="mr-4"><div class="colorpicker" id="color_end" color="#c80023" onchange="draw_variability();" style="background-color: #c80023"></div></div>
                                         </div>
                                         <div class="clearfix"></div>
                                         <div class="alert alert-danger mt-3" role="alert" style="display: none;" id="dynamic_color_error">Max Value must be greater than Min Value.</div>
@@ -262,46 +248,44 @@
                                 </div>
                             </div>
                             <div class="clearfix"></div>
-                            <div class="col-md-12">
+                            <div class="ml-2">
                                 <span class="settings-secondary-header">Size</span>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label">Rule: </label>
-                                    <div class="col-md-8">
-                                        <select id="size_type" onchange="if ($(this).val() == 'Static') { $('.static-size').show(); $('.dynamic-size').hide(); } else { $('.static-size').hide(); $('.dynamic-size').show(); }; draw_variability();">
+                                <div class="form-group form-margin">
+                                    <label class="settings-label" for="size_type">Rule</label>
+                                    <div class="col-10 menu-padding">
+                                        <select class="form-control" id="size_type" onchange="if ($(this).val() == 'Static') { $('.static-size').show(); $('.dynamic-size').hide(); } else { $('.static-size').hide(); $('.dynamic-size').show(); }; draw_variability();">
                                             <option>Static</option>
                                             <option>Dynamic</option>
                                         </select>
                                     </div>
                                 </div>
                                 <div class="static-size">
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label">Size: </label>
-                                        <div class="col-md-8"><input type="input" id="size_static" onblur="draw_variability(); " value="0.75"></div>
+                                    <div class="d-flex align-items-center mt-2 mb-2">
+                                        <label class="mb-0 mr-2" for="size_static">Size:</label>
+                                        <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="size_static" onblur="draw_variability(); " value="0.75"></span>
                                     </div>
                                 </div>
                                 <div class="dynamic-size" style="display: none;">
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label">Size by: </label>
-                                        <div class="col-md-8"><select id="size_target_column" onChange="onTargetColumnChange(this);"></select></div>
+                                    <div class="form-group form-margin">
+                                        <label class="settings-label" for="size_target_column">Size by</label>
+                                        <div class="col-10 menu-padding">
+                                            <select class="form-control" id="size_target_column" onChange="onTargetColumnChange(this);"></select>
+                                        </div>
                                     </div>
                                     <div id="size_numerical_panel">
                                         <span class="settings-secondary-header">Minimum</span>
-                                        <div class="col-md-12 d-flex">
-                                            <label class="col-md-4 settings-label">Value: </label>
-                                            <div class="col-md-8"><input type="input" id="size_min" onblur="draw_variability(); " value="0"></div>
-                                        </div>
-                                        <div class="col-md-12 d-flex">
-                                            <label class="col-md-4 settings-label">Size: </label>
-                                            <div class="col-md-8"><input type="input" id="size_start" onblur="draw_variability(); " value="0.4"></div>
+                                        <div class="d-flex align-items-center mt-2 mb-2">
+                                            <label class="mb-0 mr-2" for="size_min">Value:</label>
+                                            <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="size_min" onblur="draw_variability(); " value="0"></span>
+                                            <label class="mb-0 mr-2" for="size_start">Size:</label>
+                                            <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="size_start" onblur="draw_variability(); " value="0.4"></span>
                                         </div>
                                         <span class="settings-secondary-header">Maximum</span>
-                                        <div class="col-md-12 d-flex">
-                                            <label class="col-md-4 settings-label">Value: </label>
-                                            <div class="col-md-8"><input type="input" id="size_max" onblur="draw_variability(); " value="1"></div>
-                                        </div>
-                                        <div class="col-md-12 d-flex">
-                                            <label class="col-md-4 settings-label">Size: </label>
-                                            <div class="col-md-8"><input type="input" id="size_end" onblur="draw_variability(); " value="1.4"></div>
+                                        <div class="d-flex align-items-center mt-2 mb-2">
+                                            <label class="mb-0 mr-2" for="size_max">Value:</label>
+                                            <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="size_max" onblur="draw_variability(); " value="1"></span>
+                                            <label class="mb-0 mr-2" for="size_end">Size:</label>
+                                            <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="size_end" onblur="draw_variability(); " value="1.4"></span>
                                         </div>
                                         <div class="alert alert-danger mt-3" role="alert" style="display: none;" id="dynamic_size_error">Max Value must be greater than Min Value.</div>
                                     </div>
@@ -314,16 +298,16 @@
                             <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
                         </span>
                         <div class="collapse show" id="structure-collapse">
-                            <div class="col-md-12">
+                            <div class="ml-2">
                                 <span class="settings-secondary-header">Backbone</span>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label">Show: </label>
-                                    <div class="col-md-8"><input type="checkbox" id="show_backbone" onclick="create_ngl_views(fetch_variability=false); " checked="checked" /></div>
+                                <div class="d-flex align-items-center mt-2 mb-2">
+                                    <label class="mb-0 mr-2" for="show_backbone">Show:</label>
+                                    <span class="mr-4"><input type="checkbox" id="show_backbone" onclick="create_ngl_views(fetch_variability=false); " checked="checked" /></span>
                                 </div>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label">Style: </label>
-                                    <div class="col-md-8">
-                                        <select id="backbone_type" onchange="create_ngl_views(fetch_variability=false);">
+                                <div class="form-group form-margin">
+                                    <label class="settings-label" for="backbone_type">Style</label>
+                                    <div class="col-10 menu-padding">
+                                        <select class="form-control" id="backbone_type" onchange="create_ngl_views(fetch_variability=false);">
                                             <option>cartoon</option>
                                             <option>tube</option>
                                             <option>rocket</option>
@@ -337,12 +321,12 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-12">
+                            <div class="ml-2">
                                 <span class="settings-secondary-header">Backbone Color</span>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label">Rule: </label>
-                                    <div class="col-md-8">
-                                        <select id="backbone_color_type" onchange="backbone_rule(this);">
+                                <div class="form-group form-margin">
+                                    <label class="settings-label" for="backbone_color_type">Rule</label>
+                                    <div class="col-10 menu-padding">
+                                        <select class="form-control" id="backbone_color_type" onchange="backbone_rule(this);">
                                             <option>Static</option>
                                             <option>Dynamic</option>
                                             <option>residueindex</option>
@@ -353,34 +337,32 @@
                                     </div>
                                 </div>
                                 <div class="static-color-backbone" style="display: none;">
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label">Color: </label>
-                                        <div class="col-md-8"><div class="colorpicker" id="color_static_backbone" color="#6a8dab" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #6a8dab;"></div></div>
+                                    <div class="d-flex align-items-center mt-2 mb-2">
+                                        <span class="mr-2">Color:</span>
+                                        <div class="mr-4"><div class="colorpicker" id="color_static_backbone" color="#6a8dab" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #6a8dab;"></div></div>
                                     </div>
                                 </div>
                                 <div class="dynamic-color-backbone" style="display: none;">
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label">Color by: </label>
-                                        <div class="col-md-8"><select id="backbone_color_variable" onChange="onTargetResidueInfoChange(this);"></select></div>
+                                    <div class="form-group form-margin">
+                                        <label class="settings-label" for="backbone_color_variable">Color by</label>
+                                        <div class="col-10 menu-padding">
+                                            <select class="form-control" id="backbone_color_variable" onChange="onTargetResidueInfoChange(this);"></select>
+                                        </div>
                                     </div>
                                     <div id="backbone_color_numerical_panel">
                                         <span class="settings-secondary-header">Minimum</span>
-                                        <div class="col-md-12 d-flex">
-                                            <label class="col-md-4 settings-label">Value: </label>
-                                            <div class="col-md-8"><input type="input" id="backbone_color_min" onblur="create_ngl_views(fetch_variability=false);" value="0"></div>
-                                        </div>
-                                        <div class="col-md-12 d-flex">
-                                            <label class="col-md-4 settings-label">Color: </label>
-                                            <div class="col-md-8"><div class="colorpicker" id="backbone_color_start" color="#ffffed" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #ffffed"></div></div>
+                                        <div class="d-flex align-items-center mt-2 mb-2">
+                                            <label class="mb-0 mr-2" for="backbone_color_min">Value:</label>
+                                            <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="backbone_color_min" onblur="create_ngl_views(fetch_variability=false);" value="0"></span>
+                                            <span class="mr-2">Color:</span>
+                                            <div class="mr-4"><div class="colorpicker" id="backbone_color_start" color="#ffffed" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #ffffed"></div></div>
                                         </div>
                                         <span class="settings-secondary-header">Maximum</span>
-                                        <div class="col-md-12 d-flex">
-                                            <label class="col-md-4 settings-label">Value: </label>
-                                            <div class="col-md-8"><input type="input" id="backbone_color_max" onblur="create_ngl_views(fetch_variability=false);" value="1"></div>
-                                        </div>
-                                        <div class="col-md-12 d-flex">
-                                            <label class="col-md-4 settings-label">Color: </label>
-                                            <div class="col-md-8"><div class="colorpicker" id="backbone_color_end" color="#6a8dab" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #6a8dab"></div></div>
+                                        <div class="d-flex align-items-center mt-2 mb-2">
+                                            <label class="mb-0 mr-2" for="backbone_color_max">Value:</label>
+                                            <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="backbone_color_max" onblur="create_ngl_views(fetch_variability=false);" value="1"></span>
+                                            <span class="mr-2">Color:</span>
+                                            <div class="mr-4"><div class="colorpicker" id="backbone_color_end" color="#6a8dab" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #6a8dab"></div></div>
                                         </div>
                                         <div class="clearfix"></div>
                                         <div class="alert alert-danger mt-3" role="alert" style="display: none;" id="dynamic_background_color_error">Max Value must be greater than Min Value.</div>
@@ -388,29 +370,23 @@
                                 </div>
                             </div>
                             <div class="clearfix"></div>
-                            <div class="col-md-12">
+                            <div class="ml-2">
                                 <span class="settings-secondary-header">Surface</span>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label">Show: </label>
-                                    <div class="col-md-8">
-                                        <input type="checkbox" id="show_surface" onclick="create_ngl_views(fetch_variability=false);" checked="checked" />
-                                    </div>
-                                </div>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label">Opacity: </label>
-                                    <div class="col-md-8"><input type="text" id="surface_opacity" value="0.12" onblur="create_ngl_views(fetch_variability=false); " /></div>
-                                </div>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label">Probe radius: </label>
-                                    <div class="col-md-8"><input type="text" id="surface_probe_radius" value="1.4" onblur="create_ngl_views(fetch_variability=false); " /></div>
+                                <div class="d-flex align-items-center mt-2 mb-2">
+                                    <label class="mb-0 mr-2" for="show_surface">Show:</label>
+                                    <span class="mr-4"><input type="checkbox" id="show_surface" onclick="create_ngl_views(fetch_variability=false);" checked="checked" /></span>
+                                    <label class="mb-0 mr-2" for="surface_opacity">Opacity:</label>
+                                    <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="text" id="surface_opacity" value="0.12" onblur="create_ngl_views(fetch_variability=false); " /></span>
+                                    <label class="mb-0 mr-2" for="surface_probe_radius">Probe radius:</label>
+                                    <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="text" id="surface_probe_radius" value="1.4" onblur="create_ngl_views(fetch_variability=false); " /></span>
                                 </div>
                             </div>
-                            <div class="col-md-12">
+                            <div class="ml-2">
                                 <span class="settings-secondary-header">Surface Color</span>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label">Rule: </label>
-                                    <div class="col-md-8">
-                                        <select id="surface_color_type" onchange="surface_rule(this);">
+                                <div class="form-group form-margin">
+                                    <label class="settings-label" for="surface_color_type">Rule</label>
+                                    <div class="col-10 menu-padding">
+                                        <select class="form-control" id="surface_color_type" onchange="surface_rule(this);">
                                             <option>Static</option>
                                             <option>Dynamic</option>
                                             <option>atomindex</option>
@@ -424,50 +400,48 @@
                                     </div>
                                 </div>
                                 <div class="static-color-surface" style="display: none;">
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label">Color: </label>
-                                        <div class="col-md-8"><div class="colorpicker" id="color_static_surface" color="#f7f2f2" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #f7f2f2;"></div></div>
+                                    <div class="d-flex align-items-center mt-2 mb-2">
+                                        <span class="mr-2">Color:</span>
+                                        <div class="mr-4"><div class="colorpicker" id="color_static_surface" color="#f7f2f2" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #f7f2f2;"></div></div>
                                     </div>
                                 </div>
                                 <div class="dynamic-color-surface" style="display: none;">
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label">Color by: </label>
-                                        <div class="col-md-8"><select id="surface_color_variable" onChange="onTargetResidueInfoChange(this);"></select></div>
+                                    <div class="form-group form-margin">
+                                        <label class="settings-label" for="surface_color_variable">Color by</label>
+                                        <div class="col-10 menu-padding">
+                                            <select class="form-control" id="surface_color_variable" onChange="onTargetResidueInfoChange(this);"></select>
+                                        </div>
                                     </div>
                                     <div id="surface_color_numerical_panel">
                                         <span class="settings-secondary-header">Minimum</span>
-                                        <div class="col-md-12 d-flex">
-                                            <label class="col-md-4 settings-label">Value: </label>
-                                            <div class="col-md-8"><input type="input" id="surface_color_min" onblur="create_ngl_views(fetch_variability=false);" value="0"></div>
-                                        </div>
-                                        <div class="col-md-12 d-flex">
-                                            <label class="col-md-4 settings-label">Color: </label>
-                                            <div class="col-md-8"><div class="colorpicker" id="surface_color_start" color="#ffffed" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #ffffed"></div></div>
+                                        <div class="d-flex align-items-center mt-2 mb-2">
+                                            <label class="mb-0 mr-2" for="surface_color_min">Value:</label>
+                                            <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="surface_color_min" onblur="create_ngl_views(fetch_variability=false);" value="0"></span>
+                                            <span class="mr-2">Color:</span>
+                                            <div class="mr-4"><div class="colorpicker" id="surface_color_start" color="#ffffed" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #ffffed"></div></div>
                                         </div>
                                         <span class="settings-secondary-header">Maximum</span>
-                                        <div class="col-md-12 d-flex">
-                                            <label class="col-md-4 settings-label">Value: </label>
-                                            <div class="col-md-8"><input type="input" id="surface_color_max" onblur="create_ngl_views(fetch_variability=false);" value="1"></div>
-                                        </div>
-                                        <div class="col-md-12 d-flex">
-                                            <label class="col-md-4 settings-label">Color: </label>
-                                            <div class="col-md-8"><div class="colorpicker" id="surface_color_end" color="#c80023" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #c80023"></div></div>
+                                        <div class="d-flex align-items-center mt-2 mb-2">
+                                            <label class="mb-0 mr-2" for="surface_color_max">Value:</label>
+                                            <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="surface_color_max" onblur="create_ngl_views(fetch_variability=false);" value="1"></span>
+                                            <span class="mr-2">Color:</span>
+                                            <div class="mr-4"><div class="colorpicker" id="surface_color_end" color="#c80023" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #c80023"></div></div>
                                         </div>
                                         <div class="clearfix"></div>
                                         <div class="alert alert-danger mt-3" role="alert" style="display: none;" id="dynamic_backbone_color_error">Max Value must be greater than Min Value.</div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-12">
+                            <div class="ml-2">
                                 <span class="settings-secondary-header">Ball-Stick</span>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label">Show: </label>
-                                    <div class="col-md-8"><input type="checkbox" id="show_ballstick" onclick="create_ngl_views(fetch_variability=false); " /></div>
+                                <div class="d-flex align-items-center mt-2 mb-2">
+                                    <label class="mb-0 mr-2" for="show_ballstick">Show:</label>
+                                    <span class="mr-4"><input type="checkbox" id="show_ballstick" onclick="create_ngl_views(fetch_variability=false); " /></span>
                                 </div>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label">When: </label>
-                                    <div class="col-md-8">
-                                        <select id="show_ballstick_when" onchange="create_ngl_views(fetch_variability=false);">
+                                <div class="form-group form-margin">
+                                    <label class="settings-label" for="show_ballstick_when">When</label>
+                                    <div class="col-10 menu-padding">
+                                        <select class="form-control" id="show_ballstick_when" onchange="create_ngl_views(fetch_variability=false);">
                                             <option>always</option>
                                             <option>variant residue</option>
                                             <option>hovered residue</option>
@@ -477,27 +451,27 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-12">
+                            <div class="ml-2">
                                 <span class="settings-secondary-header">Hover Tooltip</span>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label">Show: </label>  
-                                    <div class="col-md-8"><input type="checkbox" id="show_tooltip" onclick="create_ngl_views(fetch_variability=false); " checked="checked" /></div>
+                                <div class="d-flex align-items-center mt-2 mb-2">
+                                    <label class="mb-0 mr-2" for="show_tooltip">Show:</label>
+                                    <span class="mr-4"><input type="checkbox" id="show_tooltip" onclick="create_ngl_views(fetch_variability=false); " checked="checked" /></span>
                                 </div>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label">When: </label>  
-                                    <div class="col-md-8">
-                                        <select id="show_tooltip_when" onchange="create_ngl_views(fetch_variability=false);">
+                                <div class="form-group form-margin">
+                                    <label class="settings-label" for="show_tooltip_when">When</label>
+                                    <div class="col-10 menu-padding">
+                                        <select class="form-control" id="show_tooltip_when" onchange="create_ngl_views(fetch_variability=false);">
                                             <option>all residues</option>
                                             <option>variant residues</option>
                                         </select>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-12">
+                            <div class="ml-2">
                                 <span class="settings-secondary-header">Residue Labels</span>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label">Show: </label>  
-                                    <div class="col-md-8"><input type="checkbox" id="show_residue_labels" onclick="create_ngl_views(fetch_variability=false); " /></div>
+                                <div class="d-flex align-items-center mt-2 mb-2">
+                                    <label class="mb-0 mr-2" for="show_residue_labels">Show:</label>
+                                    <span class="mr-4"><input type="checkbox" id="show_residue_labels" onclick="create_ngl_views(fetch_variability=false); " /></span>
                                 </div>
                             </div>
                         </div>

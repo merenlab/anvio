@@ -79,22 +79,6 @@ body {
     top: 5px;
 }
 
-.form-row-padding {
-    padding: 8px;
-}
-
-/* main.css gives .settings-label a top padding suited to the stacked rows of
-   the main interface. These two-column rows put the label beside its control,
-   so drop the padding and centre the pair on a shared line instead. */
-.tab-content .col-md-12.d-flex {
-    align-items: center;
-}
-
-.tab-content .col-md-12.d-flex > .settings-label {
-    padding-top: 0px;
-    margin-bottom: 0px;
-}
-
 #engine_list label {
     margin-left: 4px;
     margin-right: 12px;

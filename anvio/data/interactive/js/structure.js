@@ -157,7 +157,7 @@ function load_sample_group_widget(category, trigger_create_ngl_views=true) {
     $('#sample_groups').empty();
     $('#sample_groups').attr('created-for-category', category);
 
-    tableHtml = '<table class="table table-sm table-responsive"><tr><td><label class="col-md-4 settings-label">Groups</label></td><td><label class="col-md-4 settings-label">Samples</label></td></tr>';
+    tableHtml = '<table class="table table-sm"><tr><td><label class="settings-label">Groups</label></td><td><label class="settings-label">Samples</label></td></tr>';
 
     let counter=0;
     for (let group in sample_groups[category]) {
@@ -802,11 +802,11 @@ function get_model_info_table_html(model_data) {
     if (Object.keys(templates).length > 0) {
         geneModelHtml += '<div class="model-info-group">'
         geneModelHtml += '<span class="settings-secondary-header">Templates Used</span>'
-        geneModelHtml += '<table class="table table-sm table-responsive" id="model_info_table"><tbody>';
+        geneModelHtml += '<table class="table table-sm" id="model_info_table"><tbody>';
 
         var header = '<tr>';
         for (const col_name of Object.keys(templates[0])) {
-            header += '<td><label class="col-md-4 settings-label">' + col_name + '</label></td>';
+            header += '<td><label class="settings-label">' + col_name + '</label></td>';
         }
         header += '</tr>';
         geneModelHtml += header;
@@ -840,12 +840,12 @@ function get_model_info_table_html(model_data) {
     if (models) {
         geneModelHtml += '<div class="model-info-group">'
         geneModelHtml += '<span class="settings-secondary-header">Model Scores</span>'
-        geneModelHtml += '<table class="table table-sm table-responsive" id="model_info_table"><tbody>';
+        geneModelHtml += '<table class="table table-sm" id="model_info_table"><tbody>';
 
         var header = '<tr>';
         var row = '<tr>';
         for (const [col_name, value] of Object.entries(models)) {
-            header += '<td><label class="col-md-4 settings-label">' + col_name + '</label></td>';
+            header += '<td><label class="settings-label">' + col_name + '</label></td>';
             row += '<td>' + Number(value).toFixed(2) + '</td>';
         }
         header += '</tr>';
@@ -1496,7 +1496,7 @@ function get_gene_functions_table_html_for_structure(gene){
         return functions_table_html
     }
 
-    functions_table_html  = '<table class="table table-striped table-responsive">';
+    functions_table_html  = '<table class="table table-striped">';
     functions_table_html += '<thead><th>Source</th>';
     functions_table_html += '<th>Accession</th>';
     functions_table_html += '<th>Annotation</th></thead>';
