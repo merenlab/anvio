@@ -192,6 +192,13 @@ D = {
              'required': True,
              'help': "Anvi'o pan database"}
                 ),
+    'pan-or-pan-graph-db': (
+            ['-p', '--pan-or-pan-graph-db'],
+            {'metavar': "PAN_OR_PAN_GRAPH_DB",
+             'required': True,
+             'help': "An anvi'o pan-db or pan-graph-db. Which one it is is worked out from the database "
+                     "itself, so either may be given here."}
+                ),
     'pan-or-profile-db': (
             ['-p', '--pan-or-profile-db'],
             {'metavar': "PAN_OR_PROFILE_DB",
@@ -2346,6 +2353,15 @@ D = {
              'help': "Nodes in an anvi'o pangenome graph database..",
              'type': str}
                 ),
+    'reset-gene-caller-ids': (
+            ['--reset-gene-caller-ids'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, the gene caller ids in the resulting contigs databases will match those "
+                     "in the source contigs databases, so you can trace each gene back to where it came from. "
+                     "If you use this flag, anvi'o will instead reset the gene caller ids so they start from 0 "
+                     "in each output database (which was the historical default behavior)."}
+                ),
     'region-id': (
             ['--region-id'],
             {'metavar': "REGION_ID",
@@ -2455,6 +2471,34 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Just store the raw output without any processing of the primary data structure."}
+                ),
+    'tree-output': (
+            ['--tree-output'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Rather than showing you a table where each row describes the entire lineage of a single "
+                     "item, display the results as a hierarchical tree in your terminal, where each node shows "
+                     "the number of items that were assigned to that taxon or to anything under it. This is a "
+                     "much better way to get a quick sense of the taxonomic make up of a metagenome (based on "
+                     "SCGs, anticodons, or who knows what else, since the items will depend on the program "
+                     "you use and your parameters). Declaring this flag will not influence any of the output "
+                     "files you may have asked for. While they will continue describing the very same results "
+                     "in their usual TAB-delimited fashion, this flag will add more fabulous to your terminal."}
+                ),
+    # NOTE: the default here is None rather than 't_genus' even though 't_genus' is the effective default
+    # (which lives in the class `TaxonomyTree`). This is the case just to make sure anvi'o can know if
+    # the user has EXPLICITLY asked for a taxonomic level, so it CAN complain confidently if they did it
+    # without also asking for a tree :) This is how we lay the path that leads to high quality complaints,
+    # of which we obviously are very proud :p
+    'tree-output-level': (
+            ['--tree-output-level'],
+            {'default': None,
+             'type': str,
+             'choices': constants.levels_of_taxonomy,
+             'help': "The deepest taxonomic level to show when you are asking for a tree with `--tree-output`. "
+                     "The default is 't_genus', which means the tree will not show you species names. Please "
+                     "note that this parameter has nothing to do with the parameter `--taxonomic-level`, and it "
+                     "will only influence the tree that is displayed in your terminal."}
                 ),
     'dry-run': (
             ['--dry-run'],
@@ -4193,6 +4237,21 @@ D = {
              'help': "Set the minimum number of codons required in a gene. When functions are returned "
                      "rather than genes, this filter is applied to genes before grouping them as "
                      "functions."}
+        ),
+    'ignore-start-codons': (
+            ['--ignore-start-codons'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Ignore start codons in the analysis. Besides ATG, GTG and TTG are notable minority "
+                     "start codons in bacteria and archaea. With start codons removed, frequencies only "
+                     "represent elongation codons. This makes codon usage bias calculations more accurate, "
+                     "because initiation GTG and TTG, like ATG, encode fMet in bacteria and Met in archaea "
+                     "and eukaryotes, but anvi'o treats them like elongation codons encoding Val and Leu, "
+                     "respectively, in the standard genetic code. ATG does not contribute to codon usage "
+                     "bias given the standard genetic code, because it lacks synonymous codons, being the "
+                     "only Met codon. Note that `--ignore-start-codons` removes start codons from genes in "
+                     "the earliest steps of the analysis, which influences `--gene-min-codons`: the number "
+                     "of codons in a gene never counts the start codon."}
         ),
     'relative': (
             ['--relative'],

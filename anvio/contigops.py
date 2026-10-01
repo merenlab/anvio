@@ -121,7 +121,7 @@ class Contig:
         if len(self.splits) == 1:
             # Coverage.process_c is a potentially expensive operation (taking up ~90% of the time of
             # analyze_coverage when coverage is low (but when coverage is >500X, the time taken is
-            # ~1%)). Regardless, this clause exists to catch the somewhat common occurence when a
+            # ~1%)). Regardless, this clause exists to catch the somewhat common occurrence when a
             # contig only has one split. In this case, the contig _is_ the split, and so all of the
             # split.coverage attributes can simply be referenced directly from contig.coverage
             split = self.splits[0]

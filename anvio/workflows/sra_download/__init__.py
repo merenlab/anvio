@@ -51,13 +51,17 @@ class SRADownloadWorkflow(WorkflowSuperClass):
 
         # Directory structure for Snakemake workflow
         self.dirs_dict.update({"SRA_prefetch": "01_NCBI_SRA"})
-        self.dirs_dict.update({"FASTAS": "02_FASTA"})
+        self.dirs_dict.update({"FASTQ_DIR": "02_FASTQ"})
 
 
     def init(self):
         """Load the SRA_accession_list and creates a list of target files for the Snakemake workflow."""
 
+        self.migrate_legacy_fastas_dir_name()
+
         super().init()
+
+        self.warn_about_legacy_fastq_directory()
 
         # Load SRA_accession_list
         self.SRA_accession_list = self.get_param_value_from_config(['SRA_accession_list'])
@@ -89,10 +93,55 @@ class SRADownloadWorkflow(WorkflowSuperClass):
         self.target_files = self.get_target_files()
 
 
+    def migrate_legacy_fastas_dir_name(self):
+        """Accept the old `FASTAS` key in a config file's `output_dirs` section.
+
+        The directory holding the FASTQ files this workflow downloads used to be declared with
+        the key `FASTAS`. Config files written before the rename still use it, and the sanity
+        check for `output_dirs` would reject them as an unknown directory, so we quietly
+        translate the old key into the current one and let the user know."""
+
+        output_dirs = (self.config or {}).get('output_dirs') or {}
+
+        if 'FASTAS' not in output_dirs:
+            return
+
+        legacy_value = output_dirs.pop('FASTAS')
+        output_dirs.setdefault('FASTQ_DIR', legacy_value)
+
+        self.run.warning(f"The `output_dirs` section of your config file asks for a directory called "
+                         f"`FASTAS`. That key is now called `FASTQ_DIR`, since what this workflow puts "
+                         f"there are FASTQ files rather than FASTA files. Anvi'o will use your value "
+                         f"('{legacy_value}') for `FASTQ_DIR` and carry on, but please do rename the key "
+                         f"in your config file when you have a moment.")
+
+
+    def warn_about_legacy_fastq_directory(self):
+        """Point out output from an earlier run that lives under the old directory name.
+
+        Snakemake decides what work is left to do by looking for output files, so a run that
+        downloaded its reads into `02_FASTA` before the rename would look entirely unfinished
+        now and every accession would be downloaded a second time. Downloads are the expensive
+        part of this workflow, so it is worth saying something before that happens."""
+
+        fastq_dir = self.dirs_dict['FASTQ_DIR']
+        legacy_dir = '02_FASTA'
+
+        if fastq_dir == legacy_dir or not os.path.exists(legacy_dir) or os.path.exists(fastq_dir):
+            return
+
+        self.run.warning(f"Anvi'o found a directory called '{legacy_dir}' here, which is where this workflow "
+                         f"used to keep the FASTQ files it downloads. It now uses '{fastq_dir}' instead. If "
+                         f"'{legacy_dir}' holds reads from an earlier run, anvi'o will not see them and will "
+                         f"download everything again from scratch. To avoid that, either rename '{legacy_dir}' "
+                         f"to '{fastq_dir}', or add \"output_dirs\": {{\"FASTQ_DIR\": \"{legacy_dir}\"}} to your "
+                         f"config file to keep using the old location.")
+
+
     def get_target_files(self):
         """Get list of target files for snakemake target rule"""
 
-        target_files = [os.path.join(self.dirs_dict['FASTAS'], "generate_samples_txt.done")]
+        target_files = [os.path.join(self.dirs_dict['FASTQ_DIR'], "generate_samples_txt.done")]
 
         return target_files
 

@@ -306,6 +306,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user":True
     },
+    "sra-metadata-txt": {
+        "name": "SRA METADATA TXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user":True
+    },
     "primers-txt": {
         "name": "PRIMERS TXT",
         "type": "TXT",
@@ -1031,6 +1037,24 @@ ANVIO_ARTIFACTS ={
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user":True
+    },
+    "kegg-reaction-txt": {
+        "name": "KEGG REACTION TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "kegg-compound-txt": {
+        "name": "KEGG COMPOUND TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "kegg-category-colors-txt": {
+        "name": "KEGG CATEGORY COLORS TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
     },
     "enzymes-list-for-module": {
         "name": "ENZYMES LIST",

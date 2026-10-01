@@ -556,6 +556,7 @@ def get_args():
         help="Only allow CUB to calculated for a query if it has at least this number of "
              "synonymous codons that will be analyzed. For reference-dependent CUB metrics, "
              "analyzed codons are those with reference compositions.")
+    groupG.add_argument(*anvio.A('ignore-start-codons'), **anvio.K('ignore-start-codons'))
 
     groupH = parser.add_argument_group(
         'FILTER REFERENCE',

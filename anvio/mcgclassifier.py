@@ -429,7 +429,7 @@ class MetagenomeCentricGeneClassifier:
 
 
     def get_gene_coverage_consistency(self, gene_id):
-        """ return true if the gene's coverage is consistent accross positive samples, False otherwise."""
+        """ return true if the gene's coverage is consistent across positive samples, False otherwise."""
 
         # TODO: make sure coverage_consistency_dict has been initiated
         if self.gene_class_df.loc[gene_id, 'occurence_in_positive_samples'] == 0:

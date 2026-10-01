@@ -99,3 +99,33 @@ And here is a mixed short/long-read example, where the short-read-only sample le
 |Sample_01|/path/to/XXX-01-R1.fastq.gz|/path/to/XXX-01-R2.fastq.gz|/path/to/XXX-01-lr.fastq.gz|ont|
 |Sample_02|/path/to/YYY-02-R1.fastq.gz|/path/to/YYY-02-R2.fastq.gz|||
 |Sample_03|||/path/to/ZZZ-03-lr.fastq.gz|ont|
+
+### Additional optional column: sra_accession
+
+The following is an **optional** column for samples whose reads are not on your computer yet:
+
+* `sra_accession`: One or more NCBI SRA **run** accessions (the ones that start with `SRR`, `ERR`, or `DRR`). A sample described this way has no `r1`, `r2`, or `lr` paths, because those files do not exist yet: the anvi'o metagenomics workflow will download the reads itself, use them, and — unless you ask it to keep them — delete them again as soon as nothing needs them anymore. See the [metagenomics workflow documentation](../../workflows/metagenomics) for how to set that up.
+
+|sample|sra_accession|
+|:--|:--|
+|Sample_01|ERR6450080|
+|Sample_02|ERR6450081|
+
+A few rules govern this column:
+
+* A sample may name **several accessions**, separated by commas. This is how you describe a sample that was sequenced across more than one run: anvi'o downloads each of them and puts them together into a single set of reads for that sample.
+* Because anvi'o looks up what kind of reads each accession holds, a single sample can name a short-read run *and* a long-read run, and it will come out the other side as a proper hybrid sample:
+
+|sample|sra_accession|
+|:--|:--|
+|Sample_01|ERR6450080,SRR11951439|
+
+* You do **not** need to say whether an accession is paired-end or long-read, or which long-read technology produced it. Anvi'o asks NCBI and works it out (see %(sra-metadata-txt)s). The one thing it cannot always work out is whether a PacBio run is CLR or HiFi, since some instruments do both — in that case it tells you which accessions are ambiguous, and you can settle it either with the `lr_technology` column or by editing the metadata file.
+* Samples with accessions and samples with ordinary file paths can live in the same file:
+
+|sample|r1|r2|sra_accession|
+|:--|:--|:--|:--|
+|Sample_01|||ERR6450080|
+|Sample_02|/path/to/YYY-02-R1.fastq.gz|/path/to/YYY-02-R2.fastq.gz||
+
+* Single-end **short** reads are not supported by the metagenomics workflow, so an accession that turns out to hold them will stop the workflow before anything is downloaded, and anvi'o will tell you which accession it was.

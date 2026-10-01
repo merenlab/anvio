@@ -265,13 +265,16 @@ class GenomeStorage(object):
 
 
     def update_storage_hash(self):
-        # here we create a signature for the storage itself by concatenating all hash values from all genomes. even if one
-        # split is added or removed to any of these genomes will change this signature. since we will tie this information
-        # to the profile database we will generate for the pangenome analysis, even if one split is added or removed from any
-        # of the genomes will make sure that the profile databases from this storage and storage itself are not compatible:
+        """Create a signature for the storage itself by concatenating all hash values from all genomes.
+
+        Thanks to this strategy, even if one split is added or removed to any of these genomes we will
+        haev a different hash for the genomes-storage-db. Since we will tie this information to the
+        profile database we will generate for the pangenome analysis, even if one split is added or
+        removed from any of the genomes will make sure that the profile databases from this storage
+        and storage itself are not compatible. A bit like rocket science here."""
 
         concatenated_genome_hashes = '_'.join(sorted(map(str, self.db.get_single_column_from_table(t.genome_info_table_name, 'genome_hash'))))
-        new_hash = 'hash' + str(hashlib.sha224(concatenated_genome_hashes.encode('utf-8')).hexdigest()[0:8])
+        new_hash = str(hashlib.sha224(concatenated_genome_hashes.encode('utf-8')).hexdigest()[0:16])
 
         self.db.set_meta_value('hash', new_hash)
 

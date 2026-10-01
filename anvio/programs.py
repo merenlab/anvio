@@ -240,7 +240,7 @@ class AnvioPrograms(AnvioAuthors):
 
                     self.run.info_single("The universal solution here is to run the following command right now in your anvi'o "
                                          "source code directory:", overwrite_verbose=True, nl_after=1, level=0)
-                    self.run.info_single("    pip install -e . --force-reinstall --upgrade",
+                    self.run.info_single("    pip install -e .",
                                          overwrite_verbose=True, nl_after=1, level=0, pretty_indentation=False)
                     self.run.info_single("This will synchronize your anvi'o codebase with its installed version in your active "
                                          "Python environment. This is indeed very annoying, since you will likely have to do it "

@@ -164,6 +164,12 @@ for each group
 
 # Metagenomics workflow rule modules. Keep this order: later modules rely on
 # helper functions and wildcard constraints defined above or in earlier modules.
+if M.sra_mode:
+    # only when the samples-txt asks for reads to be downloaded, so that users who bring their
+    # own FASTQ files never need the SRA toolkit installed
+    include: w.get_workflow_rule_file_path("sra_reads", "download.smk")
+
+
 include: w.get_workflow_rule_file_path("metagenomics", "qc.smk")
 include: w.get_workflow_rule_file_path("metagenomics", "read_filtering.smk")
 include: w.get_workflow_rule_file_path("metagenomics", "assembly_short_reads.smk")

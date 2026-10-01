@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""A program that computes rarefaction curves for a given pan-db"""
+"""A program that computes rarefaction curves for a given pan-db or pan-graph-db"""
 
 import sys
 
@@ -17,9 +17,11 @@ __version__ = anvio.__version__
 __authors__ = ['meren', 'ahenoch']
 __resources__ = [("An example output of this program in the context of the Prochlorococcus metapangenome from Delmont and Eren 2018 is included in the pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/")]
 __tags__ = ["pangenomics"]
-__requires__ = ['pan-db']
+__requires__ = []
+__can_use__ = ['pan-db', 'pan-graph-db']
 __provides__ = ['rarefaction-curves']
-__description__ = ("A program that computes rarefaction curves and Heaps' Law fit for a given pangenome")
+__description__ = ("A program that computes rarefaction curves and Heaps' Law fit for a given pangenome "
+                   "or pangenome graph")
 
 
 @terminal.time_program
@@ -40,8 +42,11 @@ def main():
 def get_args():
     parser = ArgumentParser(description=__description__)
 
-    groupA = parser.add_argument_group('PAN DATABASE')
-    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
+    groupA = parser.add_argument_group('INPUT DATABASE', "The input database here can be a pan-db, "
+                        "in which case what accumulates as genomes are added is the gene cluster, "
+                        "or a pan-graph-db, in which case it is the synteny gene cluster (SynGC).")
+
+    groupA.add_argument(*anvio.A('pan-or-pan-graph-db'), **anvio.K('pan-or-pan-graph-db'))
 
     groupO = parser.add_argument_group('OUTPUT', "This program can generate a visualization of the rarefaction curves for you. If you provide nothing, it will simply print out"
                         "the Heaps' Law fit values for alpha and K for you to interpret. The format of the output file will be determined automatically by the extension. So if "

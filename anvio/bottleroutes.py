@@ -1710,10 +1710,18 @@ class BottleApplication(Bottle):
             groupcompress = payload['groupcompress']
             component = payload.get('component', 'CP_0001')
 
-            self.interactive.rerun_state(gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter, component=component)
+            # The genomes the user currently has switched on. When this set shrinks, the
+            # graph is rebuilt as the subgraph those genomes induce and laid out afresh,
+            # so the picture reorganizes instead of merely hiding tracks. A missing key
+            # means "no subset asked for" (an older interface, or the full roster); an
+            # empty list means every genome was switched off, which rerun_state rejects.
+            genomes = payload.get('genomes')
+
+            self.interactive.rerun_state(gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter,
+                                         component=component, genomes=genomes)
             return(json.dumps({'status': 0}))
-        except:
-            return(json.dumps({'status': 1}))
+        except Exception as e:
+            return(json.dumps({'status': 1, 'message': str(e)}))
 
 
     def get_pangraph_synteny_gene_cluster_alignment(self):

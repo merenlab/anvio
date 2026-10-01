@@ -363,7 +363,7 @@ class GenomeDescriptions(object):
         contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
 
         if self.functions_are_available:
-            contigs_super.init_functions(requested_sources=requested_source_list)
+            contigs_super.init_functions(requested_sources=requested_source_list, dont_panic=True)
             function_calls_dict = contigs_super.gene_function_calls_dict
         else:
             function_calls_dict = {}
@@ -1603,10 +1603,11 @@ class AggregateFunctions:
             store_matrix(output_file_path_for_ppcn_view, lambda key, layer: f"{self.functions_across_layers_frequency[key][layer] / self.num_populations_per_layer[layer]}" if self.num_populations_per_layer[layer] else "NA")
 
         if not quiet:
-            self.run.info('Functions across genomes (frequency)', output_file_path_for_frequency_view)
-            self.run.info('Functions across genomes (presence/absence)', output_file_path_for_presence_absence_view)
+            self.run.warning(None, header="OUTPUT FILES", lc="green")
+            self.run.info('Functions x genomes (frequency)', output_file_path_for_frequency_view)
+            self.run.info('Functions x genomes (presence/absence)', output_file_path_for_presence_absence_view)
             if self.report_per_population_copy_number:
-                self.run.info('Functions across genomes (per-population copy number)', output_file_path_for_ppcn_view)
+                self.run.info('Functions x genomes (w/PPCN normalization)', output_file_path_for_ppcn_view)
 
 
     def report_functions_per_group_stats(self, output_file_path, skip_functions_in_all_groups=False, quiet=False):
