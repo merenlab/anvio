@@ -117,6 +117,7 @@ $(document).ready(function() {
 
     $('#engine_list').on('change', function(ev) {
         $.when({}).then(create_ui).then(() => { fetch_and_draw_variability(); });
+        update_title_subline();
     });
 
     $('#sample_groups_list').on('change', function(ev) {
