@@ -244,6 +244,34 @@ function update_title_subline() {
     $('#title-panel-second-line').text(parts.join(' | '));
 }
 
+// the tooltip goes above and to the right of the cursor, flipping below or to
+// the left wherever that side has no room, so residues near the top or right
+// of the window do not push it off screen
+function place_tooltip(tooltip, mouse) {
+    const gap = 3;
+
+    tooltip.style.display = 'block';
+    tooltip.style.bottom = 'auto';
+
+    let box = tooltip.getBoundingClientRect();
+    let width = Math.ceil(box.width);
+    let height = Math.ceil(box.height);
+
+    let top = mouse.y - gap - height;
+    if (top < 0) {
+        top = mouse.y + gap;
+    }
+
+    let left = mouse.x + gap;
+    if (left + width > window.innerWidth) {
+        left = mouse.x - gap - width;
+    }
+
+    // a tooltip taller or wider than the room on either side still starts on screen
+    tooltip.style.top = Math.max(0, Math.min(top, window.innerHeight - height)) + 'px';
+    tooltip.style.left = Math.max(0, left) + 'px';
+}
+
 function apply_orientation_matrix_to_all_stages(orientationMatrix) {
     for (let group in stages) {
         stages[group].viewerControls.orient(orientationMatrix);
@@ -558,9 +586,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                     }
 
                     tooltip.innerHTML = tooltip_HTML;
-                    tooltip.style.bottom = window.innerHeight - mp.y + 3 + "px";
-                    tooltip.style.left = mp.x + 3 + "px";
-                    tooltip.style.display = "block";
+                    place_tooltip(tooltip, mp);
                 }
                 else if ($('#show_tooltip').is(':checked') && $('#show_tooltip_when').val() == 'variant residues') {
                     if (variability[group].hasOwnProperty(residue)) {
@@ -573,9 +599,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                         tooltip_HTML += tooltip_HTML_variant_freqs_title + tooltip_HTML_variant_freqs_body
 
                         tooltip.innerHTML = tooltip_HTML;
-                        tooltip.style.bottom = window.innerHeight - mp.y + 3 + "px";
-                        tooltip.style.left = mp.x + 3 + "px";
-                        tooltip.style.display = "block";
+                        place_tooltip(tooltip, mp);
                     }
                 }
 
