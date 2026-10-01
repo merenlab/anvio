@@ -78,9 +78,9 @@ $(document).ready(function() {
 
     window.addEventListener("resize", resize_all_stages, false);
 
-    // the settings panel floats over the viewers, so they have to be told to
-    // resize once it has finished sliding. transitionend fires per property and
-    // bubbles from descendants, hence both guards.
+    // the viewers' width follows the settings panel, so their stages have to be
+    // told to resize once it has finished sliding. transitionend fires per
+    // property and bubbles from descendants, hence both guards.
     let panel = document.getElementById('panel-left');
     panel.addEventListener('transitionend', function(ev) {
         if (ev.target !== panel || ev.propertyName !== 'left') return;

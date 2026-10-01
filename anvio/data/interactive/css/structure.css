@@ -149,8 +149,6 @@ body {
     margin-right: 10px;
 }
 
-/* centred over its own viewer: the settings panel floats above the canvas, so a
-   corner-anchored title would sit behind it */
 .ngl-group-title {
     position: absolute;
     top: 0px;
@@ -297,8 +295,19 @@ body {
     color: rgb(230, 230, 230) !important;
 }
 
-/* fills #panel-center so the viewers take the whole window, including the space
-   the settings panel floats over once it slides away */
+/* the viewers start where the settings panel ends, and take the whole window
+   once it has slid away. The 560px is the panel's width, as main.css has it for
+   .panel-closed and the toggle tab; the margin slides along with the panel */
+#panel-center {
+    width: auto;
+    margin-left: 560px;
+    transition: margin-left 0.3s ease-out;
+}
+
+#wrapper:has(> #panel-left.panel-closed) > #panel-center {
+    margin-left: 0px;
+}
+
 #ngl-container {
     height: 100%;
     width: 100%;
@@ -311,7 +320,7 @@ body {
     text-align: center;
 }
 
-/* the panel slides over the viewers, so it needs to win the stacking order */
+/* the panel sits above the viewers and the title panel where they meet */
 #panel-left {
     z-index: 10;
 }
