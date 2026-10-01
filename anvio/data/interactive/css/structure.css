@@ -195,8 +195,7 @@ body {
    wrapper whose padding offsets its negative margin, and main.css lays out
    checkboxes in a td as flex, which would break each label onto its own line.
    Put them back in the normal flow beside their labels. */
-#sample_groups .form-check-input,
-#controls .form-check-input {
+#sample_groups .form-check-input {
     position: static;
     display: inline-block;
     margin-left: 0px;
@@ -213,7 +212,7 @@ body {
    margin: 0 !important;
 }
 
-#model_info_table {
+.model-info-table {
     text-align: center;
     vertical-align: middle;
 }

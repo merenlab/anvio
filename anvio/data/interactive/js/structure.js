@@ -290,7 +290,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
     var defer = $.Deferred();
 
     $('#ngl-container').append(`
-        <div id="ngl_${group}_wrapper d-flex"
+        <div id="ngl_${group}_wrapper"
              class="col-md-${parseInt(12 / num_columns)} nopadding"
              style="height: ${parseFloat(100 / num_rows)}%; ">
              <div class="ngl-group-title">
@@ -807,7 +807,7 @@ function get_model_info_table_html(model_data) {
     if (Object.keys(templates).length > 0) {
         geneModelHtml += '<div class="model-info-group">'
         geneModelHtml += '<span class="settings-secondary-header">Templates Used</span>'
-        geneModelHtml += '<table class="table table-sm" id="model_info_table"><tbody>';
+        geneModelHtml += '<table class="table table-sm model-info-table"><tbody>';
 
         var header = '<tr>';
         for (const col_name of Object.keys(templates[0])) {
@@ -845,7 +845,7 @@ function get_model_info_table_html(model_data) {
     if (models) {
         geneModelHtml += '<div class="model-info-group">'
         geneModelHtml += '<span class="settings-secondary-header">Model Scores</span>'
-        geneModelHtml += '<table class="table table-sm" id="model_info_table"><tbody>';
+        geneModelHtml += '<table class="table table-sm model-info-table"><tbody>';
 
         var header = '<tr>';
         var row = '<tr>';
