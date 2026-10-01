@@ -146,8 +146,23 @@ def get_args():
                           help="Height of alignment plots in characters. Default: %(default)s")
 
     groupB = parser.add_argument_group('ADVANCED')
+    groupB.add_argument('--minimap2-preset', default='asm5', choices=['asm5', 'asm10', 'asm20'],
+                        help="The `minimap2` preset anvi'o will use to align your genomes to the reference. Each preset "
+                             "puts a ceiling on how much sequence divergence an alignment is allowed to have before "
+                             "`minimap2` stops reporting it altogether: 'asm5' tolerates up to about 5%%, 'asm10' up to "
+                             "about 10%%, and 'asm20' up to about 20%%. The default is a good fit for genomes that are "
+                             "nearly identical to one another, but if your genomes are more distant than that (say, "
+                             "populations recovered from different samples, or phages from different stations), the "
+                             "default will quietly find nothing to align and anvi'o will not be able to reorient them. "
+                             "Loosening this is the first thing to try in that case. Default: %(default)s.")
     groupB.add_argument('--threads', type=int, default=1,
                         help="Number of threads for minimap2.")
+    groupB.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it', {'help': "By default anvi'o aligns every genome "
+                        "in your fasta-txt file to the reference before it gets to work, and stops with an error if any "
+                        "of them do not align to the reference at all, since there is nothing this program can do for a "
+                        "genome that shares no sequence with the reference. Use this flag if you know that already, and "
+                        "want anvi'o to go ahead with the rest of your genomes anyway. Those that do not align will be "
+                        "reported as FAILED at the end."}))
     groupB.add_argument('--log-file-path',
                         help="Write a detailed log to this file (otherwise only concise reporting is printed).")
 
