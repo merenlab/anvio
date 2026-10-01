@@ -1,17 +1,23 @@
 <!DOCTYPE html>
+<html lang="en">
 
 <head>
     <title>Structure Display</title>
-    <script type="text/javascript" src="./node_modules/jquery/dist/jquery.min.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/png" href="images/logo-simple.png">
+    <script type="text/javascript" src="js/error.js"></script>
+    <script type="text/javascript" src="./node_modules/jquery/dist/jquery.min.js" onerror='alertDependencyError("jquery-core")'></script>
     <script type='text/javascript' src='js/utils.js'></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/10.0.0/bootstrap-slider.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/10.0.0/css/bootstrap-slider.css" />
     <link rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.css" />
     <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
     <link rel="stylesheet" href="./node_modules/toastr/build/toastr.min.css" type="text/css" />
+    <link rel="stylesheet" href="css/loading.css" type="text/css" />
     <link rel="stylesheet" href="css/structure.css" />
     <link rel="stylesheet" href="./node_modules/bootstrap-icons/font/bootstrap-icons.min.css" />
-    <script type="text/javascript" src="./node_modules/bootstrap/dist/js/bootstrap.bundle.js"></script>
+    <script type="text/javascript" src="./node_modules/bootstrap/dist/js/bootstrap.bundle.js" onerror='alertDependencyError("bootstrap-core")'></script>
     <script type="text/javascript" src="./node_modules/randomcolor/randomColor.js" onerror='alertDependencyError("random-color")'></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.13.0/d3.min.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/gh/arose/ngl@v0.10.4/dist/ngl.js"></script>
@@ -20,460 +26,555 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.js"></script>
     <script type="text/javascript" src="./node_modules/toastr/build/toastr.min.js" onerror='alertDependencyError("toastr")'></script>
     <script type="text/javascript" src="js/constants.js"></script>
+    <script type="text/javascript" src="js/animations.js"></script>
     <script type="text/javascript" src="js/structure.js"></script>
 </head>
 
 <body>
     <div class="overlay">
-        <div class="loading-gif-container">
-            <img src="images/spinning_dna.gif" width="120" /><br />loading...
+        <div class="loading-indicator">
+            <div class="loader"></div>loading...
         </div>
-        <style type="text/css">
-            .OverLay { position: absolute; z-index: 1000; opacity: 0.5; filter: alpha(opacity = 50); top: 0; bottom: 0; left: 0; right: 0; width: 100%; height: 100%; background-color: Black; color: White;}
-            body { height: 100%; }
-            html { height: 100%; }
-        </style>
     </div>
-    <div class="container-fluid parent-container">
-        <div id="ngl-tooltip" class="ngl-tooltip"></div>
-        <div class="row">
-            <div class="col-md-4 sidebar">
-                <ul class="nav nav-tabs" role="tablist">
-                  <li role="presentation" class="nav-item"><a class="nav-link active" href="#tab_main" aria-controls="main" role="tab" data-toggle="tab"><span class="settings-header"><h4>Main</h4></span></a></li>
-                  <li role="presentation" class="nav-item"><a class="nav-link" href="#tab_filters" aria-controls="filters" role="tab" data-toggle="tab"><span class="settings-header"><h4>Filters</h4></span></a></li>
-                  <li role="presentation" class="nav-item"><a class="nav-link" href="#tab_views" aria-controls="views" role="tab" data-toggle="tab"><span class="settings-header"><h4>Views</h4></span></a></li>
-                  <li role="presentation" class="nav-item mr-5"><a class="nav-link" href="#tab_output" aria-controls="output" role="tab" data-toggle="tab"><span class="settings-header"><h4>Output</h4></span></a></li>
-                  <li role="presentation" class="nav-item ml-5"><button type="button" class="mt-3 btn btn-primary nav-link" onclick="create_ngl_views(fetch_variability=true);">Redraw</button></li>
-                </ul>
-                <div class="tab-content">
+    <div id="ngl-tooltip" class="ngl-tooltip"></div>
+    <div id="wrapper">
+        <div class="invisible" id="toggle-panel-top" onclick="$('#toggle-panel-top').toggleClass('visible invisible'); $('#title-panel').show();">
+            &#9660; TITLE
+        </div>
+        <div id="title-panel">
+            <div id="title-alter-panel">
+                <span id="title-panel-first-line"></span><br>
+                <span id="title-panel-second-line"></span>
+                <div id="title-panel-close-button">
+                    <a href="#" class="close-thick" onclick="$('#title-panel').hide(); $('#toggle-panel-top').toggleClass('invisible visible');"></a>
+                </div>
+            </div>
+        </div>
+        <div id="toggle-panel-left" class="toggle-panel-left-pos" onclick="toggleLeftPanel();">
+            <span id="toggle-panel-left-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);"><u>S</u>ETTINGS</span>
+        </div>
+        <div id="panel-center">
+            <div id="ngl-container" class="d-flex"></div>
+        </div>
+        <!-- LEFT MENU -->
+        <div id="panel-left">
+            <div class="d-flex" id="sidebar">
+                <div class="inner-wrapper d-flex" role="tabpanel">
+                    <nav id="inner-sidebar" onclick="switchNavigationTabs();">
+                        <ul class="list-unstyled components align-item-center text-center tab-elements" role="tablist" id="nav-tab">
+                            <li id="main_tab" role="presentation" class="nav-item navigation-tabs mt-1">
+                                <a href="#tab_main" aria-controls="tab_main" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block active">
+                                    <i class="nav-icon fs-2x bi bi-house-door"></i><i class="nav-icon-fill fs-2x bi bi-house-door-fill"></i><span class="d-block">Main</span>
+                                </a>
+                            </li>
+                            <li id="filters_tab" role="presentation" class="nav-item">
+                                <a href="#tab_filters" aria-controls="tab_filters" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block">
+                                    <i class="nav-icon fs-2x bi bi-funnel"></i><i class="nav-icon-fill fs-2x bi bi-funnel-fill"></i><span class="d-block">Filters</span>
+                                </a>
+                            </li>
+                            <li id="views_tab" role="presentation" class="nav-item">
+                                <a href="#tab_views" aria-controls="tab_views" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block">
+                                    <i class="nav-icon fs-2x bi bi-eye"></i><i class="nav-icon-fill fs-2x bi bi-eye-fill"></i><span class="d-block">Views</span>
+                                </a>
+                            </li>
+                            <div id="nav-bottom">
+                                <li class="nav-bottom-alignment">
+                                    <a href="#" id="redraw-btn" class="navbar-btn d-block glow-on-hover" onclick="create_ngl_views(fetch_variability=true); return false;">
+                                        <i class="icon-unlock bi bi-pencil fs-2x"></i><span class="d-block"><u>R</u>edraw</span>
+                                    </a>
+                                </li>
+                                <hr class="nav-bottom-alignment border-color">
+                                <p class="side-menu-text nav-bottom-alignment">State</p>
+                                <li class="nav-bottom-alignment">
+                                    <a href="#" class="navbar-btn d-block" onclick="showLoadStateWindow(); return false;" data-help="load-state-button">
+                                        <i class="icon-unlock bi bi-upload fs-2x"></i><span class="d-block">Load</span>
+                                    </a>
+                                </li>
+                                <li class="nav-bottom-alignment">
+                                    <a href="#" class="navbar-btn d-block" onclick="showSaveStateWindow(); return false;" data-help="save-state-button">
+                                        <i class="icon-unlock bi bi-download fs-2x"></i><span class="d-block">Save</span>
+                                    </a>
+                                </li>
+                                <hr class="nav-bottom-alignment border-color">
+                                <p class="side-menu-text nav-bottom-alignment">Output</p>
+                                <li class="nav-bottom-alignment">
+                                    <a href="#" class="navbar-btn d-block" onclick="showSaveVariantDataWindow(); return false;">
+                                        <i class="icon-unlock bi bi-table fs-2x"></i><span class="d-block">Data</span>
+                                    </a>
+                                </li>
+                                <li class="nav-bottom-alignment">
+                                    <a href="#" class="navbar-btn d-block" onclick="showRenderImagesWindow(); return false;">
+                                        <i class="icon-unlock bi bi-images fs-2x"></i><span class="d-block">Images</span>
+                                    </a>
+                                </li>
+                                <li class="nav-bottom-alignment">
+                                    <a href="#" class="navbar-btn d-block" onclick="showExportPdbWindow(); return false;">
+                                        <i class="icon-unlock bi bi-file-earmark-code fs-2x"></i><span class="d-block">PDB</span>
+                                    </a>
+                                </li>
+                                <li class="nav-bottom-alignment pb-2">
+                                    <a href="#" class="navbar-btn d-block" onclick="showPymolWindow(); return false;">
+                                        <i class="icon-unlock bi bi-code-square fs-2x"></i><span class="d-block">PyMOL</span>
+                                    </a>
+                                </li>
+                            </div>
+                        </ul>
+                    </nav>
+                </div>
+                <div class="col-11 tab-content ml-1">
                     <div id="tab_main" role="tabpanel" class="tab-pane fade show active">
-                        <span class="settings-header"><h4>Gene</h4></span>
-                        <div class="widget">
-                            <div class="row">
-                                <div class="col-md-4 form-row-padding">
-                                    <label class="settings-label">Gene ID:</label>
+                        <span id="toggle-chevron-gene" class="settings-header btn d-flex align-items-center" data-toggle="collapse" href="#gene-collapse" role="button" aria-expanded="true" aria-controls="gene-collapse" onclick="$('#toggle-chevron-gene').children('i').toggleClass('bi-chevron-up bi-chevron-down');">
+                            Gene
+                            <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
+                        </span>
+                        <div class="collapse show" id="gene-collapse">
+                            <div class="ml-2">
+                                <div class="form-group form-margin">
+                                    <label class="settings-label" for="gene_callers_id_list">Gene ID</label>
+                                    <div class="col-10 menu-padding">
+                                        <select class="form-control" serialize="true" id="gene_callers_id_list"></select>
+                                    </div>
                                 </div>
-                                <div class="col-md-8 form-row-padding">
-                                    <select class="form-control" serialize="true" id="gene_callers_id_list" style="width: 100%;"></select>
+                                <div id="gene_function_info"></div>
+                            </div>
+                        </div>
+                        <span id="toggle-chevron-protein-model" class="settings-header btn d-flex align-items-center" data-toggle="collapse" href="#protein-model-collapse" role="button" aria-expanded="true" aria-controls="protein-model-collapse" onclick="$('#toggle-chevron-protein-model').children('i').toggleClass('bi-chevron-up bi-chevron-down');">
+                            Protein Model
+                            <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
+                        </span>
+                        <div class="collapse show" id="protein-model-collapse">
+                            <div class="ml-2" id="model_info">
+                            </div>
+                        </div>
+                        <span id="toggle-chevron-variant-type" class="settings-header btn d-flex align-items-center" data-toggle="collapse" href="#variant-type-collapse" role="button" aria-expanded="true" aria-controls="variant-type-collapse" onclick="$('#toggle-chevron-variant-type').children('i').toggleClass('bi-chevron-up bi-chevron-down');">
+                            Variant Type
+                            <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
+                        </span>
+                        <div class="collapse show" id="variant-type-collapse">
+                            <div class="ml-2">
+                                <div class="form-group form-margin">
+                                    <label class="settings-label" for="engine_list">Engine</label>
+                                    <div class="col-10 menu-padding">
+                                        <select class="form-control" id="engine_list"></select>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="widget">
-                            <div class="row">
-                                <div id="gene_function_info" class="col-md-12 form-row-padding"></div>
-                            </div>
-                        </div>
-                        <span class="settings-header"><h4>Protein Model</h4></span>
-                        <div id="model_info">
-                        </div>
-                        <span class="settings-header"><h4>Variant Type</h4></span>
-                        <div class="widget">
-                            <div class="row">
-                                <div class="col-md-4 form-row-padding">
-                                    <label class="col-md-4 settings-label">Engine:</label>
-                                </div>
-                                <div class="col-md-8 form-row-padding">
-                                    <div id="engine_list"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <span class="settings-header"><h4>Grouping</h4></span>
-                        <div class="widget">
-                            <div class="row">
-                                <div class="col-md-4 form-row-padding">
-                                    <label class="col-md-4 settings-label">Category:</label>
-                                </div>
-                                <div class="col-md-8 form-row-padding">
-                                    <select class="form-control" serialize="true" id="sample_groups_list">
+                        <span id="toggle-chevron-grouping" class="settings-header btn d-flex align-items-center" data-toggle="collapse" href="#grouping-collapse" role="button" aria-expanded="true" aria-controls="grouping-collapse" onclick="$('#toggle-chevron-grouping').children('i').toggleClass('bi-chevron-up bi-chevron-down');">
+                            Grouping
+                            <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
+                        </span>
+                        <div class="collapse show" id="grouping-collapse">
+                            <div class="ml-2">
+                                <div class="form-group form-margin">
+                                    <label class="settings-label" for="sample_groups_list">Category</label>
+                                    <div class="col-10 menu-padding">
+                                        <select class="form-control" serialize="true" id="sample_groups_list">
 
-                                    </select>
+                                        </select>
+                                        <div class="alert alert-danger mt-2" role="alert" style="display: none;" id="maximum_ngl_widgets_error">You can only select up to 16 groups at a time. Unselect some to add more.</div>
+                                    </div>
                                 </div>
-                                <div class="clearfix"></div>
-                                <div class="alert alert-danger" role="alert" style="margin: 10px; display: none;" id="maximum_ngl_widgets_error">You can only select up to 16 groups at a time. Unselect some to add more.</div>
-                                <div class="clearfix"></div>
-                            </div>
-                            <div id="sample_groups">
+                                <div id="sample_groups">
 
+                                </div>
                             </div>
                         </div>
-                        <span class="settings-header"><h4>Session</h4></span>
-                        <div class="btn-group mb-2" role="group" style="margin-bottom: 0px; width: 100%;">
-                        <button type="button" class="btn btn-outline-primary btn-sm mr-1" style="width: 50%;" onclick="showLoadStateWindow();" data-help="load-state-button" data-original-title="" title=""><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
-                        <button type="button" class="btn btn-outline-primary btn-sm" style="width: 50%;" onclick="showSaveStateWindow();" data-help="save-state-button"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button> 
-                    </div>
                     </div>
                     <div id="tab_filters" role="tabpanel" class="tab-pane fade">
-                        <div id="controls">
+                        <div class="ml-2" id="controls">
 
                         </div>
                     </div>
                     <div id="tab_views" role="tabpanel" class="tab-pane fade">
-                        <span class="settings-header"><h4>Variants</h4></span>
-                        <div class="widget col-md-12">
-                            <span class="settings-header" style="margin-left: 10px;"><h5>Color</h5></span>
-                            <div class="col-md-12 d-flex">
-                                <label class="col-md-4 settings-label">Rule: </label>
-                                <div class="col-md-8">
-                                    <select id="color_type" onchange="if ($(this).val() == 'Static') { $('.static-color').show(); $('.dynamic-color').hide(); } else { $('.static-color').hide(); $('.dynamic-color').show(); }; draw_variability();">
-                                        <option>Static</option>
-                                        <option>Dynamic</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="static-color">
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label">Color: </label>
-                                    <div class="col-md-8"><div class="colorpicker" id="color_static" color="#c80023" onchange="draw_variability();" style="background-color: #c80023;"></div></div>
-                                </div>
-                            </div>
-                            <div class="dynamic-color" style="display: none;">
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label">Color by: </label>
-                                    <div class="col-md-8"><select id="color_target_column" onChange="onTargetColumnChange(this);"></select></div>
-                                </div>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label" style="margin-bottom: 15px">3 color: </label>
-                                    <div class="col-md-8"><input type="checkbox" id="show_3_color" onclick="if ($(this).is(':checked')) {  $('.middle-color-settings').show(); } else { $('.middle-color-settings').hide(); }; draw_variability();" /></div>
-                                </div>
-                                <div id="color_numerical_panel">
-                                    <span class="settings-header" style="margin-left: 22px;"><h5>Minimum</h5></span>
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label">Value: </label>
-                                        <div class="col-md-8"><input type="input" id="color_min" onblur="draw_variability(); " value="0"></div>
+                        <span id="toggle-chevron-variants" class="settings-header btn d-flex align-items-center" data-toggle="collapse" href="#variants-collapse" role="button" aria-expanded="true" aria-controls="variants-collapse" onclick="$('#toggle-chevron-variants').children('i').toggleClass('bi-chevron-up bi-chevron-down');">
+                            Variants
+                            <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
+                        </span>
+                        <div class="collapse show" id="variants-collapse">
+                            <div class="ml-2">
+                                <span class="settings-secondary-header">Color</span>
+                                <div class="form-group form-margin">
+                                    <label class="settings-label" for="color_type">Rule</label>
+                                    <div class="col-10 menu-padding">
+                                        <select class="form-control" id="color_type" onchange="if ($(this).val() == 'Static') { $('.static-color').show(); $('.dynamic-color').hide(); } else { $('.static-color').hide(); $('.dynamic-color').show(); }; draw_variability();">
+                                            <option>Static</option>
+                                            <option>Dynamic</option>
+                                        </select>
                                     </div>
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label" style="margin-bottom: 15px">Color: </label>
-                                        <div class="col-md-8"><div class="colorpicker" id="color_start" color="#ffffed" onchange="draw_variability();" style="background-color: #ffffed"></div></div>
+                                </div>
+                                <div class="static-color">
+                                    <div class="settings-inline-row">
+                                        <span class="settings-label">Color:</span>
+                                        <div class="mr-4"><div class="colorpicker" id="color_static" color="#c80023" onchange="draw_variability();" style="background-color: #c80023;"></div></div>
                                     </div>
-                                    <div class="middle-color-settings" style="display: none">
-                                        <span class="settings-header" id="middle-color" style="margin-left: 22px;"><h5>Middle</h5></span>
-                                        <div class="col-md-12 d-flex">
-                                            <label class="col-md-4 settings-label" style="margin-bottom: 15px">Color: </label>
-                                            <div class="col-md-8"><div class="colorpicker" id="color_middle" color="#38ba72" onchange="draw_variability();" style="background-color: #38ba72"></div></div>
+                                </div>
+                                <div class="dynamic-color" style="display: none;">
+                                    <div class="form-group form-margin">
+                                        <label class="settings-label" for="color_target_column">Color by</label>
+                                        <div class="col-10 menu-padding">
+                                            <select class="form-control" id="color_target_column" onChange="onTargetColumnChange(this);"></select>
                                         </div>
                                     </div>
-                                    <span class="settings-header" style="margin-left: 22px;"><h5>Maximum</h5></span>
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label">Value: </label>
-                                        <div class="col-md-8"><input type="input" id="color_max" onblur="draw_variability(); " value="1"></div>
+                                    <div class="settings-inline-row">
+                                        <label class="settings-label" for="show_3_color">3 color:</label>
+                                        <span class="mr-4"><input type="checkbox" id="show_3_color" onclick="if ($(this).is(':checked')) {  $('.middle-color-settings').show(); } else { $('.middle-color-settings').hide(); }; draw_variability();" /></span>
                                     </div>
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label">Color: </label>
-                                        <div class="col-md-8"><div class="colorpicker" id="color_end" color="#c80023" onchange="draw_variability();" style="background-color: #c80023"></div></div>
+                                    <div id="color_numerical_panel">
+                                        <span class="settings-secondary-header">Minimum</span>
+                                        <div class="settings-inline-row">
+                                            <label class="settings-label" for="color_min">Value:</label>
+                                            <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="color_min" onblur="draw_variability(); " value="0"></span>
+                                            <span class="settings-label">Color:</span>
+                                            <div class="mr-4"><div class="colorpicker" id="color_start" color="#ffffed" onchange="draw_variability();" style="background-color: #ffffed"></div></div>
+                                        </div>
+                                        <div class="middle-color-settings" style="display: none">
+                                            <span class="settings-secondary-header" id="middle-color">Middle</span>
+                                            <div class="settings-inline-row">
+                                                <span class="settings-label">Color:</span>
+                                                <div class="mr-4"><div class="colorpicker" id="color_middle" color="#38ba72" onchange="draw_variability();" style="background-color: #38ba72"></div></div>
+                                            </div>
+                                        </div>
+                                        <span class="settings-secondary-header">Maximum</span>
+                                        <div class="settings-inline-row">
+                                            <label class="settings-label" for="color_max">Value:</label>
+                                            <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="color_max" onblur="draw_variability(); " value="1"></span>
+                                            <span class="settings-label">Color:</span>
+                                            <div class="mr-4"><div class="colorpicker" id="color_end" color="#c80023" onchange="draw_variability();" style="background-color: #c80023"></div></div>
+                                        </div>
+                                        <div class="clearfix"></div>
+                                        <div class="alert alert-danger mt-3" role="alert" style="display: none;" id="dynamic_color_error">Max Value must be greater than Min Value.</div>
                                     </div>
-                                    <div class="clearfix"></div>
-                                    <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="dynamic_color_error">Max Value must be greater than Min Value.</div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="clearfix"></div>
-                        <div class="widget col-md-12">
-                            <span class="settings-header" style="margin-left: 10px;"><h5>Size</h5></span>
-                            <div class="col-md-12 d-flex">
-                                <label class="col-md-4 settings-label">Rule: </label>
-                                <div class="col-md-8">
-                                    <select id="size_type" onchange="if ($(this).val() == 'Static') { $('.static-size').show(); $('.dynamic-size').hide(); } else { $('.static-size').hide(); $('.dynamic-size').show(); }; draw_variability();">
-                                        <option>Static</option>
-                                        <option>Dynamic</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="static-size">
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label">Size: </label>
-                                    <div class="col-md-8"><input type="input" id="size_static" onblur="draw_variability(); " value="0.75"></div>
-                                </div>
-                            </div>
-                            <div class="dynamic-size" style="display: none;">
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label" style="margin-bottom: 15px">Size by: </label>
-                                    <div class="col-md-8"><select id="size_target_column" onChange="onTargetColumnChange(this);"></select></div>
-                                </div>
-                                <div id="size_numerical_panel">
-                                    <span class="settings-header" style="margin-left: 22px;"><h5>Minimum</h5></span>
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label">Value: </label>
-                                        <div class="col-md-8"><input type="input" id="size_min" onblur="draw_variability(); " value="0"></div>
-                                    </div>
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label" style="margin-bottom: 15px">Size: </label>
-                                        <div class="col-md-8"><input type="input" id="size_start" onblur="draw_variability(); " value="0.4"></div>
-                                    </div>
-                                    <span class="settings-header" style="margin-left: 22px;"><h5>Maximum</h5></span>
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label">Value: </label>
-                                        <div class="col-md-8"><input type="input" id="size_max" onblur="draw_variability(); " value="1"></div>
-                                    </div>
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label">Size: </label>
-                                        <div class="col-md-8"><input type="input" id="size_end" onblur="draw_variability(); " value="1.4"></div>
-                                    </div>
-                                    <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="dynamic_size_error">Max Value must be greater than Min Value.</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="clearfix"></div>
-                        <span class="settings-header" style="margin-top: 30px;"><h4>Structure</h4></span>
-                        <div class="widget col-md-12">
-                            <span class="settings-header" style="margin-left: 10px;"><h5>Backbone</h5></span>
-                            <div class="col-md-12 d-flex">
-                                <label class="col-md-4 settings-label">Show: </label>
-                                <div class="col-md-8"><input type="checkbox" id="show_backbone" onclick="create_ngl_views(fetch_variability=false); " checked="checked" /></div>
-                            </div>
-                            <div class="col-md-12 d-flex">
-                                <label class="col-md-4 settings-label">Style: </label>
-                                <div class="col-md-8">
-                                    <select id="backbone_type" onchange="create_ngl_views(fetch_variability=false);">
-                                        <option>cartoon</option>
-                                        <option>tube</option>
-                                        <option>rocket</option>
-                                        <option>rocket+loop</option>
-                                        <option>rope</option>
-                                        <option>ribbon</option>
-                                        <option>trace</option>
-                                        <option>helixorient</option>
-                                        <option>point</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="widget col-md-12">
-                            <span class="settings-header" style="margin-left: 10px;"><h5>Backbone Color</h5></span>
-                            <div class="col-md-12 d-flex">
-                                <label class="col-md-4 settings-label">Rule: </label>
-                                <div class="col-md-8">
-                                    <select id="backbone_color_type" onchange="backbone_rule(this);">
-                                        <option>Static</option>
-                                        <option>Dynamic</option>
-                                        <option>residueindex</option>
-                                        <option>bfactor</option>
-                                        <option>hydrophobicity</option>
-                                        <option>sstruc</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="static-color-backbone" style="display: none;">
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label">Color: </label>
-                                    <div class="col-md-8"><div class="colorpicker" id="color_static_backbone" color="#6a8dab" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #6a8dab;"></div></div>
-                                </div>
-                            </div>
-                            <div class="dynamic-color-backbone" style="display: none;">
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-4 settings-label">Color by: </label>
-                                    <div class="col-md-8"><select id="backbone_color_variable" onChange="onTargetResidueInfoChange(this);"></select></div>
-                                </div>
-                                <div id="backbone_color_numerical_panel">
-                                    <span class="settings-header" style="margin-left: 22px;"><h5>Minimum</h5></span>
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label">Value: </label>
-                                        <div class="col-md-8"><input type="input" id="backbone_color_min" onblur="create_ngl_views(fetch_variability=false);" value="0"></div>
-                                    </div>
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label" style="margin-bottom: 15px">Color: </label>
-                                        <div class="col-md-8"><div class="colorpicker" id="backbone_color_start" color="#ffffed" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #ffffed"></div></div>
-                                    </div>
-                                    <span class="settings-header" style="margin-left: 22px;"><h5>Maximum</h5></span>
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label">Value: </label>
-                                        <div class="col-md-8"><input type="input" id="backbone_color_max" onblur="create_ngl_views(fetch_variability=false);" value="1"></div>
-                                    </div>
-                                    <div class="col-md-12 d-flex">
-                                        <label class="col-md-4 settings-label">Color: </label>
-                                        <div class="col-md-8"><div class="colorpicker" id="backbone_color_end" color="#6a8dab" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #6a8dab"></div></div>
-                                    </div>
-                                    <div class="clearfix"></div>
-                                    <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="dynamic_background_color_error">Max Value must be greater than Min Value.</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="clearfix"></div>
-                        <div class="widget col-md-12">
-                            <span class="settings-header" style="margin-left: 10px;"><h5>Surface</h5></span>
-                            <div class="col-md-12 d-flex">
-                                <label class="col-md-4 settings-label">Show: </label>
-                                <div class="col-md-8">
-                                    <input type="checkbox" id="show_surface" onclick="create_ngl_views(fetch_variability=false);" checked="checked" />
-                                </div>
-                            </div>
-                            <div class="col-md-12 d-flex">
-                                <label class="col-md-4 settings-label">Opacity: </label>
-                                <div class="col-md-8"><input type="text" id="surface_opacity" value="0.12" onblur="create_ngl_views(fetch_variability=false); " /></div>
-                            </div>
-                            <div class="col-md-12 d-flex">
-                                <label class="col-md-4 settings-label">Probe radius: </label>
-                                <div class="col-md-8"><input type="text" id="surface_probe_radius" value="1.4" onblur="create_ngl_views(fetch_variability=false); " /></div>
-                            </div>
-                        </div>
-                        <div class="widget col-md-12">
-                            <span class="settings-header" style="margin-left: 10px;"><h5>Surface Color</h5></span>
-                            <div class="col-md-12 d-flex">
-                                <label class="col-md-4 settings-label">Rule: </label>
-                                <div class="col-md-8">
-                                    <select id="surface_color_type" onchange="surface_rule(this);">
-                                        <option>Static</option>
-                                        <option>Dynamic</option>
-                                        <option>atomindex</option>
-                                        <option>bfactor</option>
-                                        <option>electrostatic</option>
-                                        <option>element</option>
-                                        <option>hydrophobicity</option>
-                                        <option>random</option>
-                                        <option>sstruc</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="static-color-surface" style="display: none;">
-                                <div class="col-md-12">
-                                    <label class="col-md-4 settings-label">Color: </label>
-                                    <div class="col-md-8"><div class="colorpicker" id="color_static_surface" color="#f7f2f2" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #f7f2f2;"></div></div>
-                                </div>
-                            </div>
-                            <div class="dynamic-color-surface" style="display: none;">
-                                <div class="col-md-12">
-                                    <label class="col-md-4 settings-label">Color by: </label>
-                                    <div class="col-md-8"><select id="surface_color_variable" onChange="onTargetResidueInfoChange(this);"></select></div>
-                                </div>
-                                <div id="surface_color_numerical_panel">
-                                    <span class="settings-header" style="margin-left: 22px;"><h5>Minimum</h5></span>
-                                    <div class="col-md-12">
-                                        <label class="col-md-4 settings-label">Value: </label>
-                                        <div class="col-md-8"><input type="input" id="surface_color_min" onblur="create_ngl_views(fetch_variability=false);" value="0"></div>
-                                    </div>
-                                    <div class="col-md-12">
-                                        <label class="col-md-4 settings-label" style="margin-bottom: 15px">Color: </label>
-                                        <div class="col-md-8"><div class="colorpicker" id="surface_color_start" color="#ffffed" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #ffffed"></div></div>
-                                    </div>
-                                    <span class="settings-header" style="margin-left: 22px;"><h5>Maximum</h5></span>
-                                    <div class="col-md-12">
-                                        <label class="col-md-4 settings-label">Value: </label>
-                                        <div class="col-md-8"><input type="input" id="surface_color_max" onblur="create_ngl_views(fetch_variability=false);" value="1"></div>
-                                    </div>
-                                    <div class="col-md-12">
-                                        <label class="col-md-4 settings-label">Color: </label>
-                                        <div class="col-md-8"><div class="colorpicker" id="surface_color_end" color="#c80023" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #c80023"></div></div>
-                                    </div>
-                                    <div class="clearfix"></div>
-                                    <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="dynamic_backbone_color_error">Max Value must be greater than Min Value.</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="widget col-md-12">
-                            <span class="settings-header" style="margin-left: 10px;"><h5>Ball-Stick</h5></span>
-                            <div class="col-md-12 d-flex">
-                                <label class="col-md-4 settings-label">Show: </label>
-                                <div class="col-md-8"><input type="checkbox" id="show_ballstick" onclick="create_ngl_views(fetch_variability=false); " /></div>
-                            </div>
-                            <div class="col-md-12 d-flex">
-                                <label class="col-md-4 settings-label">When: </label>
-                                <div class="col-md-8">
-                                    <select id="show_ballstick_when" onchange="create_ngl_views(fetch_variability=false);">
-                                        <option>always</option>
-                                        <option>variant residue</option>
-                                        <option>hovered residue</option>
-                                        <option>hovered residue + contacts</option>
-                                        <option>hovered residue + variant contacts</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="widget col-md-12">
-                            <span class="settings-header" style="margin-left: 10px;"><h5>Hover Tooltip</h5></span>
-                            <div class="col-md-12 d-flex">
-                                <label class="col-md-4 settings-label">Show: </label>  
-                                <div class="col-md-8"><input type="checkbox" id="show_tooltip" onclick="create_ngl_views(fetch_variability=false); " checked="checked" /></div>
-                            </div>
-                            <div class="col-md-12 d-flex">
-                                <label class="col-md-4 settings-label">When: </label>  
-                                <div class="col-md-8">
-                                    <select id="show_tooltip_when" onchange="create_ngl_views(fetch_variability=false);">
-                                        <option>all residues</option>
-                                        <option>variant residues</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="widget col-md-12">
-                            <span class="settings-header" style="margin-left: 10px;"><h5>Residue Labels</h5></span>
-                            <div class="col-md-12 d-flex">
-                                <label class="col-md-4 settings-label">Show: </label>  
-                                <div class="col-md-8"><input type="checkbox" id="show_residue_labels" onclick="create_ngl_views(fetch_variability=false); " /></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="tab_output" role="tabpanel" class="tab-pane fade">
-                        <span class="settings-header"><h4>Save Variant Data</h4></span>
-                        <div class="widget">
-                            <div class="alert alert-info" role="alert">Store sequence variant data for the current view</div>
-                            <div class="col-md-12" style="margin-top: 10px;">
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-5 settings-label" for="scale">Filename</label>  
-                                    <div class="col-md-7"><input type="input" id="var_output_path" value="variability.txt"></div>
-                                </div>
-                            </div>
-                            <button type="button" class="btn btn-primary" onclick="store_variability();" style="width: 100%; margin-top: 10px;">Generate tabular data for current view</button>
                             <div class="clearfix"></div>
-                            <div class="alert alert-success" role="alert" style="display: none; margin-top: 10px;" id="store_var_success"></div>
-                            <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="store_var_failure"></div>
-                        </div>
-                        <span class="settings-header"><h4>Render Images</h4></span>
-                        <div class="widget">
-                            <div class="alert alert-info" role="alert">Create merged and/or single sample PNG images of current view</div>
-                            <div class="col-md-12" style="margin-top: 10px;">
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-5 settings-label" for="scale">Output Zip File</label>  
-                                    <div class="col-md-7"><input type="input" id="zip_name" value="structure-summary"></div>
+                            <div class="ml-2">
+                                <span class="settings-secondary-header">Size</span>
+                                <div class="form-group form-margin">
+                                    <label class="settings-label" for="size_type">Rule</label>
+                                    <div class="col-10 menu-padding">
+                                        <select class="form-control" id="size_type" onchange="if ($(this).val() == 'Static') { $('.static-size').show(); $('.dynamic-size').hide(); } else { $('.static-size').hide(); $('.dynamic-size').show(); }; draw_variability();">
+                                            <option>Static</option>
+                                            <option>Dynamic</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="static-size">
+                                    <div class="settings-inline-row">
+                                        <label class="settings-label" for="size_static">Size:</label>
+                                        <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="size_static" onblur="draw_variability(); " value="0.75"></span>
+                                    </div>
+                                </div>
+                                <div class="dynamic-size" style="display: none;">
+                                    <div class="form-group form-margin">
+                                        <label class="settings-label" for="size_target_column">Size by</label>
+                                        <div class="col-10 menu-padding">
+                                            <select class="form-control" id="size_target_column" onChange="onTargetColumnChange(this);"></select>
+                                        </div>
+                                    </div>
+                                    <div id="size_numerical_panel">
+                                        <span class="settings-secondary-header">Minimum</span>
+                                        <div class="settings-inline-row">
+                                            <label class="settings-label" for="size_min">Value:</label>
+                                            <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="size_min" onblur="draw_variability(); " value="0"></span>
+                                            <label class="settings-label" for="size_start">Size:</label>
+                                            <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="size_start" onblur="draw_variability(); " value="0.4"></span>
+                                        </div>
+                                        <span class="settings-secondary-header">Maximum</span>
+                                        <div class="settings-inline-row">
+                                            <label class="settings-label" for="size_max">Value:</label>
+                                            <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="size_max" onblur="draw_variability(); " value="1"></span>
+                                            <label class="settings-label" for="size_end">Size:</label>
+                                            <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="size_end" onblur="draw_variability(); " value="1.4"></span>
+                                        </div>
+                                        <div class="alert alert-danger mt-3" role="alert" style="display: none;" id="dynamic_size_error">Max Value must be greater than Min Value.</div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-md-12" style="margin-top: 10px;">
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-8 settings-label" for="scale">Scale</label>  
-                                    <div class="col-md-4"><input type="input" id="scale" value="5" size="4"></div>
-                                </div>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-8 settings-label" for="transparent">Transparent</label>  
-                                    <div class="col-md-4"><input type="checkbox" id="transparent" checked="checked"></div>
-                                </div>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-8 settings-label" for="trim">Trim</label>  
-                                    <div class="col-md-4"><input type="checkbox" id="trim" checked="checked"></div>
-                                </div>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-8 settings-label" for="antialias">Antialiasing</label>  
-                                    <div class="col-md-4"><input type="checkbox" id="antialias" checked="checked"></div>
-                                </div>
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-8 settings-label" for="merged_view_only">Merged view only</label>  
-                                    <div class="col-md-4"><input type="checkbox" id="merged_view_only" checked="checked"></div>
-                                </div>
-                            </div>
-                            <button type="button" class="btn btn-primary" onclick="generate_summary();" style="width: 100%; margin-top: 10px;">Generate static image directory</button>
-                        </div>
-                        <span class="settings-header"><h4>Export PDB</h4></span>
-                        <div class="widget">
-                            <div class="alert alert-info" role="alert">Export a PDB file of the structure</div>
-                            <div class="col-md-12 d-flex" style="margin-top: 10px;">
-                                <div class="col-md-12 d-flex">
-                                    <label class="col-md-5 settings-label" for="scale">Filename</label>  
-                                    <div class="col-md-7"><input type="input" id="pdb_output_path" value="structure.pdb"></div>
-                                </div>
-                            </div>
-                            <button type="button" class="btn btn-primary" onclick="store_structure_as_pdb('#pdb_output_path', '#store_pdb_success', '#store_pdb_failure');" style="width: 100%; margin-top: 10px;">Generate PDB file for current structure</button>
                             <div class="clearfix"></div>
-                            <div class="alert alert-success" role="alert" style="display: none; margin-top: 10px;" id="store_pdb_success"></div>
-                            <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="store_pdb_failure"></div>
                         </div>
-                        <span class="settings-header"><h4>Generate in PyMOL</h4></span>
-                        <div class="widget">
-                            <div class="alert alert-info" role="alert">Produce script to replicate sequence variant visualization in PyMOL</div>
-                            <button type="button" class="btn btn-primary" onclick="showPymolWindow();" style="width: 100%; margin-top: 10px;">Generate script</button>
+                        <span id="toggle-chevron-structure" class="settings-header btn d-flex align-items-center" data-toggle="collapse" href="#structure-collapse" role="button" aria-expanded="true" aria-controls="structure-collapse" onclick="$('#toggle-chevron-structure').children('i').toggleClass('bi-chevron-up bi-chevron-down');">
+                            Structure
+                            <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
+                        </span>
+                        <div class="collapse show" id="structure-collapse">
+                            <div class="ml-2">
+                                <span class="settings-secondary-header">Backbone</span>
+                                <div class="settings-inline-row">
+                                    <label class="settings-label" for="show_backbone">Show:</label>
+                                    <span class="mr-4"><input type="checkbox" id="show_backbone" onclick="create_ngl_views(fetch_variability=false); " checked="checked" /></span>
+                                </div>
+                                <div class="form-group form-margin">
+                                    <label class="settings-label" for="backbone_type">Style</label>
+                                    <div class="col-10 menu-padding">
+                                        <select class="form-control" id="backbone_type" onchange="create_ngl_views(fetch_variability=false);">
+                                            <option>cartoon</option>
+                                            <option>tube</option>
+                                            <option>rocket</option>
+                                            <option>rocket+loop</option>
+                                            <option>rope</option>
+                                            <option>ribbon</option>
+                                            <option>trace</option>
+                                            <option>helixorient</option>
+                                            <option>point</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="ml-2">
+                                <span class="settings-secondary-header">Backbone Color</span>
+                                <div class="form-group form-margin">
+                                    <label class="settings-label" for="backbone_color_type">Rule</label>
+                                    <div class="col-10 menu-padding">
+                                        <select class="form-control" id="backbone_color_type" onchange="backbone_rule(this);">
+                                            <option>Static</option>
+                                            <option>Dynamic</option>
+                                            <option>residueindex</option>
+                                            <option>bfactor</option>
+                                            <option>hydrophobicity</option>
+                                            <option>sstruc</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="static-color-backbone" style="display: none;">
+                                    <div class="settings-inline-row">
+                                        <span class="settings-label">Color:</span>
+                                        <div class="mr-4"><div class="colorpicker" id="color_static_backbone" color="#6a8dab" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #6a8dab;"></div></div>
+                                    </div>
+                                </div>
+                                <div class="dynamic-color-backbone" style="display: none;">
+                                    <div class="form-group form-margin">
+                                        <label class="settings-label" for="backbone_color_variable">Color by</label>
+                                        <div class="col-10 menu-padding">
+                                            <select class="form-control" id="backbone_color_variable" onChange="onTargetResidueInfoChange(this);"></select>
+                                        </div>
+                                    </div>
+                                    <div id="backbone_color_numerical_panel">
+                                        <span class="settings-secondary-header">Minimum</span>
+                                        <div class="settings-inline-row">
+                                            <label class="settings-label" for="backbone_color_min">Value:</label>
+                                            <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="backbone_color_min" onblur="create_ngl_views(fetch_variability=false);" value="0"></span>
+                                            <span class="settings-label">Color:</span>
+                                            <div class="mr-4"><div class="colorpicker" id="backbone_color_start" color="#ffffed" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #ffffed"></div></div>
+                                        </div>
+                                        <span class="settings-secondary-header">Maximum</span>
+                                        <div class="settings-inline-row">
+                                            <label class="settings-label" for="backbone_color_max">Value:</label>
+                                            <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="backbone_color_max" onblur="create_ngl_views(fetch_variability=false);" value="1"></span>
+                                            <span class="settings-label">Color:</span>
+                                            <div class="mr-4"><div class="colorpicker" id="backbone_color_end" color="#6a8dab" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #6a8dab"></div></div>
+                                        </div>
+                                        <div class="clearfix"></div>
+                                        <div class="alert alert-danger mt-3" role="alert" style="display: none;" id="dynamic_backbone_color_error">Max Value must be greater than Min Value.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="clearfix"></div>
+                            <div class="ml-2">
+                                <span class="settings-secondary-header">Surface</span>
+                                <div class="settings-inline-row">
+                                    <label class="settings-label" for="show_surface">Show:</label>
+                                    <span class="mr-4"><input type="checkbox" id="show_surface" onclick="create_ngl_views(fetch_variability=false);" checked="checked" /></span>
+                                    <label class="settings-label" for="surface_opacity">Opacity:</label>
+                                    <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="text" id="surface_opacity" value="0.12" onblur="create_ngl_views(fetch_variability=false); " /></span>
+                                    <label class="settings-label" for="surface_probe_radius">Probe radius:</label>
+                                    <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="text" id="surface_probe_radius" value="1.4" onblur="create_ngl_views(fetch_variability=false); " /></span>
+                                </div>
+                            </div>
+                            <div class="ml-2">
+                                <span class="settings-secondary-header">Surface Color</span>
+                                <div class="form-group form-margin">
+                                    <label class="settings-label" for="surface_color_type">Rule</label>
+                                    <div class="col-10 menu-padding">
+                                        <select class="form-control" id="surface_color_type" onchange="surface_rule(this);">
+                                            <option>Static</option>
+                                            <option>Dynamic</option>
+                                            <option>atomindex</option>
+                                            <option>bfactor</option>
+                                            <option>electrostatic</option>
+                                            <option>element</option>
+                                            <option>hydrophobicity</option>
+                                            <option>random</option>
+                                            <option>sstruc</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="static-color-surface" style="display: none;">
+                                    <div class="settings-inline-row">
+                                        <span class="settings-label">Color:</span>
+                                        <div class="mr-4"><div class="colorpicker" id="color_static_surface" color="#f7f2f2" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #f7f2f2;"></div></div>
+                                    </div>
+                                </div>
+                                <div class="dynamic-color-surface" style="display: none;">
+                                    <div class="form-group form-margin">
+                                        <label class="settings-label" for="surface_color_variable">Color by</label>
+                                        <div class="col-10 menu-padding">
+                                            <select class="form-control" id="surface_color_variable" onChange="onTargetResidueInfoChange(this);"></select>
+                                        </div>
+                                    </div>
+                                    <div id="surface_color_numerical_panel">
+                                        <span class="settings-secondary-header">Minimum</span>
+                                        <div class="settings-inline-row">
+                                            <label class="settings-label" for="surface_color_min">Value:</label>
+                                            <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="surface_color_min" onblur="create_ngl_views(fetch_variability=false);" value="0"></span>
+                                            <span class="settings-label">Color:</span>
+                                            <div class="mr-4"><div class="colorpicker" id="surface_color_start" color="#ffffed" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #ffffed"></div></div>
+                                        </div>
+                                        <span class="settings-secondary-header">Maximum</span>
+                                        <div class="settings-inline-row">
+                                            <label class="settings-label" for="surface_color_max">Value:</label>
+                                            <span class="mr-4"><input class="form-control input-xs" style="width: 70px;" type="input" id="surface_color_max" onblur="create_ngl_views(fetch_variability=false);" value="1"></span>
+                                            <span class="settings-label">Color:</span>
+                                            <div class="mr-4"><div class="colorpicker" id="surface_color_end" color="#c80023" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #c80023"></div></div>
+                                        </div>
+                                        <div class="clearfix"></div>
+                                        <div class="alert alert-danger mt-3" role="alert" style="display: none;" id="dynamic_surface_color_error">Max Value must be greater than Min Value.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="ml-2">
+                                <span class="settings-secondary-header">Ball-Stick</span>
+                                <div class="settings-inline-row">
+                                    <label class="settings-label" for="show_ballstick">Show:</label>
+                                    <span class="mr-4"><input type="checkbox" id="show_ballstick" onclick="create_ngl_views(fetch_variability=false); " /></span>
+                                </div>
+                                <div class="form-group form-margin">
+                                    <label class="settings-label" for="show_ballstick_when">When</label>
+                                    <div class="col-10 menu-padding">
+                                        <select class="form-control" id="show_ballstick_when" onchange="create_ngl_views(fetch_variability=false);">
+                                            <option>always</option>
+                                            <option>variant residue</option>
+                                            <option>hovered residue</option>
+                                            <option>hovered residue + contacts</option>
+                                            <option>hovered residue + variant contacts</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="ml-2">
+                                <span class="settings-secondary-header">Hover Tooltip</span>
+                                <div class="settings-inline-row">
+                                    <label class="settings-label" for="show_tooltip">Show:</label>
+                                    <span class="mr-4"><input type="checkbox" id="show_tooltip" onclick="create_ngl_views(fetch_variability=false); " checked="checked" /></span>
+                                </div>
+                                <div class="form-group form-margin">
+                                    <label class="settings-label" for="show_tooltip_when">When</label>
+                                    <div class="col-10 menu-padding">
+                                        <select class="form-control" id="show_tooltip_when" onchange="create_ngl_views(fetch_variability=false);">
+                                            <option>all residues</option>
+                                            <option>variant residues</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="ml-2">
+                                <span class="settings-secondary-header">Residue Labels</span>
+                                <div class="settings-inline-row">
+                                    <label class="settings-label" for="show_residue_labels">Show:</label>
+                                    <span class="mr-4"><input type="checkbox" id="show_residue_labels" onclick="create_ngl_views(fetch_variability=false); " /></span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-8 ngl-container-wrapper">
-                <div id="ngl-container" class="d-flex">
+        </div>
 
+        <!-- SAVE VARIANT DATA -->
+        <div class="modal fade" id="modSaveVariantData">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Save Variant Data</h4>
+                        <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="alert alert-info" role="alert">Store sequence variant data for the current view</div>
+                        <div class="col-md-12 d-flex mt-3">
+                            <label class="col-md-5 settings-label" for="var_output_path">Filename</label>
+                            <div class="col-md-7"><input type="input" id="var_output_path" value="variability.txt"></div>
+                        </div>
+                        <div class="alert alert-success mt-3" role="alert" style="display: none;" id="store_var_success"></div>
+                        <div class="alert alert-danger mt-3" role="alert" style="display: none;" id="store_var_failure"></div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" onclick="store_variability();">Generate tabular data</button>
+                        <button class="btn btn-outline-danger" data-dismiss="modal" type="button">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RENDER IMAGES -->
+        <div class="modal fade" id="modRenderImages">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Render Images</h4>
+                        <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="alert alert-info" role="alert">Create merged and/or single sample PNG images of current view</div>
+                        <div class="col-md-12 d-flex mt-3">
+                            <label class="col-md-5 settings-label" for="zip_name">Output Zip File</label>
+                            <div class="col-md-7"><input type="input" id="zip_name" value="structure-summary"></div>
+                        </div>
+                        <div class="col-md-12 d-flex">
+                            <label class="col-md-8 settings-label" for="scale">Scale</label>
+                            <div class="col-md-4"><input type="input" id="scale" value="5" size="4"></div>
+                        </div>
+                        <div class="col-md-12 d-flex">
+                            <label class="col-md-8 settings-label" for="transparent">Transparent</label>
+                            <div class="col-md-4"><input type="checkbox" id="transparent" checked="checked"></div>
+                        </div>
+                        <div class="col-md-12 d-flex">
+                            <label class="col-md-8 settings-label" for="trim">Trim</label>
+                            <div class="col-md-4"><input type="checkbox" id="trim" checked="checked"></div>
+                        </div>
+                        <div class="col-md-12 d-flex">
+                            <label class="col-md-8 settings-label" for="antialias">Antialiasing</label>
+                            <div class="col-md-4"><input type="checkbox" id="antialias" checked="checked"></div>
+                        </div>
+                        <div class="col-md-12 d-flex">
+                            <label class="col-md-8 settings-label" for="merged_view_only">Merged view only</label>
+                            <div class="col-md-4"><input type="checkbox" id="merged_view_only" checked="checked"></div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" onclick="generate_summary();">Generate static image directory</button>
+                        <button class="btn btn-outline-danger" data-dismiss="modal" type="button">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- EXPORT PDB -->
+        <div class="modal fade" id="modExportPdb">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Export PDB</h4>
+                        <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="alert alert-info" role="alert">Export a PDB file of the structure</div>
+                        <div class="col-md-12 d-flex mt-3">
+                            <label class="col-md-5 settings-label" for="pdb_output_path">Filename</label>
+                            <div class="col-md-7"><input type="input" id="pdb_output_path" value="structure.pdb"></div>
+                        </div>
+                        <div class="alert alert-success mt-3" role="alert" style="display: none;" id="store_pdb_success"></div>
+                        <div class="alert alert-danger mt-3" role="alert" style="display: none;" id="store_pdb_failure"></div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" onclick="store_structure_as_pdb('#pdb_output_path', '#store_pdb_success', '#store_pdb_failure');">Generate PDB file</button>
+                        <button class="btn btn-outline-danger" data-dismiss="modal" type="button">Close</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -487,23 +588,23 @@
                         <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                     </div>
 
-                    <span class="settings-header" style="margin-right: 15px; margin-left: 15px"><h4>Step 1</h4></span>
-                    <div class="widget" style="margin-left: 15px; margin-right: 15px">
+                    <span class="settings-header mb-3 mt-3">Step 1</span>
+                    <div class="mx-3">
                         <div class="alert alert-info" role="alert">Click the button below to generate a PDB file in your current directory. Open it in PyMOL.</div>
-                        <div class="col-md-12" style="margin-top: 10px;">
-                            <div class="col-md-12">
-                                <label class="col-md-3 settings-label" for="scale">Filename</label>
+                        <div class="col-md-12 mt-3">
+                            <div class="col-md-12 d-flex">
+                                <label class="col-md-3 settings-label" for="pdb_for_pymol_output_path">Filename</label>
                                 <div class="col-md-9"><input type="input" id="pdb_for_pymol_output_path" value="structure.pdb"></div>
                             </div>
                         </div>
-                        <button type="button" class="btn btn-primary" onclick="store_structure_as_pdb('#pdb_for_pymol_output_path', '#store_pdb_for_pymol_success', '#store_pdb_for_pymol_failure');" style="width: 100%; margin-top: 15px; margin-bottom: 10px"><label class="settings-label" for="scale">Generate PDB file</label></button>
+                        <button type="button" class="btn btn-primary mt-3 mb-2" onclick="store_structure_as_pdb('#pdb_for_pymol_output_path', '#store_pdb_for_pymol_success', '#store_pdb_for_pymol_failure');" style="width: 100%;">Generate PDB file</button>
                         <div class="clearfix"></div>
-                        <div class="alert alert-success" role="alert" style="display: none; margin-top: 10px;" id="store_pdb_for_pymol_success"></div>
-                        <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="store_pdb_for_pymol_failure"></div>
+                        <div class="alert alert-success mt-3" role="alert" style="display: none;" id="store_pdb_for_pymol_success"></div>
+                        <div class="alert alert-danger mt-3" role="alert" style="display: none;" id="store_pdb_for_pymol_failure"></div>
                     </div>
 
-                    <span class="settings-header" style="margin-right: 15px; margin-left: 15px"><h4>Step 2</h4></span>
-                    <div class="widget" style="margin-left: 15px; margin-right: 15px">
+                    <span class="settings-header mb-3 mt-3">Step 2</span>
+                    <div class="mx-3">
                         <div class="alert alert-info" role="alert">Copy paste this script into the PyMOL command window.</div>
                         <div class="modal-body" id="pymol_script_area">
                         </div>

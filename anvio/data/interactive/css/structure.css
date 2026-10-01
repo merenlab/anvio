@@ -1,55 +1,145 @@
+@import url('main.css');
+
 body {
-    background-color: white;
+    background-color: var(--solid-white);
 }
 
-.slider-selection {
-    background: linear-gradient(to bottom, #235989, #ffffff, #235989);
+/* settings sit flat on the panel with the section headers doing the separating,
+   as in the rest of anvi'o, so these groups only need vertical rhythm */
+.model-info-group,
+.filter-control {
+    margin-bottom: 12px;
 }
 
-.slider.slider-horizontal .slider-track-high {
-    background: linear-gradient(to bottom, #b8cad9, #ffffff, #b8cad9);
+/* without the boxes these headers sat directly on top of their content */
+#sidebar .settings-secondary-header {
+    margin-bottom: 6px;
 }
 
-.slider.slider-horizontal .slider-track-low {
-    background: linear-gradient(to bottom, #b8cad9, #ffffff, #b8cad9);
+/* FILTERS */
+
+/* the histogram and its slider share one inset box, so the bars line up with
+   the track and the handles have room at both ends instead of being cut off */
+.filter-slider {
+    padding: 0px 8px;
 }
 
-.slider-handle {
-    position: absolute;
-    top: 3;
-    width: 12px;
-    height: 12px;
-    background-color: #337ab7;
-    border: 1px solid #333;
-}
-
-.widget {
-    background-color: #f9f9f99e;
-    margin: 5px 0px;
-    padding: 8px 15px;
-    border: 1px solid #e4e4e4;
-}
-
-.slider {
-    width: 100% !important;
-}
-
-.slider.slider-horizontal .slider-track {
-    height: 6px;
-    width: 100%;
-    margin-top: -4px;
-    top: 50%;
-    left: 0;
-}
-
-.slider.slider-horizontal .slider-handle {
-    margin-left: -6;
-}
-
-.ngl-container-wrapper {
-    height: 100%;
+.filter-histogram {
     display: block;
-    background: #FAFAFA;
+    width: 100%;
+    height: 30px;
+}
+
+.filter-histogram rect {
+    fill: var(--primary-500);
+}
+
+.filter-histogram rect.filtered-out {
+    fill: var(--secondary-300);
+}
+
+.filter-slider .slider.slider-horizontal {
+    width: 100% !important;
+    height: 16px;
+}
+
+.filter-slider .slider.slider-horizontal .slider-track {
+    height: 4px;
+    margin-top: -2px;
+    top: 50%;
+    background: var(--secondary-300);
+    background-image: none;
+    box-shadow: none;
+    border-radius: 2px;
+}
+
+.filter-slider .slider.slider-horizontal .slider-track-low,
+.filter-slider .slider.slider-horizontal .slider-track-high {
+    background: transparent;
+    background-image: none;
+}
+
+.filter-slider .slider-selection {
+    background: var(--primary-500);
+    background-image: none;
+    box-shadow: none;
+}
+
+.filter-slider .slider.slider-horizontal .slider-handle {
+    top: 1px;
+    width: 14px;
+    height: 14px;
+    margin-left: -7px;
+    background: var(--solid-white);
+    background-image: none;
+    border: 2px solid var(--primary-600);
+    box-shadow: none;
+}
+
+.filter-slider .slider-handle:hover {
+    background: var(--primary-100);
+}
+
+.filter-range {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    padding: 0px 8px;
+}
+
+.filter-range input {
+    width: 72px;
+}
+
+/* a header line that also carries the All / None links on its right */
+.settings-secondary-header.filter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.filter-header > span:first-child {
+    font-size: 1em;
+}
+
+.filter-all-none {
+    font-variant: normal;
+    font-size: 0.6em;
+}
+
+/* each choice is a pill around a hidden checkbox: filled while the value is
+   kept, outlined once it is filtered out */
+.filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding-left: 8px;
+}
+
+.filter-chip {
+    margin: 0px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.filter-chip input {
+    display: none;
+}
+
+.filter-chip span {
+    display: inline-block;
+    padding: 1px 9px;
+    font-size: 0.85em;
+    border: 1px solid var(--secondary-500);
+    border-radius: 12px;
+    background: var(--solid-white);
+    color: var(--body-text);
+}
+
+.filter-chip input:checked + span {
+    background: var(--primary-600);
+    border-color: var(--primary-600);
+    color: var(--solid-white);
 }
 
 .ngl-inner {
@@ -59,34 +149,41 @@ body {
     margin-right: 10px;
 }
 
+/* the group name and the fullscreen button sit on the viewer's bottom edge,
+   the one place the title panel never reaches */
 .ngl-group-title {
     position: absolute;
-    color: #337ab7;
-    margin: 2px;
+    bottom: 0px;
+    left: 0px;
+    right: 0px;
+    text-align: center;
+    color: var(--primary-600);
     padding: 4px;
     font-weight: bold;
+    /* spans the viewer's width, so it lets drags and hovers through to the canvas */
+    pointer-events: none;
 }
 
 .ngl-group-fullscreen {
     position: absolute;
     right: 15px;
-    top: 5px;
+    bottom: 5px;
 }
 
-.form-row-padding {
-    padding: 8px;
+/* a row of short controls (checkboxes, small inputs, colour swatches), each
+   with its label beside it; spaced like a stacked label so both kinds of row
+   keep the same rhythm under a header */
+.settings-inline-row {
+    display: flex;
+    align-items: center;
+    padding-top: 12px;
+    margin-bottom: 1rem;
 }
 
-#engine_list label {
-    margin-left: 4px;
-    margin-right: 12px;
-}
-
-.sidebar {
-    height: 100vh;
-    overflow-y: scroll;
-    border-right: 1px solid #D3D3D3;
-    box-shadow: 0px 0px 10px 2px rgba(200,200,200,0.75);
+.settings-inline-row > .settings-label {
+    padding-top: 0px;
+    margin-bottom: 0px;
+    margin-right: 0.5rem;
 }
 
 .table-group-checkbox {
@@ -94,41 +191,28 @@ body {
     margin-bottom: 4px;
 }
 
+/* These checkboxes carry Bootstrap's form-check-input without the .form-check
+   wrapper whose padding offsets its negative margin, and main.css lays out
+   checkboxes in a td as flex, which would break each label onto its own line.
+   Put them back in the normal flow beside their labels. */
+#sample_groups .form-check-input {
+    position: static;
+    display: inline-block;
+    margin-left: 0px;
+    margin-right: 4px;
+}
+
+/* keep a group name on the same line as its checkbox */
+#sample_groups td:first-child {
+    white-space: nowrap;
+}
+
 .nopadding {
    padding: 0 !important;
    margin: 0 !important;
 }
 
-.nav>li>a {
-    padding: 10px 10px;
-}
-
-
-.colorpicker:hover {
-    border: 2px solid;
-    border-color: #555;
-}
-
-.colorpicker {
-    display: inline-block;
-    background-color: #FFF;
-    border: 1px solid;
-    border-color: #000;
-    width: 16px;
-    height: 16px;
-    margin: 4px;
-}
-
-.settings-header {
-    font-variant: small-caps;
-    font-size: 1.2em;
-    border-bottom: 1px #969696 solid;
-    display: block;
-    margin-bottom: 5px;
-    margin-top: 12px;
-}
-
-#model_info_table {
+.model-info-table {
     text-align: center;
     vertical-align: middle;
 }
@@ -142,6 +226,14 @@ body {
     color: lightgrey;
     padding: 8px;
     font-family: 'Roboto',Helvetica,Arial,sans-serif;
+}
+
+/* the shared stylesheet sizes every element at the 10px base, which would
+   flatten these titles into the tooltip body text */
+.ngl-tooltip h5 {
+    font-size: 1.2em;
+    font-weight: 500;
+    margin-bottom: 4px;
 }
 
 .ngl-tooltip > table {
@@ -168,17 +260,27 @@ body {
     z-index: 999999;
 }
 
-.loading-gif-container {
+.loading-indicator {
     position: fixed;
     right: 0px;
     bottom: 0px;
     margin: 30px;
-    padding: 5px;
+    padding: 10px 15px;
     border: 1px solid;
     border-radius: 10px;
-    border-color: #DDDDDD;
+    border-color: var(--border);
     text-align: center;
-    background-color: #FFFFFF;
+    background-color: var(--solid-white);
+}
+
+/* loading.css sizes .loader for a full-screen splash; scale it down for the
+   corner indicator and take the spinner color from the palette */
+.loading-indicator .loader {
+    width: 32px;
+    height: 32px;
+    border-width: 3px;
+    border-top-color: var(--primary-600);
+    margin: 0px auto 5px auto;
 }
 
 .tooltip-table>tbody>tr:nth-child(odd)>td, .tooltip-table>tbody>tr:nth-child(odd)>th {
@@ -194,14 +296,45 @@ body {
     color: rgb(230, 230, 230) !important;
 }
 
+/* the viewers start where the settings panel ends, and take the whole window
+   once it has slid away. The 560px is the panel's width, as main.css has it for
+   .panel-closed and the toggle tab; the margin slides along with the panel */
+#panel-center {
+    width: auto;
+    margin-left: 560px;
+    transition: margin-left 0.3s ease-out;
+}
+
+#wrapper:has(> #panel-left.panel-closed) > #panel-center {
+    margin-left: 0px;
+}
+
 #ngl-container {
     height: 100%;
-    width: 66%;
-    position: fixed;
-    overflow-x: scroll;
+    width: 100%;
+    overflow-x: hidden;
+    background: var(--bg-color);
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: space-between;
     align-content: space-around;
     text-align: center;
+}
+
+/* the panel sits above the viewers and the title panel where they meet */
+#panel-left {
+    z-index: 10;
+}
+
+/* the viewer cells are positioned and come later in the page, so without this
+   the 3D canvases paint over the title panel and its reopening tab */
+#title-panel,
+#toggle-panel-top {
+    z-index: 5;
+}
+
+/* each viewer cell is the positioning context for its own group title and
+   fullscreen button, which would otherwise anchor to the window */
+#ngl-container > div {
+    position: relative;
 }
