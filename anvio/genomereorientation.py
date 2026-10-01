@@ -2706,9 +2706,9 @@ class GenomeReorienter:
                               f"{self._no_alignment_advice()}")
 
         if self.just_do_it:
-            self.run.warning(f"Anvi'o would have stopped right here to tell you about the genomes in the NO ALIGNMENT "
-                             f"AT ALL list above, but you said `--just-do-it`, so it will keep going with the ones "
-                             f"that did align, and report each of the others as FAILED at the end instead.")
+            self.run.warning("Anvi'o would have stopped right here to tell you about the genomes in the NO ALIGNMENT "
+                             "AT ALL list above, but you said `--just-do-it`, so it will keep going with the ones "
+                             "that did align, and report each of the others as FAILED at the end instead.")
             return
 
         raise ConfigError(f"Anvi'o aligned each of the {P('genome', len(genome_names))} in your fasta-txt file to the "
