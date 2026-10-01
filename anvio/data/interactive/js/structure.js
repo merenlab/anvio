@@ -1335,20 +1335,23 @@ function create_ui() {
 
 
 function onTargetResidueInfoChange(element) {
+    // this on change event is shared between backbone_color_variable and
+    // surface_color_variable; the prefix names the section whose range to fill
     let name = $(element).val();
+    let prefix = element.getAttribute('id').replace(/_variable$/, '');
 
-    $(`#backbone_numerical_panel`).show();
+    $(`#${prefix}_numerical_panel`).show();
 
     if (residue_info[1].hasOwnProperty(name)) {
       // The selected dynamic variable is in residue_info's elements
-      $(`#backbone_color_min`).val(residue_info_types[name]['amin']);
-      $(`#backbone_color_max`).val(residue_info_types[name]['amax']);
+      $(`#${prefix}_min`).val(residue_info_types[name]['amin']);
+      $(`#${prefix}_max`).val(residue_info_types[name]['amax']);
     } else {
       for (i in column_info) {
         let item = column_info[i];
         if (item['name'] == name) {
-          $(`#backbone_color_min`).val(item['min']);
-          $(`#backbone_color_max`).val(item['max']);
+          $(`#${prefix}_min`).val(item['min']);
+          $(`#${prefix}_max`).val(item['max']);
           break;
         }
       }
