@@ -1,52 +1,96 @@
-%(anvi-draw-kegg-pathways)s draws %(kegg-pathway-map)s files from input %(kegg-reaction-txt)s and/or %(kegg-compound-txt)s files, one or more %(contigs-db)ss, a %(pan-db)s, or a metabolic model file (see %(reaction-network-json)s). The visualization of user data in the context of KEGG's curated biochemical pathways can reveal patterns in metabolism.
+%(anvi-draw-kegg-pathways)s draws %(kegg-pathway-map)s files incorporating data from
+- a %(kegg-reaction-txt)s and/or a %(kegg-compound-txt)s file
+- one or more %(contigs-db)ss
+- a %(pan-db)s
+- a metabolic model file (see %(reaction-network-json)s)
+
+The visualization of user data in the context of KEGG's curated biochemical pathways can reveal patterns in metabolism.
+
+
+## Opening example
+
+Here is a very simple example that draws pathway maps from data in a single %(contigs-db)s. Any map containing genes annotated with a KEGG Ortholog (KO) protein function will be drawn.
+
+{{ codestart }}
+anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s \
+                        -o output_dir
+{{ codestop }}
+
+Here are three maps drawn with this command from a bacterial genomic contigs database.
+
+![Three maps showing KOs from a single contigs database](../../images/anvi-draw-kegg-pathways/kos_single_contigs_db.png)
+
+- The map in the upper left, `00010 Glycolysis / Gluconeogenesis`, is a "standard" map, in which boxes are associated with a reaction arrow and one or more KOs.
+- The map in the upper right, `01200 Carbon metabolism`, is a metabolic "overview" map. Overview maps have numerical IDs in the range `012XX` and `013XX`. Reaction arrows in overview maps are associated with one or more KOs and are colored and widened if represented by anvi'o KO data.
+- The bottom map, `01100 Metabolic pathways`, is a "global" metabolic map. Global maps have numerical IDs in the range `011XX`. Reaction lines in global maps are associated with one or more KOs and colored if represented by anvi'o KO data.
+
+Compound circle elements in the overview and global maps are colored if they are involved in adjacent colored reactions. (Very rarely, complete data linking reaction and compound graphics is missing from the KEGG reference files, preventing the reaction color from being imparted to the compound. One such error can be seen at the very top of the overview map of `Carbon metabolism`, where `Glucono-1,5-lactone` is white when it should be green.)
+
 
 ## Setup
 
-There are hundreds of pathway maps, listed and categorized [here](https://www.genome.jp/kegg/pathway.html). %(anvi-setup-kegg-data)s downloads, among other files, the maps with corresponding [XML files](https://www.kegg.jp/kegg/xml/) that allow elements of the map to be modified. The following command sets up the database in a default anvi'o directory.
+### Download KEGG data
+
+There are hundreds of pathway maps, listed and categorized [here](https://www.genome.jp/kegg/pathway.html).
+
+%(anvi-setup-kegg-data)s downloads, among other files, the maps with corresponding [XML files](https://www.kegg.jp/kegg/xml/) that contain data on the network underlying the map. Map elements, such as reaction boxes and compound circles, can be modified through the XML files, allowing this program to color elements by external user data.
+
+#### Snapshot
+
+The most basic command sets up a snapshot of anvi'o KEGG data in a default anvi'o directory.
 
 {{ codestart }}
 anvi-setup-kegg-data
 {{ codestop }}
 
-Additional Python packages may be needed if you installed anvi'o `v8.0-dev` before this program's package requirements were included. These can be installed with the following command.
+#### Newest files
 
-{{ codestart }}
-pip install biopython reportlab pymupdf
-{{ codestop }}
-
-The program can be tested with the following command.
-
-{{ codestart }}
-anvi-self-test --suite kegg-mapping
-{{ codestop }}
-
-### Download newest available files
-
-Alternatively, KEGG data can be set up not from a snapshot but by downloading the newest files available from KEGG using the `-D` flag. In the following command, a higher number of download threads than the default of 1 is provided by `-T`, which significantly speeds up downloading.
+Alternatively, KEGG data can be set up by downloading the newest files available from KEGG using the `-D` flag. In the following command, a higher number of download threads than the default of 1 is provided by `-T`, which significantly speeds up downloading.
 
 {{ codestart }}
 anvi-setup-kegg-data -D -T 5
 {{ codestop }}
 
-### Install in non-default location
+#### Install in non-default location
 
-To preserve KEGG data that you've already set up for whatever reason, the new snapshot or download can be placed in a non-default location using the option, `--kegg-data-dir`.
+To preserve KEGG data that you've already set up for whatever reason, the new snapshot or download can be placed in a non-default location using `--kegg-data-dir`.
 
 {{ codestart }}
 anvi-setup-kegg-data --kegg-data-dir path/to/other/directory
 {{ codestop }}
 
-`anvi-draw-kegg-pathways` requires a `--kegg-dir` argument to seek KEGG data in a non-default location.
+`anvi-draw-kegg-pathways` requires a `--kegg-dir` value to seek KEGG data in a non-default location.
 
-## Pathway selection
+### Python dependencies
 
-By default, this program draws the maps that contain data of interest, e.g., KO gene sequence annotations in a %(contigs-db)s.
+Additional Python packages may be needed if you downloaded anvi'o `dev` before this program's package requirements were included.
 
-To draw _all_ maps available in %(kegg-data)s, including those that don't contain data of interest, use the flag, `--draw-bare-maps`.
+{{ codestart }}
+pip install biopython reportlab pymupdf
+{{ codestop }}
 
-The option, `--pathway-numbers`, limits the output to maps of interest. A single ID number can be provided, e.g., `00010` for `Glycolysis / Gluconeogenesis`, or multiple numbers can be listed, e.g., `00010 00020`. Regular expressions can also be provided, e.g., `011.. 01[23]..`, where `.` represents any character: here the set of numbers given by `011..` corresponds to "global" maps and `01[23]..` to "overview" maps.
+### Self test
 
-The following command would draw all global maps and the glycolysis map, regardless of whether they contain any anvi'o data of interest (here, KO annotations from a contigs database).
+The program can be tested to make sure that it is ready to run.
+
+{{ codestart }}
+anvi-self-test --suite kegg-mapping
+{{ codestop }}
+
+
+## Output
+
+The path to an output directory must be supplied using `-o`/`--output-dir`. This must be a non-existent directory unless the `-W`/`--overwrite-output-destinations` flag is also used. Different selections of maps, formats of output PDF files, and output directory structures can be specified. These options make it easier to browse output files and anticipate their contents.
+
+### Pathway selection
+
+By default, maps are only drawn if they contain external user data, such as KO gene sequence annotations in a %(contigs-db)s.
+
+To draw _all_ maps available in %(kegg-data)s, including those without reactions or compounds from the input, use the flag, `--draw-bare-maps`.
+
+The option, `--pathway-numbers`, limits the output to selected maps of interest. A single ID number can be provided — `00010` for `Glycolysis / Gluconeogenesis` — or multiple numbers can be listed — `00010 00020` for `Glycolysis / Gluconeogenesis` and `Citrate cycle (TCA cycle)`. Regular expressions can also be used — `011.. 01[23]..`, where `.` represents any character, with the set of numbers given by `011..` being "global" maps and `01[23]..` "overview" maps.
+
+The following draws all global maps and `Glycolysis / Gluconeogenesis`, regardless of whether they contain any anvi'o data of interest (here, KO annotations from a contigs database).
 
 {{ codestart }}
 anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s \
@@ -55,26 +99,20 @@ anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s \
                         -o output_dir
 {{ codestop }}
 
-## Output
-
-This program requires the path to a directory as an argument to `-o` or `--output-dir`. This must be a non-existent directory unless the flag, `-W` or `--overwrite-output-destinations`, is also used. Options are available to make it easier to browse through output files and anticipate their contents.
-
 ### Directory layout
 
 Map files are sorted into up to four subdirectories, one for each kind of map:
 
 |Subdirectory|Contents|
 |:--|:--|
-|`unified`|The type of map drawn from all of the data at once. With a single source — a %(kegg-reaction-txt)s and/or %(kegg-compound-txt)s with no `sample` column, one %(contigs-db)s, or one %(reaction-network-json)s — these maps per pathway are the only ones drawn. Not written at all with `--skip-unified-maps`.|
-|`individual`|One subdirectory per data source, named after it: each sample of a text file, each contigs database, each genome of a pangenome, or, when they are grouped with a %(groups-txt)s file, each group instead. Drawn on request with `--draw-individual-files`.|
+|`unified`|The type of map drawn from all of the data at once. With a single source — a %(kegg-reaction-txt)s and/or %(kegg-compound-txt)s with no `sample` column, one %(contigs-db)s, or one %(reaction-network-json)s, as opposed to multiple samples, groups, contigs database, or pan genomes — maps with data from the source are the only ones drawn, whereas with multiple sources, unified maps aggregating data across sources can be drawn in addition to per-source maps. Not written at all with `--skip-unified-maps`.|
+|`individual`|One subdirectory per data source, named after it: each sample of a text file, each contigs database, each pan genome, or, when they are grouped with a %(groups-txt)s file, each group instead. Drawn on request with `--draw-individual-files`.|
 |`grid`|The map grids, each showing the `unified` map alongside the individual ones, or the individual ones alone with `--skip-unified-maps`. Drawn on request with `--draw-grid`.|
-|`by_map`|The same individual maps arranged the other way round: one subdirectory per map, each holding one file per data source, named after it. Written on request with `--collate-files-by-map`.|
+|`by_map`|The same individual maps arranged in directories per map rather than per source: each map subdirectory holds a map file for each data source, named after the source. Written on request with `--collate-files-by-map`.|
 
 Colorbars, which are keys to the colors of every map in the run, are written at the top of the output directory beside these subdirectories.
 
-Because the names in `individual` come from your own data, they are kept in that subdirectory of their own: a sample, genome, or group may be named anything at all — including `unified`, `grid`, `by_map`, `all_maps`, or `Metabolism` — without ever colliding with a directory this program creates for itself.
-
-The one requirement is that a name becoming a subdirectory has to work as a directory name, so a name containing a path separator, such as `Rhizobium meliloti RU11/001`, is refused. This only applies to the sources that are actually drawn individually: a source summarized on the `unified` map contributes color rather than a path, so its name is never used as one, and a source left out of a subset requested with `--draw-individual-files` or `--draw-grid` is not checked either.
+The one requirement is that a source name becoming a subdirectory name using `--draw-individual-files` cannot contain a path separator, such as `Rhizobium meliloti RU11/001`. A source summarized on the `unified` map contributes color rather than a path, so its name is never used as a directory, and a source left out of a subset requested with `--draw-individual-files` or `--draw-grid` is not checked either.
 
 ### File names
 
@@ -84,23 +122,24 @@ By default, an output file is named after the map's KEGG accession, e.g., `ko000
 
 The `--categorize-files` flag categorizes output map files into a subdirectory structure based on the KEGG [BRITE hierarchy of pathways](https://www.genome.jp/brite/br08901). For example, a `Glycolysis / Gluconeogenesis` map would be placed in a directory named `Metabolism/Carbohydrate_metabolism`, as would a `Citrate cycle (TCA cycle)` map, whereas an `RNA polymerase` map would be placed in a directory named `Genetic_Information_Processing/Transcription`. These category directories are built inside each of the subdirectories described above, so a categorized map of one sample would be found at, say, `individual/SAMPLE_1/Metabolism/Carbohydrate_metabolism/ko00010.pdf`. Within `unified`, `individual`, and `grid`, a subdirectory named `all_maps` is created alongside them, holding a hard link to every one of that directory's maps so that they can also be reached from a single place.
 
+Here is a simple example of the output file structure produced with `--name-files` and `--categorize-files` in the course of `anvi-self-test --suite kegg-mapping`.
+
+![Output options](../../images/anvi-draw-kegg-pathways/categorize_files.png){:.center-img .width-50}
+
 ### Skipping the summary map
 
-The `unified` map summarizes every sample, group, contigs database, or genome at once. A run draws it even when no summary was asked for. By default the sources are summarized by presence. That summary is not always wanted, and it can claim more than the data supports. Pooling values is only meaningful across commensurable samples. Presence in any one sample says little when the point is to compare the samples.
+The `unified` map summarizes every sample, group, contigs database, or genome at once. A run draws it even when no summary was asked for. By default the sources are summarized by presence, which may be irrelevant or inappropriate for the input data.
 
 `--skip-unified-maps` leaves that map out. The `unified` subdirectory is not written. The colorbar for that map is not written either, unless the same scale also colors the individual maps, which would otherwise have no key anywhere in the output. The maps of the individual sources are all that is left, so `--draw-individual-files` and/or `--draw-grid` are required. Each grid holds the individual maps alone, without the first 'unified' map panel labeled `all` (or `pangenome`).
-
-Here is a simple example of the output file structure produced with `--name-files` and `--categorize-files` in the course of `anvi-self-test --suite kegg-mapping` (with the `-o` option to save the temporary directories in the test from removal).
-
-![Output options](../../images/anvi-draw-kegg-pathways/output_options.png){:.center-img .width-50}
 
 ### Gathering files by map
 
 `--draw-individual-files` writes one subdirectory per data source, each holding that source's whole set of maps. That is the right arrangement for reading everything about one sample, and the wrong one for comparing a single map across samples, which means opening one file in each of those subdirectories. The `--collate-files-by-map` flag adds the transposed view: a subdirectory named after each map, holding one file per source, named after the source.
 
-With samples `A` through `E`, `by_map/ko00010` holds `A.pdf` through `E.pdf`, `by_map/ko00020` holds another five files, and so on. Selecting everything in one of those subdirectories and stepping through it with a file browser's preview shows the colors of a single map changing from sample to sample, like an animation. Files are sorted by the name of their source, so name your samples in the order in which you would like to step through them.
+With samples `A` through `E`, `by_map/ko00010` holds `A.pdf` through `E.pdf`, `by_map/ko00020` holds another five files, and so on. Selecting everything in one of those subdirectories and stepping through it with a file browser's preview shows the colors of a single map changing from sample to sample, like an animation. Files are sorted by the name of their source, so samples should be named in the order they will be stepped through.
 
 This is a second arrangement of the same files rather than a replacement: the subdirectory per source stays where it is, and the gathered files are links to the maps already drawn there, so they take up no disk space of their own. `--name-files` and `--categorize-files` apply here as they do elsewhere in the output, so with both of them a gathered map would be found at, say, `by_map/Metabolism/Carbohydrate_metabolism/ko00010_Glycolysis_Gluconeogenesis/SAMPLE_1.pdf`.
+
 
 ## Mapping reaction and compound occurrence
 
