@@ -314,6 +314,13 @@ body {
     z-index: 10;
 }
 
+/* the viewer cells are positioned and come later in the page, so without this
+   the 3D canvases paint over the title panel and its reopening tab */
+#title-panel,
+#toggle-panel-top {
+    z-index: 5;
+}
+
 /* each viewer cell is the positioning context for its own group title and
    fullscreen button, which would otherwise anchor to the window */
 #ngl-container > div {
