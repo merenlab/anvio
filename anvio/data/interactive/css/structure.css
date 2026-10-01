@@ -149,9 +149,11 @@ body {
     margin-right: 10px;
 }
 
+/* the group name and the fullscreen button sit on the viewer's bottom edge,
+   the one place the title panel never reaches */
 .ngl-group-title {
     position: absolute;
-    top: 0px;
+    bottom: 0px;
     left: 0px;
     right: 0px;
     text-align: center;
@@ -165,7 +167,7 @@ body {
 .ngl-group-fullscreen {
     position: absolute;
     right: 15px;
-    top: 5px;
+    bottom: 5px;
 }
 
 /* a row of short controls (checkboxes, small inputs, colour swatches), each
