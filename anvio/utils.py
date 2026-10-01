@@ -11,6 +11,7 @@ try:
     import os
     import sys
     import ssl
+    import json
     import yaml
     import gzip
     import time
@@ -46,7 +47,7 @@ try:
     from anvio.sequence import Composition
     from anvio.version import versions_for_db_types
     from anvio.errors import ConfigError, FilesNPathsError
-    from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode
+    from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
 except ModuleNotFoundError as e:
     # Extract just the module name from "No module named 'modulename'"
     module_name = str(e).split("'")[1] if "'" in str(e) else str(e)
@@ -1221,6 +1222,11 @@ def is_all_npm_packages_installed():
     # Check if node_modules exists and is not empty
     node_modules_path = os.path.join(interactive_dir_path, 'node_modules')
 
+    def show_npm_install_commands():
+        run.info_single(f"1) cd {interactive_dir_path}", level=0, overwrite_verbose=True)
+        run.info_single("2) npm install", level=0, overwrite_verbose=True)
+        run.info_single("3) cd -", level=0, overwrite_verbose=True)
+
     if not os.path.exists(node_modules_path) or not os.listdir(node_modules_path):
         run.warning("Anvi'o recently changed its use of external libraries for interactive interfaces"
                     "from git submodules to npm packages. Your current setup does not seem to have the "
@@ -1230,14 +1236,30 @@ def is_all_npm_packages_installed():
                     "on GitHub or Discord since this is a new feature and some hiccups may occur.",
                     header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True,
                     lc='yellow')
-        run.info_single(f"1) cd {interactive_dir_path}", level=0, overwrite_verbose=True)
-        run.info_single("2) npm install", level=0, overwrite_verbose=True)
-        run.info_single("3) cd -", level=0, overwrite_verbose=True)
+        show_npm_install_commands()
 
         raise ConfigError("Some npm packages seem to be missing in your interactive directory. "
                           "Please run 'npm install' in the interactive directory and try again.")
-    else:
-        return True
+
+    # Check if every package listed in package.json is in node_modules, since a node_modules
+    # directory from an earlier `npm install` lacks the packages added to anvi'o after it
+    with open(os.path.join(interactive_dir_path, 'package.json')) as package_json:
+        dependencies = json.load(package_json).get('dependencies', {})
+
+    missing_packages = [p for p in dependencies if not os.path.exists(os.path.join(node_modules_path, p, 'package.json'))]
+
+    if missing_packages:
+        run.warning(f"Your interactive directory is missing {pluralize('npm package', len(missing_packages))} "
+                    f"that anvi'o interfaces need: {', '.join(missing_packages)}. This happens when anvi'o "
+                    f"starts using a new library after your last `npm install`. If you run the commands below "
+                    f"in your terminal, you will most likely be fine :)",
+                    header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True, lc='yellow')
+        show_npm_install_commands()
+
+        raise ConfigError("Some npm packages seem to be missing in your interactive directory. "
+                          "Please run 'npm install' in the interactive directory and try again.")
+
+    return True
 
 
 def HTMLColorToRGB(colorstring, scaled=True):
