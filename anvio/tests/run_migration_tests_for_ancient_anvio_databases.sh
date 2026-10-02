@@ -4,7 +4,7 @@ set -e
 
 # this is necessary for any system that will run these tests
 # due to some historical crap:
-python -m pip install h5py
+python -m pip install --upgrade "h5py>=3.12"
 
 # Setup #############################
 SETUP_WITH_OUTPUT_DIR $1 $2 $3
