@@ -657,19 +657,16 @@ def get_args() -> Namespace:
         '--reaction-value-limits', nargs=2, metavar='LIMIT', help=
         "Limits on the values that the reaction layer's color scale spans on the 'unified' map, "
         "given as a minimum and then a maximum, either of which can be the word 'none' to leave "
-        "that end where the data puts it. For instance, '--reaction-value-limits -6 none' stops "
-        "the scale at -6 from below and lets it run up to whatever the values reach. A limit only "
-        "takes effect where the values actually cross it: it does nothing to a scale whose values "
-        "all sit inside it. Where a limit does truncate, every element past it takes the color of "
-        "that end of the scale, and the colorbar labels on that end are labeled with '<=' or '>=' "
-        "so a reader can tell that its color stands for that value or anything beyond it rather "
-        "than for the value alone. The limits are read in the units of the colorbar, which are the "
-        "values of map elements once both reductions have been applied "
-        "('--reaction-gene-aggregation' and then '--reaction-accession-aggregation'), so with the "
-        "default of 'sum' at the accession level a single element standing for a dozen KOs may sit "
-        "well past any one value in the file. Note that these limits are an entirely different "
-        "thing from the two decimals '--reaction-colormap' accepts, which choose what fraction of "
-        "the colormap to sample and say nothing at all about the values."
+        "that end where the data puts it. For instance, '--reaction-value-limits -6 none' starts "
+        "the scale at -6 and lets it run up to whatever the values reach. A limit sets its end of "
+        "the scale whether or not any value reaches it. Every element past a limit takes the color "
+        "of that end of the scale. The colorbar labels each limit. Where values lie past a limit, "
+        "the label at the limit is marked '<=' or '>='. This tells a reader that the color stands "
+        "for that value or anything beyond it, rather than for the value alone. The limits are "
+        "read in the units of the colorbar, which are the values of map elements once both "
+        "reductions have been applied ('--reaction-gene-aggregation' and then "
+        "'--reaction-accession-aggregation'), so with the default of 'sum' at the accession level, "
+        "a single element standing for a dozen KOs may sit well past any one value in the file."
     )
     groupCOLOR.add_argument(
         '--reaction-category-value-limits', nargs=2, metavar='LIMIT', help=
@@ -707,7 +704,9 @@ def get_args() -> Namespace:
         f"narrowed: it is adjusted to run the same distance on either side of the center, reaching "
         f"as far as the farther of its two ends did — nothing is clipped that was not clipped "
         f"before with '--*-value-limits' arguments. The price is that the shorter side of the "
-        f"colormap goes partly unused."
+        f"colormap goes partly unused. Centering never moves an end set by "
+        f"'--reaction-value-limits'. A center that would move one is refused. With both limits "
+        f"given, the center has to be their midpoint."
     )
     groupCOLOR.add_argument(
         '--reaction-category-value-center', nargs='?', const=VALUE_CENTER_DEFAULT, metavar='VALUE',

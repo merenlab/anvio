@@ -294,16 +294,16 @@ GROUP_SCHEME_OPTIONS = {
 # between neighbors is invisible and the bar matches the colors drawn on the map.
 GROUP_RAMP_COLORMAP_SIZE = 256
 
-# What labels the end of a color scale that a value limit truncated ('_make_quantitative_norm'). The
-# color there stands for that value or anything past it, since everything beyond the limit is drawn
-# in it, and a bare number would claim the color means that value exactly.
+# What marks the label of a value limit that values lie past ('_make_quantitative_norm'). Everything
+# beyond the limit is drawn in the color at that end of the scale. The color there therefore stands
+# for that value or anything past it. A bare number would claim it means that value exactly.
 CLAMPED_MIN_PREFIX = '≤ '
 CLAMPED_MAX_PREFIX = '≥ '
 
-# How close to a truncated end of a continuous colorbar, as a fraction of the bar, an automatic tick
-# may fall before it is dropped in favor of the label marking that end ('draw_continuous'). The two
-# would otherwise be set almost on top of each other, and the '≤'/'≥' label is the one a reader
-# needs, so it is the one that stays.
+# How close to a limit or center labeled on a continuous colorbar, as a fraction of the bar, an
+# automatic tick may fall before it is dropped ('draw_continuous'). The two labels would otherwise
+# be set almost on top of each other. The label of the limit or center is the one a reader needs, so
+# it is the one that stays.
 MIN_TICK_SEPARATION_FRACTION = 0.08
 
 # Subdirectories of the output directory, one per role a map file can have: the map unifying every
@@ -1448,10 +1448,10 @@ class Mapper:
         """
         Validate the limits a color scale of values may span.
 
-        A limit truncates a scale only where the values cross it ('_make_quantitative_norm'), so
-        either end can be left open with None. A pair leaving both ends open would do nothing at
-        all, which is likelier a mistake than an intention, and so is refused rather than accepted
-        in silence.
+        A limit sets that end of a scale, whether or not any value reaches it
+        ('_make_quantitative_norm'). Either end can be left open with None. The values then set it.
+        A pair leaving both ends open would do nothing at all, which is likelier a mistake than an
+        intention, and so is refused rather than accepted in silence.
 
         Parameters
         ==========
@@ -1510,11 +1510,40 @@ class Mapper:
         return limit_min, limit_max
 
     @staticmethod
+    def _format_accepted(number: float, accepted: Callable[[float], bool]) -> str:
+        """
+        Format a number that a message suggests, in as few digits as the check on it accepts.
+
+        A user may type a suggested number back in as it was printed. Six significant digits, as
+        ':g' prints, can round it to a value that the same check refuses. More digits are then used,
+        up to the full precision of a float.
+
+        Parameters
+        ==========
+        number : float
+            The number to suggest.
+
+        accepted : Callable[[float], bool]
+            Whether the check the number is suggested for accepts a value.
+
+        Returns
+        =======
+        str
+            The number in the fewest significant digits, from six up, that the check accepts.
+        """
+        for precision in range(6, 18):
+            text = f'{number:.{precision}g}'
+            if accepted(float(text)):
+                return text
+        return repr(number)
+
+    @staticmethod
     def _resolve_value_center(
         center: Union[float, str, None],
         flag: str,
         limits: Union[Tuple[Union[float, None], Union[float, None]], None] = None,
-        limits_flag: Union[str, None] = None
+        limits_flag: Union[str, None] = None,
+        from_normalization: bool = False
     ) -> Union[float, None]:
         """
         Validate the value a color scale is centered on.
@@ -1523,13 +1552,16 @@ class Mapper:
         ('_make_quantitative_norm'), which puts it at the middle of the colormap however lopsided
         the values around it are. A center lying outside the limits bounding the same scale is
         refused here, before any value is read: those limits declare it out of the scale's reach, so
-        centering that scale on it cannot be what was meant.
+        centering that scale on it cannot be what was meant. A center on a limit is refused too.
+        Neither end of a centered scale can lie on its center. A center between two limits is
+        refused unless it is their midpoint. Each limit sets its end of the scale, so the two leave
+        nothing for centering to widen.
 
         Parameters
         ==========
         center : Union[float, str, None]
-            The value requested at the middle of the scale, or None for a scale centered wherever
-            its own values leave it.
+            The value requested at the middle of the scale, or None for a scale left where its
+            values and any limits set it.
 
         flag : str
             The command-line flag the center comes from, used in error messages.
@@ -1540,6 +1572,11 @@ class Mapper:
 
         limits_flag : Union[str, None], None
             The command-line flag those limits come from, used in an error message.
+
+        from_normalization : bool, False
+            If True, a normalization supplied the center rather than the user. A message then does
+            not suggest moving the center. The center is the normalization's neutral value. Nobody
+            gave it by hand.
 
         Returns
         =======
@@ -1563,20 +1600,63 @@ class Mapper:
             )
         if limits is not None:
             limit_min, limit_max = limits
+
+            def advice(end_noun: str) -> str:
+                # A center from a normalization was not given by hand, so only the limit is named.
+                return (
+                    f"Please move the {end_noun}, or leave that end open." if from_normalization
+                    else "Please move one of the two."
+                )
+
             if limit_min is not None and number < limit_min:
                 raise ConfigError(
                     f"'{flag}' centers a color scale on {number:g}, while '{limits_flag}' gives "
                     f"that same scale a minimum of {limit_min:g}, which lies above it. A scale "
-                    f"cannot be centered on a value it is not allowed to reach. Please move one of "
-                    f"the two."
+                    f"cannot be centered on a value it is not allowed to reach. "
+                    f"{advice('minimum')}"
                 )
             if limit_max is not None and number > limit_max:
                 raise ConfigError(
                     f"'{flag}' centers a color scale on {number:g}, while '{limits_flag}' gives "
                     f"that same scale a maximum of {limit_max:g}, which lies below it. A scale "
-                    f"cannot be centered on a value it is not allowed to reach. Please move one of "
-                    f"the two."
+                    f"cannot be centered on a value it is not allowed to reach. "
+                    f"{advice('maximum')}"
                 )
+            for limit, end_noun in ((limit_min, 'minimum'), (limit_max, 'maximum')):
+                if limit is not None and number == limit:
+                    raise ConfigError(
+                        f"'{flag}' centers a color scale on {number:g}, while '{limits_flag}' sets "
+                        f"the {end_noun} of that same scale at {limit:g} as well. A centered scale "
+                        f"runs the same distance either side of its center. Neither of its ends "
+                        f"can lie on the center. {advice(end_noun)}"
+                    )
+            # The midpoint is compared within a tolerance scaled to the span of the limits. A center
+            # typed as the midpoint of two decimals can differ from their computed midpoint in the
+            # last digit.
+            if limit_min is not None and limit_max is not None:
+                midpoint = (limit_min + limit_max) / 2
+                tolerance = 1e-9 * (limit_max - limit_min)
+                if abs(number - midpoint) > tolerance:
+                    # The given numbers are printed exactly, so that none of them prints the same
+                    # as the midpoint without being it.
+                    number_text, min_text, max_text = (
+                        Mapper._format_accepted(given, lambda value, given=given: value == given)
+                        for given in (number, limit_min, limit_max)
+                    )
+                    midpoint_text = Mapper._format_accepted(
+                        midpoint, lambda value: abs(value - midpoint) <= tolerance
+                    )
+                    move_clause = (
+                        '' if from_normalization else f"move the center to {midpoint_text}, "
+                    )
+                    raise ConfigError(
+                        f"'{flag}' centers a color scale on {number_text}, while '{limits_flag}' "
+                        f"sets both ends of that same scale, at {min_text} and {max_text}. A "
+                        f"centered scale runs the same distance either side of its center. With "
+                        f"both ends set, it can only be centered on their midpoint, "
+                        f"{midpoint_text}. Please {move_clause}give limits that lie the same "
+                        f"distance either side of {number_text}, or leave one of the two ends open."
+                    )
         return number
 
     @staticmethod
@@ -1886,7 +1966,7 @@ class Mapper:
         )
         category_value_center = self._resolve_value_center(
             category_value_center, category_center_source_flag, category_value_limits,
-            category_value_limits_flag
+            category_value_limits_flag, from_normalization=center_from_normalization
         )
         if value_column is None:
             for setting, flag, verb in (
@@ -2129,7 +2209,9 @@ class Mapper:
             'value_limits': value_limits,
             'category_value_limits': category_value_limits,
             'value_center': value_center,
-            'category_value_center': category_value_center
+            'category_value_center': category_value_center,
+            # A center that a normalization supplied is reported under the normalization's flag.
+            'category_value_center_flag': category_center_source_flag
         }
 
         if value_column is None:
@@ -2486,9 +2568,9 @@ class Mapper:
 
         reaction_value_limits : Tuple[Union[float, None], Union[float, None]], None
             The (minimum, maximum) the reaction layer's color scale may span on the 'unified' map,
-            either end of which can be None to leave it wherever the values put it. A limit
-            truncates the scale only where the values cross it, and the colorbar then marks that end
-            '<=' or '>=' ('_make_quantitative_norm').
+            either end of which can be None to leave it wherever the values put it. A limit sets
+            that end of the scale. The colorbar labels the limit. It marks the limit '<=' or '>='
+            where values lie past it ('_make_quantitative_norm').
 
         reaction_category_value_limits : Tuple[Union[float, None], Union[float, None]], None
             The same limits for the scale shared by the reaction layer's per-sample or per-group
@@ -2505,8 +2587,8 @@ class Mapper:
             The value put at the middle of the reaction layer's color scale on the 'unified' map.
             The scale then runs the same distance either side of it, so that the middle color of a
             diverging colormap stands for this value however lopsided the values around it are
-            ('_make_quantitative_norm'). The default of None leaves the scale spanning its own
-            values from end to end.
+            ('_make_quantitative_norm'). The default of None leaves the scale where its values and
+            any limits set it.
 
         reaction_category_value_center : Union[float, None], None
             The same center for the scale shared by the reaction layer's per-sample or per-group
@@ -3914,21 +3996,21 @@ class Mapper:
         """
         Make a normalization over reaction values for quantitative coloring.
 
-        'limits' truncate the range the scale spans, but only where the values actually cross them:
-        a limit no value passes leaves the scale exactly where the values put it, so that a limit
-        set to guard against a long tail does not stretch a scale that turns out not to have one.
-        Where a limit does truncate, every value beyond it takes the color of that end of the scale,
-        which 'clip=True' on the normalization arranges, and the caller labels that end of the
-        colorbar '<=' or '>=' so that its color reads as "this value or past it" rather than as an
-        exact value.
+        Each of the 'limits' sets that end of the scale, whether or not any value reaches it. An end
+        left as None is set by the values. A limit keeps its end the same from run to run. With both
+        ends set, a color means the same value on maps drawn from different data. Every value past a
+        limit takes the color of that end of the scale, which 'clip=True' on the normalization
+        arranges. The caller then labels that end of the colorbar '<=' or '>=', so that its color
+        reads as "this value or past it" rather than as an exact value.
 
         'center' then widens whichever side of the range falls short, until the range runs the same
         distance either side of it. That is what puts the centered value at the middle of the
         colormap — the neutral color of a diverging one — however lopsided the values around it are,
         and it keeps the scale linear, so that the same distance in color goes on meaning the same
-        distance in value on either side. Widening comes after truncating, so a limit that was
-        holding a tail in check can be pushed past by the other side of the range; that undoes what
-        the limit was asked to do, and is refused rather than carried out quietly.
+        distance in value on either side. Widening can only move an end that the values set. Moving
+        a limit would undo what the limit was asked to do, so it is refused rather than carried out
+        quietly. Two limits leave no end to move. '_resolve_value_center' has already refused a
+        center that is not their midpoint, so such a scale is used as the limits set it.
 
         Parameters
         ==========
@@ -3937,8 +4019,8 @@ class Mapper:
 
         limits : Union[Tuple[Union[float, None], Union[float, None]], None], None
             The (minimum, maximum) the scale may span, as '_resolve_value_limits' returns them.
-            Either end can be None to leave it wherever the values put it, and None means the scale
-            is not limited at all.
+            Either end can be None to leave it wherever the values put it. None means the scale is
+            not limited at all.
 
         flag : Union[str, None], None
             The command-line flag 'limits' came from, used in an error message.
@@ -3957,40 +4039,51 @@ class Mapper:
         =======
         Tuple[Union[matplotlib.colors.Normalize, None],
               Union[float, None], Union[float, None], bool, bool]
-            The normalization, its (vmin, vmax), and whether values fall below the bottom and above
-            the top of the range, which is where the colorbar is marked '<=' or '>='. The first
-            three are None if 'values' is empty. The normalization is None but vmin and vmax are set
-            (and equal) if the range is a single value, degenerate because all values are equal,
-            because a limit landed on the far end of them, or because a centered scale has nothing
-            but its own center to span, in which case callers map every reaction to one end of the
-            colormap, or to its middle where the scale is centered.
+            Five values:
+            - The normalization.
+            - vmin, the bottom of the scale.
+            - vmax, the top of the scale.
+            - Whether some value lies below the minimum limit. The colorbar then marks vmin '<='.
+            - Whether some value lies above the maximum limit. The colorbar then marks vmax '>='.
+
+            With no values, the first three are None and both flags are False.
+
+            The normalization is also None where the scale is a single value. vmin then equals vmax.
+            This happens in three cases:
+            - No limit or center is given, and every value is the same.
+            - The one limit given lies on the far end of the values.
+            - A center is given, and every value equals it.
+            Callers then give every element the top color of the colormap. Where the scale is
+            centered, they give it the middle color instead.
         """
         if not values:
             return None, None, None, False, False
-        vmin = data_min = min(values)
-        vmax = data_max = max(values)
+        data_min = min(values)
+        data_max = max(values)
         limit_min, limit_max = (None, None) if limits is None else limits
-        if limit_min is not None and data_min < limit_min:
-            vmin = limit_min
-        if limit_max is not None and data_max > limit_max:
-            vmax = limit_max
-        if vmin > vmax:
-            # A limit lies past the far end of the values, so nothing is left between the two ends
-            # of the scale for it to span. Only one of the two limits can be at fault: a pair whose
-            # minimum is below its maximum ('_resolve_value_limits') can miss the values only by
-            # sitting wholly to one side of them, so the end that does is the one named.
+        vmin = data_min if limit_min is None else limit_min
+        vmax = data_max if limit_max is None else limit_max
+        if (limit_min is not None and limit_min > data_max) or (
+            limit_max is not None and limit_max < data_min
+        ):
+            # Every value lies past one limit, so every element would take the color at that end of
+            # the scale. Only one of the two limits can be at fault: a pair whose minimum is below
+            # its maximum ('_resolve_value_limits') can miss the values only by sitting wholly to
+            # one side of them, so the end that does is the one named.
             if limit_min is not None and limit_min > data_max:
                 end_noun, limit, side, remedy = 'minimum', limit_min, 'below', f'below {data_max:g}'
             else:
                 end_noun, limit, side, remedy = 'maximum', limit_max, 'above', f'above {data_min:g}'
             raise ConfigError(
                 f"'{flag}' was given a {end_noun} of {limit:g}, but every value coloring these "
-                f"maps falls {side} it -- they run from {data_min:g} to {data_max:g}. That leaves "
-                f"the color scale nothing to span: every element would take the same end color, "
-                f"and the map could not tell one from another. Please set the {end_noun} {remedy}, "
-                f"or drop the limits."
+                f"maps falls {side} it -- they run from {data_min:g} to {data_max:g}. Every "
+                f"element would therefore take the color at that end of the scale. The map could "
+                f"not tell one from another. Please set the {end_noun} {remedy}, or drop the "
+                f"limits."
             )
-        if center is not None:
+        # Two limits set both ends. The center is their midpoint ('_resolve_value_center'), so there
+        # is nothing for centering to do.
+        if center is not None and (limit_min is None or limit_max is None):
             # The farther of the two ends from the center sets how far the scale reaches on both
             # sides. Only one of the two distances can be negative, which happens when the whole
             # range lies to one side of the center, so the larger of them is never negative.
@@ -3998,51 +4091,81 @@ class Mapper:
             high_distance = vmax - center
             half_range = max(low_distance, high_distance)
             centered_min, centered_max = center - half_range, center + half_range
+
+            def moves_end(distance: float, far_distance: float) -> bool:
+                # Centering leaves the farther end exactly where it is and stretches only the nearer
+                # one out to match. An end is moved if it is the nearer one by more than rounding
+                # error. A limit typed at the centered end can differ from it in the last digit.
+                reach = max(distance, far_distance)
+                return reach - distance > 1e-9 * reach
+
             for (
-                limit, distance, centered_end, data_end, end_noun, other_end_noun, comparison,
+                limit, distance, far_distance, centered_end, end_noun, other_end_noun, comparison,
                 loosen_verb
             ) in (
                 (
-                    limit_min, low_distance, centered_min, data_min, 'minimum', 'maximum', 'below',
-                    'lower'
+                    limit_min, low_distance, high_distance, centered_min, 'minimum', 'maximum',
+                    'below', 'lower'
                 ),
                 (
-                    limit_max, high_distance, centered_max, data_max, 'maximum', 'minimum', 'above',
-                    'raise'
+                    limit_max, high_distance, low_distance, centered_max, 'maximum', 'minimum',
+                    'above', 'raise'
                 )
             ):
-                # A limit is undone here only when two things are both true. It has to have been
-                # truncating something to begin with: a limit no value crossed is doing nothing
-                # already, by design, so centering takes nothing away from it. And this end has to
-                # be the nearer of the two to the center, since centering leaves the farther end
-                # exactly where it is and stretches only the nearer one out to match. That is what
-                # 'half_range > distance' asks, of the distances rather than of the widened end, so
-                # that no end has to be recomputed to answer it.
-                if limit is None:
+                if limit is None or not moves_end(distance, far_distance):
                     continue
-                truncating = data_end < limit if comparison == 'below' else data_end > limit
-                if not (truncating and half_range > distance):
-                    continue
-                # The two ways out that keep a limit are worth working out for the user rather than
-                # describing: where the centered scale ends, which is as far as this limit can be
-                # moved, and the mirror of the limit about the center, which is the other limit that
-                # would truncate a centered scale evenly.
+                # The changes that keep a limit are worth working out for the user rather than
+                # describing. One is where the centered scale ends, which is as far as this limit
+                # can be moved. The other is the mirror of the limit about the center. That is the
+                # other limit that would set a centered scale at both ends. It is offered only where
+                # some value lies short of it, since otherwise every element would take the color
+                # at that end. Each suggested number is printed in enough digits that typing it back
+                # in works. The given numbers are printed exactly. No two numbers then print the
+                # same without being the same.
+                def short_of_data(value: float) -> bool:
+                    return value > data_min if comparison == 'below' else value < data_max
+
+                end_text = self._format_accepted(
+                    centered_end,
+                    lambda value: not moves_end(
+                        center - value if comparison == 'below' else value - center, far_distance
+                    )
+                )
                 mirrored = 2 * center - limit
+                mirror_fits = short_of_data(mirrored)
+                mirror_text = self._format_accepted(
+                    mirrored,
+                    lambda value: short_of_data(value)
+                    and abs(center - (limit + value) / 2) <= 1e-9 * abs(value - limit)
+                )
+                limit_text, center_text = (
+                    self._format_accepted(given, lambda value, given=given: value == given)
+                    for given in (limit, center)
+                )
+                changes = [
+                    f"{loosen_verb.capitalize()} the {end_noun} to {end_text}, which is where a "
+                    f"centered scale ends here."
+                ]
+                if mirror_fits:
+                    changes.append(
+                        f"Or give the scale a {other_end_noun} of {mirror_text} as well, the same "
+                        f"distance from {center_text} as the {end_noun}."
+                    )
+                changes.append(f"Or drop the {end_noun} and let the values set that end.")
                 other_end = vmax if comparison == 'below' else vmin
                 raise ConfigError(
-                    f"'{flag}' gives the color scale of {subject} a {end_noun} of {limit:g}, which "
-                    f"truncates values reaching {data_end:g}, while '{center_flag}' centers that "
-                    f"same scale on {center:g}. The two cannot both be had: with its other end at "
-                    f"{other_end:g}, a scale centered on {center:g} has its {end_noun} at "
-                    f"{centered_end:g}, which lies {comparison} the limit and undoes the "
-                    f"truncation the limit was for. Three things would settle it: {loosen_verb} "
-                    f"the {end_noun} to {centered_end:g}, which is where a centered scale ends "
-                    f"here; give the scale a {other_end_noun} of {mirrored:g} as well, the same "
-                    f"distance from {center:g} as the {end_noun}, which truncates a centered scale "
-                    f"at both ends; or drop the {end_noun} and let that end fall where the values "
-                    f"put it."
+                    f"'{flag}' sets the {end_noun} of the color scale of {subject} at "
+                    f"{limit_text}, while '{center_flag}' centers that same scale on "
+                    f"{center_text}. The two conflict. The values put the other end of the scale "
+                    f"at {other_end:g}. A scale centered on {center_text} would then have its "
+                    f"{end_noun} at {end_text}, which lies {comparison} the limit. "
+                    f"{'Three' if mirror_fits else 'Two'} changes would settle it. "
+                    f"{' '.join(changes)}"
                 )
-            vmin, vmax = centered_min, centered_max
+            # A limit stays exactly where it was given. The centered end can differ from it by
+            # rounding error.
+            vmin = centered_min if limit_min is None else limit_min
+            vmax = centered_max if limit_max is None else limit_max
             # A scale that came out with nothing to span at all is a single band on the center
             # itself, where there is no unused half to speak of.
             if half_range > 0 and (data_min >= center or data_max <= center):
@@ -4057,13 +4180,13 @@ class Mapper:
                     f"into the other half. This may well be what you intend — it is what keeps one "
                     f"scale comparable across datasets that straddle the center to different "
                     f"degrees — but if the values here are not meant to be read against that "
-                    f"center, drop the option and let the scale span the values themselves."
+                    f"center, drop the option. The values and any limits then set the scale."
                 )
-        # Which ends the colorbar marks is asked of the range that ended up being drawn, so that a
-        # mark means what it says: values do lie past this end. Centering can widen a truncated end
-        # past every value, at which point there is nothing beyond it to mark.
-        clamped_low = data_min < vmin
-        clamped_high = data_max > vmax
+        # Only a limit can be marked, and only where values do lie past it. Centering can leave an
+        # end the values set a rounding error short of them. Each limit is therefore compared with
+        # the values, rather than the end of the range.
+        clamped_low = limit_min is not None and data_min < limit_min
+        clamped_high = limit_max is not None and data_max > limit_max
         if vmin == vmax:
             return None, vmin, vmax, clamped_low, clamped_high
         norm = mcolors.Normalize(vmin=vmin, vmax=vmax, clip=True)
@@ -4240,6 +4363,8 @@ class Mapper:
         out_path: str,
         label: str,
         integer_ticks: bool = False,
+        limited_low: bool = False,
+        limited_high: bool = False,
         clamped_low: bool = False,
         clamped_high: bool = False,
         center: Union[float, None] = None
@@ -4269,9 +4394,15 @@ class Mapper:
             If True, label the bar at whole numbers spanning the range rather than at Matplotlib's
             automatic ticks, for a range that counts things rather than measuring them.
 
+        limited_low : bool, False
+            If True, a value limit set the bottom of the range, so 'vmin' is labeled.
+
+        limited_high : bool, False
+            The same for the top of the range and 'vmax'.
+
         clamped_low : bool, False
-            If True, a value limit truncated the bottom of the range, so values below 'vmin' are
-            drawn in the color at that end and its label is marked accordingly.
+            If True, values lie below the limit at the bottom of the range. They are drawn in the
+            color at that end, and its label is marked accordingly.
 
         clamped_high : bool, False
             The same for the top of the range and values above 'vmax'.
@@ -4296,7 +4427,8 @@ class Mapper:
         else:
             self.colorbar_drawer.draw_continuous(
                 cmap, vmin, vmax, out_path, label=label, integer_ticks=integer_ticks,
-                clamped_low=clamped_low, clamped_high=clamped_high, center=center
+                limited_low=limited_low, limited_high=limited_high, clamped_low=clamped_low,
+                clamped_high=clamped_high, center=center
             )
 
     def _map_elements(
@@ -4345,32 +4477,69 @@ class Mapper:
         Parameters
         ==========
         layers : List[dict]
-            One or two layer models, ordered so layers drawn beneath others come first (reaction
-            before compound). Common keys: 'name' (colorbar filename stem), 'accessions' (every
-            accession the layer touches, used to find the entries it colors), 'element_type'
-            ('reaction'/'compound'), and 'use_reaction_attribute' (bool). A layer declares its
-            per-context modes with 'unified_mode' and 'category_mode', or a single 'mode' used in
-            every context (except that a 'static'/'original' layer renders as within-group source
-            counts on grouped individual maps). Mode-specific keys: quantitative -> 'cmap',
-            'reverse_overlay', 'unified_values', 'category_values' (or None), 'aggregate',
-            'colorbar_label', the optional 'value_limits'/'category_value_limits' bounding each
-            context's scale and 'value_center'/'category_value_center' putting a value at the middle
-            of it ('_make_quantitative_norm'), the optional 'category_cmap' coloring the
-            per-category scale from a colormap of its own rather than from 'cmap', the optional
-            'element_normalize' rescaling each category's value for an element against all of them
-            ('_normalize_entry_value'), and 'category_colorbar_label' naming what the per-category
-            scale then shows, which a normalization makes a quantity of another kind entirely;
-            membership/static/original -> 'membership', 'source_accessions', 'color_hexcode', and
-            (membership) 'colormap'/'colormap_limits'/'colormap_scheme'/'scheme_options'/
-            'reverse_overlay'; single -> 'accessions', 'color_hexcode'. 'scheme_options' names the
-            option that chooses this layer's presence scheme, which differs by input
-            ('PRESENCE_SCHEME_OPTIONS'). A layer that is quantitative in one context and membership
-            in the other carries the keys of both, plus 'accessions' for finding the entries whose
-            values set the ranges. A membership layer may carry a color per category instead of a
-            colormap, as 'category_colors' with the 'category_combo_colors' overriding combinations
-            of them and the 'category_colors_flag' they came from; those colors then color the
-            membership scale and each category's own map, and are checked against the categories
-            here.
+            One or two layer models. They are ordered from the bottom layer to the top one, so a
+            reaction layer comes before a compound layer. The keys a model needs depend on how it
+            colors its elements in each context.
+
+            Every layer has these keys:
+            - 'name': the stem of its colorbar file names.
+            - 'element_type': 'reaction' or 'compound'.
+            - 'use_reaction_attribute': True if its accessions are KEGG reaction IDs rather than KO
+              IDs.
+
+            A text file layer gives its mode for the 'unified' map as 'unified_mode', and its mode
+            for the individual maps as 'category_mode'. A database or pangenome layer gives one
+            'mode' for both. The exception is a 'static' or 'original' layer. Its individual maps
+            are colored by 'membership'.
+
+            A 'quantitative' layer needs these keys:
+            - 'accessions': every accession the layer touches. They find the map entries whose
+              values set the range of each scale.
+            - 'unified_values': the value of each accession on the 'unified' map.
+            - 'category_values': the value of each accession in each category, or None for a layer
+              that has no categories. Its individual maps then use 'unified_values'.
+            - 'aggregate': reduces the values of an element's accessions to one value.
+            - 'cmap': the colormap.
+            - 'reverse_overlay': True to draw lower values on top of higher ones.
+            - 'colorbar_label': the label of the colorbar.
+
+            A 'quantitative' layer can also have these keys:
+            - 'category_cmap': the colormap of the individual maps. It defaults to 'cmap'.
+            - 'value_limits' and 'category_value_limits': the limits of the 'unified' map's scale
+              and of the individual maps' scale ('_make_quantitative_norm').
+            - 'value_center' and 'category_value_center': the centers of the same two scales.
+            - 'category_value_center_flag': the option that the individual maps' center came from.
+            - 'element_normalize': rescales each category's value for an element against the
+              values of all categories ('_normalize_entry_value').
+            - 'category_colorbar_label': the label of the individual maps' colorbar. It defaults to
+              'colorbar_label'. A normalization makes the scale show a different quantity, so it
+              needs its own label.
+
+            A 'membership' layer needs these keys:
+            - 'membership': the sources that contain each accession.
+            - 'source_accessions': the accessions of each source.
+            - 'color_hexcode': the color of an individual source's map.
+
+            A 'membership' layer can also have these keys:
+            - 'colormap', 'colormap_limits', 'colormap_scheme' and 'reverse_overlay', which set
+              how presence is colored.
+            - 'scheme_options': the option that chooses the presence scheme, which differs by input.
+              It defaults to 'PRESENCE_SCHEME_OPTIONS'.
+            - 'category_colors': a color for each category, in place of a colormap. These colors
+              color the membership scale and each category's own map. They are checked against the
+              categories here.
+            - 'category_combo_colors': colors for combinations of categories, which override the
+              mix of 'category_colors'. It is needed with 'category_colors'.
+            - 'category_colors_flag': the option that 'category_colors' came from. It is needed
+              with 'category_colors'.
+
+            A 'static' or 'original' layer needs 'membership', 'source_accessions' and
+            'color_hexcode'. 'color_hexcode' is 'original' for an 'original' layer.
+
+            A 'single' layer needs 'accessions' and 'color_hexcode'.
+
+            A layer that is 'quantitative' in one context and 'membership' in the other has the keys
+            of both.
 
         output_dir : str
             Path to the output directory in which pathway map and colorbar PDF files are drawn.
@@ -4500,8 +4669,8 @@ class Mapper:
 
         # Limits on, and a center for, the scale the individual maps share have nothing to act on
         # when this run draws no individual map, just as the group-map coloring options have nothing
-        # to act on then. Either one accepted and quietly dropped would look, from the output,
-        # exactly like a limit that did nothing because no value crossed it, so say which it is.
+        # to act on then. Either one accepted and quietly dropped would leave no sign in the output
+        # that it was ignored, so say so instead.
         if not draw_category_maps:
             # A normalization is checked before the limits and the center are, since one centered on
             # zero supplies a center of its own.
@@ -4788,6 +4957,11 @@ class Mapper:
                     )
                     layer['_unified_norm'] = norm
                     layer['_unified_range'] = (vmin, vmax)
+                    # A limit sets its end of the scale, so the colorbar labels every end a limit
+                    # set, and marks those that values lie past.
+                    layer['_unified_limited'] = tuple(
+                        limit is not None for limit in (layer.get('value_limits') or (None, None))
+                    )
                     layer['_unified_clamped'] = (clamped_low, clamped_high)
                     layer['_unified_center'] = layer.get('value_center')
                 if layer['category_mode'] != 'quantitative':
@@ -4797,7 +4971,10 @@ class Mapper:
                         layer['_category_vals'], layer.get('category_value_limits'),
                         f"--{layer['element_type']}-category-value-limits",
                         center=layer.get('category_value_center'),
-                        center_flag=f"--{layer['element_type']}-category-value-center",
+                        center_flag=layer.get(
+                            'category_value_center_flag',
+                            f"--{layer['element_type']}-category-value-center"
+                        ),
                         subject=(
                             f"the {layer['element_type']} layer of the maps of the individual "
                             f"{category_noun}s"
@@ -4805,12 +4982,17 @@ class Mapper:
                     )
                     layer['_category_norm'] = norm
                     layer['_category_range'] = (vmin, vmax)
+                    layer['_category_limited'] = tuple(
+                        limit is not None
+                        for limit in (layer.get('category_value_limits') or (None, None))
+                    )
                     layer['_category_clamped'] = (clamped_low, clamped_high)
                     layer['_category_center'] = layer.get('category_value_center')
                 else:
                     # A layer without a category dimension is constant across the category maps.
                     layer['_category_norm'] = layer['_unified_norm']
                     layer['_category_range'] = layer['_unified_range']
+                    layer['_category_limited'] = layer['_unified_limited']
                     layer['_category_clamped'] = layer['_unified_clamped']
                     layer['_category_center'] = layer['_unified_center']
 
@@ -4987,11 +5169,13 @@ class Mapper:
             if layer['unified_mode'] == 'quantitative' and _unified_scale_drawn(layer):
                 vmin, vmax = layer['_unified_range']
                 if vmin is not None:
+                    limited_low, limited_high = layer['_unified_limited']
                     clamped_low, clamped_high = layer['_unified_clamped']
                     self._draw_quantitative_colorbar(
                         layer['cmap'], vmin, vmax,
                         os.path.join(output_dir, f"colorbar_{layer['name']}.pdf"),
                         layer['colorbar_label'],
+                        limited_low=limited_low, limited_high=limited_high,
                         clamped_low=clamped_low, clamped_high=clamped_high,
                         center=layer['_unified_center']
                     )
@@ -5028,6 +5212,7 @@ class Mapper:
             ):
                 vmin, vmax = layer['_category_range']
                 if vmin is not None:
+                    limited_low, limited_high = layer['_category_limited']
                     clamped_low, clamped_high = layer['_category_clamped']
                     self._draw_quantitative_colorbar(
                         layer['category_cmap'], vmin, vmax,
@@ -5035,6 +5220,7 @@ class Mapper:
                             output_dir, f"colorbar_{layer['name']}_{colorbar_category_suffix}.pdf"
                         ),
                         layer.get('category_colorbar_label', layer['colorbar_label']),
+                        limited_low=limited_low, limited_high=limited_high,
                         clamped_low=clamped_low, clamped_high=clamped_high,
                         center=layer['_category_center']
                     )
@@ -7892,6 +8078,8 @@ class ColorbarDrawer:
         out_path: str,
         label: str = None,
         integer_ticks: bool = False,
+        limited_low: bool = False,
+        limited_high: bool = False,
         clamped_low: bool = False,
         clamped_high: bool = False,
         center: Union[float, None] = None
@@ -7924,10 +8112,18 @@ class ColorbarDrawer:
             are the two values a reader most needs in order to tell what a color stands for. The
             range is assumed to run between whole numbers, as a count does.
 
+        limited_low : bool, False
+            If True, a value limit set the bottom of the range, so 'vmin' is labeled. A limit is a
+            value someone chose, and an automatic tick rarely falls on it.
+
+        limited_high : bool, False
+            The same for the top of the range, labeling 'vmax'.
+
         clamped_low : bool, False
-            If True, a value limit truncated the bottom of the range, so 'vmin' is labeled with
-            'CLAMPED_MIN_PREFIX': its color is what everything below it is drawn in, and a bare
-            number there would claim the color stands for that value alone.
+            If True, values lie below the limit at the bottom of the range, so 'vmin' is labeled
+            with 'CLAMPED_MIN_PREFIX'. Its color is what everything below it is drawn in, and a bare
+            number there would claim the color stands for that value alone. The end is labeled
+            whether or not 'limited_low' is also given.
 
         clamped_high : bool, False
             The same for the top of the range, labeling 'vmax' with 'CLAMPED_MAX_PREFIX'.
@@ -7964,20 +8160,22 @@ class ColorbarDrawer:
                 ticks = list(range(lower, upper, stride)) + [upper]
             cb.set_ticks(ticks)
 
-        if clamped_low or clamped_high or center is not None:
-            # A truncated end is labeled with the value it stops at, marked '≤' or '≥' because its
-            # color is what everything past the limit is drawn in, and a centered range is labeled
-            # at its center, which is otherwise the one place on the bar a reader cannot find. The
-            # rest of the bar keeps Matplotlib's own ticks, run through the bar's own formatter, so
-            # that such a bar is typeset exactly like a plain one; any of them falling all but on
-            # top of one of these labels is dropped, since of the two labels in that spot, this is
-            # the one a reader needs. A tick landing on an end that was NOT marked is kept, which is
-            # what labels that end of the bar.
+        labeled_low = limited_low or clamped_low
+        labeled_high = limited_high or clamped_high
+        if labeled_low or labeled_high or center is not None:
+            # An end set by a limit is labeled with the limit. It is marked '≤' or '≥' where values
+            # lie past it, because its color is what everything past the limit is drawn in. A
+            # centered range is labeled at its center, which is otherwise the one place on the bar a
+            # reader cannot find. The rest of the bar keeps Matplotlib's own ticks, run through the
+            # bar's own formatter, so that such a bar is typeset exactly like a plain one; any of
+            # them falling all but on top of one of these labels is dropped, since of the two labels
+            # in that spot, this is the one a reader needs. A tick landing on an end that was NOT
+            # labeled is kept, which is what labels that end of the bar.
             span = vmax - vmin
             marked = (
-                ([vmin] if clamped_low else [])
+                ([vmin] if labeled_low else [])
                 + ([center] if center is not None else [])
-                + ([vmax] if clamped_high else [])
+                + ([vmax] if labeled_high else [])
             )
             kept = [
                 tick for tick in cb.get_ticks()
@@ -7996,7 +8194,14 @@ class ColorbarDrawer:
                 formatter.set_useOffset(False)
                 formatter.set_scientific(False)
                 formatter.set_locs(ticks)
-            tick_labels = [formatter(tick) for tick in ticks]
+            # The formatter's own call prints any value below 1e-8 as zero. Every label of a bar of
+            # tiny values would then read zero. Its format string is applied directly instead. The
+            # offset and multiplier are both zero here, so nothing else differs. Only a value within
+            # rounding error of zero, as tick arithmetic leaves it, is printed as zero.
+            tick_labels = [
+                formatter.fix_minus(formatter.format % (0 if abs(tick) < 1e-9 * span else tick))
+                for tick in ticks
+            ]
             if clamped_low:
                 tick_labels[0] = f'{CLAMPED_MIN_PREFIX}{tick_labels[0]}'
             if clamped_high:
