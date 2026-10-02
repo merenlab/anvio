@@ -412,7 +412,7 @@ names with reformated names.
             )
             # Import tables
             external_gene_calls = pd.read_csv(
-                external_gene_calls, delim_whitespace=True, index_col=False
+                external_gene_calls, sep=r'\s+', index_col=False
             )
             reformat_file = os.path.join(
                 fasta_output_dir,
