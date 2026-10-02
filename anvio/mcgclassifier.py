@@ -340,8 +340,12 @@ class MetagenomeCentricGeneClassifier:
         T = lambda x: get_presence_absence_information(sum(x)/len(x), self.alpha)
         self.progress.new('Computing gene presence/absence in samples')
         progress.update('...')
-        genes_above_outlier_threshold = pd.DataFrame.from_dict(self.gene_level_coverage_stats_dict_of_dataframes['non_outlier_positions'], orient='index').map(T)
-        genes_with_detection_above_half = self.gene_level_coverage_stats_dict_of_dataframes['detection'].map(lambda x: x > 0.5)
+        genes_above_outlier_threshold = pd.DataFrame.from_dict(
+            self.gene_level_coverage_stats_dict_of_dataframes['non_outlier_positions'], orient='index'
+        ).apply(lambda column: column.map(T))
+        genes_with_detection_above_half = self.gene_level_coverage_stats_dict_of_dataframes['detection'].apply(
+            lambda column: column.map(lambda x: x > 0.5)
+        )
         self.gene_presence_absence_in_samples = genes_above_outlier_threshold & genes_with_detection_above_half
         self.gene_presence_absence_in_samples_initiated = True
         self.progress.end()
