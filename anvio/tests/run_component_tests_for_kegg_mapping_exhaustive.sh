@@ -123,12 +123,11 @@ do
     fi
 done
 
-# Limits that no value crosses, which therefore truncate nothing: both scales still span their own
-# values and neither colorbar is marked, which is what lets one set of limits be carried from
-# dataset to dataset without rescaling the ones it was never needed for.
-INFO "Testing limits that no value crosses, which therefore truncate nothing"
+# Limits that no value reaches still set the ends of both scales. Each colorbar labels both limits
+# with no '≤' or '≥' mark.
+INFO "Testing limits that no value reaches, which still set the ends of both scales"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
-                        --output-dir draw_txt_samples_kos_value_limits_inert \
+                        --output-dir draw_txt_samples_kos_value_limits_unreached \
                         --reaction-gene-aggregation mean \
                         --reaction-sample-summary mean \
                         --reaction-value-limits 0 200 \
@@ -166,9 +165,9 @@ then
 fi
 
 # A centered scale whose longer side is trimmed back by a limit, which is how a centered scale is
-# kept from wasting most of its colormap on a lopsided tail: the limits truncate what the values
-# reach and the center then widens whichever side falls short, so the scale comes out centered on
-# zero, over a good deal less than the values span, with its top marked '>='.
+# kept from wasting most of its colormap on a lopsided tail. The limit sets the top of the scale,
+# and the center then widens the bottom to match. The scale comes out centered on zero, over a good
+# deal less than the values span, with its top marked '>='.
 INFO "Testing a centered scale whose longer side is trimmed back by a limit"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_log_ratio.reaction.txt \
                         --output-dir draw_txt_samples_kos_value_center_limits \
@@ -180,6 +179,23 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_log_ratio.reaction.txt \
                         --reaction-category-value-center \
                         --reaction-value-limits none 3 \
                         --reaction-category-value-limits none 3 \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-grid \
+                        --no-progress
+
+# Two limits set both ends of a scale, so a center is accepted only at their midpoint. These values
+# run from -2 to 6, so the bottom limit is labeled with no mark and the top is marked '>='.
+INFO "Testing a centered scale set at both ends by limits the same distance from the center"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_log_ratio.reaction.txt \
+                        --output-dir draw_txt_samples_kos_value_center_both_limits \
+                        --reaction-gene-aggregation mean \
+                        --reaction-accession-aggregation mean \
+                        --reaction-sample-summary mean \
+                        --reaction-colormap RdBu_r \
+                        --reaction-value-center \
+                        --reaction-category-value-center \
+                        --reaction-value-limits -3 3 \
+                        --reaction-category-value-limits -3 3 \
                         --pathway-numbers $pathway_numbers \
                         --draw-grid \
                         --no-progress
@@ -1261,16 +1277,64 @@ then
     exit 1
 fi
 
-# The limits truncate first and the center widens afterwards, so a center can push an end of a scale back past
-# a limit that was holding a tail in check. That undoes what the limit was for, and is refused rather
-# than carried out quietly.
+# Neither end of a centered scale can lie on its center, so a center on a limit is refused.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-value-center 5 --reaction-value-limits 5 none \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_center_on_limit.log 2>&1
+then
+    echo "ERROR: a center lying on a limit of the same scale should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_center_on_limit.log | grep -q "Neither of its ends"
+then
+    echo "ERROR: a center lying on a limit of the same scale was refused for another reason."
+    exit 1
+fi
+
+# Two limits set both ends of a scale, which leaves centering nothing to widen. A center between
+# them is refused unless it is their midpoint, and this is caught before any value is read.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-value-center 10 --reaction-value-limits 5 40 \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_center_off_midpoint.log 2>&1
+then
+    echo "ERROR: a center other than the midpoint of two limits should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_center_off_midpoint.log | grep -q "centered on their midpoint"
+then
+    echo "ERROR: a center other than the midpoint of two limits was refused for another reason."
+    exit 1
+fi
+
+# A limit sets its end of a scale, and the center widens the shorter side afterwards. Centering can
+# therefore ask to move a limit. That undoes what the limit was for, and is refused rather than
+# carried out quietly. These values run from -2 to 6. The first limit cuts off values below -1. The
+# second limit is reached by no value, and is refused all the same.
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_log_ratio.reaction.txt \
     --reaction-gene-aggregation mean --reaction-accession-aggregation mean \
     --reaction-sample-summary mean --reaction-value-center --reaction-value-limits -1 none \
     --pathway-numbers $pathway_numbers \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: centering a scale past a limit that was truncating should have failed but did not."
+    echo "ERROR: centering a scale past a limit that values lie past should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_log_ratio.reaction.txt \
+    --reaction-gene-aggregation mean --reaction-accession-aggregation mean \
+    --reaction-sample-summary mean --reaction-value-center --reaction-value-limits -2.5 none \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_center_moves_limit.log 2>&1
+then
+    echo "ERROR: centering a scale past a limit that no value reaches should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_center_moves_limit.log | grep -q "would then have its minimum"
+then
+    echo "ERROR: centering past a limit that no value reaches was refused for another reason."
     exit 1
 fi
 
@@ -1511,9 +1575,10 @@ fi
 # A normalization whose neutral value is zero centers the rescaled scale there, which means the run
 # holds a center that nobody asked for. Wherever that center is reported, the message has to name
 # the normalization that supplied it rather than the option for giving one by hand: naming
-# '--reaction-category-value-center' would send the reader to an option they never used. The two
-# places it is reported are a per-group scale that is not colored by value at all, and a scale whose
-# limits leave no room for the center.
+# '--reaction-category-value-center' would send the reader to an option they never used. It is
+# reported in four places. The first is a per-group scale that is not colored by value at all. The
+# second is a scale whose limits leave no room for the center. The third is a scale whose two limits
+# do not have the center as their midpoint. The fourth is a limit that centering would move.
 INFO "Testing that a center supplied by a normalization is reported against the normalization"
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
     --groups-txt draw-sample-group-information.txt --group-threshold 0.5 --draw-grid \
@@ -1550,6 +1615,42 @@ if ! tr '\n' ' ' < draw_txt_normalization_center.log \
     | grep -q "reaction-element-normalization"
 then
     echo "ERROR: a center from a normalization was not reported against the normalization."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-element-normalization relative_to_mean \
+    --reaction-category-value-limits -0.5 1 --draw-individual-files \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_normalization_midpoint.log 2>&1
+then
+    echo "ERROR: a centered normalization under limits not centered on zero should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_normalization_midpoint.log | grep -q "normalization' centers"
+then
+    echo "ERROR: a center from a normalization off the midpoint of two limits was misreported."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-element-normalization relative_to_mean \
+    --reaction-category-value-limits -0.5 none --draw-individual-files \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_normalization_moved_limit.log 2>&1
+then
+    echo "ERROR: centering a normalization's scale past one of its limits should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_normalization_moved_limit.log | grep -q "normalization' centers"
+then
+    echo "ERROR: a center from a normalization that would move a limit was misreported."
+    exit 1
+fi
+if tr '\n' ' ' < draw_txt_normalization_moved_limit.log | grep -q "value-center' centers"
+then
+    echo "ERROR: the refusal of a center that would move a limit blamed a center nobody gave."
     exit 1
 fi
 

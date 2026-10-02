@@ -503,7 +503,7 @@ anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
 
 #### Limit the color scale
 
-By default a continuous scale spans exactly the values it is given, from the lowest map element to the highest. A handful of extreme elements can therefore stretch the colors over a range in which everything else is crowded into one end and cannot be told apart. The `--reaction-value-limits` and `--compound-value-limits` options bound the scale so that this cannot happen. Each takes two values, a minimum and then a maximum, and either can be the word `none` to leave that end wherever the data puts it.
+By default a continuous scale spans exactly the values it is given, from the lowest map element to the highest. A handful of extreme elements can therefore stretch the colors over a range in which everything else is crowded into one end and cannot be told apart. The `--reaction-value-limits` and `--compound-value-limits` options bound the scale so that this cannot happen. Each option takes two values, a minimum and then a maximum. Either can be the word `none` to leave that end wherever the data puts it.
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
@@ -512,7 +512,7 @@ anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
                         -o output_dir
 {{ codestop }}
 
-A limit **only takes effect where the values actually cross it**. Given the limits above, a scale whose values run from -8.6 to -2.8 is truncated to -6 to -2.8, while a scale whose values happen to stay above -6 is left exactly where its own values put it. Where a limit does truncate, every element past it is drawn in the color of that end of the scale, and the colorbar marks that end `≥` or `≤`: its color stands for that value *or anything beyond it*, rather than for the value alone.
+A limit **sets that end of the scale**, whether or not any value reaches it. Given the limits above, the scale runs from -6 up to the highest value. Every element below -6 is drawn in the color at the bottom of the scale. Where values lie past a limit, its label is marked `≥` or `≤`: the color there stands for that value *or anything beyond it*. A scale whose values all stay above -6 still starts at -6.
 
 Limits are read in the units of the colorbar, which are the values of **map elements** after both reductions — gene to accession (optional) and accession to map element — have been applied. With the default `sum` at the accession level, an element standing for a dozen KOs may sit well past any single value in the file, so limits should be chosen against the scale that is actually drawn rather than against the input column.
 
@@ -550,7 +550,7 @@ anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
 
 The price of that is the shorter side of the colormap going partly unused — the honest picture of values that lean one way. To fill the colormap again, trim the longer side: `--reaction-value-limits none 2` along with the centering gives a scale from -2 to +2 whose top is marked `≥ 2`.
 
-Limits and a center act on a scale in that order — the limits truncate what the values reach, and the center then widens whichever side falls short — so the two can conflict. Where centering would push a scale past a limit that was actually truncating something, anvi'o refuses rather than quietly undoing the limit, and says which pair of limits would give a scale that is both centered and truncated. A center lying outside its own scale's limits is refused for the same reason.
+Limits and a center act on a scale in that order. The limits set their ends of the scale, and the center then widens whichever side falls short. The two can therefore conflict. Centering never moves a limit. Where it would have to, anvi'o refuses. It does not quietly undo the limit. A center lying outside its own scale's limits, or on one of them, is refused as well.
 
 A layer with a `sample` column has **two** scales here as well, centered separately: `--reaction-value-center` centers the `unified` map's, and `--reaction-category-value-center` the one shared by the per-sample (or per-group) maps. Centering only one of the two earns a warning, because unless `--reaction-category-colormap` (described in the next section) gives them each a colormap, one colormap colors both, and its middle color would then mean the centered value on the one map and whatever the values happen to leave in the middle on the other.
 
