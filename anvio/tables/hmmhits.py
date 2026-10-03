@@ -819,7 +819,7 @@ class FilterHmmHitsTable(object):
         try:
 
             self.df=pd.read_csv(self.domtblout,
-                            delim_whitespace=True,
+                            sep=r'\s+',
                             comment='#',
                             names=colnames_coltypes_list[0],
                             dtype=colnames_coltypes_dict,
