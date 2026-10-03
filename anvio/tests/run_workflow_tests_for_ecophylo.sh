@@ -39,17 +39,16 @@ sed 's|\"AA_mode\"\: false|\"AA_mode\"\: true|' no-samples-txt-config.json > AA-
 sed 's|external-genomes.txt||' default-config.json | sed 's|samples\.txt||' > no-samples-only-metagenomes-txt-config.json
 sed 's|metagenomes.txt||' default-config.json | sed 's|samples\.txt||' > no-samples-only-external-genomes-txt-config.json
 sed 's|"run_genomes_sanity_check": true|"run_genomes_sanity_check": false|' default-config.json > no-genomes-sanity-check-config.json
-awk '{
-    if ($0 ~ /hmm_list.txt/) {
-        sub(/hmm_list.txt/, "hmm_list_group.txt", $0)
-    }
-    if ($1 ~ /anvi_run_scg_taxonomy/) {
-        print
-        getline
-        sub(/true/, "false", $0)
-    }
-    print
-}' default-config.json > merge-by-group-config.json
+python - <<'PY'
+import json
+from pathlib import Path
+
+config_path = Path("default-config.json")
+config = json.loads(config_path.read_text())
+config["hmm_list"] = "hmm_list_group.txt"
+config["anvi_run_scg_taxonomy"]["run"] = False
+Path("merge-by-group-config.json").write_text(json.dumps(config, indent=4) + "\n")
+PY
 
 
 INFO "Generating r1 and r2 short reads for samples"
