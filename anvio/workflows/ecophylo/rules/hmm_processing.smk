@@ -434,7 +434,7 @@ names with reformated names.
             )
             # Parse external-gene-calls contig column to get gene-callers-ids
             external_gene_calls[["name", "contig_number", "gene_callers_id"]] = (
-                external_gene_calls["contig"].str.rsplit("_", 2, expand=True)
+                external_gene_calls["contig"].str.rsplit("_", n=2, expand=True)
             )
             # Join external-gene-calls with reformat-report on gene-callers-id
             # -----------------
