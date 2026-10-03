@@ -571,7 +571,7 @@ Centering says nothing to a reader looking at a sequential colormap, which has n
 
 The `unified` and per-sample/per-group scales are on one colormap by default, which can work when they show the same quantity, such as the values of one sample beside the mean of them all. The different types of maps can also show quantities of different **kinds**, and then a single colormap invites mistaking one scale for the other. For example, with `--reaction-sample-summary std`, the `unified` map shows how much replicate samples *disagree*, a spread that is never negative and is not measured equivalently to the underlying values shown in the per-sample maps, which may include negative numbers.
 
-`--reaction-category-colormap` gives the per-sample or per-group scale a colormap of its own, leaving `--reaction-colormap` to the `unified` map. The argument structure is the same as `--reaction-colormap`, a Matplotlib colormap name optionally followed by two decimals limiting the fraction of it to sample.
+`--reaction-category-colormap` gives the per-sample or per-group scale a colormap of its own, leaving `--reaction-colormap` to the `unified` map. The argument structure is the same as `--reaction-colormap`, a colormap name optionally followed by two decimals limiting the fraction of it to sample.
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
@@ -587,6 +587,27 @@ anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
 Here the `unified` map draws the standard deviation across samples on a sequential scale, whereas each sample's own map draws its signed values on a diverging scale. Each scale writes its own colorbar either way — `colorbar_reactions.pdf` for the `unified` map and `colorbar_reactions_samples.pdf` or `colorbar_reactions_groups.pdf` for the individual maps — so which colors mean what is never left implicit.
 
 The compound layer takes `--compound-category-colormap` on its own independent scales, so a run drawing both layers across samples can have four colormaps and four colorbars. A category colormap applies only where those individual maps are actually colored by value: the file needs a value column and a `sample` column, and under a %(groups-txt)s the sample summary must pool each group's values rather than summarize their presence, which `--group-colormap` colors instead.
+
+#### Color clock times with a cyclic colormap
+
+Clock times repeat every 24 hours, so a value of 23.9 h should have a color closer to 0.1 h than to 12 h. Anvi'o defines a cyclic colormap called `clocktime` for clock times in hours, with the colors at 0 h and 24 h the same purple midnight color, and a yellow color at 12 h. The morning runs through blue, teal and green. The afternoon and evening run through orange, rose and plum. Lightness rises at an even rate from midnight to noon and falls at the same rate after noon, with colors on either side of noon only differing in hue.
+
+This colormap fills a gap that exists among named colormaps in Python packages for displaying clock time data on KEGG maps. Matplotlib's `twilight_shifted` is nearly white for times around noon, making them difficult to see on the white map background, and is nearly black for times around midnight, obscuring black box labels. In `clocktime`, black text has a contrast of at least 3:1 on every color.
+
+Give `clocktime` to `--reaction-colormap` for a file without a `sample` column; with a `sample` column, give it to `--reaction-category-colormap`, as that option colors the maps of individual samples. The compound layer takes `--compound-colormap` and `--compound-category-colormap` in the same way.
+
+{{ codestart }}
+anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
+                        --reaction-category-colormap clocktime \
+                        --reaction-category-value-limits 0 24 \
+                        --draw-individual-files \
+                        --draw-grid \
+                        -o output_dir
+{{ codestop }}
+
+In this example, each sample's own map is colored by clock time, while the `unified` map keeps its default summary, showing which samples or how many samples contain each element — not clock times. The limits fix the scale at 0 and 24 h. Without the limits, the scale would run from the lowest map element value to the highest, and the colors would not match the hours described above. Without a `sample` column, give the limits with `--reaction-value-limits 0 24`.
+
+Do not trim `clocktime` with the two decimals that a colormap option accepts, as different colors would appear at each end, breaking the cyclic nature of the colormap.
 
 #### Normalize each sample against the element's own values
 

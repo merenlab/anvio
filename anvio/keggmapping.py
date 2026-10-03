@@ -96,6 +96,30 @@ DIVERGING_COLORMAPS: Tuple[str, ...] = (
     'seismic'
 )
 
+# Colormaps that anvi'o defines itself, keyed by name. Each is a series of colors spaced evenly from
+# one end of the colormap to the other. '_get_colormap' looks for a name here before it looks among
+# Matplotlib's colormaps. Every colormap option therefore accepts these names. An '_r' suffix
+# reverses one of them. The suffix works the same way for Matplotlib's colormaps.
+#
+# 'clocktime' colors clock times in hours, from 0 to 24. Its colors are those of hours 0 through 24,
+# six hours to a row. The last color repeats the first. Midnight then has the same color at both
+# ends of the scale. Noon is yellow. Midnight is purple. The morning runs through blue, teal and
+# green. The afternoon and evening run through orange, rose and plum. Lightness rises at an even
+# rate from midnight to noon. It falls at the same rate after noon. So two hours equally far from
+# noon, such as 6 h and 18 h, are equally light but differ in hue. The colormap is modeled on
+# Matplotlib's 'twilight_shifted'. That colormap is nearly white at noon, which is hard to see on a
+# white map. It is also nearly black at midnight, which makes black box labels hard to read. Black
+# text has a contrast of at least 3:1 on every color of 'clocktime'.
+ANVIO_COLORMAPS: Dict[str, Tuple[str, ...]] = {
+    'clocktime': (
+        '#6e4c80', '#73559c', '#7060b7', '#646ecc', '#577dd5', '#4f8dd7',
+        '#519bd3', '#59a8cb', '#5fb6c1', '#74c3ab', '#95cd8a', '#c1d35e',
+        '#efd53b', '#f8c13b', '#f9b050', '#f5a15e', '#e9956a', '#df8872',
+        '#dd7771', '#d66877', '#c85d81', '#b55686', '#a05286', '#874f85',
+        '#6e4c80'
+    )
+}
+
 # Functions for reducing a sequence of numeric values to a single value in quantitative coloring.
 # Keys match the recommended choices of the '--*-gene-aggregation'/'--*-accession-aggregation'
 # arguments, which reduce the values of a gene's rows into a per-accession value and the values of a
@@ -3874,27 +3898,39 @@ class Mapper:
 
     def _get_colormap(self, colormap: str) -> mcolors.Colormap:
         """
-        Look up a Matplotlib colormap by name.
+        Look up a colormap by name.
+
+        The name is looked for first among the colormaps anvi'o defines ('ANVIO_COLORMAPS') and then
+        among Matplotlib's. An '_r' suffix reverses a colormap of either kind.
 
         Parameters
         ==========
         colormap : str
-            The name of a Matplotlib colormap.
+            The name of an anvi'o or Matplotlib colormap.
 
         Returns
         =======
         matplotlib.colors.Colormap
             The named colormap.
         """
+        reverse = colormap.endswith('_r')
+        anvio_name = colormap[:-2] if reverse else colormap
+        if anvio_name in ANVIO_COLORMAPS:
+            cmap = mcolors.LinearSegmentedColormap.from_list(
+                anvio_name, ANVIO_COLORMAPS[anvio_name]
+            )
+            return cmap.reversed() if reverse else cmap
         try:
             return colormaps[colormap]
         except KeyError:
             self.progress.end()
+            anvio_names = ', '.join(f"'{name}'" for name in ANVIO_COLORMAPS)
             raise ConfigError(
-                f"'{colormap}' is not the name of a Matplotlib colormap. The names are listed at "
-                f"https://matplotlib.org/stable/users/explain/colors/colormaps.html and include "
-                f"'plasma', 'viridis' and 'tab10'; adding '_r' to a name, as in 'plasma_r', "
-                f"reverses its colors."
+                f"'{colormap}' is not the name of a colormap. Matplotlib's colormaps include "
+                f"'plasma', 'viridis' and 'tab10'. Anvi'o also defines colormaps of its own: "
+                f"{anvio_names}. Adding '_r' to any of these names reverses the colormap. For "
+                f"example, 'plasma_r' is 'plasma' reversed. Matplotlib's colormaps are listed at "
+                f"https://matplotlib.org/stable/users/explain/colors/colormaps.html"
             )
 
     def _resolve_sequential_colormap(
@@ -3931,8 +3967,8 @@ class Mapper:
         else:
             self.progress.end()
             raise ConfigError(
-                f"A colormap must be given as the name of a Matplotlib colormap or as a Colormap "
-                f"object, but this one is neither: {colormap}."
+                f"A colormap must be given as a name or as a Colormap object. This one is neither. "
+                f"It was given as {colormap}."
             )
 
         if cmap.name in qualitative_colormaps + repeating_colormaps:
