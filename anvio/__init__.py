@@ -9,7 +9,7 @@ import platform
 
 # make sure anvi'o runs in the right Python environment:
 try:
-    if not (sys.version_info.major == major_python_version_required and sys.version_info.minor >= minor_python_version_required):
+    if not (sys.version_info.major == major_python_version_required and sys.version_info.minor == minor_python_version_required):
         sys.stderr.write("\n========================================================\n"
                          "🦄 SOMETHING BAD HAPPENED AND IT NEEDS YOUR ATTENTION 🦄\n"
                          "========================================================\n"

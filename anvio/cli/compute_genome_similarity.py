@@ -70,13 +70,10 @@ def get_args():
 
     group_PROGRAM = parser.add_argument_group('Program', "Tell anvi'o which similarity program to run.")
     group_PROGRAM.add_argument('--program', type=str, help="Tell anvi'o which program to run to process genome similarity.\
-                        For ANI, you should either use pyANI or fastANI. If accuracy is paramount (for example, distinguishing things less\
-                        than 1 percent different), or for dealing with genomes < 80 percent similar,\
-                        pyANI is what we recommend. However, fastANI is much faster. If you for some reason want to use mash\
-                        similarity, you can use sourmash, but its really not intended for genome comparisons. If you don't choose\
-                        anything here, anvi'o will reluctantly set the program to pyANI, but you really should be the one who\
-                        is on top of these things.",
-                        choices=['pyANI','fastANI','sourmash'], default='pyANI')
+                        If you need more sensitive ANI comparisons, especially for genomes less than 80 percent similar,\
+                        choose pyANI and install its required executable separately. fastANI is faster and is the default.\
+                        If you want mash similarity, choose sourmash, but it is not intended for genome comparisons.",
+                        choices=['pyANI','fastANI','sourmash'], default='fastANI')
 
     group_FASTANI = parser.add_argument_group('fastANI Settings', "Tell anvi'o to tell fastANI what settings to set.\
                                                                    Only if `--program` is set to `fastANI`")
