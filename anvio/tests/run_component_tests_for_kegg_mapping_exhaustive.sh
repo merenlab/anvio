@@ -572,6 +572,17 @@ do
     fi
 done
 
+# An '_r' suffix reverses a colormap that anvi'o defines. It does the same for a Matplotlib
+# colormap.
+INFO "Testing the reversed anvi'o colormap 'clocktime_r'"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
+                        --output-dir draw_txt_samples_kos_clocktime_r \
+                        --reaction-category-colormap clocktime_r \
+                        --reaction-category-value-limits 0 24 \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
 # The compound file has a value column and no 'sample' column, so the compound layer has no scale
 # of its own over the samples: every individual map takes its compound colors from the scale of the
 # 'unified' map. Skipping that map therefore has to leave its colorbar behind, that bar being the
@@ -1119,11 +1130,18 @@ then
     exit 1
 fi
 
+# The refusal of an unrecognized name lists the colormaps that anvi'o defines.
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
     --reaction-colormap not_a_colormap \
-    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bad_colormap.log 2>&1
 then
     echo "ERROR: an unrecognized colormap name should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_bad_colormap.log | grep -q "'clocktime'"
+then
+    echo "ERROR: the refusal of an unrecognized colormap name did not list 'clocktime'."
     exit 1
 fi
 

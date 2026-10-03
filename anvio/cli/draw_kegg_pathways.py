@@ -488,7 +488,8 @@ def get_args() -> Namespace:
     )
     groupCOLOR.add_argument(
         '--reaction-colormap', nargs='+', help=
-        "This option takes the name of a Matplotlib Colormap which is sampled in coloring data. In "
+        "This option takes the name of a colormap which is sampled in coloring data. This can be a "
+        "Matplotlib colormap or 'clocktime', a colormap defined in anvi'o to show clock times. In "
         "addition to the colormap name, two decimal values between 0.0 and 1.0, with the first "
         "value smaller than the second, can be provided to limit the fraction of the colormap "
         "used. For example, the values, plasma 0.2 0.9 , would extract 70%% of the 'plasma' "
@@ -513,16 +514,16 @@ def get_args() -> Namespace:
         "'--presence-colormap-scheme' does not apply. That one colormap then colors the 'unified' "
         "map and the maps of the individual samples or groups alike, unless "
         "'--reaction-category-colormap' gives the latter a colormap of their own. See the "
-        "following webpage for named colormaps: "
+        "following webpage for named Matplotlib colormaps: "
         "https://matplotlib.org/stable/users/explain/colors/colormaps.html#classes-of-colormaps"
     )
     groupCOLOR.add_argument(
         '--reaction-category-colormap', nargs='+', help=
         "Like '--reaction-colormap', but for the single color scale shared by the maps of the "
         "individual samples ('--draw-individual-files'/'--draw-grid'), or of the individual groups "
-        "when the samples are grouped with '--groups-txt'. It takes the same values: a Matplotlib "
-        "colormap name on its own, or a name followed by two decimals limiting the fraction of the "
-        "colormap to sample. Without it, one colormap colors both of those maps and the 'unified' "
+        "when the samples are grouped with '--groups-txt'. It takes the same values: a colormap "
+        "name on its own, or a name followed by two decimals limiting the fraction of the colormap "
+        "to sample. Without this option, one colormap colors both of those maps and the 'unified' "
         "map, which is what you want when the two show the same quantity — the values of one "
         "sample beside the mean of them all, for example. Give it when they do not. With "
         "'--reaction-sample-summary std', for instance, the 'unified' map shows how much replicate "
@@ -642,8 +643,8 @@ def get_args() -> Namespace:
         "Like '--reaction-colormap', but for the compound layer when drawing compounds from a "
         "'--compound-txt' file colored by a value column. The reaction and compound layers are "
         "colored on independent scales, each with its own colorbar (both default 'plasma_r'). As "
-        "with '--reaction-colormap', this takes a Matplotlib colormap name, optionally followed by "
-        "two decimal limits."
+        "with '--reaction-colormap', this takes a colormap name, optionally followed by two "
+        "decimal limits."
     )
     groupCOLOR.add_argument(
         '--compound-reverse-overlay', action='store_true', default=False, help=
@@ -772,15 +773,15 @@ def get_args() -> Namespace:
         f"grids ('--draw-grid'). These maps for individual groups show data from group sources — "
         f"samples, contigs databases, or pan genomes. Presence may only be colored by count — "
         f"e.g., the number of samples in the group containing the data — not membership. Like "
-        f"'--reaction-colormap', this parameter takes the name of a Matplotlib Colormap, and "
-        f"optionally, two decimal values between 0.0 and 1.0 to limit the fraction of the colormap "
-        f"used. The default configuration is the same, with the colormap being 'plasma_r' and the "
-        f"limits being 0.1 and 0.9. Note that per-group maps show counts in discrete bands by "
-        f"default, one per count in the group's scale, so a group whose scale spans more counts "
-        f"than this colormap has distinguishable colors or over more than "
-        f"{MAX_DISCRETE_COUNT_BANDS} of them has its count drawn on a continuous scale instead, "
-        f"along with a warning saying so ('--group-colormap-scheme'). This option colors group "
-        f"maps that show counts. Where a layer's samples are pooled into a value instead — "
+        f"'--reaction-colormap', this parameter takes the name of a colormap, and optionally, two "
+        f"decimal values between 0.0 and 1.0 to limit the fraction of the colormap used. The "
+        f"default configuration is the same, with the colormap being 'plasma_r' and the limits "
+        f"being 0.1 and 0.9. Note that per-group maps show counts in discrete bands by default, "
+        f"one per count in the group's scale, so a group whose scale spans more counts than this "
+        f"colormap has distinguishable colors or over more than {MAX_DISCRETE_COUNT_BANDS} of them "
+        f"has its count drawn on a continuous scale instead, along with a warning saying so "
+        f"('--group-colormap-scheme'). This option colors group maps that show counts. Where a "
+        f"layer's samples are pooled into a value instead — "
         f"'--reaction-sample-summary'/'--compound-sample-summary' given an aggregation — its group "
         f"maps show that value, and are colored by "
         f"'--reaction-category-colormap'/'--compound-category-colormap', or by the layer's own "

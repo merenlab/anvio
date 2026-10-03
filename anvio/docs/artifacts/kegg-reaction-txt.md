@@ -35,7 +35,7 @@ With `--reaction-color` or `--original-color`, the single color or original colo
 
 **Value column**
 
-Reactions are colored by the continuous value through a sequential colormap (`--reaction-colormap`, default `plasma_r`). The colorbar is labeled by the value column's header.
+Reactions are colored by the continuous value through a sequential colormap (`--reaction-colormap`, default `plasma_r`). The colorbar is labeled by the value column's header. A cyclic colormap called `clocktime` was defined in anvi'o to show a value column of clock times in hours. Without a `sample` column, give `--reaction-colormap clocktime --reaction-value-limits 0 24`; with a `sample` column, give `--reaction-category-colormap clocktime --reaction-category-value-limits 0 24` to color the maps of individual samples. See %(anvi-draw-kegg-pathways)s.
 
 Per-gene values are aggregated to a per-accession value, and a map element's constituent KO and reaction accessions to a per-element value, by `--reaction-gene-aggregation` and `--reaction-accession-aggregation` (both `sum` by default) — these reductions happen within each sample.
 
