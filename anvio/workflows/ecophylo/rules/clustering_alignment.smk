@@ -447,11 +447,10 @@ rule count_num_sequences_filtered:
             """
 
             num_seqs = 0
-
-        for line in fasta:
-            if line.startswith(">"):
-                num_seqs += 1
-        return num_seqs
+            for line in fasta:
+                if line.startswith(">"):
+                    num_seqs += 1
+            return num_seqs
         input_files_list = [
             params.combined_seq,
             params.cluster_mmseqs,
