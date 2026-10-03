@@ -503,7 +503,7 @@ anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
 
 #### Limit the color scale
 
-By default a continuous scale spans exactly the values it is given, from the lowest map element to the highest. A handful of extreme elements can therefore stretch the colors over a range in which everything else is crowded into one end and cannot be told apart. The `--reaction-value-limits` and `--compound-value-limits` options bound the scale so that this cannot happen. Each takes two values, a minimum and then a maximum, and either can be the word `none` to leave that end wherever the data puts it.
+By default a continuous scale spans exactly the values it is given, from the lowest map element to the highest. A handful of extreme elements can therefore stretch the colors over a range in which everything else is crowded into one end and cannot be told apart. The `--reaction-value-limits` and `--compound-value-limits` options bound the scale so that this cannot happen. Each option takes two values, a minimum and then a maximum. Either can be the word `none` to leave that end wherever the data puts it.
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
@@ -512,7 +512,7 @@ anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
                         -o output_dir
 {{ codestop }}
 
-A limit **only takes effect where the values actually cross it**. Given the limits above, a scale whose values run from -8.6 to -2.8 is truncated to -6 to -2.8, while a scale whose values happen to stay above -6 is left exactly where its own values put it. Where a limit does truncate, every element past it is drawn in the color of that end of the scale, and the colorbar marks that end `≥` or `≤`: its color stands for that value *or anything beyond it*, rather than for the value alone.
+A limit **sets that end of the scale**, whether or not any value reaches it. Given the limits above, the scale runs from -6 up to the highest value. Every element below -6 is drawn in the color at the bottom of the scale. Where values lie past a limit, its label is marked `≥` or `≤`: the color there stands for that value *or anything beyond it*. A scale whose values all stay above -6 still starts at -6.
 
 Limits are read in the units of the colorbar, which are the values of **map elements** after both reductions — gene to accession (optional) and accession to map element — have been applied. With the default `sum` at the accession level, an element standing for a dozen KOs may sit well past any single value in the file, so limits should be chosen against the scale that is actually drawn rather than against the input column.
 
@@ -550,7 +550,7 @@ anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
 
 The price of that is the shorter side of the colormap going partly unused — the honest picture of values that lean one way. To fill the colormap again, trim the longer side: `--reaction-value-limits none 2` along with the centering gives a scale from -2 to +2 whose top is marked `≥ 2`.
 
-Limits and a center act on a scale in that order — the limits truncate what the values reach, and the center then widens whichever side falls short — so the two can conflict. Where centering would push a scale past a limit that was actually truncating something, anvi'o refuses rather than quietly undoing the limit, and says which pair of limits would give a scale that is both centered and truncated. A center lying outside its own scale's limits is refused for the same reason.
+Limits and a center act on a scale in that order. The limits set their ends of the scale, and the center then widens whichever side falls short. The two can therefore conflict. Centering never moves a limit. Where it would have to, anvi'o refuses. It does not quietly undo the limit. A center lying outside its own scale's limits, or on one of them, is refused as well.
 
 A layer with a `sample` column has **two** scales here as well, centered separately: `--reaction-value-center` centers the `unified` map's, and `--reaction-category-value-center` the one shared by the per-sample (or per-group) maps. Centering only one of the two earns a warning, because unless `--reaction-category-colormap` (described in the next section) gives them each a colormap, one colormap colors both, and its middle color would then mean the centered value on the one map and whatever the values happen to leave in the middle on the other.
 
@@ -571,7 +571,7 @@ Centering says nothing to a reader looking at a sequential colormap, which has n
 
 The `unified` and per-sample/per-group scales are on one colormap by default, which can work when they show the same quantity, such as the values of one sample beside the mean of them all. The different types of maps can also show quantities of different **kinds**, and then a single colormap invites mistaking one scale for the other. For example, with `--reaction-sample-summary std`, the `unified` map shows how much replicate samples *disagree*, a spread that is never negative and is not measured equivalently to the underlying values shown in the per-sample maps, which may include negative numbers.
 
-`--reaction-category-colormap` gives the per-sample or per-group scale a colormap of its own, leaving `--reaction-colormap` to the `unified` map. The argument structure is the same as `--reaction-colormap`, a Matplotlib colormap name optionally followed by two decimals limiting the fraction of it to sample.
+`--reaction-category-colormap` gives the per-sample or per-group scale a colormap of its own, leaving `--reaction-colormap` to the `unified` map. The argument structure is the same as `--reaction-colormap`, a colormap name optionally followed by two decimals limiting the fraction of it to sample.
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
@@ -587,6 +587,27 @@ anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
 Here the `unified` map draws the standard deviation across samples on a sequential scale, whereas each sample's own map draws its signed values on a diverging scale. Each scale writes its own colorbar either way — `colorbar_reactions.pdf` for the `unified` map and `colorbar_reactions_samples.pdf` or `colorbar_reactions_groups.pdf` for the individual maps — so which colors mean what is never left implicit.
 
 The compound layer takes `--compound-category-colormap` on its own independent scales, so a run drawing both layers across samples can have four colormaps and four colorbars. A category colormap applies only where those individual maps are actually colored by value: the file needs a value column and a `sample` column, and under a %(groups-txt)s the sample summary must pool each group's values rather than summarize their presence, which `--group-colormap` colors instead.
+
+#### Color clock times with a cyclic colormap
+
+Clock times repeat every 24 hours, so a value of 23.9 h should have a color closer to 0.1 h than to 12 h. Anvi'o defines a cyclic colormap called `clocktime` for clock times in hours, with the colors at 0 h and 24 h the same purple midnight color, and a yellow color at 12 h. The morning runs through blue, teal and green. The afternoon and evening run through orange, rose and plum. Lightness rises at an even rate from midnight to noon and falls at the same rate after noon, with colors on either side of noon only differing in hue.
+
+This colormap fills a gap that exists among named colormaps in Python packages for displaying clock time data on KEGG maps. Matplotlib's `twilight_shifted` is nearly white for times around noon, making them difficult to see on the white map background, and is nearly black for times around midnight, obscuring black box labels. In `clocktime`, black text has a contrast of at least 3:1 on every color.
+
+Give `clocktime` to `--reaction-colormap` for a file without a `sample` column; with a `sample` column, give it to `--reaction-category-colormap`, as that option colors the maps of individual samples. The compound layer takes `--compound-colormap` and `--compound-category-colormap` in the same way.
+
+{{ codestart }}
+anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
+                        --reaction-category-colormap clocktime \
+                        --reaction-category-value-limits 0 24 \
+                        --draw-individual-files \
+                        --draw-grid \
+                        -o output_dir
+{{ codestop }}
+
+In this example, each sample's own map is colored by clock time, while the `unified` map keeps its default summary, showing which samples or how many samples contain each element — not clock times. The limits fix the scale at 0 and 24 h. Without the limits, the scale would run from the lowest map element value to the highest, and the colors would not match the hours described above. Without a `sample` column, give the limits with `--reaction-value-limits 0 24`.
+
+Do not trim `clocktime` with the two decimals that a colormap option accepts, as different colors would appear at each end, breaking the cyclic nature of the colormap.
 
 #### Normalize each sample against the element's own values
 
