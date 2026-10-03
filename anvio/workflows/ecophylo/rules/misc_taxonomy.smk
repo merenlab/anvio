@@ -271,7 +271,7 @@ rule anvi_estimate_scg_taxonomy:
             .astype(str)
         )
         reformat_report["new_header_tmp"] = (
-            reformat_report["new_header"].str.rsplit("_", 1).str[0]
+            reformat_report["new_header"].str.rsplit("_", n=1).str[0]
         )
         reformat_report["identifier"] = (
             reformat_report["new_header_tmp"]
