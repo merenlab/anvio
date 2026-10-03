@@ -1,0 +1,9 @@
+gene_callers_id	contig_name	anticodon	aa	domain	phylum	class	order	family	genus	species	taxon_percent_id	sample_name	mean_coverage	relative_mean_coverage	relative_discriminator_coverage	stem_1	stem_2	anticodon_loop_3	anticodon_loop_4	anticodon_loop_5	anticodon_loop_6
+																1	2	3	4	5	6
+																1	2	34	35	36	37
+1	c_001	TAG	Leu									S1	100	0.1	0.1	10	10	100	10	10	100
+1	c_001	TAG	Leu									S2	80	0.08	0.08	10	10	30	10	10	80
+1	c_001	TAG	Leu									S3	10	0.01	0.01	10	10	5	10	10	25
+2	c_002	GAA	Phe									S1	120	0.12	0.12	10	10	0	10	10	120
+2	c_002	GAA	Phe									S2	90	0.09	0.09	10	10	0	10	10	90
+2	c_002	GAA	Phe									S3	70	0.07	0.07	10	10	0	10	10	70
