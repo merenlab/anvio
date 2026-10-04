@@ -809,7 +809,7 @@ These may change over time:
 - `pyrodigal_gv` — gene calling (default caller, replaces prodigal)
 - `multiprocess` — fork of multiprocessing using dill
 - `colored` — terminal color codes (`Fore`, `Back`, `Style` in terminal.py)
-- `networkx==3.1` — graph operations (reaction networks, programs network)
+- `networkx>=3.4.2,<4` — graph operations (reaction networks, programs network)
 - `ete3` — phylogenetic tree handling
 
 Python requirement is strict: `==3.13.*` (checked at import, enforced in `pyproject.toml`).
