@@ -71,7 +71,7 @@ dependencies = [
     "snakemake>=9,<10",
     "multiprocess",
     "plotext>=5,<6",
-    "networkx==3.1",
+    "networkx>=3.4.2,<4",
     "pyrodigal_gv",
     "pulp==2.7.0",
     "biopython",
