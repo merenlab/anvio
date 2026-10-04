@@ -144,8 +144,8 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
                         --output-dir draw_txt_samples_kos_value_limits \
                         --reaction-gene-aggregation mean \
                         --reaction-sample-summary mean \
-                        --reaction-value-limits 5 40 \
-                        --reaction-category-value-limits 5 40 \
+                        --reaction-value-limits 5 35 \
+                        --reaction-category-value-limits 5 35 \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \

@@ -292,22 +292,23 @@ def get_args() -> Namespace:
         f"name is an aggregation that pools the samples' values from the layer's value column, "
         f"which the file must have: the validated ones are {RECOMMENDED_AGGREGATIONS}, and any "
         f"other pandas aggregation reducing numbers to a single number works too (see "
-        f"'--reaction-gene-aggregation'). 'std' is an example here, mapping how much replicate "
-        f"samples disagree. This summary colors the 'unified' map when the samples are not "
-        f"grouped, and each group's map when they are grouped with '--groups-txt' — though only an "
-        f"aggregation affects a group's map, since presence there is always the count of the "
-        f"group's own samples, so the presence names are rejected in a grouped run as having "
-        f"nothing to choose between. Maps for individual samples are never summarized, always "
-        f"showing that one sample alone: its own values with a value column, its presence without "
-        f"one. Without this option, samples are summarized by presence, by membership with 3 or "
-        f"fewer samples, by count above that, and by a continuous count scale where a discrete one "
-        f"would run out of distinguishable colors or of room to label its bands (above "
-        f"{MAX_DISCRETE_COUNT_BANDS} of them). Presence is the default because it is meaningful "
-        f"for any set of samples, whereas pooling values is only meaningful when the samples are "
-        f"commensurable, such as replicates of one condition. If no summary of the samples is "
-        f"meaningful or desired, use '--skip-unified-maps' to leave the map out. Without groups, "
-        f"'--reaction-sample-summary' colors the 'unified' map alone; an ungrouped run with "
-        f"'--skip-unified-maps' therefore refuses this option."
+        f"'--reaction-gene-aggregation'). An aggregation pools the values of each map element. "
+        f"These are the values that the maps of the individual samples draw. 'std' is an example "
+        f"here, mapping how much replicate samples disagree. This summary colors the 'unified' map "
+        f"when the samples are not grouped, and each group's map when they are grouped with "
+        f"'--groups-txt' — though only an aggregation affects a group's map, since presence there "
+        f"is always the count of the group's own samples, so the presence names are rejected in a "
+        f"grouped run as having nothing to choose between. Maps for individual samples are never "
+        f"summarized, always showing that one sample alone: its own values with a value column, "
+        f"its presence without one. Without this option, samples are summarized by presence, by "
+        f"membership with 3 or fewer samples, by count above that, and by a continuous count scale "
+        f"where a discrete one would run out of distinguishable colors or of room to label its "
+        f"bands (above {MAX_DISCRETE_COUNT_BANDS} of them). Presence is the default because it is "
+        f"meaningful for any set of samples, whereas pooling values is only meaningful when the "
+        f"samples are commensurable, such as replicates of one condition. If no summary of the "
+        f"samples is meaningful or desired, use '--skip-unified-maps' to leave the map out. "
+        f"Without groups, '--reaction-sample-summary' colors the 'unified' map alone; an ungrouped "
+        f"run with '--skip-unified-maps' therefore refuses this option."
     )
     groupSUMMARY.add_argument(
         '--compound-sample-summary', metavar='NAME', help=
@@ -667,7 +668,9 @@ def get_args() -> Namespace:
         "read in the units of the colorbar, which are the values of map elements once both "
         "reductions have been applied ('--reaction-gene-aggregation' and then "
         "'--reaction-accession-aggregation'), so with the default of 'sum' at the accession level, "
-        "a single element standing for a dozen KOs may sit well past any one value in the file."
+        "a single element standing for a dozen KOs may sit well past any one value in the file. "
+        "With a 'sample' column, the 'unified' map shows a summary of these element values across "
+        "the samples or groups."
     )
     groupCOLOR.add_argument(
         '--reaction-category-value-limits', nargs=2, metavar='LIMIT', help=
@@ -1464,8 +1467,8 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
             )
 
         # Sample and group summaries. A summary reduces a set of samples, or the sample groups, to
-        # one statement per accession, so it needs its layer's file, a 'sample' column to summarize,
-        # and, when it pools values, a value column to pool.
+        # one value or one presence state per map element. It needs its layer's file and a 'sample'
+        # column. A summary that pools values also needs a value column.
         for element_type, file_flag, layer, sample_summary, group_summary in summaries:
             for level, summary in (('sample', sample_summary), ('group', group_summary)):
                 if summary is None:

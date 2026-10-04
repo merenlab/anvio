@@ -536,8 +536,8 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
                         --reaction-gene-aggregation mean \
                         --reaction-sample-summary mean \
                         --compound-sample-summary max \
-                        --reaction-value-limits 5 40 \
-                        --reaction-category-value-limits 5 40 \
+                        --reaction-value-limits 5 35 \
+                        --reaction-category-value-limits 5 35 \
                         --compound-value-limits 55 none \
                         --compound-category-value-limits 20 40 \
                         --pathway-numbers $pathway_numbers \
@@ -609,8 +609,8 @@ then
 fi
 
 # An aggregation outside the validated names, resolved through pandas ('var' within a sample),
-# together with one that maps disagreement among samples ('std' across them), including accessions
-# for which the standard deviation is undefined and are therefore left uncolored.
+# together with one that maps disagreement among samples ('std' across them). The standard deviation
+# is undefined for some map elements. These are left uncolored.
 INFO "Testing an aggregation outside the validated names"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
                         --output-dir draw_txt_samples_kos_std \
