@@ -9,6 +9,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError
 
 from anvio.metabolism.context import KeggContext
+from anvio.metabolism.input_validation import parse_numeric_column
 
 
 class KeggModuleEnrichment(KeggContext):
@@ -118,7 +119,9 @@ class KeggModuleEnrichment(KeggContext):
                               f"the following required headers: {missing_string}   Please re-generate your "
                               "modules-txt to include these before trying again.")
 
-        modules_df[completeness_header] = pd.to_numeric(modules_df[completeness_header], errors='coerce')
+        modules_df[completeness_header] = parse_numeric_column(
+            modules_df, completeness_header, self.modules_txt, identifier_column=self.sample_header_in_modules_txt
+        )
 
         if 'unique_id' in modules_df.columns:
             modules_df = modules_df.drop(columns=['unique_id'])

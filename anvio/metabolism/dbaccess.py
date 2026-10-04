@@ -17,6 +17,7 @@ from anvio.errors import ConfigError
 from anvio.metabolism.context import KeggContext
 from anvio.metabolism.modulesdb import ModulesDatabase
 from anvio.metabolism.constants import DEFAULT_OUTPUT_MODE, OUTPUT_MODES, OUTPUT_HEADERS, STRAY_KO_ANVIO_SUFFIX
+from anvio.metabolism.input_validation import parse_numeric_column
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -385,7 +386,7 @@ class KeggEstimatorArgs():
 
         for f in ['coverage', 'detection']:
             if f in enzyme_df.columns:
-                enzyme_df[f] = pd.to_numeric(enzyme_df[f], errors='coerce')
+                enzyme_df[f] = parse_numeric_column(enzyme_df, f, self.enzymes_txt, identifier_column='gene_id')
 
         # warning about extra columns
         used_cols = expected_fields + ['coverage', 'detection']
