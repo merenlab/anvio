@@ -5721,23 +5721,29 @@ class Mapper:
                 f"two limits that option also takes."
             )
 
+        # The value scale shared by the maps of the individual categories colors only those maps.
+        value_scales = [('_unified_norm', '_unified_vals', 'cmap')]
+        if drawn_categories:
+            value_scales.append(('_category_norm', '_category_vals', 'category_cmap'))
         for layer in layers:
             if layer['unified_mode'] == 'original':
                 continue
             # Every color the layer can stage: sampled from its colormap at the values it will color
             # by, taken from the scale it colors presence by, or its one fixed color.
             staged: Set[str] = set()
-            for norm_key, values_key, cmap_key in (
-                ('_unified_norm', '_unified_vals', 'cmap'),
-                ('_category_norm', '_category_vals', 'category_cmap')
-            ):
-                if norm_key not in layer:
+            for norm_key, values_key, cmap_key in value_scales:
+                if norm_key not in layer or not layer[values_key]:
                     continue
                 norm = layer[norm_key]
                 cmap = layer[cmap_key]
-                for value in layer[values_key]:
-                    fraction = 1.0 if norm is None else float(norm(value))
-                    staged.add(mcolors.rgb2hex(cmap(fraction)))
+                if norm is None:
+                    staged.add(mcolors.rgb2hex(cmap(1.0)))
+                    continue
+                # A run with many samples can have millions of values here. A colormap has only a
+                # few hundred colors. The values are therefore colored all at once. Each distinct
+                # color is then converted to a hex code once.
+                rgba = cmap(norm(np.asarray(layer[values_key])))
+                staged.update(mcolors.rgb2hex(color) for color in np.unique(rgba, axis=0))
             if '_colors' in layer:
                 staged.update(color for color, _ in layer['_colors'][1])
             category_colors = layer.get('category_colors')
