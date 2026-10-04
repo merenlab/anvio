@@ -43,7 +43,7 @@ anvio/                    # The package
   contigops.py            # Contig/split manipulation
   ccollections.py         # Bin collections
   genomestorage.py        # Genome storage DB for pangenomics
-  auxiliarydataops.py     # HDF5/auxiliary coverage data
+  auxiliarydataops.py     # SQLite auxiliary coverage data
   homogeneityindex.py     # Gene cluster homogeneity
   fastalib.py             # Fast FASTA I/O (custom, not biopython)
   ttycolors.py            # Terminal color helpers
@@ -89,13 +89,13 @@ The core data model. Each analysis type has its own versioned SQLite database fi
 
 | DB type | Version | Class | Purpose |
 |---|---|---|---|
-| `contigs` | 24 | `ContigsDatabase` | Assembled sequences, gene calls, annotations, HMM hits, taxonomy |
-| `profile` | 40 | `ProfileDatabase` | Per-sample coverage/variability from BAM files |
+| `contigs` | 25 | `ContigsDatabase` | Assembled sequences, gene calls, annotations, HMM hits, taxonomy |
+| `profile` | 42 | `ProfileDatabase` | Per-sample coverage/variability from BAM files |
 | `pan` | 21 | `PanDatabase` | Gene clusters from pangenomics |
 | `genes` | 6 | `GenesDatabase` | Gene-level stats split out from profile |
 | `structure` | 4 | `StructureDatabase` | Protein 3D structure predictions |
 | `trnaseq` | 2 | `TRNASeqDatabase` | tRNA-seq profiling |
-| `genomestorage` | 7 | (HDF5-based) | Multi-genome storage for pangenomics |
+| `genomestorage` | 8 | `GenomeStorage` (SQLite) | Multi-genome storage for pangenomics |
 
 Version numbers live in `anvio/version.py`. Changing them without a corresponding migration script in `anvio/migrations/` will break existing databases (see note on implementation consdierations for migration scripts later in this document).
 
@@ -684,7 +684,7 @@ Users group splits into "bins" and name groups of bins "collections". Stored in 
 
 8. **`multiprocess` not `multiprocessing`.** See "Coding Patterns" above. Always `import multiprocess as multiprocessing` if you need multiprocessing.
 
-9. **Auxiliary data is separate.** Per-nucleotide coverage arrays are stored in a separate auxiliary `.db` file (HDF5-based, handled by `auxiliarydataops.py`), not in the main profile database. This avoids bloating the SQLite file.
+9. **Auxiliary data is separate.** Per-nucleotide coverage arrays are stored in a separate auxiliary SQLite `.db` file (handled by `auxiliarydataops.py`), not in the main profile database. This avoids bloating the SQLite file.
 
 ---
 
@@ -711,6 +711,8 @@ The development mode installation will allow editing the code and immediately te
 ### Linting
 
 Anvi'o uses [Ruff](https://docs.astral.sh/ruff/) for linting, configured in `ruff.toml`, and linting is enforced via a GitHub Actions workflow which is described at `.github/workflows/git-hooks.yaml`. The linting check will runs on every pull request, and if a PR introduces code that violates any of the rules in `ruff.toml`, the CI job will fail and the PR will be blocked until it is fixed. If you directly commit to `master`, even if your changes violate the rules, your commit will go through, but the repository admins will get an email about it. So the best strategy here is to **catch these violations before pushing anything** to `master`.
+
+CI runs `prek run --all-files` using `.pre-commit-config.yaml`, including Ruff. The configured hooks can modify files (including Ruff's `--fix`); review any resulting changes. The pre-commit commands below remain a valid local alternative. A clean nonmutating `ruff check .` result alone does not establish that every configured hook passed.
 
 To catch violations locally **before pushing**, please install [pre-commit](https://pre-commit.com/) and set up the git hook so it is in effect. For this you need to run the following commands in your anvi'o environment:
 
@@ -751,7 +753,7 @@ bash run_component_tests_for_metagenomics.sh
 bash run_component_tests_for_pangenomics.sh
 ```
 
-There are no pytest unit tests in the traditional sense — testing is integration-based via shell scripts.
+The repository also has `unittest` tests in `anvio/tests/unit`. From the source checkout, in its required Python environment, run `python -m unittest discover -s anvio/tests/unit -p "test_*.py"`. Component/workflow/migration shell tests remain necessary for their corresponding workflows; passing unit tests does not establish whole-workflow or scientific equivalence.
 
 ### Documentation (`anvio/docs/`)
 
@@ -797,14 +799,14 @@ Stale docs that no longer match the code are actively harmful because they are w
 
 ## Dependencies Worth Knowing
 
-These may change over time:
+The following ranges reflect `pyproject.toml`, which is the authoritative dependency specification. They may change over time:
 
-- `numpy==1.24.1` — pinned; many array operations throughout
-- `pandas==1.4.4` — pinned; used for tabular data
-- `scikit-learn==1.2.2` — pinned; clustering, ordination
-- `matplotlib==3.5.1` — pinned; static figure generation
+- `numpy>=2.1` — many array operations throughout
+- `pandas>=3,<4` — used for tabular data
+- `scikit-learn>=1.8,<1.9` — clustering, ordination
+- `matplotlib>=3.9` — static figure generation
 - `bottle` — lightweight web framework for the interactive interface
-- `snakemake` — workflow engine
+- `snakemake>=9,<10` — workflow engine
 - `pysam` — BAM file reading
 - `pyrodigal_gv` — gene calling (default caller, replaces prodigal)
 - `multiprocess` — fork of multiprocessing using dill
