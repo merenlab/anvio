@@ -269,7 +269,7 @@ class Pathway(Element):
         self,
         new_color_priority: Dict[str, Dict[str, Dict[Tuple[str, str], float]]],
         recolor_unprioritized_entries: Union[str, Dict[str, Tuple[str, str]]] = False,
-        color_associated_compounds: Literal['high', 'low', 'average'] = None,
+        color_associated_compounds: Literal['high', 'low', 'average', 'circular_average'] = None,
         colormap: Colormap = None
     ) -> None:
         """
@@ -351,7 +351,7 @@ class Pathway(Element):
                 }
             }
 
-        color_associated_compounds : Literal['high', 'low', 'average'], None
+        color_associated_compounds : Literal['high', 'low', 'average', 'circular_average'], None
             Automatically set the background color of compound entries based on the color priority
             of ortholog entries involving the compounds. By default, compounds participating in
             reactions are circles, and orthologs are lines on global/overview maps and boxes or
@@ -365,15 +365,21 @@ class Pathway(Element):
             colormap argument. The average priority value of the orthologs with prioritized colors
             is mapped to a bg color for compound Entry circle Graphics.
 
+            'circular_average' is for a colormap with the same color at both ends, such as one for
+            clock times. Priorities of 0 and 1 are then the same point on a circle. The compound
+            takes the mean direction of the priorities on that circle. So priorities of 0.99 and
+            0.01 give 0, not 0.5. Some priorities have no mean direction, such as 0.25 and 0.75. The
+            compound then takes the 'average' color.
+
             Automatically colored compound entries are added to the color_priority attribute, and
             Entry elements in the children attribute are reordered accordingly. Compound entries
             that are already in the color_priority attribute are exempt from recoloring and given
             higher priority than automatically recolored compound entries.
 
         colormap : matplotlib.colors.Colormap, None
-            If 'average' is used as the color_associated_compounds argument, a colormap must be
-            provided to map averaged priority values on the interval [0, 1] to a background color
-            for compound Entry circle Graphics.
+            If 'average' or 'circular_average' is used as the color_associated_compounds argument, a
+            colormap must be provided to map averaged priority values on the interval [0, 1] to a
+            background color for compound Entry circle Graphics.
         """
         # Check that new_color_priority only contains positive priority values.
         for new_entry_color_priority in new_color_priority.values():
@@ -665,7 +671,7 @@ class Pathway(Element):
 
     def color_associated_compounds(
         self,
-        transfer: Literal['high', 'low', 'average'],
+        transfer: Literal['high', 'low', 'average', 'circular_average'],
         colormap: Colormap = None
     ) -> None:
         """
@@ -682,7 +688,7 @@ class Pathway(Element):
 
         Parameters
         ==========
-        transfer : Literal['high', 'low', 'average']
+        transfer : Literal['high', 'low', 'average', 'circular_average']
             An argument of 'high' or 'low' sets the compound color to the bg color of the ortholog
             with the highest or lowest priority fg/bg color combination. 'average' sets the compound
             color to the average bg color of orthologs with prioritized colors -- unprioritized
@@ -691,13 +697,19 @@ class Pathway(Element):
             colormap argument. The average priority value of the orthologs with prioritized colors
             is mapped to a color for the compound Entry.
 
+            'circular_average' is for a colormap with the same color at both ends, such as one for
+            clock times. Priorities of 0 and 1 are then the same point on a circle. The compound
+            takes the mean direction of the priorities on that circle. So priorities of 0.99 and
+            0.01 give 0, not 0.5. Some priorities have no mean direction, such as 0.25 and 0.75. The
+            compound then takes the 'average' color.
+
             Compound entries that are already in the color_priority attribute are exempt from
             recoloring and given higher priority than recolored compound entries.
 
         colormap : matplotlib.colors.Colormap, None
-            If 'average' is used as an argument to transfer, a colormap must be provided to map
-            averaged priority values on the interval [0, 1] to a background color for compound
-            entries.
+            If 'average' or 'circular_average' is used as an argument to transfer, a colormap must
+            be provided to map averaged priority values on the interval [0, 1] to a background color
+            for compound entries.
         """
         # Make Reaction elements searchable by name (KEGG IDs). Reaction elements link Compound
         # elements to ortholog Entry elements.
@@ -819,12 +831,33 @@ class Pathway(Element):
             color = rgb2hex(colormap(priority))
             return color, priority
 
+        def _get_circular_average_color(
+            color_priorities: List[Tuple[str, float]]
+        ) -> Tuple[str, float]:
+            # Each priority is a point on a circle, with 0 and 1 the same point. The means of the
+            # sines and cosines of the points give their mean direction.
+            priorities = np.array([t[1] for t in color_priorities])
+            angles = 2 * np.pi * priorities
+            sine = np.mean(np.sin(angles))
+            cosine = np.mean(np.cos(angles))
+            # Equal priorities, as from a single ortholog, take the plain average. This gives them
+            # the same color and priority as 'average'. Priorities that cancel out, such as 0.25 and
+            # 0.75, have no mean direction. They take the plain average too.
+            if np.all(priorities == priorities[0]) or np.hypot(sine, cosine) < 1e-9:
+                return _get_average_color(color_priorities)
+            # Rounding removes floating-point error. Without it, a mean on the boundary between two
+            # colors of the colormap could take the lower color.
+            priority = round(float(np.arctan2(sine, cosine) / (2 * np.pi)), 12) % 1.0
+            return rgb2hex(colormap(priority)), priority
+
         if transfer == 'high':
             get_color_priority = _get_high_color
         elif transfer == 'low':
             get_color_priority = _get_low_color
         elif transfer == 'average':
             get_color_priority = _get_average_color
+        elif transfer == 'circular_average':
+            get_color_priority = _get_circular_average_color
         else:
             raise AssertionError
 
