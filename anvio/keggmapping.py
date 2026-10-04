@@ -120,6 +120,15 @@ ANVIO_COLORMAPS: Dict[str, Tuple[str, ...]] = {
     )
 }
 
+# Colormaps for values that repeat, such as clock times. Each has the same color at both ends. On a
+# global or overview map drawn from reactions alone, each compound takes a color from the reaction
+# lines that touch it. With one of these colormaps, the values of those lines are averaged on a
+# circle. '_is_cyclic_colormap' matches colormap names against this list. Matplotlib's cyclic
+# colormaps are not listed. People often use one of them, 'hsv', for values that do not repeat.
+CYCLIC_COLORMAPS: Tuple[str, ...] = (
+    'clocktime',
+)
+
 # Functions for reducing a sequence of numeric values to a single value in quantitative coloring.
 # Keys match the recommended choices of the '--*-gene-aggregation'/'--*-accession-aggregation'
 # arguments, which reduce the values of a gene's rows into a per-accession value and the values of a
@@ -1730,6 +1739,30 @@ class Mapper:
         """
         name = Mapper._base_colormap_name(cmap)
         return (name[:-2] if name.endswith('_r') else name) in DIVERGING_COLORMAPS
+
+    @staticmethod
+    def _is_cyclic_colormap(cmap: mcolors.Colormap) -> bool:
+        """
+        Report whether a colormap is for values that repeat, with the same color at both ends.
+
+        The name is matched against 'CYCLIC_COLORMAPS' with one '_r' reversal suffix dropped. A
+        reversed cyclic colormap is still cyclic. The name of a trimmed colormap keeps its
+        'trunc(...)' wrapper ('TRIMMED_COLORMAP_PATTERN'). That name is not in the list. A trimmed
+        colormap is therefore never treated as cyclic. A trim that drops colors leaves the two ends
+        with different colors.
+
+        Parameters
+        ==========
+        cmap : matplotlib.colors.Colormap
+            The colormap to classify.
+
+        Returns
+        =======
+        bool
+            True if the colormap is one of the cyclic ones.
+        """
+        name = cmap.name
+        return (name[:-2] if name.endswith('_r') else name) in CYCLIC_COLORMAPS
 
     def _check_centered_colormap(
         self,
@@ -5093,7 +5126,12 @@ class Mapper:
                 return None
             if mode == 'quantitative':
                 cmap = layer[cmap_key]
-                return ('average', cmap.reversed() if layer['reverse_overlay'] else cmap)
+                # A cyclic colormap has the same color at both ends of the scale. The values of the
+                # lines are then averaged on a circle. Clock times of 0.1 h and 23.9 h give 0 h, not
+                # 12 h. The colormap is checked before it is reversed. Reversing 'clocktime_r' would
+                # name it 'clocktime_r_r'.
+                transfer = 'circular_average' if self._is_cyclic_colormap(cmap) else 'average'
+                return (transfer, cmap.reversed() if layer['reverse_overlay'] else cmap)
             return ('high', None)
 
         def _unified_spec(layer):
@@ -6911,13 +6949,22 @@ class Mapper:
             Numeric ID of the map to draw.
 
         layer_specs : List[dict]
-            Per-layer specs, ordered so earlier layers render beneath later ones. Each has:
-            'element_type' ('reaction'/'compound'), 'use_reaction_attribute' (bool), 'entry_keys'
-            (the accessions this layer touches, for entry lookup and the compound warning), 'colorer'
-            (callable mapping an Entry to '(color_hexcode, priority)' or None), and 'derived_compound'
-            (how a reaction layer derives compound colors when no compound layer is present on a
-            global/overview map: a '(mode, colormap)' pair such as ('average', cmap) or ('high',
-            None); None on a compound layer, where it is never read).
+            There is one spec per layer. Earlier specs are drawn beneath later ones.
+
+            Each spec has these keys:
+            - 'element_type': 'reaction' or 'compound'.
+            - 'use_reaction_attribute': True if the layer's accessions are KEGG reaction IDs rather
+              than KO IDs.
+            - 'entry_keys': the accessions the layer touches. They find the map entries to color. A
+              compound layer also uses them to warn about compounds that are drawn only as
+              rectangles. Those cannot be colored.
+            - 'colorer': a function that takes an Entry. It returns a '(color_hexcode, priority)'
+              pair, or None to leave the Entry uncolored.
+            - 'derived_compound': how a reaction layer colors compounds by the reactions that touch
+              them. It is used only on a global or overview map without a compound layer. It is a
+              '(mode, colormap)' pair, such as ('average', cmap), ('circular_average', cmap) or
+              ('high', None). The mode is passed to 'kgml.Pathway.set_color_priority' as
+              'color_associated_compounds'. A compound layer has None here; it is not read.
 
         output_dir : str
             Path to the output directory in which the map PDF is drawn.
