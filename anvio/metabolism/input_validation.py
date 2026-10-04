@@ -23,19 +23,20 @@ def parse_numeric_column(dataframe, column, source_path, identifier_column=None)
     missing = raw_values.isna() | stripped_values.isin(PANDAS_DEFAULT_MISSING_MARKERS)
     numeric_values = pd.to_numeric(stripped_values.mask(missing, pd.NA), errors='coerce')
 
-    malformed = (~missing) & numeric_values.isna()
+    missing_values = missing.to_numpy(dtype=bool)
+    malformed = ((~missing) & numeric_values.isna()).to_numpy(dtype=bool)
     numeric_as_float = numeric_values.to_numpy(dtype='float64', na_value=np.nan)
-    non_finite = (~missing) & numeric_values.notna() & ~pd.Series(np.isfinite(numeric_as_float), index=dataframe.index)
-    invalid = malformed | non_finite
+    non_finite = (~missing_values) & numeric_values.notna().to_numpy(dtype=bool) & ~np.isfinite(numeric_as_float)
+    invalid_positions = np.flatnonzero(malformed | non_finite)
 
-    if invalid.any():
+    if len(invalid_positions):
         bad_rows = []
-        for row_index in dataframe.index[invalid][:5]:
-            row_number = dataframe.index.get_loc(row_index) + 2
+        for row_position in invalid_positions[:5]:
+            row_number = row_position + 2
             row_details = [f"row {row_number}"]
             if identifier_column and identifier_column in dataframe.columns:
-                row_details.append(f"{identifier_column}={dataframe.loc[row_index, identifier_column]!r}")
-            bad_value = raw_values.loc[row_index]
+                row_details.append(f"{identifier_column}={dataframe.iloc[row_position][identifier_column]!r}")
+            bad_value = raw_values.iloc[row_position]
             if hasattr(bad_value, 'item'):
                 bad_value = bad_value.item()
             row_details.append(f"value={bad_value!r}")

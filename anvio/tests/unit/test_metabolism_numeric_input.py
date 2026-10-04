@@ -11,6 +11,22 @@ from anvio.errors import ConfigError
 from anvio.metabolism.dbaccess import KeggEstimatorArgs
 from anvio.metabolism.enrichment import KeggModuleEnrichment
 from anvio.metabolism.input_validation import PANDAS_DEFAULT_MISSING_MARKERS
+from anvio.metabolism.input_validation import parse_numeric_column
+
+
+class TestNumericColumnDiagnostics(unittest.TestCase):
+    def test_duplicate_index_reports_each_invalid_row_position(self):
+        data = pd.DataFrame(
+            {'sample': ['first-sample', 'second-sample'], 'score': ['bad', 'inf']},
+            index=[7, 7],
+        )
+
+        with self.assertRaises(ConfigError) as error:
+            parse_numeric_column(data, 'score', 'modules.tsv', identifier_column='sample')
+
+        message = str(error.exception)
+        for expected in ['score', 'row 2', 'row 3', 'first-sample', 'second-sample', "'bad'", 'inf']:
+            self.assertIn(expected, message)
 
 
 class TestEnzymesNumericInputs(unittest.TestCase):
