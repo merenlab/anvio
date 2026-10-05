@@ -39,3 +39,12 @@ def get_workflow_rule_file_path(workflow, filename='main.smk'):
         raise ConfigError("The rules file '%s' for the workflow '%s' seems to be missing :/" % (filename, workflow))
 
     return rule_file_path
+
+
+def get_entry_snakefile_path(workflow):
+    """Return the first Snakefile included by the running Snakemake workflow.
+
+    Snakemake 9 exposes included files as an iterator-style collection rather than
+    an indexable list.
+    """
+    return str(next(iter(workflow.included)).abspath())

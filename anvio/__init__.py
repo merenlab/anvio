@@ -9,7 +9,7 @@ import platform
 
 # make sure anvi'o runs in the right Python environment:
 try:
-    if not (sys.version_info.major == major_python_version_required and sys.version_info.minor >= minor_python_version_required):
+    if not (sys.version_info.major == major_python_version_required and sys.version_info.minor == minor_python_version_required):
         sys.stderr.write("\n========================================================\n"
                          "🦄 SOMETHING BAD HAPPENED AND IT NEEDS YOUR ATTENTION 🦄\n"
                          "========================================================\n"
@@ -2069,6 +2069,17 @@ D = {
                      "of CPUs / cores on your system. Plus, please be careful with this option if you are running your "
                      "commands on a SGE -- if you are clusterizing your runs, and asking for multiple threads to use, "
                      "you may deplete your resources very fast."}
+                ),
+    'ani-backend': (
+            ['--ani-backend'],
+            {'choices': ['legacy', 'pyani-plus'],
+             'default': None,
+             'help': "ANI implementation for pyANI. The default is pyANI-plus, installed as a required anvi'o dependency. Choose 'legacy' to use the legacy pyANI executable."}
+                ),
+    'pyani-plus-program': (
+            ['--pyani-plus-program'],
+            {'default': None,
+             'help': "Path or executable name for pyANI-plus. Only valid when running the pyANI-plus backend, not when importing existing ANI results."}
                 ),
     'num-parallel-processes': (
             ['-P', '--num-parallel-processes'],

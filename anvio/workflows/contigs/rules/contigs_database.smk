@@ -131,7 +131,7 @@ rule reformat_external_gene_calls_table:
         fa = f.ReadFasta(input.contigs[0])
         contigs = fa.ids
         reformat_report = pd.read_csv(
-            input.reformat_report[0], sep="\t", index_col=1, header=None
+            input.reformat_report[0], sep="\t", index_col=1, header=None, keep_default_na=False, dtype=str
         )
         contig_dict = next(iter(reformat_report.to_dict().values()))
         external_gene_calls = u.get_TAB_delimited_file_as_dictionary(

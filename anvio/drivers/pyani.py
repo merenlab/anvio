@@ -6,6 +6,7 @@ import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
+from anvio.drivers.pyani_methods import validate_ani_method
 
 from anvio.errors import ConfigError
 
@@ -25,11 +26,20 @@ class PyANI:
         self.program_name = program_name
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        raw_backend = A('ani_backend')
+        if raw_backend is not None and raw_backend not in ('legacy', 'pyani-plus'):
+            raise ConfigError(f"Unknown ANI backend '{raw_backend}'. Choose 'legacy' or 'pyani-plus'.")
+        if raw_backend == 'pyani-plus':
+            raise ConfigError("The legacy PyANI driver cannot be used with ANI backend 'pyani-plus'.")
+        raw_pyani_plus_program = A('pyani_plus_program')
+        if raw_pyani_plus_program is not None:
+            raise ConfigError("--pyani-plus-program cannot be used with the legacy PyANI driver.")
         self.num_threads = A('num_threads') or 1
         self.method = A('method') or 'ANIb'
         self.log_file_path = os.path.abspath(A('log_file') or filesnpaths.get_temp_file_path())
         self.quiet = A('quiet')
 
+        validate_ani_method(self.method)
         self.check_programs()
 
         self.run.warning("Anvi'o will use 'PyANI' by Pritchard et al. (DOI: 10.1039/C5AY02550H) to compute ANI. If you publish your findings, \
