@@ -5340,6 +5340,7 @@ class Mapper:
                         layer['membership'], color_priorities, category_combos, group_sources,
                         group_threshold, layer['use_reaction_attribute']
                     ),
+                    'keep_highest_priority': True,
                     'derived_compound': _reaction_derived(layer, mode)
                 }
             # 'static' pools accessions across all sources; 'single' has its own accession set.
@@ -5441,6 +5442,7 @@ class Mapper:
                             inner_membership, group_color_priorities[group], None, None, None,
                             layer['use_reaction_attribute']
                         ),
+                        'keep_highest_priority': True,
                         'derived_compound': _reaction_derived(layer, 'membership')
                     })
                 group_layer_membership[group] = (
@@ -6993,14 +6995,16 @@ class Mapper:
         element_type: Literal['reaction', 'compound'],
         color_hexcode: str,
         priority: float,
-        color_priority: dict
+        color_priority: dict,
+        keep_highest_priority: bool = False
     ) -> None:
         """
         Set an entry's graphics colors for a layer and register them in 'color_priority'.
 
         Reaction (ortholog) entries are lines in global and overview maps and boxes or lines in
         standard maps; compound entries are circles. The registered '(fgcolor, bgcolor) -> priority'
-        keeps the entry from being treated as unprioritized and recolored to the background.
+        keeps the entry from being treated as unprioritized and recolored to the background. A color
+        has one priority on a map. Two entries given one color can bring different priorities.
 
         Parameters
         ==========
@@ -7022,7 +7026,19 @@ class Mapper:
         color_priority : dict
             The accumulating '{entry_type: {graphics_type: {(fg, bg): priority}}}' dictionary,
             shared across a map's layers and passed once to 'set_color_priority'.
+
+        keep_highest_priority : bool, False
+            If True, a color that is already registered keeps the higher of its priority and this
+            one. If False, this priority replaces it. The last entry given a color then sets its
+            priority.
         """
+        def _register(entry_type: str, graphics_type: str, colors: Tuple[str, str]) -> None:
+            priorities = color_priority.setdefault(entry_type, {}).setdefault(graphics_type, {})
+            if keep_highest_priority and colors in priorities:
+                priorities[colors] = max(priorities[colors], priority)
+            else:
+                priorities[colors] = priority
+
         if element_type == 'compound':
             for uuid in entry.children['graphics']:
                 graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
@@ -7038,9 +7054,7 @@ class Mapper:
                     graphics.fgcolor = '#000000'
                     graphics.bgcolor = color_hexcode
                     colors = ('#000000', color_hexcode)
-                color_priority.setdefault(
-                    'compound', {}
-                ).setdefault('circle', {})[colors] = priority
+                _register('compound', 'circle', colors)
             return
 
         for uuid in entry.children['graphics']:
@@ -7077,9 +7091,7 @@ class Mapper:
                         f"an ortholog entry of KEGG pathway map {pathway.number} has a graphics "
                         f"element of type '{graphics.type}', which anvi'o cannot color."
                     )
-            color_priority.setdefault(
-                'ortholog', {}
-            ).setdefault(graphics_type, {})[colors] = priority
+            _register('ortholog', graphics_type, colors)
 
     def _warn_unrenderable_compounds(
         self,
@@ -7270,9 +7282,11 @@ class Mapper:
         across its accessions via 'membership'; with 'group_sources', the qualifying groups (those
         meeting 'group_threshold' among their sources) are used instead. The color and its priority
         are looked up in 'color_priorities' by the count of categories ('category_combos' None) or
-        by the position of their exact combination (by membership), so a color shared by more than
-        one count — which a continuous count scale allows — still carries that count's own priority.
-        An Entry in no source, or, when grouped, in no qualifying group, is left uncolored.
+        by the position of their exact combination (by membership). Two counts can share a color, on
+        a continuous count scale or with a cyclic colormap. A map keeps one priority per color. So
+        the spec of a presence layer asks '_draw_map_elements' to keep the highest priority given to
+        a color on the map ('keep_highest_priority'). An Entry in no source, or, when grouped, in no
+        qualifying group, is left uncolored.
         """
         combo_lookup: Dict[Tuple[str], Tuple[str]] = {}
         if category_combos is not None:
@@ -7340,11 +7354,16 @@ class Mapper:
               ('high', None). The mode is passed to 'kgml.Pathway.set_color_priority' as
               'color_associated_compounds'. A compound layer has None here; it is not read.
 
-            A spec can also have this key:
+            A spec can also have these keys:
             - 'pathway_numbers': the maps on which the layer has a value to color. On any other map
               the layer colors nothing. It then does not count as matching the map's accessions. A
               summary of samples or groups can be undefined for every element of a map. This key
               lets such a map be skipped.
+            - 'keep_highest_priority': True to give each color the highest priority of the entries
+              given that color on the map. Otherwise a color keeps the priority of the last entry
+              given it. A presence layer sets this. Two of its counts can share a color. Its entries
+              are colored in the order of its input, such as the rows of a text file. Without this
+              key, that order could change the map.
 
         output_dir : str
             Path to the output directory in which the map PDF is drawn.
@@ -7452,7 +7471,8 @@ class Mapper:
                     continue
                 color_hexcode, priority = colored
                 self._stage_element_color(
-                    pathway, entry, spec['element_type'], color_hexcode, priority, color_priority
+                    pathway, entry, spec['element_type'], color_hexcode, priority, color_priority,
+                    keep_highest_priority=spec.get('keep_highest_priority', False)
                 )
         return color_priority, found_entries
 
