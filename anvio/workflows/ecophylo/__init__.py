@@ -468,8 +468,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             if hmm_path != "INTERNAL":
                 sources = u.get_HMM_sources_dictionary([hmm_path])
 
-                for source,value in sources.items():
-                    gene = value['genes']
+                for source, source_info in sources.items():
+                    gene = source_info['genes']
                     if hmm_source != source:
                         raise ConfigError(f"In your {self.hmm_list_path}, please change the source for gene {hmm_name} to this: {source}")
                     if len(gene) > 1:
