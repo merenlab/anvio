@@ -1387,7 +1387,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                     items_additional_data_dict[split_name] = item_dict = {}.fromkeys(items_additional_data_keys)
 
                 for rank in ranks:
-                    item_dict[rank[2: ]] = taxonomy_series.loc[rank] # convert "t_domain" to "domain", etc.
+                    value = taxonomy_series.loc[rank]
+                    item_dict[rank[2: ]] = None if pd.isnull(value) else value # convert "t_domain" to "domain", etc.
 
             items_additional_data_keys.extend([rank[2:] for rank in ranks])
 
