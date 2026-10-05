@@ -68,6 +68,7 @@ rule contigs_target_rule:
             ),
             group=M.group_names,
         ),
+        structure_dbs=M.get_structure_target_files(),
 
 
 # Workflow rule modules. Keep this order to preserve existing rule dependencies.
@@ -75,6 +76,7 @@ include: w.get_workflow_rule_file_path("contigs", "contigs_database.smk")
 include: w.get_workflow_rule_file_path("contigs", "functional_annotation.smk")
 include: w.get_workflow_rule_file_path("contigs", "gene_taxonomy.smk")
 include: w.get_workflow_rule_file_path("contigs", "external_genomes.smk")
+include: w.get_workflow_rule_file_path("structure", "contigs_db.smk")
 
 
 if "anvio/workflows/contigs" in str(workflow.included[0].abspath()):

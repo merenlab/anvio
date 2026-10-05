@@ -74,7 +74,8 @@ class MetagenomicsWorkflow(SRAReadsModule, QCModule, ReadRecruitmentModule, Cont
                                "CONTIGS_DIR": "03_CONTIGS",
                                "TAXONOMY_DIR": "07_TAXONOMY",
                                "SUMMARY_DIR": "08_SUMMARY",
-                               "SPLIT_PROFILES_DIR": "09_SPLIT_PROFILES"})
+                               "SPLIT_PROFILES_DIR": "09_SPLIT_PROFILES",
+                               "STRUCTURE_DIR": "10_STRUCTURE"})
 
 
 

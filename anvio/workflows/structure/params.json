@@ -1,0 +1,38 @@
+{
+    "general_params": {},
+    "rules": {
+        "anvi_gen_structure_database": {
+            "threads":                           {"type": "int",   "default": 4},
+            "run":                               {"type": "bool",  "default": false},
+            "gpu":                               {"type": "int",   "default": null},
+            "split_msa_and_predict":             {"type": "bool",  "default": false},
+            "--engine":                          {"type": "str",   "default": "modeller"},
+            "--num-models":                      {"type": "int",   "default": null},
+            "--skip-DSSP":                       {"type": "bool",  "default": null},
+            "--deviation":                       {"type": "float", "default": null},
+            "--modeller-database":               {"type": "str",   "default": null},
+            "--scoring-method":                  {"type": "str",   "default": null},
+            "--very-fast":                       {"type": "bool",  "default": null},
+            "--percent-cutoff":                  {"type": "float", "default": null},
+            "--alignment-fraction-cutoff":       {"type": "float", "default": null},
+            "--max-number-templates":            {"type": "int",   "default": null},
+            "--modeller-executable":             {"type": "str",   "default": null},
+            "--offline-mode":                    {"type": "bool",  "default": null},
+            "--pdb-db":                          {"type": "str",   "default": null},
+            "--colabfold-conda-env":             {"type": "str",   "default": null},
+            "--colabfold-msa-server":            {"type": "bool",  "default": null},
+            "--colabfold-db":                    {"type": "str",   "default": null},
+            "--num-recycle":                     {"type": "int",   "default": null},
+            "--amber":                           {"type": "bool",  "default": null},
+            "--colabfold-additional-parameters": {"type": "str",   "default": null},
+            "--write-buffer-size":               {"type": "int",   "default": null}
+        },
+        "colabfold_msa": {
+            "threads": {"type": "int", "default": 8}
+        },
+        "colabfold_predict": {
+            "threads": {"type": "int", "default": 1},
+            "gpu":     {"type": "int", "default": null}
+        }
+    }
+}
