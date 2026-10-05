@@ -7,6 +7,7 @@ The currently available programs for calculating similarity metrics include, cho
 - [sourmash](https://sourmash.readthedocs.io/en/latest/) to calculate the mash distance between genomes.  Though we provide this option, we don't recommend using sourmash for genome comparisons--it excels at other tasks--yet it remains as a legacy option.
 
 If you omit `--program`, anvi'o uses fastANI. Choose pyANI explicitly when it is installed and you need its higher sensitivity for more divergent genomes.
+The pyANI options `--method`, `--min-alignment-fraction`, `--significant-alignment-length`, and `--min-full-percent-identity` require `--program pyANI`; supplying them with fastANI or sourmash raises an error.
 
 ### Input/Output
 

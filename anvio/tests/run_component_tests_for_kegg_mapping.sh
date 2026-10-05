@@ -144,8 +144,8 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
                         --output-dir draw_txt_samples_kos_value_limits \
                         --reaction-gene-aggregation mean \
                         --reaction-sample-summary mean \
-                        --reaction-value-limits 5 40 \
-                        --reaction-category-value-limits 5 40 \
+                        --reaction-value-limits 5 35 \
+                        --reaction-category-value-limits 5 35 \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \
@@ -206,10 +206,12 @@ fi
 
 # Clock times repeat every 24 hours. The maps of the individual samples use the cyclic 'clocktime'
 # colormap. Its two ends have the same color. Limits of 0 and 24 make the scale span one whole day.
-# Both ends of the scale are then midnight.
+# Both ends of the scale are then midnight. A period of 24 averages the KOs of a map element on a
+# circle, so that times on either side of midnight average to a time near midnight.
 INFO "Coloring the clock times of each sample with the cyclic 'clocktime' colormap"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
                         --output-dir draw_txt_samples_kos_clocktime \
+                        --reaction-value-period 24 \
                         --reaction-category-colormap clocktime \
                         --reaction-category-value-limits 0 24 \
                         --pathway-numbers $pathway_numbers \
@@ -583,3 +585,23 @@ anvi-draw-kegg-pathways --pan-db TEST-PAN.db \
                         --presence-colormap-scheme by_count_continuous \
                         --pathway-numbers $pathway_numbers \
                         --no-progress
+
+## REACTION NETWORK JSON INPUT
+INFO "Exporting the pangenomic reaction network to a metabolic model JSON file"
+anvi-get-metabolic-model-file --pan-db TEST-PAN.db \
+                              --genomes-storage TEST-GENOMES.db \
+                              --output-file pan-network.json
+
+INFO "Mapping KOs from a pangenomic reaction network JSON file"
+anvi-draw-kegg-pathways --reaction-network-json pan-network.json \
+                        --output-dir json_pan_kos \
+                        --pathway-numbers $pathway_numbers \
+                        --no-progress
+
+# The genes of a pangenomic JSON are gene clusters. Each has one KO, under 'id'. Read the way the
+# genes of a genomic JSON are read, its KOs would match no map, and nothing would be drawn.
+if [ ! -s json_pan_kos/unified/ko00010.pdf ]
+then
+    echo "ERROR: the KOs of a pangenomic reaction network JSON should have drawn map 00010."
+    exit 1
+fi
