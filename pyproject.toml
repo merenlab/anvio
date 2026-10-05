@@ -68,7 +68,7 @@ dependencies = [
     "paste",
     "psutil",
     "pandas>=3,<4",
-    "snakemake>=9.12,<10",
+    "snakemake>=9.14,<10",
     "snakemake-interface-common>=1.20.1,<2",
     "snakemake-interface-logger-plugins>=2,<3",
     "multiprocess",
