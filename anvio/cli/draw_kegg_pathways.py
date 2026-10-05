@@ -2325,18 +2325,17 @@ def main() -> None:
             "Unprioritized entry graphics cannot be assigned the same combination of foreground "
             "and background colors as prioritized entries of the same entry and graphics types."
         ) in e_str:
-            # A layer's own colors are checked before anything is drawn ('_check_reserved_colors'),
-            # so reaching here means the clash came from a color anvi'o derived rather than one that
-            # was asked for: on a reaction-only global or overview map, compounds take a color
-            # averaged from the reactions around them. The kgml error names the entry type, which
-            # says which layer's colormap produced it.
+            # The colors of a run are checked before anything is drawn. The check covers the colors
+            # of the layers ('_check_reserved_colors') and the compound colors derived from
+            # reactions ('_check_derived_compound_colors'). Only a clash those checks did not
+            # foresee arrives here. The kgml error names the entry type, which says which layer's
+            # colors produced it.
             if "'compound' entries" in e_str:
                 layer_clause = (
-                    "Specifically, a color given to the compound layer collided with a reserved "
-                    "color. On a map drawn from reactions alone, each compound takes a color "
-                    "derived from the reactions it touches, so the reaction colormap "
-                    "('--reaction-colormap') is what to adjust; an explicit compound layer takes "
-                    "its colors from '--compound-colormap' or '--compound-color'. "
+                    "Specifically, a compound would be drawn in a reserved color. On a map drawn "
+                    "from reactions alone, each compound takes its color from the reactions it "
+                    "touches. So the reaction color or colormap is what to change "
+                    "('--reaction-color' or '--reaction-colormap'). "
                 )
             elif "'ortholog' entries" in e_str:
                 layer_clause = (
