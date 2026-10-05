@@ -601,6 +601,21 @@ do
     fi
 done
 
+# The angular deviation colors the 'unified' map by how far the samples' clock times are spread
+# apart. It needs times in at least 3 samples. Elements in fewer samples are left uncolored, and a
+# warning says so.
+INFO "Testing the angular deviation of clock times on the 'unified' map"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
+    --output-dir draw_txt_samples_kos_angular_deviation \
+    --reaction-value-period 24 --reaction-sample-summary angular_deviation \
+    --pathway-numbers $pathway_numbers --draw-individual-files \
+    --no-progress 2>&1 | tee draw_txt_angular_deviation.log
+if ! tr '\n' ' ' < draw_txt_angular_deviation.log | grep -q "needs at least 3 values"
+then
+    echo "ERROR: an angular deviation of fewer than 3 clock times did not warn."
+    exit 1
+fi
+
 # The compound file has a value column and no 'sample' column, so the compound layer has no scale
 # of its own over the samples: every individual map takes its compound colors from the scale of the
 # 'unified' map. Skipping that map therefore has to leave its colorbar behind, that bar being the
@@ -1168,6 +1183,52 @@ if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.tx
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: a center with a period should have failed."
+    exit 1
+fi
+
+# An angular deviation needs a period as well. Since angular deviation is a spread rather than a
+# point in the period, only the summary that colors the 'unified' map takes it, and that map's scale
+# is fixed, with a colormap that is not cyclic.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
+    --reaction-sample-summary angular_deviation \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: an angular deviation without '--reaction-value-period' should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
+    --reaction-value-period 24 --reaction-accession-aggregation angular_deviation \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: an angular deviation as an accession aggregation should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
+    --groups-txt draw-sample-group-information.txt --reaction-value-period 24 \
+    --reaction-sample-summary angular_deviation --reaction-group-summary circular_mean \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: an angular deviation as the sample summary of a grouped run should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
+    --reaction-value-period 24 --reaction-sample-summary angular_deviation \
+    --reaction-colormap clocktime \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a cyclic colormap for an angular deviation should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
+    --reaction-value-period 24 --reaction-sample-summary angular_deviation \
+    --reaction-value-limits 0 24 \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: limits on the 'unified' scale of an angular deviation should have failed."
     exit 1
 fi
 
