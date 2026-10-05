@@ -25,10 +25,13 @@ def extract_misc_data(mmseqs_cluster_rep_index, final_sequences_headers, output)
         sep="\t",
         index_col=False,
         names=["representative", "cluster_members"],
+        keep_default_na=False,
+        dtype=str,
     )
 
     final_sequences_headers = pd.read_csv(
-        final_sequences_headers, sep="\t", index_col=False, names=["identifier"]
+        final_sequences_headers, sep="\t", index_col=False, names=["identifier"],
+        keep_default_na=False, dtype=str
     )
 
     # Clean data
@@ -243,18 +246,23 @@ rule anvi_estimate_scg_taxonomy:
                                    -O {params.taxonomy} &> {log}")
         # Import data
         # ------------
-        scg_taxonomy = pd.read_csv(params.taxonomy_long, sep="\t", index_col=False)
+        scg_taxonomy = pd.read_csv(params.taxonomy_long, sep="\t", index_col=False,
+                                   converters={"metagenome_name": str, "gene_name": str, "gene_callers_id": str})
         reformat_report = pd.read_csv(
             params.reformat_file,
             sep="\t",
             index_col=False,
             names=["new_header", "header"],
+            keep_default_na=False,
+            dtype=str,
         )
         final_sequences_headers = pd.read_csv(
             input.final_list_of_sequences_for_mapping_headers,
             sep="\t",
             index_col=False,
             names=["identifier"],
+            keep_default_na=False,
+            dtype=str,
         )
         # Clean Data
         # -----------
