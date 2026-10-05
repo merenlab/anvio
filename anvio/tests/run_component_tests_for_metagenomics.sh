@@ -1052,7 +1052,6 @@ anvi-dereplicate-genomes -o $output_dir/DEREPLICATION_FROM_SCRATCH \
                          --similarity 0.99 \
                          --program fastANI \
                          --fragment-length 250 \
-                         --min-fraction 0 \
                          --no-progress \
                          $thread_controller
 SHOW_FILE $output_dir/DEREPLICATION_FROM_SCRATCH/CLUSTER_REPORT.txt
@@ -1061,7 +1060,6 @@ INFO "Computing genome similarity"
 anvi-compute-genome-similarity -e $output_dir/external-genomes.txt \
                                -o $output_dir/GENOME_SIMILARITY_OUTPUT \
                                --fragment-length 250 \
-                               --min-num-fragments 1 \
                                --program fastANI \
                                --no-progress \
                                $thread_controller
