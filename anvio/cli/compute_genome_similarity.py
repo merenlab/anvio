@@ -36,14 +36,16 @@ PYANI_ONLY_OPTIONS = (
 def validate_program_options(args, argv=None):
     """Reject explicitly supplied pyANI options when another program is selected."""
     argv = sys.argv[1:] if argv is None else argv
+    supplied_tokens = [argument.split('=', 1)[0] for argument in argv
+                       if argument.startswith('--') and argument != '--']
     supplied_options = [
         option for option in PYANI_ONLY_OPTIONS
-        if option in argv or any(argument.startswith(option + '=') for argument in argv)
+        if any(token == option or option.startswith(token) for token in supplied_tokens)
     ]
 
     if supplied_options and args.program != 'pyANI':
-        raise ConfigError("The following options only apply with `--program pyANI`: %s. "
-                          "Choose pyANI or remove these options." % ', '.join(supplied_options))
+        raise ConfigError(f"The following options only apply with `--program pyANI`: {', '.join(supplied_options)}. "
+                          "Choose pyANI or remove these options.")
 
 
 @terminal.time_program
