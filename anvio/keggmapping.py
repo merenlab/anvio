@@ -582,7 +582,8 @@ class Mapper:
 
         The JSON file must be in the format produced by 'anvi-get-metabolic-model-file' or by
         'anvi-reaction-network --enzymes-txt ... --output-json ...'. KO IDs are extracted
-        directly from the gene annotations in the JSON, so no reference databases are required.
+        directly from the gene annotations in the JSON, so no reference databases are required. In
+        a JSON from a pangenome, the genes are gene clusters, and each one has a single KO.
 
         Parameters
         ==========
@@ -634,8 +635,13 @@ class Mapper:
 
         ko_ids = set()
         for gene_entry in json_dict.get('genes', []):
-            for ko_id in gene_entry.get('annotation', {}).get('ko', {}).keys():
-                ko_ids.add(ko_id)
+            ko_annotation = gene_entry.get('annotation', {}).get('ko', {})
+            if 'id' in ko_annotation:
+                # A JSON from a pangenome lists gene clusters. Each has one KO, given by 'id'.
+                ko_ids.add(ko_annotation['id'])
+            else:
+                # A JSON from a contigs database lists genes. Their KOs are the keys.
+                ko_ids.update(ko_annotation)
 
         self.progress.end()
 
