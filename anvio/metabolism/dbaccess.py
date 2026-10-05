@@ -17,6 +17,7 @@ from anvio.errors import ConfigError
 from anvio.metabolism.context import KeggContext
 from anvio.metabolism.modulesdb import ModulesDatabase
 from anvio.metabolism.constants import DEFAULT_OUTPUT_MODE, OUTPUT_MODES, OUTPUT_HEADERS, STRAY_KO_ANVIO_SUFFIX
+from anvio.metabolism.input_validation import parse_numeric_column
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -362,7 +363,7 @@ class KeggEstimatorArgs():
 
         self.progress.new("Loading enzymes-txt file...")
         expected_fields = ['gene_id', 'enzyme_accession', 'source']
-        enzyme_df = pd.read_csv(self.enzymes_txt, sep="\t", index_col=False)
+        enzyme_df = pd.read_csv(self.enzymes_txt, sep="\t", index_col=False, keep_default_na=False)
         self.progress.end()
 
         self.run.info("Number of genes loaded from enzymes-txt file", enzyme_df.shape[0])
@@ -377,6 +378,15 @@ class KeggEstimatorArgs():
             exp_str = ", ".join(expected_fields)
             raise ConfigError(f"Your enzymes-txt file ({self.enzymes_txt}) is missing some required columns. "
                               f"The columns it needs to have are: {exp_str}. And the missing column(s) include: {miss_str}")
+
+        empty_required_fields = [f for f in expected_fields if enzyme_df[f].astype(str).str.strip().eq('').any()]
+        if empty_required_fields:
+            raise ConfigError(f"Your enzymes-txt file ({self.enzymes_txt}) contains empty values in required column(s): "
+                              f"{', '.join(empty_required_fields)}. Please fix this and try again.")
+
+        for f in ['coverage', 'detection']:
+            if f in enzyme_df.columns:
+                enzyme_df[f] = parse_numeric_column(enzyme_df, f, self.enzymes_txt, identifier_column='gene_id')
 
         # warning about extra columns
         used_cols = expected_fields + ['coverage', 'detection']
@@ -394,7 +404,7 @@ class KeggEstimatorArgs():
             self.run.warning("You requested coverage/detection values to be added to the output files, but your "
                              "input file does not seem to contain either a 'coverage' column or a 'detection' column, or both. "
                              "Since we don't have this data, --add-coverage will not work, so we are turning this "
-                             "flag off. Sorry ¯\_(ツ)_/¯")
+                             "flag off. Sorry ¯\\_(ツ)_/¯")
             self.add_coverage = False
             # remove coverage headers from the list so we don't try to access them later
             kofam_hits_coverage_headers = [self.contigs_db_project_name + "_coverage", self.contigs_db_project_name + "_detection"]

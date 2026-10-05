@@ -8,7 +8,7 @@ import shutil
 import pandas as pd
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
-# using the multiprocessing module directly results in a pickling error in Python 3.10 which
+# using the multiprocessing module directly results in a pickling error in Python 3.13 which
 # goes like this:
 #
 #   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
@@ -478,7 +478,7 @@ def parse_exact_query_substrings(output_path):
     """Parse queries that are exact substrings of one or more targets. All this method does to the
     output is remove commented lines and extraneous columns."""
     output_df = pd.read_csv(output_path,
-                            delim_whitespace=True, # there is a variable number of spaces between fields, and there are spaces at the beginning of each line
+                            sep=r'\s+', # there is a variable number of spaces between fields, and there are spaces at the beginning of each line
                             comment='#', # remove comment lines at the beginning of the file
                             header=None,
                             usecols=[0, 1, 2, 4, 5, 6], # disregard the fourth column, indicating a direct match, "D", or palindromic match, "P", as the latter does not occur here

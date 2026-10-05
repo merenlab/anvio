@@ -217,14 +217,19 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
                 sep="\t",
                 index_col=False,
                 names=["representative", "cluster_members"],
+                keep_default_na=False,
+                dtype=str,
             )
             reformat_report = pd.read_csv(
                 input.reformat_report,
                 sep="\t",
                 index_col=False,
                 names=["new_header", "header"],
+                keep_default_na=False,
+                dtype=str,
             )
-            bam = pd.read_csv(input.coverages, sep="\t", index_col=False)
+            bam = pd.read_csv(input.coverages, sep="\t", index_col=False,
+                              converters={"contig": str, "gene_callers_id": str})
             bam["primary_key"] = (
                 bam["contig"] + "_" + bam["gene_callers_id"].astype(str)
             )
@@ -447,11 +452,10 @@ rule count_num_sequences_filtered:
             """
 
             num_seqs = 0
-
-        for line in fasta:
-            if line.startswith(">"):
-                num_seqs += 1
-        return num_seqs
+            for line in fasta:
+                if line.startswith(">"):
+                    num_seqs += 1
+            return num_seqs
         input_files_list = [
             params.combined_seq,
             params.cluster_mmseqs,

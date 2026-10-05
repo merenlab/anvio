@@ -53,7 +53,7 @@ include: w.get_workflow_rule_file_path("trnaseq", "identification.smk")
 include: w.get_workflow_rule_file_path("trnaseq", "merge_taxonomy.smk")
 
 
-if "anvio/workflows/trnaseq" in str(workflow.included[0].abspath()):
+if "anvio/workflows/trnaseq" in w.get_entry_snakefile_path(workflow):
     # Check if all program dependencies are met.
     # For this line to be effective, there should be an initial dry run step --
     # which is the default behavior of `WorkflowSuperClass`, so you are most likely covered.

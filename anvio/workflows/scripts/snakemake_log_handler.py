@@ -85,7 +85,7 @@ def _message_strings(message):
 
 def _snakemake_log_path(message):
     for text in _message_strings(message):
-        match = re.search(r'Complete log:\s*(\S+)', text)
+        match = re.search(r'Complete log(?:\(s\))?:\s*(\S+)', text)
         if match:
             return match.group(1)
 

@@ -76,7 +76,7 @@ cat all neccessary files:
                     f"{hmm_source}-dom-hmmsearch",
                     "hmm_hits_filtered.txt",
                 )
-                df = pd.read_csv(hmm_hit, sep="\t")
+                df = pd.read_csv(hmm_hit, sep="\t", converters={"source": str, "gene_name": str})
                 df = df[df.source == hmm_source]
                 gene_name_list = df["gene_name"].tolist()
                 if hmm_name in gene_name_list:
