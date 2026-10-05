@@ -406,7 +406,10 @@ class WorkflowSuperClass:
         original_manifest_env_var = os.environ.get('ANVIO_WORKFLOW_MANIFEST_PATH')
         workflow_name = getattr(self.args, 'workflow', self.name)
         if not self.list_dependencies:
+            from anvio.workflows.logger import register_workflow_logger
             from anvio.workflows.scripts.manifest import initialize_manifest
+
+            register_workflow_logger()
 
             workflow_manifest_path = os.path.join(self.dirs_dict["LOGS_DIR"], f"{workflow_name}-workflow-manifest.tsv")
             initialize_manifest(workflow_manifest_path)
