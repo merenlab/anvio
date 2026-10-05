@@ -4,7 +4,8 @@ import sys
 import unittest
 from unittest import mock
 
-from anvio.cli.compute_genome_similarity import get_args
+from anvio.cli.compute_genome_similarity import get_args, validate_program_options
+from anvio.errors import ConfigError
 
 
 class ComputeGenomeSimilarityCLITestCase(unittest.TestCase):
@@ -30,6 +31,29 @@ class ComputeGenomeSimilarityCLITestCase(unittest.TestCase):
             args = get_args()
 
         self.assertEqual(args.program, 'pyANI')
+
+    def test_pyani_options_are_rejected_for_fastani_when_explicit(self):
+        option_values = {
+            '--method': 'ANIm',
+            '--min-alignment-fraction': '0.8',
+            '--significant-alignment-length': '5000',
+            '--min-full-percent-identity': '90',
+        }
+        for program in ('fastANI', 'sourmash'):
+            for option, value in option_values.items():
+                for spelling in ([option, value], [f'{option}={value}']):
+                    with self.subTest(program=program, spelling=spelling):
+                        args = mock.Mock(program=program)
+                        with self.assertRaises(ConfigError):
+                            validate_program_options(args, argv=spelling)
+
+    def test_omitted_pyani_defaults_do_not_reject_fastani_or_sourmash(self):
+        for program in ('fastANI', 'sourmash'):
+            with self.subTest(program=program):
+                validate_program_options(mock.Mock(program=program), argv=[])
+
+    def test_pyani_options_remain_valid_for_pyani(self):
+        validate_program_options(mock.Mock(program='pyANI'), argv=['--method=ANIm'])
 
 
 if __name__ == '__main__':
