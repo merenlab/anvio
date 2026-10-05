@@ -3,6 +3,7 @@
 
 import os
 import argparse
+import inspect
 import tempfile
 import numpy as np
 import pandas as pd
@@ -68,6 +69,8 @@ IsoacceptorContributionTables = dict[str, dict[str, dict[str, pd.DataFrame]]]
 
 
 run = terminal.Run()
+
+_PANDAS_STACK_HAS_FUTURE_STACK = 'future_stack' in inspect.signature(pd.DataFrame.stack).parameters
 progress = terminal.Progress()
 run_quiet = terminal.Run(verbose=False)
 
@@ -3208,7 +3211,11 @@ class Affinitizer:
         """
         # Operate on a renamed column axis without mutating the caller's DataFrame.
         wide_df = wide_df.rename_axis(columns='anticodon')
-        stacked: pd.DataFrame = wide_df.stack(dropna=False).rename(value_col).reset_index()
+        if _PANDAS_STACK_HAS_FUTURE_STACK:
+            stacked = wide_df.stack(future_stack=True)
+        else:
+            stacked = wide_df.stack(dropna=False)
+        stacked: pd.DataFrame = stacked.rename(value_col).reset_index()
         stacked['trnaseq_sample_name'] = sample_name
         return stacked
 
