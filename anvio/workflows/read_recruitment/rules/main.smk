@@ -529,7 +529,9 @@ rule import_percent_of_reads_mapped:
     """Calculate and import read-mapping percentages into profile layers."""
     input:
         total_reads=dirs_dict["QC_DIR"] + "/{readset}-total_num_reads.txt",
-        profiledb=dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/PROFILE.db",
+        profiledb=ancient(
+            dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/PROFILE.db"
+        ),
     output:
         layers_txt=dirs_dict["PROFILE_DIR"]
         + "/{group}/{readset}/layers-additional-data.txt",
@@ -566,5 +568,6 @@ rule import_percent_of_reads_mapped:
         shell(
             "anvi-import-misc-data {output.layers_txt} "
             "-p {input.profiledb} "
-            "--target-data-table layers >> {log} 2>&1"
+            "--target-data-table layers "
+            "--just-do-it >> {log} 2>&1"
         )
