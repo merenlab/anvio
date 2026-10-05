@@ -212,7 +212,7 @@ rule filter_hmm_hits_by_model_coverage:
         )
         # import hmm_hits to find out how many hmm_hits we got from the hmm model
         # if we don't have any then we can skippp all dis
-        df = pd.read_csv(input.hmm_hits, sep="\t")
+        df = pd.read_csv(input.hmm_hits, sep="\t", converters={"source": str, "gene_name": str})
         df = df[df.source == hmm_source]
         gene_name_list = df["gene_name"].tolist()
         # There is no point in running the following if we don't have the target hmm in the contigs_db!
@@ -334,7 +334,7 @@ names with reformated names.
             f"{wildcards.sample_name}-{wildcards.hmm_name}-external_gene_calls_renamed.tsv",
         )
         # import hmm_hits to find out how many hmm_hits we got from the hmm model
-        df = pd.read_csv(params.hmm_hits, sep="\t")
+        df = pd.read_csv(params.hmm_hits, sep="\t", converters={"source": str, "gene_name": str})
         df = df[df.source == hmm_source]
         gene_name_list = df["gene_name"].tolist()
         # There is no point in running the following if we don't have any hmm_hits to begin with!
@@ -412,7 +412,8 @@ names with reformated names.
             )
             # Import tables
             external_gene_calls = pd.read_csv(
-                external_gene_calls, sep=r'\s+', index_col=False
+                external_gene_calls, sep=r"\s+", index_col=False,
+                converters={"contig": str, "source": str, "version": str}
             )
             reformat_file = os.path.join(
                 fasta_output_dir,
@@ -423,6 +424,8 @@ names with reformated names.
                 sep="\t",
                 index_col=False,
                 names=["new_header", "header"],
+                keep_default_na=False,
+                dtype=str,
             )
             # Parse input files
             # -----------------
