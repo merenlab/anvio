@@ -34,7 +34,7 @@ Compounds are colored by sample (or, using a %(groups-txt)s, group) count or mem
 
 **Value column**
 
-Compounds are colored by the continuous value through a sequential colormap (`--compound-colormap`, default `plasma_r`). The colorbar is labeled by the value column's header. A cyclic colormap called `clocktime` was defined in anvi'o to show a value column of clock times in hours. Without a `sample` column, give `--compound-colormap clocktime --compound-value-limits 0 24`; with a `sample` column, give `--compound-category-colormap clocktime --compound-category-value-limits 0 24` to color the maps of individual samples. See %(anvi-draw-kegg-pathways)s.
+Compounds are colored by the continuous value through a sequential colormap (`--compound-colormap`, default `plasma_r`). The colorbar is labeled by the value column's header. A cyclic colormap called `clocktime` was defined in anvi'o to show a value column of clock times in hours. Without a `sample` column, give `--compound-colormap clocktime --compound-value-limits 0 24`; with a `sample` column, give `--compound-category-colormap clocktime --compound-category-value-limits 0 24` to color the maps of individual samples. Give `--compound-value-period 24` as well — each reduction of the values then takes their circular mean, `circular_mean`, so that 23.5 h and 0.5 h average to 0 h, not 12 h. See %(anvi-draw-kegg-pathways)s.
 
 A map element's constituent compound accessions are aggregated to a per-element value by `--compound-accession-aggregation` (`sum` by default) — this reduction happens within each sample.
 
@@ -53,13 +53,13 @@ There are three distinct reductions, each with its own option, plus one rescalin
 |Level|Option|What it does|
 |:--|:--|:--|
 |accessions of a map element|`--compound-accession-aggregation` (an aggregation; `sum` by default)|the constituent accessions of a map element → that element's value|
-|across samples|`--compound-sample-summary` (`count`, `count_continuous`, `membership`, or an aggregation)|a set of samples → one continuous value or one presence value per accession|
-|across groups|`--compound-group-summary` (`count`, `count_continuous`, `membership`, or an aggregation)|the groups of a %(groups-txt)s → one continuous value or one presence value per accession|
+|across samples|`--compound-sample-summary` (`count`, `count_continuous`, `membership`, or an aggregation)|a set of samples → one continuous value or one presence value per map element|
+|across groups|`--compound-group-summary` (`count`, `count_continuous`, `membership`, or an aggregation)|the groups of a %(groups-txt)s → one continuous value or one presence value per map element|
 |each sample's or group's value for an element|`--compound-element-normalization` (a normalization; none by default)|an element's value in one sample or group → that value rescaled against the element's values across all samples or groups|
 
-An **aggregation** is `sum` (default), `mean`, `max`, `min`, `median`, `std` — or any other unsuggested pandas aggregation that reduces a series of numbers to one number, such as `var` or `sem`. Names that transform rather than reduce (`cumsum`) or that only a grouping offers (`first`) are rejected. Where an aggregation is undefined for the values available, as `std` is for a single value, the affected elements are left uncolored and a warning says how many accessions are affected.
+An **aggregation** is `sum` (default), `mean`, `max`, `min`, `median`, `std` — or any other unsuggested pandas aggregation that reduces a series of numbers to one number, such as `var` or `sem`. Names that transform rather than reduce (`cumsum`) or that only a grouping offers (`first`) are rejected. Where an aggregation is undefined for the values available, as `std` is for a single value, the affected elements are left uncolored. `circular_mean` averages values that repeat after a period, such as clock times, and requires `--compound-value-period`.
 
-A summary reduces only the samples (or groups) that actually contain an accession: a sample with no row for an accession is treated as not having observed it, so `mean` over three samples where only one lists the accession is that one sample's value.
+A summary pools the values of a **map element**, not of an accession. An element's value in a sample is the aggregate of its accessions in that sample. Without `--compound-element-normalization`, this is the value that the sample's own map draws. So the sample summary pools what the maps of the individual samples show. With groups, the group summary then pools the values of the groups.
 
 The sample summary drives the `unified` map when there are no groups, and each per-group map (produced when using `--draw-individual-files` or `--draw-grid`) when there are. The group summary drives the `unified` map when there are groups.
 
