@@ -154,6 +154,17 @@ AGGREGATION_FUNCTIONS = {
     'std': lambda values: float(np.std(values, ddof=1)) if len(values) > 1 else float('nan')
 }
 
+# Aggregations of values that repeat after a period, such as clock times in hours, which repeat
+# every 24. A layer's period is given by '--reaction-value-period' or '--compound-value-period'.
+# Every other aggregation treats values just below the period and just above 0 as far apart
+# ('_resolve_aggregation'). Pandas has none of these names for circular aggregations. At the gene
+# level, a pandas groupby reduces the rows of each accession ('_aggregate_accession_quantities'); it
+# usually takes the aggregation's name, but for these names, it takes anvi'o's own function instead.
+# Every level of reduction beyond genes then also uses the same function.
+CIRCULAR_AGGREGATIONS: Tuple[str, ...] = (
+    'circular_mean',
+)
+
 # The presence choices of the '--*-sample-summary'/'--*-group-summary' arguments, which summarize a
 # set of samples or groups by how many ('count' and 'count_continuous') or exactly which
 # ('membership') of them contain an accession, mapped to the colormap schemes that color them. These
@@ -862,9 +873,17 @@ class Mapper:
         }
 
     @staticmethod
-    def _resolve_aggregation(aggregation: str, flag: str) -> Callable:
+    def _resolve_aggregation(
+        aggregation: str,
+        flag: str,
+        period: Union[float, None] = None,
+        period_flag: Union[str, None] = None
+    ) -> Callable:
         """
         Resolve an aggregation name into a function reducing a sequence of values to one value.
+
+        Values that repeat after a period are reduced only by the names in 'CIRCULAR_AGGREGATIONS'.
+        These names need the period. Both rules are checked here.
 
         The recommended names have fast paths in 'AGGREGATION_FUNCTIONS'. Any other pandas
         aggregation name is accepted as well, provided it reduces a series to a single number: the
@@ -886,11 +905,36 @@ class Mapper:
         flag : str
             The command-line flag the name comes from, used in an error message.
 
+        period : Union[float, None], None
+            The period after which the layer's values repeat, or None if they do not repeat.
+
+        period_flag : Union[str, None], None
+            The command-line flag that gives the layer's period, used in an error message.
+
         Returns
         =======
         Callable
             Reduces a sequence of values to a single value.
         """
+        if aggregation in CIRCULAR_AGGREGATIONS:
+            if period is None:
+                raise ConfigError(
+                    f"'{flag}' was given as '{aggregation}', which averages values that repeat "
+                    f"after a period, such as clock times. No period was given for these values. "
+                    f"Give one with '{period_flag}', such as 24 for clock times in hours."
+                )
+
+            def circular_aggregate(values):
+                return Mapper._circular_mean(values, period)
+            return circular_aggregate
+        if period is not None:
+            raise ConfigError(
+                f"'{flag}' was given as '{aggregation}', but '{period_flag}' says that the values "
+                f"repeat every {period:g}. Values just below {period:g} and just above 0 are then "
+                f"close together. '{aggregation}' treats them as far apart. Use "
+                f"{', '.join(repr(name) for name in CIRCULAR_AGGREGATIONS)} instead."
+            )
+
         try:
             return AGGREGATION_FUNCTIONS[aggregation]
         except KeyError:
@@ -937,6 +981,55 @@ class Mapper:
                 f"{SUMMARY_PRESENCE_PHRASE} to summarize presence rather than value."
             )
         return aggregate
+
+    @staticmethod
+    def _circular_mean(values: Iterable[float], period: float) -> float:
+        """
+        Average values that repeat after a period, such as clock times, on a circle.
+
+        Each value is a point on a circle whose circumference is the period. 0 and the period are
+        the same point. The mean is the direction of the average of these points. With a period of
+        24, the mean of 23.5 and 0.5 is 0, not 12. The mean lies in [0, period).
+
+        Values that cancel out have no mean direction. Examples are 6 and 18, or 0, 8 and 16, with a
+        period of 24. The mean is then undefined, and the result is NaN. The value is then dropped
+        as any undefined aggregation is ('_finite_values', '_reduce_entry_value').
+
+        Parameters
+        ==========
+        values : Iterable[float]
+            The values to average. There is at least one. They can be a pandas Series, as a groupby
+            passes, so they are read by position.
+
+        period : float
+            The positive period after which the values repeat.
+
+        Returns
+        =======
+        float
+            The mean, in [0, period), or NaN where it is undefined.
+        """
+        # Each value is first taken modulo the period. The angles are then exact, however far from
+        # 0 the values lie.
+        values = np.mod(np.asarray(values, dtype=float), period)
+        # Equal values return that value. A single value then comes back exactly, with no rounding
+        # from the trigonometry.
+        if np.all(values == values[0]):
+            mean = float(values[0])
+        else:
+            angles = 2 * np.pi * values / period
+            sine = np.mean(np.sin(angles))
+            cosine = np.mean(np.cos(angles))
+            # The tolerance is the one kgml.Pathway uses to find compound colors that cancel out.
+            if np.hypot(sine, cosine) < 1e-9:
+                return float('nan')
+            # The fraction of the circle is rounded as kgml.Pathway rounds it. This removes
+            # floating-point error. Without it, a mean of 0 could come out a hair below the period.
+            # Those are the same point, but the two ends of a scale that is not cyclic.
+            mean = (round(float(np.arctan2(sine, cosine) / (2 * np.pi)), 12) % 1.0) * period
+        # A value a hair below 0, taken modulo the period, rounds to the period itself. That is the
+        # same point as 0.
+        return 0.0 if mean >= period else mean
 
     @staticmethod
     def _element_normalization_function(form: str, reference: Union[str, None]) -> Callable:
@@ -1238,10 +1331,37 @@ class Mapper:
         examples = ', '.join(sorted(undefined)[:5])
         self.run.warning(
             f"Reducing the values of the text file at '{path}' with '{aggregation}' was undefined "
-            f"for {len(undefined)} accession(s), including these: {examples}. This happens when an "
-            f"aggregation needs more values than are available, as the standard deviation does for "
-            f"a single value. These accessions are treated as having no value, so the map elements "
-            f"that depend on them are left uncolored."
+            f"for {len(undefined)} accession(s), including these: {examples}. "
+            f"{Mapper._undefined_cause(aggregation)} These accessions are treated as having no "
+            f"value, so the map elements that depend on them are left uncolored."
+        )
+
+    @staticmethod
+    def _undefined_cause(aggregation: str, noun: str = 'an aggregation') -> str:
+        """
+        Say why an aggregation or summary can be undefined, for a warning that names it.
+
+        Parameters
+        ==========
+        aggregation : str
+            The name of the aggregation or summary.
+
+        noun : str, 'an aggregation'
+            What the warning calls it, 'an aggregation' or 'a summary'.
+
+        Returns
+        =======
+        str
+            A sentence giving the cause.
+        """
+        if aggregation in CIRCULAR_AGGREGATIONS:
+            return (
+                "A circular mean is undefined where the values cancel out, such as 6 and 18 with a "
+                "period of 24."
+            )
+        return (
+            f"This happens when {noun} needs more values than are available, as the standard "
+            f"deviation does for a single value."
         )
 
     def _warn_undefined_summaries(
@@ -1307,16 +1427,15 @@ class Mapper:
             self.run.warning(
                 f"The summary '{flag} {summary}' was undefined{where} for {len(undefined)} map "
                 f"element(s). Elements with the same accessions count once. Their accessions in "
-                f"the file include these: {examples}. This happens when a summary needs more "
-                f"values than are available, as the standard deviation does for a single value. "
-                f"{consequence}"
+                f"the file include these: {examples}. "
+                f"{Mapper._undefined_cause(summary, 'a summary')} {consequence}"
             )
 
     def _aggregate_accession_quantities(
         self,
         rows_df: pd.DataFrame,
         value_column: str,
-        aggregation: str,
+        aggregation: Union[str, Callable],
         path: str,
         undefined: Set[str] = None
     ) -> Dict[str, float]:
@@ -1328,6 +1447,8 @@ class Mapper:
         accession's rows are reduced to a single value by 'aggregation', which is applied by pandas
         here and by the matching function from 'AGGREGATION_FUNCTIONS' at every other level of the
         reduction hierarchy. An accession whose result is undefined is dropped ('_finite_values').
+        A name of 'CIRCULAR_AGGREGATIONS' is not a pandas name. It comes here as the function that
+        '_resolve_aggregation' made for it, which every other level applies too.
 
         Parameters
         ==========
@@ -1337,8 +1458,9 @@ class Mapper:
         value_column : str
             Name of the auto-detected numeric value column.
 
-        aggregation : str
-            How to reduce an accession's rows to a single value, as a pandas aggregation name.
+        aggregation : Union[str, Callable]
+            How to reduce an accession's rows to a single value, as a pandas aggregation name or as
+            the function for a circular aggregation.
 
         path : str
             Path to the layer's text file, used in error messages.
@@ -1461,7 +1583,9 @@ class Mapper:
         summary: Union[str, None],
         value_column: Union[str, None],
         flag: str,
-        path: str
+        path: str,
+        period: Union[float, None] = None,
+        period_flag: Union[str, None] = None
     ) -> Tuple[Literal['value', 'presence'], Union[Callable, None], Union[str, None]]:
         """
         Resolve a sample or group summary into a coloring kind and its reduction.
@@ -1491,6 +1615,12 @@ class Mapper:
         path : str
             Path to the layer's text file, used in an error message.
 
+        period : Union[float, None], None
+            The period after which the layer's values repeat, or None ('_resolve_aggregation').
+
+        period_flag : Union[str, None], None
+            The command-line flag that gives the layer's period, used in an error message.
+
         Returns
         =======
         Tuple[Literal['value', 'presence'], Union[Callable, None], Union[str, None]]
@@ -1508,7 +1638,7 @@ class Mapper:
                 f"values to pool. Summarize presence with {SUMMARY_PRESENCE_PHRASE} instead, or "
                 f"add a value column to the file."
             )
-        return 'value', Mapper._resolve_aggregation(summary, flag), None
+        return 'value', Mapper._resolve_aggregation(summary, flag, period, period_flag), None
 
     @staticmethod
     def _resolve_value_limits(
@@ -1577,6 +1707,37 @@ class Mapper:
                 f"two cannot be equal, nor the wrong way around."
             )
         return limit_min, limit_max
+
+    @staticmethod
+    def _resolve_value_period(period: Union[float, str, None], flag: str) -> Union[float, None]:
+        """
+        Resolve the period after which a layer's values repeat, as typed or as a caller gave it.
+
+        Parameters
+        ==========
+        period : Union[float, str, None]
+            The period, or None if the values do not repeat.
+
+        flag : str
+            The command-line flag the period comes from, used in an error message.
+
+        Returns
+        =======
+        Union[float, None]
+            The period as a positive finite number, or None.
+        """
+        if period is None:
+            return None
+        try:
+            number = float(period)
+        except (TypeError, ValueError):
+            number = None
+        if number is None or not np.isfinite(number) or number <= 0:
+            raise ConfigError(
+                f"'{flag}' must be a positive number, such as 24 for clock times in hours. It is "
+                f"how far the values go before they repeat. Anvi'o got this instead: '{period}'."
+            )
+        return number
 
     @staticmethod
     def _format_accepted(number: float, accepted: Callable[[float], bool]) -> str:
@@ -1871,8 +2032,8 @@ class Mapper:
         name: str,
         data: dict,
         path: str,
-        gene_aggregation: str,
-        accession_aggregation: str,
+        gene_aggregation: Union[str, None],
+        accession_aggregation: Union[str, None],
         color: str,
         colormap: Union[bool, str, mcolors.Colormap, None],
         colormap_limits: Union[Tuple[float, float], None],
@@ -1889,7 +2050,8 @@ class Mapper:
         value_center: Union[float, None] = None,
         category_value_center: Union[float, None] = None,
         element_normalization: Union[str, None] = None,
-        element_normalization_label: Union[str, None] = None
+        element_normalization_label: Union[str, None] = None,
+        value_period: Union[float, str, None] = None
     ) -> dict:
         """
         Build one layer's coloring model for '_map_elements' from a per-layer reader result.
@@ -1953,6 +2115,12 @@ class Mapper:
         overridden by 'category_value_center' and 'category_colormap'. 'element_normalization_label'
         names the rescaled quantity on that scale's colorbar in place of the label the normalization
         derives for itself.
+
+        'value_period' says that the values repeat after that period, as clock times in hours repeat
+        every 24. Every reduction of the values is then circular ('CIRCULAR_AGGREGATIONS'). An
+        aggregation left as None is 'circular_mean' with a period and 'sum' without one. A period
+        refuses every other aggregation and summary of values, and any normalization. Presence
+        summaries are unaffected.
         """
         element_type = data['element_type']
         use_reaction_attribute = data['reaction_source'] == 'Reaction'
@@ -1995,6 +2163,10 @@ class Mapper:
         category_value_limits = self._resolve_value_limits(
             category_value_limits, category_value_limits_flag
         )
+        # A period says that the values repeat, as clock times do every 24 hours. It is resolved
+        # before the normalization, which it rules out.
+        value_period_flag = f'--{element_type}-value-period'
+        value_period = self._resolve_value_period(value_period, value_period_flag)
 
         # The normalization is settled before the centers are, since one whose neutral value is zero
         # centers the per-sample/per-group scale on zero unless asked for another center, and that
@@ -2037,6 +2209,15 @@ class Mapper:
                     f"column, so there is a single set of values with nothing to compare them "
                     f"against. Add a 'sample' column to compare samples."
                 )
+            if value_period is not None:
+                raise ConfigError(
+                    f"'{element_normalization_flag}' rescales the values of the {element_type} "
+                    f"layer, but '{value_period_flag}' says that they repeat every "
+                    f"{value_period:g}. A normalization compares values on a line, by a ratio, a "
+                    f"difference, a rank or a z-score. Values just below {value_period:g} and just "
+                    f"above 0 are close together, but these comparisons treat them as far apart. "
+                    f"Please use only one of the two options."
+                )
             element_normalize, element_normalization_label_template, centered = (
                 self._resolve_element_normalization(
                     element_normalization, element_normalization_flag, element_type
@@ -2074,6 +2255,12 @@ class Mapper:
                         f"{element_type} layer, but the file at '{path}' has no value column, so "
                         f"that layer is colored by presence and has no scale of values to {verb}."
                     )
+            if value_period is not None:
+                raise ConfigError(
+                    f"'{value_period_flag}' says how far the values of the {element_type} layer "
+                    f"go before they repeat, but the file at '{path}' has no value column, so that "
+                    f"layer is colored by presence and has no values."
+                )
         if not has_sample:
             for setting, flag, single_scale_flag, verb in (
                 (category_value_limits, category_value_limits_flag, value_limits_flag, 'bound'),
@@ -2181,16 +2368,32 @@ class Mapper:
             }
 
         undefined: Set[str] = set()
+        # An aggregation left unset is 'circular_mean' for values with a period, and 'sum'
+        # otherwise.
+        default_aggregation = 'circular_mean' if value_period is not None else 'sum'
+        if gene_aggregation is None:
+            gene_aggregation = default_aggregation
+        if accession_aggregation is None:
+            accession_aggregation = default_aggregation
         # Resolved here, before any values are aggregated, so that an unusable aggregation name is
         # reported as a configuration error rather than reaching pandas: the per-accession values
         # below are computed by passing the name itself to a groupby. 'aggregate' reduces a map
         # element's several accessions, which is the level the drawing colorers work at; the gene
         # aggregation is applied only where the per-accession values are built.
         aggregate = self._resolve_aggregation(
-            accession_aggregation, f'--{element_type}-accession-aggregation'
+            accession_aggregation, f'--{element_type}-accession-aggregation', value_period,
+            value_period_flag
         ) if value_column is not None else None
+        # A circular aggregation is not a pandas name, so its function reduces a gene's rows. A
+        # pandas name is passed as the name itself, which pandas applies faster.
+        gene_reduction = gene_aggregation
         if value_column is not None:
-            self._resolve_aggregation(gene_aggregation, f'--{element_type}-gene-aggregation')
+            gene_aggregate = self._resolve_aggregation(
+                gene_aggregation, f'--{element_type}-gene-aggregation', value_period,
+                value_period_flag
+            )
+            if gene_aggregation in CIRCULAR_AGGREGATIONS:
+                gene_reduction = gene_aggregate
 
         if not has_sample:
             # With no samples there is nothing to summarize, so the layer colors the same way in
@@ -2204,7 +2407,7 @@ class Mapper:
                     'color_hexcode': color
                 }
             unified_values = self._aggregate_accession_quantities(
-                df, value_column, gene_aggregation, path, undefined
+                df, value_column, gene_reduction, path, undefined
             )
             self._warn_undefined_values(undefined, gene_aggregation, path)
             cmap = self._resolve_sequential_colormap(
@@ -2243,11 +2446,13 @@ class Mapper:
         # magnitude with a value column and its presence without one.
         grouped = group_samples is not None
         sample_kind, sample_aggregate, sample_scheme = self._resolve_summary(
-            sample_summary, value_column, f'--{element_type}-sample-summary', path
+            sample_summary, value_column, f'--{element_type}-sample-summary', path, value_period,
+            value_period_flag
         )
         if grouped:
             group_kind, group_aggregate, group_scheme = self._resolve_summary(
-                group_summary, value_column, f'--{element_type}-group-summary', path
+                group_summary, value_column, f'--{element_type}-group-summary', path,
+                value_period, value_period_flag
             )
             if group_kind == 'value' and sample_kind != 'value':
                 raise ConfigError(
@@ -2432,7 +2637,7 @@ class Mapper:
         sample_values: Dict[str, Dict[str, float]] = {s: {} for s in all_sample_names}
         for sample_name, sample_rows in df.groupby('__sample'):
             sample_values[sample_name] = self._aggregate_accession_quantities(
-                sample_rows, value_column, gene_aggregation, path, undefined
+                sample_rows, value_column, gene_reduction, path, undefined
             )
         self._warn_undefined_values(undefined, gene_aggregation, path)
 
@@ -2519,9 +2724,11 @@ class Mapper:
         output_dir: str,
         reaction_txt: str = None,
         compound_txt: str = None,
-        reaction_gene_aggregation: str = 'sum',
-        reaction_accession_aggregation: str = 'sum',
-        compound_accession_aggregation: str = 'sum',
+        reaction_gene_aggregation: str = None,
+        reaction_accession_aggregation: str = None,
+        compound_accession_aggregation: str = None,
+        reaction_value_period: Union[float, str, None] = None,
+        compound_value_period: Union[float, str, None] = None,
         reaction_sample_summary: str = None,
         compound_sample_summary: str = None,
         reaction_group_summary: str = None,
@@ -2589,20 +2796,31 @@ class Mapper:
         compound_txt : str, None
             Path to a kegg-compound-txt file (accessions all KEGG compound IDs).
 
-        reaction_gene_aggregation : str, 'sum'
+        reaction_gene_aggregation : str, None
             How to reduce the values of the genes annotated with one accession to that accession's
             value, for a reaction file carrying a 'gene_id' column. Any 'AGGREGATION_FUNCTIONS' name,
             or any other pandas aggregation reducing values to one number (see
-            '_resolve_aggregation').
+            '_resolve_aggregation'). The default of None is 'sum', or 'circular_mean' when
+            'reaction_value_period' is given.
 
-        reaction_accession_aggregation : str, 'sum'
+        reaction_accession_aggregation : str, None
             How to reduce the values of the several accessions a map's reaction element stands to
-            that element's value.
+            that element's value. The default is the same as for 'reaction_gene_aggregation'.
 
-        compound_accession_aggregation : str, 'sum'
+        compound_accession_aggregation : str, None
             The same reduction for the compound layer: the several compounds that one map circle
             stands for. A compound file has no genes, and repeated rows are refused
-            ('_read_element_txt'), so it has no reduction below this one.
+            ('_read_element_txt'), so it has no reduction below this one. The default of None is
+            'sum', or 'circular_mean' when 'compound_value_period' is given.
+
+        reaction_value_period : Union[float, str, None], None
+            The period after which the values of the reaction layer repeat, such as 24 for clock
+            times in hours. Every reduction of the values is then circular, and 'circular_mean' is
+            the only aggregation and value summary accepted ('CIRCULAR_AGGREGATIONS'). A
+            normalization is refused. None means that the values do not repeat.
+
+        compound_value_period : Union[float, str, None], None
+            The same period for the values of the compound layer.
 
         reaction_sample_summary : str, None
             How the reaction layer summarizes a set of samples: by presence ('count'/'membership')
@@ -2738,7 +2956,8 @@ class Mapper:
                 'value_center': reaction_value_center,
                 'category_value_center': reaction_category_value_center,
                 'element_normalization': reaction_element_normalization,
-                'element_normalization_label': reaction_element_normalization_label
+                'element_normalization_label': reaction_element_normalization_label,
+                'value_period': reaction_value_period
             })
         if compound_txt is not None:
             raw_layers.append({
@@ -2746,8 +2965,9 @@ class Mapper:
                 'path': compound_txt,
                 'data': self._read_element_txt(compound_txt, 'compound'),
                 # A compound file has one row per accession per sample, so the gene level is a
-                # reduction over a single value and its function cannot matter.
-                'gene_aggregation': 'sum',
+                # reduction over a single value. Left unset, it takes the layer's default. A period
+                # makes that default circular, and a period would refuse a 'sum' here.
+                'gene_aggregation': None,
                 'accession_aggregation': compound_accession_aggregation,
                 'color': compound_color,
                 'colormap': compound_colormap,
@@ -2763,7 +2983,8 @@ class Mapper:
                 'value_center': compound_value_center,
                 'category_value_center': compound_category_value_center,
                 'element_normalization': compound_element_normalization,
-                'element_normalization_label': compound_element_normalization_label
+                'element_normalization_label': compound_element_normalization_label,
+                'value_period': compound_value_period
             })
         if not raw_layers:
             raise ConfigError(

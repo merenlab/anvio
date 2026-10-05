@@ -145,7 +145,8 @@ def get_args() -> Namespace:
         f"and accession are refused rather than combined, so this reduces genuinely different "
         f"genes. Where an aggregation is undefined for the values available, as 'std' is for a "
         f"single value, the element is left uncolored and a warning reports how many accessions "
-        f"were affected."
+        f"were affected. With '--reaction-value-period', the default is 'circular_mean', and no "
+        f"other name is accepted."
     )
     groupTXT.add_argument(
         '--reaction-accession-aggregation', metavar='NAME', help=
@@ -154,7 +155,9 @@ def get_args() -> Namespace:
         "quarter of the reaction elements in KEGG's maps stand for more than one KO, so this is a "
         "common case. The default is 'sum': the KOs of a reaction contribute to that reaction's "
         "total. It takes the same names as '--reaction-gene-aggregation', and the two can differ: "
-        "averaging across the genes of each KO while totaling across the KOs of a reaction, say."
+        "averaging across the genes of each KO while totaling across the KOs of a reaction, say. "
+        "With '--reaction-value-period', the default is 'circular_mean', and no other name is "
+        "accepted."
     )
     groupTXT.add_argument(
         '--compound-accession-aggregation', metavar='NAME', help=
@@ -164,7 +167,26 @@ def get_args() -> Namespace:
         "values of whichever of them the file lists to that circle's color. It applies to about "
         "one compound circle in fifty, so it rarely has anything to do. There is no reduction "
         "below it: a compound file names no genes, and rows repeating a compound are refused "
-        "rather than combined, so each compound has one value per sample."
+        "rather than combined, so each compound has one value per sample. With "
+        "'--compound-value-period', the default is 'circular_mean', and no other name is accepted."
+    )
+    groupTXT.add_argument(
+        '--reaction-value-period', metavar='PERIOD', help=
+        "The period after which the values of the reaction layer repeat, in the units of its value "
+        "column. For clock times in hours, give 24. Values just below the period and just above 0 "
+        "are then close together — with a period of 24, the circular mean of 23.5 and 0.5 is 0, "
+        "not 12. Every reduction of the values averages them on a circle with 'circular_mean'. It "
+        "is the default of '--reaction-gene-aggregation' and '--reaction-accession-aggregation'. "
+        "It is also the only name that these options and the sample and group summaries accept. "
+        "Values that cancel out have no mean, such as 6 and 18; elements with undefined means are "
+        "left uncolored. A period does not affect presence summaries. With this argument, "
+        "'--reaction-element-normalization' is refused, since every normalization compares values "
+        "on a line. The period does not change the color scales. Give clock times the limits "
+        "'0 24' and a cyclic colormap, such as 'clocktime'."
+    )
+    groupTXT.add_argument(
+        '--compound-value-period', metavar='PERIOD', help=
+        "Like '--reaction-value-period', but for the compound layer."
     )
 
     groupJSON = parser.add_argument_group(
@@ -1347,6 +1369,28 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"combines the several accessions it stands for."
                 )
 
+        # A period describes a layer's values, so it needs that layer's file and its value column.
+        # The mapper checks the number itself, as it does for programmatic calls.
+        for period, flag, element_type, file_flag, layer in (
+            (args.reaction_value_period, '--reaction-value-period', 'reaction', '--reaction-txt',
+             reaction),
+            (args.compound_value_period, '--compound-value-period', 'compound', '--compound-txt',
+             compound)
+        ):
+            if period is None:
+                continue
+            if layer is None:
+                raise ConfigError(
+                    f"'{flag}' says how far the values of the {element_type} layer go before they "
+                    f"repeat, but no {element_type} file ('{file_flag}') was provided."
+                )
+            if layer['mode'] != 'quantitative':
+                raise ConfigError(
+                    f"'{flag}' says how far the values of the {element_type} layer go before they "
+                    f"repeat, but its file has no value column, so the layer is colored by "
+                    f"presence and has no values."
+                )
+
         # Each pair of value limits bounds, and each value center centers, a color scale of values,
         # so each needs its layer's file and that file's value column; the ones acting on the scale
         # the individual maps share need the samples those maps are drawn for as well. The mapper
@@ -1666,6 +1710,9 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         'reaction_category_value_center': args.reaction_category_value_center,
         'compound_value_center': args.compound_value_center,
         'compound_category_value_center': args.compound_category_value_center,
+        # The periods go to the mapper as they were typed, as the centers do.
+        'reaction_value_period': args.reaction_value_period,
+        'compound_value_period': args.compound_value_period,
         'reaction_element_normalization': reaction_element_normalization,
         'reaction_element_normalization_label': reaction_element_normalization_label,
         'compound_element_normalization': compound_element_normalization,
@@ -2123,6 +2170,8 @@ def main() -> None:
                 (args.reaction_gene_aggregation is not None, '--reaction-gene-aggregation'),
                 (args.reaction_accession_aggregation is not None,
                  '--reaction-accession-aggregation'),
+                (args.reaction_value_period is not None, '--reaction-value-period'),
+                (args.compound_value_period is not None, '--compound-value-period'),
                 (args.reaction_sample_summary is not None, '--reaction-sample-summary'),
                 (args.compound_sample_summary is not None, '--compound-sample-summary'),
                 (args.reaction_group_summary is not None, '--reaction-group-summary'),
@@ -2149,13 +2198,13 @@ def main() -> None:
             if compound_only_flags:
                 message = ', '.join(f"'{flag}'" for flag in compound_only_flags)
                 raise ConfigError(
-                    f"These options were given: {message}. They color a compound layer, or "
-                    f"summarize the samples of a draw-kegg-pathways text file, or bound, center, "
-                    f"color or rescale a scale of values, all of which only "
-                    f"'--reaction-txt'/'--compound-txt' provide. Database, pangenome and "
-                    f"reaction-network-JSON inputs have a reaction layer alone, drawn from one "
-                    f"source per database or genome and colored by how many of them contain an "
-                    f"element rather than by a value, so none of these can apply."
+                    f"These options were given: {message}. They color a compound layer; or "
+                    f"summarize the samples of a draw-kegg-pathways text file; or say how its "
+                    f"values repeat; or bound, center, color, or rescale a scale of values — all "
+                    f"of which only '--reaction-txt'/'--compound-txt' provide. Database, "
+                    f"pangenome, and reaction-network-JSON inputs have a reaction layer alone, "
+                    f"drawn from one source per database or genome and colored by how many of them "
+                    f"contain an element rather than by a value, so none of these can apply."
                 )
         # '--original-color' draws only the reaction layer (its compounds follow in the reference
         # colors on global/overview maps); it cannot also stage an explicit compound file.
