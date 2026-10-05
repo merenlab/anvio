@@ -4,8 +4,9 @@ channels:
 - bioconda
 - defaults
 dependencies:
-- python=3.10
-- sqlite=3.46
+- python=3.13
+- pip
+- sqlite
 - prodigal
 - idba
 - mcl
@@ -16,6 +17,8 @@ dependencies:
 - blast
 - megahit
 - spades
+- flye
+- minimap2
 - bowtie2
 - bwa
 - graphviz
@@ -33,4 +36,10 @@ dependencies:
 - bioconductor-qvalue
 - "meme>=5.5"
 - fastani
-- nodejs=20.12.2
+- sra-tools
+- pigz
+- mmseqs2
+- ghostscript
+- nodejs
+- llvmlite
+- numba
