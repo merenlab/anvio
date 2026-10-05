@@ -6,12 +6,13 @@ not cover every workflow or production-scale input.
 
 ## Current installation recipe
 
-From the ANI feature checkout, use `python -m pip install -e . --config-settings editable_mode=compat`.
+From the ANI feature checkout, use `python -m pip install -e .`.
 The required dependencies include `pyani-plus>=1.0.1,<2` and `click>=8,<9`;
-no optional extra is needed. The compatibility setting exposes the packaged
-Snakemake logger while keeping the source editable. Default editable mode
-does not make the logger discoverable outside the checkout. ANIb needs BLAST,
-and ANIm needs MUMmer on PATH. Backend execution currently supports Linux only.
+no optional extra is needed. `anvi-run-workflow` explicitly registers the
+bundled logger for ordinary editable installs. Standalone
+`snakemake --logger anvio` discovery remains unsupported in that mode;
+wheel installs retain automatic discovery. ANIb needs BLAST, and ANIm
+needs MUMmer on PATH. Backend execution currently supports Linux only.
 
 ## Historical installation evidence
 
