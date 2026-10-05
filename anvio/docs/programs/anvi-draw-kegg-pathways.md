@@ -476,7 +476,7 @@ A layer with a `sample` column involves multiple separate reductions, and each h
 |across samples|`--reaction-sample-summary`/`--compound-sample-summary` (`count`, `count_continuous`, `membership`, or an aggregation)|a set of samples → one continuous value or one presence value per map element|
 |across groups|`--reaction-group-summary`/`--compound-group-summary` (`count`, `count_continuous`, `membership`, or an aggregation)|the groups of a %(groups-txt)s → one continuous value or one presence value per map element|
 
-An **aggregation** is `sum` (default), `mean`, `max`, `min`, `median`, `std` — or any other unsuggested pandas aggregation that reduces a series of numbers to one number, such as `var` or `sem`. Names that transform rather than reduce (`cumsum`) or that only a grouping offers (`first`) are rejected. Where an aggregation is undefined for the values available, as `std` is for a single value, the affected elements are left uncolored. `circular_mean` averages values that repeat after a period, such as clock times, and requires `--reaction-value-period`/`--compound-value-period` (see [Color clock times with a cyclic colormap](#color-clock-times-with-a-cyclic-colormap)).
+An **aggregation** is `sum` (default), `mean`, `max`, `min`, `median`, `std` — or any other unsuggested pandas aggregation that reduces a series of numbers to one number, such as `var` or `sem`. Names that transform rather than reduce (`cumsum`) or that only a grouping offers (`first`) are rejected. Where an aggregation is undefined for the values available, as `std` is for a single value, the affected elements are left uncolored. `circular_mean` averages values that repeat after a period, such as clock times, and requires `--reaction-value-period`/`--compound-value-period` (see [Color clock times with a cyclic colormap](#color-clock-times-with-a-cyclic-colormap)). `angular_deviation` measures how far such values are spread apart, on the `unified` map only.
 
 A summary pools the values of a **map element**, not of an accession. An element's value in a sample is the aggregate of its accessions in that sample. Without `--reaction-element-normalization`/`--compound-element-normalization`, this is the value that the sample's own map draws. So the sample summary pools what the maps of the individual samples show. With groups, the group summary then pools the values of the groups.
 
@@ -619,6 +619,18 @@ anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
                         --draw-individual-files \
                         -o output_dir
 {{ codestop }}
+
+To show instead how much the samples disagree, summarize them with `angular_deviation`. Each element on the `unified` map is then colored by how far its times in the samples are spread apart on a circle. The scale runs from 0 h, where every sample has the same time, to 5.4 h, where the times cancel out. For times close together, the angular deviation is close to their standard deviation. An element needs times in at least 3 samples, since the spread of two times is only the gap between them. Other elements are left uncolored, and a warning says how many there are.
+
+{{ codestart }}
+anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
+                        --reaction-value-period 24 \
+                        --reaction-sample-summary angular_deviation \
+                        --draw-individual-files \
+                        -o output_dir
+{{ codestop }}
+
+The `unified` map then uses the sequential `plasma_r`, unless `--reaction-colormap` names another sequential colormap. A cyclic colormap is refused there, since it would give the smallest and the largest spread the same color. The maps of the individual samples still show each sample's times in `clocktime`. With groups, give `angular_deviation` to `--reaction-group-summary` instead. It then measures how far the groups' circular means are spread apart, and needs at least 3 groups.
 
 `clocktime` can also be given to a colormap option without a period: `--reaction-category-colormap` for the maps of individual samples, or `--reaction-colormap` for a file without a `sample` column. The scale then needs limits of 0 and 24, such as `--reaction-category-value-limits 0 24`. Without the limits, the scale would run from the lowest map element value to the highest, and the colors would not match the hours described above. Without a period, the values are not averaged on a circle.
 

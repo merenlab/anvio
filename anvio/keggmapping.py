@@ -166,6 +166,26 @@ CIRCULAR_AGGREGATIONS: Tuple[str, ...] = (
     'circular_mean',
 )
 
+# Summaries of how far values that repeat after a period are spread apart. An example is how far
+# apart the peak times of a map element are in different samples. They need a period, as
+# 'CIRCULAR_AGGREGATIONS' do. A spread is a plain number, not a point in the period. Only the
+# summary that colors the 'unified' map ('--*-sample-summary' without groups or '--*-group-summary'
+# with groups) takes these names. The two kinds of map then differ ('_build_txt_model'). Each
+# individual map shows a point in the period for each element, its circular mean in one sample
+# or group. Its scale runs from 0 to the period, with the cyclic 'clocktime' by default, and its
+# colorbar is labeled with the value column's name. The 'unified' map shows the spread of those
+# points. Its scale runs from 0 to the largest spread there can be, 5.40 with a period of 24. It
+# takes a colormap that is not cyclic, 'plasma_r' by default, since the smallest and the largest
+# spread are not the same point. Its colorbar is labeled '{value} angular deviation'. On global and
+# overview maps, its compound colors are averaged as plain numbers, not on a circle.
+CIRCULAR_SPREADS: Tuple[str, ...] = (
+    'angular_deviation',
+)
+
+# The fewest values whose angular deviation is defined ('_angular_deviation'). The spread of two
+# values is only the gap between them. Fewer values leave the element uncolored.
+MIN_ANGULAR_DEVIATION_VALUES = 3
+
 # The presence choices of the '--*-sample-summary'/'--*-group-summary' arguments, which summarize a
 # set of samples or groups by how many ('count' and 'count_continuous') or exactly which
 # ('membership') of them contain an accession, mapped to the colormap schemes that color them. These
@@ -922,16 +942,20 @@ class Mapper:
         Callable
             Reduces a sequence of values to a single value.
         """
-        if aggregation in CIRCULAR_AGGREGATIONS:
+        if aggregation in CIRCULAR_AGGREGATIONS + CIRCULAR_SPREADS:
             if period is None:
                 raise ConfigError(
-                    f"'{flag}' was given as '{aggregation}', which averages values that repeat "
-                    f"after a period, such as clock times. No period was given for these values. "
-                    f"Give one with '{period_flag}', such as 24 for clock times in hours."
+                    f"'{flag}' was given as '{aggregation}', which is for values that repeat after "
+                    f"a period, such as clock times. No period was given for these values. Give "
+                    f"one with '{period_flag}', such as 24 for clock times in hours."
                 )
+            circular_function = (
+                Mapper._angular_deviation if aggregation in CIRCULAR_SPREADS
+                else Mapper._circular_mean
+            )
 
             def circular_aggregate(values):
-                return Mapper._circular_mean(values, period)
+                return circular_function(values, period)
             return circular_aggregate
         if period is not None:
             raise ConfigError(
@@ -1036,6 +1060,59 @@ class Mapper:
         # A value a hair below 0, taken modulo the period, rounds to the period itself. That is the
         # same point as 0.
         return 0.0 if mean >= period else mean
+
+    @staticmethod
+    def _angular_deviation(values: Iterable[float], period: float) -> float:
+        """
+        Measure how far values that repeat after a period are spread apart on a circle.
+
+        Each value is a point on a circle whose circumference is the period, as in
+        '_circular_mean'. R is the length of the average of these points. R is 1 where the values
+        are equal, and 0 where they cancel out. The angular deviation is sqrt(2 * (1 - R)), in units
+        of the period divided by 2 * pi. It runs from 0, where the values are equal, to
+        '_largest_angular_deviation', where they cancel out. With a period of 24, that is 5.40. For
+        values close together, it is close to their standard deviation.
+
+        Fewer than 'MIN_ANGULAR_DEVIATION_VALUES' values give NaN. The value is then dropped as any
+        undefined aggregation is ('_finite_values', '_reduce_entry_value').
+
+        Parameters
+        ==========
+        values : Iterable[float]
+            The values whose spread is measured.
+
+        period : float
+            The positive period after which the values repeat.
+
+        Returns
+        =======
+        float
+            The angular deviation, or NaN where there are too few values.
+        """
+        values = np.mod(np.asarray(values, dtype=float), period)
+        if len(values) < MIN_ANGULAR_DEVIATION_VALUES:
+            return float('nan')
+        angles = 2 * np.pi * values / period
+        resultant = np.hypot(np.mean(np.sin(angles)), np.mean(np.cos(angles)))
+        # Rounding can put R a hair above 1 where the values are equal.
+        return float(np.sqrt(max(0.0, 2 * (1 - resultant))) * period / (2 * np.pi))
+
+    @staticmethod
+    def _largest_angular_deviation(period: float) -> float:
+        """
+        Return the angular deviation of values that cancel out, the largest there can be.
+
+        Parameters
+        ==========
+        period : float
+            The positive period after which the values repeat.
+
+        Returns
+        =======
+        float
+            period * sqrt(2) / (2 * pi), which is 5.40 for a period of 24.
+        """
+        return period * np.sqrt(2) / (2 * np.pi)
 
     @staticmethod
     def _element_normalization_function(form: str, reference: Union[str, None]) -> Callable:
@@ -1364,6 +1441,11 @@ class Mapper:
             return (
                 "A circular mean is undefined where the values cancel out, such as 6 and 18 with a "
                 "period of 24."
+            )
+        if aggregation in CIRCULAR_SPREADS:
+            return (
+                f"An angular deviation needs at least {MIN_ANGULAR_DEVIATION_VALUES} values. The "
+                f"spread of two values is only the gap between them."
             )
         return (
             f"This happens when {noun} needs more values than are available, as the standard "
@@ -2281,10 +2363,30 @@ class Mapper:
                         f"has no 'sample' column, so it draws no such maps and its values take a "
                         f"single scale. {verb.capitalize()} that one with '{single_scale_flag}'."
                     )
+        # The summary that colors the 'unified' map is the group summary with groups, and the sample
+        # summary without them. A spread there ('CIRCULAR_SPREADS') gives that map a scale, a
+        # colormap, and a label of its own.
+        unified_summary_flag = (
+            f"--{element_type}-{'group' if group_samples is not None else 'sample'}-summary"
+        )
+        unified_summary = group_summary if group_samples is not None else sample_summary
+        unified_spread = has_sample and unified_summary in CIRCULAR_SPREADS
+
         # A period fixes each scale of values to run from 0 to the period ('_map_elements'). A color
         # then always means the same point in the period. Limits of exactly 0 and the period ask for
-        # the same scale, so they are accepted. Any other limit, or a center, is refused.
+        # the same scale, so they are accepted. Any other limit, or a center, is refused. A spread
+        # on the 'unified' map is fixed to run from 0 to the largest spread there can be, so no
+        # limits are accepted for that map.
         if value_period is not None:
+            if unified_spread and value_limits is not None:
+                raise ConfigError(
+                    f"'{value_limits_flag}' bounds the color scale of the 'unified' map, but "
+                    f"'{unified_summary_flag} {unified_summary}' colors that map by how far the "
+                    f"values are spread apart. That scale runs from 0 to "
+                    f"{self._largest_angular_deviation(value_period):.3g}, the largest spread "
+                    f"there can be with a period of {value_period:g}. Please drop "
+                    f"'{value_limits_flag}'."
+                )
             for setting, flag in (
                 (value_limits, value_limits_flag),
                 (category_value_limits, category_value_limits_flag)
@@ -2402,6 +2504,23 @@ class Mapper:
             }
 
         undefined: Set[str] = set()
+        # A spread is a plain number, not a point in the period. So only the summary that colors the
+        # 'unified' map takes one. Within a sample, the KOs of an element must still give a point in
+        # the period. With groups, the sample summary colors each group's map, and the group summary
+        # then pools those values.
+        for name, flag in (
+            (gene_aggregation, f'--{element_type}-gene-aggregation'),
+            (accession_aggregation, f'--{element_type}-accession-aggregation'),
+            (sample_summary if group_samples is not None else None,
+             f'--{element_type}-sample-summary')
+        ):
+            if name in CIRCULAR_SPREADS:
+                raise ConfigError(
+                    f"'{flag}' was given as '{name}', which measures how far values are spread "
+                    f"apart. A spread is a plain number, not a point in the period. So it can only "
+                    f"summarize the {'groups' if group_samples is not None else 'samples'} for the "
+                    f"'unified' map, with '{unified_summary_flag}'."
+                )
         # An aggregation left unset is 'circular_mean' for values with a period, and 'sum'
         # otherwise. A colormap of values left unset is cyclic for values with a period.
         default_aggregation = 'circular_mean' if value_period is not None else 'sum'
@@ -2707,24 +2826,43 @@ class Mapper:
         model['group_summary'] = group_summary if grouped and group_kind == 'value' else None
         model['group_aggregate'] = group_aggregate if grouped else None
 
+        # A spread on the 'unified' map does not repeat. Its scale takes a sequential colormap. A
+        # cyclic one would give the smallest and the largest spread the same color.
+        model['unified_spread'] = unified_spread
+        unified_default_colormap = 'plasma_r' if unified_spread else default_colormap
         model['cmap'] = self._resolve_sequential_colormap(
-            colormap if colormap is not None else default_colormap, colormap_limits,
+            colormap if colormap is not None else unified_default_colormap, colormap_limits,
             subject=f'{element_type}s'
         )
+        if unified_spread and self._is_cyclic_colormap(model['cmap']):
+            raise ConfigError(
+                f"'{colormap_flag}' was given as '{colormap}', a cyclic colormap, but "
+                f"'{unified_summary_flag} {unified_summary}' colors the 'unified' map by how far "
+                f"the values are spread apart. A spread does not repeat. A cyclic colormap would "
+                f"give the smallest and the largest spread the same color. Please give a "
+                f"sequential colormap, such as 'plasma_r'."
+            )
         # The maps of the individual samples or groups take a colormap of their own where one was
         # given, so that a 'unified' map showing a summary of another kind than the values behind it
         # — their spread rather than their magnitude — is not read as more of the same quantity.
         # Left unset, the layer's one colormap serves both contexts, and is resolved once so that a
-        # warning about it is given once.
+        # warning about it is given once. The exception is a spread on the 'unified' map. The maps
+        # of the individual samples or groups then show points in the period. Left unset, their
+        # colormap is the cyclic default.
         category_subject = (
             f"{element_type}s on the maps of the individual "
             f"{'groups' if grouped else 'samples'}"
         )
-        model['category_cmap'] = model['cmap'] if category_colormap is None else (
-            self._resolve_sequential_colormap(
+        if category_colormap is not None:
+            model['category_cmap'] = self._resolve_sequential_colormap(
                 category_colormap, category_colormap_limits, subject=category_subject
             )
-        )
+        elif unified_spread:
+            model['category_cmap'] = self._resolve_sequential_colormap(
+                default_colormap, None, subject=category_subject
+            )
+        else:
+            model['category_cmap'] = model['cmap']
         # Whether a centered scale's colormap has a middle worth putting a value at is asked of each
         # scale's own colormap, and only where that scale both colors by value and was centered. The
         # two questions are asked separately even where one colormap serves both, since a scale that
@@ -2744,6 +2882,9 @@ class Mapper:
             )
         model['aggregate'] = aggregate
         model['colorbar_label'] = value_column
+        # A spread on the 'unified' map shows a quantity of its own. Its colorbar says what it is.
+        if unified_spread:
+            model['unified_colorbar_label'] = f'{value_column} angular deviation'
         # The 'unified' map is derived from the values themselves, so only the scale that the
         # per-sample or per-group maps share is relabeled by a normalization. Every normalization
         # composes its label from the value column's name: one anvi'o knows names the quantity it
@@ -4986,6 +5127,9 @@ class Mapper:
             - 'value_period': the period after which the values repeat, or None. Each scale of
               values then runs from 0 to the period, and derived compound colors are averaged on a
               circle.
+            - 'unified_spread': True where the 'unified' map shows how far values that repeat are
+              spread apart ('CIRCULAR_SPREADS'). That scale then runs from 0 to the largest spread
+              there can be, and derived compound colors are averaged as plain numbers.
             - 'group_samples': the samples of each group, for a layer with samples. It is None in an
               ungrouped run.
             - 'sample_aggregate' and 'group_aggregate': the summaries that pool an element's values
@@ -4997,6 +5141,9 @@ class Mapper:
             - 'category_colorbar_label': the label of the individual maps' colorbar. It defaults to
               'colorbar_label'. A normalization makes the scale show a different quantity, so it
               needs its own label.
+            - 'unified_colorbar_label': the label of the 'unified' map's colorbar. It defaults to
+              'colorbar_label'. A spread makes that scale show a different quantity, so it needs
+              its own label.
 
             A 'membership' layer needs these keys:
             - 'membership': the sources that contain each accession.
@@ -5440,9 +5587,15 @@ class Mapper:
                     )
                 # A period fixes each scale of values to run from 0 to the period. The limits are
                 # set here, not in the layer model. The checks on limits read a limit in the model
-                # as one that was given, and these were not.
+                # as one that was given, and these were not. A spread on the 'unified' map runs from
+                # 0 to the largest spread there can be.
                 period = layer.get('value_period')
-                value_limits = layer.get('value_limits') if period is None else (0.0, period)
+                if period is None:
+                    value_limits = layer.get('value_limits')
+                elif layer.get('unified_spread'):
+                    value_limits = (0.0, self._largest_angular_deviation(period))
+                else:
+                    value_limits = (0.0, period)
                 category_value_limits = (
                     layer.get('category_value_limits') if period is None else (0.0, period)
                 )
@@ -5460,10 +5613,14 @@ class Mapper:
                     layer['_unified_norm'] = norm
                     layer['_unified_range'] = (vmin, vmax)
                     # A limit sets its end of the scale, so the colorbar labels every end a limit
-                    # set, and marks those that values lie past.
+                    # set, and marks those that values lie past. The top of a spread's scale is the
+                    # largest spread there can be, 5.40 with a period of 24. A label there would
+                    # print every tick to three decimals, so the top is left to the usual ticks.
                     layer['_unified_limited'] = tuple(
                         limit is not None for limit in (value_limits or (None, None))
                     )
+                    if layer.get('unified_spread'):
+                        layer['_unified_limited'] = (True, False)
                     layer['_unified_clamped'] = (clamped_low, clamped_high)
                     layer['_unified_center'] = layer.get('value_center')
                 if layer['category_mode'] != 'quantitative':
@@ -5550,12 +5707,17 @@ class Mapper:
                 )
             )
 
-        def _reaction_derived(layer, mode, cmap_key='cmap'):
+        def _reaction_derived(layer, mode, cmap_key='cmap', spread=False):
             # How a reaction layer derives compound colors on a reaction-only global/overview map.
             # The derived colors come from the same scale as the reactions they are derived from, so
-            # the caller names the context's colormap: the two can differ ('category_cmap').
+            # the caller names the context's colormap: the two can differ ('category_cmap'). The
+            # caller also says whether the context shows a spread, which is a plain number and so is
+            # averaged as one.
             if layer['element_type'] != 'reaction':
                 return None
+            if mode == 'quantitative' and spread:
+                cmap = layer[cmap_key]
+                return ('average', cmap.reversed() if layer['reverse_overlay'] else cmap)
             if mode == 'quantitative':
                 cmap = layer[cmap_key]
                 # Values that repeat after a period are averaged on a circle, whatever the colormap.
@@ -5610,7 +5772,9 @@ class Mapper:
                         entry_value, layer['_unified_norm'], layer['cmap'],
                         layer['reverse_overlay'], center=layer['_unified_center']
                     ),
-                    'derived_compound': _reaction_derived(layer, mode)
+                    'derived_compound': _reaction_derived(
+                        layer, mode, spread=layer.get('unified_spread', False)
+                    )
                 }
             if mode == 'membership':
                 _, color_priorities, category_combos, _ = layer['_colors']
@@ -5780,7 +5944,7 @@ class Mapper:
                     self._draw_quantitative_colorbar(
                         layer['cmap'], vmin, vmax,
                         os.path.join(output_dir, f"colorbar_{layer['name']}.pdf"),
-                        layer['colorbar_label'],
+                        layer.get('unified_colorbar_label', layer['colorbar_label']),
                         limited_low=limited_low, limited_high=limited_high,
                         clamped_low=clamped_low, clamped_high=clamped_high,
                         center=layer['_unified_center']
