@@ -1843,7 +1843,7 @@ class Mapper:
                 f"its colors run from one end to the other rather than out from a neutral middle, "
                 f"so there is no color there for the centered value to take, and a reader cannot "
                 f"see where the middle of the scale is except from the colorbar. A diverging "
-                f"colormap given to '{colormap_flag}' — e.g., 'RdYlGn', 'RdYlBu_r — is what makes "
+                f"colormap given to '{colormap_flag}' — e.g., 'RdYlGn', 'RdYlBu_r' — is what makes "
                 f"a centered scale legible."
             )
         elif colormap_limits is not None and abs(
@@ -3547,6 +3547,19 @@ class Mapper:
             'accessions': ko_ids,
             'color_hexcode': color_hexcode
         }]
+
+        # The color is checked before any map is drawn, as '_map_elements' checks its colors. It
+        # colors the reactions, and, on global and overview maps, the compounds they touch.
+        if color_hexcode != 'original':
+            check_layers = [
+                {**layer, 'unified_mode': 'single', 'category_mode': 'single'}
+                for layer in presence_layers
+            ]
+            self._check_reserved_colors(check_layers, pathway_numbers, drawn_categories=[])
+            self._check_derived_compound_colors(
+                check_layers, pathway_numbers,
+                lambda: [(None, True, self._element_presence_specs(presence_layers))]
+            )
 
         # Draw maps.
         self.progress.new("Drawing map")
@@ -5406,10 +5419,65 @@ class Mapper:
                 'derived_compound': _reaction_derived(layer, mode, 'category_cmap')
             }
 
+        # For grouped membership individual maps, precompute each group's within-group membership,
+        # narrowing the layer's membership to the group's own sources so that a group's map counts
+        # only them. The colors these counts take were resolved above, with every other color of the
+        # run.
+        group_layer_membership: Dict[str, Tuple] = {}
+        if grouped_presence:
+            for group in draw_categories:
+                specs = []
+                for layer in group_membership_layers:
+                    inner_membership = {}
+                    for accession, sources in layer['membership'].items():
+                        in_group = [s for s in sources if source_group.get(s) == group]
+                        if in_group:
+                            inner_membership[accession] = in_group
+                    specs.append({
+                        'element_type': layer['element_type'],
+                        'use_reaction_attribute': layer['use_reaction_attribute'],
+                        'entry_keys': inner_membership,
+                        'colorer': self._membership_colorer(
+                            inner_membership, group_color_priorities[group], None, None, None,
+                            layer['use_reaction_attribute']
+                        ),
+                        'derived_compound': _reaction_derived(layer, 'membership')
+                    })
+                group_layer_membership[group] = (
+                    specs, group_color_priorities[group], group_scale_tops[group]
+                )
+
+        def _category_specs(category):
+            # Grouped membership specs are precomputed; a layer colored by value or a single color
+            # in its per-group context colors its own map and rides along on the same map.
+            if grouped_presence:
+                return group_layer_membership[category][0] + [
+                    _category_spec(layer, category) for layer in layers
+                    if layer['category_mode'] != 'membership'
+                ]
+            return [_category_spec(layer, category) for layer in layers]
+
+        def _element_map_specs():
+            # The specs of each kind of map that '_draw_map_elements' draws, with a phrase naming
+            # it. A run in the reference map's own colors draws its other maps with
+            # '_draw_map_kos_original_color'.
+            if draw_unified_maps and not original_run:
+                yield (
+                    "the 'unified' map" if has_categories else None, True,
+                    [_unified_spec(layer) for layer in layers]
+                )
+            for category in draw_categories:
+                if grouped_presence or not original_run:
+                    yield f"{category_noun} '{category}'", False, _category_specs(category)
+
         self._check_reserved_colors(
             layers, pathway_numbers, group_color_priorities=group_color_priorities,
             group_element_types={layer['element_type'] for layer in group_membership_layers},
             drawn_categories=draw_categories
+        )
+        self._check_derived_compound_colors(
+            layers, pathway_numbers, _element_map_specs,
+            group_color_priorities=group_color_priorities
         )
 
         # Per-layer colorbars for the unified map (layer-prefixed so two layers do not collide),
@@ -5505,34 +5573,6 @@ class Mapper:
             self.run.info("Number of maps drawn", count)
             return drawn
 
-        # For grouped membership individual maps, precompute each group's within-group membership,
-        # narrowing the layer's membership to the group's own sources so that a group's map counts
-        # only them. The colors these counts take were resolved above, with every other color of the
-        # run.
-        group_layer_membership: Dict[str, Tuple] = {}
-        if grouped_presence:
-            for group in draw_categories:
-                specs = []
-                for layer in group_membership_layers:
-                    inner_membership = {}
-                    for accession, sources in layer['membership'].items():
-                        in_group = [s for s in sources if source_group.get(s) == group]
-                        if in_group:
-                            inner_membership[accession] = in_group
-                    specs.append({
-                        'element_type': layer['element_type'],
-                        'use_reaction_attribute': layer['use_reaction_attribute'],
-                        'entry_keys': inner_membership,
-                        'colorer': self._membership_colorer(
-                            inner_membership, group_color_priorities[group], None, None, None,
-                            layer['use_reaction_attribute']
-                        ),
-                        'derived_compound': _reaction_derived(layer, 'membership')
-                    })
-                group_layer_membership[group] = (
-                    specs, group_color_priorities[group], group_scale_tops[group]
-                )
-
         for category in draw_categories:
             drawn_category: Dict[str, bool] = {}
             self.progress.new(f"Drawing maps for {category_noun} '{category}'")
@@ -5547,7 +5587,7 @@ class Mapper:
             )
 
             if grouped_presence:
-                group_specs, category_color_priorities, category_scale_top = (
+                _, category_color_priorities, category_scale_top = (
                     group_layer_membership[category]
                 )
                 colorbar_path = os.path.join(category_output_dir, CATEGORY_COLORBAR_BASENAME)
@@ -5566,12 +5606,7 @@ class Mapper:
                         color_labels=range(1, category_scale_top + 1),
                         label=membership_count_label
                     )
-                # Grouped membership specs are precomputed; a layer colored by value or a single
-                # color in its per-group context colors its own map and rides along on the same map.
-                specs = group_specs + [
-                    _category_spec(layer, category) for layer in layers
-                    if layer['category_mode'] != 'membership'
-                ]
+                specs = _category_specs(category)
                 for pathway_number in pathway_numbers:
                     drawn_category[pathway_number] = self._draw_map_elements(
                         pathway_number, specs, category_output_dir,
@@ -5584,7 +5619,7 @@ class Mapper:
                         category_output_dir, draw_map_lacking_data=draw_maps_lacking_data
                     )
             else:
-                specs = [_category_spec(layer, category) for layer in layers]
+                specs = _category_specs(category)
                 for pathway_number in pathway_numbers:
                     drawn_category[pathway_number] = self._draw_map_elements(
                         pathway_number, specs, category_output_dir,
@@ -5738,22 +5773,27 @@ class Mapper:
             )
 
         # The value scale shared by the maps of the individual categories colors only those maps.
-        value_scales = [('_unified_norm', '_unified_vals', 'cmap')]
+        value_scales = [('_unified_norm', '_unified_center', '_unified_vals', 'cmap')]
         if drawn_categories:
-            value_scales.append(('_category_norm', '_category_vals', 'category_cmap'))
+            value_scales.append(
+                ('_category_norm', '_category_center', '_category_vals', 'category_cmap')
+            )
         for layer in layers:
             if layer['unified_mode'] == 'original':
                 continue
             # Every color the layer can stage: sampled from its colormap at the values it will color
             # by, taken from the scale it colors presence by, or its one fixed color.
             staged: Set[str] = set()
-            for norm_key, values_key, cmap_key in value_scales:
+            for norm_key, center_key, values_key, cmap_key in value_scales:
                 if norm_key not in layer or not layer[values_key]:
                     continue
                 norm = layer[norm_key]
                 cmap = layer[cmap_key]
+                # A scale with no norm spans a single value. The colorers give every element the
+                # middle color where the scale is centered. Otherwise they give it the top color.
                 if norm is None:
-                    staged.add(mcolors.rgb2hex(cmap(1.0)))
+                    fraction = 0.5 if layer[center_key] is not None else 1.0
+                    staged.add(mcolors.rgb2hex(cmap(fraction)))
                     continue
                 # A run with many samples can have millions of values here. A colormap has only a
                 # few hundred colors. The values are therefore colored all at once. Each distinct
@@ -5787,6 +5827,200 @@ class Mapper:
                 f"that does not reach these colors: grayscale colormaps and those running to pure "
                 f"white or black, such as 'Greys', 'hot' and 'bone', all do."
             )
+
+    def _check_derived_compound_colors(
+        self,
+        layers: List[dict],
+        pathway_numbers: List[str],
+        element_map_specs: Callable[[], Iterable[Tuple[Union[str, None], bool, List[dict]]]],
+        group_color_priorities: Dict[str, List[Tuple[str, float]]] = None
+    ) -> None:
+        """
+        Check that no compound is given a reserved color derived from the reactions it touches.
+
+        A global or overview map drawn without a compound layer colors each compound from the
+        reactions it touches ('kgml.Pathway.color_associated_compounds'). Where the reactions are
+        colored by value, a compound takes the color at the average position of its reactions on
+        the color scale. Otherwise it takes the color of its reaction drawn on top. That color can
+        be the one the map keeps for the compounds it does not highlight. This can happen even where
+        no reaction has that color. 'kgml' then refuses to draw the map. This check finds such a
+        clash before any map or colorbar is drawn. '_check_reserved_colors' does the same for the
+        colors of the layers themselves.
+
+        The derived colors depend on which reactions touch each compound. Each map is therefore
+        colored here without being drawn. That costs about as much as drawing the map, less the
+        rendering. So it is done only on the maps whose reserved color a derived color can reach at
+        all. A derived color is always a color of a reaction colormap or a fixed color of the
+        reactions.
+
+        Parameters
+        ==========
+        layers : List[dict]
+            The layer models. Compound colors are derived only where no layer is a compound layer.
+
+        pathway_numbers : List[str]
+            The maps about to be drawn. Only global and overview maps derive compound colors.
+
+        element_map_specs : Callable[[], Iterable[Tuple[Union[str, None], bool, List[dict]]]]
+            Gives the layer specs of each kind of map that '_draw_map_elements' is about to draw,
+            such as the 'unified' map or the map of one sample. Each comes with a phrase naming that
+            kind of map, and with True if it is the 'unified' map. The phrase is None where the run
+            has no categories and so draws a single map. The specs are built only if the maps have
+            to be colored.
+
+        group_color_priorities : Dict[str, List[Tuple[str, float]]], None
+            The colors of each group's individual maps ('_group_map_colors'). A compound on a
+            group's map can take one of them.
+        """
+        # A compound layer colors the compounds itself, so no compound color is derived.
+        if any(layer['element_type'] == 'compound' for layer in layers):
+            return
+        reserved: Dict[str, str] = {}
+        for pathway_number in pathway_numbers:
+            is_global = re.match(GLOBAL_MAP_ID_PATTERN, pathway_number) is not None
+            is_overview = re.match(OVERVIEW_MAP_ID_PATTERN, pathway_number) is not None
+            if is_global or is_overview:
+                reserved[pathway_number] = kgml.canonical_color(
+                    kgml.reserved_recolor_colors('g' if is_global else 'w', is_overview)['compound']
+                )
+        if not reserved:
+            return
+
+        # Every color a compound can be derived in. A reversed overlay derives compound colors from
+        # the reversed colormap ('_reaction_derived'). Each colormap is therefore read both ways.
+        derivable: Set[str] = set()
+        for layer in layers:
+            for mode_key, cmap_key in (
+                ('unified_mode', 'cmap'), ('category_mode', 'category_cmap')
+            ):
+                if layer[mode_key] != 'quantitative':
+                    continue
+                for cmap in (layer[cmap_key], layer[cmap_key].reversed()):
+                    derivable.update(mcolors.rgb2hex(color) for color in cmap(np.arange(cmap.N)))
+            if '_colors' in layer:
+                derivable.update(color for color, _ in layer['_colors'][1])
+            if layer.get('category_colors') is not None:
+                derivable.update(layer['category_colors'].values())
+            if layer.get('color_hexcode') is not None:
+                derivable.add(layer['color_hexcode'])
+        for color_priorities in (group_color_priorities or {}).values():
+            derivable.update(color for color, _ in color_priorities)
+        derivable = set(map(kgml.canonical_color, derivable))
+        # Only the maps whose reserved color can be derived are colored.
+        reserved = {
+            pathway_number: color for pathway_number, color in reserved.items()
+            if color in derivable
+        }
+        if not reserved:
+            return
+
+        self.progress.new("Checking the compound colors derived from reactions")
+        for drawing, unified, specs in element_map_specs():
+            reaction_spec = next(spec for spec in specs if spec['element_type'] == 'reaction')
+            mode, colormap = reaction_spec['derived_compound']
+            for pathway_number, reserved_color in reserved.items():
+                self.progress.update(
+                    pathway_number if drawing is None else f"{pathway_number}, {drawing}"
+                )
+                pathway = self._get_pathway(pathway_number)
+                color_priority, _ = self._stage_map_elements(pathway_number, pathway, specs)
+                # These are the steps 'kgml.Pathway.set_color_priority' takes to derive compound
+                # colors, short of the last one. That step recolors the compounds left without a
+                # color. It is where 'kgml' refuses a derived color that is reserved.
+                pathway.set_color_priority(
+                    color_priority,
+                    recolor_unprioritized_entries='g' if pathway.is_global_map else 'w'
+                )
+                pathway.color_associated_compounds(mode, colormap=colormap)
+                derived = {
+                    kgml.canonical_color(bgcolor)
+                    for _, bgcolor in pathway.color_priority.get('compound', {}).get('circle', {})
+                }
+                if reserved_color not in derived:
+                    continue
+                self.progress.end()
+                drawn_for = '' if drawing is None else f" ({drawing})"
+                remedy = self._derived_compound_remedy(
+                    layers, unified, group_color_priorities, reserved_color
+                )
+                raise ConfigError(
+                    f"Some compounds would be colored {reserved_color} on pathway map "
+                    f"{pathway_number}{drawn_for}. The map keeps this color for the compounds it "
+                    f"does not highlight. They could not be told apart from those compounds. No "
+                    f"compound layer is drawn. The map therefore colors each compound from the "
+                    f"reactions it touches. Where the reactions are colored by value, a compound "
+                    f"takes the color at the average position of its reactions on the color scale. "
+                    f"Otherwise it takes the color of its reaction drawn on top. {remedy}"
+                )
+        self.progress.end()
+
+    @staticmethod
+    def _derived_compound_remedy(
+        layers: List[dict],
+        unified: bool,
+        group_color_priorities: Union[Dict[str, List[Tuple[str, float]]], None],
+        reserved_color: str
+    ) -> str:
+        """
+        Say which option to change where a compound would be derived in a reserved color.
+
+        The option is the one that set the colors of the reactions on that kind of map
+        ('_check_derived_compound_colors').
+
+        Parameters
+        ==========
+        layers : List[dict]
+            The layer models. The run has no compound layer, so its one reaction layer is here.
+
+        unified : bool
+            True for the 'unified' map, False for the map of one category.
+
+        group_color_priorities : Union[Dict[str, List[Tuple[str, float]]], None]
+            The colors of each group's individual maps. A grouped run colors those maps by counts.
+
+        reserved_color : str
+            The reserved color that a compound would take.
+
+        Returns
+        =======
+        str
+            The sentences that name the option and what to do with it.
+        """
+        layer = next(layer for layer in layers if layer['element_type'] == 'reaction')
+        mode = layer['unified_mode'] if unified else layer['category_mode']
+        if reserved_color == '#ffffff':
+            colormaps = (
+                "Grayscale colormaps and those running to pure white, such as 'Greys', 'hot' and "
+                "'bone', reach it."
+            )
+        else:
+            colormaps = "Colormaps with grays in them, such as 'Greys' and 'RdGy', reach it."
+        if not unified and group_color_priorities and mode == 'membership':
+            return (
+                f"These maps color the number of the group's own sources containing each "
+                f"reaction, styled by '--group-colormap'. Choose a colormap that does not reach "
+                f"{reserved_color}. {colormaps} A ramp from a pale tint to the group's own color "
+                f"('--group-colormap {GROUP_COLORMAP_FROM_CATEGORY}') can start further from "
+                f"white instead. Raise the first of the two limits that option also takes."
+            )
+        if mode == 'quantitative' and not unified:
+            return (
+                f"Choose a colormap for '--reaction-category-colormap' that does not reach "
+                f"{reserved_color}. Without that option, these maps use the colormap given to "
+                f"'--reaction-colormap'. {colormaps}"
+            )
+        # A color per category colors the presence of the categories in place of a colormap.
+        if mode == 'membership' and layer.get('category_colors') is not None:
+            return (
+                f"Remove {reserved_color} from the file given to "
+                f"'{layer['category_colors_flag']}'."
+            )
+        if mode == 'quantitative' or (mode == 'membership' and unified):
+            return (
+                f"Choose a colormap for '--reaction-colormap' that does not reach "
+                f"{reserved_color}. {colormaps}"
+            )
+        return f"Choose a color other than {reserved_color} for '--reaction-color'."
 
     @staticmethod
     def _resolve_count_scale_top(count_scale_max: Union[str, int], observed: int, total: int) -> int:
@@ -7125,26 +7359,9 @@ class Mapper:
         """
         pathway = self._get_pathway(pathway_number)
 
-        color_priority: dict = {}
-        found_entries = False
-        for spec in layer_specs:
-            if spec.get('pathway_numbers') is not None and (
-                pathway_number not in spec['pathway_numbers']
-            ):
-                continue
-            entries = self._find_element_entries(
-                pathway, spec['use_reaction_attribute'], spec['entry_keys']
-            )
-            if entries:
-                found_entries = True
-            for entry in entries:
-                colored = spec['colorer'](entry)
-                if colored is None:
-                    continue
-                color_hexcode, priority = colored
-                self._stage_element_color(
-                    pathway, entry, spec['element_type'], color_hexcode, priority, color_priority
-                )
+        color_priority, found_entries = self._stage_map_elements(
+            pathway_number, pathway, layer_specs
+        )
 
         if not found_entries and not draw_map_lacking_data:
             return False
@@ -7182,6 +7399,62 @@ class Mapper:
 
         self._draw_map(pathway, output_dir)
         return True
+
+    def _stage_map_elements(
+        self,
+        pathway_number: str,
+        pathway: kgml.Pathway,
+        layer_specs: List[dict]
+    ) -> Tuple[dict, bool]:
+        """
+        Stage the colors of every layer on one map, without applying them.
+
+        Each layer's colorer colors the entries the layer matches. Drawing a map
+        ('_draw_map_elements') and checking the compound colors a map derives
+        ('_check_derived_compound_colors') both stage colors here. The check therefore sees the
+        colors the drawing will use.
+
+        Parameters
+        ==========
+        pathway_number : str
+            Numeric ID of the map.
+
+        pathway : kgml.Pathway
+            The map, freshly loaded. Its matched entries are given their colors.
+
+        layer_specs : List[dict]
+            One spec per layer, with the keys '_draw_map_elements' describes. Earlier specs are
+            drawn beneath later ones.
+
+        Returns
+        =======
+        Tuple[dict, bool]
+            Two values:
+            - The '{entry_type: {graphics_type: {(fg, bg): priority}}}' dictionary, to be passed to
+              'kgml.Pathway.set_color_priority'.
+            - Whether any layer matched an entry of the map.
+        """
+        color_priority: dict = {}
+        found_entries = False
+        for spec in layer_specs:
+            if spec.get('pathway_numbers') is not None and (
+                pathway_number not in spec['pathway_numbers']
+            ):
+                continue
+            entries = self._find_element_entries(
+                pathway, spec['use_reaction_attribute'], spec['entry_keys']
+            )
+            if entries:
+                found_entries = True
+            for entry in entries:
+                colored = spec['colorer'](entry)
+                if colored is None:
+                    continue
+                color_hexcode, priority = colored
+                self._stage_element_color(
+                    pathway, entry, spec['element_type'], color_hexcode, priority, color_priority
+                )
+        return color_priority, found_entries
 
     def _draw_map_element_presence(
         self,
@@ -7221,6 +7494,18 @@ class Mapper:
         bool
             True if the map was drawn, False if it was skipped for lacking data.
         """
+        return self._draw_map_elements(
+            pathway_number, self._element_presence_specs(layers), output_dir,
+            draw_map_lacking_data=draw_map_lacking_data
+        )
+
+    def _element_presence_specs(self, layers: List[dict]) -> List[dict]:
+        """
+        Build the layer specs of '_draw_map_element_presence' from its layers.
+
+        Drawing the maps and checking their colors first ('_map_kos_fixed_colors') both build the
+        specs here, so the check sees the colors the drawing will use.
+        """
         specs = []
         for layer in layers:
             # On a reaction-only global/overview map, compounds take the color of the highest-
@@ -7233,9 +7518,7 @@ class Mapper:
                 'colorer': self._single_color_colorer(layer['color_hexcode']),
                 'derived_compound': derived_compound
             })
-        return self._draw_map_elements(
-            pathway_number, specs, output_dir, draw_map_lacking_data=draw_map_lacking_data
-        )
+        return specs
 
     @staticmethod
     def _check_contigs_db(contigs_db: str) -> None:
