@@ -2070,6 +2070,17 @@ D = {
                      "commands on a SGE -- if you are clusterizing your runs, and asking for multiple threads to use, "
                      "you may deplete your resources very fast."}
                 ),
+    'ani-backend': (
+            ['--ani-backend'],
+            {'choices': ['legacy', 'pyani-plus'],
+             'default': None,
+             'help': "ANI implementation for pyANI. The default is pyANI-plus, installed as a required anvi'o dependency. Choose 'legacy' to use the legacy pyANI executable."}
+                ),
+    'pyani-plus-program': (
+            ['--pyani-plus-program'],
+            {'default': None,
+             'help': "Path or executable name for pyANI-plus. Only valid when running the pyANI-plus backend, not when importing existing ANI results."}
+                ),
     'num-parallel-processes': (
             ['-P', '--num-parallel-processes'],
             {'metavar': 'NUM_PROCESSES',

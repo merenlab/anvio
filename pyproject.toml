@@ -80,7 +80,9 @@ dependencies = [
     "reportlab",
     "pymupdf",
     "tomli==2.2.1",
-    "pyyaml"
+    "pyyaml",
+    "pyani-plus>=1.0.1,<2",
+    "click>=8,<9",
 ]
 
 [project.urls]

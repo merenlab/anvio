@@ -34,7 +34,7 @@ PYANI_ONLY_OPTIONS = (
 
 
 def validate_program_options(args, argv=None):
-    """Reject explicitly supplied pyANI options when another program is selected."""
+    """Reject pyANI computation options when another program or imported matrices are selected."""
     argv = sys.argv[1:] if argv is None else argv
     supplied_tokens = [argument.split('=', 1)[0] for argument in argv
                        if argument.startswith('--') and argument != '--']
@@ -42,6 +42,19 @@ def validate_program_options(args, argv=None):
         option for option in PYANI_ONLY_OPTIONS
         if any(token == option or option.startswith(token) for token in supplied_tokens)
     ]
+
+    args_dict = getattr(args, '__dict__', {})
+    imported_result_options = [
+        option for attribute, option in (('ani_dir', '--ani-dir'), ('mash_dir', '--mash-dir'))
+        if args_dict.get(attribute) is not None
+    ]
+
+    if supplied_options and imported_result_options:
+        raise ConfigError(
+            f"The following pyANI computation options cannot be used while importing existing "
+            f"similarity results with {', '.join(imported_result_options)}: {', '.join(supplied_options)}. "
+            "Remove the options or provide genome inputs to compute a new matrix."
+        )
 
     if supplied_options and args.program != 'pyANI':
         raise ConfigError(f"The following options only apply with `--program pyANI`: {', '.join(supplied_options)}. "
@@ -55,6 +68,15 @@ def main():
 
     try:
         validate_program_options(args)
+        if args.ani_backend is not None and args.ani_backend not in ('legacy', 'pyani-plus'):
+            raise ConfigError(f"Unknown ANI backend '{args.ani_backend}'. Choose 'legacy' or 'pyani-plus'.")
+        if args.ani_backend is not None and args.program != 'pyANI':
+            raise ConfigError("--ani-backend can only be used together with --program pyANI.")
+        if args.pyani_plus_program is not None and not args.pyani_plus_program:
+            raise ConfigError("--pyani-plus-program must name a pyANI-plus executable.")
+        if args.pyani_plus_program is not None and (args.program != 'pyANI' or args.ani_backend == 'legacy'):
+            raise ConfigError("--pyani-plus-program can only be used with --program pyANI and the pyANI-plus backend.")
+
         d = genomesimilarity.program_class_dictionary[args.program](args)
         d.process()
 
@@ -108,13 +130,10 @@ def get_args():
 
     group_PYANI = parser.add_argument_group('pyANI Settings', "Tell anvi'o to tell pyANI what method you wish to use\
                                              and what settings to set. Only if `--program` is set to `pyANI`")
-    group_PYANI.add_argument('--method', default='ANIb', type=str, help="Method for pyANI. The default is %(default)s.\
-                         You must have the necessary binary in path for whichever method you choose. According to\
-                         the pyANI help for v0.2.7 at https://github.com/widdowquinn/pyani, the method 'ANIm' uses\
-                         MUMmer (NUCmer) to align the input sequences. 'ANIb' uses BLASTN+ to align 1020nt fragments\
-                         of the input sequences. 'ANIblastall': uses the legacy BLASTN to align 1020nt fragments\
-                         Finally, 'TETRA': calculates tetranucleotide frequencies of each input sequence",
-                         choices=['ANIm', 'ANIb', 'ANIblastall', 'TETRA'])
+    group_PYANI.add_argument(*anvio.A('ani-backend'), **anvio.K('ani-backend'))
+    group_PYANI.add_argument(*anvio.A('pyani-plus-program'), **anvio.K('pyani-plus-program'))
+    group_PYANI.add_argument('--method', default='ANIb', type=str, help="ANI method (default: %(default)s). Supported methods are ANIb and ANIm. \
+                         ANIblastall and TETRA are retired in the Python 3.13 port.")
     group_PYANI.add_argument(*anvio.A('min-alignment-fraction'), **anvio.K('min-alignment-fraction'))
     group_PYANI.add_argument(*anvio.A('significant-alignment-length'), **anvio.K('significant-alignment-length'))
     group_PYANI.add_argument(*anvio.A('min-full-percent-identity'), **anvio.K('min-full-percent-identity', {'default': 0.0}))
@@ -138,7 +157,9 @@ def get_args():
                          clustering. The default is "%(default)s".'}))
 
     group_OTHER = parser.add_argument_group('OTHER IMPORTANT STUFF', "Yes. You're almost done.")
-    group_OTHER.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    group_OTHER.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads', {
+        'help': "Thread count for fastANI/legacy pyANI (default 1 or ANVIO_THREADS); CPU allocation for pyANI-plus child processes on Linux via taskset (CPU affinity, not every OS thread)."
+    }))
     group_OTHER.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
     group_OTHER.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
     group_OTHER.add_argument(*anvio.A('log-file'), **anvio.K('log-file'))

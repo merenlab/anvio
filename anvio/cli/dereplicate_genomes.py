@@ -9,6 +9,7 @@ import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomesimilarity import Dereplicate
+from anvio.cli.compute_genome_similarity import validate_program_options
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -26,6 +27,7 @@ def main():
     args = get_args()
 
     try:
+        validate_program_options(args)
         derep = Dereplicate(args)
         derep.process()
         derep.report()
@@ -80,13 +82,10 @@ def get_args():
 
     groupE = parser.add_argument_group('pyANI Settings', "Tell anvi'o to tell pyANI what method you wish to use and what settings to set.\
                         Only if `--program` is set to `pyANI`")
-    groupE.add_argument('--method', default='ANIb', type=str, help="Method for pyANI. The default is %(default)s.\
-                         You must have the necessary binary in path for whichever method you choose. According to\
-                         the pyANI help for v0.2.7 at https://github.com/widdowquinn/pyani, the method 'ANIm' uses\
-                         MUMmer (NUCmer) to align the input sequences. 'ANIb' uses BLASTN+ to align 1020nt fragments\
-                         of the input sequences. 'ANIblastall': uses the legacy BLASTN to align 1020nt fragments\
-                         Finally, 'TETRA': calculates tetranucleotide frequencies of each input sequence",
-                         choices=['ANIm', 'ANIb', 'ANIblastall', 'TETRA'])
+    groupE.add_argument('--method', default='ANIb', type=str, help="ANI method (default: %(default)s). Supported methods are ANIb and ANIm. \
+                         ANIblastall and TETRA are retired in the Python 3.13 port.")
+    groupE.add_argument(*anvio.A('ani-backend'), **anvio.K('ani-backend'))
+    groupE.add_argument(*anvio.A('pyani-plus-program'), **anvio.K('pyani-plus-program'))
     groupE.add_argument(*anvio.A('min-alignment-fraction'), **anvio.K('min-alignment-fraction', params_dict={'default':0.25}))
     groupE.add_argument(*anvio.A('significant-alignment-length'), **anvio.K('significant-alignment-length'))
     groupE.add_argument(*anvio.A('use-full-percent-identity'), **anvio.K('use-full-percent-identity'))
@@ -123,7 +122,9 @@ def get_args():
                         default is %(default)s", choices=['Qscore', 'length', 'centrality'])
 
     groupH = parser.add_argument_group('OTHER IMPORTANT STUFF', "Yes. You're almost done.")
-    groupH.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupH.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads', {
+        'help': "Thread count for fastANI/legacy pyANI (default 1 or ANVIO_THREADS); CPU allocation for pyANI-plus child processes on Linux via taskset (CPU affinity, not every OS thread)."
+    }))
     groupH.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
     groupH.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
     groupH.add_argument(*anvio.A('log-file'), **anvio.K('log-file'))

@@ -8,7 +8,11 @@ You have two options for the input to this program:
 
 - the results of %(anvi-compute-genome-similarity)s (a %(genome-similarity)s directory). If you used `fastANI` or `pyANI` when you ran %(anvi-compute-genome-similarity)s, provide this using the parameter `--ani-dir`; if you used sourmash, use the parameter `--mash-dir`.
 
-- an %(internal-genomes)s, %(external-genomes)s or a series of %(fasta)s files (each of which represents a genome), in which case anvi'o will run %(anvi-compute-genome-similarity)s for you.  When providing these inputs, you can also provide any of the parameters that %(anvi-compute-genome-similarity)s can take, including the `--program` you want to use (out of  [PyANI](https://github.com/widdowquinn/pyani), [fastANI](https://github.com/ParBLiSS/FastANI),  [sourmash](https://sourmash.readthedocs.io/en/latest/)) and their parameters. Details about all of this can be found in the help menu for %(anvi-compute-genome-similarity)s.
+- an %(internal-genomes)s, %(external-genomes)s or a series of %(fasta)s files (each of which represents a genome), in which case anvi'o will run %(anvi-compute-genome-similarity)s for you. When using `--program pyANI`, ANIb or ANIm runs through pyANI-plus by default; it is installed as a required anvi'o dependency. You can select the legacy executable with `--ani-backend legacy`. ANIblastall and TETRA are retired in the Python 3.13 port. See the help menu for %(anvi-compute-genome-similarity)s for all options.
+
+Dereplication requires complete ANI comparisons. Undefined or nonfinite values in newly computed or imported pyANI matrices cause anvi'o to stop before clustering or selecting representatives. Provide complete results or remove genomes with undefined comparisons; missing comparisons are not treated as zero similarity.
+
+Use `--pyani-plus-program PATH` to select a specific executable during a pyANI calculation. It cannot be used with another program or while importing existing ANI results with `--ani-dir`.
 
 #### Output Format
 
@@ -65,4 +69,6 @@ You can change how anvi'o picks the representative sequence from each cluster wi
 - `length`: picks the longest genome in the cluster
 - `centrality` (default): picks the genome with highest average similiarty to every other genome in the cluster
 
-You can also choose to skip checking genome hashes (which will warn you if you have identical sequences in separate genomes with different names), provide a log path for debug messages or use multithreading (relevant only if not providing `--ani-dir` or `--mash-dir`).
+You can also choose to skip checking genome hashes (which will warn you if you have identical sequences in separate genomes with different names), provide a log path for debug messages or use multithreading (relevant only if not providing `--ani-dir` or `--mash-dir`). The pyANI-plus backend currently supports Linux only; it is unsupported on macOS and Windows. On Linux, `--num-threads` allocates the effective count of currently allowed CPUs to child processes with `taskset` (default 1, or `ANVIO_THREADS` when set); the workflow can use all CPUs visible within that allocation. The request is capped to the CPUs currently available to anvi'o, and the actual CPU IDs are reported. This is child-process CPU affinity, not a limit on every OS thread. The allocation requires `os.sched_getaffinity` and `taskset`. The legacy pyANI and fastANI backends keep their existing thread behavior.
+
+Explicit pyANI method and alignment filters require `--program pyANI`; incompatible engine options stop before dereplication. These computation-only options cannot be supplied when importing an existing matrix with `--ani-dir` or `--mash-dir`.

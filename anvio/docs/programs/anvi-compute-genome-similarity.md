@@ -6,7 +6,11 @@ The currently available programs for calculating similarity metrics include, cho
 - [fastANI](https://github.com/ParBLiSS/FastANI) also to calcualte the ANI but at a faster speed (at the drawback of a slight reduction in accuracy)
 - [sourmash](https://sourmash.readthedocs.io/en/latest/) to calculate the mash distance between genomes.  Though we provide this option, we don't recommend using sourmash for genome comparisons--it excels at other tasks--yet it remains as a legacy option.
 
-If you omit `--program`, anvi'o uses fastANI. Choose pyANI explicitly when it is installed and you need its higher sensitivity for more divergent genomes.
+If you omit `--program`, anvi'o uses fastANI. Choose `--program pyANI` for ANIb or ANIm; the pyANI-plus backend is used by default. pyANI-plus is installed as a required anvi'o dependency. Use `--ani-backend legacy` to select the legacy pyANI executable. ANIblastall and TETRA are retired in the Python 3.13 port and are not aliases for ANIb or ANIm.
+
+Use `--pyani-plus-program PATH` to select a specific pyANI-plus executable. This option only applies when running `--program pyANI` with the pyANI-plus backend.
+
+The pyANI-plus backend currently supports Linux only; it is unsupported on macOS and Windows. On Linux, anvi'o allocates the effective `--num-threads` count to pyANI-plus child processes with `taskset` (default 1, or `ANVIO_THREADS` when set). The pyANI-plus local workflow can use all CPUs visible within that allocation; requests above the CPUs currently available to anvi'o are capped and the actual CPU IDs are reported. This controls child-process CPU affinity, not every OS thread. The allocation requires Linux, `os.sched_getaffinity`, and `taskset`. `--num-threads` continues to set thread counts for fastANI and the legacy pyANI backend.
 The pyANI options `--method`, `--min-alignment-fraction`, `--significant-alignment-length`, and `--min-full-percent-identity` require `--program pyANI`; supplying them with fastANI or sourmash raises an error.
 
 ### Input/Output
@@ -38,8 +42,8 @@ You have the option to change any of the follow parameters:
 - The method used for alignment. The options are:
     - `ANIb` (default): uses [BLASTN](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome)+ to align 1020 nt fragments of the inputs
     - `ANIm`: uses [MUMmer](http://mummer.sourceforge.net/) to align
-    - `ANIblastall`: Uses legacy [BLASTN](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome) to align 1020 nt fragments
-    - `TETRA`: Alignment free. This calculates similarity scores by comparing tetranucleotide frequencies for each input
+
+- The backend. pyANI-plus is the default and is installed with anvi'o. `--ani-backend legacy` selects the legacy PyANI executable.
 
 - The minimum alignment fraction (all percent identity scores lower than this will be set to 0). The default is 0.
 

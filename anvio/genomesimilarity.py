@@ -2,6 +2,7 @@
 """Code for genome similarity calculation"""
 
 import os
+import math
 import shutil
 import argparse
 import pandas as pd
@@ -18,7 +19,8 @@ import anvio.genomedescriptions as genomedescriptions
 from itertools import combinations
 
 from anvio.errors import ConfigError
-from anvio.drivers import pyani, sourmash, fastani
+from anvio.drivers import pyani, pyani_plus, sourmash, fastani
+from anvio.drivers.pyani_methods import validate_ani_method
 from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.miscdata import TableForLayerOrders
 
@@ -50,6 +52,8 @@ class Dereplicate:
         self.mash_dir = A('mash_dir', null)
         # mode
         self.program_name = A('program', null)
+        self.ani_backend = A('ani_backend', null)
+        self.pyani_plus_program = A('pyani_plus_program', null)
         self.representative_method = A('representative_method', null)
         self.similarity_threshold = A('similarity_threshold', null)
         # fastANI specific
@@ -126,6 +130,22 @@ class Dereplicate:
         if any([self.fasta_text_file, self.external_genomes, self.internal_genomes]):
             self.sequence_source_provided = True
 
+        if self.ani_backend is not None and self.ani_backend not in ('legacy', 'pyani-plus'):
+            raise ConfigError(f"Unknown ANI backend '{self.ani_backend}'. Choose 'legacy' or 'pyani-plus'.")
+
+        if self.ani_backend is not None and self.program_name != 'pyANI':
+            raise ConfigError("--ani-backend can only be used together with --program pyANI.")
+        if self.ani_backend is not None and (self.ani_dir or self.mash_dir):
+            raise ConfigError("--ani-backend cannot be used when importing existing similarity results.")
+
+        if self.pyani_plus_program is not None:
+            if not self.pyani_plus_program:
+                raise ConfigError("--pyani-plus-program must name a pyANI-plus executable.")
+            if self.ani_dir or self.mash_dir:
+                raise ConfigError("--pyani-plus-program cannot be used when importing existing similarity results.")
+            if self.program_name != 'pyANI' or self.ani_backend == 'legacy':
+                raise ConfigError("--pyani-plus-program can only be used with --program pyANI and the pyANI-plus backend.")
+
         if not self.sequence_source_provided and self.report_all:
             raise ConfigError("You didn't provide a sequence source, but want to `--report-all sequences`. Hmmm.")
 
@@ -147,6 +167,9 @@ class Dereplicate:
             raise ConfigError("Anvi'o is impressed by your dedication to dereplicate your genomes through %s, but "
                              "%s is not compatible with `anvi-dereplicate-genomes`. Anvi'o can only work with pyANI "
                              "and sourmash separately." % (self.program_name, self.program_name))
+
+        if self.program_name == 'pyANI':
+            validate_ani_method(getattr(self.args, 'method', None) or 'ANIb')
 
         if self.ani_dir and self.mash_dir:
             raise ConfigError("Anvi'o cannot currently dereplicate using both ANI and mash similarity results at "
@@ -223,13 +246,18 @@ class Dereplicate:
 
 
     def get_similarity_matrix(self):
-        return (self.import_similarity_matrix()
-                if self.import_previous_results
-                else self.gen_similarity_matrix())
+        try:
+            return (self.import_similarity_matrix()
+                    if self.import_previous_results
+                    else self.gen_similarity_matrix())
+        except ConfigError:
+            self.clean()
+            raise
 
 
     def gen_similarity_matrix(self):
         self.similarity.process(self.temp_dir)
+        self._validate_ani_matrices('generated')
 
         try:
             similarity_matrix = self.similarity.results[self.program_info['metric_name']]
@@ -280,9 +308,30 @@ class Dereplicate:
 
             self.similarity.results[report] = utils.get_TAB_delimited_file_as_dictionary(J(dir_path, matching_filepaths[0]))
 
+        self._validate_ani_matrices('imported')
+
         run.info('%s results directory imported from' % self.program_name, dir_path)
 
         return self.similarity.results[self.program_info['metric_name']]
+
+
+    def _validate_ani_matrices(self, source):
+        """Reject undefined ANI values before clustering or representative selection."""
+        if self.program_name != 'pyANI':
+            return
+
+        def is_undefined(value):
+            try:
+                return value is None or not math.isfinite(float(value))
+            except (TypeError, ValueError):
+                return True
+
+        for report in self.program_info['necessary_reports']:
+            matrix = self.similarity.results[report]
+            if any(is_undefined(value) for row in matrix.values() for value in row.values()):
+                raise ConfigError(f"The {source} ANI matrix '{report}' contains undefined comparisons. "
+                                  f"Anvi'o cannot use incomplete ANI matrices for dereplication. "
+                                  f"Please provide complete ANI results or remove genomes with no reported comparisons.")
 
 
     def clean(self):
@@ -604,6 +653,10 @@ class Dereplicate:
 
 class GenomeSimilarity:
     def __init__(self, args):
+        raw_ani_backend = getattr(args, 'ani_backend', None)
+        if raw_ani_backend is not None and raw_ani_backend not in ('legacy', 'pyani-plus'):
+            raise ConfigError(f"Unknown ANI backend '{raw_ani_backend}'. Choose 'legacy' or 'pyani-plus'.")
+
         self.args = args
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
@@ -710,7 +763,10 @@ class GenomeSimilarity:
                 with open(output_path_for_report + '.newick', 'w') as f:
                     f.write(self.clusterings[report_name])
 
-            run.info_single('Matrix and clustering of \'%s\' written to output directory' % report_name.replace('_',' '), mc='green')
+            if report_name in self.clusterings:
+                run.info_single('Matrix and clustering of \'%s\' written to output directory' % report_name.replace('_',' '), mc='green')
+            else:
+                run.info_single('Matrix for \'%s\' written to output directory; no Newick tree was available.' % report_name.replace('_',' '), mc='green')
 
 
     def get_genome_names_list_and_genome_source_dict(self):
@@ -760,6 +816,11 @@ class GenomeSimilarity:
 
 class FastANI(GenomeSimilarity):
     def __init__(self, args):
+        if getattr(args, 'ani_backend', None) is not None:
+            raise ConfigError("--ani-backend can only be used together with --program pyANI.")
+        if getattr(args, 'pyani_plus_program', None) is not None:
+            raise ConfigError("--pyani-plus-program can only be used with --program pyANI and the pyANI-plus backend.")
+
         self.args = args
         self.results = {}
 
@@ -812,6 +873,16 @@ class ANI(GenomeSimilarity):
     """This class handles specifically pyANI. See FastANI class for fastani handle"""
 
     def __init__(self, args):
+        raw_ani_backend = getattr(args, 'ani_backend', None)
+        if raw_ani_backend is not None and raw_ani_backend not in ('legacy', 'pyani-plus'):
+            raise ConfigError(f"Unknown ANI backend '{raw_ani_backend}'. Choose 'legacy' or 'pyani-plus'.")
+        raw_pyani_plus_program = getattr(args, 'pyani_plus_program', None)
+        if raw_pyani_plus_program is not None:
+            if not raw_pyani_plus_program:
+                raise ConfigError("--pyani-plus-program must name a pyANI-plus executable.")
+            if raw_ani_backend == 'legacy':
+                raise ConfigError("--pyani-plus-program can only be used with the pyANI-plus backend.")
+
         self.args = args
         self.results = {}
 
@@ -820,16 +891,75 @@ class ANI(GenomeSimilarity):
         self.similarity_type = 'ANI'
 
         self.args.quiet = True
-        self.program = pyani.PyANI(self.args)
+        self.ani_backend = getattr(args, 'ani_backend', None) or 'pyani-plus'
+        self.method = getattr(args, 'method', None) or 'ANIb'
+        validate_ani_method(self.method)
+        self._reported_undefined_clusterings = set()
+        self.program = None
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
         self.min_alignment_fraction = A('min_alignment_fraction', null)
         self.min_full_percent_identity = A('min_full_percent_identity', null)
         self.significant_alignment_length = A('significant_alignment_length', null)
-        self.method = A('method', null)
 
         self.ANI_sanity_check()
+
+
+    def cluster(self):
+        """Avoid inventing distances when pyANI-plus reports no comparison."""
+        if self.ani_backend == 'pyani-plus':
+            import math
+
+            skipped = []
+            for report_name, matrix in self.results.items():
+                contains_undefined = any(
+                    value is None or not math.isfinite(float(value))
+                    for row in matrix.values()
+                    for value in row.values()
+                )
+                if contains_undefined:
+                    skipped.append(report_name)
+                else:
+                    try:
+                        self.clusterings[report_name] = clustering.get_newick_tree_data_for_dict(
+                            matrix, linkage=self.clustering_linkage, distance=self.clustering_distance)
+                    except Exception as e:
+                        if anvio.DEBUG:
+                            print(e)
+                        run.warning("Clustering was not available for '%s'; the matrix is still being reported." % report_name)
+
+            skipped_not_reported = sorted(set(skipped) - self._reported_undefined_clusterings)
+            if skipped_not_reported:
+                self._reported_undefined_clusterings.update(skipped_not_reported)
+                run.warning("pyANI-plus reports undefined comparisons in %s. Anvi'o will preserve those values in the "
+                            "matrix and omit their Newick trees rather than substitute a distance." % ', '.join(skipped_not_reported))
+            return
+
+        super().cluster()
+
+
+    def add_to_pan_db(self):
+        """Reject undefined pyANI-plus values before numeric PanDB storage."""
+        if self.ani_backend == 'pyani-plus' and self.pan_db:
+            import math
+
+            def is_undefined(value):
+                try:
+                    return value is None or not math.isfinite(float(value))
+                except (TypeError, ValueError):
+                    return True
+
+            if any(is_undefined(value)
+                   for matrix in self.results.values()
+                   for row in matrix.values()
+                   for value in row.values()):
+                raise ConfigError("The pyANI-plus results contain undefined comparisons. Anvi'o has written the "
+                                  "result matrices to '%s', but cannot add incomplete ANI values to a Pan Database "
+                                  "because the current Pan Database tables cannot preserve undefined numeric values. "
+                                  "Rerun with complete ANI comparisons before using --pan-db." % self.output_dir)
+
+        super().add_to_pan_db()
 
 
     def ANI_sanity_check(self):
@@ -882,6 +1012,20 @@ class ANI(GenomeSimilarity):
         num_anvio_will_remove_via_full_percent_identity = 0
         num_anvio_wants_to_remove_via_alignment_fraction = 0
         num_saved_by_significant_length_param = 0
+
+        if self.ani_backend == 'pyani-plus' and (self.min_full_percent_identity or self.min_alignment_fraction):
+            tested_matrices = []
+            if self.min_full_percent_identity:
+                tested_matrices.append('full_percentage_identity')
+            if self.min_alignment_fraction:
+                tested_matrices.extend(['alignment_coverage', 'alignment_lengths'])
+            if any(value is None
+                   for matrix_name in tested_matrices
+                   for row in self.results.get(matrix_name, {}).values()
+                   for value in row.values()):
+                raise ConfigError("The pyANI-plus result contains undefined comparisons. anvi'o cannot apply ANI "
+                                  "threshold filters to matrices with undefined values; rerun without "
+                                  "--min-alignment-fraction and --min-full-percent-identity.")
 
         if self.min_full_percent_identity:
             p = self.results.get('full_percentage_identity')
@@ -990,6 +1134,12 @@ class ANI(GenomeSimilarity):
 
 
     def process(self, directory=None):
+        if self.program is None:
+            if self.ani_backend == 'pyani-plus':
+                self.program = pyani_plus.PyANIPlus(self.args)
+            else:
+                self.program = pyani.PyANI(self.args)
+
         self.temp_dir = directory if directory else self.get_fasta_sequences_dir()
 
         self.results = self.program.run_command(self.temp_dir)
@@ -1007,7 +1157,17 @@ class ANI(GenomeSimilarity):
         # full percentage identity
         try:
             df = lambda matrix_name: pd.DataFrame(results[matrix_name]).astype(float)
-            results['full_percentage_identity'] = (df('percentage_identity') * df('alignment_coverage')).to_dict()
+            full_percentage_identity = (df('percentage_identity') * df('alignment_coverage')).to_dict()
+            if self.ani_backend == 'pyani-plus':
+                results['full_percentage_identity'] = {
+                    row_name: {
+                        column_name: None if pd.isna(value) else value
+                        for column_name, value in row.items()
+                    }
+                    for row_name, row in full_percentage_identity.items()
+                }
+            else:
+                results['full_percentage_identity'] = full_percentage_identity
         except KeyError:
             # method did not produce percentage_identity score--that's okay, no full percentage
             # identity for you
@@ -1018,6 +1178,11 @@ class ANI(GenomeSimilarity):
 
 class SourMash(GenomeSimilarity):
     def __init__(self, args):
+        if getattr(args, 'ani_backend', None) is not None:
+            raise ConfigError("--ani-backend can only be used together with --program pyANI.")
+        if getattr(args, 'pyani_plus_program', None) is not None:
+            raise ConfigError("--pyani-plus-program can only be used with --program pyANI and the pyANI-plus backend.")
+
         GenomeSimilarity.__init__(self, args)
 
         self.results = {}
