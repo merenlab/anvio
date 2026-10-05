@@ -145,7 +145,8 @@ def get_args() -> Namespace:
         f"and accession are refused rather than combined, so this reduces genuinely different "
         f"genes. Where an aggregation is undefined for the values available, as 'std' is for a "
         f"single value, the element is left uncolored and a warning reports how many accessions "
-        f"were affected."
+        f"were affected. With '--reaction-value-period', the default is 'circular_mean', and no "
+        f"other name is accepted."
     )
     groupTXT.add_argument(
         '--reaction-accession-aggregation', metavar='NAME', help=
@@ -154,7 +155,9 @@ def get_args() -> Namespace:
         "quarter of the reaction elements in KEGG's maps stand for more than one KO, so this is a "
         "common case. The default is 'sum': the KOs of a reaction contribute to that reaction's "
         "total. It takes the same names as '--reaction-gene-aggregation', and the two can differ: "
-        "averaging across the genes of each KO while totaling across the KOs of a reaction, say."
+        "averaging across the genes of each KO while totaling across the KOs of a reaction, say. "
+        "With '--reaction-value-period', the default is 'circular_mean', and no other name is "
+        "accepted."
     )
     groupTXT.add_argument(
         '--compound-accession-aggregation', metavar='NAME', help=
@@ -164,7 +167,26 @@ def get_args() -> Namespace:
         "values of whichever of them the file lists to that circle's color. It applies to about "
         "one compound circle in fifty, so it rarely has anything to do. There is no reduction "
         "below it: a compound file names no genes, and rows repeating a compound are refused "
-        "rather than combined, so each compound has one value per sample."
+        "rather than combined, so each compound has one value per sample. With "
+        "'--compound-value-period', the default is 'circular_mean', and no other name is accepted."
+    )
+    groupTXT.add_argument(
+        '--reaction-value-period', metavar='PERIOD', help=
+        "The period after which the values of the reaction layer repeat, in the units of its value "
+        "column. For clock times in hours, give 24. Values just below the period and just above 0 "
+        "are then close together — with a period of 24, the circular mean of 23.5 and 0.5 is 0, "
+        "not 12. Every reduction of the values averages them on a circle with 'circular_mean'. It "
+        "is the default of '--reaction-gene-aggregation' and '--reaction-accession-aggregation'. "
+        "It is also the only name that these options and the sample and group summaries accept. "
+        "Values that cancel out have no mean, such as 6 and 18; elements with undefined means are "
+        "left uncolored. A period does not affect presence summaries. With this argument, "
+        "'--reaction-element-normalization' is refused, since every normalization compares values "
+        "on a line. The period does not change the color scales. Give clock times the limits "
+        "'0 24' and a cyclic colormap, such as 'clocktime'."
+    )
+    groupTXT.add_argument(
+        '--compound-value-period', metavar='PERIOD', help=
+        "Like '--reaction-value-period', but for the compound layer."
     )
 
     groupJSON = parser.add_argument_group(
@@ -292,22 +314,23 @@ def get_args() -> Namespace:
         f"name is an aggregation that pools the samples' values from the layer's value column, "
         f"which the file must have: the validated ones are {RECOMMENDED_AGGREGATIONS}, and any "
         f"other pandas aggregation reducing numbers to a single number works too (see "
-        f"'--reaction-gene-aggregation'). 'std' is an example here, mapping how much replicate "
-        f"samples disagree. This summary colors the 'unified' map when the samples are not "
-        f"grouped, and each group's map when they are grouped with '--groups-txt' — though only an "
-        f"aggregation affects a group's map, since presence there is always the count of the "
-        f"group's own samples, so the presence names are rejected in a grouped run as having "
-        f"nothing to choose between. Maps for individual samples are never summarized, always "
-        f"showing that one sample alone: its own values with a value column, its presence without "
-        f"one. Without this option, samples are summarized by presence, by membership with 3 or "
-        f"fewer samples, by count above that, and by a continuous count scale where a discrete one "
-        f"would run out of distinguishable colors or of room to label its bands (above "
-        f"{MAX_DISCRETE_COUNT_BANDS} of them). Presence is the default because it is meaningful "
-        f"for any set of samples, whereas pooling values is only meaningful when the samples are "
-        f"commensurable, such as replicates of one condition. If no summary of the samples is "
-        f"meaningful or desired, use '--skip-unified-maps' to leave the map out. Without groups, "
-        f"'--reaction-sample-summary' colors the 'unified' map alone; an ungrouped run with "
-        f"'--skip-unified-maps' therefore refuses this option."
+        f"'--reaction-gene-aggregation'). An aggregation pools the values of each map element. "
+        f"These are the values that the maps of the individual samples draw. 'std' is an example "
+        f"here, mapping how much replicate samples disagree. This summary colors the 'unified' map "
+        f"when the samples are not grouped, and each group's map when they are grouped with "
+        f"'--groups-txt' — though only an aggregation affects a group's map, since presence there "
+        f"is always the count of the group's own samples, so the presence names are rejected in a "
+        f"grouped run as having nothing to choose between. Maps for individual samples are never "
+        f"summarized, always showing that one sample alone: its own values with a value column, "
+        f"its presence without one. Without this option, samples are summarized by presence, by "
+        f"membership with 3 or fewer samples, by count above that, and by a continuous count scale "
+        f"where a discrete one would run out of distinguishable colors or of room to label its "
+        f"bands (above {MAX_DISCRETE_COUNT_BANDS} of them). Presence is the default because it is "
+        f"meaningful for any set of samples, whereas pooling values is only meaningful when the "
+        f"samples are commensurable, such as replicates of one condition. If no summary of the "
+        f"samples is meaningful or desired, use '--skip-unified-maps' to leave the map out. "
+        f"Without groups, '--reaction-sample-summary' colors the 'unified' map alone; an ungrouped "
+        f"run with '--skip-unified-maps' therefore refuses this option."
     )
     groupSUMMARY.add_argument(
         '--compound-sample-summary', metavar='NAME', help=
@@ -667,7 +690,9 @@ def get_args() -> Namespace:
         "read in the units of the colorbar, which are the values of map elements once both "
         "reductions have been applied ('--reaction-gene-aggregation' and then "
         "'--reaction-accession-aggregation'), so with the default of 'sum' at the accession level, "
-        "a single element standing for a dozen KOs may sit well past any one value in the file."
+        "a single element standing for a dozen KOs may sit well past any one value in the file. "
+        "With a 'sample' column, the 'unified' map shows a summary of these element values across "
+        "the samples or groups."
     )
     groupCOLOR.add_argument(
         '--reaction-category-value-limits', nargs=2, metavar='LIMIT', help=
@@ -1344,6 +1369,28 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"combines the several accessions it stands for."
                 )
 
+        # A period describes a layer's values, so it needs that layer's file and its value column.
+        # The mapper checks the number itself, as it does for programmatic calls.
+        for period, flag, element_type, file_flag, layer in (
+            (args.reaction_value_period, '--reaction-value-period', 'reaction', '--reaction-txt',
+             reaction),
+            (args.compound_value_period, '--compound-value-period', 'compound', '--compound-txt',
+             compound)
+        ):
+            if period is None:
+                continue
+            if layer is None:
+                raise ConfigError(
+                    f"'{flag}' says how far the values of the {element_type} layer go before they "
+                    f"repeat, but no {element_type} file ('{file_flag}') was provided."
+                )
+            if layer['mode'] != 'quantitative':
+                raise ConfigError(
+                    f"'{flag}' says how far the values of the {element_type} layer go before they "
+                    f"repeat, but its file has no value column, so the layer is colored by "
+                    f"presence and has no values."
+                )
+
         # Each pair of value limits bounds, and each value center centers, a color scale of values,
         # so each needs its layer's file and that file's value column; the ones acting on the scale
         # the individual maps share need the samples those maps are drawn for as well. The mapper
@@ -1464,8 +1511,8 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
             )
 
         # Sample and group summaries. A summary reduces a set of samples, or the sample groups, to
-        # one statement per accession, so it needs its layer's file, a 'sample' column to summarize,
-        # and, when it pools values, a value column to pool.
+        # one value or one presence state per map element. It needs its layer's file and a 'sample'
+        # column. A summary that pools values also needs a value column.
         for element_type, file_flag, layer, sample_summary, group_summary in summaries:
             for level, summary in (('sample', sample_summary), ('group', group_summary)):
                 if summary is None:
@@ -1663,6 +1710,9 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         'reaction_category_value_center': args.reaction_category_value_center,
         'compound_value_center': args.compound_value_center,
         'compound_category_value_center': args.compound_category_value_center,
+        # The periods go to the mapper as they were typed, as the centers do.
+        'reaction_value_period': args.reaction_value_period,
+        'compound_value_period': args.compound_value_period,
         'reaction_element_normalization': reaction_element_normalization,
         'reaction_element_normalization_label': reaction_element_normalization_label,
         'compound_element_normalization': compound_element_normalization,
@@ -2120,6 +2170,8 @@ def main() -> None:
                 (args.reaction_gene_aggregation is not None, '--reaction-gene-aggregation'),
                 (args.reaction_accession_aggregation is not None,
                  '--reaction-accession-aggregation'),
+                (args.reaction_value_period is not None, '--reaction-value-period'),
+                (args.compound_value_period is not None, '--compound-value-period'),
                 (args.reaction_sample_summary is not None, '--reaction-sample-summary'),
                 (args.compound_sample_summary is not None, '--compound-sample-summary'),
                 (args.reaction_group_summary is not None, '--reaction-group-summary'),
@@ -2146,13 +2198,13 @@ def main() -> None:
             if compound_only_flags:
                 message = ', '.join(f"'{flag}'" for flag in compound_only_flags)
                 raise ConfigError(
-                    f"These options were given: {message}. They color a compound layer, or "
-                    f"summarize the samples of a draw-kegg-pathways text file, or bound, center, "
-                    f"color or rescale a scale of values, all of which only "
-                    f"'--reaction-txt'/'--compound-txt' provide. Database, pangenome and "
-                    f"reaction-network-JSON inputs have a reaction layer alone, drawn from one "
-                    f"source per database or genome and colored by how many of them contain an "
-                    f"element rather than by a value, so none of these can apply."
+                    f"These options were given: {message}. They color a compound layer; or "
+                    f"summarize the samples of a draw-kegg-pathways text file; or say how its "
+                    f"values repeat; or bound, center, color, or rescale a scale of values — all "
+                    f"of which only '--reaction-txt'/'--compound-txt' provide. Database, "
+                    f"pangenome, and reaction-network-JSON inputs have a reaction layer alone, "
+                    f"drawn from one source per database or genome and colored by how many of them "
+                    f"contain an element rather than by a value, so none of these can apply."
                 )
         # '--original-color' draws only the reaction layer (its compounds follow in the reference
         # colors on global/overview maps); it cannot also stage an explicit compound file.
@@ -2322,18 +2374,17 @@ def main() -> None:
             "Unprioritized entry graphics cannot be assigned the same combination of foreground "
             "and background colors as prioritized entries of the same entry and graphics types."
         ) in e_str:
-            # A layer's own colors are checked before anything is drawn ('_check_reserved_colors'),
-            # so reaching here means the clash came from a color anvi'o derived rather than one that
-            # was asked for: on a reaction-only global or overview map, compounds take a color
-            # averaged from the reactions around them. The kgml error names the entry type, which
-            # says which layer's colormap produced it.
+            # The colors of a run are checked before anything is drawn. The check covers the colors
+            # of the layers ('_check_reserved_colors') and the compound colors derived from
+            # reactions ('_check_derived_compound_colors'). Only a clash those checks did not
+            # foresee arrives here. The kgml error names the entry type, which says which layer's
+            # colors produced it.
             if "'compound' entries" in e_str:
                 layer_clause = (
-                    "Specifically, a color given to the compound layer collided with a reserved "
-                    "color. On a map drawn from reactions alone, each compound takes a color "
-                    "derived from the reactions it touches, so the reaction colormap "
-                    "('--reaction-colormap') is what to adjust; an explicit compound layer takes "
-                    "its colors from '--compound-colormap' or '--compound-color'. "
+                    "Specifically, a compound would be drawn in a reserved color. On a map drawn "
+                    "from reactions alone, each compound takes its color from the reactions it "
+                    "touches. So the reaction color or colormap is what to change "
+                    "('--reaction-color' or '--reaction-colormap'). "
                 )
             elif "'ortholog' entries" in e_str:
                 layer_clause = (
