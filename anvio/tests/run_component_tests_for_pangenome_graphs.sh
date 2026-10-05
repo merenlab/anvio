@@ -37,6 +37,8 @@ anvi-compute-genome-similarity -e external-genomes.txt \
                                $thread_controller
 
 INFO "Generating a pangenome graph from a pan-db"
+# The current anvi'o master no longer supports --pan-graph-yaml. Keep this
+# component test on the supported PAN-DB graph generation, summary, and display paths.
 anvi-pan-genome-graph -p TEST-PAN.db \
                       -g TEST-GENOMES.db \
                       --project-name TEST \

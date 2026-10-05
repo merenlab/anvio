@@ -1185,17 +1185,22 @@ anvi-refine -p $output_dir/SAMPLES-MERGED/PROFILE.db \
 
 INFO "Importing items and layers additional data into the genes database for CONCOCT::Bin_1"
 python - <<PY
-import sqlite3
 from pathlib import Path
+import anvio.dbops as dbops
+import anvio.tables as t
 
 genes_db_path = Path("$output_dir/SAMPLES-MERGED/GENES/CONCOCT-Bin_1.db")
 output_path = Path("$output_dir/items_addtl_data_gene_mode.txt")
 
-with sqlite3.connect(genes_db_path) as db:
-    gene_callers_ids = [
-        str(row[0])
-        for row in db.execute("SELECT DISTINCT gene_callers_id FROM gene_level_coverage_stats ORDER BY gene_callers_id LIMIT 5")
-    ]
+genes_db = dbops.GenesDatabase(str(genes_db_path))
+try:
+    gene_callers_ids = sorted(set(
+        int(gene_caller_id)
+        for gene_caller_id in genes_db.db.get_single_column_from_table(
+            t.gene_level_coverage_stats_table_name, 'gene_callers_id')
+    ))[:5]
+finally:
+    genes_db.disconnect()
 
 if len(gene_callers_ids) < 5:
     raise SystemExit(f"Expected at least 5 genes in {genes_db_path}, found {len(gene_callers_ids)}.")
