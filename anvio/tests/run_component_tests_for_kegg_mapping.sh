@@ -583,3 +583,23 @@ anvi-draw-kegg-pathways --pan-db TEST-PAN.db \
                         --presence-colormap-scheme by_count_continuous \
                         --pathway-numbers $pathway_numbers \
                         --no-progress
+
+## REACTION NETWORK JSON INPUT
+INFO "Exporting the pangenomic reaction network to a metabolic model JSON file"
+anvi-get-metabolic-model-file --pan-db TEST-PAN.db \
+                              --genomes-storage TEST-GENOMES.db \
+                              --output-file pan-network.json
+
+INFO "Mapping KOs from a pangenomic reaction network JSON file"
+anvi-draw-kegg-pathways --reaction-network-json pan-network.json \
+                        --output-dir json_pan_kos \
+                        --pathway-numbers $pathway_numbers \
+                        --no-progress
+
+# The genes of a pangenomic JSON are gene clusters. Each has one KO, under 'id'. Read the way the
+# genes of a genomic JSON are read, its KOs would match no map, and nothing would be drawn.
+if [ ! -s json_pan_kos/unified/ko00010.pdf ]
+then
+    echo "ERROR: the KOs of a pangenomic reaction network JSON should have drawn map 00010."
+    exit 1
+fi
