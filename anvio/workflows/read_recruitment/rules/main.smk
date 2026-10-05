@@ -532,6 +532,9 @@ rule import_percent_of_reads_mapped:
         profiledb=ancient(
             dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/PROFILE.db"
         ),
+        # Profiling replaces this directory; its immutable log tracks recreation
+        # while the mutable database remains ancient to avoid import feedback.
+        runlog=dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/RUNLOG.txt",
         bam=dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.bam",
     output:
         layers_txt=dirs_dict["PROFILE_DIR"]
