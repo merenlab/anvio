@@ -181,8 +181,10 @@ def get_args() -> Namespace:
         "Values that cancel out have no mean, such as 6 and 18; elements with undefined means are "
         "left uncolored. A period does not affect presence summaries. With this argument, "
         "'--reaction-element-normalization' is refused, since every normalization compares values "
-        "on a line. The period does not change the color scales. Give clock times the limits "
-        "'0 24' and a cyclic colormap, such as 'clocktime'."
+        "on a line. Each color scale of values runs from 0 to the period, so a color always means "
+        "the same point in the period. Limits other than 0 and the period are refused, and so is a "
+        "center. Without a colormap, the scales use the cyclic 'clocktime'. On global and overview "
+        "maps drawn from reactions alone, compound colors are also averaged on a circle."
     )
     groupTXT.add_argument(
         '--compound-value-period', metavar='PERIOD', help=

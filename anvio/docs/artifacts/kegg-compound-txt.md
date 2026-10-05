@@ -34,7 +34,7 @@ Compounds are colored by sample (or, using a %(groups-txt)s, group) count or mem
 
 **Value column**
 
-Compounds are colored by the continuous value through a sequential colormap (`--compound-colormap`, default `plasma_r`). The colorbar is labeled by the value column's header. A cyclic colormap called `clocktime` was defined in anvi'o to show a value column of clock times in hours. Without a `sample` column, give `--compound-colormap clocktime --compound-value-limits 0 24`; with a `sample` column, give `--compound-category-colormap clocktime --compound-category-value-limits 0 24` to color the maps of individual samples. Give `--compound-value-period 24` as well — each reduction of the values then takes their circular mean, `circular_mean`, so that 23.5 h and 0.5 h average to 0 h, not 12 h. See %(anvi-draw-kegg-pathways)s.
+Compounds are colored by the continuous value through a sequential colormap (`--compound-colormap`, default `plasma_r`). The colorbar is labeled by the value column's header. A cyclic colormap called `clocktime` was defined in anvi'o to show a value column of clock times in hours. Give clock times `--compound-value-period 24`: each color scale of values then runs from 0 to 24 h and is colored by `clocktime`. Each reduction of the values takes their circular mean, `circular_mean`, so that 23.5 h and 0.5 h average to 0 h, not 12 h. See %(anvi-draw-kegg-pathways)s.
 
 A map element's constituent compound accessions are aggregated to a per-element value by `--compound-accession-aggregation` (`sum` by default) — this reduction happens within each sample.
 

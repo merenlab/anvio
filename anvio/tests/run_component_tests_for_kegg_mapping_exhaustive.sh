@@ -200,8 +200,8 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_log_ratio.reaction.txt \
                         --draw-grid \
                         --no-progress
 
-# Centering one of two scales that both color by value warns about the other, which goes on sitting
-# wherever its own values leave it while one colormap colors both.
+# Centering only one of two scales that both color by value warns that the other is not centered.
+# Both scales use one colormap here.
 INFO "Testing that centering one of two scales that both color by value warns about the other"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_log_ratio.reaction.txt \
     --output-dir draw_txt_samples_kos_value_center_one \
@@ -210,7 +210,7 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_log_ratio.reaction.txt \
     --pathway-numbers $pathway_numbers --draw-grid \
     --no-progress 2>&1 | tee draw_txt_value_center_one.log
 if ! tr '\n' ' ' < draw_txt_value_center_one.log \
-    | grep -q "still sits wherever its own values leave it"
+    | grep -q "is not centered"
 then
     echo "ERROR: centering one of two scales colored by value did not warn about the other."
     exit 1
@@ -585,12 +585,12 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
 
 # A circular mean of clock times that cancel out is undefined. The two samples of K01251 are exactly
 # 12 hours apart. K01251 stands alone on the global map, so its element is left uncolored on the
-# 'unified' map, and a warning names it.
+# 'unified' map, and a warning names it. Limits of exactly 0 and the period are accepted.
 INFO "Testing that a circular mean of clock times that cancel out is undefined"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
     --output-dir draw_txt_samples_kos_circular_mean \
     --reaction-value-period 24 --reaction-sample-summary circular_mean \
-    --reaction-colormap clocktime --pathway-numbers $global_pathway_numbers \
+    --reaction-value-limits 0 24 --pathway-numbers $global_pathway_numbers \
     --no-progress 2>&1 | tee draw_txt_circular_mean.log
 for phrase in "A circular mean is undefined" "K01251"
 do
@@ -1149,6 +1149,25 @@ if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: a period for a file with no value column should have failed."
+    exit 1
+fi
+
+# A period fixes each scale of values to run from 0 to the period, so it takes no other limits and
+# no center.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
+    --reaction-value-period 24 --reaction-category-value-limits 6 18 --draw-individual-files \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: limits other than 0 and the period, with a period, should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
+    --reaction-value-period 24 --reaction-sample-summary circular_mean \
+    --reaction-value-center 12 \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a center with a period should have failed."
     exit 1
 fi
 
