@@ -583,6 +583,24 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
                         --draw-individual-files \
                         --no-progress
 
+# A circular mean of clock times that cancel out is undefined. The two samples of K01251 are exactly
+# 12 hours apart. K01251 stands alone on the global map, so its element is left uncolored on the
+# 'unified' map, and a warning names it.
+INFO "Testing that a circular mean of clock times that cancel out is undefined"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
+    --output-dir draw_txt_samples_kos_circular_mean \
+    --reaction-value-period 24 --reaction-sample-summary circular_mean \
+    --reaction-colormap clocktime --pathway-numbers $global_pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_circular_mean.log
+for phrase in "A circular mean is undefined" "K01251"
+do
+    if ! tr '\n' ' ' < draw_txt_circular_mean.log | grep -q "$phrase"
+    then
+        echo "ERROR: a circular mean of clock times that cancel out did not warn ($phrase)."
+        exit 1
+    fi
+done
+
 # The compound file has a value column and no 'sample' column, so the compound layer has no scale
 # of its own over the samples: every individual map takes its compound colors from the scale of the
 # 'unified' map. Skipping that map therefore has to leave its colorbar behind, that bar being the
@@ -1083,6 +1101,57 @@ then
     exit 1
 fi
 
+# A circular mean needs to know the period after which the values repeat. A period in turn rules out
+# every aggregation, summary of values, and normalization that treats the values as lying on a line.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
+    --reaction-sample-summary circular_mean \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a circular mean without '--reaction-value-period' should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
+    --reaction-value-period 24 --reaction-accession-aggregation sum \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: an aggregation other than a circular mean with a period should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
+    --reaction-value-period 24 --reaction-sample-summary mean \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a sample summary other than a circular mean with a period should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
+    --reaction-value-period 24 --reaction-element-normalization difference_from_mean \
+    --draw-individual-files \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a normalization of values with a period should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
+    --reaction-value-period 0 \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a period that is not a positive number should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --reaction-value-period 24 \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a period for a file with no value column should have failed."
+    exit 1
+fi
+
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples4.reaction.txt \
     --reaction-sample-summary membership \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
@@ -1451,6 +1520,15 @@ if anvi-draw-kegg-pathways --external-genomes external-genomes.txt \
     --output-dir draw_db_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: value limits on a database run should have failed but did not."
+    exit 1
+fi
+
+# Nor are there values that could repeat after a period.
+if anvi-draw-kegg-pathways --external-genomes external-genomes.txt \
+    --reaction-value-period 24 \
+    --output-dir draw_db_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a period on a database run should have failed but did not."
     exit 1
 fi
 
