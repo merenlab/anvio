@@ -54,6 +54,14 @@ __status__ = "Development"
 
 run_quiet = terminal.Run(verbose=False)
 
+
+def _select_network_rows(dataframe: pd.DataFrame, id_column: str, network_ids: Iterable[str]) -> pd.DataFrame:
+    """Select rows belonging to the network, with stable ID order and all duplicate rows retained."""
+    available_ids = set(dataframe[id_column])
+    selected_ids = sorted(set(network_ids).intersection(available_ids))
+    return dataframe.set_index(id_column).loc[selected_ids]
+
+
 # Network statistics are stored in a dictionary of dictionaries. Keys in the outer dictionary are
 # "classes" of network statistics. Keys in the inner dictionary are statistics themselves.
 GenomicNetworkStats = Dict[str, Dict[str, Any]]
@@ -6627,9 +6635,7 @@ class Constructor:
 
         # Make objects representing genes with KO annotations in the stored reaction network. Make
         # objects representing the KOs, initially only assigning their ID attribute.
-        gene_ko_hits_table: pd.DataFrame = gene_ko_hits_table.set_index('accession').loc[
-            sorted(reaction_network_ko_ids.intersection(contigs_db_ko_ids))
-        ]
+        gene_ko_hits_table = _select_network_rows(gene_ko_hits_table, 'accession', reaction_network_ko_ids)
         gene_ko_hits_table = gene_ko_hits_table.reset_index().set_index('gene_callers_id')
         for row in gene_ko_hits_table.itertuples():
             gcid = row.Index
@@ -7317,9 +7323,7 @@ class Constructor:
         # contigs database. (For pangenomics, instead read this and following comments as indicating
         # that the KOs no longer are consensus annotations of gene clusters from the pan database.)
         reaction_network_ko_ids: Set[str] = set(kos_table['kegg_id'])
-        kos_table: pd.DataFrame = kos_table.set_index('kegg_id').loc[
-            sorted(set(network.kos).intersection(reaction_network_ko_ids))
-        ]
+        kos_table = _select_network_rows(kos_table, 'kegg_id', network.kos)
 
         # Fill out KEGG classification attributes of KO objects in the loaded network.
         # Record KOs that have names that differ between (newer) gene annotations in the database
