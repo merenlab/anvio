@@ -594,38 +594,33 @@ Clock times repeat every 24 hours, so a value of 23.9 h should have a color clos
 
 This colormap fills a gap that exists among named colormaps in Python packages for displaying clock time data on KEGG maps. Matplotlib's `twilight_shifted` is nearly white for times around noon, making them difficult to see on the white map background, and is nearly black for times around midnight, obscuring black box labels. In `clocktime`, black text has a contrast of at least 3:1 on every color.
 
-Give `clocktime` to `--reaction-colormap` for a file without a `sample` column; with a `sample` column, give it to `--reaction-category-colormap`, as that option colors the maps of individual samples. The compound layer takes `--compound-colormap` and `--compound-category-colormap` in the same way.
+Give clock times a period with `--reaction-value-period 24` (`--compound-value-period` for compounds). This says that the values repeat every 24 hours. Each color scale of values then runs from 0 to 24 h and is colored by `clocktime`, unless a colormap option names another colormap.
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
                         --reaction-value-period 24 \
-                        --reaction-category-colormap clocktime \
-                        --reaction-category-value-limits 0 24 \
                         --draw-individual-files \
                         --draw-grid \
                         -o output_dir
 {{ codestop }}
 
-In this example, each sample's own map is colored by clock time, while the `unified` map keeps its default summary, showing which samples or how many samples contain each element — not clock times. The limits fix the scale at 0 and 24 h. Without the limits, the scale would run from the lowest map element value to the highest, and the colors would not match the hours described above. Without a `sample` column, give the limits with `--reaction-value-limits 0 24`.
+In this example, each sample's own map is colored by clock time, while the `unified` map keeps its default summary, showing which samples or how many samples contain each element — not clock times.
 
-Clock times also have to be averaged on a circle. `--reaction-value-period 24` says that the values repeat every 24 hours (`--compound-value-period` does the same for compounds). Each reduction of the values then takes their circular mean, `circular_mean`. For example, a map element can stand for several KOs, and the element's value in a sample is the circular mean of the KOs' times. The circular mean of 23.5 h and 0.5 h is 0 h, not 12 h. Without the period, the default `sum` adds the times — two KOs at 16 h and 19.5 h would then give 35.5 h, which is past the end of the scale, so it would be drawn as midnight.
+With a period, each reduction of the values takes their circular mean, `circular_mean`. For example, a map element can stand for several KOs, and the element's value in a sample is the circular mean of the KOs' times. The circular mean of 23.5 h and 0.5 h is 0 h, not 12 h. Without the period, the default `sum` adds the times — two KOs at 16 h and 19.5 h would then give 35.5 h, which is past the end of the scale, so it would be drawn as midnight.
 
-With a period, `circular_mean` is the default of `--reaction-gene-aggregation` and `--reaction-accession-aggregation`. It is also the only aggregation that these options and the sample and group summaries accept. Times that cancel out, such as 6 h and 18 h, have no circular mean. Such an element is left uncolored, and a warning says so. `--reaction-element-normalization` is refused with a period, since every normalization compares values on a line. The period does not change the color scales, so the limits of 0 and 24 are still needed.
+`circular_mean` is the default of `--reaction-gene-aggregation` and `--reaction-accession-aggregation`. It is also the only aggregation that these options and the sample and group summaries accept. Times that cancel out, such as 6 h and 18 h, have no circular mean, and such an element is left uncolored. `--reaction-element-normalization` is refused with a period, since every normalization compares values on a line. Limits other than `0 24` are refused, and so are centers. On global and overview maps drawn from reactions alone, compound colors are averaged on a circle as well.
 
-To show clock times on the `unified` map as well, summarize the samples with `circular_mean`. The `unified` map then shows the circular mean of each element's times in the samples. Give its scale the same colormap and limits:
+To show clock times on the `unified` map as well, summarize the samples with `circular_mean`. The `unified` map then shows the circular mean of each element's times in the samples:
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
                         --reaction-value-period 24 \
                         --reaction-sample-summary circular_mean \
-                        --reaction-colormap clocktime \
-                        --reaction-value-limits 0 24 \
-                        --reaction-category-value-limits 0 24 \
                         --draw-individual-files \
                         -o output_dir
 {{ codestop }}
 
-Here `--reaction-colormap clocktime` colors both scales, since no `--reaction-category-colormap` is given.
+`clocktime` can also be given to a colormap option without a period: `--reaction-category-colormap` for the maps of individual samples, or `--reaction-colormap` for a file without a `sample` column. The scale then needs limits of 0 and 24, such as `--reaction-category-value-limits 0 24`. Without the limits, the scale would run from the lowest map element value to the highest, and the colors would not match the hours described above. Without a period, the values are not averaged on a circle.
 
 Do not trim `clocktime` with the two decimals that a colormap option accepts, as different colors would appear at each end, breaking the cyclic nature of the colormap.
 
