@@ -806,7 +806,7 @@ The following ranges reflect `pyproject.toml`, which is the authoritative depend
 - `scikit-learn>=1.8,<1.9` — clustering, ordination
 - `matplotlib>=3.9` — static figure generation
 - `bottle` — lightweight web framework for the interactive interface
-- `snakemake>=9,<10` — workflow engine
+- `snakemake` — workflow engine; version bounds are defined in `pyproject.toml`
 - `pysam` — BAM file reading
 - `pyrodigal_gv` — gene calling (default caller, replaces prodigal)
 - `multiprocess` — fork of multiprocessing using dill
