@@ -154,6 +154,17 @@ AGGREGATION_FUNCTIONS = {
     'std': lambda values: float(np.std(values, ddof=1)) if len(values) > 1 else float('nan')
 }
 
+# Aggregations of values that repeat after a period, such as clock times in hours, which repeat
+# every 24. A layer's period is given by '--reaction-value-period' or '--compound-value-period'.
+# Every other aggregation treats values just below the period and just above 0 as far apart
+# ('_resolve_aggregation'). Pandas has none of these names for circular aggregations. At the gene
+# level, a pandas groupby reduces the rows of each accession ('_aggregate_accession_quantities'); it
+# usually takes the aggregation's name, but for these names, it takes anvi'o's own function instead.
+# Every level of reduction beyond genes then also uses the same function.
+CIRCULAR_AGGREGATIONS: Tuple[str, ...] = (
+    'circular_mean',
+)
+
 # The presence choices of the '--*-sample-summary'/'--*-group-summary' arguments, which summarize a
 # set of samples or groups by how many ('count' and 'count_continuous') or exactly which
 # ('membership') of them contain an accession, mapped to the colormap schemes that color them. These
@@ -582,7 +593,8 @@ class Mapper:
 
         The JSON file must be in the format produced by 'anvi-get-metabolic-model-file' or by
         'anvi-reaction-network --enzymes-txt ... --output-json ...'. KO IDs are extracted
-        directly from the gene annotations in the JSON, so no reference databases are required.
+        directly from the gene annotations in the JSON, so no reference databases are required. In
+        a JSON from a pangenome, the genes are gene clusters, and each one has a single KO.
 
         Parameters
         ==========
@@ -634,8 +646,13 @@ class Mapper:
 
         ko_ids = set()
         for gene_entry in json_dict.get('genes', []):
-            for ko_id in gene_entry.get('annotation', {}).get('ko', {}).keys():
-                ko_ids.add(ko_id)
+            ko_annotation = gene_entry.get('annotation', {}).get('ko', {})
+            if 'id' in ko_annotation:
+                # A JSON from a pangenome lists gene clusters. Each has one KO, given by 'id'.
+                ko_ids.add(ko_annotation['id'])
+            else:
+                # A JSON from a contigs database lists genes. Their KOs are the keys.
+                ko_ids.update(ko_annotation)
 
         self.progress.end()
 
@@ -856,9 +873,17 @@ class Mapper:
         }
 
     @staticmethod
-    def _resolve_aggregation(aggregation: str, flag: str) -> Callable:
+    def _resolve_aggregation(
+        aggregation: str,
+        flag: str,
+        period: Union[float, None] = None,
+        period_flag: Union[str, None] = None
+    ) -> Callable:
         """
         Resolve an aggregation name into a function reducing a sequence of values to one value.
+
+        Values that repeat after a period are reduced only by the names in 'CIRCULAR_AGGREGATIONS'.
+        These names need the period. Both rules are checked here.
 
         The recommended names have fast paths in 'AGGREGATION_FUNCTIONS'. Any other pandas
         aggregation name is accepted as well, provided it reduces a series to a single number: the
@@ -880,11 +905,36 @@ class Mapper:
         flag : str
             The command-line flag the name comes from, used in an error message.
 
+        period : Union[float, None], None
+            The period after which the layer's values repeat, or None if they do not repeat.
+
+        period_flag : Union[str, None], None
+            The command-line flag that gives the layer's period, used in an error message.
+
         Returns
         =======
         Callable
             Reduces a sequence of values to a single value.
         """
+        if aggregation in CIRCULAR_AGGREGATIONS:
+            if period is None:
+                raise ConfigError(
+                    f"'{flag}' was given as '{aggregation}', which averages values that repeat "
+                    f"after a period, such as clock times. No period was given for these values. "
+                    f"Give one with '{period_flag}', such as 24 for clock times in hours."
+                )
+
+            def circular_aggregate(values):
+                return Mapper._circular_mean(values, period)
+            return circular_aggregate
+        if period is not None:
+            raise ConfigError(
+                f"'{flag}' was given as '{aggregation}', but '{period_flag}' says that the values "
+                f"repeat every {period:g}. Values just below {period:g} and just above 0 are then "
+                f"close together. '{aggregation}' treats them as far apart. Use "
+                f"{', '.join(repr(name) for name in CIRCULAR_AGGREGATIONS)} instead."
+            )
+
         try:
             return AGGREGATION_FUNCTIONS[aggregation]
         except KeyError:
@@ -931,6 +981,55 @@ class Mapper:
                 f"{SUMMARY_PRESENCE_PHRASE} to summarize presence rather than value."
             )
         return aggregate
+
+    @staticmethod
+    def _circular_mean(values: Iterable[float], period: float) -> float:
+        """
+        Average values that repeat after a period, such as clock times, on a circle.
+
+        Each value is a point on a circle whose circumference is the period. 0 and the period are
+        the same point. The mean is the direction of the average of these points. With a period of
+        24, the mean of 23.5 and 0.5 is 0, not 12. The mean lies in [0, period).
+
+        Values that cancel out have no mean direction. Examples are 6 and 18, or 0, 8 and 16, with a
+        period of 24. The mean is then undefined, and the result is NaN. The value is then dropped
+        as any undefined aggregation is ('_finite_values', '_reduce_entry_value').
+
+        Parameters
+        ==========
+        values : Iterable[float]
+            The values to average. There is at least one. They can be a pandas Series, as a groupby
+            passes, so they are read by position.
+
+        period : float
+            The positive period after which the values repeat.
+
+        Returns
+        =======
+        float
+            The mean, in [0, period), or NaN where it is undefined.
+        """
+        # Each value is first taken modulo the period. The angles are then exact, however far from
+        # 0 the values lie.
+        values = np.mod(np.asarray(values, dtype=float), period)
+        # Equal values return that value. A single value then comes back exactly, with no rounding
+        # from the trigonometry.
+        if np.all(values == values[0]):
+            mean = float(values[0])
+        else:
+            angles = 2 * np.pi * values / period
+            sine = np.mean(np.sin(angles))
+            cosine = np.mean(np.cos(angles))
+            # The tolerance is the one kgml.Pathway uses to find compound colors that cancel out.
+            if np.hypot(sine, cosine) < 1e-9:
+                return float('nan')
+            # The fraction of the circle is rounded as kgml.Pathway rounds it. This removes
+            # floating-point error. Without it, a mean of 0 could come out a hair below the period.
+            # Those are the same point, but the two ends of a scale that is not cyclic.
+            mean = (round(float(np.arctan2(sine, cosine) / (2 * np.pi)), 12) % 1.0) * period
+        # A value a hair below 0, taken modulo the period, rounds to the period itself. That is the
+        # same point as 0.
+        return 0.0 if mean >= period else mean
 
     @staticmethod
     def _element_normalization_function(form: str, reference: Union[str, None]) -> Callable:
@@ -1232,17 +1331,111 @@ class Mapper:
         examples = ', '.join(sorted(undefined)[:5])
         self.run.warning(
             f"Reducing the values of the text file at '{path}' with '{aggregation}' was undefined "
-            f"for {len(undefined)} accession(s), including these: {examples}. This happens when an "
-            f"aggregation needs more values than are available, as the standard deviation does for "
-            f"a single value. These accessions are treated as having no value, so the map elements "
-            f"that depend on them are left uncolored."
+            f"for {len(undefined)} accession(s), including these: {examples}. "
+            f"{Mapper._undefined_cause(aggregation)} These accessions are treated as having no "
+            f"value, so the map elements that depend on them are left uncolored."
         )
+
+    @staticmethod
+    def _undefined_cause(aggregation: str, noun: str = 'an aggregation') -> str:
+        """
+        Say why an aggregation or summary can be undefined, for a warning that names it.
+
+        Parameters
+        ==========
+        aggregation : str
+            The name of the aggregation or summary.
+
+        noun : str, 'an aggregation'
+            What the warning calls it, 'an aggregation' or 'a summary'.
+
+        Returns
+        =======
+        str
+            A sentence giving the cause.
+        """
+        if aggregation in CIRCULAR_AGGREGATIONS:
+            return (
+                "A circular mean is undefined where the values cancel out, such as 6 and 18 with a "
+                "period of 24."
+            )
+        return (
+            f"This happens when {noun} needs more values than are available, as the standard "
+            f"deviation does for a single value."
+        )
+
+    def _warn_undefined_summaries(
+        self,
+        layer: dict,
+        draw_unified_maps: bool,
+        draw_category_maps: bool
+    ) -> None:
+        """
+        Report the map elements of one layer whose sample or group summary was undefined.
+
+        '_summarize_entry_values' collects these elements while the range of values is found. A
+        summary is reported only where it changes a map that is drawn. Ungrouped, the sample summary
+        colors the 'unified' map. Grouped, the sample summary colors the map of each group. The
+        group summary then pools the groups' values on the 'unified' map. So a sample summary that
+        is undefined in a group also changes the 'unified' map where the group summary pools values.
+
+        Parameters
+        ==========
+        layer : dict
+            A 'quantitative' layer model with samples.
+
+        draw_unified_maps : bool
+            True if the 'unified' map is drawn.
+
+        draw_category_maps : bool
+            True if the maps of the individual samples or groups are drawn.
+        """
+        element_type = layer['element_type']
+        grouped = layer['group_samples'] is not None
+        reports = []
+        if grouped:
+            consequences = []
+            if draw_category_maps:
+                consequences.append("It is left uncolored on that group's map.")
+            if draw_unified_maps and layer['group_aggregate'] is not None:
+                consequences.append(
+                    "The 'unified' map pools only the groups where the element has a value. An "
+                    "element with no value in any group is left uncolored there."
+                )
+            if consequences:
+                reports.append((
+                    layer['_undefined_category'], f'--{element_type}-sample-summary',
+                    layer['sample_summary'], ' in at least one group',
+                    ' '.join(
+                        ["An element has no value in a group where its summary is undefined."]
+                        + consequences
+                    )
+                ))
+        if draw_unified_maps:
+            reports.append((
+                layer['_undefined_unified'],
+                f"--{element_type}-{'group' if grouped else 'sample'}-summary",
+                layer['group_summary'] if grouped else layer['sample_summary'], '',
+                "These elements are left uncolored on the 'unified' map."
+            ))
+        for undefined, flag, summary, where, consequence in reports:
+            if not undefined:
+                continue
+            examples = ', '.join(sorted({
+                kegg_id for key in undefined for kegg_id in key if kegg_id in layer['accessions']
+            })[:5])
+            self.run.warning(
+                f"The summary '{flag} {summary}' was undefined{where} for {len(undefined)} map "
+                f"element(s). Elements with the same accessions count once. Their accessions in "
+                f"the file include these: {examples}. "
+                f"{Mapper._undefined_cause(summary, 'a summary')} {consequence}"
+            )
 
     def _aggregate_accession_quantities(
         self,
         rows_df: pd.DataFrame,
         value_column: str,
-        aggregation: str,
+        aggregation: Union[str, Callable],
         path: str,
         undefined: Set[str] = None
     ) -> Dict[str, float]:
@@ -1254,6 +1447,8 @@ class Mapper:
         accession's rows are reduced to a single value by 'aggregation', which is applied by pandas
         here and by the matching function from 'AGGREGATION_FUNCTIONS' at every other level of the
         reduction hierarchy. An accession whose result is undefined is dropped ('_finite_values').
+        A name of 'CIRCULAR_AGGREGATIONS' is not a pandas name. It comes here as the function that
+        '_resolve_aggregation' made for it, which every other level applies too.
 
         Parameters
         ==========
@@ -1263,8 +1458,9 @@ class Mapper:
         value_column : str
             Name of the auto-detected numeric value column.
 
-        aggregation : str
-            How to reduce an accession's rows to a single value, as a pandas aggregation name.
+        aggregation : Union[str, Callable]
+            How to reduce an accession's rows to a single value, as a pandas aggregation name or as
+            the function for a circular aggregation.
 
         path : str
             Path to the layer's text file, used in error messages.
@@ -1294,44 +1490,6 @@ class Mapper:
         valued_df = rows_df.assign(__quantitative_value=numeric_values)
         return self._finite_values(
             valued_df.groupby('__accession')['__quantitative_value'].agg(aggregation).to_dict(),
-            undefined
-        )
-
-    @staticmethod
-    def _summarize_category_values(
-        category_values: Dict[str, Dict[str, float]],
-        aggregate: Callable,
-        undefined: Set[str] = None
-    ) -> Dict[str, float]:
-        """
-        Reduce per-category values to a single value per accession.
-
-        This is the value form of a sample or group summary: for each accession, the values of the
-        categories (samples or groups) containing it are reduced by 'aggregate'. A category lacking
-        the accession does not contribute, so the summary is over the categories that have it.
-
-        Parameters
-        ==========
-        category_values : Dict[str, Dict[str, float]]
-            Keys are category names, values are {accession: value} dictionaries.
-
-        aggregate : Callable
-            Reduces a list of values to a single value (see 'AGGREGATION_FUNCTIONS').
-
-        undefined : Set[str], None
-            Accessions whose summarized value is undefined are added to this set.
-
-        Returns
-        =======
-        Dict[str, float]
-            Keys are accessions, values are the summarized values.
-        """
-        accession_values: Dict[str, List[float]] = {}
-        for values in category_values.values():
-            for accession, value in values.items():
-                accession_values.setdefault(accession, []).append(value)
-        return Mapper._finite_values(
-            {accession: aggregate(values) for accession, values in accession_values.items()},
             undefined
         )
 
@@ -1425,20 +1583,22 @@ class Mapper:
         summary: Union[str, None],
         value_column: Union[str, None],
         flag: str,
-        path: str
+        path: str,
+        period: Union[float, None] = None,
+        period_flag: Union[str, None] = None
     ) -> Tuple[Literal['value', 'presence'], Union[Callable, None], Union[str, None]]:
         """
         Resolve a sample or group summary into a coloring kind and its reduction.
 
-        A summary reduces a set of samples, or a set of sample groups, to one statement per
-        accession. The names of 'SUMMARY_PRESENCE_SCHEMES' summarize presence: how many
+        A summary reduces a set of samples, or a set of sample groups, to one statement per map
+        element. The names of 'SUMMARY_PRESENCE_SCHEMES' summarize presence: how many
         ('count'/'count_continuous'), or exactly which ('membership'), categories contain the
-        accession. Any other name pools the categories' values as an aggregation
-        ('_resolve_aggregation'), which requires the layer's file to have a value column. The
-        default of None summarizes presence with the colormap scheme left unresolved, so that
-        '_membership_layer_colors' picks it from the number of categories (by membership for ≤ 3, by
-        count > 3, and by a continuous count scale where a discrete one would run out of
-        distinguishable colors or of room to label its bands, the latter past
+        element. Any other name pools the element's values in the categories as an aggregation
+        ('_resolve_aggregation', '_summarize_entry_values'). This requires the layer's file to have
+        a value column. The default of None summarizes presence with the colormap scheme left
+        unresolved, so that '_membership_layer_colors' picks it from the number of categories (by
+        membership for ≤ 3, by count > 3, and by a continuous count scale where a discrete one would
+        run out of distinguishable colors or of room to label its bands, the latter past
         'MAX_DISCRETE_COUNT_BANDS' of them).
 
         Parameters
@@ -1454,6 +1614,12 @@ class Mapper:
 
         path : str
             Path to the layer's text file, used in an error message.
+
+        period : Union[float, None], None
+            The period after which the layer's values repeat, or None ('_resolve_aggregation').
+
+        period_flag : Union[str, None], None
+            The command-line flag that gives the layer's period, used in an error message.
 
         Returns
         =======
@@ -1472,7 +1638,7 @@ class Mapper:
                 f"values to pool. Summarize presence with {SUMMARY_PRESENCE_PHRASE} instead, or "
                 f"add a value column to the file."
             )
-        return 'value', Mapper._resolve_aggregation(summary, flag), None
+        return 'value', Mapper._resolve_aggregation(summary, flag, period, period_flag), None
 
     @staticmethod
     def _resolve_value_limits(
@@ -1541,6 +1707,37 @@ class Mapper:
                 f"two cannot be equal, nor the wrong way around."
             )
         return limit_min, limit_max
+
+    @staticmethod
+    def _resolve_value_period(period: Union[float, str, None], flag: str) -> Union[float, None]:
+        """
+        Resolve the period after which a layer's values repeat, as typed or as a caller gave it.
+
+        Parameters
+        ==========
+        period : Union[float, str, None]
+            The period, or None if the values do not repeat.
+
+        flag : str
+            The command-line flag the period comes from, used in an error message.
+
+        Returns
+        =======
+        Union[float, None]
+            The period as a positive finite number, or None.
+        """
+        if period is None:
+            return None
+        try:
+            number = float(period)
+        except (TypeError, ValueError):
+            number = None
+        if number is None or not np.isfinite(number) or number <= 0:
+            raise ConfigError(
+                f"'{flag}' must be a positive number, such as 24 for clock times in hours. It is "
+                f"how far the values go before they repeat. Anvi'o got this instead: '{period}'."
+            )
+        return number
 
     @staticmethod
     def _format_accepted(number: float, accepted: Callable[[float], bool]) -> str:
@@ -1813,7 +2010,7 @@ class Mapper:
                 f"its colors run from one end to the other rather than out from a neutral middle, "
                 f"so there is no color there for the centered value to take, and a reader cannot "
                 f"see where the middle of the scale is except from the colorbar. A diverging "
-                f"colormap given to '{colormap_flag}' — e.g., 'RdYlGn', 'RdYlBu_r — is what makes "
+                f"colormap given to '{colormap_flag}' — e.g., 'RdYlGn', 'RdYlBu_r' — is what makes "
                 f"a centered scale legible."
             )
         elif colormap_limits is not None and abs(
@@ -1835,8 +2032,8 @@ class Mapper:
         name: str,
         data: dict,
         path: str,
-        gene_aggregation: str,
-        accession_aggregation: str,
+        gene_aggregation: Union[str, None],
+        accession_aggregation: Union[str, None],
         color: str,
         colormap: Union[bool, str, mcolors.Colormap, None],
         colormap_limits: Union[Tuple[float, float], None],
@@ -1853,7 +2050,8 @@ class Mapper:
         value_center: Union[float, None] = None,
         category_value_center: Union[float, None] = None,
         element_normalization: Union[str, None] = None,
-        element_normalization_label: Union[str, None] = None
+        element_normalization_label: Union[str, None] = None,
+        value_period: Union[float, str, None] = None
     ) -> dict:
         """
         Build one layer's coloring model for '_map_elements' from a per-layer reader result.
@@ -1917,6 +2115,12 @@ class Mapper:
         overridden by 'category_value_center' and 'category_colormap'. 'element_normalization_label'
         names the rescaled quantity on that scale's colorbar in place of the label the normalization
         derives for itself.
+
+        'value_period' says that the values repeat after that period, as clock times in hours repeat
+        every 24. Every reduction of the values is then circular ('CIRCULAR_AGGREGATIONS'). An
+        aggregation left as None is 'circular_mean' with a period and 'sum' without one. A period
+        refuses every other aggregation and summary of values, and any normalization. Presence
+        summaries are unaffected.
         """
         element_type = data['element_type']
         use_reaction_attribute = data['reaction_source'] == 'Reaction'
@@ -1959,6 +2163,10 @@ class Mapper:
         category_value_limits = self._resolve_value_limits(
             category_value_limits, category_value_limits_flag
         )
+        # A period says that the values repeat, as clock times do every 24 hours. It is resolved
+        # before the normalization, which it rules out.
+        value_period_flag = f'--{element_type}-value-period'
+        value_period = self._resolve_value_period(value_period, value_period_flag)
 
         # The normalization is settled before the centers are, since one whose neutral value is zero
         # centers the per-sample/per-group scale on zero unless asked for another center, and that
@@ -2001,6 +2209,15 @@ class Mapper:
                     f"column, so there is a single set of values with nothing to compare them "
                     f"against. Add a 'sample' column to compare samples."
                 )
+            if value_period is not None:
+                raise ConfigError(
+                    f"'{element_normalization_flag}' rescales the values of the {element_type} "
+                    f"layer, but '{value_period_flag}' says that they repeat every "
+                    f"{value_period:g}. A normalization compares values on a line, by a ratio, a "
+                    f"difference, a rank or a z-score. Values just below {value_period:g} and just "
+                    f"above 0 are close together, but these comparisons treat them as far apart. "
+                    f"Please use only one of the two options."
+                )
             element_normalize, element_normalization_label_template, centered = (
                 self._resolve_element_normalization(
                     element_normalization, element_normalization_flag, element_type
@@ -2038,6 +2255,12 @@ class Mapper:
                         f"{element_type} layer, but the file at '{path}' has no value column, so "
                         f"that layer is colored by presence and has no scale of values to {verb}."
                     )
+            if value_period is not None:
+                raise ConfigError(
+                    f"'{value_period_flag}' says how far the values of the {element_type} layer "
+                    f"go before they repeat, but the file at '{path}' has no value column, so that "
+                    f"layer is colored by presence and has no values."
+                )
         if not has_sample:
             for setting, flag, single_scale_flag, verb in (
                 (category_value_limits, category_value_limits_flag, value_limits_flag, 'bound'),
@@ -2145,16 +2368,32 @@ class Mapper:
             }
 
         undefined: Set[str] = set()
+        # An aggregation left unset is 'circular_mean' for values with a period, and 'sum'
+        # otherwise.
+        default_aggregation = 'circular_mean' if value_period is not None else 'sum'
+        if gene_aggregation is None:
+            gene_aggregation = default_aggregation
+        if accession_aggregation is None:
+            accession_aggregation = default_aggregation
         # Resolved here, before any values are aggregated, so that an unusable aggregation name is
         # reported as a configuration error rather than reaching pandas: the per-accession values
         # below are computed by passing the name itself to a groupby. 'aggregate' reduces a map
         # element's several accessions, which is the level the drawing colorers work at; the gene
         # aggregation is applied only where the per-accession values are built.
         aggregate = self._resolve_aggregation(
-            accession_aggregation, f'--{element_type}-accession-aggregation'
+            accession_aggregation, f'--{element_type}-accession-aggregation', value_period,
+            value_period_flag
         ) if value_column is not None else None
+        # A circular aggregation is not a pandas name, so its function reduces a gene's rows. A
+        # pandas name is passed as the name itself, which pandas applies faster.
+        gene_reduction = gene_aggregation
         if value_column is not None:
-            self._resolve_aggregation(gene_aggregation, f'--{element_type}-gene-aggregation')
+            gene_aggregate = self._resolve_aggregation(
+                gene_aggregation, f'--{element_type}-gene-aggregation', value_period,
+                value_period_flag
+            )
+            if gene_aggregation in CIRCULAR_AGGREGATIONS:
+                gene_reduction = gene_aggregate
 
         if not has_sample:
             # With no samples there is nothing to summarize, so the layer colors the same way in
@@ -2168,7 +2407,7 @@ class Mapper:
                     'color_hexcode': color
                 }
             unified_values = self._aggregate_accession_quantities(
-                df, value_column, gene_aggregation, path, undefined
+                df, value_column, gene_reduction, path, undefined
             )
             self._warn_undefined_values(undefined, gene_aggregation, path)
             cmap = self._resolve_sequential_colormap(
@@ -2189,7 +2428,7 @@ class Mapper:
                 'category_cmap': cmap,
                 'reverse_overlay': reverse_overlay,
                 'unified_values': unified_values,
-                'category_values': None,
+                'sample_values': None,
                 'aggregate': aggregate,
                 'colorbar_label': value_column,
                 # A normalization was refused above, there being no samples to rescale against, so
@@ -2207,11 +2446,13 @@ class Mapper:
         # magnitude with a value column and its presence without one.
         grouped = group_samples is not None
         sample_kind, sample_aggregate, sample_scheme = self._resolve_summary(
-            sample_summary, value_column, f'--{element_type}-sample-summary', path
+            sample_summary, value_column, f'--{element_type}-sample-summary', path, value_period,
+            value_period_flag
         )
         if grouped:
             group_kind, group_aggregate, group_scheme = self._resolve_summary(
-                group_summary, value_column, f'--{element_type}-group-summary', path
+                group_summary, value_column, f'--{element_type}-group-summary', path,
+                value_period, value_period_flag
             )
             if group_kind == 'value' and sample_kind != 'value':
                 raise ConfigError(
@@ -2261,7 +2502,7 @@ class Mapper:
                 for name, scheme in SUMMARY_PRESENCE_SCHEMES.items()
             },
             'reverse_overlay': reverse_overlay,
-            'category_values': None,
+            'sample_values': None,
             'element_normalize': element_normalize,
             'value_limits': value_limits,
             'category_value_limits': category_value_limits,
@@ -2396,7 +2637,7 @@ class Mapper:
         sample_values: Dict[str, Dict[str, float]] = {s: {} for s in all_sample_names}
         for sample_name, sample_rows in df.groupby('__sample'):
             sample_values[sample_name] = self._aggregate_accession_quantities(
-                sample_rows, value_column, gene_aggregation, path, undefined
+                sample_rows, value_column, gene_reduction, path, undefined
             )
         self._warn_undefined_values(undefined, gene_aggregation, path)
 
@@ -2414,36 +2655,19 @@ class Mapper:
             )
             return model
 
-        # Each summary is a further reduction that can be undefined where the one below it was not,
-        # so the accessions it drops are reported against the summary's own name rather than the
-        # within-sample aggregation's.
-        if category_kind == 'value':
-            if grouped:
-                undefined_category: Set[str] = set()
-                model['category_values'] = {
-                    group_name: self._summarize_category_values(
-                        {s: sample_values[s] for s in group_sample_names}, sample_aggregate,
-                        undefined_category
-                    )
-                    for group_name, group_sample_names in group_samples.items()
-                }
-                self._warn_undefined_values(undefined_category, sample_summary, path)
-            else:
-                # Each per-sample map shows one sample, so no summary applies to it.
-                model['category_values'] = sample_values
-
-        if unified_kind == 'value':
-            # The 'unified' map summarizes the groups when there are groups, each of which
-            # contributes the summary of its own samples, and otherwise all of the samples.
-            undefined_unified: Set[str] = set()
-            model['unified_values'] = self._summarize_category_values(
-                model['category_values'] if grouped else sample_values,
-                group_aggregate if grouped else sample_aggregate,
-                undefined_unified
-            )
-            self._warn_undefined_values(
-                undefined_unified, group_summary if grouped else sample_summary, path
-            )
+        # A summary pools the values of a map element, not of an accession. An element's value in a
+        # sample is the aggregate of its accessions in that sample. It is what that sample's own map
+        # draws. One accession can belong to different elements on different maps. So these values
+        # are known only once a map is read. The summaries are therefore taken map by map
+        # ('_summarize_entry_values'). Here the layer keeps what they need. Ungrouped, the sample
+        # summary colors the 'unified' map. Grouped, it colors each group's map from that group's
+        # samples. The group summary then colors the 'unified' map from the groups.
+        model['sample_values'] = sample_values
+        model['group_samples'] = group_samples
+        model['sample_summary'] = sample_summary if sample_kind == 'value' else None
+        model['sample_aggregate'] = sample_aggregate
+        model['group_summary'] = group_summary if grouped and group_kind == 'value' else None
+        model['group_aggregate'] = group_aggregate if grouped else None
 
         model['cmap'] = self._resolve_sequential_colormap(
             colormap if colormap is not None else 'plasma_r', colormap_limits,
@@ -2500,9 +2724,11 @@ class Mapper:
         output_dir: str,
         reaction_txt: str = None,
         compound_txt: str = None,
-        reaction_gene_aggregation: str = 'sum',
-        reaction_accession_aggregation: str = 'sum',
-        compound_accession_aggregation: str = 'sum',
+        reaction_gene_aggregation: str = None,
+        reaction_accession_aggregation: str = None,
+        compound_accession_aggregation: str = None,
+        reaction_value_period: Union[float, str, None] = None,
+        compound_value_period: Union[float, str, None] = None,
         reaction_sample_summary: str = None,
         compound_sample_summary: str = None,
         reaction_group_summary: str = None,
@@ -2570,26 +2796,39 @@ class Mapper:
         compound_txt : str, None
             Path to a kegg-compound-txt file (accessions all KEGG compound IDs).
 
-        reaction_gene_aggregation : str, 'sum'
+        reaction_gene_aggregation : str, None
             How to reduce the values of the genes annotated with one accession to that accession's
             value, for a reaction file carrying a 'gene_id' column. Any 'AGGREGATION_FUNCTIONS' name,
             or any other pandas aggregation reducing values to one number (see
-            '_resolve_aggregation').
+            '_resolve_aggregation'). The default of None is 'sum', or 'circular_mean' when
+            'reaction_value_period' is given.
 
-        reaction_accession_aggregation : str, 'sum'
+        reaction_accession_aggregation : str, None
             How to reduce the values of the several accessions a map's reaction element stands to
-            that element's value.
+            that element's value. The default is the same as for 'reaction_gene_aggregation'.
 
-        compound_accession_aggregation : str, 'sum'
+        compound_accession_aggregation : str, None
             The same reduction for the compound layer: the several compounds that one map circle
             stands for. A compound file has no genes, and repeated rows are refused
-            ('_read_element_txt'), so it has no reduction below this one.
+            ('_read_element_txt'), so it has no reduction below this one. The default of None is
+            'sum', or 'circular_mean' when 'compound_value_period' is given.
+
+        reaction_value_period : Union[float, str, None], None
+            The period after which the values of the reaction layer repeat, such as 24 for clock
+            times in hours. Every reduction of the values is then circular, and 'circular_mean' is
+            the only aggregation and value summary accepted ('CIRCULAR_AGGREGATIONS'). A
+            normalization is refused. None means that the values do not repeat.
+
+        compound_value_period : Union[float, str, None], None
+            The same period for the values of the compound layer.
 
         reaction_sample_summary : str, None
             How the reaction layer summarizes a set of samples: by presence ('count'/'membership')
-            or by pooling their values with an aggregation. This colors the 'unified' map without
-            groups and each per-group map with groups. The default of None summarizes presence, by
-            membership for 3 or fewer samples and by count above that.
+            or by pooling their values with an aggregation. An aggregation pools the values of each
+            map element. These are the values that the maps of the individual samples draw. This
+            colors the 'unified' map without groups and each per-group map with groups. The default
+            of None summarizes presence, by membership for 3 or fewer samples and by count above
+            that.
 
         compound_sample_summary : str, None
             The same summary for the compound layer's samples.
@@ -2717,7 +2956,8 @@ class Mapper:
                 'value_center': reaction_value_center,
                 'category_value_center': reaction_category_value_center,
                 'element_normalization': reaction_element_normalization,
-                'element_normalization_label': reaction_element_normalization_label
+                'element_normalization_label': reaction_element_normalization_label,
+                'value_period': reaction_value_period
             })
         if compound_txt is not None:
             raw_layers.append({
@@ -2725,8 +2965,9 @@ class Mapper:
                 'path': compound_txt,
                 'data': self._read_element_txt(compound_txt, 'compound'),
                 # A compound file has one row per accession per sample, so the gene level is a
-                # reduction over a single value and its function cannot matter.
-                'gene_aggregation': 'sum',
+                # reduction over a single value. Left unset, it takes the layer's default. A period
+                # makes that default circular, and a period would refuse a 'sum' here.
+                'gene_aggregation': None,
                 'accession_aggregation': compound_accession_aggregation,
                 'color': compound_color,
                 'colormap': compound_colormap,
@@ -2742,7 +2983,8 @@ class Mapper:
                 'value_center': compound_value_center,
                 'category_value_center': compound_category_value_center,
                 'element_normalization': compound_element_normalization,
-                'element_normalization_label': compound_element_normalization_label
+                'element_normalization_label': compound_element_normalization_label,
+                'value_period': compound_value_period
             })
         if not raw_layers:
             raise ConfigError(
@@ -3532,6 +3774,19 @@ class Mapper:
             'accessions': ko_ids,
             'color_hexcode': color_hexcode
         }]
+
+        # The color is checked before any map is drawn, as '_map_elements' checks its colors. It
+        # colors the reactions, and, on global and overview maps, the compounds they touch.
+        if color_hexcode != 'original':
+            check_layers = [
+                {**layer, 'unified_mode': 'single', 'category_mode': 'single'}
+                for layer in presence_layers
+            ]
+            self._check_reserved_colors(check_layers, pathway_numbers, drawn_categories=[])
+            self._check_derived_compound_colors(
+                check_layers, pathway_numbers,
+                lambda: [(None, True, self._element_presence_specs(presence_layers))]
+            )
 
         # Draw maps.
         self.progress.new("Drawing map")
@@ -4337,23 +4592,142 @@ class Mapper:
         return value if np.isfinite(value) else None
 
     @staticmethod
+    def _summarize_entry_values(
+        entry: kgml.Entry,
+        layer: dict
+    ) -> Tuple[Dict[str, float], Union[float, None]]:
+        """
+        Find an Entry's value in each sample or group of a layer, and on the 'unified' map.
+
+        An element's value in a sample is the aggregate of its accessions in that sample
+        ('_reduce_entry_value'). This is the value the sample's own map draws. A summary then pools
+        these element values. So the 'unified' map summarizes what the maps of the individual
+        samples or groups draw. Grouped, each group's value is the sample summary of its samples'
+        element values. The 'unified' value is then the group summary of the groups' values.
+
+        A summary is over the samples or groups in which the element has a value. A sample with no
+        row for any of the element's accessions does not count as a zero. A summary can be
+        undefined, as the standard deviation of a single value is. The element then has no value in
+        that group, or on the 'unified' map. The tuple of its accessions is then added to the
+        layer's '_undefined_category' or '_undefined_unified' set. '_warn_undefined_summaries'
+        reports these sets once for the layer.
+
+        Parameters
+        ==========
+        entry : kgml.Entry
+            An Entry (ortholog or compound) whose accessions are read by '_get_entry_kegg_ids'.
+
+        layer : dict
+            A 'quantitative' layer model from '_build_txt_model'. A layer without samples has
+            'sample_values' of None. Its one value per element comes from 'unified_values'. The
+            range-finding pass of '_map_elements' gives the layer an '_element_cache' and the two
+            undefined sets. Results are kept in the cache, keyed by an Entry's accessions. These are
+            all an answer depends on. Entries on different maps, with different IDs, can stand for
+            the same accessions.
+
+        Returns
+        =======
+        Tuple[Dict[str, float], Union[float, None]]
+            The element's value in each sample (ungrouped) or group (grouped) that has one, and its
+            value on the 'unified' map, or None where it has none. The first is empty for a layer
+            without samples.
+        """
+        use_reaction_attribute = layer['use_reaction_attribute']
+        # One call works out the element's value in every sample or group and on the 'unified' map.
+        # The range-finding pass makes the first call. The result is then reused by the 'unified'
+        # map and the map of each sample or group. The result is keyed by the accessions the Entry
+        # stands for, not by its ID, which is unique to one map. An element's value depends only on
+        # its accessions. So the result is also reused for an Entry on another KEGG map, or a second
+        # Entry on one KEGG map, that stands for the same accessions.
+        key = tuple(Mapper._get_entry_kegg_ids(entry, use_reaction_attribute))
+        cache = layer['_element_cache']
+        if key in cache:
+            return cache[key]
+
+        # A layer without samples has one value per accession. The element's value is the aggregate
+        # of its accessions, and every map shows it.
+        aggregate = layer['aggregate']
+        if layer['sample_values'] is None:
+            result = {}, Mapper._reduce_entry_value(
+                entry, layer['unified_values'], aggregate,
+                use_reaction_attribute=use_reaction_attribute
+            )
+            cache[key] = result
+            return result
+
+        # The element's value in each sample is the aggregate of the accessions the sample has
+        # values for. A sample with none of them has no value. It is left out of every summary
+        # below.
+        sample_element_values: Dict[str, float] = {}
+        for sample, values in layer['sample_values'].items():
+            value = Mapper._reduce_entry_value(
+                entry, values, aggregate, use_reaction_attribute=use_reaction_attribute
+            )
+            if value is not None:
+                sample_element_values[sample] = value
+
+        # A summary can be undefined for the values it is given, as a standard deviation is for a
+        # single value. The element then has no value at that level. Its key is recorded for
+        # '_warn_undefined_summaries'.
+        def _summarize(values: List[float], summary: Callable, undefined_key: str):
+            value = summary(values)
+            if np.isfinite(value):
+                return value
+            layer[undefined_key].add(key)
+            return None
+
+        if layer['group_samples'] is None:
+            # Ungrouped, the map of each sample shows the sample's own value. The sample summary
+            # pools these values on the 'unified' map.
+            category_values = sample_element_values
+            unified_aggregate = layer['sample_aggregate']
+        else:
+            # Grouped, the map of each group shows the sample summary of its own samples' values. A
+            # group none of whose samples has a value has no value either. A sample summary of
+            # presence colors the group maps by count instead ('_group_map_colors'), so the groups
+            # get no values here. The group summary pools the groups' values on the 'unified' map.
+            category_values = {}
+            if layer['sample_aggregate'] is not None:
+                for group, samples in layer['group_samples'].items():
+                    group_values = [
+                        sample_element_values[sample] for sample in samples
+                        if sample in sample_element_values
+                    ]
+                    if not group_values:
+                        continue
+                    value = _summarize(
+                        group_values, layer['sample_aggregate'], '_undefined_category'
+                    )
+                    if value is not None:
+                        category_values[group] = value
+            unified_aggregate = layer['group_aggregate']
+
+        # The 'unified' value pools the samples or groups that have a value. The summary is None
+        # where the 'unified' map shows presence, and then there is no value to work out.
+        unified_value = None
+        if unified_aggregate is not None and category_values:
+            unified_value = _summarize(
+                list(category_values.values()), unified_aggregate, '_undefined_unified'
+            )
+        result = category_values, unified_value
+        cache[key] = result
+        return result
+
+    @staticmethod
     def _normalize_entry_value(
         entry: kgml.Entry,
-        category_values: Dict[str, Dict[str, float]],
+        layer: dict,
         categories: Iterable[str],
-        aggregate,
         normalize,
-        use_reaction_attribute: bool = False,
         cache: Union[Dict[Tuple[str, ...], Dict[str, float]], None] = None
     ) -> Dict[str, float]:
         """
         Rescale an Entry's value in each category against its values across all of them.
 
-        This is the one place a map element's values in different samples or groups meet: an
-        element's value is the aggregate of the accessions it stands for, and which accessions an
-        element stands for is known only from the KEGG map itself, so a ratio against the element's
-        mean, for instance, is a ratio of sums that no arithmetic on single accessions could produce
-        beforehand.
+        An element's value in each sample or group comes from '_summarize_entry_values'. It is built
+        from the aggregate of the element's accessions. Which accessions an element stands for is
+        known only from the KEGG map itself. So a ratio against the element's mean, for instance, is
+        a ratio of aggregates.
 
         The values the normalization sees are those of the categories in which the element has a
         value at all, so a sample with no row for any of the element's accessions is not counted as
@@ -4364,23 +4738,15 @@ class Mapper:
         entry : kgml.Entry
             An Entry (ortholog or compound) whose accessions are read by '_get_entry_kegg_ids'.
 
-        category_values : Dict[str, Dict[str, float]]
-            Per-accession values keyed by category (sample or group) name, as the layer model's
-            'category_values'.
+        layer : dict
+            A 'quantitative' layer model with samples. Its element values are the ones rescaled.
 
         categories : Iterable[str]
             The categories to normalize across, in the order they are colored in.
 
-        aggregate : callable
-            Reduces the values of an element's accessions to the element's value in one category
-            (see 'AGGREGATION_FUNCTIONS').
-
         normalize : callable
             Rescales an element's values across the categories that have one
             ('_resolve_element_normalization').
-
-        use_reaction_attribute : bool, False
-            Passed to '_get_entry_kegg_ids' to read reaction IDs rather than KO/compound IDs.
 
         cache : Union[Dict[Tuple[str, ...], Dict[str, float]], None], None
             Results already worked out for this layer, keyed by an Entry's accessions, which is all
@@ -4388,7 +4754,8 @@ class Mapper:
             normalized value needs every category's value for the element, so the map of each
             category would otherwise work out every other category's values again; the
             range-finding pass fills this in beforehand, leaving the drawing passes nothing to
-            recompute. Pass None to work every answer out afresh.
+            recompute. Pass None to rescale every element afresh. The element values themselves stay
+            cached on the layer ('_summarize_entry_values').
 
         Returns
         =======
@@ -4398,17 +4765,14 @@ class Mapper:
         """
         key = None
         if cache is not None:
-            key = tuple(Mapper._get_entry_kegg_ids(entry, use_reaction_attribute))
+            key = tuple(Mapper._get_entry_kegg_ids(entry, layer['use_reaction_attribute']))
             if key in cache:
                 return cache[key]
-        values: Dict[str, float] = {}
-        for category in categories:
-            value = Mapper._reduce_entry_value(
-                entry, category_values[category], aggregate,
-                use_reaction_attribute=use_reaction_attribute
-            )
-            if value is not None:
-                values[category] = value
+        element_values = Mapper._summarize_entry_values(entry, layer)[0]
+        values: Dict[str, float] = {
+            category: element_values[category] for category in categories
+            if category in element_values
+        }
         if not values:
             normalized_values: Dict[str, float] = {}
         else:
@@ -4564,9 +4928,10 @@ class Mapper:
             A 'quantitative' layer needs these keys:
             - 'accessions': every accession the layer touches. They find the map entries whose
               values set the range of each scale.
-            - 'unified_values': the value of each accession on the 'unified' map.
-            - 'category_values': the value of each accession in each category, or None for a layer
-              that has no categories. Its individual maps then use 'unified_values'.
+            - 'sample_values': the value of each accession in each sample, or None for a layer
+              without samples.
+            - 'unified_values': the value of each accession, for a layer without samples. All of its
+              maps show these values.
             - 'aggregate': reduces the values of an element's accessions to one value.
             - 'cmap': the colormap.
             - 'reverse_overlay': True to draw lower values on top of higher ones.
@@ -4578,6 +4943,12 @@ class Mapper:
               and of the individual maps' scale ('_make_quantitative_norm').
             - 'value_center' and 'category_value_center': the centers of the same two scales.
             - 'category_value_center_flag': the option that the individual maps' center came from.
+            - 'group_samples': the samples of each group, for a layer with samples. It is None in an
+              ungrouped run.
+            - 'sample_aggregate' and 'group_aggregate': the summaries that pool an element's values
+              across samples and across groups ('_summarize_entry_values'). Each is None where it
+              summarizes presence. 'group_aggregate' is also None in an ungrouped run.
+              'sample_summary' and 'group_summary' hold their names for messages.
             - 'element_normalize': rescales each category's value for an element against the
               values of all categories ('_normalize_entry_value').
             - 'category_colorbar_label': the label of the individual maps' colorbar. It defaults to
@@ -4660,7 +5031,7 @@ class Mapper:
             # 'unified' scale. That scale is therefore still worked out where the 'unified' map is
             # not drawn. The options bounding and centering it still apply.
             return draw_unified_maps or (
-                layer['category_mode'] == 'quantitative' and layer['category_values'] is None
+                layer['category_mode'] == 'quantitative' and layer['sample_values'] is None
             )
 
         def _dedup(items: List[str]) -> List[str]:
@@ -4938,6 +5309,19 @@ class Mapper:
                 # this pass asks for the normalized values of every element of every drawn map, and
                 # a normalized value covers all of the categories at once.
                 layer['_normalized_cache'] = {}
+                # The same holds for each element's values, and for the elements whose summary is
+                # undefined ('_summarize_entry_values').
+                layer['_element_cache'] = {}
+                layer['_undefined_unified'] = set()
+                layer['_undefined_category'] = set()
+                # The 'unified' map and the maps of the groups show summaries. A summary can be
+                # undefined for every element of a KEGG map. An example is a standard deviation
+                # where each element has a value in a single sample. The layer then has nothing to
+                # color there, so the maps where it has a summarized value are recorded.
+                layer['_unified_maps'] = set()
+                layer['_category_maps'] = {
+                    group: set() for group in (layer.get('group_samples') or {})
+                }
             for pathway_number in pathway_numbers:
                 self.progress.update(pathway_number)
                 pathway = self._get_pathway(pathway_number)
@@ -4948,43 +5332,41 @@ class Mapper:
                     )
                     per_category = (
                         has_categories and layer['category_mode'] == 'quantitative'
-                        and layer['category_values'] is not None
+                        and layer['sample_values'] is not None
                     )
                     normalize = layer.get('element_normalize')
                     for entry in self._find_element_entries(
                         pathway, use_reaction, layer['accessions']
                     ):
-                        if unified_valued:
-                            value = self._reduce_entry_value(
-                                entry, layer['unified_values'], layer['aggregate'],
-                                use_reaction_attribute=use_reaction
-                            )
-                            if value is not None:
-                                layer['_unified_vals'].append(value)
+                        category_values, unified_value = self._summarize_entry_values(entry, layer)
+                        if unified_value is not None:
+                            layer['_unified_maps'].add(pathway_number)
+                            if unified_valued:
+                                layer['_unified_vals'].append(unified_value)
+                        for group, group_maps in layer['_category_maps'].items():
+                            if group in category_values:
+                                group_maps.add(pathway_number)
                         if per_category and normalize is not None:
                             # A normalization sets each category's value from all of them at once,
                             # so the scale must span the calculated normalized values.
                             layer['_category_vals'].extend(
                                 self._normalize_entry_value(
-                                    entry, layer['category_values'], categories,
-                                    layer['aggregate'], normalize,
-                                    use_reaction_attribute=use_reaction,
+                                    entry, layer, categories, normalize,
                                     cache=layer['_normalized_cache']
                                 ).values()
                             )
                         elif per_category:
-                            for category_name in categories:
-                                category_value = self._reduce_entry_value(
-                                    entry, layer['category_values'][category_name],
-                                    layer['aggregate'], use_reaction_attribute=use_reaction
-                                )
-                                if category_value is not None:
-                                    layer['_category_vals'].append(category_value)
+                            layer['_category_vals'].extend(
+                                category_values[category] for category in categories
+                                if category in category_values
+                            )
             self.progress.end()
             unaffected_clause = (
                 " The 'unified' map is unaffected, being drawn from the unnormalized values."
             ) if draw_unified_maps else ""
             for layer in norm_layers:
+                if layer['sample_values'] is not None:
+                    self._warn_undefined_summaries(layer, draw_unified_maps, draw_category_maps)
                 # No values at all means no element of any drawn map has one, so the layer colors
                 # nothing and gets no colorbar: either its accessions are absent from these maps, or
                 # its aggregation was undefined everywhere (the standard deviation of a single
@@ -5035,7 +5417,7 @@ class Mapper:
                     layer['_unified_center'] = layer.get('value_center')
                 if layer['category_mode'] != 'quantitative':
                     continue
-                if has_categories and layer['category_values'] is not None:
+                if has_categories and layer['sample_values'] is not None:
                     norm, vmin, vmax, clamped_low, clamped_high = self._make_quantitative_norm(
                         layer['_category_vals'], layer.get('category_value_limits'),
                         f"--{layer['element_type']}-category-value-limits",
@@ -5134,17 +5516,44 @@ class Mapper:
                 return (transfer, cmap.reversed() if layer['reverse_overlay'] else cmap)
             return ('high', None)
 
+        def _sample_accessions(layer, samples):
+            # Return the accessions that the samples have values for. The samples are taken in turn,
+            # and the accessions of each sample in turn. This order must be the same in every run.
+            # Map entries are colored in this order. Each color is stored with a priority. The
+            # priority is the position of the element's value on the color scale. Two close values
+            # can get the same color. The color then keeps the priority of the element colored last.
+            # Priorities set which elements are drawn on top. On global and overview maps, they also
+            # set the colors of compounds. Python orders a set of strings differently in each run,
+            # so a set would not work here.
+            return dict.fromkeys(
+                accession for sample in samples for accession in layer['sample_values'][sample]
+            )
+
         def _unified_spec(layer):
             mode = layer['unified_mode']
             if mode == 'quantitative':
+                def entry_value(entry):
+                    return self._summarize_entry_values(entry, layer)[1]
+                if layer['sample_values'] is None:
+                    entry_keys, maps = layer['unified_values'], None
+                else:
+                    # A summary colors only the maps where some element has a summarized value.
+                    # Grouped, the samples are taken group by group. The 'unified' value is built
+                    # from the groups in this order too.
+                    group_samples = layer['group_samples']
+                    samples = layer['sample_values'] if group_samples is None else [
+                        sample for members in group_samples.values() for sample in members
+                    ]
+                    entry_keys = _sample_accessions(layer, samples)
+                    maps = layer['_unified_maps']
                 return {
                     'element_type': layer['element_type'],
                     'use_reaction_attribute': layer['use_reaction_attribute'],
-                    'entry_keys': layer['unified_values'],
+                    'entry_keys': entry_keys,
+                    'pathway_numbers': maps,
                     'colorer': self._quantitative_colorer(
-                        layer['unified_values'], layer['_unified_norm'], layer['cmap'],
-                        layer['reverse_overlay'], layer['aggregate'],
-                        layer['use_reaction_attribute'], center=layer['_unified_center']
+                        entry_value, layer['_unified_norm'], layer['cmap'],
+                        layer['reverse_overlay'], center=layer['_unified_center']
                     ),
                     'derived_compound': _reaction_derived(layer, mode)
                 }
@@ -5158,6 +5567,7 @@ class Mapper:
                         layer['membership'], color_priorities, category_combos, group_sources,
                         group_threshold, layer['use_reaction_attribute']
                     ),
+                    'keep_highest_priority': True,
                     'derived_compound': _reaction_derived(layer, mode)
                 }
             # 'static' pools accessions across all sources; 'single' has its own accession set.
@@ -5173,32 +5583,43 @@ class Mapper:
         def _category_spec(layer, category):
             mode = layer['category_mode']
             if mode == 'quantitative':
-                values = (
-                    layer['unified_values'] if layer['category_values'] is None
-                    else layer['category_values'][category]
-                )
                 normalize = layer.get('element_normalize')
-                if normalize is None:
-                    colorer = self._quantitative_colorer(
-                        values, layer['_category_norm'], layer['category_cmap'],
-                        layer['reverse_overlay'], layer['aggregate'],
-                        layer['use_reaction_attribute'], center=layer['_category_center']
-                    )
+                maps = None
+                if layer['sample_values'] is None:
+                    # A layer without samples draws the same values on every map.
+                    entry_keys = layer['unified_values']
+
+                    def entry_value(entry):
+                        return self._summarize_entry_values(entry, layer)[1]
                 else:
-                    colorer = self._normalized_quantitative_colorer(
-                        layer['category_values'], categories, category, layer['_category_norm'],
-                        layer['category_cmap'], layer['reverse_overlay'], layer['aggregate'],
-                        normalize, layer['use_reaction_attribute'],
-                        center=layer['_category_center'], cache=layer['_normalized_cache']
-                    )
+                    # A sample's map finds the elements of the accessions the sample has values for.
+                    # A group's map finds those of the accessions its samples have values for. It
+                    # colors only the maps where some element has a value for the group. A
+                    # normalization can still give a category no value for an element, where it had
+                    # nothing to rescale or where the rescaling itself was undefined.
+                    if layer['group_samples'] is None:
+                        entry_keys = layer['sample_values'][category]
+                    else:
+                        entry_keys = _sample_accessions(layer, layer['group_samples'][category])
+                        maps = layer['_category_maps'][category]
+                    if normalize is None:
+                        def entry_value(entry):
+                            return self._summarize_entry_values(entry, layer)[0].get(category)
+                    else:
+                        def entry_value(entry):
+                            return self._normalize_entry_value(
+                                entry, layer, categories, normalize,
+                                cache=layer['_normalized_cache']
+                            ).get(category)
                 return {
                     'element_type': layer['element_type'],
                     'use_reaction_attribute': layer['use_reaction_attribute'],
-                    # The elements this map colors are those this category has a value for, a
-                    # normalization giving a category no value where it had nothing to rescale or
-                    # where the rescaling itself was undefined.
-                    'entry_keys': values,
-                    'colorer': colorer,
+                    'entry_keys': entry_keys,
+                    'pathway_numbers': maps,
+                    'colorer': self._quantitative_colorer(
+                        entry_value, layer['_category_norm'], layer['category_cmap'],
+                        layer['reverse_overlay'], center=layer['_category_center']
+                    ),
                     'derived_compound': _reaction_derived(layer, mode, 'category_cmap')
                 }
             if mode == 'single':
@@ -5226,10 +5647,66 @@ class Mapper:
                 'derived_compound': _reaction_derived(layer, mode, 'category_cmap')
             }
 
+        # For grouped membership individual maps, precompute each group's within-group membership,
+        # narrowing the layer's membership to the group's own sources so that a group's map counts
+        # only them. The colors these counts take were resolved above, with every other color of the
+        # run.
+        group_layer_membership: Dict[str, Tuple] = {}
+        if grouped_presence:
+            for group in draw_categories:
+                specs = []
+                for layer in group_membership_layers:
+                    inner_membership = {}
+                    for accession, sources in layer['membership'].items():
+                        in_group = [s for s in sources if source_group.get(s) == group]
+                        if in_group:
+                            inner_membership[accession] = in_group
+                    specs.append({
+                        'element_type': layer['element_type'],
+                        'use_reaction_attribute': layer['use_reaction_attribute'],
+                        'entry_keys': inner_membership,
+                        'colorer': self._membership_colorer(
+                            inner_membership, group_color_priorities[group], None, None, None,
+                            layer['use_reaction_attribute']
+                        ),
+                        'keep_highest_priority': True,
+                        'derived_compound': _reaction_derived(layer, 'membership')
+                    })
+                group_layer_membership[group] = (
+                    specs, group_color_priorities[group], group_scale_tops[group]
+                )
+
+        def _category_specs(category):
+            # Grouped membership specs are precomputed; a layer colored by value or a single color
+            # in its per-group context colors its own map and rides along on the same map.
+            if grouped_presence:
+                return group_layer_membership[category][0] + [
+                    _category_spec(layer, category) for layer in layers
+                    if layer['category_mode'] != 'membership'
+                ]
+            return [_category_spec(layer, category) for layer in layers]
+
+        def _element_map_specs():
+            # The specs of each kind of map that '_draw_map_elements' draws, with a phrase naming
+            # it. A run in the reference map's own colors draws its other maps with
+            # '_draw_map_kos_original_color'.
+            if draw_unified_maps and not original_run:
+                yield (
+                    "the 'unified' map" if has_categories else None, True,
+                    [_unified_spec(layer) for layer in layers]
+                )
+            for category in draw_categories:
+                if grouped_presence or not original_run:
+                    yield f"{category_noun} '{category}'", False, _category_specs(category)
+
         self._check_reserved_colors(
             layers, pathway_numbers, group_color_priorities=group_color_priorities,
             group_element_types={layer['element_type'] for layer in group_membership_layers},
             drawn_categories=draw_categories
+        )
+        self._check_derived_compound_colors(
+            layers, pathway_numbers, _element_map_specs,
+            group_color_priorities=group_color_priorities
         )
 
         # Per-layer colorbars for the unified map (layer-prefixed so two layers do not collide),
@@ -5282,7 +5759,7 @@ class Mapper:
                     )
             if (
                 draw_category_maps and layer['category_mode'] == 'quantitative'
-                and layer['category_values'] is not None
+                and layer['sample_values'] is not None
             ):
                 vmin, vmax = layer['_category_range']
                 if vmin is not None:
@@ -5325,34 +5802,6 @@ class Mapper:
             self.run.info("Number of maps drawn", count)
             return drawn
 
-        # For grouped membership individual maps, precompute each group's within-group membership,
-        # narrowing the layer's membership to the group's own sources so that a group's map counts
-        # only them. The colors these counts take were resolved above, with every other color of the
-        # run.
-        group_layer_membership: Dict[str, Tuple] = {}
-        if grouped_presence:
-            for group in draw_categories:
-                specs = []
-                for layer in group_membership_layers:
-                    inner_membership = {}
-                    for accession, sources in layer['membership'].items():
-                        in_group = [s for s in sources if source_group.get(s) == group]
-                        if in_group:
-                            inner_membership[accession] = in_group
-                    specs.append({
-                        'element_type': layer['element_type'],
-                        'use_reaction_attribute': layer['use_reaction_attribute'],
-                        'entry_keys': inner_membership,
-                        'colorer': self._membership_colorer(
-                            inner_membership, group_color_priorities[group], None, None, None,
-                            layer['use_reaction_attribute']
-                        ),
-                        'derived_compound': _reaction_derived(layer, 'membership')
-                    })
-                group_layer_membership[group] = (
-                    specs, group_color_priorities[group], group_scale_tops[group]
-                )
-
         for category in draw_categories:
             drawn_category: Dict[str, bool] = {}
             self.progress.new(f"Drawing maps for {category_noun} '{category}'")
@@ -5367,7 +5816,7 @@ class Mapper:
             )
 
             if grouped_presence:
-                group_specs, category_color_priorities, category_scale_top = (
+                _, category_color_priorities, category_scale_top = (
                     group_layer_membership[category]
                 )
                 colorbar_path = os.path.join(category_output_dir, CATEGORY_COLORBAR_BASENAME)
@@ -5386,12 +5835,7 @@ class Mapper:
                         color_labels=range(1, category_scale_top + 1),
                         label=membership_count_label
                     )
-                # Grouped membership specs are precomputed; a layer colored by value or a single
-                # color in its per-group context colors its own map and rides along on the same map.
-                specs = group_specs + [
-                    _category_spec(layer, category) for layer in layers
-                    if layer['category_mode'] != 'membership'
-                ]
+                specs = _category_specs(category)
                 for pathway_number in pathway_numbers:
                     drawn_category[pathway_number] = self._draw_map_elements(
                         pathway_number, specs, category_output_dir,
@@ -5404,7 +5848,7 @@ class Mapper:
                         category_output_dir, draw_map_lacking_data=draw_maps_lacking_data
                     )
             else:
-                specs = [_category_spec(layer, category) for layer in layers]
+                specs = _category_specs(category)
                 for pathway_number in pathway_numbers:
                     drawn_category[pathway_number] = self._draw_map_elements(
                         pathway_number, specs, category_output_dir,
@@ -5557,23 +6001,34 @@ class Mapper:
                 f"two limits that option also takes."
             )
 
+        # The value scale shared by the maps of the individual categories colors only those maps.
+        value_scales = [('_unified_norm', '_unified_center', '_unified_vals', 'cmap')]
+        if drawn_categories:
+            value_scales.append(
+                ('_category_norm', '_category_center', '_category_vals', 'category_cmap')
+            )
         for layer in layers:
             if layer['unified_mode'] == 'original':
                 continue
             # Every color the layer can stage: sampled from its colormap at the values it will color
             # by, taken from the scale it colors presence by, or its one fixed color.
             staged: Set[str] = set()
-            for norm_key, values_key, cmap_key in (
-                ('_unified_norm', '_unified_vals', 'cmap'),
-                ('_category_norm', '_category_vals', 'category_cmap')
-            ):
-                if norm_key not in layer:
+            for norm_key, center_key, values_key, cmap_key in value_scales:
+                if norm_key not in layer or not layer[values_key]:
                     continue
                 norm = layer[norm_key]
                 cmap = layer[cmap_key]
-                for value in layer[values_key]:
-                    fraction = 1.0 if norm is None else float(norm(value))
+                # A scale with no norm spans a single value. The colorers give every element the
+                # middle color where the scale is centered. Otherwise they give it the top color.
+                if norm is None:
+                    fraction = 0.5 if layer[center_key] is not None else 1.0
                     staged.add(mcolors.rgb2hex(cmap(fraction)))
+                    continue
+                # A run with many samples can have millions of values here. A colormap has only a
+                # few hundred colors. The values are therefore colored all at once. Each distinct
+                # color is then converted to a hex code once.
+                rgba = cmap(norm(np.asarray(layer[values_key])))
+                staged.update(mcolors.rgb2hex(color) for color in np.unique(rgba, axis=0))
             if '_colors' in layer:
                 staged.update(color for color, _ in layer['_colors'][1])
             category_colors = layer.get('category_colors')
@@ -5601,6 +6056,200 @@ class Mapper:
                 f"that does not reach these colors: grayscale colormaps and those running to pure "
                 f"white or black, such as 'Greys', 'hot' and 'bone', all do."
             )
+
+    def _check_derived_compound_colors(
+        self,
+        layers: List[dict],
+        pathway_numbers: List[str],
+        element_map_specs: Callable[[], Iterable[Tuple[Union[str, None], bool, List[dict]]]],
+        group_color_priorities: Dict[str, List[Tuple[str, float]]] = None
+    ) -> None:
+        """
+        Check that no compound is given a reserved color derived from the reactions it touches.
+
+        A global or overview map drawn without a compound layer colors each compound from the
+        reactions it touches ('kgml.Pathway.color_associated_compounds'). Where the reactions are
+        colored by value, a compound takes the color at the average position of its reactions on
+        the color scale. Otherwise it takes the color of its reaction drawn on top. That color can
+        be the one the map keeps for the compounds it does not highlight. This can happen even where
+        no reaction has that color. 'kgml' then refuses to draw the map. This check finds such a
+        clash before any map or colorbar is drawn. '_check_reserved_colors' does the same for the
+        colors of the layers themselves.
+
+        The derived colors depend on which reactions touch each compound. Each map is therefore
+        colored here without being drawn. That costs about as much as drawing the map, less the
+        rendering. So it is done only on the maps whose reserved color a derived color can reach at
+        all. A derived color is always a color of a reaction colormap or a fixed color of the
+        reactions.
+
+        Parameters
+        ==========
+        layers : List[dict]
+            The layer models. Compound colors are derived only where no layer is a compound layer.
+
+        pathway_numbers : List[str]
+            The maps about to be drawn. Only global and overview maps derive compound colors.
+
+        element_map_specs : Callable[[], Iterable[Tuple[Union[str, None], bool, List[dict]]]]
+            Gives the layer specs of each kind of map that '_draw_map_elements' is about to draw,
+            such as the 'unified' map or the map of one sample. Each comes with a phrase naming that
+            kind of map, and with True if it is the 'unified' map. The phrase is None where the run
+            has no categories and so draws a single map. The specs are built only if the maps have
+            to be colored.
+
+        group_color_priorities : Dict[str, List[Tuple[str, float]]], None
+            The colors of each group's individual maps ('_group_map_colors'). A compound on a
+            group's map can take one of them.
+        """
+        # A compound layer colors the compounds itself, so no compound color is derived.
+        if any(layer['element_type'] == 'compound' for layer in layers):
+            return
+        reserved: Dict[str, str] = {}
+        for pathway_number in pathway_numbers:
+            is_global = re.match(GLOBAL_MAP_ID_PATTERN, pathway_number) is not None
+            is_overview = re.match(OVERVIEW_MAP_ID_PATTERN, pathway_number) is not None
+            if is_global or is_overview:
+                reserved[pathway_number] = kgml.canonical_color(
+                    kgml.reserved_recolor_colors('g' if is_global else 'w', is_overview)['compound']
+                )
+        if not reserved:
+            return
+
+        # Every color a compound can be derived in. A reversed overlay derives compound colors from
+        # the reversed colormap ('_reaction_derived'). Each colormap is therefore read both ways.
+        derivable: Set[str] = set()
+        for layer in layers:
+            for mode_key, cmap_key in (
+                ('unified_mode', 'cmap'), ('category_mode', 'category_cmap')
+            ):
+                if layer[mode_key] != 'quantitative':
+                    continue
+                for cmap in (layer[cmap_key], layer[cmap_key].reversed()):
+                    derivable.update(mcolors.rgb2hex(color) for color in cmap(np.arange(cmap.N)))
+            if '_colors' in layer:
+                derivable.update(color for color, _ in layer['_colors'][1])
+            if layer.get('category_colors') is not None:
+                derivable.update(layer['category_colors'].values())
+            if layer.get('color_hexcode') is not None:
+                derivable.add(layer['color_hexcode'])
+        for color_priorities in (group_color_priorities or {}).values():
+            derivable.update(color for color, _ in color_priorities)
+        derivable = set(map(kgml.canonical_color, derivable))
+        # Only the maps whose reserved color can be derived are colored.
+        reserved = {
+            pathway_number: color for pathway_number, color in reserved.items()
+            if color in derivable
+        }
+        if not reserved:
+            return
+
+        self.progress.new("Checking the compound colors derived from reactions")
+        for drawing, unified, specs in element_map_specs():
+            reaction_spec = next(spec for spec in specs if spec['element_type'] == 'reaction')
+            mode, colormap = reaction_spec['derived_compound']
+            for pathway_number, reserved_color in reserved.items():
+                self.progress.update(
+                    pathway_number if drawing is None else f"{pathway_number}, {drawing}"
+                )
+                pathway = self._get_pathway(pathway_number)
+                color_priority, _ = self._stage_map_elements(pathway_number, pathway, specs)
+                # These are the steps 'kgml.Pathway.set_color_priority' takes to derive compound
+                # colors, short of the last one. That step recolors the compounds left without a
+                # color. It is where 'kgml' refuses a derived color that is reserved.
+                pathway.set_color_priority(
+                    color_priority,
+                    recolor_unprioritized_entries='g' if pathway.is_global_map else 'w'
+                )
+                pathway.color_associated_compounds(mode, colormap=colormap)
+                derived = {
+                    kgml.canonical_color(bgcolor)
+                    for _, bgcolor in pathway.color_priority.get('compound', {}).get('circle', {})
+                }
+                if reserved_color not in derived:
+                    continue
+                self.progress.end()
+                drawn_for = '' if drawing is None else f" ({drawing})"
+                remedy = self._derived_compound_remedy(
+                    layers, unified, group_color_priorities, reserved_color
+                )
+                raise ConfigError(
+                    f"Some compounds would be colored {reserved_color} on pathway map "
+                    f"{pathway_number}{drawn_for}. The map keeps this color for the compounds it "
+                    f"does not highlight. They could not be told apart from those compounds. No "
+                    f"compound layer is drawn. The map therefore colors each compound from the "
+                    f"reactions it touches. Where the reactions are colored by value, a compound "
+                    f"takes the color at the average position of its reactions on the color scale. "
+                    f"Otherwise it takes the color of its reaction drawn on top. {remedy}"
+                )
+        self.progress.end()
+
+    @staticmethod
+    def _derived_compound_remedy(
+        layers: List[dict],
+        unified: bool,
+        group_color_priorities: Union[Dict[str, List[Tuple[str, float]]], None],
+        reserved_color: str
+    ) -> str:
+        """
+        Say which option to change where a compound would be derived in a reserved color.
+
+        The option is the one that set the colors of the reactions on that kind of map
+        ('_check_derived_compound_colors').
+
+        Parameters
+        ==========
+        layers : List[dict]
+            The layer models. The run has no compound layer, so its one reaction layer is here.
+
+        unified : bool
+            True for the 'unified' map, False for the map of one category.
+
+        group_color_priorities : Union[Dict[str, List[Tuple[str, float]]], None]
+            The colors of each group's individual maps. A grouped run colors those maps by counts.
+
+        reserved_color : str
+            The reserved color that a compound would take.
+
+        Returns
+        =======
+        str
+            The sentences that name the option and what to do with it.
+        """
+        layer = next(layer for layer in layers if layer['element_type'] == 'reaction')
+        mode = layer['unified_mode'] if unified else layer['category_mode']
+        if reserved_color == '#ffffff':
+            colormaps = (
+                "Grayscale colormaps and those running to pure white, such as 'Greys', 'hot' and "
+                "'bone', reach it."
+            )
+        else:
+            colormaps = "Colormaps with grays in them, such as 'Greys' and 'RdGy', reach it."
+        if not unified and group_color_priorities and mode == 'membership':
+            return (
+                f"These maps color the number of the group's own sources containing each "
+                f"reaction, styled by '--group-colormap'. Choose a colormap that does not reach "
+                f"{reserved_color}. {colormaps} A ramp from a pale tint to the group's own color "
+                f"('--group-colormap {GROUP_COLORMAP_FROM_CATEGORY}') can start further from "
+                f"white instead. Raise the first of the two limits that option also takes."
+            )
+        if mode == 'quantitative' and not unified:
+            return (
+                f"Choose a colormap for '--reaction-category-colormap' that does not reach "
+                f"{reserved_color}. Without that option, these maps use the colormap given to "
+                f"'--reaction-colormap'. {colormaps}"
+            )
+        # A color per category colors the presence of the categories in place of a colormap.
+        if mode == 'membership' and layer.get('category_colors') is not None:
+            return (
+                f"Remove {reserved_color} from the file given to "
+                f"'{layer['category_colors_flag']}'."
+            )
+        if mode == 'quantitative' or (mode == 'membership' and unified):
+            return (
+                f"Choose a colormap for '--reaction-colormap' that does not reach "
+                f"{reserved_color}. {colormaps}"
+            )
+        return f"Choose a color other than {reserved_color} for '--reaction-color'."
 
     @staticmethod
     def _resolve_count_scale_top(count_scale_max: Union[str, int], observed: int, total: int) -> int:
@@ -6573,14 +7222,16 @@ class Mapper:
         element_type: Literal['reaction', 'compound'],
         color_hexcode: str,
         priority: float,
-        color_priority: dict
+        color_priority: dict,
+        keep_highest_priority: bool = False
     ) -> None:
         """
         Set an entry's graphics colors for a layer and register them in 'color_priority'.
 
         Reaction (ortholog) entries are lines in global and overview maps and boxes or lines in
         standard maps; compound entries are circles. The registered '(fgcolor, bgcolor) -> priority'
-        keeps the entry from being treated as unprioritized and recolored to the background.
+        keeps the entry from being treated as unprioritized and recolored to the background. A color
+        has one priority on a map. Two entries given one color can bring different priorities.
 
         Parameters
         ==========
@@ -6602,7 +7253,19 @@ class Mapper:
         color_priority : dict
             The accumulating '{entry_type: {graphics_type: {(fg, bg): priority}}}' dictionary,
             shared across a map's layers and passed once to 'set_color_priority'.
+
+        keep_highest_priority : bool, False
+            If True, a color that is already registered keeps the higher of its priority and this
+            one. If False, this priority replaces it. The last entry given a color then sets its
+            priority.
         """
+        def _register(entry_type: str, graphics_type: str, colors: Tuple[str, str]) -> None:
+            priorities = color_priority.setdefault(entry_type, {}).setdefault(graphics_type, {})
+            if keep_highest_priority and colors in priorities:
+                priorities[colors] = max(priorities[colors], priority)
+            else:
+                priorities[colors] = priority
+
         if element_type == 'compound':
             for uuid in entry.children['graphics']:
                 graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
@@ -6618,9 +7281,7 @@ class Mapper:
                     graphics.fgcolor = '#000000'
                     graphics.bgcolor = color_hexcode
                     colors = ('#000000', color_hexcode)
-                color_priority.setdefault(
-                    'compound', {}
-                ).setdefault('circle', {})[colors] = priority
+                _register('compound', 'circle', colors)
             return
 
         for uuid in entry.children['graphics']:
@@ -6657,9 +7318,7 @@ class Mapper:
                         f"an ortholog entry of KEGG pathway map {pathway.number} has a graphics "
                         f"element of type '{graphics.type}', which anvi'o cannot color."
                     )
-            color_priority.setdefault(
-                'ortholog', {}
-            ).setdefault(graphics_type, {})[colors] = priority
+            _register('ortholog', graphics_type, colors)
 
     def _warn_unrenderable_compounds(
         self,
@@ -6711,80 +7370,32 @@ class Mapper:
 
     def _quantitative_colorer(
         self,
-        values: Dict[str, float],
+        entry_value: Callable[[kgml.Entry], Union[float, None]],
         norm: Union[mcolors.Normalize, None],
         cmap: mcolors.Colormap,
         reverse_overlay: bool,
-        aggregate,
-        use_reaction_attribute: bool,
         center: Union[float, None] = None
     ):
         """
-        Build a colorer that colors an Entry by the continuous value of its accessions.
+        Build a colorer that colors an Entry by a continuous value.
 
-        See '_draw_map_elements' for the colorer contract. An Entry's value is the 'aggregate' of
-        its accessions' values; None (no accession has a value) leaves the Entry uncolored. The
-        color is 'cmap' sampled at the normalized value, and the priority is that fraction, or its
-        complement under 'reverse_overlay', which 'clip=True' on the norm keeps in [0, 1]. A
-        degenerate range (no norm) leaves every element at the top of the colormap, except on a
-        centered scale, where the one value the range collapsed to is the center itself and so takes
-        the middle color, the very color the centering was asked for.
+        See '_draw_map_elements' for the colorer contract. 'entry_value' gives an Entry's value on
+        this map. It is the element's value in one sample, a summary of samples or groups
+        ('_summarize_entry_values'), or a value rescaled across them ('_normalize_entry_value').
+        None leaves the Entry uncolored. The color is 'cmap' sampled at the normalized value, and
+        the priority is that fraction, or its complement under 'reverse_overlay', which 'clip=True'
+        on the norm keeps in [0, 1]. A degenerate range (no norm) leaves every element at the top of
+        the colormap, except on a centered scale, where the one value the range collapsed to is the
+        center itself and so takes the middle color, the very color the centering was asked for.
         """
         def colorer(entry: kgml.Entry) -> Union[Tuple[str, float], None]:
-            value = self._reduce_entry_value(
-                entry, values, aggregate, use_reaction_attribute=use_reaction_attribute
-            )
+            value = entry_value(entry)
             if value is None:
                 return None
             if norm is None:
                 fraction = 0.5 if center is not None else 1.0
             else:
                 fraction = float(norm(value))
-            priority = (1.0 - fraction) if reverse_overlay else fraction
-            return mcolors.rgb2hex(cmap(fraction)), priority
-        return colorer
-
-    def _normalized_quantitative_colorer(
-        self,
-        category_values: Dict[str, Dict[str, float]],
-        categories: Iterable[str],
-        category: str,
-        norm: Union[mcolors.Normalize, None],
-        cmap: mcolors.Colormap,
-        reverse_overlay: bool,
-        aggregate,
-        normalize,
-        use_reaction_attribute: bool,
-        center: Union[float, None] = None,
-        cache: Union[Dict[Tuple[str, ...], Dict[str, float]], None] = None
-    ):
-        """
-        Build a colorer that colors an Entry by its value in one category, rescaled across all
-        categories.
-
-        See '_draw_map_elements' for the colorer contract, and '_quantitative_colorer' for the plain
-        version of it. The difference is what an Entry's value is: here it is the value of this
-        category rescaled against the same Entry's values in every category
-        ('_normalize_entry_value'), so the colorer reads all of them and keeps the one it draws.
-        That is why the whole of 'category_values' is closed over rather than one category's share
-        of it. An Entry the normalization gives this category no value for is left uncolored, either
-        because the category had nothing to rescale or because the rescaling was undefined.
-
-        Reading every category to draw one of them would have each category's map work out all of
-        the others again, so the 'cache' (the layer's, shared with the range-finding pass and with
-        the colorers of the other categories) holds each answer once.
-        """
-        def colorer(entry: kgml.Entry) -> Union[Tuple[str, float], None]:
-            values = self._normalize_entry_value(
-                entry, category_values, categories, aggregate, normalize,
-                use_reaction_attribute=use_reaction_attribute, cache=cache
-            )
-            if category not in values:
-                return None
-            if norm is None:
-                fraction = 0.5 if center is not None else 1.0
-            else:
-                fraction = float(norm(values[category]))
             priority = (1.0 - fraction) if reverse_overlay else fraction
             return mcolors.rgb2hex(cmap(fraction)), priority
         return colorer
@@ -6898,9 +7509,11 @@ class Mapper:
         across its accessions via 'membership'; with 'group_sources', the qualifying groups (those
         meeting 'group_threshold' among their sources) are used instead. The color and its priority
         are looked up in 'color_priorities' by the count of categories ('category_combos' None) or
-        by the position of their exact combination (by membership), so a color shared by more than
-        one count — which a continuous count scale allows — still carries that count's own priority.
-        An Entry in no source, or, when grouped, in no qualifying group, is left uncolored.
+        by the position of their exact combination (by membership). Two counts can share a color, on
+        a continuous count scale or with a cyclic colormap. A map keeps one priority per color. So
+        the spec of a presence layer asks '_draw_map_elements' to keep the highest priority given to
+        a color on the map ('keep_highest_priority'). An Entry in no source, or, when grouped, in no
+        qualifying group, is left uncolored.
         """
         combo_lookup: Dict[Tuple[str], Tuple[str]] = {}
         if category_combos is not None:
@@ -6957,7 +7570,9 @@ class Mapper:
               than KO IDs.
             - 'entry_keys': the accessions the layer touches. They find the map entries to color. A
               compound layer also uses them to warn about compounds that are drawn only as
-              rectangles. Those cannot be colored.
+              rectangles. Those cannot be colored. Entries are colored in the order of these
+              accessions. A color keeps the priority of the last entry given it. So if the colorer
+              can give a color more than one priority, this order must not change between runs.
             - 'colorer': a function that takes an Entry. It returns a '(color_hexcode, priority)'
               pair, or None to leave the Entry uncolored.
             - 'derived_compound': how a reaction layer colors compounds by the reactions that touch
@@ -6965,6 +7580,17 @@ class Mapper:
               '(mode, colormap)' pair, such as ('average', cmap), ('circular_average', cmap) or
               ('high', None). The mode is passed to 'kgml.Pathway.set_color_priority' as
               'color_associated_compounds'. A compound layer has None here; it is not read.
+
+            A spec can also have these keys:
+            - 'pathway_numbers': the maps on which the layer has a value to color. On any other map
+              the layer colors nothing. It then does not count as matching the map's accessions. A
+              summary of samples or groups can be undefined for every element of a map. This key
+              lets such a map be skipped.
+            - 'keep_highest_priority': True to give each color the highest priority of the entries
+              given that color on the map. Otherwise a color keeps the priority of the last entry
+              given it. A presence layer sets this. Two of its counts can share a color. Its entries
+              are colored in the order of its input, such as the rows of a text file. Without this
+              key, that order could change the map.
 
         output_dir : str
             Path to the output directory in which the map PDF is drawn.
@@ -6979,22 +7605,9 @@ class Mapper:
         """
         pathway = self._get_pathway(pathway_number)
 
-        color_priority: dict = {}
-        found_entries = False
-        for spec in layer_specs:
-            entries = self._find_element_entries(
-                pathway, spec['use_reaction_attribute'], spec['entry_keys']
-            )
-            if entries:
-                found_entries = True
-            for entry in entries:
-                colored = spec['colorer'](entry)
-                if colored is None:
-                    continue
-                color_hexcode, priority = colored
-                self._stage_element_color(
-                    pathway, entry, spec['element_type'], color_hexcode, priority, color_priority
-                )
+        color_priority, found_entries = self._stage_map_elements(
+            pathway_number, pathway, layer_specs
+        )
 
         if not found_entries and not draw_map_lacking_data:
             return False
@@ -7032,6 +7645,63 @@ class Mapper:
 
         self._draw_map(pathway, output_dir)
         return True
+
+    def _stage_map_elements(
+        self,
+        pathway_number: str,
+        pathway: kgml.Pathway,
+        layer_specs: List[dict]
+    ) -> Tuple[dict, bool]:
+        """
+        Stage the colors of every layer on one map, without applying them.
+
+        Each layer's colorer colors the entries the layer matches. Drawing a map
+        ('_draw_map_elements') and checking the compound colors a map derives
+        ('_check_derived_compound_colors') both stage colors here. The check therefore sees the
+        colors the drawing will use.
+
+        Parameters
+        ==========
+        pathway_number : str
+            Numeric ID of the map.
+
+        pathway : kgml.Pathway
+            The map, freshly loaded. Its matched entries are given their colors.
+
+        layer_specs : List[dict]
+            One spec per layer, with the keys '_draw_map_elements' describes. Earlier specs are
+            drawn beneath later ones.
+
+        Returns
+        =======
+        Tuple[dict, bool]
+            Two values:
+            - The '{entry_type: {graphics_type: {(fg, bg): priority}}}' dictionary, to be passed to
+              'kgml.Pathway.set_color_priority'.
+            - Whether any layer matched an entry of the map.
+        """
+        color_priority: dict = {}
+        found_entries = False
+        for spec in layer_specs:
+            if spec.get('pathway_numbers') is not None and (
+                pathway_number not in spec['pathway_numbers']
+            ):
+                continue
+            entries = self._find_element_entries(
+                pathway, spec['use_reaction_attribute'], spec['entry_keys']
+            )
+            if entries:
+                found_entries = True
+            for entry in entries:
+                colored = spec['colorer'](entry)
+                if colored is None:
+                    continue
+                color_hexcode, priority = colored
+                self._stage_element_color(
+                    pathway, entry, spec['element_type'], color_hexcode, priority, color_priority,
+                    keep_highest_priority=spec.get('keep_highest_priority', False)
+                )
+        return color_priority, found_entries
 
     def _draw_map_element_presence(
         self,
@@ -7071,6 +7741,18 @@ class Mapper:
         bool
             True if the map was drawn, False if it was skipped for lacking data.
         """
+        return self._draw_map_elements(
+            pathway_number, self._element_presence_specs(layers), output_dir,
+            draw_map_lacking_data=draw_map_lacking_data
+        )
+
+    def _element_presence_specs(self, layers: List[dict]) -> List[dict]:
+        """
+        Build the layer specs of '_draw_map_element_presence' from its layers.
+
+        Drawing the maps and checking their colors first ('_map_kos_fixed_colors') both build the
+        specs here, so the check sees the colors the drawing will use.
+        """
         specs = []
         for layer in layers:
             # On a reaction-only global/overview map, compounds take the color of the highest-
@@ -7083,9 +7765,7 @@ class Mapper:
                 'colorer': self._single_color_colorer(layer['color_hexcode']),
                 'derived_compound': derived_compound
             })
-        return self._draw_map_elements(
-            pathway_number, specs, output_dir, draw_map_lacking_data=draw_map_lacking_data
-        )
+        return specs
 
     @staticmethod
     def _check_contigs_db(contigs_db: str) -> None:
