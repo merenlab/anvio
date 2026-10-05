@@ -3047,7 +3047,7 @@ class ExternalStructuresFile(object):
         self.input_source = input_source
 
         filesnpaths.is_file_tab_delimited(self.path)
-        self.content = pd.read_csv(self.path, sep='\t')
+        self.content = pd.read_csv(self.path, sep='\t', keep_default_na=False, dtype={'path': str})
 
         if not len(self.content):
             raise ConfigError("Your external-structures file ('%s') has a header but no rows, so there are no "
