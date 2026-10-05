@@ -532,6 +532,7 @@ rule import_percent_of_reads_mapped:
         profiledb=ancient(
             dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/PROFILE.db"
         ),
+        bam=dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.bam",
     output:
         layers_txt=dirs_dict["PROFILE_DIR"]
         + "/{group}/{readset}/layers-additional-data.txt",
@@ -545,14 +546,12 @@ rule import_percent_of_reads_mapped:
     threads: 1
     resources:
         nodes=1,
-    params:
-        bam=dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.bam",
     run:
         import subprocess, shlex
 
         with open(input.total_reads) as f:
             reads_total = int(f.read().strip() or 0)
-        cmd_mapped = f"samtools view -c -F 2308 {shlex.quote(params.bam)}"
+        cmd_mapped = f"samtools view -c -F 2308 {shlex.quote(input.bam)}"
         mapped_out = subprocess.check_output(
             cmd_mapped, shell=True, text=True, stderr=subprocess.PIPE
         )
