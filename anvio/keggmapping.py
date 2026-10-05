@@ -5276,6 +5276,19 @@ class Mapper:
                 return (transfer, cmap.reversed() if layer['reverse_overlay'] else cmap)
             return ('high', None)
 
+        def _sample_accessions(layer, samples):
+            # Return the accessions that the samples have values for. The samples are taken in turn,
+            # and the accessions of each sample in turn. This order must be the same in every run.
+            # Map entries are colored in this order. Each color is stored with a priority. The
+            # priority is the position of the element's value on the color scale. Two close values
+            # can get the same color. The color then keeps the priority of the element colored last.
+            # Priorities set which elements are drawn on top. On global and overview maps, they also
+            # set the colors of compounds. Python orders a set of strings differently in each run,
+            # so a set would not work here.
+            return dict.fromkeys(
+                accession for sample in samples for accession in layer['sample_values'][sample]
+            )
+
         def _unified_spec(layer):
             mode = layer['unified_mode']
             if mode == 'quantitative':
@@ -5285,7 +5298,13 @@ class Mapper:
                     entry_keys, maps = layer['unified_values'], None
                 else:
                     # A summary colors only the maps where some element has a summarized value.
-                    entry_keys = set().union(*layer['sample_values'].values())
+                    # Grouped, the samples are taken group by group. The 'unified' value is built
+                    # from the groups in this order too.
+                    group_samples = layer['group_samples']
+                    samples = layer['sample_values'] if group_samples is None else [
+                        sample for members in group_samples.values() for sample in members
+                    ]
+                    entry_keys = _sample_accessions(layer, samples)
                     maps = layer['_unified_maps']
                 return {
                     'element_type': layer['element_type'],
@@ -5340,10 +5359,7 @@ class Mapper:
                     if layer['group_samples'] is None:
                         entry_keys = layer['sample_values'][category]
                     else:
-                        entry_keys = set().union(*(
-                            layer['sample_values'][sample]
-                            for sample in layer['group_samples'][category]
-                        ))
+                        entry_keys = _sample_accessions(layer, layer['group_samples'][category])
                         maps = layer['_category_maps'][category]
                     if normalize is None:
                         def entry_value(entry):
@@ -7079,7 +7095,9 @@ class Mapper:
               than KO IDs.
             - 'entry_keys': the accessions the layer touches. They find the map entries to color. A
               compound layer also uses them to warn about compounds that are drawn only as
-              rectangles. Those cannot be colored.
+              rectangles. Those cannot be colored. Entries are colored in the order of these
+              accessions. A color keeps the priority of the last entry given it. So if the colorer
+              can give a color more than one priority, this order must not change between runs.
             - 'colorer': a function that takes an Entry. It returns a '(color_hexcode, priority)'
               pair, or None to leave the Entry uncolored.
             - 'derived_compound': how a reaction layer colors compounds by the reactions that touch
