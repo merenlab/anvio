@@ -1843,7 +1843,7 @@ class Mapper:
                 f"its colors run from one end to the other rather than out from a neutral middle, "
                 f"so there is no color there for the centered value to take, and a reader cannot "
                 f"see where the middle of the scale is except from the colorbar. A diverging "
-                f"colormap given to '{colormap_flag}' — e.g., 'RdYlGn', 'RdYlBu_r — is what makes "
+                f"colormap given to '{colormap_flag}' — e.g., 'RdYlGn', 'RdYlBu_r' — is what makes "
                 f"a centered scale legible."
             )
         elif colormap_limits is not None and abs(
