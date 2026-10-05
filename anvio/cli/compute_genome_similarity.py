@@ -25,12 +25,34 @@ __description__ = ("Export sequences from sequence sources and compute a similar
 __resources__ = [("In action in the pangenomic workflow tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/#computing-the-average-nucleotide-identity-for-genomes-and-other-genome-similarity-metrics-too")]
 
 
+PYANI_ONLY_OPTIONS = (
+    '--method',
+    '--min-alignment-fraction',
+    '--significant-alignment-length',
+    '--min-full-percent-identity',
+)
+
+
+def validate_program_options(args, argv=None):
+    """Reject explicitly supplied pyANI options when another program is selected."""
+    argv = sys.argv[1:] if argv is None else argv
+    supplied_options = [
+        option for option in PYANI_ONLY_OPTIONS
+        if option in argv or any(argument.startswith(option + '=') for argument in argv)
+    ]
+
+    if supplied_options and args.program != 'pyANI':
+        raise ConfigError("The following options only apply with `--program pyANI`: %s. "
+                          "Choose pyANI or remove these options." % ', '.join(supplied_options))
+
+
 @terminal.time_program
 def main():
     args = get_args()
     run = terminal.Run()
 
     try:
+        validate_program_options(args)
         d = genomesimilarity.program_class_dictionary[args.program](args)
         d.process()
 

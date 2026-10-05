@@ -35,7 +35,7 @@ With `--reaction-color` or `--original-color`, the single color or original colo
 
 **Value column**
 
-Reactions are colored by the continuous value through a sequential colormap (`--reaction-colormap`, default `plasma_r`). The colorbar is labeled by the value column's header. A cyclic colormap called `clocktime` was defined in anvi'o to show a value column of clock times in hours. Without a `sample` column, give `--reaction-colormap clocktime --reaction-value-limits 0 24`; with a `sample` column, give `--reaction-category-colormap clocktime --reaction-category-value-limits 0 24` to color the maps of individual samples. See %(anvi-draw-kegg-pathways)s.
+Reactions are colored by the continuous value through a sequential colormap (`--reaction-colormap`, default `plasma_r`). The colorbar is labeled by the value column's header. A cyclic colormap called `clocktime` was defined in anvi'o to show a value column of clock times in hours. Without a `sample` column, give `--reaction-colormap clocktime --reaction-value-limits 0 24`; with a `sample` column, give `--reaction-category-colormap clocktime --reaction-category-value-limits 0 24` to color the maps of individual samples. Give `--reaction-value-period 24` as well — each reduction of the values then takes their circular mean, `circular_mean`, so that 23.5 h and 0.5 h average to 0 h, not 12 h. See %(anvi-draw-kegg-pathways)s.
 
 Per-gene values are aggregated to a per-accession value, and a map element's constituent KO and reaction accessions to a per-element value, by `--reaction-gene-aggregation` and `--reaction-accession-aggregation` (both `sum` by default) — these reductions happen within each sample.
 
@@ -55,13 +55,13 @@ There are four distinct reductions, each with its own option, plus one rescaling
 |:--|:--|:--|
 |genes of an accession|`--reaction-gene-aggregation` (an aggregation; `sum` by default)|the genes carrying an accession → that accession's value|
 |accessions of a map element|`--reaction-accession-aggregation` (an aggregation; `sum` by default)|the constituent accessions of a map element → that element's value|
-|across samples|`--reaction-sample-summary` (`count`, `count_continuous`, `membership`, or an aggregation)|a set of samples → one continuous value or one presence value per accession|
-|across groups|`--reaction-group-summary` (`count`, `count_continuous`, `membership`, or an aggregation)|the groups of a %(groups-txt)s → one continuous value or one presence value per accession|
+|across samples|`--reaction-sample-summary` (`count`, `count_continuous`, `membership`, or an aggregation)|a set of samples → one continuous value or one presence value per map element|
+|across groups|`--reaction-group-summary` (`count`, `count_continuous`, `membership`, or an aggregation)|the groups of a %(groups-txt)s → one continuous value or one presence value per map element|
 |each sample's or group's value for an element|`--reaction-element-normalization` (a normalization; none by default)|an element's value in one sample or group → that value rescaled against the element's values across all samples or groups|
 
-An **aggregation** is `sum` (default), `mean`, `max`, `min`, `median`, `std` — or any other unsuggested pandas aggregation that reduces a series of numbers to one number, such as `var` or `sem`. Names that transform rather than reduce (`cumsum`) or that only a grouping offers (`first`) are rejected. Where an aggregation is undefined for the values available, as `std` is for a single value, the affected elements are left uncolored and a warning says how many accessions are affected.
+An **aggregation** is `sum` (default), `mean`, `max`, `min`, `median`, `std` — or any other unsuggested pandas aggregation that reduces a series of numbers to one number, such as `var` or `sem`. Names that transform rather than reduce (`cumsum`) or that only a grouping offers (`first`) are rejected. Where an aggregation is undefined for the values available, as `std` is for a single value, the affected elements are left uncolored. `circular_mean` averages values that repeat after a period, such as clock times, and requires `--reaction-value-period`.
 
-A summary reduces only the samples (or groups) that actually contain an accession: a sample with no row for an accession is treated as not having observed it, so `mean` over three samples where only one lists the accession is that one sample's value.
+A summary pools the values of a **map element**, not of an accession. An element's value in a sample is the aggregate of its accessions in that sample. Without `--reaction-element-normalization`, this is the value that the sample's own map draws. So the sample summary pools what the maps of the individual samples show. With groups, the group summary then pools the values of the groups.
 
 The sample summary drives the `unified` map when there are no groups, and each per-group map (produced when using `--draw-individual-files` or `--draw-grid`) when there are. The group summary drives the `unified` map when there are groups.
 
