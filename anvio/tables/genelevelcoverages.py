@@ -136,42 +136,67 @@ class TableForGeneLevelCoverages(Table):
 
     def read(self):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        if not database.get_meta_value('gene_level_coverages_stored'):
-            # we don't have any gene-level coverage data stored in this database
-            database.disconnect()
-            return {}
+        progress_started = False
+        try:
+            if not database.get_meta_value('gene_level_coverages_stored'):
+                # we don't have any gene-level coverage data stored in this database
+                return {}
 
-        self.check_split_names()
-        self.check_params()
+            self.check_split_names()
+            self.check_params()
 
-        self.progress.new("Database bleep bloop")
-        self.progress.update("Recovering %s stats from the genes database..." % self.mode)
+            self.progress.new("Database bleep bloop")
+            progress_started = True
+            self.progress.update("Recovering %s stats from the genes database..." % self.mode)
 
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        raw_data = database.get_table_as_dict(self.table_name)
-        data = {}
+            raw_data = database.get_table_as_dict(self.table_name)
+            data = {}
 
-        # here we are converting the data as it is stored in the database into something that
-        # the rest of anvi'o expects to see how gene-level coverage data should look like
-        for entry in raw_data.values():
-            gene_callers_id, sample_name = entry['gene_callers_id'], entry['sample_name']
+            # here we are converting the data as it is stored in the database into something that
+            # the rest of anvi'o expects to see how gene-level coverage data should look like
+            for entry in raw_data.values():
+                gene_callers_id, sample_name = entry['gene_callers_id'], entry['sample_name']
 
-            if gene_callers_id not in data:
-                data[gene_callers_id] = {}
+                if gene_callers_id not in data:
+                    data[gene_callers_id] = {}
 
-            if sample_name not in data[gene_callers_id]:
-                data[gene_callers_id][sample_name] = entry
+                if sample_name not in data[gene_callers_id]:
+                    data[gene_callers_id][sample_name] = entry
 
-            g, n = data[gene_callers_id][sample_name]['gene_coverage_values_per_nt'], data[gene_callers_id][sample_name]['gene_coverage_values_per_nt']
-            data[gene_callers_id][sample_name]['gene_coverage_values_per_nt'] = utils.convert_binary_blob_to_numpy_array(g, 'uint16')
+                g = data[gene_callers_id][sample_name]['gene_coverage_values_per_nt']
+                if self.mode == 'INSEQ':
+                    # INSEQ records insertion statistics and do not store outlier masks.
+                    n = None
+                else:
+                    n = data[gene_callers_id][sample_name]['non_outlier_positions']
+                data[gene_callers_id][sample_name]['gene_coverage_values_per_nt'] = utils.convert_binary_blob_to_numpy_array(g, 'uint16')
 
-            if n:
-                data[gene_callers_id][sample_name]['non_outlier_positions'] = utils.convert_binary_blob_to_numpy_array(n, 'uint16')
-            else:
-                data[gene_callers_id][sample_name]['non_outlier_positions'] = None
+                if n:
+                    # Coverage length distinguishes historical uint16 from current bool masks.
+                    mask_bytes = utils.convert_binary_blob_to_numpy_array(n, 'uint8')
+                    expected_length = len(data[gene_callers_id][sample_name]['gene_coverage_values_per_nt'])
+                    if len(mask_bytes) == expected_length:
+                        mask = mask_bytes.astype(bool)
+                    elif len(mask_bytes) == 2 * expected_length:
+                        historical_mask = mask_bytes.view(np.uint16)
+                        if np.any(historical_mask > 1):
+                            raise ConfigError(f"Historical non-outlier mask for gene {gene_callers_id} in sample {sample_name} contains values "
+                                              f"other than zero and one.")
+                        mask = historical_mask.astype(bool)
+                    else:
+                        raise ConfigError(f"The non-outlier mask for gene {gene_callers_id} in sample {sample_name} has {len(mask_bytes)} bytes, "
+                                          f"but its coverage has {expected_length} positions. Expected a bool or historical "
+                                          f"uint16 mask of the same length.")
+                    data[gene_callers_id][sample_name]['non_outlier_positions'] = mask
+                else:
+                    data[gene_callers_id][sample_name]['non_outlier_positions'] = None
+        finally:
+            try:
+                database.disconnect()
+            finally:
+                if progress_started:
+                    self.progress.end()
 
-        database.disconnect()
-        self.progress.end()
 
         self.run.warning(None, header="GENE LEVEL COVERAGE STATS RECOVERED (yay)", lc="green")
         self.run.info("Mode", self.mode, mc="red")
@@ -192,8 +217,10 @@ class TableForGeneLevelCoverages(Table):
 
                 d = []
                 for h in self.table_structure:
-                    if h in ['gene_coverage_values_per_nt', 'non_outlier_positions']:
-                        d.append(utils.convert_numpy_array_to_binary_blob(np.array(entry[h]), 'uint16'))
+                    if h == 'gene_coverage_values_per_nt':
+                        d.append(utils.convert_numpy_array_to_binary_blob(np.array(entry[h], dtype='uint16')))
+                    elif h == 'non_outlier_positions':
+                        d.append(utils.convert_numpy_array_to_binary_blob(np.array(entry[h], dtype=bool)))
                     else:
                         d.append(entry[h])
 
