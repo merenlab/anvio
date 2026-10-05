@@ -4,7 +4,7 @@ import os
 import sys
 import json
 import copy
-import snakemake
+from snakemake.cli import main as snakemake_main
 
 import anvio
 import anvio.utils as u
@@ -28,6 +28,7 @@ from anvio.workflows.paths import (
     get_path_to_workflows_dir as get_path_to_workflows_dir,
     get_workflow_snake_file_path as get_workflow_snake_file_path,
     get_workflow_rule_file_path as get_workflow_rule_file_path,
+    get_entry_snakefile_path as get_entry_snakefile_path,
 )
 from anvio.workflows.registry import get_workflow_module_dict as get_workflow_module_dict
 from anvio.workflows.snakemake_utils import (
@@ -405,14 +406,17 @@ class WorkflowSuperClass:
         original_manifest_env_var = os.environ.get('ANVIO_WORKFLOW_MANIFEST_PATH')
         workflow_name = getattr(self.args, 'workflow', self.name)
         if not self.list_dependencies:
+            from anvio.workflows.logger import register_workflow_logger
             from anvio.workflows.scripts.manifest import initialize_manifest
+
+            register_workflow_logger()
 
             workflow_manifest_path = os.path.join(self.dirs_dict["LOGS_DIR"], f"{workflow_name}-workflow-manifest.tsv")
             initialize_manifest(workflow_manifest_path)
             os.environ['ANVIO_WORKFLOW_MANIFEST_PATH'] = workflow_manifest_path
             self.run.info('Workflow manifest', workflow_manifest_path)
 
-        # snakemake.main() accepts an `argv` parameter, but then the code has mixed responses to
+        # Snakemake's CLI main accepts an `argv` parameter, but then the code has mixed responses to
         # that, and at places continues to read from sys.argv in a hardcoded manner. so we have to
         # overwrite our argv here.
         original_sys_argv = copy.deepcopy(sys.argv)
@@ -424,8 +428,7 @@ class WorkflowSuperClass:
                     self.args.config_file]
 
         if workflow_manifest_path:
-            sys.argv.extend(['--log-handler-script',
-                             os.path.join(get_path_to_workflows_dir(), 'scripts', 'snakemake_log_handler.py')])
+            sys.argv.extend(['--logger', 'anvio'])
 
         # if any enabled rule uses a conda YAML, add '--use-conda' so Snakemake builds/activates it
         # (see config_requires_use_conda() for the exact rule).
@@ -441,7 +444,7 @@ class WorkflowSuperClass:
             else:
                 sys.argv.extend(['--dryrun', '--printshellcmds'])
             try:
-                snakemake.main()
+                snakemake_main()
                 sys.exit(0)
             finally:
                 sys.argv = original_sys_argv
@@ -466,7 +469,7 @@ class WorkflowSuperClass:
             else:
                 sys.argv.extend(['-p'])
             try:
-                snakemake.main()
+                snakemake_main()
             finally:
                 # restore the `sys.argv` to the original for the sake of sakity (totally made up word,
                 # but you already know what it means. you're welcome.)
