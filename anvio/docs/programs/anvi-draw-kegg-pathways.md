@@ -632,6 +632,18 @@ anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
 
 The `unified` map then uses the sequential `plasma_r`, unless `--reaction-colormap` names another sequential colormap. A cyclic colormap is refused there, since it would give the smallest and the largest spread the same color. The maps of the individual samples still show each sample's times in `clocktime`. With groups, give `angular_deviation` to `--reaction-group-summary` instead. It then measures how far the groups' circular means are spread apart, and needs at least 3 groups.
 
+To show when each sample's times fall relative to the others, normalize them with `difference_from_circular_mean`. Each element on a sample's map then shows its offset from the element's circular mean across the samples. The offset is taken the shorter way around the circle, from -12 h to 12 h, and -12 h and 12 h are the same time. A sample that peaks 3 h after the others gets +3 h, and one that peaks 3 h before them gets -3 h. With a period, this is the only normalization accepted, since the others compare values on a line.
+
+{{ codestart }}
+anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
+                        --reaction-value-period 24 \
+                        --reaction-element-normalization difference_from_circular_mean \
+                        --draw-individual-files \
+                        -o output_dir
+{{ codestop }}
+
+The scale of offsets is fixed from -12 to 12, with 0 in the middle. It takes `clocktime` unless `--reaction-category-colormap` names another colormap. Here 0 takes the light yellow middle of `clocktime`. Offsets grow darker the farther they are from 0, through the morning colors for earlier times and the afternoon colors for later ones. Both ends are the same purple. Limits other than `-12 12` are refused, and so are centers. An element found in a single sample gets an offset of 0, as with `difference_from_mean`. An element whose times cancel out, such as 6 h and 18 h, has no circular mean. It is left uncolored, and a warning says how many there are. Large offsets often come from elements whose samples do not agree at all. A `unified` map of `angular_deviation` shows where that is the case.
+
 `clocktime` can also be given to a colormap option without a period: `--reaction-category-colormap` for the maps of individual samples, or `--reaction-colormap` for a file without a `sample` column. The scale then needs limits of 0 and 24, such as `--reaction-category-value-limits 0 24`. Without the limits, the scale would run from the lowest map element value to the highest, and the colors would not match the hours described above. Without a period, the values are not averaged on a circle.
 
 Do not trim `clocktime` with the two decimals that a colormap option accepts, as different colors would appear at each end, breaking the cyclic nature of the colormap.
@@ -666,6 +678,7 @@ The following normalizations encoded by anvi'o can be provided to `--*-element-n
 |`rank`|the element's rank among the samples, 1 being the sample with the least, ties sharing the average rank|
 |`fraction_of_max`|`value / max`, running to 1 in the sample with the most|
 |`fraction_of_total`|`value / total`, the sample's share of the element value summed across samples|
+|`difference_from_circular_mean`|the signed offset from the element's circular mean, the shorter way around the circle; only with `--reaction-value-period`/`--compound-value-period` (see [Color clock times with a cyclic colormap](#color-clock-times-with-a-cyclic-colormap))|
 
 Any other name given to `--*-element-normalization` is taken to be a **pandas Series method** that transforms each value into a new value, such as `abs`. Method names are checked immediately to catch errors in the form of the function, such as aggregation functions that reduce a set of values to a single number and would work with `--*-sample-summary` instead, and functions that transform values on the order of the samples (`cumsum`, `diff`, `ffill`), which are refused since sample order is an artifact of how samples happen to be named rather than inherent to the data.
 
