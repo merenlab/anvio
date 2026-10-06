@@ -85,7 +85,7 @@ With a `sample` column and a value column, each compound element in a sample map
 
 This cannot be worked out in the file itself before analyzing the maps, since each element in each map is related to one or more accessions — the same accession factors into different rescaled element values on each map.
 
-anvi'o encodes a number of normalizations with names recognized as an argument: `relative_to_mean`, `relative_to_median`, `difference_from_mean`, `difference_from_median`, `log2_ratio_to_mean`, `log2_ratio_to_median`, `z_score`, `rank`, `fraction_of_max`, and `fraction_of_total`. A different name is taken to be a pandas Series method that transforms each value into a new value, such as `abs`.
+anvi'o encodes a number of normalizations with names recognized as an argument: `relative_to_mean`, `relative_to_median`, `difference_from_mean`, `difference_from_median`, `log2_ratio_to_mean`, `log2_ratio_to_median`, `z_score`, `rank`, `fraction_of_max`, and `fraction_of_total`. With `--compound-value-period`, the only normalization is `difference_from_circular_mean`, the signed offset from the element's circular mean. A different name is taken to be a pandas Series method that transforms each value into a new value, such as `abs`.
 
 Only the maps of individual samples or groups are rescaled, so element normalization needs `--draw-individual-files` and/or `--draw-grid`. The `unified` map summarizes the unnormalized values, so is unaffected by normalization.
 
