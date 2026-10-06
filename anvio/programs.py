@@ -16,7 +16,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.authors import AnvioAuthors
-from anvio.docs import ANVIO_ARTIFACTS, ANVIO_WORKFLOWS, THIRD_PARTY_PROGRAMS
+from anvio.programsdata import ANVIO_ARTIFACTS, ANVIO_WORKFLOWS, THIRD_PARTY_PROGRAMS
 from anvio.summaryhtml import SummaryHTMLOutput
 
 
@@ -585,7 +585,7 @@ class Artifact:
             raise ConfigError("Ehem. Anvi'o does not know about artifact '%s'. There are two ways this could happen: "
                               "one, you've made a typo (easy to fix), two, you've just updated __provides__, __requires__, "
                               "__can_use__, or __can_provide__ in an anvi'o program with an artifact that does not exist "
-                              "and have not yet updated `anvio/docs/__init__.py` (which is also easy to fix). Please "
+                              "and have not yet updated `anvio/programsdata.py` (which is also easy to fix). Please "
                               "consider also adding a description of this artifact under anvio/docs/artifacts while you "
                               "are at it :)" % artifact_id)
 
@@ -664,7 +664,7 @@ class AnvioWorkflows:
                                           f"description for third-party programs that are used from within, "
                                           f"however, there is no entry for this program in the variable "
                                           f"'THIRD_PARTY_PROGRAMS' in the file "
-                                          f"'anvio/docs/__init__.py'. Please add a necessary description for "
+                                          f"'anvio/programsdata.py'. Please add a necessary description for "
                                           f"this program into that dict, and try this again.")
 
             # learn about the description of the workflow
@@ -694,7 +694,7 @@ class AnvioWorkflows:
                     raise ConfigError(f"The artifact '{artifact_name}' that is listed as one of the artifacts the workflow "
                                       f"{workflow} accepts does not seem to be an artifact anvi'o knows about :/ If this is "
                                       f"a new artifact for workflow, please first describe it in the dictionary `ANVIO_ARTIFACTS` "
-                                      f"in anvio/docs/__init__.py")
+                                      f"in anvio/programsdata.py")
 
         # sanity check of author names
         author_names_appear_in_workflows = set([])
@@ -704,7 +704,7 @@ class AnvioWorkflows:
             self.run.warning(None, header="SOME SNAFU TOOK PLACE [poop emoji]")
             self.run.info("Author names anvi'o knows about", ', '.join(self.authors), mc='green')
             self.run.info("Author names anvi'o does not know about", ', '.join(author_names_missing_in_authors_file), mc='red')
-            raise ConfigError("Some author names in anvi'o workflows defined under `anvio/docs/__init__.py` do not "
+            raise ConfigError("Some author names in anvi'o workflows defined under `anvio/programsdata.py` do not "
                               "appear in the DEVELOPERS.yaml file. If there is no typo here, please update the "
                               "contents of the DEVELOPERS.yaml file with the GitHub username of the developer you "
                               "wish to associate with a workflow. The problematic authors are shown above.")
@@ -713,7 +713,7 @@ class AnvioWorkflows:
         workflows_missing_authors = set([])
         [workflows_missing_authors.add(w) for w in self.workflows if not len(self.workflows[w]['authors'])]
         if len(workflows_missing_authors):
-            raise ConfigError(f"One or more workflows defined under `anvio/docs/__init__.py` do not have "
+            raise ConfigError(f"One or more workflows defined under `anvio/programsdata.py` do not have "
                               f"any authors. Every workflow must have at least one :/ Here is the list of those that "
                               f"are missing any authors: {', '.join(workflows_missing_authors)}")
 
@@ -933,7 +933,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         except KeyError as e:
             self.progress.end()
             raise ConfigError("One of the variables, %s, in '%s' is not yet described anywhere :/ If it is not a typo but "
-                              "a new artifact, you can add it to the file `anvio/docs/__init__.py`. After which everything "
+                              "a new artifact, you can add it to the file `anvio/programsdata.py`. After which everything "
                               "should work. But please also remember to update provides / requires statements of programs "
                               "for everything to be linked together." % (e, file_path))
         except Exception as e:
