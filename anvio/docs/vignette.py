@@ -13,10 +13,6 @@ from anvio.programs import AnvioPrograms, parse_help_output
 from anvio.summaryhtml import SummaryHTMLOutput
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-
-
 class ProgramsVignette(AnvioPrograms):
     def __init__(
         self,
@@ -25,12 +21,13 @@ class ProgramsVignette(AnvioPrograms):
         p: terminal.Progress = terminal.Progress(),
     ) -> None:
         self.args = args
-        self.run = r
-        self.progress = p
 
         self.programs_to_skip = ["anvi-script-gen-programs-vignette"]
 
-        AnvioPrograms.__init__(self, args, r=self.run, p=self.progress)
+        AnvioPrograms.__init__(self, args, r=r, p=p)
+        # Author initialization in the base class replaces the logger.
+        self.run = r
+        self.progress = p
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_file_path = A("output_file")
@@ -44,12 +41,12 @@ class ProgramsVignette(AnvioPrograms):
             program = self.programs[program_name]
 
             if program_name in self.programs_to_skip:
-                run.warning(
+                self.run.warning(
                     f"Someone doesn't want {program.name} to be in the output :/ Fine. Skipping."
                 )
 
-            progress.new("Bleep bloop")
-            progress.update(f"{program_name} ({i + 1} of {len(self.programs)})")
+            self.progress.new("Bleep bloop")
+            self.progress.update(f"{program_name} ({i + 1} of {len(self.programs)})")
 
             output = utils.run_command_STDIN(
                 f"{program.program_path} --help --quiet", log_file, ""
@@ -61,8 +58,8 @@ class ProgramsVignette(AnvioPrograms):
                 try:
                     usage, params, output = parse_help_output(output)
                 except Exception as e:
-                    progress.end()
-                    run.warning(
+                    self.progress.end()
+                    self.run.warning(
                         f"The program '{program.name}' does not seem to have the expected help menu output. Skipping to the next. "
                         f"For the curious, this was the error message: '{str(e).strip()}'"
                     )
@@ -76,7 +73,7 @@ class ProgramsVignette(AnvioPrograms):
                 "resources": program.meta_info["resources"]["value"],
             }
 
-            progress.end()
+            self.progress.end()
 
         os.remove(log_file)
 
@@ -99,11 +96,11 @@ class ProgramsVignette(AnvioPrograms):
         }
 
         if anvio.DEBUG:
-            run.warning(None, "THE OUTPUT DICT")
+            self.run.warning(None, "THE OUTPUT DICT")
             print(json.dumps(d, indent=2))
 
         open(self.output_file_path, "w").write(
-            SummaryHTMLOutput(vignette, r=run, p=progress).render()
+            SummaryHTMLOutput(vignette, r=self.run, p=self.progress).render()
         )
 
-        run.info("Output file", os.path.abspath(self.output_file_path))
+        self.run.info("Output file", os.path.abspath(self.output_file_path))
