@@ -1470,12 +1470,15 @@ class Mapper:
         """
         if not undefined:
             return
-        examples = ', '.join(sorted(undefined)[:5])
+        # Example accessions are given only for a circular mean, as in '_warn_undefined_summaries'.
+        examples = ''
+        if aggregation in CIRCULAR_AGGREGATIONS:
+            examples = f", including these: {', '.join(sorted(undefined)[:5])}"
         self.run.warning(
             f"Reducing the values of the text file at '{path}' with '{aggregation}' was undefined "
-            f"for {len(undefined)} accession(s), including these: {examples}. "
-            f"{Mapper._undefined_cause(aggregation)} These accessions are treated as having no "
-            f"value, so the map elements that depend on them are left uncolored."
+            f"for {len(undefined)} accession(s){examples}. {Mapper._undefined_cause(aggregation)} "
+            f"These accessions are treated as having no value, so the map elements that depend on "
+            f"them are left uncolored."
         )
 
     @staticmethod
@@ -1500,11 +1503,6 @@ class Mapper:
             return (
                 "A circular mean is undefined where the values cancel out, such as 6 and 18 with a "
                 "period of 24."
-            )
-        if aggregation in CIRCULAR_SPREADS:
-            return (
-                f"An angular deviation needs at least {MIN_ANGULAR_DEVIATION_VALUES} values. The "
-                f"spread of two values is only the gap between them."
             )
         return (
             f"This happens when {noun} needs more values than are available, as the standard "
@@ -1568,13 +1566,30 @@ class Mapper:
         for undefined, flag, summary, where, consequence in reports:
             if not undefined:
                 continue
-            examples = ', '.join(sorted({
-                kegg_id for key in undefined for kegg_id in key if kegg_id in layer['accessions']
-            })[:5])
+            # Example accessions are given only for a circular mean. It is undefined where the
+            # values of an element cancel out, so the examples name elements worth checking. Other
+            # summaries, such as 'std', are undefined where an element has too few values. Their
+            # examples would only be the first accessions in alphabetical order. An angular
+            # deviation needs a fixed number of values, so its warning states that number.
+            if summary in CIRCULAR_SPREADS:
+                self.run.warning(
+                    f"The summary '{flag} {summary}' needs values from at least "
+                    f"{MIN_ANGULAR_DEVIATION_VALUES} {'groups' if grouped else 'samples'}. "
+                    f"{len(undefined)} distinct map element(s) have fewer, so they are left "
+                    f"uncolored on the 'unified' map. The spread of two values is only the gap "
+                    f"between them."
+                )
+                continue
+            examples = ''
+            if summary in CIRCULAR_AGGREGATIONS:
+                examples = ', '.join(sorted({
+                    kegg_id for key in undefined for kegg_id in key
+                    if kegg_id in layer['accessions']
+                })[:5])
+                examples = f"Their accessions in the file include these: {examples}. "
             self.run.warning(
-                f"The summary '{flag} {summary}' was undefined{where} for {len(undefined)} map "
-                f"element(s). Elements with the same accessions count once. Their accessions in "
-                f"the file include these: {examples}. "
+                f"The summary '{flag} {summary}' was undefined{where} for {len(undefined)} "
+                f"distinct map element(s). {examples}"
                 f"{Mapper._undefined_cause(summary, 'a summary')} {consequence}"
             )
 
@@ -5681,8 +5696,8 @@ class Mapper:
                         })[:5])
                         self.run.warning(
                             f"'--{layer['element_type']}-element-normalization' was undefined for "
-                            f"{len(undefined)} map element(s). Elements with the same accessions "
-                            f"count once. Their accessions in the file include these: {examples}. "
+                            f"{len(undefined)} distinct map element(s). Their accessions in the "
+                            f"file include these: {examples}. "
                             f"{self._undefined_cause('circular_mean')} These elements have no "
                             f"circular mean to be offset from. They are left uncolored on the maps "
                             f"of the individual {category_noun}s."

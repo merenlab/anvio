@@ -610,7 +610,7 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
     --reaction-value-period 24 --reaction-sample-summary angular_deviation \
     --pathway-numbers $pathway_numbers --draw-individual-files \
     --no-progress 2>&1 | tee draw_txt_angular_deviation.log
-if ! tr '\n' ' ' < draw_txt_angular_deviation.log | grep -q "needs at least 3 values"
+if ! tr '\n' ' ' < draw_txt_angular_deviation.log | grep -q "least 3 samples"
 then
     echo "ERROR: an angular deviation of fewer than 3 clock times did not warn."
     exit 1
