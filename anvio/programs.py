@@ -934,8 +934,8 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         for artifact_name, artifact in ANVIO_ARTIFACTS.items():
             d['artifacts'][artifact_name] = {'id': f'artifact:{artifact_name}', **artifact, 'description': R(os.path.join(anvio.DOCS_PATH, f'artifacts/{artifact_name}.md'))}
 
-        for workflow_name, workflow in ANVIO_WORKFLOWS.items():
-            d['workflows'][workflow_name] = {**workflow, 'description': R(os.path.join(anvio.DOCS_PATH, f'workflows/{workflow_name}.md'))}
+        for workflow_name, workflow in self.workflows.items():
+            d['workflows'][workflow_name] = {'id': f'workflow:{workflow_name}', **workflow, 'description': R(os.path.join(anvio.DOCS_PATH, f'workflows/{workflow_name}.md'))}
 
         with open(os.path.join(self.output_directory_path, 'documentation.json'), 'w') as output:
             json.dump(d, output, indent=2)
