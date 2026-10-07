@@ -13,7 +13,7 @@ from anvio.programs import AnvioPrograms, parse_help_output
 from anvio.summaryhtml import SummaryHTMLOutput
 
 
-class ProgramsVignette(AnvioPrograms):
+class ProgramsVignette:
     def __init__(
         self,
         args: Namespace,
@@ -24,21 +24,21 @@ class ProgramsVignette(AnvioPrograms):
 
         self.programs_to_skip = ["anvi-script-gen-programs-vignette"]
 
-        AnvioPrograms.__init__(self, args, r=r, p=p)
-        # Author initialization in the base class replaces the logger.
         self.run = r
         self.progress = p
+        self.anvio_programs = AnvioPrograms(args, r=r, p=p)
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_file_path = A("output_file")
 
     def generate(self) -> None:
-        self.init_programs(okay_if_no_meta=True, quiet=True)
+        self.anvio_programs.init_programs(okay_if_no_meta=True, quiet=True)
+        programs = self.anvio_programs.programs
 
         d = {}
         log_file = filesnpaths.get_temp_file_path()
-        for i, program_name in enumerate(self.programs):
-            program = self.programs[program_name]
+        for i, program_name in enumerate(programs):
+            program = programs[program_name]
 
             if program_name in self.programs_to_skip:
                 self.run.warning(
@@ -46,7 +46,7 @@ class ProgramsVignette(AnvioPrograms):
                 )
 
             self.progress.new("Bleep bloop")
-            self.progress.update(f"{program_name} ({i + 1} of {len(self.programs)})")
+            self.progress.update(f"{program_name} ({i + 1} of {len(programs)})")
 
             output = utils.run_command_STDIN(
                 f"{program.program_path} --help --quiet", log_file, ""
