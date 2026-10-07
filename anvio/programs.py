@@ -918,7 +918,8 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
 
         for program_name, program in self.programs.items():
             m = program.meta_info
-            d['programs'][program_name] = {'description': m['description']['value'],
+            d['programs'][program_name] = {'id': f'program:{program_name}',
+                                           'description': m['description']['value'],
                                            'authors': m['authors']['value'],
                                            'tags': m['tags']['value'],
                                            'resources': m['resources']['value'],
@@ -931,7 +932,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
                                            'usage': R(os.path.join(anvio.DOCS_PATH, f'programs/{program_name}.md'))}
 
         for artifact_name, artifact in ANVIO_ARTIFACTS.items():
-            d['artifacts'][artifact_name] = {**artifact, 'description': R(os.path.join(anvio.DOCS_PATH, f'artifacts/{artifact_name}.md'))}
+            d['artifacts'][artifact_name] = {'id': f'artifact:{artifact_name}', **artifact, 'description': R(os.path.join(anvio.DOCS_PATH, f'artifacts/{artifact_name}.md'))}
 
         for workflow_name, workflow in ANVIO_WORKFLOWS.items():
             d['workflows'][workflow_name] = {**workflow, 'description': R(os.path.join(anvio.DOCS_PATH, f'workflows/{workflow_name}.md'))}
