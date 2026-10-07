@@ -884,6 +884,10 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
 
 
     def generate(self):
+        # serialize the documentation first so page generators can modify
+        # program / artifact dictionaries freely for their templates:
+        self.export_documentation_json()
+
         self.copy_images()
 
         self.generate_pages_for_artifacts()
@@ -893,6 +897,45 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         self.generate_pages_for_workflows()
 
         self.generate_index_page()
+
+
+    def export_documentation_json(self):
+        """Stores all anvi'o self-description data as a single JSON file next to the help pages."""
+
+        # we read markdown files as they are, without converting anvi'o variables to website links
+        R = lambda x: open(x).read() if os.path.exists(x) else None
+
+        d = {'meta': {'version': anvio.anvio_version,
+                      'codename': anvio.anvio_codename,
+                      'versions': dict(anvio.get_version_tuples()),
+                      'date': utils.get_date()},
+             'programs': {},
+             'artifacts': {},
+             'workflows': {},
+             'third_party_programs': THIRD_PARTY_PROGRAMS}
+
+        for program_name, program in self.programs.items():
+            m = program.meta_info
+            d['programs'][program_name] = {'description': m['description']['value'],
+                                           'authors': m['authors']['value'],
+                                           'tags': m['tags']['value'],
+                                           'resources': m['resources']['value'],
+                                           'anvio_workflows': m['anvio_workflows']['value'],
+                                           'requires': [a.id for a in m['requires']['value']],
+                                           'provides': [a.id for a in m['provides']['value']],
+                                           'can_use': [a.id for a in m['can_use']['value']],
+                                           'can_provide': [a.id for a in m['can_provide']['value']],
+                                           'source_path': os.path.relpath(program.program_path, self.repo_root).replace(os.sep, '/'),
+                                           'usage': R(os.path.join(anvio.DOCS_PATH, f'programs/{program_name}.md'))}
+
+        for artifact_name, artifact in ANVIO_ARTIFACTS.items():
+            d['artifacts'][artifact_name] = {**artifact, 'description': R(os.path.join(anvio.DOCS_PATH, f'artifacts/{artifact_name}.md'))}
+
+        for workflow_name, workflow in ANVIO_WORKFLOWS.items():
+            d['workflows'][workflow_name] = {**workflow, 'description': R(os.path.join(anvio.DOCS_PATH, f'workflows/{workflow_name}.md'))}
+
+        with open(os.path.join(self.output_directory_path, 'documentation.json'), 'w') as output:
+            json.dump(d, output, indent=2)
 
 
     def copy_images(self):
