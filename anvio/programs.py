@@ -905,7 +905,9 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         # we read markdown files as they are, without converting anvi'o variables to website links
         R = lambda x: open(x).read() if os.path.exists(x) else None
 
-        d = {'meta': {'version': anvio.anvio_version,
+        d = {'meta': {'schema_version': 1,
+                      'docs_version': anvio.anvio_version_for_help_docs,
+                      'version': anvio.anvio_version,
                       'codename': anvio.anvio_codename,
                       'versions': dict(anvio.get_version_tuples()),
                       'date': utils.get_date()},
