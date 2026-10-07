@@ -886,7 +886,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
     def generate(self):
         # serialize the documentation first so page generators can modify
         # program / artifact dictionaries freely for their templates:
-        self.export_documentation_json()
+        self.export_help_json()
 
         self.copy_images()
 
@@ -899,7 +899,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         self.generate_index_page()
 
 
-    def export_documentation_json(self):
+    def export_help_json(self):
         """Stores all anvi'o self-description data as a single JSON file next to the help pages."""
 
         # we read markdown files as they are, without converting anvi'o variables to website links
@@ -937,7 +937,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         for workflow_name, workflow in self.workflows.items():
             d['workflows'][workflow_name] = {'id': f'workflow:{workflow_name}', **workflow, 'description': R(os.path.join(anvio.DOCS_PATH, f'workflows/{workflow_name}.md'))}
 
-        with open(os.path.join(self.output_directory_path, 'documentation.json'), 'w') as output:
+        with open(os.path.join(self.output_directory_path, 'anvio-help.json'), 'w') as output:
             json.dump(d, output, indent=2)
 
 
