@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 
 import sys
+from pathlib import Path
 
 import anvio
-import anvio.programs as programs
 import anvio.terminal as terminal
 
 from anvio.argparse import ArgumentParser
+from anvio.docs import AnvioDocs, DocumentationData, HelpPagesRenderer
 from anvio.errors import ConfigError, FilesNPathsError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -22,8 +23,18 @@ def main():
     args = get_args()
 
     try:
-        docs = programs.AnvioDocs(args)
-        docs.generate()
+        if args.from_data:
+            path = Path(args.from_data)
+            docs_dataset = DocumentationData.load(path)
+        else:
+            docs = AnvioDocs(args)
+            docs_dataset = docs.collect()
+
+        HelpPagesRenderer(
+            dataset=docs_dataset,
+            output_directory=Path(args.output_dir or 'ANVIO-HELP'),
+        ).generate()
+
     except ConfigError as e:
         print(e)
         sys.exit(-1)
@@ -36,6 +47,9 @@ def get_args():
     parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+    parser.add_argument('--from-data', metavar='DOCUMENTATION_JSON',
+                        help="Rebuild help pages from an exported documentation.json and its adjacent images directory, "
+                             "without reading CLI metadata or documentation sources. Use a separate output directory.")
 
     return parser.get_args(parser)
 
