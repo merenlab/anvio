@@ -51,7 +51,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         self.init_workflows()
 
         if not len(self.programs):
-            raise ConfigError("AnvioDocs is asked ot process the usage statements of some programs, but the "
+            raise ConfigError("AnvioDocs is asked to process the usage statements of some programs, but the "
                               "`self.programs` dictionary seems to be empty :/")
 
         self.images_source_directory = os.path.join(os.path.dirname(anvio.__file__), 'docs/images/png')
