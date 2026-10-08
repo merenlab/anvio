@@ -3,10 +3,10 @@
 import sys
 
 import anvio
-import anvio.programs as programs
 import anvio.terminal as terminal
 
 from anvio.argparse import ArgumentParser
+from anvio.docs.export import AnvioDocs
 from anvio.errors import ConfigError, FilesNPathsError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -22,7 +22,7 @@ def main():
     args = get_args()
 
     try:
-        docs = programs.AnvioDocs(args)
+        docs = AnvioDocs(args)
         docs.generate()
     except ConfigError as e:
         print(e)
