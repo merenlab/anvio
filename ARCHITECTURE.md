@@ -365,8 +365,6 @@ self.genomes_storage = genomestorage.GenomeStorage(self.genomes_storage_path,
                                                    progress=self.progress)
 ```
 
-- The `# pylint: disable=line-too-long` comment appears at the top of many files to silence line-length warnings. Long lines are acceptable.
-
 ### Naming Conventions
 
 - `snake_case` for everything: variables, functions, methods, module names.
