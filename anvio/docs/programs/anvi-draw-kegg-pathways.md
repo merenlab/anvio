@@ -476,7 +476,7 @@ A layer with a `sample` column involves multiple separate reductions, and each h
 |across samples|`--reaction-sample-summary`/`--compound-sample-summary` (`count`, `count_continuous`, `membership`, or an aggregation)|a set of samples → one continuous value or one presence value per map element|
 |across groups|`--reaction-group-summary`/`--compound-group-summary` (`count`, `count_continuous`, `membership`, or an aggregation)|the groups of a %(groups-txt)s → one continuous value or one presence value per map element|
 
-An **aggregation** is `sum` (default), `mean`, `max`, `min`, `median`, `std` — or any other unsuggested pandas aggregation that reduces a series of numbers to one number, such as `var` or `sem`. Names that transform rather than reduce (`cumsum`) or that only a grouping offers (`first`) are rejected. Where an aggregation is undefined for the values available, as `std` is for a single value, the affected elements are left uncolored. `circular_mean` averages values that repeat after a period, such as clock times, and requires `--reaction-value-period`/`--compound-value-period` (see [Color clock times with a cyclic colormap](#color-clock-times-with-a-cyclic-colormap)).
+An **aggregation** is `sum` (default), `mean`, `max`, `min`, `median`, `std` — or any other unsuggested pandas aggregation that reduces a series of numbers to one number, such as `var` or `sem`. Names that transform rather than reduce (`cumsum`) or that only a grouping offers (`first`) are rejected. Where an aggregation is undefined for the values available, as `std` is for a single value, the affected elements are left uncolored. `circular_mean` averages values that repeat after a period, such as clock times, and requires `--reaction-value-period`/`--compound-value-period` (see [Color clock times with a cyclic colormap](#color-clock-times-with-a-cyclic-colormap)). `angular_deviation` measures how far such values are spread apart, on the `unified` map only.
 
 A summary pools the values of a **map element**, not of an accession. An element's value in a sample is the aggregate of its accessions in that sample. Without `--reaction-element-normalization`/`--compound-element-normalization`, this is the value that the sample's own map draws. So the sample summary pools what the maps of the individual samples show. With groups, the group summary then pools the values of the groups.
 
@@ -594,38 +594,57 @@ Clock times repeat every 24 hours, so a value of 23.9 h should have a color clos
 
 This colormap fills a gap that exists among named colormaps in Python packages for displaying clock time data on KEGG maps. Matplotlib's `twilight_shifted` is nearly white for times around noon, making them difficult to see on the white map background, and is nearly black for times around midnight, obscuring black box labels. In `clocktime`, black text has a contrast of at least 3:1 on every color.
 
-Give `clocktime` to `--reaction-colormap` for a file without a `sample` column; with a `sample` column, give it to `--reaction-category-colormap`, as that option colors the maps of individual samples. The compound layer takes `--compound-colormap` and `--compound-category-colormap` in the same way.
+Give clock times a period with `--reaction-value-period 24` (`--compound-value-period` for compounds). This says that the values repeat every 24 hours. Each color scale of values then runs from 0 to 24 h and is colored by `clocktime`, unless a colormap option names another colormap.
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
                         --reaction-value-period 24 \
-                        --reaction-category-colormap clocktime \
-                        --reaction-category-value-limits 0 24 \
                         --draw-individual-files \
                         --draw-grid \
                         -o output_dir
 {{ codestop }}
 
-In this example, each sample's own map is colored by clock time, while the `unified` map keeps its default summary, showing which samples or how many samples contain each element — not clock times. The limits fix the scale at 0 and 24 h. Without the limits, the scale would run from the lowest map element value to the highest, and the colors would not match the hours described above. Without a `sample` column, give the limits with `--reaction-value-limits 0 24`.
+In this example, each sample's own map is colored by clock time, while the `unified` map keeps its default summary, showing which samples or how many samples contain each element — not clock times.
 
-Clock times also have to be averaged on a circle. `--reaction-value-period 24` says that the values repeat every 24 hours (`--compound-value-period` does the same for compounds). Each reduction of the values then takes their circular mean, `circular_mean`. For example, a map element can stand for several KOs, and the element's value in a sample is the circular mean of the KOs' times. The circular mean of 23.5 h and 0.5 h is 0 h, not 12 h. Without the period, the default `sum` adds the times — two KOs at 16 h and 19.5 h would then give 35.5 h, which is past the end of the scale, so it would be drawn as midnight.
+With a period, each reduction of the values takes their circular mean, `circular_mean`. For example, a map element can stand for several KOs, and the element's value in a sample is the circular mean of the KOs' times. The circular mean of 23.5 h and 0.5 h is 0 h, not 12 h. Without the period, the default `sum` adds the times — two KOs at 16 h and 19.5 h would then give 35.5 h, which is past the end of the scale, so it would be drawn as midnight.
 
-With a period, `circular_mean` is the default of `--reaction-gene-aggregation` and `--reaction-accession-aggregation`. It is also the only aggregation that these options and the sample and group summaries accept. Times that cancel out, such as 6 h and 18 h, have no circular mean. Such an element is left uncolored, and a warning says so. `--reaction-element-normalization` is refused with a period, since every normalization compares values on a line. The period does not change the color scales, so the limits of 0 and 24 are still needed.
+`circular_mean` is the default of `--reaction-gene-aggregation` and `--reaction-accession-aggregation`. It is also the only aggregation that these options and the sample and group summaries accept. Times that cancel out, such as 6 h and 18 h, have no circular mean, and such an element is left uncolored. `--reaction-element-normalization` is refused with a period, since every normalization compares values on a line. Limits other than `0 24` are refused, and so are centers. On global and overview maps drawn from reactions alone, compound colors are averaged on a circle as well.
 
-To show clock times on the `unified` map as well, summarize the samples with `circular_mean`. The `unified` map then shows the circular mean of each element's times in the samples. Give its scale the same colormap and limits:
+To show clock times on the `unified` map as well, summarize the samples with `circular_mean`. The `unified` map then shows the circular mean of each element's times in the samples:
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
                         --reaction-value-period 24 \
                         --reaction-sample-summary circular_mean \
-                        --reaction-colormap clocktime \
-                        --reaction-value-limits 0 24 \
-                        --reaction-category-value-limits 0 24 \
                         --draw-individual-files \
                         -o output_dir
 {{ codestop }}
 
-Here `--reaction-colormap clocktime` colors both scales, since no `--reaction-category-colormap` is given.
+To show instead how much the samples disagree, summarize them with `angular_deviation`. Each element on the `unified` map is then colored by how far its times in the samples are spread apart on a circle. The scale runs from 0 h, where every sample has the same time, to 5.4 h, where the times cancel out. For times close together, the angular deviation is close to their standard deviation. An element needs times in at least 3 samples, since the spread of two times is only the gap between them. Other elements are left uncolored, and a warning says how many there are.
+
+{{ codestart }}
+anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
+                        --reaction-value-period 24 \
+                        --reaction-sample-summary angular_deviation \
+                        --draw-individual-files \
+                        -o output_dir
+{{ codestop }}
+
+The `unified` map then uses the sequential `plasma_r`, unless `--reaction-colormap` names another sequential colormap. A cyclic colormap is refused there, since it would give the smallest and the largest spread the same color. The maps of the individual samples still show each sample's times in `clocktime`. With groups, give `angular_deviation` to `--reaction-group-summary` instead. It then measures how far the groups' circular means are spread apart, and needs at least 3 groups.
+
+To show when each sample's times fall relative to the others, normalize them with `difference_from_circular_mean`. Each element on a sample's map then shows its offset from the element's circular mean across the samples. The offset is taken the shorter way around the circle, from -12 h to 12 h, and -12 h and 12 h are the same time. A sample that peaks 3 h after the others gets +3 h, and one that peaks 3 h before them gets -3 h. With a period, this is the only normalization accepted, since the others compare values on a line.
+
+{{ codestart }}
+anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
+                        --reaction-value-period 24 \
+                        --reaction-element-normalization difference_from_circular_mean \
+                        --draw-individual-files \
+                        -o output_dir
+{{ codestop }}
+
+The scale of offsets is fixed from -12 to 12, with 0 in the middle. It takes `clocktime` unless `--reaction-category-colormap` names another colormap. Here 0 takes the light yellow middle of `clocktime`. Offsets grow darker the farther they are from 0, through the morning colors for earlier times and the afternoon colors for later ones. Both ends are the same purple. Limits other than `-12 12` are refused, and so are centers. An element found in a single sample gets an offset of 0, as with `difference_from_mean`. An element whose times cancel out, such as 6 h and 18 h, has no circular mean. It is left uncolored, and a warning says how many there are. Large offsets often come from elements whose samples do not agree at all. A `unified` map of `angular_deviation` shows where that is the case.
+
+`clocktime` can also be given to a colormap option without a period: `--reaction-category-colormap` for the maps of individual samples, or `--reaction-colormap` for a file without a `sample` column. The scale then needs limits of 0 and 24, such as `--reaction-category-value-limits 0 24`. Without the limits, the scale would run from the lowest map element value to the highest, and the colors would not match the hours described above. Without a period, the values are not averaged on a circle.
 
 Do not trim `clocktime` with the two decimals that a colormap option accepts, as different colors would appear at each end, breaking the cyclic nature of the colormap.
 
@@ -659,6 +678,7 @@ The following normalizations encoded by anvi'o can be provided to `--*-element-n
 |`rank`|the element's rank among the samples, 1 being the sample with the least, ties sharing the average rank|
 |`fraction_of_max`|`value / max`, running to 1 in the sample with the most|
 |`fraction_of_total`|`value / total`, the sample's share of the element value summed across samples|
+|`difference_from_circular_mean`|the signed offset from the element's circular mean, the shorter way around the circle; only with `--reaction-value-period`/`--compound-value-period` (see [Color clock times with a cyclic colormap](#color-clock-times-with-a-cyclic-colormap))|
 
 Any other name given to `--*-element-normalization` is taken to be a **pandas Series method** that transforms each value into a new value, such as `abs`. Method names are checked immediately to catch errors in the form of the function, such as aggregation functions that reduce a set of values to a single number and would work with `--*-sample-summary` instead, and functions that transform values on the order of the samples (`cumsum`, `diff`, `ffill`), which are refused since sample order is an artifact of how samples happen to be named rather than inherent to the data.
 
