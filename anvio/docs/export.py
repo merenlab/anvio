@@ -546,22 +546,27 @@ class HelpPagesRenderer:
 
 
 class LLMsTextRenderer:
-    """Flatten a documentation dataset into llms-full.txt.
+    """Flatten a documentation dataset into a single llms-full.txt file.
 
     The output follows the llms-full.txt convention: every program, artifact, and workflow
-    becomes one self-contained section with a predictable heading, its metadata, and its
-    authored Markdown. Website-specific markup is converted to plain Markdown so the file
-    can be read directly or split into chunks for retrieval.
+    becomes one self-contained level-two section with a predictable heading, its metadata,
+    and its authored Markdown, so the file can be read directly or split into chunks for
+    retrieval.
     """
 
     def __init__(self, dataset: DocumentationData, output_file: str = "llms-full.txt", r=run, p=progress):
-        """Prepare lookups shared by all sections.
+        """Prepare the renderer for a documentation dataset.
 
-        Args:
-            dataset: The documentation dataset to flatten.
-            output_file: Destination of llms-full.txt.
-            r: Reports the output location.
-            p: Reports rendering progress.
+        Parameters
+        ==========
+        dataset : DocumentationData
+            The documentation dataset to flatten.
+        output_file : str
+            Path to the llms-full.txt file to write.
+        r : terminal.Run
+            Reports the output location.
+        p : terminal.Progress
+            Reports rendering progress.
         """
         self.dataset = dataset
         self.output_file = Path(output_file)
@@ -578,7 +583,9 @@ class LLMsTextRenderer:
     def render(self) -> str:
         """Render the full document.
 
-        Returns:
+        Returns
+        =======
+        text : str
             The Markdown text of llms-full.txt.
         """
         renderers = [(self.dataset.workflows, self.render_workflow),
@@ -672,18 +679,26 @@ class LLMsTextRenderer:
 
 
     def render_body(self, record: ProgramDocumentation | ArtifactDocumentation | WorkflowDocumentation) -> str:
-        """Nest the authored Markdown under its section heading.
+        """Nest the authored Markdown of a record under its section heading.
 
-        The Markdown is kept as authored except for headings, which are shifted so the
-        shallowest heading in the body sits directly below the section heading. This keeps
-        the main sections of every entry at the same level regardless of how the source
-        Markdown was authored. Lines inside code blocks are never treated as headings.
+        Parameters
+        ==========
+        record : ProgramDocumentation | ArtifactDocumentation | WorkflowDocumentation
+            The documentation record whose authored Markdown is nested.
 
-        Args:
-            record: The documentation record whose authored Markdown is nested.
-
-        Returns:
+        Returns
+        =======
+        body : str
             The nested Markdown, or an empty string if the record has no authored Markdown.
+
+        Notes
+        =====
+        - The Markdown is kept as authored except for headings, which are shifted so the
+          shallowest heading in the body sits directly below the section heading. This keeps
+          the main sections of every entry at the same level regardless of how the source
+          Markdown was authored.
+        - Lines inside `{{ codestart }}` blocks or fenced code blocks are never treated as
+          headings, so shell comments in examples remain untouched.
         """
         if record.source_markdown is None:
             return ""
