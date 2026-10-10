@@ -563,10 +563,6 @@ class LLMsTextRenderer:
             The documentation dataset to flatten.
         output_file : str
             Path to the llms-full.txt file to write.
-        r : terminal.Run
-            Reports the output location.
-        p : terminal.Progress
-            Reports rendering progress.
         """
         self.dataset = dataset
         self.output_file = Path(output_file)
