@@ -30,10 +30,8 @@ def main():
             docs = AnvioDocs(args)
             docs_dataset = docs.collect()
 
-        HelpPagesRenderer(
-            dataset=docs_dataset,
-            output_directory=Path(args.output_dir or 'ANVIO-HELP'),
-        ).generate()
+        output_dir = args.output_dir or 'ANVIO-HELP'
+        HelpPagesRenderer(dataset=docs_dataset, output_directory=output_dir).generate()
 
     except ConfigError as e:
         print(e)

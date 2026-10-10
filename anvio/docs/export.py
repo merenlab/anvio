@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 import anvio
+import anvio.filesnpaths as filesnpaths
 import anvio.terminal as terminal
 import anvio.utils as utils
 
@@ -20,7 +21,7 @@ from anvio.docs.data import (
     DATASET_FILENAME, RELATIONSHIPS, DocumentationData, DocumentRecord,
     WorkflowDocumentation,
 )
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.summaryhtml import SummaryHTMLOutput
 
 
@@ -32,15 +33,9 @@ progress = terminal.Progress()
 class HelpPagesRenderer:
     """Render the Jekyll help pages from typed documentation records."""
 
-    def __init__(
-        self,
-        dataset: DocumentationData,
-        output_directory: Path,
-        r: terminal.Run = run,
-        p: terminal.Progress = progress,
-    ) -> None:
+    def __init__(self, dataset: DocumentationData, output_directory: str, r=run, p=progress):
         self.dataset = dataset
-        self.output_directory = output_directory.resolve()
+        self.output_directory = Path(output_directory).resolve()
         self.run = r
         self.progress = p
         self.markdown_links = {
@@ -201,43 +196,52 @@ class HelpPagesRenderer:
         )
 
     def generate(self) -> None:
+        """Validate the source bundle before preparing and writing the help output."""
+
         asset_sources = self.dataset.asset_sources
         source_paths = list(asset_sources.values())
         if self.dataset.dataset_path is not None:
             source_paths.append(self.dataset.dataset_path)
         for source in source_paths:
-            if (
-                source.resolve() == self.output_directory
-                or self.output_directory in source.resolve().parents
-            ):
-                raise ConfigError(
-                    "The documentation output directory must not contain its source dataset or assets."
-                )
-        for asset in self.dataset.assets:
-            source = asset_sources.get(asset.path)
-            if source is None or not source.is_file():
-                raise ConfigError(f"Missing documentation asset: {asset.path}.")
-            if utils.get_file_md5(source) != asset.md5:
-                raise ConfigError(f"Documentation asset has changed: {asset.path}.")
+            if source.resolve() == self.output_directory or self.output_directory in source.resolve().parents:
+                raise ConfigError(f"The output directory '{self.output_directory}' contains a source file needed to "
+                                  f"render the documentation: '{source}'. Generating help pages replaces the output "
+                                  f"directory, so please choose a separate output directory to keep the source intact.")
+
         try:
-            if self.output_directory.exists():
-                shutil.rmtree(self.output_directory)
-            self.output_directory.mkdir(parents=True)
+            for asset in self.dataset.assets:
+                source = asset_sources.get(asset.path)
+                if source is None or not source.is_file():
+                    raise ConfigError(f"Anvi'o cannot find the documentation image '{asset.path}'. Please keep the "
+                                      f"exported images directory beside documentation.json when moving a bundle, "
+                                      f"or regenerate the documentation from its sources.")
+                if utils.get_file_md5(source) != asset.md5:
+                    raise ConfigError(f"The documentation image '{source}' no longer matches the checksum recorded "
+                                      f"in the dataset. Please restore the image from the same export, or regenerate "
+                                      f"the documentation so the dataset and its images agree.")
+
+            filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
+            filesnpaths.gen_output_directory(self.output_directory, progress=self.progress, run=self.run,
+                                            delete_if_exists=True, dont_warn=True)
+            for directory in ("artifacts", "programs", "workflows"):
+                filesnpaths.gen_output_directory(self.output_directory / directory, progress=self.progress, run=self.run)
+            for asset in self.dataset.assets:
+                destination = self.output_directory / asset.path
+                filesnpaths.gen_output_directory(destination.parent, progress=self.progress, run=self.run)
+                shutil.copyfile(asset_sources[asset.path], destination)
+
+            self.generate_pages_for_artifacts()
+            self.generate_pages_for_programs()
+            self.generate_pages_for_workflows()
+            self.generate_index_page()
+            self.dataset.write(self.output_directory / DATASET_FILENAME)
         except OSError as error:
-            raise ConfigError(
-                f"Could not prepare documentation output directory '{self.output_directory}': {error}"
-            ) from error
-        for directory in ("artifacts", "programs", "workflows"):
-            (self.output_directory / directory).mkdir()
-        for asset in self.dataset.assets:
-            destination = self.output_directory / asset.path
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(asset_sources[asset.path], destination)
-        self.generate_pages_for_artifacts()
-        self.generate_pages_for_programs()
-        self.generate_pages_for_workflows()
-        self.generate_index_page()
-        self.dataset.write(self.output_directory / DATASET_FILENAME)
+            raise FilesNPathsError(f"Anvi'o could not finish generating documentation in '{self.output_directory}'. "
+                                   f"Please check that the source images are readable and the output location has "
+                                   f"enough disk space and write permissions. Here is the operating system error: "
+                                   f"{error}") from error
+        finally:
+            self.progress.end()
 
     def render_page(
         self, relative_path: str, summary_type: str, context: dict[str, Any]
@@ -259,7 +263,7 @@ class HelpPagesRenderer:
             self.run.warning(None, "THE OUTPUT DICT")
             print(json.dumps(context, indent=2))
         path = self.output_directory / relative_path
-        path.parent.mkdir(parents=True, exist_ok=True)
+        filesnpaths.gen_output_directory(path.parent, progress=self.progress, run=self.run)
         path.write_text(
             SummaryHTMLOutput(context, r=self.run, p=self.progress).render(),
             encoding="utf-8",
