@@ -9,7 +9,6 @@ from colored import fg, attr
 from rich_argparse import RichHelpFormatter
 
 import anvio
-import anvio.docs as docs
 import anvio.terminal as terminal
 
 from anvio.programs import Program
@@ -109,7 +108,7 @@ class ArgumentParser(argparse.ArgumentParser):
         general_help = f"https://anvio.org/help/{version}"
         program_help = f"{general_help}/programs/{self.prog}"
 
-        if os.path.exists(os.path.join(os.path.dirname(docs.__file__), f"programs/{self.prog}.md")):
+        if os.path.exists(os.path.join(anvio.DOCS_PATH, f"programs/{self.prog}.md")):
             if atty:
                 epilog += f'''\n🍺 {attr('bold')}More on `{self.prog}`:{attr('reset')}\n\n   {fg('cyan') + program_help + attr('reset')}'''
             else:

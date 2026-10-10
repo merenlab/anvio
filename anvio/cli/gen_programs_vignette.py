@@ -3,8 +3,8 @@
 import sys
 
 import anvio
-import anvio.programs as programs
 
+from anvio.docs import ProgramsVignette
 from anvio.errors import ConfigError, FilesNPathsError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -19,7 +19,7 @@ def main():
     args = get_args()
 
     try:
-        vignette = programs.ProgramsVignette(args)
+        vignette = ProgramsVignette(args)
         vignette.generate()
     except ConfigError as e:
         print(e)
