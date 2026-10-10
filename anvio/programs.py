@@ -733,7 +733,7 @@ class AnvioWorkflows:
         if len(unknown_workflows_mentioned_in_programs):
             raise ConfigError(f"Some anvi'o programs include `__anvio_workflows__` tags with workflow names anvi'o "
                               f"dees not recognize :/ Here is the missing workflow names so you can either fix some "
-                              f"typos, or add entries for these workflows in `anvio/docs/__init.py__`: "
+                              f"typos, or add entries for these workflows in `anvio/programsdata.py`: "
                               f"{', '.join(unknown_workflows_mentioned_in_programs)}")
 
 

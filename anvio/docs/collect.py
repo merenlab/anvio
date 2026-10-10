@@ -1,6 +1,5 @@
 """Collect documentation from CLI metadata, source registries, Markdown, and images."""
 
-import argparse
 import os
 from pathlib import Path
 
@@ -27,8 +26,8 @@ from anvio.programs import AnvioPrograms, AnvioArtifacts, AnvioWorkflows
 class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
     """Collect source documentation and metadata into a serializable dataset."""
 
-    def __init__(self, args: argparse.Namespace, r: terminal.Run = terminal.Run(),
-                 p: terminal.Progress = terminal.Progress()) -> None:
+
+    def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
         self.args = args
         self.run = r
         self.progress = p
@@ -39,7 +38,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
             raise ConfigError("The anvi'o docs path is not where it should be :/ Something funny is going on.")
 
         self.version_short_identifier = 'm' if anvio.anvio_version_for_help_docs == 'main' else anvio.anvio_version_for_help_docs
-        self.base_url = f'/help/{anvio.anvio_version_for_help_docs}'
+        self.base_url = os.path.join("/help", anvio.anvio_version_for_help_docs)
 
         AnvioPrograms.__init__(self, args, r=self.run, p=self.progress)
         self.init_programs()
@@ -51,7 +50,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         self.init_workflows()
 
         if not len(self.programs):
-            raise ConfigError("AnvioDocs is asked to process the usage statements of some programs, but the "
+            raise ConfigError("AnvioDocs is asked ot process the usage statements of some programs, but the "
                               "`self.programs` dictionary seems to be empty :/")
 
         self.images_source_directory = os.path.join(os.path.dirname(anvio.__file__), 'docs/images/png')
@@ -78,7 +77,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
                                                                    ', '.join(missing_images_for_artifact_types)))
 
 
-    def read_anvio_markdown(self, file_path: str) -> str:
+    def read_anvio_markdown(self, file_path):
         """Collect authored Markdown; website formatting belongs to the renderer."""
         filesnpaths.is_file_plain_text(file_path)
         with open(file_path, encoding='utf-8') as source:
