@@ -6,9 +6,11 @@ It does not discover CLI programs or consult documentation source registries.
 
 from __future__ import annotations
 
+import os
 import json
 import shutil
 from collections import Counter
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -18,182 +20,209 @@ import anvio.terminal as terminal
 import anvio.utils as utils
 
 from anvio.docs.data import (
-    DATASET_FILENAME, RELATIONSHIPS, DocumentationData, DocumentRecord,
-    WorkflowDocumentation,
+    DATASET_FILENAME, DocumentationData, DocumentRecord,
 )
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.summaryhtml import SummaryHTMLOutput
 
 
-ProgramLinks = dict[str, list[tuple[str, str]]]
 run = terminal.Run()
 progress = terminal.Progress()
 
 
 class HelpPagesRenderer:
-    """Render the Jekyll help pages from typed documentation records."""
+    """Generate a docs output.
+
+    The purpose of this class is to generate a static HTML output with
+    interlinked files that serve as the primary documentation for anvi'o
+    programs, input files they expect, and output files the generate.
+
+    The default client of this class is `anvi-script-gen-help-docs`.
+    """
+
 
     def __init__(self, dataset: DocumentationData, output_directory: str, r=run, p=progress):
         self.dataset = dataset
         self.output_directory = Path(output_directory).resolve()
         self.run = r
         self.progress = p
-        self.markdown_links = {
-            name: f'<span class="artifact-p">[{name}]({dataset.meta.base_url}/programs/{name})</span>'
-            for name in dataset.program_source_paths
-        }
-        self.markdown_links.update(
-            {
-                name: f'<span class="artifact-n">[{name}]({dataset.meta.base_url}/artifacts/{name})</span>'
-                for name in dataset.artifacts
-            }
-        )
+        self.programs = dataset.programs
+        self.workflows = dataset.workflows
+        self.authors = dataset.authors
+        self.program_names_and_paths = dataset.program_source_paths
+        self.version_short_identifier = dataset.meta.version_short_identifier
+        self.base_url = dataset.meta.base_url
+        self.anvio_markdown_variables_conversion_dict = {}
+
         # Resolve every body before replacing any existing output.
-        self.bodies = {
-            record.id: self.render_body(record)
-            for records in (dataset.programs, dataset.artifacts, dataset.workflows)
-            for record in records.values()
-        }
-        # These dictionaries are adapters for the existing template lookup filter.
-        self.artifact_context = {
-            name: {"type": artifact.type, "path": f"artifacts/{name}"}
-            for name, artifact in dataset.artifacts.items()
-        }
+        self.bodies = {record.id: self.render_body(record)
+                       for records in (dataset.programs, dataset.artifacts, dataset.workflows)
+                       for record in records.values()}
 
-    def programs_network(
-        self,
-        program_names: list[str] | None = None,
-        artifact_names_as_ids: bool = False,
-    ) -> dict[str, Any]:
-        """Format dataset relationships for the website visualization."""
-        programs = {
-            name: record
-            for name, record in self.dataset.programs.items()
-            if (program_names is None or name in program_names)
-            and (record.requires or record.provides)
-        }
+        # The existing templates consume dictionaries rather than documentation records.
+        self.artifacts_info = {}
+        self.artifact_types = {}
+        for artifact, record in dataset.artifacts.items():
+            self.artifact_types.setdefault(record.type, []).append(artifact)
+            self.artifacts_info[artifact] = {'type': record.type, 'description': self.bodies[record.id]}
+            for relation, inverse in (('requires', 'required_by'), ('provides', 'provided_by'),
+                                      ('can_use', 'can_used_by'), ('can_provide', 'can_provided_by')):
+                self.artifacts_info[artifact][inverse] = [name for name, program in self.programs.items()
+                                                        if artifact in getattr(program, relation)]
 
-        artifact_order: dict[str, int] = {}
+
+    def programs_network(self, program_names: list[str] | None = None, artifact_names_as_ids: bool = False) -> dict[str, Any]:
+        """Returns an association network for anvi'o programs and artifacs
+
+        By default this function will report a network for all programs, unless the user
+        passed program_names as a list of programs, in which case the function
+        will focus only on that program and its artifats, reporting a sub-network.
+        """
+
+        programs = {name: program for name, program in self.programs.items()
+                    if (program_names is None or name in program_names) and (program.requires or program.provides)}
+        artifact_names = {name: name if artifact_names_as_ids else record.name
+                          for name, record in self.dataset.artifacts.items()}
+
+        artifact_names_seen = set([])
+        artifacts_seen = Counter({})
+        all_artifacts = []
         for program in programs.values():
-            for relation in ("provides", "requires", "can_use", "can_provide"):
-                for artifact in getattr(program, relation):
-                    artifact_order[artifact] = artifact_order.get(artifact, 0) + 1
+            all_program_artifacts = (program.provides +
+                                     program.requires +
+                                     program.can_use +
+                                     program.can_provide)
+            for artifact in all_program_artifacts:
+                artifacts_seen[artifact] += 1
+                if not artifact in artifact_names_seen:
+                    all_artifacts.append(artifact)
+                    artifact_names_seen.add(artifact)
 
-        network: dict[str, Any] = {
-            "graph": [],
-            "nodes": [],
-            "links": [],
-            "directed": False,
-            "multigraph": False,
-        }
+        programs_seen = Counter({})
+        for artifact in all_artifacts:
+            for program in programs.values():
+                all_program_artifacts = (program.provides +
+                                         program.requires +
+                                         program.can_use +
+                                         program.can_provide)
+                for program_artifact in all_program_artifacts:
+                    if artifact_names[artifact] == artifact_names[program_artifact]:
+                        programs_seen[program.name] += 1
 
-        indices: dict[str, int] = {}
-        for artifact, count in artifact_order.items():
-            record = self.dataset.artifacts[artifact]
-            indices[artifact] = len(network["nodes"])
-            network["nodes"].append(
-                {
-                    "size": count,
-                    "score": 0.5 if record.provided_by_anvio else 1,
-                    "color": "#00AA00" if record.provided_by_anvio else "#AA0000",
-                    "id": artifact,
-                    "name": artifact if artifact_names_as_ids else record.name,
-                    "provided_by_anvio": record.provided_by_anvio,
-                    "type": record.type,
-                }
-            )
+        network_dict = {"graph": [], "nodes": [], "links": [], "directed": False, "multigraph": False}
 
-        display_names = {
-            artifact: artifact
-            if artifact_names_as_ids
-            else self.dataset.artifacts[artifact].name
-            for artifact in artifact_order
-        }
+        node_indices = {}
 
-        name_counts = Counter(display_names.values())
-        for name, program in programs.items():
-            indices[name] = len(network["nodes"])
-            # The legacy visualization counts matching display names, including aliases.
-            network["nodes"].append(
-                {
-                    "size": sum(
-                        name_counts[display_names[artifact]]
-                        for relation in RELATIONSHIPS
-                        for artifact in getattr(program, relation)
-                    ),
-                    "score": 0.1,
-                    "color": "#AAAA00",
-                    "id": name,
-                    "name": name,
-                    "type": "PROGRAM",
-                }
-            )
+        index = 0
+        for artifact in all_artifacts:
+            network_dict["nodes"].append({"size": artifacts_seen[artifact],
+                                          "score": 0.5 if self.dataset.artifacts[artifact].provided_by_anvio else 1,
+                                          "color": '#00AA00' if self.dataset.artifacts[artifact].provided_by_anvio else "#AA0000",
+                                          "id": artifact,
+                                          "name": artifact_names[artifact],
+                                          "provided_by_anvio": True if self.dataset.artifacts[artifact].provided_by_anvio else False,
+                                          "type": self.dataset.artifacts[artifact].type})
+            node_indices[artifact] = index
+            index += 1
 
-        for artifact in artifact_order:
-            for name, program in programs.items():
-                for relation in ("provides", "requires", "can_use", "can_provide"):
-                    for referenced_artifact in getattr(program, relation):
-                        if referenced_artifact != artifact:
-                            continue
-                        if relation in ("provides", "can_provide"):
-                            edge = {
-                                "source": indices[name],
-                                "target": indices[artifact],
-                                "type": relation,
-                            }
-                        else:
-                            edge = {
-                                "target": indices[name],
-                                "source": indices[artifact],
-                                "type": relation,
-                            }
-                        network["links"].append(edge)
+        for program in programs.values():
+            network_dict["nodes"].append({"size": programs_seen[program.name],
+                                          "score": 0.1,
+                                          "color": "#AAAA00",
+                                          "id": program.name,
+                                          "name": program.name,
+                                          "type": "PROGRAM"})
+            node_indices[program.name] = index
+            index += 1
 
-        return network
+        for artifact in all_artifacts:
+            for program in programs.values():
+                for artifact_provided in program.provides:
+                    if artifact_provided == artifact:
+                        network_dict["links"].append({"source": node_indices[program.name], "target": node_indices[artifact], "type": "provides"})
+                for artifact_needed in program.requires:
+                    if artifact_needed == artifact:
+                        network_dict["links"].append({"target": node_indices[program.name], "source": node_indices[artifact], "type": "requires"})
+                for artifact_can_use in program.can_use:
+                    if artifact_can_use == artifact:
+                        network_dict["links"].append({"target": node_indices[program.name], "source": node_indices[artifact], "type": "can_use"})
+                for artifact_can_provide in program.can_provide:
+                    if artifact_can_provide == artifact:
+                        network_dict["links"].append({"source": node_indices[program.name], "target": node_indices[artifact], "type": "can_provide"})
+
+        return network_dict
+
 
     def render_body(self, record: DocumentRecord) -> str | None:
         if record.source_markdown is None:
             return None
-        return self.render_anvio_markdown(
-            record.source_markdown, record.documentation_path
-        )
+        return self.render_anvio_markdown(record.source_markdown, record.documentation_path)
+
+
+    def init_anvio_markdown_variables_conversion_dict(self):
+        for program_name in self.program_names_and_paths:
+            self.anvio_markdown_variables_conversion_dict[program_name] = """<span class="artifact-p">[%s](%s/programs/%s)</span>""" % (program_name, self.base_url, program_name)
+
+        for artifact_name in self.dataset.artifacts:
+            self.anvio_markdown_variables_conversion_dict[artifact_name] = """<span class="artifact-n">[%s](%s/artifacts/%s)</span>""" % (artifact_name, self.base_url, artifact_name)
+
 
     def render_anvio_markdown(self, content: str, source_path: str) -> str:
-        """Resolve anvi'o references and preserve the website's code-block markup."""
+        """Renders markdown descriptions filling in anvi'o variables.
+
+        Basically a lot of l_l83Я 1337 Я0XX0ЯZ stuff's going on down there, so you better run while you can.
+        """
+
+        markdown_content = content
+        file_path = source_path
+
+        if not len(self.anvio_markdown_variables_conversion_dict):
+            self.init_anvio_markdown_variables_conversion_dict()
+
+        # this is quite a big deal thing to do here:
         try:
-            # This is the authored documentation's substitution syntax, not Python message formatting.
-            content = content % self.markdown_links
-        except (KeyError, TypeError, ValueError) as error:
-            raise ConfigError(
-                f"Could not resolve documentation references in '{source_path}': {error}. "
-                "Use %(name)s for known programs/artifacts and %% for literal percent signs."
-            ) from error
-        lines = content.split("\n")
-        starts = [
-            number
-            for number, line in enumerate(lines)
-            if line.strip() == "{{ codestart }}"
-        ]
-        stops = [
-            number
-            for number, line in enumerate(lines)
-            if line.strip() == "{{ codestop }}"
-        ]
-        if len(starts) != len(stops):
-            raise ConfigError(f"Unmatched code-block markers in '{source_path}'.")
-        for start, stop in zip(starts, stops):
-            for number in range(start + 1, stop):
-                lines[number] = (
-                    lines[number]
-                    .replace("-", "&#45;")
-                    .replace("*", "&#42;")
-                    .replace("==", "&#61;&#61;")
-                )
-        return (
-            "\n".join(lines)
-            .replace("{{ codestart }}", '<div class="codeblock" markdown="1">')
-            .replace("{{ codestop }}", "</div>")
-        )
+            markdown_content = markdown_content % self.anvio_markdown_variables_conversion_dict
+        except KeyError as e:
+            self.progress.end()
+            raise ConfigError("One of the variables, %s, in '%s' is not yet described anywhere :/ If it is not a typo but "
+                              "a new artifact, you can add it to the file `anvio/programsdata.py`. After which everything "
+                              "should work. But please also remember to update provides / requires statements of programs "
+                              "for everything to be linked together." % (e, file_path))
+        except Exception as e:
+            self.progress.end()
+            additional_info = ("If you're stumped by that message, here are some common errors and their solutions: "
+                               "(1) 'unsupported format character' could mean that one of your tags specified with "
+                               "'%(tag)s' did not have the appended 's'. (2) 'not enough arguments for format string' "
+                               "could mean that your document has a '%' sign used in natural language, i.e. '85% similar'. "
+                               "This must be replaced with '85%% similar'.")
+            raise ConfigError("Something went wrong while working with '%s' :/ This is what we know: '%s'. %s" % (file_path, e, additional_info))
+
+        # now we have replaced anvi'o variables with markdown links, it is time to replace
+        # hyphens in anvi'o codeblocks with HTML hyphens so markdown does not freakout when it is
+        # time to visualize these and replace -- characters with en dash.
+        markdwon_lines = markdown_content.split('\n')
+        line_nums_for_codestart_tags = [i for i in range(0, len(markdwon_lines)) if markdwon_lines[i].strip() == "{{ codestart }}"]
+        line_nums_for_codestop_tags = [i for i in range(0, len(markdwon_lines)) if markdwon_lines[i].strip() == "{{ codestop }}"]
+
+        if len(line_nums_for_codestart_tags) != len(line_nums_for_codestop_tags):
+            self.progress.end()
+            raise ConfigError("In %s, the number of {{ codestart }} tags do not match to the number of {{ codestop }} tags :/" % file_path)
+
+
+        for line_start, line_end in list(zip(line_nums_for_codestart_tags, line_nums_for_codestop_tags)):
+            for line_num in range(line_start + 1, line_end):
+                markdwon_lines[line_num] = markdwon_lines[line_num].replace("-", "&#45;").replace("*", "&#42;").replace("==", "&#61;&#61;")
+
+        # all lines are processed: merge them back into a single text:
+        markdown_content = '\n'.join(markdwon_lines)
+
+        # now we have a proper markdown, it is time to remove anvi'o {{ codestart }} and {{ codestop }} blocks.
+        markdown_content = markdown_content.replace("""{{ codestart }}""", """<div class="codeblock" markdown="1">""")
+        markdown_content = markdown_content.replace("""{{ codestop }}""", """</div>""")
+
+        # return it like a pro.
+        return markdown_content
+
 
     def generate(self) -> None:
         """Validate the source bundle before preparing and writing the help output."""
@@ -223,17 +252,20 @@ class HelpPagesRenderer:
             filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
             filesnpaths.gen_output_directory(self.output_directory, progress=self.progress, run=self.run,
                                             delete_if_exists=True, dont_warn=True)
-            for directory in ("artifacts", "programs", "workflows"):
-                filesnpaths.gen_output_directory(self.output_directory / directory, progress=self.progress, run=self.run)
-            for asset in self.dataset.assets:
-                destination = self.output_directory / asset.path
-                filesnpaths.gen_output_directory(destination.parent, progress=self.progress, run=self.run)
-                shutil.copyfile(asset_sources[asset.path], destination)
+            self.artifacts_output_dir = filesnpaths.gen_output_directory(self.output_directory / 'artifacts', progress=self.progress, run=self.run)
+            self.programs_output_dir = filesnpaths.gen_output_directory(self.output_directory / 'programs', progress=self.progress, run=self.run)
+            self.workflows_output_dir = filesnpaths.gen_output_directory(self.output_directory / 'workflows', progress=self.progress, run=self.run)
+
+            self.copy_images()
 
             self.generate_pages_for_artifacts()
+
             self.generate_pages_for_programs()
+
             self.generate_pages_for_workflows()
+
             self.generate_index_page()
+
             self.dataset.write(self.output_directory / DATASET_FILENAME)
         except OSError as error:
             raise FilesNPathsError(f"Anvi'o could not finish generating documentation in '{self.output_directory}'. "
@@ -243,219 +275,265 @@ class HelpPagesRenderer:
         finally:
             self.progress.end()
 
-    def render_page(
-        self, relative_path: str, summary_type: str, context: dict[str, Any]
-    ) -> None:
-        metadata = self.dataset.meta
-        context = {
-            **context,
-            "meta": {
-                "summary_type": summary_type,
-                "version": metadata.version
-                if summary_type == "programs_and_artifacts_index"
-                else "\n".join(f"|{name}|{version}|" for name, version in metadata.versions),
-                "date": metadata.date,
-                "version_short_identifier": metadata.version_short_identifier,
-            },
-        }
-        if anvio.DEBUG:
-            self.progress.reset()
-            self.run.warning(None, "THE OUTPUT DICT")
-            print(json.dumps(context, indent=2))
-        path = self.output_directory / relative_path
-        filesnpaths.gen_output_directory(path.parent, progress=self.progress, run=self.run)
-        path.write_text(
-            SummaryHTMLOutput(context, r=self.run, p=self.progress).render(),
-            encoding="utf-8",
-        )
 
-    def get_program_requires_provides_dict(
-        self, prefix: str = "../../"
-    ) -> dict[str, ProgramLinks]:
-        return {
-            name: {
-                "requires": [
-                    (artifact, f"{prefix}artifacts/{artifact}")
-                    for artifact in program.requires
-                ],
-                "provides": [
-                    (artifact, f"{prefix}artifacts/{artifact}")
-                    for artifact in program.provides
-                ],
-                "can_use": [
-                    (artifact, f"{prefix}artifacts/{artifact}")
-                    for artifact in program.can_use
-                ],
-                "can_provide": [
-                    (artifact, f"{prefix}artifacts/{artifact}")
-                    for artifact in program.can_provide
-                ],
-                "anvio_workflows": [
-                    (workflow, f"{prefix}workflows/{workflow}")
-                    for workflow in program.anvio_workflows
-                ],
-            }
-            for name, program in self.dataset.programs.items()
-        }
+    def copy_images(self):
+        """Copies images from the documentation dataset to the output directory"""
 
-    def generate_pages_for_artifacts(self) -> None:
-        self.progress.new(
-            "Rendering artifact pages", progress_total_items=len(self.dataset.artifacts)
-        )
-        for name, artifact in self.dataset.artifacts.items():
-            self.progress.update(name, increment=True)
-            context: dict[str, Any] = {
-                "name": name,
-                "type": artifact.type,
-                "provided_by_anvio": artifact.provided_by_anvio,
-                "provided_by_user": artifact.provided_by_user,
-                "description": self.bodies[artifact.id],
-                "icon": f"../../images/icons/{artifact.type}.png",
-            }
-            for relation, inverse in (
-                ("requires", "required_by"),
-                ("provides", "provided_by"),
-                ("can_use", "can_used_by"),
-                ("can_provide", "can_provided_by"),
-            ):
-                context[inverse] = [
-                    (program_name, f"../../programs/{program_name}")
-                    for program_name, program in self.dataset.programs.items()
-                    if name in getattr(program, relation)
-                ]
-            self.render_page(
-                f"artifacts/{name}/index.md", "artifact", {"artifact": context}
-            )
-        self.progress.end()
+        for asset in self.dataset.assets:
+            destination = self.output_directory / asset.path
+            filesnpaths.gen_output_directory(destination.parent, progress=self.progress, run=self.run)
+            shutil.copyfile(self.dataset.asset_sources[asset.path], destination)
 
-    def get_HTML_formatted_authors_data(self, authors: list[str]) -> str:
-        result = ""
-        for name in authors:
-            author = self.dataset.authors[name]
-            result += '<div class="anvio-person"><div class="anvio-person-info">'
-            result += f'<div class="anvio-person-photo"><img class="anvio-person-photo-img" src="../../images/authors/{Path(author.avatar).name}" /></div>'
-            result += '<div class="anvio-person-info-box">'
-            result += f'<a href="/people/{author.github}" target="_blank"><span class="anvio-person-name">{author.name}</span></a>'
-            result += '<div class="anvio-person-social-box">'
-            if author.web is not None:
-                result += f'<a href="{author.web}" class="person-social" target="_blank"><i class="fa fa-fw fa-home"></i>Web</a>'
-            result += f'<a href="mailto:{author.email}" class="person-social" target="_blank"><i class="fa fa-fw fa-envelope-square"></i>Email</a>'
-            if author.twitter is not None:
-                result += f'<a href="http://twitter.com/{author.twitter}" class="person-social" target="_blank"><i class="fa fa-fw fa-twitter-square"></i>Twitter</a>'
-            result += f'<a href="http://github.com/{author.github}" class="person-social" target="_blank"><i class="fa fa-fw fa-github"></i>Github</a>'
-            result += "</div></div></div></div>\n\n"
-        return result
 
-    def get_HTML_formatted_authors_data_mini(self, authors: list[str]) -> str:
-        result = ""
-        for name in authors:
-            author = self.dataset.authors[name]
-            result += (
-                '<div class="anvio-person-mini"><div class="anvio-person-photo-mini">'
-            )
-            result += f'<a href="/people/{author.github}" target="_blank"><img class="anvio-person-photo-img-mini" title="{author.name}" src="images/authors/{Path(author.avatar).name}" /></a>'
-            result += "</div></div>\n"
-        return result
+    def get_workflow_produced_artifacts_list(self, workflow_name, prefix="../../"):
+        return [(r, '%sartifacts/%s' % (prefix, r)) for r in self.workflows[workflow_name].artifacts_produced]
 
-    def get_HTML_formatted_third_party_programs(
-        self, workflow: WorkflowDocumentation
-    ) -> list[str]:
-        return [
-            f'<a href="{self.dataset.third_party_programs[name].link}" target="_blank">{name}</a> ({purpose})'
-            for purpose, names in workflow.third_party_programs_used
-            for name in names
-        ]
 
-    def generate_pages_for_workflows(self) -> None:
-        self.progress.new(
-            "Rendering workflow pages", progress_total_items=len(self.dataset.workflows)
-        )
-        for name, workflow in self.dataset.workflows.items():
-            self.progress.update(name, increment=True)
-            context = {
-                "name": name,
-                "one_sentence_summary": workflow.one_sentence_summary,
-                "one_paragraph_summary": workflow.one_paragraph_summary,
-                "description": self.bodies[workflow.id],
-                "authors": self.get_HTML_formatted_authors_data(workflow.authors),
-                "artifacts_produced": [
-                    (artifact, f"../../artifacts/{artifact}")
-                    for artifact in workflow.artifacts_produced
-                ],
-                "artifacts_accepted": [
-                    (artifact, f"../../artifacts/{artifact}")
-                    for artifact in workflow.artifacts_accepted
-                ],
-                "third_party_programs_used": self.get_HTML_formatted_third_party_programs(
-                    workflow
-                ),
-            }
-            self.render_page(
-                f"workflows/{name}/index.md",
-                "workflow",
-                {"workflow": context, "artifacts": self.artifact_context},
-            )
-        self.progress.end()
+    def get_workflow_accepted_artifacts_list(self, workflow_name, prefix="../../"):
+        return [(r, '%sartifacts/%s' % (prefix, r)) for r in self.workflows[workflow_name].artifacts_accepted]
 
-    def generate_pages_for_programs(self) -> None:
-        self.progress.new(
-            "Rendering program pages", progress_total_items=len(self.dataset.programs)
-        )
-        links = self.get_program_requires_provides_dict()
-        example_path = self.dataset.program_source_paths.get("anvi-interactive")
-        for name, program in self.dataset.programs.items():
-            self.progress.update(name, increment=True)
-            context = {
-                "name": name,
-                "usage": self.bodies[program.id],
-                "description": program.description,
-                "resources": program.resources,
-                "source_path": program.source_path,
-                "resources_example_source_path": example_path or program.source_path,
-                "authors": self.get_HTML_formatted_authors_data(program.authors),
-                **links[name],
-            }
-            self.render_page(
-                f"programs/{name}/index.md",
-                "program",
-                {"program": context, "artifacts": self.artifact_context},
-            )
-            network_path = self.output_directory / "programs" / name / "network.json"
-            with network_path.open("w", encoding="utf-8") as network_file:
-                json.dump(
-                    self.programs_network([name], artifact_names_as_ids=True),
-                    network_file,
-                    indent=2,
-                )
-        self.progress.end()
 
-    def generate_index_page(self) -> None:
-        artifact_types: dict[str, list[str]] = {}
-        for name, artifact in self.dataset.artifacts.items():
-            artifact_types.setdefault(artifact.type, []).append(name)
-        context = {
-            "programs": [
-                (
-                    name,
-                    f"programs/{name}",
-                    program.description,
-                    self.get_HTML_formatted_authors_data_mini(program.authors),
-                )
-                for name, program in self.dataset.programs.items()
-            ],
-            "workflows": {
-                name: {
-                    "one_sentence_summary": workflow.one_sentence_summary,
-                    "authors": self.get_HTML_formatted_authors_data_mini(
-                        workflow.authors
-                    ),
+    def get_program_requires_provides_dict(self, prefix="../../"):
+        d = {}
+
+        for program_name in self.programs:
+            d[program_name] = {}
+
+            program = self.programs[program_name]
+            d[program_name]['requires'] = [(r, '%sartifacts/%s' % (prefix, r)) for r in program.requires]
+            d[program_name]['provides'] = [(r, '%sartifacts/%s' % (prefix, r)) for r in program.provides]
+            d[program_name]['can_use'] = [(r, '%sartifacts/%s' % (prefix, r)) for r in program.can_use]
+            d[program_name]['can_provide'] = [(r, '%sartifacts/%s' % (prefix, r)) for r in program.can_provide]
+            d[program_name]['anvio_workflows'] = [(w, '%sworkflows/%s' % (prefix, w)) for w in program.anvio_workflows]
+
+        return d
+
+
+    def generate_pages_for_artifacts(self):
+        """Generates static pages for artifacts in the output directory"""
+
+        self.progress.new("Rendering artifact pages", progress_total_items=len(self.dataset.artifacts))
+        self.progress.update('...')
+
+        for artifact in self.dataset.artifacts:
+            self.progress.update(f"'{artifact}' ...", increment=True)
+
+            d = {'artifact': asdict(self.dataset.artifacts[artifact]),
+                 'meta': {'summary_type': 'artifact',
+                          'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in self.dataset.meta.versions]),
+                          'date': self.dataset.meta.date,
+                          'version_short_identifier': self.version_short_identifier}
                 }
-                for name, workflow in self.dataset.workflows.items()
-            },
-            "artifacts": self.artifact_context,
-            "artifact_types": artifact_types,
-            "program_provides_requires": self.get_program_requires_provides_dict(
-                prefix=""
-            ),
-        }
-        self.render_page("index.md", "programs_and_artifacts_index", context)
+
+            d['artifact']['name'] = artifact
+            d['artifact']['required_by'] = [(r, '../../programs/%s' % r) for r in self.artifacts_info[artifact]['required_by']]
+            d['artifact']['provided_by'] = [(r, '../../programs/%s' % r) for r in self.artifacts_info[artifact]['provided_by']]
+            d['artifact']['can_used_by'] = [(r, '../../programs/%s' % r) for r in self.artifacts_info[artifact]['can_used_by']]
+            d['artifact']['can_provided_by'] = [(r, '../../programs/%s' % r) for r in self.artifacts_info[artifact]['can_provided_by']]
+            d['artifact']['description'] = self.artifacts_info[artifact]['description']
+            d['artifact']['icon'] = '../../images/icons/%s.png' % self.dataset.artifacts[artifact].type
+
+            if anvio.DEBUG:
+                self.progress.reset()
+                self.run.warning(None, 'THE OUTPUT DICT')
+                import json
+                print(json.dumps(d, indent=2))
+
+            self.progress.update(f"'{artifact}' ... rendering ...", increment=False)
+            artifact_output_dir = filesnpaths.gen_output_directory(os.path.join(self.artifacts_output_dir, artifact), progress=self.progress, run=self.run)
+            output_file_path = os.path.join(artifact_output_dir, 'index.md')
+            open(output_file_path, 'w', encoding='utf-8').write(SummaryHTMLOutput(d, r=self.run, p=self.progress).render())
+
+        self.progress.end()
+
+
+    def get_HTML_formatted_authors_data(self, authors):
+        """for a given program, returns HTML-formatted authors data"""
+
+        d = ""
+
+        for author in authors:
+            d += '''<div class="anvio-person"><div class="anvio-person-info">'''
+            d += f'''<div class="anvio-person-photo"><img class="anvio-person-photo-img" src="../../images/authors/{os.path.basename(self.authors[author].avatar)}" /></div>'''
+            d += '''<div class="anvio-person-info-box">'''
+            d += f'''<a href="/people/{self.authors[author].github}" target="_blank"><span class="anvio-person-name">{self.authors[author].name}</span></a>'''
+            d += '''<div class="anvio-person-social-box">'''
+
+            if self.authors[author].web is not None:
+                d += f'''<a href="{self.authors[author].web}" class="person-social" target="_blank"><i class="fa fa-fw fa-home"></i>Web</a>'''
+
+            d += f'''<a href="mailto:{self.authors[author].email}" class="person-social" target="_blank"><i class="fa fa-fw fa-envelope-square"></i>Email</a>'''
+
+            if self.authors[author].twitter is not None:
+                d += f'''<a href="http://twitter.com/{self.authors[author].twitter}" class="person-social" target="_blank"><i class="fa fa-fw fa-twitter-square"></i>Twitter</a>'''
+
+            d += f'''<a href="http://github.com/{self.authors[author].github}" class="person-social" target="_blank"><i class="fa fa-fw fa-github"></i>Github</a>'''
+
+            d += '''</div></div></div></div>\n\n'''
+
+        return d
+
+
+    def get_HTML_formatted_authors_data_mini(self, authors):
+        """for a given list of authors, returns a tiny version of the HTML-formatted authors data"""
+
+        d = ""
+
+        for author in authors:
+            d += '''<div class="anvio-person-mini"><div class="anvio-person-photo-mini">'''
+            d += f'''<a href="/people/{self.authors[author].github}" target="_blank"><img class="anvio-person-photo-img-mini" title="{self.authors[author].name}" src="images/authors/{os.path.basename(self.authors[author].avatar)}" /></a>'''
+            d += '''</div></div>\n'''
+
+        return d
+
+
+    def get_HTML_formatted_third_party_programs(self, workflow_name):
+        """Get a template-friendly list of third-party programs used from within a workflow"""
+
+        d = []
+
+        for purpose, program_names in self.workflows[workflow_name].third_party_programs_used:
+            for program_name in program_names:
+                d.append(f'''<a href="{self.dataset.third_party_programs[program_name].link}" target="_blank">{program_name}</a> ({purpose})''')
+
+        return d
+
+
+    def generate_pages_for_workflows(self):
+        """Generate static pages for anvi'o workflows in the output directory"""
+
+        self.progress.new("Rendering workflow pages", progress_total_items=len(self.workflows))
+        self.progress.update('...')
+
+        for workflow_name in self.workflows:
+            self.progress.update(f"'{workflow_name}' ...", increment=True)
+
+            d = {'workflow': asdict(self.workflows[workflow_name]),
+                 'meta': {'summary_type': 'workflow',
+                          'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in self.dataset.meta.versions]),
+                          'date': self.dataset.meta.date,
+                          'version_short_identifier': self.version_short_identifier}
+                 }
+
+            d['workflow']['description'] = self.bodies[self.workflows[workflow_name].id]
+            d['workflow']['artifacts_produced'] = self.get_workflow_produced_artifacts_list(workflow_name)
+            d['workflow']['artifacts_accepted'] = self.get_workflow_accepted_artifacts_list(workflow_name)
+            d['workflow']['third_party_programs_used'] = self.get_HTML_formatted_third_party_programs(workflow_name)
+            d['workflow']['authors'] = self.get_HTML_formatted_authors_data(d['workflow']['authors'])
+
+            # also add information regarding the artifacts
+            d['artifacts'] = self.artifacts_info
+
+            if anvio.DEBUG:
+                self.progress.reset()
+                self.run.warning(None, 'THE WORKFLOW OUTPUT DICT')
+                import json
+                print(json.dumps(d, indent=2))
+
+            self.progress.update(f"'{workflow_name}' ... rendering ...", increment=False)
+            workflow_output_dir = filesnpaths.gen_output_directory(os.path.join(self.workflows_output_dir, workflow_name), progress=self.progress, run=self.run)
+            output_file_path = os.path.join(workflow_output_dir, 'index.md')
+            open(output_file_path, 'w', encoding='utf-8').write(SummaryHTMLOutput(d, r=self.run, p=self.progress).render())
+
+        self.progress.end()
+
+
+    def generate_pages_for_programs(self):
+        """Generates static pages for programs in the output directory"""
+
+        self.progress.new("Rendering program pages", progress_total_items=len(self.programs))
+        self.progress.update('...')
+
+        program_provides_requires_dict = self.get_program_requires_provides_dict()
+
+        resources_example_program = 'anvi-interactive'
+        resources_example_path = None
+        if resources_example_program in self.program_names_and_paths:
+            resources_example_path = self.program_names_and_paths[resources_example_program]
+            resources_example_path = resources_example_path.replace(os.sep, '/')
+
+        for program_name in self.programs:
+            self.progress.update(f"'{program_name}' ...", increment=True)
+
+            program = self.programs[program_name]
+            program_source_path = program.source_path
+            d = {'program': {},
+                 'meta': {'summary_type': 'program',
+                          'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in self.dataset.meta.versions]),
+                          'date': self.dataset.meta.date,
+                          'version_short_identifier': self.version_short_identifier}
+                }
+
+            d['program']['name'] = program_name
+            d['program']['usage'] = self.bodies[program.id]
+            d['program']['description'] = program.description
+            d['program']['resources'] = program.resources
+            d['program']['source_path'] = program_source_path
+            d['program']['resources_example_source_path'] = resources_example_path or program_source_path
+            d['program']['requires'] = program_provides_requires_dict[program_name]['requires']
+            d['program']['provides'] = program_provides_requires_dict[program_name]['provides']
+            d['program']['can_use'] = program_provides_requires_dict[program_name]['can_use']
+            d['program']['can_provide'] = program_provides_requires_dict[program_name]['can_provide']
+            d['program']['icon'] = '../../images/icons/%s.png' % 'PROGRAM'
+            d['program']['authors'] = self.get_HTML_formatted_authors_data(program.authors)
+            d['artifacts'] = self.artifacts_info
+            d['workflows'] = {name: asdict(workflow) for name, workflow in self.workflows.items()}
+
+            if anvio.DEBUG:
+                self.progress.reset()
+                self.run.warning(None, 'THE OUTPUT DICT')
+                print(json.dumps(d, indent=2))
+
+            self.progress.update(f"'{program_name}' ... rendering ...", increment=False)
+            program_output_dir = filesnpaths.gen_output_directory(os.path.join(self.programs_output_dir, program_name), progress=self.progress, run=self.run)
+            output_file_path = os.path.join(program_output_dir, 'index.md')
+            open(output_file_path, 'w', encoding='utf-8').write(SummaryHTMLOutput(d, r=self.run, p=self.progress).render())
+
+            # create the program network, too
+            self.progress.update(f"'{program_name}' ... rendering ... network json ...", increment=False)
+            program_output_dir = filesnpaths.gen_output_directory(os.path.join(self.programs_output_dir, program_name), progress=self.progress, run=self.run)
+            program_network = self.programs_network([program_name], artifact_names_as_ids=True)
+            with open(os.path.join(program_output_dir, "network.json"), "w", encoding="utf-8") as output:
+                json.dump(program_network, output, indent=2)
+
+        self.progress.end()
+
+
+    def generate_index_page(self):
+        """Generates the index page for help where all programs and artifacts are listed"""
+
+        self.progress.new("Index page")
+        self.progress.update('...')
+
+        # let's add the 'path' for each artifact to simplify
+        # access from the template:
+        for artifact in self.artifacts_info:
+            self.artifacts_info[artifact]['path'] = f"artifacts/{artifact}"
+
+        # quick update of the author information in workflows so they contain nice HTML
+        # code instad of a list of author names
+        workflows = {name: asdict(workflow) for name, workflow in self.workflows.items()}
+        for workflow in workflows:
+            workflows[workflow]['authors'] = self.get_HTML_formatted_authors_data_mini(self.workflows[workflow].authors)
+
+        # please note that artifacts get a fancy dictionary with everything, while programs get a crappy tuples list.
+        # if we need to improve the functionality of the help index page, we may need to update programs
+        # to a fancy dictionary, too.
+        d = {'programs': [(p, 'programs/%s' % p, self.programs[p].description, self.get_HTML_formatted_authors_data_mini(self.programs[p].authors)) for p in self.programs],
+             'workflows': workflows,
+             'artifacts': self.artifacts_info,
+             'artifact_types': self.artifact_types,
+             'meta': {'summary_type': 'programs_and_artifacts_index',
+                      'version': self.dataset.meta.version,
+                      'date': self.dataset.meta.date}
+            }
+
+        d['program_provides_requires'] = self.get_program_requires_provides_dict(prefix='')
+
+        self.progress.update('Rendering...')
+        output_file_path = os.path.join(self.output_directory, 'index.md')
+
+        self.progress.update('Writing...')
+        open(output_file_path, 'w', encoding='utf-8').write(SummaryHTMLOutput(d, r=self.run, p=self.progress).render())
+
+        self.progress.end()
