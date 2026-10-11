@@ -1,10 +1,3 @@
-"""Render outputs from a documentation dataset.
-
-HelpPagesRenderer builds the help website and LLMsTextRenderer builds llms-full.txt.
-Rendering uses only the dataset, its image assets, and installed website templates.
-It does not discover CLI programs or consult documentation source registries.
-"""
-
 from __future__ import annotations
 
 import os
