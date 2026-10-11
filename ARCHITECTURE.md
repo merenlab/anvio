@@ -48,7 +48,10 @@ anvio/                    # The package
   fastalib.py             # Fast FASTA I/O (custom, not biopython)
   ttycolors.py            # Terminal color helpers
   dbinfo.py               # DB introspection (DBInfo class)
+  programs.py             # Reads program metadata (AnvioPrograms, ProgramsNetwork)
+  programsdata.py         # Registries: ANVIO_ARTIFACTS, ANVIO_WORKFLOWS, THIRD_PARTY_PROGRAMS
   cli/                    # One file per anvi-* program (~180 files)
+  docs/                   # Help page sources and the code that builds them (see Documentation below)
   tables/                 # Database schema definitions
     __init__.py           # All table_name / table_structure / table_types triplets
     genecalls.py          # TablesForGeneCalls class
@@ -762,6 +765,7 @@ anvio/docs/
   programs/    # one .md file per anvi-* program
   artifacts/   # one .md file per anvi'o artifact/data type
   workflows/   # one .md file per anvi'o Snakemake workflow
+  *.py         # modules for building/rendering documentation
 ```
 
 **Programs** correspond 1-to-1 with `anvi-*` CLI commands. Each file describes what the program does, how to use it, its key flags, and worked examples. **Artifacts** are anvi'o's named data types (e.g. `contigs-db`, `profile-db`, `collection`, `fasta`) — the same names used in `__requires__` and `__provides__` in every CLI module. Artifact docs explain what that data type is and how it is created and consumed.
