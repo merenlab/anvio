@@ -132,10 +132,10 @@ rule sra_reads_released:
     already deleted them, which is exactly the point: the marker it leaves behind is what allows
     the next download to start.
 
-    Some of the inputs keep changing after the flag is written: `import_percent_of_reads_mapped`
-    and the taxonomy import both write into a PROFILE.db that is already finished, so a restart
-    may well redo this rule. That only touches the flag again; the downloads gated on it do not
-    follow, since their gate is ancient."""
+    The inputs stand for each profile only once nothing else is going to write into it (see
+    `get_read_consumer_targets`), so a restart finds the flag up to date. Should something still
+    redo this rule, that only touches the flag again: the downloads gated on it do not follow,
+    since their gate is ancient."""
     input:
         sinks=lambda wildcards: M.get_read_consumer_targets(wildcards.unit),
     output:

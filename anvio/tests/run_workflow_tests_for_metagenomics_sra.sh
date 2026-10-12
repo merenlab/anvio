@@ -63,9 +63,9 @@ ASSERT_FILE_CONTAINS dag-tight.txt "01_SRA-references/released/S01.released"
 # keeps snakemake from fetching them again is that nothing upstream of their profiles looks out
 # of date. Here, every output of a finished run is put in place with the same timestamp, along
 # with the record snakemake keeps of which inputs S02's gated download ran with. S01's profile is
-# then written into the way `import_percent_of_reads_mapped` does it after S01's release flag is
-# written, which redoes that release, and the merge is removed as if it had failed. The only
-# thing left to do should be the merge.
+# then written into after S01's release, as any step that changes a finished profile would do,
+# which redoes that release, and the merge is removed as if it had failed. The only thing left
+# to do should be the merge.
 INFO "Restarting a finished run downloads nothing again"
 $ANVIO_PYTHON -c "
 import json
@@ -104,6 +104,18 @@ if grep -qE "^rule (sra_prefetch|sra_fasterq_dump_paired|bowtie|anvi_profile):" 
 fi
 ASSERT_FILE_CONTAINS dag-restart.txt "rule anvi_merge:"
 ASSERT_FILE_CONTAINS dag-restart.txt "output: 01_SRA-restart/released/S01.released"
+
+# `import_percent_of_reads_mapped` writes into a profile after `anvi_profile` is done with it, so
+# a release that waited for the PROFILE.db would be written before that and look out of date to
+# every restart. It waits for what the import leaves behind instead.
+INFO "A sample's reads are released once nothing else writes into its profile"
+grep -A1 "^localrule sra_reads_released:" dag-restart-fresh.txt > release-inputs.txt
+ASSERT_FILE_CONTAINS release-inputs.txt "05_ANVIO_PROFILE-restart/SRAREF/S01/layers-additional-data.txt"
+if grep -q "PROFILE.db" release-inputs.txt; then
+    echo "FAIL: a release waits for a PROFILE.db that is still written into after it:"
+    cat release-inputs.txt
+    exit 1
+fi
 
 INFO "Long reads from a nanopore run are recognized, and so is their technology"
 DRY_RUN config-nanopore.json
@@ -401,6 +413,9 @@ if grep -q "^rule sra_prefetch:" dag-real-second-run.txt; then
     grep -A1 "^rule sra_prefetch:" dag-real-second-run.txt
     exit 1
 fi
+
+# ... and nothing else either: every release was written after the last write into its profile.
+ASSERT_FILE_CONTAINS dag-real-second-run.txt "Nothing to be done"
 
 INFO "The SRA metadata anvi'o worked with"
 SHOW_FILE SRA-METADATA.txt
