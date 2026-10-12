@@ -86,6 +86,8 @@ class GenomeReorienter:
         self.near_start_bp = A('near_start_bp') or 10000
         self.use_dnaa_for_reference_orientation = A('use_dnaa_for_reference_orientation') or False
         self.use_auto_reference_as_is = A('use_auto_reference_as_is') or False
+        self.use_dnaa_for_every_genome = A('use_dnaa_for_every_genome') or False
+        self.dnaa_contigs_are_circular = A('dnaa_contigs_are_circular') or False
         self.scaffold_fragmented = A('scaffold_fragmented') or False
         self.min_contig_length = A('min_contig_length') or 1000
         self.keep_query_contigs_intact = A('keep_query_contigs_intact') or False
@@ -112,6 +114,9 @@ class GenomeReorienter:
     def process(self):
         self.run.info("Output directory", self.output_dir)
 
+        if self.use_dnaa_for_every_genome:
+            return self._process_every_genome_at_its_dnaa()
+
         # Deal with reference selection
         reference_was_user_specified = self.reference_name is not None
         self.select_reference_genome()
@@ -123,22 +128,45 @@ class GenomeReorienter:
         # Decide how to orient the reference
         if self.use_dnaa_for_reference_orientation:
             # Use DnaA gene to orient the reference
-            dnaa_position = self._find_dnaa_gene_position()
-            if dnaa_position is not None and dnaa_position != 0:
-                self.run.warning(None, header="ROTATING REFERENCE TO DnaA POSITION")
-                self.run.info("Rotating reference by", f"{dnaa_position:,} nts")
-                self.run.info("Reason", "Aligning genome to DnaA gene (origin of replication)")
+            self.run.warning(None, header="FINDING DnaA GENE IN REFERENCE")
+            self.run.info("Reference genome", self.reference_name)
+            dnaa = self._find_dnaa_gene(self.reference_path)
 
-                # Create a rotated version of the reference
+            if dnaa:
+                # the reference will start with the start codon of dnaA, on the forward strand, which is
+                # how complete bacterial genomes are conventionally written. a DnaA gene on the reverse
+                # strand begins at `stop - 1`, which is `length - stop` once the reference is reverse
+                # complemented
                 temp_dir = filesnpaths.get_temp_directory_path()
-                rotated_ref = os.path.join(temp_dir, f"{self.reference_name}_rotated_dnaa.fa")
-                self._seqkit_rotate(self.reference_path, dnaa_position + 1, rotated_ref)
+                reference_path = self.reference_path
+                if dnaa['direction'] == 'r':
+                    reference_path = os.path.join(temp_dir, f"{self.reference_name}_rc.fa")
+                    self._seqkit_reverse_complement(self.reference_path, reference_path)
+                    dnaa_position = self._get_total_length(self.reference_path) - dnaa['stop']
+                else:
+                    dnaa_position = dnaa['start']
 
-                # Update reference path to the rotated version
-                self.reference_path = rotated_ref
-                self.run.info("Rotated reference", rotated_ref, nl_after=1)
-            elif dnaa_position == 0:
-                self.run.info("Reference rotation", "Not needed (DnaA gene is already at position 0 .. yes, that happened o_O)", nl_after=1)
+                if dnaa_position or dnaa['direction'] == 'r':
+                    self.run.warning(None, header="ROTATING REFERENCE TO DnaA POSITION")
+                    if dnaa['direction'] == 'r':
+                        self.run.info("Reverse complemented reference", "Yes (its DnaA gene is on the reverse strand)")
+                    self.run.info("Rotating reference by", f"{dnaa_position:,} nts")
+                    self.run.info("Reason", "Aligning genome to DnaA gene (origin of replication)")
+
+                    # Create a rotated version of the reference
+                    rotated_ref = os.path.join(temp_dir, f"{self.reference_name}_rotated_dnaa.fa")
+                    if dnaa_position:
+                        self._seqkit_rotate(reference_path, dnaa_position + 1, rotated_ref)
+                    else:
+                        shutil.copyfile(reference_path, rotated_ref)
+
+                    # Update reference path to the rotated version
+                    self.reference_path = rotated_ref
+                    self.run.info("Rotated reference", rotated_ref, nl_after=1)
+                else:
+                    self.run.info("Reference rotation", "Not needed (DnaA gene is already at position 0 .. yes, that happened o_O)", nl_after=1)
+            else:
+                self.run.warning("No DnaA gene was found in the reference genome, so it will not be rotated.")
 
         # If reference was auto-selected and not using DnaA, find the optimal starting position
         elif not reference_was_user_specified and not self.use_auto_reference_as_is:
@@ -261,6 +289,115 @@ class GenomeReorienter:
         return results
 
 
+    def _process_every_genome_at_its_dnaa(self):
+        """Start every genome at its own DnaA gene, without a reference.
+
+        Every genome gets the same treatment on its own: anvi'o finds its DnaA gene (see
+        `_find_dnaa_gene`) and writes the genome so that the start codon of dnaA is the first
+        nucleotide of the contig that carries it, on the forward strand. A genome that is a single
+        contig (and, with `--dnaa-contigs-are-circular`, the DnaA contig of any genome) is a circle,
+        so it is reverse complemented if necessary and rotated. The DnaA contig of a genome with more
+        than one contig is cut in two at the start codon of dnaA instead, since rotating a contig
+        that may be a fragment would join its two ends, which are not neighbours: the piece that
+        starts with dnaA becomes `<contig>_part2`, the one before it `<contig>_part1`, and both are
+        written first, in that order, in the orientation that puts dnaA on the forward strand. Other
+        contigs are written as they are, and so is every genome without a DnaA gene.
+        """
+        self.run.warning("Anvi'o will now start every genome at its own DnaA gene, without aligning anything to a "
+                         "reference: a genome that is a single contig is rotated (and reverse complemented if "
+                         "necessary) so that the start codon of dnaA becomes its first nucleotide, and the DnaA contig "
+                         "of a genome with more than one contig is cut in two at that start codon instead"
+                         + (" -- unless it is circular, which you said it is, in which case it is rotated as well."
+                            if self.dnaa_contigs_are_circular else "."),
+                         header="STARTING EVERY GENOME AT ITS OWN DnaA", lc="green")
+
+        filesnpaths.gen_output_directory(self.output_dir, run=self.run)
+
+        results = []
+        actions_taken = {'rotated': [], 'split': [], 'unchanged': [], 'no DnaA': []}
+        for i, (genome_name, entry) in enumerate(self.genomes.items(), 1):
+            self.run.section(f"{genome_name} ({i} OF {len(self.genomes)} TOTAL)")
+            output_path = self._output_path_for(genome_name)
+
+            dnaa = self._find_dnaa_gene(entry['path'], verbose=False)
+            if not dnaa:
+                shutil.copyfile(entry['path'], output_path)
+                self.run.info("DnaA gene", "NOT FOUND, the genome is written as it is", mc="red")
+                self.run.info("Output FASTA", output_path)
+                actions_taken['no DnaA'].append(genome_name)
+                results.append(ReorientationResult(genome_name, "success", "no DnaA gene found, written unchanged",
+                                                   output_path, trust="NOT TRUSTWORTHY"))
+                continue
+
+            contigs = []
+            fasta = utils.u.SequenceSource(entry['path'])
+            while next(fasta):
+                contigs.append((fasta.id, fasta.seq))
+            fasta.close()
+
+            dnaa_index = next(j for j, (defline, _) in enumerate(contigs) if defline.split()[0] == dnaa['contig'].split()[0])
+            defline, sequence = contigs[dnaa_index]
+
+            # the sequence in the orientation that puts dnaA on the forward strand, and where its start codon is
+            if dnaa['direction'] == 'r':
+                sequence = utils.rev_comp(sequence)
+                position = len(sequence) - dnaa['stop']
+            else:
+                position = dnaa['start']
+
+            circular = len(contigs) == 1 or self.dnaa_contigs_are_circular
+            if circular:
+                new_contigs = [(defline, sequence[position:] + sequence[:position])]
+                action = (f"{'reverse complemented and ' if dnaa['direction'] == 'r' else ''}rotated by {position:,} nts"
+                          if position or dnaa['direction'] == 'r' else "already started at DnaA")
+                actions_taken['rotated' if position or dnaa['direction'] == 'r' else 'unchanged'].append(genome_name)
+            elif position:
+                name = defline.split()[0]
+                new_contigs = [(f"{name}_part2", sequence[position:]), (f"{name}_part1", sequence[:position])]
+                action = (f"{'reverse complemented and ' if dnaa['direction'] == 'r' else ''}cut contig '{name}' in two "
+                          f"at the start codon of dnaA ({position:,} nts before it, {len(sequence) - position:,} from it)")
+                actions_taken['split'].append(genome_name)
+            else:
+                new_contigs = [(defline, sequence)]
+                action = ("reverse complemented the DnaA contig, which already started at DnaA" if dnaa['direction'] == 'r'
+                          else "the DnaA contig already started at DnaA")
+                actions_taken['rotated' if dnaa['direction'] == 'r' else 'unchanged'].append(genome_name)
+
+            with open(output_path, 'w') as out_fa:
+                for name, seq in new_contigs + [c for j, c in enumerate(contigs) if j != dnaa_index]:
+                    out_fa.write(f">{name}\n")
+                    for k in range(0, len(seq), 80):
+                        out_fa.write(seq[k:k + 80] + '\n')
+
+            self.run.info("DnaA gene", f"on '{dnaa['contig']}', {dnaa['start']:,} - {dnaa['stop']:,} nts, "
+                          f"{'forward' if dnaa['direction'] == 'f' else 'reverse'} strand ({dnaa['bit_score']:.1f} bits)")
+            if dnaa['num_hits'] > 1:
+                self.run.info("DnaA hits", f"{dnaa['num_hits']} (the best one is used)", mc="yellow")
+            self.run.info("Contigs", len(contigs))
+            self.run.info("Action", action, mc="green")
+            self.run.info("Output FASTA", output_path)
+            results.append(ReorientationResult(genome_name, "success", action, output_path, trust="TRUSTWORTHY"))
+
+        self.run.warning(None, header="FINAL REPORT")
+        self.run.info("Genomes", len(self.genomes))
+        self.run.info("Rotated to start at DnaA", len(actions_taken['rotated']))
+        self.run.info("DnaA contig cut at DnaA", len(actions_taken['split']))
+        self.run.info("Already starting at DnaA", len(actions_taken['unchanged']))
+        self.run.info("No DnaA found (written unchanged)", len(actions_taken['no DnaA']),
+                      mc="red" if actions_taken['no DnaA'] else "green")
+        for genome_name in actions_taken['no DnaA']:
+            self.run.info_single(genome_name, mc="red", level=2)
+
+        self.run.warning("Anvi'o used 'pyrodigal-gv' by Martin Larralde for gene calling, an extension of 'pyrodigal' "
+                         "(doi:10.21105/joss.04296), which builds upon the approach originally implemented by Hyatt et al "
+                         "(doi:10.1186/1471-2105-11-119), with additional models by Camargo et al "
+                         "(doi:10.1038/s41587-023-01953-y), and `HMMER` by Eddy (doi:10.1371/journal.pcbi.1002195) to find "
+                         "the DnaA genes. If you publish your findings, please do not forget to properly credit the "
+                         "authors of these tools.", lc='cyan', header="CITATION")
+
+        return results
+
+
     def sanity_check(self):
         filesnpaths.is_file_tab_delimited(self.fasta_txt, expected_number_of_fields=2)
         self.genomes = utils.get_TAB_delimited_file_as_dictionary(
@@ -307,6 +444,20 @@ class GenomeReorienter:
                               "not compatible with one another. The former keeps the auto-selected reference untouched. "
                               "The latter rotates it. Incompatible stuff.")
 
+        if self.use_dnaa_for_every_genome:
+            reference_flags = [flag for flag, used in [('--reference', self.reference_name),
+                                                       ('--use-auto-reference-as-is', self.use_auto_reference_as_is),
+                                                       ('--use-dnaa-for-reference-orientation', self.use_dnaa_for_reference_orientation),
+                                                       ('--scaffold-fragmented', self.scaffold_fragmented),
+                                                       ('--keep-query-contigs-intact', self.keep_query_contigs_intact)] if used]
+            if reference_flags:
+                raise ConfigError(f"`--use-dnaa-for-every-genome` starts every genome at its own DnaA gene, without "
+                                  f"aligning anything to a reference, so it can't be combined with "
+                                  f"{', '.join(f'`{f}`' for f in reference_flags)}, which all work through one :/")
+
+        if self.dnaa_contigs_are_circular and not self.use_dnaa_for_every_genome:
+            raise ConfigError("`--dnaa-contigs-are-circular` only means something together with `--use-dnaa-for-every-genome` :/")
+
         # please note that whether the reference genome is a single contig or not is checked in
         # `check_reference_is_single_contig`, which is called by `select_reference_genome` so the
         # very same rule applies to user-specified and auto-selected references alike.
@@ -325,27 +476,40 @@ class GenomeReorienter:
         return os.path.join(self.output_dir, f"{genome_name}{suffix}")
 
 
-    def _report_and_visualize_circular_genome(self, genome_name, output_path, best_alignment, paf_final, paf_initial, actions, fasta_path):
-        """Report statistics and visualize circular genome reorientation results."""
-        # Quality assessment for circular genomes
-        diff = self._get_dv_from_tags(best_alignment.tags)
-        if diff is not None:
-            approx_ani = (1 - diff) * 100
-        elif best_alignment.aligned_bases > 0:
-            approx_ani = (best_alignment.nmatch / float(best_alignment.aligned_bases)) * 100
-        else:
-            approx_ani = 0
+    def _report_and_visualize_circular_genome(self, genome_name, output_path, anchor, paf_final, paf_initial, actions, fasta_path):
+        """Report statistics and visualize circular genome reorientation results.
 
-        cov_q = 0
-        cov_t = 0
-        if best_alignment.qlen and best_alignment.tlen:
-            cov_q_raw = (best_alignment.aligned_bases / float(best_alignment.qlen)) * 100
-            cov_t_raw = (best_alignment.aligned_bases / float(best_alignment.tlen)) * 100
-            cov_q = min(cov_q_raw, 100)
-            cov_t = min(cov_t_raw, 100)
+        `anchor` is the alignment block at the start of the reference that placed the start of the
+        query (see `_process_circular`). Two things decide whether the outcome can be trusted: that
+        the start of the reference was placed in the query at all (a block within `near_start_bp` of
+        it, and the query starting exactly where that block says the reference starts), and how much
+        of the two genomes align, counted over every primary alignment block. The largest block on
+        its own covers only a fraction of any genome with a rearrangement, however well it was placed,
+        which is why it is not the measure here."""
+        primaries = [r for r in paf_final if r.is_primary]
+        qlen, tlen = anchor.qlen, anchor.tlen
 
+        covered = lambda intervals: sum(end - start for start, end in self._merge_intervals(intervals))
+        cov_q = min(100.0, 100.0 * covered([(r.qstart, r.qend) for r in primaries]) / qlen) if qlen else 0
+        cov_t = min(100.0, 100.0 * covered([(r.tstart, r.tend) for r in primaries]) / tlen) if tlen else 0
         avg_cov = (cov_q + cov_t) / 2.0
-        if avg_cov < 50:
+
+        # identity over all primary blocks, weighted by their length
+        weighted, total = 0.0, 0
+        for r in primaries:
+            diff = self._get_dv_from_tags(r.tags)
+            identity = (1 - diff) if diff is not None else (r.nmatch / float(r.aligned_bases) if r.aligned_bases else 0)
+            weighted += identity * r.aligned_bases
+            total += r.aligned_bases
+        approx_ani = 100.0 * weighted / total if total else 0
+
+        start_distance = self._distance_to_reference_start(anchor)
+        start_placed = start_distance <= self.near_start_bp and self._query_position_of_reference_start(anchor) == 0
+
+        if not start_placed:
+            trust_label = "NOT TRUSTWORTHY"
+            trust_color = "red"
+        elif avg_cov < 50:
             trust_label = "NOT TRUSTWORTHY"
             trust_color = "red"
         elif avg_cov < 90:
@@ -355,10 +519,12 @@ class GenomeReorienter:
             trust_label = "TRUSTWORTHY"
             trust_color = "green"
 
-        message = (f"Final alignment strand={best_alignment.strand} "
-                   f"qstart={best_alignment.qstart} tstart={best_alignment.tstart} "
-                   f"alen={best_alignment.aligned_bases} "
-                   f"approx_ani={approx_ani:.1f}%")
+        message = (f"Block at the reference start: strand={anchor.strand} "
+                   f"qstart={anchor.qstart} tstart={anchor.tstart} tend={anchor.tend}, "
+                   f"coverage={cov_q:.1f}%/{cov_t:.1f}% (query/reference), approx_ani={approx_ani:.1f}%")
+        if not start_placed:
+            message += (f", the start of the reference could not be placed (the closest alignment block is "
+                        f"{start_distance:,} nts away from it)")
 
         self.progress.clear()
         self.run.info("Orientation outcome", trust_label, mc=trust_color)
@@ -366,19 +532,20 @@ class GenomeReorienter:
         for action in actions:
             self.run.info_single(action, level=2)
         self.run.info("Output FASTA", output_path)
-        self.run.info("Final alignment strand", best_alignment.strand)
-        self.run.info("Start in query", best_alignment.qstart)
-        self.run.info("Start in reference", best_alignment.tstart)
-        self.run.info("Query length", best_alignment.qlen)
-        self.run.info("Reference length", best_alignment.tlen)
-        self.run.info("Aligned length", best_alignment.aligned_bases)
+        self.run.info("Start of the reference placed", "yes" if start_placed else
+                      f"NO (closest alignment block is {start_distance:,} nts away)", mc="green" if start_placed else "red")
+        self.run.info("Block at the reference start", f"query {anchor.qstart:,}-{anchor.qend:,}, reference "
+                      f"{anchor.tstart:,}-{anchor.tend:,} ({anchor.strand})")
+        self.run.info("Query length", qlen)
+        self.run.info("Reference length", tlen)
+        self.run.info("Primary alignment blocks", len(primaries))
         self.run.info("Query coverage by alignment", f"{cov_q:.1f}%")
         self.run.info("Reference coverage by alignment", f"{cov_t:.1f}%")
         self.run.info("Approx ANI to reference", f"{approx_ani:.1f}%", nl_after=1)
 
         self._visualize_before_and_after(genome_name, fasta_path, output_path, paf_initial=paf_initial, paf_final=paf_final)
 
-        return ReorientationResult(genome_name, "success", message, output_path, trust=trust_label, alignment=best_alignment)
+        return ReorientationResult(genome_name, "success", message, output_path, trust=trust_label, alignment=anchor)
 
 
     def _report_and_visualize_fragmented_genome(self, genome_name, output_path, result_data, fasta_path):
@@ -524,70 +691,38 @@ class GenomeReorienter:
             initial_rotated = os.path.join(temp_dir, "query_rot1.fa")
             self._seqkit_rotate(oriented_query, cut0 + 1, initial_rotated)
 
+            # The first pass put the query position that aligns to the start of the reference at
+            # query[0]. Here we check that against a fresh alignment, and correct it until it holds.
+            # This has to follow the alignment block at the START of the reference: the largest block
+            # anywhere in the genome says nothing about where the reference starts as soon as the two
+            # genomes differ by an indel or a rearrangement between that block and the start, and
+            # following it used to move genomes hundreds of kbp away from where they should begin.
             self.progress.update(f"{genome_name}: Verification alignment")
-            paf_final = self._minimap2_align(self.reference_path, initial_rotated)
-            best_final_final = self._best_primary_alignment(paf_final)
-
-            # Iteratively correct until alignment starts at reference position 0
             current_fa = initial_rotated
+            paf_final = self._minimap2_align(self.reference_path, current_fa)
+            anchor = self._select_anchor_at_reference_start(paf_final)
+
             max_correction_iterations = 5
-            correction_iteration = 0
+            for correction_iteration in range(1, max_correction_iterations + 1):
+                cut = self._query_position_of_reference_start(anchor)
+                self.log_run.info_single(f"Check {correction_iteration}: block at the reference start has "
+                                         f"tstart={anchor.tstart} tend={anchor.tend} qstart={anchor.qstart}; the "
+                                         f"reference starts at query position {cut}", level=2)
+                if cut == 0:
+                    break
 
-            self.log_run.info_single(f"Initial: tstart={best_final_final.tstart} qstart={best_final_final.qstart}", level=2)
-
-            # Final correction to ensure query starts at position 0
-            # Goal: qstart=0 (tstart offset will be handled by consensus offset fix if needed)
-            while best_final_final.qstart != 0 and correction_iteration < max_correction_iterations:
-                correction_iteration += 1
                 self.progress.update(f"{genome_name}: Correction iteration {correction_iteration}")
-                self.log_run.info_single(f"Correction iteration {correction_iteration}: tstart={best_final_final.tstart} qstart={best_final_final.qstart} strand={best_final_final.strand}", level=2)
-
-                # Only fix qstart, not tstart
-                # tstart offset will be handled globally by consensus offset fix
-                if best_final_final.qstart != 0:
-                    if best_final_final.strand == "+":
-                        cut_correction = best_final_final.qstart
-                    else:
-                        cut_correction = self._cut0_for_ref0(best_final_final)
-                else:
-                    # qstart is already 0, we're done
-                    break
-
-                if cut_correction == 0:
-                    self.log_run.info_single("Cut correction is 0, alignment already optimal", level=2)
-                    break
-
                 corrected_fa = os.path.join(temp_dir, f"query_corrected_{correction_iteration}.fa")
-                self._seqkit_rotate(current_fa, cut_correction + 1, corrected_fa)
-                actions.append(f"rotated {cut_correction + 1} bp (correction iter {correction_iteration} for qstart={best_final_final.qstart}, tstart={best_final_final.tstart})")
+                self._seqkit_rotate(current_fa, cut + 1, corrected_fa)
+                actions.append(f"rotated {cut:,} nts (correction {correction_iteration}: the start of the reference "
+                               f"was at query position {cut:,})")
 
-                # Re-align after correction
-                paf_final = self._minimap2_align(self.reference_path, corrected_fa)
-                best_final_final = self._best_primary_alignment(paf_final)
                 current_fa = corrected_fa
+                paf_final = self._minimap2_align(self.reference_path, current_fa)
+                anchor = self._select_anchor_at_reference_start(paf_final)
 
-                self.log_run.info_single(f"After correction {correction_iteration}: tstart={best_final_final.tstart} qstart={best_final_final.qstart}", level=2)
-
-            if best_final_final.tstart == 0:
-                self.log_run.info_single(f"Successfully aligned to tstart=0 after {correction_iteration} correction(s)", level=2)
-                shutil.copyfile(current_fa, output_path)
-            else:
-                # qstart=0 but tstart!=0: query is offset from reference
-                # query[0] aligns with ref[tstart], meaning the first tstart bp of ref are at the END of query
-                # Rotate BACKWARD to move those bp from end to beginning
-                self.log_run.info_single(f"Final tstart={best_final_final.tstart}, applying backward rotation to match reference", level=2)
-                final_adjustment_fa = os.path.join(temp_dir, "query_final_adjustment.fa")
-
-                # Rotate backward by tstart (use qlen - tstart for forward rotation equivalent)
-                backward_rotation = (best_final_final.qlen - best_final_final.tstart) % best_final_final.qlen
-                self._seqkit_rotate(current_fa, backward_rotation + 1, final_adjustment_fa)
-                shutil.copyfile(final_adjustment_fa, output_path)
-                actions.append(f"rotated backward {best_final_final.tstart} nts (final adjustment to match reference start)")
-
-                # Update alignment info for reporting
-                paf_final = self._minimap2_align(self.reference_path, output_path)
-                best_final_final = self._best_primary_alignment(paf_final)
-            return best_final_final, paf_final, paf1, actions
+            shutil.copyfile(current_fa, output_path)
+            return anchor, paf_final, paf1, actions
         finally:
             if not anvio.DEBUG:
                 shutil.rmtree(temp_dir)
@@ -1753,9 +1888,39 @@ class GenomeReorienter:
                 f"Pass-1: selected anchor near reference start (tstart={chosen.tstart})", level=2)
             return chosen
 
-        chosen = max(primaries, key=lambda r: (r.aligned_bases, r.mapq, r.nmatch))
-        self.log_run.info_single("Pass-1: no near-start hit; using best primary.", level=2)
+        # without a block near the start of the reference, the block that starts closest to it is
+        # the best guess (the correction pass refines it); the largest block anywhere would place
+        # the start of the reference by assuming the two genomes are collinear up to that block
+        chosen = self._select_anchor_smallest_reference_start(recs)
+        self.log_run.info_single(f"Pass-1: no near-start hit; using the block closest to the reference start "
+                                 f"(tstart={chosen.tstart}).", level=2)
         return chosen
+
+
+    def _select_anchor_at_reference_start(self, recs):
+        """The primary '+' strand alignment block closest to the start of the reference.
+
+        The reference is a circle, so a block that ends right before the end of the reference marks
+        its start just as well as one that begins right after it; distance is measured both ways.
+        Only '+' strand blocks count: by the time this is used the query has been oriented, and a
+        '-' block near the start would be a local inversion that cannot place the start."""
+        primaries = [r for r in recs if r.is_primary and r.strand == '+']
+        if not primaries:
+            raise self._no_primary_alignment_error("Finding the start of the reference in the query")
+        return min(primaries, key=lambda r: (self._distance_to_reference_start(r), -r.aligned_bases, -r.mapq))
+
+
+    def _distance_to_reference_start(self, rec):
+        """How far an alignment block is from the start of the reference, measured around the circle"""
+        return min(rec.tstart, rec.tlen - rec.tend)
+
+
+    def _query_position_of_reference_start(self, rec):
+        """The query position the first nucleotide of the reference aligns to, according to a '+'
+        strand block close to the start of the reference (on either side of it)."""
+        if rec.tstart <= rec.tlen - rec.tend:
+            return (rec.qstart - rec.tstart) % rec.qlen
+        return (rec.qend + (rec.tlen - rec.tend)) % rec.qlen
 
 
     def _select_anchor_for_ref0(self, recs):
@@ -1811,18 +1976,6 @@ class GenomeReorienter:
         return cut
 
 
-    def _best_primary_alignment(self, recs):
-        primaries = [r for r in recs if r.is_primary]
-        if not primaries:
-            raise self._no_primary_alignment_error("Final validation")
-        best = max(primaries, key=lambda r: (r.aligned_bases, r.mapq, r.nmatch))
-        self.log_run.info_single(
-            f"Final primary: strand={best.strand} qstart={best.qstart} tstart={best.tstart} "
-            f"alen={best.aligned_bases} mapq={best.mapq}",
-            level=2)
-        return best
-
-
     def _final_report(self, results):
         """Show some final information to the user"""
 
@@ -1843,9 +1996,10 @@ class GenomeReorienter:
         if num_not_trustworthy or num_failed:
             review_msg = "the alignment plots above and " if not self.skip_visualizing_alignments else ""
             final_text = (f"Your genome reorientation task considered {num_reoriented} genomes and {num_reference} "
-                          f"reference. Some outcomes are not trustworthy (either because their alignment coverage was too "
-                          f"low for a reliable orientation, or because a contig that maps to both ends of the reference "
-                          f"made the gene order in the output file unreliable regardless). Please review "
+                          f"reference. Some outcomes are not trustworthy (because the start of the reference could not be "
+                          f"placed in them, because their alignment coverage was too low for a reliable orientation, or "
+                          f"because a contig that maps to both ends of the reference made the gene order in the output "
+                          f"file unreliable regardless). Please review "
                           f"{review_msg}the summary below, and the warnings for the genomes in question, to decide which "
                           f"FASTA files to use downstream.")
         elif num_somewhat:
@@ -1856,7 +2010,8 @@ class GenomeReorienter:
         else:
             review_msg = "A quick glance at the alignment plots above is still recommended before downstream analyses." if not self.skip_visualizing_alignments else ""
             final_text = (f"Your genome reorientation task for {num_reoriented} genomes and {num_reference} reference "
-                          f"is complete. All outcomes look trustworthy based on alignment coverage. {review_msg}")
+                          f"is complete. All outcomes look trustworthy based on where they start and how much of them aligns. "
+                          f"{review_msg}")
 
         self.run.warning(final_text, header="FINAL REPORT")
 
@@ -2481,29 +2636,32 @@ class GenomeReorienter:
                 shutil.rmtree(temp_dir)
 
 
-    def _find_dnaa_gene_position(self):
-        """Find the DnaA gene in the reference genome using HMM search.
+    def _find_dnaa_gene(self, fasta_path, verbose=True):
+        """Find the DnaA gene in a genome: call genes with pyrodigal-gv, and search them with the
+        Bac_DnaA_C HMM (Pfam PF08299, DnaA domain IV) at its gathering cutoff.
 
-        Returns the start position of the DnaA gene, or None if not found.
+        Returns a dict with the 'contig', 'start', 'stop' and 'direction' ('f' or 'r') of the best hit,
+        its 'bit_score' and 'e_value', and 'num_hits' (all hits above the cutoff), or None if there is
+        no hit. `start` and `stop` are 0-based and half-open, as in anvi'o gene calls, so a gene on the
+        reverse strand begins (its start codon) at `stop - 1`.
         """
-        self.run.warning(None, header="FINDING DnaA GENE IN REFERENCE")
-        self.run.info("Reference genome", self.reference_name)
+        R = self.run if verbose else self.log_run
 
         # Create temporary directory for gene calling and HMM search
         temp_dir = filesnpaths.get_temp_directory_path()
 
         try:
             # Step 1: Call genes using pyrodigal-gv
-            self.run.info("Step 1", "Calling genes")
+            R.info("Step 1", "Calling genes")
 
-            gene_caller = GeneCaller(self.reference_path, gene_caller='pyrodigal-gv', run=self.log_run, progress=self.progress)
+            gene_caller = GeneCaller(fasta_path, gene_caller='pyrodigal-gv', run=self.log_run, progress=self.progress)
             gene_calls_dict, aa_sequences_dict = gene_caller.process()
 
             if not aa_sequences_dict:
-                self.run.warning("Gene caller did not find any genes in the reference genome. DnaA orientation will be skipped.")
+                R.warning("Gene caller did not find any genes, so there is no DnaA to find.")
                 return None
 
-            self.run.info("Genes called", f"{len(gene_calls_dict)}")
+            R.info("Genes called", f"{len(gene_calls_dict)}")
 
             # Step 2: Write amino acid sequences to FASTA
             aa_fasta_path = os.path.join(temp_dir, "genes.faa")
@@ -2512,7 +2670,7 @@ class GenomeReorienter:
                     f.write(f">{gene_id}\n{seq}\n")
 
             # Step 3: Prepare HMM files
-            self.run.info("Step 2", "Searching for DnaA gene using HMM")
+            R.info("Step 2", "Searching for DnaA gene using HMM")
 
             # Path to DnaA HMM directory
             dnaa_hmm_dir = os.path.join(os.path.dirname(anvio.__file__),
@@ -2555,7 +2713,7 @@ class GenomeReorienter:
 
             # Step 5: Parse results
             if not table_output or not os.path.exists(table_output):
-                self.run.warning("No DnaA gene found in the reference genome. DnaA orientation will be skipped.")
+                R.warning("No DnaA gene found.")
                 return None
 
             # Parse the table output
@@ -2576,7 +2734,7 @@ class GenomeReorienter:
                         })
 
             if not hits:
-                self.run.warning("No DnaA gene found in the reference genome. DnaA orientation will be skipped.")
+                R.warning("No DnaA gene found.")
                 return None
 
             # Get the best hit (highest bit score)
@@ -2585,19 +2743,24 @@ class GenomeReorienter:
 
             # Get the gene position from the gene calls
             if gene_id not in gene_calls_dict:
-                self.run.warning(f"Gene {gene_id} not found in gene calls. DnaA orientation will be skipped.")
+                R.warning(f"Gene {gene_id} not found in gene calls, so anvi'o can't tell where DnaA is.")
                 return None
 
             gene_info = gene_calls_dict[gene_id]
-            dnaa_start = gene_info['start']
-            dnaa_stop = gene_info['stop']
+            dnaa = {'contig': gene_info['contig'],
+                    'start': gene_info['start'],
+                    'stop': gene_info['stop'],
+                    'direction': gene_info['direction'],
+                    'bit_score': best_hit['bit_score'],
+                    'e_value': best_hit['e_value'],
+                    'num_hits': len(hits)}
 
-            self.run.info("DnaA gene found", f"Gene {gene_id}")
-            self.run.info("DnaA location", f"{dnaa_start:,} - {dnaa_stop:,} nts")
-            self.run.info("DnaA bit score", f"{best_hit['bit_score']:.1f}")
-            self.run.info("DnaA e-value", f"{best_hit['e_value']:.2e}", nl_after=1)
+            R.info("DnaA gene found", f"Gene {gene_id} on '{dnaa['contig']}'")
+            R.info("DnaA location", f"{dnaa['start']:,} - {dnaa['stop']:,} nts ({'forward' if dnaa['direction'] == 'f' else 'reverse'} strand)")
+            R.info("DnaA bit score", f"{best_hit['bit_score']:.1f}")
+            R.info("DnaA e-value", f"{best_hit['e_value']:.2e}", nl_after=1)
 
-            return dnaa_start
+            return dnaa
 
         finally:
             # Clean up temporary directory
