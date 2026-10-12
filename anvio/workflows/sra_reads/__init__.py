@@ -729,14 +729,24 @@ class SRAReadsModule:
         which files are still needed and removes them the moment they are not, which is the only
         way to be sure nothing is deleted too early. This list decides something different and
         more forgiving: when the *next* download is allowed to start. If something is missing
-        from it the disk budget gets looser than promised, but nothing breaks."""
+        from it the disk budget gets looser than promised, but nothing breaks.
+
+        A profile is not finished when `anvi_profile` is: the steps the merge waits for, such as
+        `import_percent_of_reads_mapped`, write into it afterwards. When any of them runs, what
+        stands for the profile here is the files those steps leave behind, which cannot exist
+        before the PROFILE.db does. The PROFILE.db itself stays out of the list in that case, as it
+        would always be newer than the release flag and make every restart redo the release."""
 
         targets = []
+
+        # each value is (file name in the profile directory, whether the step that makes it runs)
+        post_profile_files = [f for f, runs in self.get_merge_optional_inputs().values() if runs]
 
         for sample in self.download_unit_members[unit]:
             for readset in [rs['id'] for rs in self.readsets if rs['base_sample'] == sample]:
                 for group in self.get_groups_a_readset_is_mapped_to(readset):
-                    targets.append(os.path.join(self.dirs_dict["PROFILE_DIR"], group, readset, "PROFILE.db"))
+                    profile_dir = os.path.join(self.dirs_dict["PROFILE_DIR"], group, readset)
+                    targets.extend(os.path.join(profile_dir, f) for f in post_profile_files or ["PROFILE.db"])
 
                 if self.get_param_value_from_config(['import_percent_of_reads_mapped', 'run']) == True:
                     targets.append(os.path.join(self.dirs_dict["QC_DIR"], f"{readset}-total_num_reads.txt"))
