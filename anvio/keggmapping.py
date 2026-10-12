@@ -123,7 +123,8 @@ ANVIO_COLORMAPS: Dict[str, Tuple[str, ...]] = {
 # Colormaps for values that repeat, such as clock times. Each has the same color at both ends. On a
 # global or overview map drawn from reactions alone, each compound takes a color from the reaction
 # lines that touch it. With one of these colormaps, the values of those lines are averaged on a
-# circle. '_is_cyclic_colormap' matches colormap names against this list. Matplotlib's cyclic
+# circle. A layer with a period ('--reaction-value-period') averages them on a circle with any
+# colormap. '_is_cyclic_colormap' matches colormap names against this list. Matplotlib's cyclic
 # colormaps are not listed. People often use one of them, 'hsv', for values that do not repeat.
 CYCLIC_COLORMAPS: Tuple[str, ...] = (
     'clocktime',
@@ -164,6 +165,26 @@ AGGREGATION_FUNCTIONS = {
 CIRCULAR_AGGREGATIONS: Tuple[str, ...] = (
     'circular_mean',
 )
+
+# Summaries of how far values that repeat after a period are spread apart. An example is how far
+# apart the peak times of a map element are in different samples. They need a period, as
+# 'CIRCULAR_AGGREGATIONS' do. A spread is a plain number, not a point in the period. Only the
+# summary that colors the 'unified' map ('--*-sample-summary' without groups or '--*-group-summary'
+# with groups) takes these names. The two kinds of map then differ ('_build_txt_model'). Each
+# individual map shows a point in the period for each element, its circular mean in one sample
+# or group. Its scale runs from 0 to the period, with the cyclic 'clocktime' by default, and its
+# colorbar is labeled with the value column's name. The 'unified' map shows the spread of those
+# points. Its scale runs from 0 to the largest spread there can be, 5.40 with a period of 24. It
+# takes a colormap that is not cyclic, 'plasma_r' by default, since the smallest and the largest
+# spread are not the same point. Its colorbar is labeled '{value} angular deviation'. On global and
+# overview maps, its compound colors are averaged as plain numbers, not on a circle.
+CIRCULAR_SPREADS: Tuple[str, ...] = (
+    'angular_deviation',
+)
+
+# The fewest values whose angular deviation is defined ('_angular_deviation'). The spread of two
+# values is only the gap between them. Fewer values leave the element uncolored.
+MIN_ANGULAR_DEVIATION_VALUES = 3
 
 # The presence choices of the '--*-sample-summary'/'--*-group-summary' arguments, which summarize a
 # set of samples or groups by how many ('count' and 'count_continuous') or exactly which
@@ -216,10 +237,11 @@ ELEMENT_NORMALIZATION_REFERENCES = {
 # sample or group against the same element's values across all of them. This transformation is not a
 # reduction like an aggregation or a summary. Normalized values are displayed on sample or group
 # maps. 'form' is how a value is compared to the reference ('_element_normalization_function'), and
-# 'reference' is the statistic it is compared against, one of 'ELEMENT_NORMALIZATION_REFERENCES' or
-# None for a form needing none. 'centered' says whether zero is the neutral middle of the resulting
-# quantity, which triggers a diverging colormap and a scale centered on zero by default. 'label'
-# names the quantity on the colorbar, with '{value}' standing in for the value column's own name.
+# 'reference' is the statistic it is compared against, one of 'ELEMENT_NORMALIZATION_REFERENCES',
+# 'circular_mean' for 'CIRCULAR_ELEMENT_NORMALIZATIONS', or None for a form needing none. 'centered'
+# says whether zero is the neutral middle of the resulting quantity, which triggers a diverging
+# colormap and a scale centered on zero by default. 'label' names the quantity on the colorbar, with
+# '{value}' standing in for the value column's own name.
 ELEMENT_NORMALIZATIONS = {
     'relative_to_mean': {
         'form': 'relative', 'reference': 'mean', 'centered': True,
@@ -260,11 +282,25 @@ ELEMENT_NORMALIZATIONS = {
     'fraction_of_total': {
         'form': 'fraction', 'reference': 'total', 'centered': False,
         'label': '{value} / total'
+    },
+    'difference_from_circular_mean': {
+        'form': 'circular_difference', 'reference': 'circular_mean', 'centered': True,
+        'label': '{value} - circular mean'
     }
 }
 
 # The normalization names as a phrase for messages that list them.
 ELEMENT_NORMALIZATION_PHRASE = ', '.join(repr(name) for name in ELEMENT_NORMALIZATIONS)
+
+# Normalizations of values that repeat after a period. Each value becomes its signed offset from the
+# element's circular mean, wrapped to [-period / 2, period / 2). The two ends of that range are the
+# same point. The circular mean comes from '_circular_mean', not from
+# 'ELEMENT_NORMALIZATION_REFERENCES'; the other normalizations take their reference from that table,
+# such as the plain mean, and compare values on a line. Circular normalization names need a period,
+# and a layer with a period takes only these names ('_resolve_element_normalization').
+CIRCULAR_ELEMENT_NORMALIZATIONS: Tuple[str, ...] = (
+    'difference_from_circular_mean',
+)
 
 # The forms whose reference has to be positive for the comparison to mean anything: dividing by a
 # reference of zero has no scale to measure against, and dividing by a negative one inverts the sign
@@ -276,6 +312,11 @@ ELEMENT_NORMALIZATION_POSITIVE_FORMS = ('relative', 'log2_ratio', 'fraction')
 # it and no colormap was named for it. A normalized value says which side of the element's own
 # reference a sample falls on, which a diverging colormap shows, unlike the sequential default.
 DEFAULT_CENTERED_COLORMAP = 'RdYlGn'
+
+# The colormap of a layer whose values repeat after a period, when no colormap was named for it. 0
+# and the period are the same point, and a cyclic colormap gives them the same color. 'clocktime' is
+# laid out for hours, but it is cyclic for any period.
+DEFAULT_PERIOD_COLORMAP = 'clocktime'
 
 # The name a category colors file gives its color column. Its other column holds category names and
 # can be headed anything, exactly as the item column of a groups-txt file can, so that one file can
@@ -916,16 +957,20 @@ class Mapper:
         Callable
             Reduces a sequence of values to a single value.
         """
-        if aggregation in CIRCULAR_AGGREGATIONS:
+        if aggregation in CIRCULAR_AGGREGATIONS + CIRCULAR_SPREADS:
             if period is None:
                 raise ConfigError(
-                    f"'{flag}' was given as '{aggregation}', which averages values that repeat "
-                    f"after a period, such as clock times. No period was given for these values. "
-                    f"Give one with '{period_flag}', such as 24 for clock times in hours."
+                    f"'{flag}' was given as '{aggregation}', which is for values that repeat after "
+                    f"a period, such as clock times. No period was given for these values. Give "
+                    f"one with '{period_flag}', such as 24 for clock times in hours."
                 )
+            circular_function = (
+                Mapper._angular_deviation if aggregation in CIRCULAR_SPREADS
+                else Mapper._circular_mean
+            )
 
             def circular_aggregate(values):
-                return Mapper._circular_mean(values, period)
+                return circular_function(values, period)
             return circular_aggregate
         if period is not None:
             raise ConfigError(
@@ -1032,7 +1077,64 @@ class Mapper:
         return 0.0 if mean >= period else mean
 
     @staticmethod
-    def _element_normalization_function(form: str, reference: Union[str, None]) -> Callable:
+    def _angular_deviation(values: Iterable[float], period: float) -> float:
+        """
+        Measure how far values that repeat after a period are spread apart on a circle.
+
+        Each value is a point on a circle whose circumference is the period, as in
+        '_circular_mean'. R is the length of the average of these points. R is 1 where the values
+        are equal, and 0 where they cancel out. The angular deviation is sqrt(2 * (1 - R)), in units
+        of the period divided by 2 * pi. It runs from 0, where the values are equal, to
+        '_largest_angular_deviation', where they cancel out. With a period of 24, that is 5.40. For
+        values close together, it is close to their standard deviation.
+
+        Fewer than 'MIN_ANGULAR_DEVIATION_VALUES' values give NaN. The value is then dropped as any
+        undefined aggregation is ('_finite_values', '_reduce_entry_value').
+
+        Parameters
+        ==========
+        values : Iterable[float]
+            The values whose spread is measured.
+
+        period : float
+            The positive period after which the values repeat.
+
+        Returns
+        =======
+        float
+            The angular deviation, or NaN where there are too few values.
+        """
+        values = np.mod(np.asarray(values, dtype=float), period)
+        if len(values) < MIN_ANGULAR_DEVIATION_VALUES:
+            return float('nan')
+        angles = 2 * np.pi * values / period
+        resultant = np.hypot(np.mean(np.sin(angles)), np.mean(np.cos(angles)))
+        # Rounding can put R a hair above 1 where the values are equal.
+        return float(np.sqrt(max(0.0, 2 * (1 - resultant))) * period / (2 * np.pi))
+
+    @staticmethod
+    def _largest_angular_deviation(period: float) -> float:
+        """
+        Return the angular deviation of values that cancel out, the largest there can be.
+
+        Parameters
+        ==========
+        period : float
+            The positive period after which the values repeat.
+
+        Returns
+        =======
+        float
+            period * sqrt(2) / (2 * pi), which is 5.40 for a period of 24.
+        """
+        return period * np.sqrt(2) / (2 * np.pi)
+
+    @staticmethod
+    def _element_normalization_function(
+        form: str,
+        reference: Union[str, None],
+        period: Union[float, None] = None
+    ) -> Callable:
         """
         Build the function behind one of 'ELEMENT_NORMALIZATIONS'.
 
@@ -1050,7 +1152,11 @@ class Mapper:
 
         reference : Union[str, None]
             The statistic to compare against, named among 'ELEMENT_NORMALIZATION_REFERENCES', or
-            None for a form that needs no reference.
+            'circular_mean', or None for a form that needs no reference.
+
+        period : Union[float, None], None
+            The period after which the values repeat. A circular reference and the
+            'circular_difference' form need it.
 
         Returns
         =======
@@ -1058,7 +1164,11 @@ class Mapper:
             Maps a sequence of values to a NumPy array of normalized values of the same length.
         """
         needs_positive = form in ELEMENT_NORMALIZATION_POSITIVE_FORMS
-        statistic = None if reference is None else ELEMENT_NORMALIZATION_REFERENCES[reference]
+        if reference in CIRCULAR_AGGREGATIONS:
+            def statistic(values):
+                return Mapper._circular_mean(values, period)
+        else:
+            statistic = None if reference is None else ELEMENT_NORMALIZATION_REFERENCES[reference]
 
         def normalize(values) -> np.ndarray:
             # NumPy is asked not to raise or warn on the divisions and logarithms below, so that a
@@ -1077,6 +1187,12 @@ class Mapper:
                     return (array - center) / center
                 if form == 'difference':
                     return array - center
+                if form == 'circular_difference':
+                    # The offset is the shorter way around the circle, wrapped to
+                    # [-period / 2, period / 2). It is rounded as '_circular_mean' rounds, so that
+                    # an offset of half a period always lands on the same end.
+                    fraction = np.round((array - center) / period + 0.5, 12) % 1.0 - 0.5
+                    return fraction * period
                 if form == 'log2_ratio':
                     return np.log2(array / center)
                 if form == 'fraction':
@@ -1101,7 +1217,9 @@ class Mapper:
     def _resolve_element_normalization(
         normalization: str,
         flag: str,
-        element_type: str
+        element_type: str,
+        period: Union[float, None] = None,
+        period_flag: Union[str, None] = None
     ) -> Tuple[Callable, str, bool]:
         """
         Resolve a normalization name into a function rescaling one element's per-category values.
@@ -1138,19 +1256,43 @@ class Mapper:
         element_type : str
             'reaction' or 'compound', naming the layer in error messages.
 
+        period : Union[float, None], None
+            The period after which the layer's values repeat, or None if they do not repeat. Values
+            with a period take only the names of 'CIRCULAR_ELEMENT_NORMALIZATIONS', and these names
+            need a period. Both rules are checked here.
+
+        period_flag : Union[str, None], None
+            The command-line flag that gives the layer's period, used in error messages.
+
         Returns
         =======
         Tuple[Callable, str, bool]
             The normalizing function, the colorbar label with '{value}' standing in for the value
             column's name, and whether zero is the neutral middle of the quantity it makes.
         """
+        if normalization in CIRCULAR_ELEMENT_NORMALIZATIONS and period is None:
+            raise ConfigError(
+                f"'{flag}' was given as '{normalization}', which is for values that repeat after a "
+                f"period, such as clock times. No period was given for these values. Give one "
+                f"with '{period_flag}', such as 24 for clock times in hours."
+            )
+        if period is not None and normalization not in CIRCULAR_ELEMENT_NORMALIZATIONS:
+            circular_names = ', '.join(repr(name) for name in CIRCULAR_ELEMENT_NORMALIZATIONS)
+            raise ConfigError(
+                f"'{flag}' was given as '{normalization}', but '{period_flag}' says that the "
+                f"values repeat every {period:g}. Values just below {period:g} and just above 0 "
+                f"are then close together. '{normalization}' compares values on a line, so it "
+                f"treats them as far apart. Use {circular_names} instead."
+            )
         try:
             preset = ELEMENT_NORMALIZATIONS[normalization]
         except KeyError:
             pass
         else:
             return (
-                Mapper._element_normalization_function(preset['form'], preset['reference']),
+                Mapper._element_normalization_function(
+                    preset['form'], preset['reference'], period
+                ),
                 preset['label'],
                 preset['centered']
             )
@@ -1358,6 +1500,11 @@ class Mapper:
             return (
                 "A circular mean is undefined where the values cancel out, such as 6 and 18 with a "
                 "period of 24."
+            )
+        if aggregation in CIRCULAR_SPREADS:
+            return (
+                f"An angular deviation needs at least {MIN_ANGULAR_DEVIATION_VALUES} values. The "
+                f"spread of two values is only the gap between them."
             )
         return (
             f"This happens when {noun} needs more values than are available, as the standard "
@@ -2119,8 +2266,11 @@ class Mapper:
         'value_period' says that the values repeat after that period, as clock times in hours repeat
         every 24. Every reduction of the values is then circular ('CIRCULAR_AGGREGATIONS'). An
         aggregation left as None is 'circular_mean' with a period and 'sum' without one. A period
-        refuses every other aggregation and summary of values, and any normalization. Presence
-        summaries are unaffected.
+        refuses every other aggregation and summary of values. Its only normalization is
+        'difference_from_circular_mean' ('CIRCULAR_ELEMENT_NORMALIZATIONS'). Presence summaries are
+        unaffected. Each scale of values runs from 0 to the period ('_map_elements'). The scale of
+        offsets from a normalization runs from -period / 2 to period / 2 instead. Other limits are
+        refused, and so are centers. A colormap left as None is 'DEFAULT_PERIOD_COLORMAP'.
         """
         element_type = data['element_type']
         use_reaction_attribute = data['reaction_source'] == 'Reaction'
@@ -2209,25 +2359,25 @@ class Mapper:
                     f"column, so there is a single set of values with nothing to compare them "
                     f"against. Add a 'sample' column to compare samples."
                 )
-            if value_period is not None:
-                raise ConfigError(
-                    f"'{element_normalization_flag}' rescales the values of the {element_type} "
-                    f"layer, but '{value_period_flag}' says that they repeat every "
-                    f"{value_period:g}. A normalization compares values on a line, by a ratio, a "
-                    f"difference, a rank or a z-score. Values just below {value_period:g} and just "
-                    f"above 0 are close together, but these comparisons treat them as far apart. "
-                    f"Please use only one of the two options."
-                )
             element_normalize, element_normalization_label_template, centered = (
                 self._resolve_element_normalization(
-                    element_normalization, element_normalization_flag, element_type
+                    element_normalization, element_normalization_flag, element_type, value_period,
+                    value_period_flag
                 )
             )
-            if centered and category_value_center is None:
-                category_value_center = 0.0
-                center_from_normalization = True
-            if category_colormap is None and centered:
-                category_colormap = DEFAULT_CENTERED_COLORMAP
+            # With a period, the offsets run from -period / 2 to period / 2. That scale is fixed
+            # in '_map_elements', with 0 at its middle, so no center is set here. Its two ends are
+            # the same point, so its default colormap is the cyclic one. A diverging colormap
+            # would give the two ends opposite colors.
+            if value_period is not None:
+                if category_colormap is None:
+                    category_colormap = DEFAULT_PERIOD_COLORMAP
+            else:
+                if centered and category_value_center is None:
+                    category_value_center = 0.0
+                    center_from_normalization = True
+                if category_colormap is None and centered:
+                    category_colormap = DEFAULT_CENTERED_COLORMAP
 
         value_center = self._resolve_value_center(
             value_center, value_center_flag, value_limits, value_limits_flag
@@ -2272,6 +2422,66 @@ class Mapper:
                         f"samples or groups of the {element_type} layer, but the file at '{path}' "
                         f"has no 'sample' column, so it draws no such maps and its values take a "
                         f"single scale. {verb.capitalize()} that one with '{single_scale_flag}'."
+                    )
+        # The summary that colors the 'unified' map is the group summary with groups, and the sample
+        # summary without them. A spread there ('CIRCULAR_SPREADS') gives that map a scale, a
+        # colormap, and a label of its own.
+        unified_summary_flag = (
+            f"--{element_type}-{'group' if group_samples is not None else 'sample'}-summary"
+        )
+        unified_summary = group_summary if group_samples is not None else sample_summary
+        unified_spread = has_sample and unified_summary in CIRCULAR_SPREADS
+
+        # A period fixes each scale of values to run from 0 to the period ('_map_elements'). A color
+        # then always means the same point in the period. Limits of exactly 0 and the period ask for
+        # the same scale, so they are accepted. Any other limit, or a center, is refused. A spread
+        # on the 'unified' map is fixed to run from 0 to the largest spread there can be, so no
+        # limits are accepted for that map.
+        if value_period is not None:
+            if unified_spread and value_limits is not None:
+                raise ConfigError(
+                    f"'{value_limits_flag}' bounds the color scale of the 'unified' map, but "
+                    f"'{unified_summary_flag} {unified_summary}' colors that map by how far the "
+                    f"values are spread apart. That scale runs from 0 to "
+                    f"{self._largest_angular_deviation(value_period):.3g}, the largest spread "
+                    f"there can be with a period of {value_period:g}. Please drop "
+                    f"'{value_limits_flag}'."
+                )
+            # The offsets of a normalization run from -period / 2 to period / 2 instead, with 0 at
+            # the middle of the scale.
+            offsets = element_normalization is not None
+            category_limits = (
+                (-value_period / 2, value_period / 2) if offsets else (0.0, value_period)
+            )
+            for setting, flag, limits in (
+                (value_limits, value_limits_flag, (0.0, value_period)),
+                (category_value_limits, category_value_limits_flag, category_limits)
+            ):
+                if setting is not None and setting != limits:
+                    raise ConfigError(
+                        f"'{value_period_flag}' fixes the color scale that '{flag}' bounds. It "
+                        f"runs from {limits[0]:g} to {limits[1]:g}, so that a color always means "
+                        f"the same point in the period. Other limits were given. Please drop "
+                        f"'{flag}', or give it '{limits[0]:g} {limits[1]:g}'."
+                    )
+            for setting, flag in (
+                (value_center, value_center_flag),
+                (category_value_center, category_value_center_flag)
+            ):
+                if setting is not None and offsets and flag == category_value_center_flag:
+                    raise ConfigError(
+                        f"'{flag}' centers the color scale of the maps of the individual samples "
+                        f"or groups of the {element_type} layer, but "
+                        f"'{element_normalization_flag} {element_normalization}' already puts 0 "
+                        f"at the middle of that scale. It runs from {category_limits[0]:g} to "
+                        f"{category_limits[1]:g}. Please drop '{flag}'."
+                    )
+                if setting is not None:
+                    raise ConfigError(
+                        f"'{flag}' centers a color scale of the {element_type} layer, but "
+                        f"'{value_period_flag}' fixes each such scale to run from 0 to "
+                        f"{value_period:g}. Values that repeat have no middle to read the others "
+                        f"against. Please use only one of the two options."
                     )
 
         # The colormap of the per-sample/per-group scale is settled on the same footing as the limits
@@ -2368,9 +2578,29 @@ class Mapper:
             }
 
         undefined: Set[str] = set()
+        # A spread is a plain number, not a point in the period. So only the summary that colors the
+        # 'unified' map takes one. Within a sample, the KOs of an element must still give a point in
+        # the period. With groups, the sample summary colors each group's map, and the group summary
+        # then pools those values.
+        for name, flag in (
+            (gene_aggregation, f'--{element_type}-gene-aggregation'),
+            (accession_aggregation, f'--{element_type}-accession-aggregation'),
+            (sample_summary if group_samples is not None else None,
+             f'--{element_type}-sample-summary')
+        ):
+            if name in CIRCULAR_SPREADS:
+                raise ConfigError(
+                    f"'{flag}' was given as '{name}', which measures how far values are spread "
+                    f"apart. A spread is a plain number, not a point in the period. So it can only "
+                    f"summarize the {'groups' if group_samples is not None else 'samples'} for the "
+                    f"'unified' map, with '{unified_summary_flag}'."
+                )
         # An aggregation left unset is 'circular_mean' for values with a period, and 'sum'
-        # otherwise.
+        # otherwise. A colormap of values left unset is cyclic for values with a period.
         default_aggregation = 'circular_mean' if value_period is not None else 'sum'
+        # Messages that suggest a summary of values name one that the period accepts.
+        suggested_summary = 'circular_mean' if value_period is not None else 'mean'
+        default_colormap = DEFAULT_PERIOD_COLORMAP if value_period is not None else 'plasma_r'
         if gene_aggregation is None:
             gene_aggregation = default_aggregation
         if accession_aggregation is None:
@@ -2411,7 +2641,7 @@ class Mapper:
             )
             self._warn_undefined_values(undefined, gene_aggregation, path)
             cmap = self._resolve_sequential_colormap(
-                colormap if colormap is not None else 'plasma_r', colormap_limits,
+                colormap if colormap is not None else default_colormap, colormap_limits,
                 subject=f'{element_type}s'
             )
             self._check_centered_colormap(
@@ -2438,7 +2668,8 @@ class Mapper:
                 'value_limits': value_limits,
                 'category_value_limits': None,
                 'value_center': value_center,
-                'category_value_center': None
+                'category_value_center': None,
+                'value_period': value_period
             }
 
         # Resolve the two summaries into the mode of each map context. Ungrouped, the per-sample
@@ -2460,7 +2691,8 @@ class Mapper:
                     f"the values of the sample groups, but '--{element_type}-sample-summary' "
                     f"summarizes each group's samples by presence rather than by value, so the "
                     f"groups have no values to pool. Please also set "
-                    f"'--{element_type}-sample-summary' to an aggregation such as 'mean'."
+                    f"'--{element_type}-sample-summary' to an aggregation such as "
+                    f"'{suggested_summary}'."
                 )
             unified_kind, unified_scheme = group_kind, group_scheme
             category_kind = sample_kind
@@ -2509,7 +2741,8 @@ class Mapper:
             'value_center': value_center,
             'category_value_center': category_value_center,
             # A center that a normalization supplied is reported under the normalization's flag.
-            'category_value_center_flag': category_center_source_flag
+            'category_value_center_flag': category_center_source_flag,
+            'value_period': value_period
         }
 
         if value_column is None:
@@ -2528,7 +2761,8 @@ class Mapper:
                 f"'--{element_type}-sample-summary' summarizes each group's samples by presence "
                 f"rather than by pooling their values, so each map shows how many of a group's "
                 f"samples contain an element rather than how much of it there is. Set the sample "
-                f"summary to an aggregation such as 'mean' to color the group maps by value."
+                f"summary to an aggregation such as '{suggested_summary}' to color the group maps "
+                f"by value."
             )
 
         # A limit bounds, and a center centers, a scale that colors by value, so a context colored
@@ -2561,8 +2795,8 @@ class Mapper:
                     f"groups, but those maps are not colored by value here: "
                     f"'--{element_type}-sample-summary' summarizes each group's samples by "
                     f"presence rather than by pooling their values. Set it to an aggregation such "
-                    f"as 'mean' to color the group maps by value, or {verb} the 'unified' map's "
-                    f"own scale with '{other_flag}'."
+                    f"as '{suggested_summary}' to color the group maps by value, or {verb} the "
+                    f"'unified' map's own scale with '{other_flag}'."
                 )
         if category_colormap is not None and model['category_mode'] != 'quantitative':
             raise ConfigError(
@@ -2570,19 +2804,22 @@ class Mapper:
                 f"groups, but those maps are not colored along a scale of values here: "
                 f"'--{element_type}-sample-summary' summarizes each group's samples by presence "
                 f"rather than by pooling their values, and presence there is colored by "
-                f"'--group-colormap'. Set the sample summary to an aggregation such as 'mean' to "
-                f"color the group maps by value, or color the 'unified' map's own scale with "
-                f"'{colormap_flag}'."
+                f"'--group-colormap'. Set the sample summary to an aggregation such as "
+                f"'{suggested_summary}' to color the group maps by value, or color the 'unified' "
+                f"map's own scale with '{colormap_flag}'."
             )
 
-        # The two scales are bounded separately because a summary can put them on quite different
-        # footings: a mean across samples spans a good deal less than the samples themselves do. The
-        # flip side is that a limit on one says nothing about the other, and the scale left alone is
-        # an easy one to overlook, so bounding exactly one of two scales that both color by value is
-        # worth saying out loud. It is a legitimate thing to ask for, so this is not an error.
+        # The 'unified' scale and the scale of the individual maps take separate limits. A summary
+        # can span much less than the values it summarizes. For example, a mean across samples spans
+        # less than the samples do. So limits given for one scale do not apply to the other. Where
+        # both scales color by value and only one has limits, the user may not have meant to leave
+        # the other without limits. This warns about it. It is not refused, since limiting only one
+        # scale can be intended. With a period, both scales have fixed limits, so there is nothing
+        # to warn about.
         if (
             model['unified_mode'] == 'quantitative' and model['category_mode'] == 'quantitative'
             and (value_limits is None) != (category_value_limits is None)
+            and value_period is None
         ):
             if value_limits is None:
                 given_flag, other_flag = category_value_limits_flag, value_limits_flag
@@ -2599,13 +2836,12 @@ class Mapper:
                 f"it is not, give '{other_flag}' limits of its own."
             )
 
-        # Centering exactly one of two scales that both color by value is worth saying out loud for
-        # the same reason, and for one more: unless a colormap was given to the per-sample/per-group
-        # scale of its own, the two are drawn from the same colormap, and then the middle color
-        # means the centered value on the one map and whatever the values happen to leave in the
-        # middle on the other. A center that a normalization supplied is left out of this: it was not
-        # asked for, so the other scale not having one is nothing to reconcile, and a centered
-        # normalization uses a scale on a diverging colormap that is not shared with the summary.
+        # Centering only one of the two scales also warns, for the same reason as the limits above.
+        # There is a second reason. Without '--*-category-colormap', both scales use the same
+        # colormap. The middle color then means the center on one map, and the midpoint of that
+        # map's values on the other. A center that a normalization supplied does not warn. The user
+        # did not ask for it, and a normalization colors its scale with a diverging colormap that the
+        # summary does not share.
         if (
             model['unified_mode'] == 'quantitative' and model['category_mode'] == 'quantitative'
             and (value_center is None) != (category_value_center is None)
@@ -2621,14 +2857,13 @@ class Mapper:
                 other_subject = f"the maps of the individual {'groups' if grouped else 'samples'}"
             self.run.warning(
                 f"'{given_flag}' centers the color scale of the {element_type} layer on "
-                f"{given_center:g}, but '{other_flag}' was not given, so the scale of "
-                f"{other_subject} still sits wherever its own values leave it. Where one colormap "
-                f"colors both scales, which is what happens unless "
-                f"'{category_colormap_flag}' gives one of them a colormap of its own, the very "
-                f"same color then means the centered value on the one map and something else "
-                f"entirely on the other. The two are centered separately because a summary can put "
-                f"them on quite different footings, so this may well be what you intend. If it is "
-                f"not, center the other with '{other_flag}'."
+                f"{given_center:g}, but '{other_flag}' was not given. So the scale of "
+                f"{other_subject} is not centered. Unless '{category_colormap_flag}' gives the two "
+                f"scales different colormaps, they use the same colormap. Its middle color then "
+                f"means {given_center:g} on one map, and a different value on the other. The two "
+                f"scales are centered separately, because a summary can span much less than the "
+                f"values it summarizes. So this may be what you intend. If it is not, center the "
+                f"other scale with '{other_flag}'."
             )
 
         # Per-sample values: each sample's rows reduced to one value per accession by the
@@ -2646,12 +2881,12 @@ class Mapper:
             # an ungrouped run always show a value column's magnitude), so nothing is colored by
             # value.
             self.run.warning(
-                f"The layer from the text file at '{path}' has a value column, "
-                f"'{value_column}', but nothing on the maps is colored by it: with sample groups, "
-                f"the per-group maps are colored by '--{element_type}-sample-summary' and the "
-                f"'unified' map by '--{element_type}-group-summary', and both of these summarize "
-                f"presence rather than value. Set '--{element_type}-sample-summary' to an "
-                f"aggregation, such as 'mean', to color the group maps by value."
+                f"The layer from the text file at '{path}' has a value column, '{value_column}', "
+                f"but nothing on the maps is colored by it: with sample groups, the per-group maps "
+                f"are colored by '--{element_type}-sample-summary' and the 'unified' map by "
+                f"'--{element_type}-group-summary', and both of these summarize presence rather "
+                f"than value. Set '--{element_type}-sample-summary' to an aggregation, such as "
+                f"'{suggested_summary}', to color the group maps by value."
             )
             return model
 
@@ -2669,24 +2904,43 @@ class Mapper:
         model['group_summary'] = group_summary if grouped and group_kind == 'value' else None
         model['group_aggregate'] = group_aggregate if grouped else None
 
+        # A spread on the 'unified' map does not repeat. Its scale takes a sequential colormap. A
+        # cyclic one would give the smallest and the largest spread the same color.
+        model['unified_spread'] = unified_spread
+        unified_default_colormap = 'plasma_r' if unified_spread else default_colormap
         model['cmap'] = self._resolve_sequential_colormap(
-            colormap if colormap is not None else 'plasma_r', colormap_limits,
+            colormap if colormap is not None else unified_default_colormap, colormap_limits,
             subject=f'{element_type}s'
         )
+        if unified_spread and self._is_cyclic_colormap(model['cmap']):
+            raise ConfigError(
+                f"'{colormap_flag}' was given as '{colormap}', a cyclic colormap, but "
+                f"'{unified_summary_flag} {unified_summary}' colors the 'unified' map by how far "
+                f"the values are spread apart. A spread does not repeat. A cyclic colormap would "
+                f"give the smallest and the largest spread the same color. Please give a "
+                f"sequential colormap, such as 'plasma_r'."
+            )
         # The maps of the individual samples or groups take a colormap of their own where one was
         # given, so that a 'unified' map showing a summary of another kind than the values behind it
         # — their spread rather than their magnitude — is not read as more of the same quantity.
         # Left unset, the layer's one colormap serves both contexts, and is resolved once so that a
-        # warning about it is given once.
+        # warning about it is given once. The exception is a spread on the 'unified' map. The maps
+        # of the individual samples or groups then show points in the period. Left unset, their
+        # colormap is the cyclic default.
         category_subject = (
             f"{element_type}s on the maps of the individual "
             f"{'groups' if grouped else 'samples'}"
         )
-        model['category_cmap'] = model['cmap'] if category_colormap is None else (
-            self._resolve_sequential_colormap(
+        if category_colormap is not None:
+            model['category_cmap'] = self._resolve_sequential_colormap(
                 category_colormap, category_colormap_limits, subject=category_subject
             )
-        )
+        elif unified_spread:
+            model['category_cmap'] = self._resolve_sequential_colormap(
+                default_colormap, None, subject=category_subject
+            )
+        else:
+            model['category_cmap'] = model['cmap']
         # Whether a centered scale's colormap has a middle worth putting a value at is asked of each
         # scale's own colormap, and only where that scale both colors by value and was centered. The
         # two questions are asked separately even where one colormap serves both, since a scale that
@@ -2706,6 +2960,9 @@ class Mapper:
             )
         model['aggregate'] = aggregate
         model['colorbar_label'] = value_column
+        # A spread on the 'unified' map shows a quantity of its own. Its colorbar says what it is.
+        if unified_spread:
+            model['unified_colorbar_label'] = f'{value_column} angular deviation'
         # The 'unified' map is derived from the values themselves, so only the scale that the
         # per-sample or per-group maps share is relabeled by a normalization. Every normalization
         # composes its label from the value column's name: one anvi'o knows names the quantity it
@@ -2816,8 +3073,11 @@ class Mapper:
         reaction_value_period : Union[float, str, None], None
             The period after which the values of the reaction layer repeat, such as 24 for clock
             times in hours. Every reduction of the values is then circular, and 'circular_mean' is
-            the only aggregation and value summary accepted ('CIRCULAR_AGGREGATIONS'). A
-            normalization is refused. None means that the values do not repeat.
+            the only aggregation and value summary accepted ('CIRCULAR_AGGREGATIONS'). The only
+            normalization accepted is 'difference_from_circular_mean'. Each scale of values runs
+            from 0 to the period. The scale of its offsets runs from -period / 2 to period / 2.
+            Other limits are refused, and so are centers. Without a colormap, the scales take
+            'DEFAULT_PERIOD_COLORMAP'. None means that the values do not repeat.
 
         compound_value_period : Union[float, str, None], None
             The same period for the values of the compound layer.
@@ -2870,8 +3130,8 @@ class Mapper:
 
         reaction_category_value_limits : Tuple[Union[float, None], Union[float, None]], None
             The same limits for the scale shared by the reaction layer's per-sample or per-group
-            maps, which is bounded separately because a summary can put it and the 'unified' map's
-            scale on quite different footings.
+            maps. It is bounded separately from the 'unified' map's scale, because a summary can
+            span much less than the values it summarizes.
 
         compound_value_limits : Tuple[Union[float, None], Union[float, None]], None
             The same limits for the compound layer's 'unified' map scale.
@@ -2888,8 +3148,8 @@ class Mapper:
 
         reaction_category_value_center : Union[float, None], None
             The same center for the scale shared by the reaction layer's per-sample or per-group
-            maps, which is centered separately because a summary can put it and the 'unified' map's
-            scale on quite different footings.
+            maps. It is centered separately from the 'unified' map's scale, because a summary can
+            span much less than the values it summarizes.
 
         compound_value_center : Union[float, None], None
             The same center for the compound layer's 'unified' map scale.
@@ -4943,6 +5203,13 @@ class Mapper:
               and of the individual maps' scale ('_make_quantitative_norm').
             - 'value_center' and 'category_value_center': the centers of the same two scales.
             - 'category_value_center_flag': the option that the individual maps' center came from.
+            - 'value_period': the period after which the values repeat, or None. Each scale of
+              values then runs from 0 to the period, and derived compound colors are averaged on a
+              circle. With 'element_normalize', the scale of the individual maps shows offsets. It
+              runs from -period / 2 to period / 2, with a center tick at 0.
+            - 'unified_spread': True where the 'unified' map shows how far values that repeat are
+              spread apart ('CIRCULAR_SPREADS'). That scale then runs from 0 to the largest spread
+              there can be, and derived compound colors are averaged as plain numbers.
             - 'group_samples': the samples of each group, for a layer with samples. It is None in an
               ungrouped run.
             - 'sample_aggregate' and 'group_aggregate': the summaries that pool an element's values
@@ -4954,6 +5221,9 @@ class Mapper:
             - 'category_colorbar_label': the label of the individual maps' colorbar. It defaults to
               'colorbar_label'. A normalization makes the scale show a different quantity, so it
               needs its own label.
+            - 'unified_colorbar_label': the label of the 'unified' map's colorbar. It defaults to
+              'colorbar_label'. A spread makes that scale show a different quantity, so it needs
+              its own label.
 
             A 'membership' layer needs these keys:
             - 'membership': the sources that contain each accession.
@@ -5375,17 +5645,48 @@ class Mapper:
                 # the maps it colors come out blank whether or not the 'unified' map has values,
                 # that map being drawn from the unnormalized values, so a test of both together
                 # would let a blank set of individual maps pass unremarked.
+                offsets = (
+                    layer.get('value_period') is not None
+                    and layer.get('element_normalize') is not None
+                )
                 if layer.get('element_normalize') is not None and not layer['_category_vals']:
+                    cause = (
+                        "An offset from a circular mean is undefined where the values cancel out, "
+                        "such as 6 and 18 with a period of 24." if offsets else
+                        f"A ratio is undefined wherever the value it is measured against is not a "
+                        f"positive number, and a z-score wherever an element is found in a single "
+                        f"{category_noun}."
+                    )
                     self.run.warning(
                         f"Nothing on the maps of the individual {category_noun}s could be colored "
                         f"by '--{layer['element_type']}-element-normalization', so those maps "
                         f"carry no colors from the '{layer['colorbar_label']}' column of the "
                         f"{layer['element_type']} layer and no scale was drawn for them. Either "
                         f"none of the drawn maps contains its accessions, or the normalization is "
-                        f"undefined for every map element: a ratio is undefined wherever the value "
-                        f"it is measured against is not a positive number, and a z-score wherever "
-                        f"an element is found in a single {category_noun}.{unaffected_clause}"
+                        f"undefined for every map element. {cause}{unaffected_clause}"
                     )
+                elif offsets:
+                    # An element whose values cancel out has no circular mean to be offset from. It
+                    # is left uncolored on the map of every sample or group that has it. That would
+                    # look like an element the samples lack, so the user is told how many there
+                    # are. The element values and the offsets are cached under the same key.
+                    undefined = {
+                        key for key, normalized in layer['_normalized_cache'].items()
+                        if not normalized and layer['_element_cache'][key][0]
+                    }
+                    if undefined:
+                        examples = ', '.join(sorted({
+                            kegg_id for key in undefined for kegg_id in key
+                            if kegg_id in layer['accessions']
+                        })[:5])
+                        self.run.warning(
+                            f"'--{layer['element_type']}-element-normalization' was undefined for "
+                            f"{len(undefined)} map element(s). Elements with the same accessions "
+                            f"count once. Their accessions in the file include these: {examples}. "
+                            f"{self._undefined_cause('circular_mean')} These elements have no "
+                            f"circular mean to be offset from. They are left uncolored on the maps "
+                            f"of the individual {category_noun}s."
+                        )
                 elif not layer['_unified_vals'] and not layer['_category_vals']:
                     self.run.warning(
                         f"Nothing on the maps could be colored by the values of the "
@@ -5395,9 +5696,30 @@ class Mapper:
                         f"for every map element — the standard deviation of a single value, for "
                         f"instance."
                     )
+                # A period fixes each scale of values to run from 0 to the period. The limits are
+                # set here, not in the layer model. The checks on limits read a limit in the model
+                # as one that was given, and these were not. A spread on the 'unified' map runs from
+                # 0 to the largest spread there can be.
+                period = layer.get('value_period')
+                if period is None:
+                    value_limits = layer.get('value_limits')
+                elif layer.get('unified_spread'):
+                    value_limits = (0.0, self._largest_angular_deviation(period))
+                else:
+                    value_limits = (0.0, period)
+                # The offsets of a normalization run from -period / 2 to period / 2, with a center
+                # tick at 0. The two ends are the same point.
+                category_value_center = layer.get('category_value_center')
+                if period is None:
+                    category_value_limits = layer.get('category_value_limits')
+                elif layer.get('element_normalize') is not None:
+                    category_value_limits = (-period / 2, period / 2)
+                    category_value_center = 0.0
+                else:
+                    category_value_limits = (0.0, period)
                 if layer['unified_mode'] == 'quantitative' and _unified_scale_drawn(layer):
                     norm, vmin, vmax, clamped_low, clamped_high = self._make_quantitative_norm(
-                        layer['_unified_vals'], layer.get('value_limits'),
+                        layer['_unified_vals'], value_limits,
                         f"--{layer['element_type']}-value-limits",
                         center=layer.get('value_center'),
                         center_flag=f"--{layer['element_type']}-value-center",
@@ -5409,19 +5731,23 @@ class Mapper:
                     layer['_unified_norm'] = norm
                     layer['_unified_range'] = (vmin, vmax)
                     # A limit sets its end of the scale, so the colorbar labels every end a limit
-                    # set, and marks those that values lie past.
+                    # set, and marks those that values lie past. The top of a spread's scale is the
+                    # largest spread there can be, 5.40 with a period of 24. A label there would
+                    # print every tick to three decimals, so the top is left to the usual ticks.
                     layer['_unified_limited'] = tuple(
-                        limit is not None for limit in (layer.get('value_limits') or (None, None))
+                        limit is not None for limit in (value_limits or (None, None))
                     )
+                    if layer.get('unified_spread'):
+                        layer['_unified_limited'] = (True, False)
                     layer['_unified_clamped'] = (clamped_low, clamped_high)
                     layer['_unified_center'] = layer.get('value_center')
                 if layer['category_mode'] != 'quantitative':
                     continue
                 if has_categories and layer['sample_values'] is not None:
                     norm, vmin, vmax, clamped_low, clamped_high = self._make_quantitative_norm(
-                        layer['_category_vals'], layer.get('category_value_limits'),
+                        layer['_category_vals'], category_value_limits,
                         f"--{layer['element_type']}-category-value-limits",
-                        center=layer.get('category_value_center'),
+                        center=category_value_center,
                         center_flag=layer.get(
                             'category_value_center_flag',
                             f"--{layer['element_type']}-category-value-center"
@@ -5434,11 +5760,10 @@ class Mapper:
                     layer['_category_norm'] = norm
                     layer['_category_range'] = (vmin, vmax)
                     layer['_category_limited'] = tuple(
-                        limit is not None
-                        for limit in (layer.get('category_value_limits') or (None, None))
+                        limit is not None for limit in (category_value_limits or (None, None))
                     )
                     layer['_category_clamped'] = (clamped_low, clamped_high)
-                    layer['_category_center'] = layer.get('category_value_center')
+                    layer['_category_center'] = category_value_center
                 else:
                     # A layer without a category dimension is constant across the category maps.
                     layer['_category_norm'] = layer['_unified_norm']
@@ -5500,19 +5825,29 @@ class Mapper:
                 )
             )
 
-        def _reaction_derived(layer, mode, cmap_key='cmap'):
+        def _reaction_derived(layer, mode, cmap_key='cmap', spread=False):
             # How a reaction layer derives compound colors on a reaction-only global/overview map.
             # The derived colors come from the same scale as the reactions they are derived from, so
-            # the caller names the context's colormap: the two can differ ('category_cmap').
+            # the caller names the context's colormap: the two can differ ('category_cmap'). The
+            # caller also says whether the context shows a spread, which is a plain number and so is
+            # averaged as one.
             if layer['element_type'] != 'reaction':
                 return None
+            if mode == 'quantitative' and spread:
+                cmap = layer[cmap_key]
+                return ('average', cmap.reversed() if layer['reverse_overlay'] else cmap)
             if mode == 'quantitative':
                 cmap = layer[cmap_key]
-                # A cyclic colormap has the same color at both ends of the scale. The values of the
-                # lines are then averaged on a circle. Clock times of 0.1 h and 23.9 h give 0 h, not
-                # 12 h. The colormap is checked before it is reversed. Reversing 'clocktime_r' would
-                # name it 'clocktime_r_r'.
-                transfer = 'circular_average' if self._is_cyclic_colormap(cmap) else 'average'
+                # Values that repeat after a period are averaged on a circle, whatever the colormap.
+                # Their scale runs from 0 to the period, so a circle of the scale is one period.
+                # Clock times of 0.1 h and 23.9 h then give 0 h, not 12 h. Without a period, a
+                # cyclic colormap also averages on a circle, since it has the same color at both
+                # ends of the scale. The colormap is checked before it is reversed. Reversing
+                # 'clocktime_r' would name it 'clocktime_r_r'.
+                circular = (
+                    layer.get('value_period') is not None or self._is_cyclic_colormap(cmap)
+                )
+                transfer = 'circular_average' if circular else 'average'
                 return (transfer, cmap.reversed() if layer['reverse_overlay'] else cmap)
             return ('high', None)
 
@@ -5555,7 +5890,9 @@ class Mapper:
                         entry_value, layer['_unified_norm'], layer['cmap'],
                         layer['reverse_overlay'], center=layer['_unified_center']
                     ),
-                    'derived_compound': _reaction_derived(layer, mode)
+                    'derived_compound': _reaction_derived(
+                        layer, mode, spread=layer.get('unified_spread', False)
+                    )
                 }
             if mode == 'membership':
                 _, color_priorities, category_combos, _ = layer['_colors']
@@ -5725,7 +6062,7 @@ class Mapper:
                     self._draw_quantitative_colorbar(
                         layer['cmap'], vmin, vmax,
                         os.path.join(output_dir, f"colorbar_{layer['name']}.pdf"),
-                        layer['colorbar_label'],
+                        layer.get('unified_colorbar_label', layer['colorbar_label']),
                         limited_low=limited_low, limited_high=limited_high,
                         clamped_low=clamped_low, clamped_high=clamped_high,
                         center=layer['_unified_center']

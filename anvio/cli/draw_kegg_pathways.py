@@ -48,7 +48,8 @@ check_package_dependencies()
 from anvio.keggmapping import (
     AGGREGATION_FUNCTIONS, DEFAULT_CENTERED_COLORMAP, DEFAULT_GROUP_TINT_SPAN,
     ELEMENT_NORMALIZATION_PHRASE, GROUP_COLORMAP_FROM_CATEGORY, GROUP_SCHEME_OPTIONS,
-    MAX_DISCRETE_COUNT_BANDS, SUMMARY_PRESENCE_PHRASE, SUMMARY_PRESENCE_SCHEMES, Mapper
+    MAX_DISCRETE_COUNT_BANDS, MIN_ANGULAR_DEVIATION_VALUES, SUMMARY_PRESENCE_PHRASE,
+    SUMMARY_PRESENCE_SCHEMES, Mapper
 )
 
 
@@ -172,17 +173,27 @@ def get_args() -> Namespace:
     )
     groupTXT.add_argument(
         '--reaction-value-period', metavar='PERIOD', help=
-        "The period after which the values of the reaction layer repeat, in the units of its value "
-        "column. For clock times in hours, give 24. Values just below the period and just above 0 "
-        "are then close together — with a period of 24, the circular mean of 23.5 and 0.5 is 0, "
-        "not 12. Every reduction of the values averages them on a circle with 'circular_mean'. It "
-        "is the default of '--reaction-gene-aggregation' and '--reaction-accession-aggregation'. "
-        "It is also the only name that these options and the sample and group summaries accept. "
-        "Values that cancel out have no mean, such as 6 and 18; elements with undefined means are "
-        "left uncolored. A period does not affect presence summaries. With this argument, "
-        "'--reaction-element-normalization' is refused, since every normalization compares values "
-        "on a line. The period does not change the color scales. Give clock times the limits "
-        "'0 24' and a cyclic colormap, such as 'clocktime'."
+        f"The period after which the values of the reaction layer repeat, in the units of its "
+        f"value column. For clock times in hours, give 24. Values just below the period and just "
+        f"above 0 are then close together — with a period of 24, the circular mean of 23.5 and 0.5 "
+        f"is 0, not 12. Every reduction of the values averages them on a circle with "
+        f"'circular_mean'. It is the default of '--reaction-gene-aggregation' and "
+        f"'--reaction-accession-aggregation'. It is also the only name that these options accept, "
+        f"and the only average that the sample and group summaries accept. Values that cancel out "
+        f"have no mean, such as 6 and 18; elements with undefined means are left uncolored. A "
+        f"period does not affect presence summaries. With this argument, "
+        f"'--reaction-element-normalization' takes only 'difference_from_circular_mean', since the "
+        f"other normalizations compare values on a line. Each color scale of the values themselves "
+        f"runs from 0 to the period, so a color always means the same point in the period. Limits "
+        f"other than 0 and the period are refused, and so is a center. Without a colormap, the "
+        f"scales use the cyclic 'clocktime'. On global and overview maps drawn from reactions "
+        f"alone, compound colors are also averaged on a circle. The summary that colors the "
+        f"'unified' map ('--reaction-sample-summary' without groups and '--reaction-group-summary' "
+        f"with groups) can instead be 'angular_deviation', with each element colored by how far "
+        f"its values in the samples or groups are spread apart. With a period of 24, the scale "
+        f"ranges from 0 to 5.4. This summary requires values from at least "
+        f"{MIN_ANGULAR_DEVIATION_VALUES} samples or groups, and its scale takes a sequential "
+        f"colormap ('plasma_r' unless '--reaction-colormap' names another)."
     )
     groupTXT.add_argument(
         '--compound-value-period', metavar='PERIOD', help=
@@ -330,7 +341,9 @@ def get_args() -> Namespace:
         f"samples are commensurable, such as replicates of one condition. If no summary of the "
         f"samples is meaningful or desired, use '--skip-unified-maps' to leave the map out. "
         f"Without groups, '--reaction-sample-summary' colors the 'unified' map alone; an ungrouped "
-        f"run with '--skip-unified-maps' therefore refuses this option."
+        f"run with '--skip-unified-maps' therefore refuses this option. With "
+        f"'--reaction-value-period', its aggregations are 'circular_mean' and, without groups, "
+        f"'angular_deviation'."
     )
     groupSUMMARY.add_argument(
         '--compound-sample-summary', metavar='NAME', help=
@@ -354,7 +367,8 @@ def get_args() -> Namespace:
         "shows the mean of its replicate samples, while the 'unified' map shows the number of "
         "groups in which each element occurs. If no summary of the groups is meaningful or "
         "desired, use '--skip-unified-maps' to leave the map out, and without a map to color, "
-        "'--reaction-group-summary' is refused."
+        "'--reaction-group-summary' is refused. With '--reaction-value-period', its aggregations "
+        "are 'circular_mean' and 'angular_deviation'."
     )
     groupSUMMARY.add_argument(
         '--compound-group-summary', metavar='NAME', help=
@@ -782,7 +796,14 @@ def get_args() -> Namespace:
         f"'{DEFAULT_CENTERED_COLORMAP}'; override with '--reaction-category-value-center' and "
         f"'--reaction-category-colormap'. An element the normalization cannot value is left "
         f"uncolored — a ratio needs a positive value to measure against, and a z-score needs an "
-        f"element found in more than one sample."
+        f"element found in more than one sample. With '--reaction-value-period', the only "
+        f"normalization is 'difference_from_circular_mean'. Each value becomes its offset from the "
+        f"element's circular mean across the samples or groups, the shorter way around the circle. "
+        f"With a period of 24, the offsets run from -12 to 12, and -12 and 12 are the same point. "
+        f"Their scale is fixed, with 0 in the middle. It takes the cyclic 'clocktime' unless "
+        f"'--reaction-category-colormap' names another colormap. An element found in one sample "
+        f"has an offset of 0. An element whose values cancel out has no circular mean, so it is "
+        f"left uncolored, and a warning says so."
     )
     groupCOLOR.add_argument(
         '--compound-element-normalization', nargs='+', metavar='NAME', help=

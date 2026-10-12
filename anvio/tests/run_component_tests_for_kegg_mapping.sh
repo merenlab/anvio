@@ -204,16 +204,14 @@ then
     exit 1
 fi
 
-# Clock times repeat every 24 hours. The maps of the individual samples use the cyclic 'clocktime'
-# colormap. Its two ends have the same color. Limits of 0 and 24 make the scale span one whole day.
-# Both ends of the scale are then midnight. A period of 24 averages the KOs of a map element on a
-# circle, so that times on either side of midnight average to a time near midnight.
+# Clock times repeat every 24 hours. A period of 24 makes each scale of values span one whole day,
+# from 0 to 24, so both ends of the scale are midnight. The scales take the cyclic 'clocktime'
+# colormap, whose two ends have the same color. The KOs of a map element are averaged on a circle,
+# so that times on either side of midnight average to a time near midnight.
 INFO "Coloring the clock times of each sample with the cyclic 'clocktime' colormap"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
                         --output-dir draw_txt_samples_kos_clocktime \
                         --reaction-value-period 24 \
-                        --reaction-category-colormap clocktime \
-                        --reaction-category-value-limits 0 24 \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \
