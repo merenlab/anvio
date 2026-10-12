@@ -58,6 +58,47 @@ json.dump(config, open('config-one-at-a-time.json', 'w'), indent=4)
 SNAKEMAKE_DAG config-one-at-a-time.json > dag-tight.txt
 ASSERT_FILE_CONTAINS dag-tight.txt "01_SRA-references/released/S01.released"
 
+# A workflow that downloads thousands of samples gets restarted, and a restart must not download
+# the samples that are already done. Those have no reads left on disk, so the only thing that
+# keeps snakemake from fetching them again is that nothing upstream of their profiles looks out
+# of date. Two things used to make it look that way: `import_percent_of_reads_mapped` writes into
+# a PROFILE.db after its release flag is written, and a download whose gate is redone is redone
+# too. Here, every output of a finished run is put in place with the same timestamp, S01's
+# profile is then written into the way that import does it, and the merge is removed as if it
+# had failed. The only thing left to do should be the merge.
+INFO "Restarting a finished run downloads nothing again"
+$ANVIO_PYTHON -c "
+import json
+config = json.load(open('config-one-at-a-time.json'))
+config['output_dirs'] = {k: v.replace('-references', '-restart') for k, v in config['output_dirs'].items()}
+json.dump(config, open('config-restart.json', 'w'), indent=4)
+"
+SNAKEMAKE_DAG config-restart.json > dag-restart-fresh.txt
+$ANVIO_PYTHON -c "
+import os, re, time
+
+dag = open('dag-restart-fresh.txt').read()
+temporary = set(re.findall(r'Would remove temporary output (\S+)', dag))
+outputs = {p for line in re.findall(r'^\s+output: (.+)$', dag, re.M) for p in line.split(', ')} - temporary
+
+now = time.time()
+for path in outputs:
+    os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
+    open(path, 'a').close()
+    os.utime(path, (now, now))
+
+for path in ['05_ANVIO_PROFILE-restart/SRAREF/S01/PROFILE.db', '05_ANVIO_PROFILE-restart/SRAREF/S01/layers-additional-data.txt']:
+    os.utime(path, (now + 100, now + 100))
+"
+rm -rf 06_MERGED-restart
+SNAKEMAKE_DAG config-restart.json > dag-restart.txt
+if grep -qE "^rule (sra_prefetch|sra_fasterq_dump_paired|bowtie|anvi_profile):" dag-restart.txt; then
+    echo "FAIL: restarting a run whose samples are all done would download and process them again:"
+    grep -A1 -E "^rule (sra_prefetch|sra_fasterq_dump_paired|bowtie|anvi_profile):" dag-restart.txt
+    exit 1
+fi
+ASSERT_FILE_CONTAINS dag-restart.txt "rule anvi_merge:"
+
 INFO "Long reads from a nanopore run are recognized, and so is their technology"
 DRY_RUN config-nanopore.json
 ASSERT_FILE_CONTAINS 01_SRA-nanopore/samples-txt-with-downloaded-reads.txt "ont"
@@ -345,10 +386,13 @@ ASSERT_FILE_EXISTS 05_ANVIO_PROFILE-real/SRAREF/S01/PROFILE.db
 ASSERT_FILE_EXISTS 05_ANVIO_PROFILE-real/SRAREF/S02/PROFILE.db
 ASSERT_FILE_EXISTS 06_MERGED-real/SRAREF/PROFILE.db
 
+# Downloaded reads are deleted again as soon as they are used, so what is left on disk after a
+# second run cannot tell whether it downloaded anything. What snakemake plans to do can.
 INFO "Making sure a second run does not download anything all over again"
-anvi-run-workflow -w metagenomics -c config-real.json
-if [ -n "$(find 01_SRA-real -name '*.fastq*' 2>/dev/null)" ]; then
-    echo "FAIL: the second run of the workflow downloaded the reads again."
+SNAKEMAKE_DAG config-real.json > dag-real-second-run.txt
+if grep -q "^rule sra_prefetch:" dag-real-second-run.txt; then
+    echo "FAIL: a second run of the workflow would download the reads again:"
+    grep -A1 "^rule sra_prefetch:" dag-real-second-run.txt
     exit 1
 fi
 
