@@ -124,9 +124,14 @@ rule sra_reads_released:
 
     This rule deliberately does not take the reads as input. By the time it runs snakemake has
     already deleted them, which is exactly the point: the marker it leaves behind is what allows
-    the next download to start."""
+    the next download to start.
+
+    The inputs are ancient because some of them keep changing after the flag is written:
+    `import_percent_of_reads_mapped` and the taxonomy import both write into a PROFILE.db that is
+    already finished. Without this, every restart would find those profiles newer than their
+    flags and redo the releases."""
     input:
-        sinks=lambda wildcards: M.get_read_consumer_targets(wildcards.unit),
+        sinks=lambda wildcards: ancient(M.get_read_consumer_targets(wildcards.unit)),
     output:
         flag=os.path.join(dirs_dict["SRA_DIR"], "released", "{unit}.released"),
     wildcard_constraints:
