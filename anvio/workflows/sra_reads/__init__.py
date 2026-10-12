@@ -704,21 +704,11 @@ class SRAReadsModule:
         reads then stay until the last sample that wants them is done, so what governs when the
         download may start is the *earliest* unit that needs it. Waiting on any later one would
         be a promise anvi'o cannot keep: that unit's gate may well be the earlier unit itself,
-        whose reads cannot be released until this very download has happened.
-
-        A unit whose own release flag is already on disk was taken through the workflow by an
-        earlier run, and gets no gate. The gate is an ordinary input as far as snakemake is
-        concerned, so if it had one, anything that made snakemake redo the gate's release would
-        make it redo this download too, and with it everything downstream. Since this unit's
-        release would in turn be redone, the next unit gated on it would follow, and a restart
-        would end up downloading most of the samples all over again."""
+        whose reads cannot be released until this very download has happened."""
 
         for unit in self.download_units:
             if any(accession in self.sra_accessions_by_sample.get(sample, [])
                    for sample in self.download_unit_members[unit]):
-                if os.path.exists(self.get_release_flag_path(unit)):
-                    return []
-
                 gate = self.download_unit_gates.get(unit)
 
                 return [self.get_release_flag_path(gate)] if gate else []

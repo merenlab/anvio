@@ -30,9 +30,15 @@ rule sra_prefetch:
 
     The `gate` input is what enforces the disk budget: when it is not empty, this download waits
     for an earlier release unit to be finished with its reads. The archive is declared as a temp
-    directory so that it goes away as soon as the reads have been extracted from it."""
+    directory so that it goes away as soon as the reads have been extracted from it.
+
+    The gate is ancient: once the flag exists, the download has nothing more to wait for, and
+    redoing that release has no bearing on it. Otherwise a release redone on a restart would
+    redo this download too, whose archive and reads are long gone, and everything downstream of
+    it, including this unit's own release, which would then pull in the next gated download,
+    and so on down the line."""
     input:
-        gate=lambda wildcards: M.get_gate_flag_for_accession(wildcards.accession),
+        gate=lambda wildcards: ancient(M.get_gate_flag_for_accession(wildcards.accession)),
     output:
         prefetch_dir=temp(directory(os.path.join(dirs_dict["SRA_DIR"], "runs", "{accession}", "prefetch"))),
     log:
@@ -126,12 +132,12 @@ rule sra_reads_released:
     already deleted them, which is exactly the point: the marker it leaves behind is what allows
     the next download to start.
 
-    The inputs are ancient because some of them keep changing after the flag is written:
-    `import_percent_of_reads_mapped` and the taxonomy import both write into a PROFILE.db that is
-    already finished. Without this, every restart would find those profiles newer than their
-    flags and redo the releases."""
+    Some of the inputs keep changing after the flag is written: `import_percent_of_reads_mapped`
+    and the taxonomy import both write into a PROFILE.db that is already finished, so a restart
+    may well redo this rule. That only touches the flag again; the downloads gated on it do not
+    follow, since their gate is ancient."""
     input:
-        sinks=lambda wildcards: ancient(M.get_read_consumer_targets(wildcards.unit)),
+        sinks=lambda wildcards: M.get_read_consumer_targets(wildcards.unit),
     output:
         flag=os.path.join(dirs_dict["SRA_DIR"], "released", "{unit}.released"),
     wildcard_constraints:
