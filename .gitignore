@@ -30,6 +30,7 @@ node_modules/
 anvio/data/misc/COG/
 anvio/data/misc/SCG/
 anvio/data/misc/KEGG/
+anvio/data/misc/PROSTT5/
 anvio/data/misc/Pfam/
 anvio/data/misc/PDB.db
 anvio/data/misc/CAZyme/
@@ -38,6 +39,8 @@ anvio/data/misc/ModelSEED/
 anvio/data/misc/Interacdome/
 anvio/data/misc/MODELLER/db/
 anvio/data/misc/TRNA_TAXONOMY/
+anvio/data/interactive/node_modules
+anvio/data/interactive/package-lock.json
 
 # LLM configuration files
 CLAUDE.md
