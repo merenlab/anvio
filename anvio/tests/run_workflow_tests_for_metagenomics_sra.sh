@@ -61,11 +61,11 @@ ASSERT_FILE_CONTAINS dag-tight.txt "01_SRA-references/released/S01.released"
 # A workflow that downloads thousands of samples gets restarted, and a restart must not download
 # the samples that are already done. Those have no reads left on disk, so the only thing that
 # keeps snakemake from fetching them again is that nothing upstream of their profiles looks out
-# of date. Two things used to make it look that way: `import_percent_of_reads_mapped` writes into
-# a PROFILE.db after its release flag is written, and a download whose gate is redone is redone
-# too. Here, every output of a finished run is put in place with the same timestamp, S01's
-# profile is then written into the way that import does it, and the merge is removed as if it
-# had failed. The only thing left to do should be the merge.
+# of date. Here, every output of a finished run is put in place with the same timestamp, along
+# with the record snakemake keeps of which inputs S02's gated download ran with. S01's profile is
+# then written into the way `import_percent_of_reads_mapped` does it after S01's release flag is
+# written, which redoes that release, and the merge is removed as if it had failed. The only
+# thing left to do should be the merge.
 INFO "Restarting a finished run downloads nothing again"
 $ANVIO_PYTHON -c "
 import json
@@ -76,6 +76,7 @@ json.dump(config, open('config-restart.json', 'w'), indent=4)
 SNAKEMAKE_DAG config-restart.json > dag-restart-fresh.txt
 $ANVIO_PYTHON -c "
 import os, re, time
+from base64 import urlsafe_b64encode
 
 dag = open('dag-restart-fresh.txt').read()
 temporary = set(re.findall(r'Would remove temporary output (\S+)', dag))
@@ -89,6 +90,10 @@ for path in outputs:
 
 for path in ['05_ANVIO_PROFILE-restart/SRAREF/S01/PROFILE.db', '05_ANVIO_PROFILE-restart/SRAREF/S01/layers-additional-data.txt']:
     os.utime(path, (now + 100, now + 100))
+
+record = os.path.join('.snakemake', 'metadata', urlsafe_b64encode(b'01_SRA-restart/runs/ERR6450081/prefetch').decode())
+os.makedirs(os.path.dirname(record), exist_ok=True)
+open(record, 'w').write('{\"input\": [\"01_SRA-restart/released/S01.released\"]}')
 "
 rm -rf 06_MERGED-restart
 SNAKEMAKE_DAG config-restart.json > dag-restart.txt
@@ -98,6 +103,7 @@ if grep -qE "^rule (sra_prefetch|sra_fasterq_dump_paired|bowtie|anvi_profile):" 
     exit 1
 fi
 ASSERT_FILE_CONTAINS dag-restart.txt "rule anvi_merge:"
+ASSERT_FILE_CONTAINS dag-restart.txt "output: 01_SRA-restart/released/S01.released"
 
 INFO "Long reads from a nanopore run are recognized, and so is their technology"
 DRY_RUN config-nanopore.json
