@@ -89,24 +89,50 @@ class DisCov:
                 cov_array = new_cov_array
 
         # compute all metrics
+        nz_cov_array = cov_array[cov_array > 0]
+        scales = ['fine', 'medium', 'coarse']
+        dispersion_window_nums = [10, 30, 50]
+
+        ## region metrics
+        regions = self.get_list_of_coverage_and_gap_regions(cov_array, min_gap_length=3)
+        gini_gap_evenness = self.gap_evenness_gini(regions)
+        if any(r[2] > 0 for r in regions):
+            midpoint_range, midpoint_spread = self.midpoint_range_and_spread(regions)
+        else:
+            midpoint_range, midpoint_spread = None, None
+
         ## window metrics
-        window_scales = {
-            'fine': max(300, len(cov_array) // 100),      # ~1% of contig
-            'medium': max(500, len(cov_array) // 20),     # ~5% of contig  
-            'coarse': max(1000, len(cov_array) // 10)     # ~10% of contig
+        get_window_scales = lambda L: {
+            'fine': max(300, L // 100),      # ~1% of contig
+            'medium': max(500, L // 20),     # ~5% of contig
+            'coarse': max(1000, L // 10)     # ~10% of contig
         }
-        sliding_window_metrics = self.sliding_window_evenness(cov_array, window_scales)
-        sw_prop_vals = [sliding_window_metrics[scale]['Proportion_Covered'] for scale in ['fine']]
-        sw_prop = [f"{m:.04}" if m else "NA" for m in sw_prop_vals ]
-        sliding_window_proportion_covered = "\t".join(sw_prop)
+        sliding_window_metrics = self.sliding_window_evenness(cov_array, get_window_scales(len(cov_array)))
+        nz_sliding_window_metrics = self.sliding_window_evenness(nz_cov_array, get_window_scales(len(nz_cov_array)))
+
+        covered_bases_dispersion = [self.binned_count_dispersion(cov_array, num_windows=n) for n in dispersion_window_nums]
+        detection_dispersion = [self.binned_count_dispersion(cov_array, num_windows=n, use_detection=True) for n in dispersion_window_nums]
+
+        window_scaling_variance = self.compute_window_scaling_variance(cov_array)
+        nz_window_scaling_variance = self.compute_window_scaling_variance(nz_cov_array)
 
         ## whole-sequence metrics
-        if len(cov_array[cov_array > 0]) > 0:
-            nz_depth_foldrange_narrow = self.fold_range_of_median_detection(cov_array[cov_array > 0], fold_lower=0.5, fold_upper=2)
-            nz_depth_foldrange_wide = self.fold_range_of_median_detection(cov_array[cov_array > 0], fold_lower=0.25, fold_upper=4)
+        depth_foldrange_narrow = self.fold_range_of_median_detection(cov_array, fold_lower=0.5, fold_upper=2)
+        depth_foldrange_wide = self.fold_range_of_median_detection(cov_array, fold_lower=0.25, fold_upper=4)
+        if len(nz_cov_array) > 0:
+            nz_depth_range = np.max(nz_cov_array) - np.min(nz_cov_array)
+            q25, nz_median, q75 = np.percentile(nz_cov_array, [25, 50, 75])
+            nz_depth_IQR = q75 - q25
+            nz_depth_IQR_over_median = nz_depth_IQR / nz_median
+            nz_depth_variance = np.var(nz_cov_array)
+            nz_depth_foldrange_narrow = self.fold_range_of_median_detection(nz_cov_array, fold_lower=0.5, fold_upper=2)
+            nz_depth_foldrange_wide = self.fold_range_of_median_detection(nz_cov_array, fold_lower=0.25, fold_upper=4)
+            shannon_entropy = self.Shannon_entropy_evenness(cov_array)
         else:
+            nz_depth_range, nz_depth_IQR, nz_depth_IQR_over_median, nz_depth_variance = None, None, None, None
             nz_depth_foldrange_narrow = 0.0
             nz_depth_foldrange_wide = 0.0
+            shannon_entropy = None
 
         ## combined metrics
         SE_linear = self.spread_evenness_score(S=sliding_window_metrics["fine"]['Proportion_Covered'], E=nz_depth_foldrange_narrow, alpha=0.5, formula="linear")
