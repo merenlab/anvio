@@ -201,14 +201,14 @@ class DisCov:
             windows = self.get_sliding_window_regions(coverage, wlen)
             nonzero_window_means = [x[2] for x in windows if x[2] > 0]
             median_depth, depth_MAD = self.compute_median_and_MAD(nonzero_window_means) # will be None if <3 windows
-            cv_of_means = self.compute_CV(nonzero_window_means) # will be None if mean of means is None
+            cv_of_means = self.compute_CV(nonzero_window_means) if len(nonzero_window_means) >= 3 else None # same min windows as MAD
 
-            if median_depth:
+            if median_depth is not None:
                 mad_dispersion = depth_MAD / median_depth
                 results[scale_name]['Depth_Evenness_MAD'] = 1 / (1 + mad_dispersion)
             else:
                 results[scale_name]['Depth_Evenness_MAD'] = 0 # maximum unevenness
-            if cv_of_means:
+            if cv_of_means is not None:
                 results[scale_name]['Depth_Evenness_CV'] = 1 / (1 + cv_of_means)
             else:
                 results[scale_name]['Depth_Evenness_CV'] = 0 # maximum unevenness
