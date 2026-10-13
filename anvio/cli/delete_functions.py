@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 
@@ -17,7 +16,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ["contigs-db", "functions"]
+__requires__ = ["contigs-db"]
+__can_use__ = ["functions"]
 __description__ = "Remove functional annotation sources from an anvi'o contigs database"
 
 
@@ -70,4 +70,3 @@ def get_args():
 
 if __name__ == '__main__':
     main()
-

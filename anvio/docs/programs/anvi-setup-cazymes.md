@@ -1,17 +1,17 @@
-This program **downloads and organizes a local copy of the data from [dbCAN2 CAZyme HMMs](https://bcb.unl.edu/dbCAN2/download/Databases/) for use in function annotation.** This program generates a %(cazyme-data)s artifact, which is required to run the program %(anvi-run-cazymes)s. 
+This program **downloads and organizes a local copy of the data from [dbCAN2 CAZyme HMMs](https://bcb.unl.edu/dbCAN2/download/Databases/) for use in function annotation.** This program generates a %(cazyme-data)s artifact, which is required to run the program %(anvi-run-cazymes)s.
 
 ### Set up cazymes data
 
-anvi'o will download the newest version of the database (V13) by default:
+anvi'o will download the newest version of the database (V14) by default:
 
 {{ codestart }}
-anvi-setup-cazymes 
+anvi-setup-cazymes
 {{ codestop }}
 
 You can use `--cazyme-version`, if you want anvi'o to download a different version of the [dbCAN2 CAZyme HMMs](https://bcb.unl.edu/dbCAN2/download/Databases/) database:
 
 {:.warning}
-The following versions have been tested for download: V9-13
+The following versions have been tested for download: V9-14
 
 {{ codestart }}
 anvi-setup-cazymes --cazyme-version V10

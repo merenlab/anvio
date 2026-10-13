@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Get codon usage bias (CUB) of genes and functions."""
 
 
@@ -22,12 +21,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['semiller10']
-__requires__ = ['contigs-db',
-                'profile-db',
-                'collection',
-                'bin',
-                'internal-genomes',
-                'external-genomes']
+__requires__ = ['contigs-db']
+__can_use__ = ['profile-db', 'collection', 'bin', 'internal-genomes', 'external-genomes']
 __provides__ = []
 __description__ = ("Get codon usage bias (CUB) statistics of genes and functions")
 
@@ -130,7 +125,7 @@ def run_program():
     # Get CUB tables. Separate tables are produced for each combination of input genome and CUB
     # metric.
     if args.internal_genomes or args.external_genomes:
-        multigenome_codon_usage = codonusage.MultiGenomeCodonUsage(args, run=run)
+        multigenome_codon_usage = codonusage.MultiGenomeCodonUsage(args, r=run)
         output_paths = []
         # The keys are CUB metrics in the returned dict. Write files as results for each genome are
         # yielded.
@@ -185,7 +180,7 @@ def run_program():
                 cub_df.to_csv(output_path, sep='\t')
                 run.info("CUB table output", output_path, nl_after=2)
     else:
-        single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args, run=run)
+        single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args, r=run)
         # The keys are CUB metrics in the returned dict.
         cub_table_dict = single_genome_codon_usage.get_codon_usage_bias(
             metrics=args.metrics,
@@ -561,6 +556,7 @@ def get_args():
         help="Only allow CUB to calculated for a query if it has at least this number of "
              "synonymous codons that will be analyzed. For reference-dependent CUB metrics, "
              "analyzed codons are those with reference compositions.")
+    groupG.add_argument(*anvio.A('ignore-start-codons'), **anvio.K('ignore-start-codons'))
 
     groupH = parser.add_argument_group(
         'FILTER REFERENCE',
@@ -583,6 +579,7 @@ def get_args():
         help="Only allow CUB to be calculated for a genome if the set of reference genes contains "
              "at least this many codons. This filter applies after excluding codons for individual "
              "amino acids using `--reference-exclude-amino-acid-count`.")
+    groupH.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
 
     return parser.get_args(parser)
 

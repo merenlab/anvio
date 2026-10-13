@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import os
 import sys
@@ -20,7 +19,8 @@ from anvio.errors import ConfigError, FilesNPathsError
 
 __description__ = "Migrates any anvi'o artifact, whether it is a database or a config file, to a newer version. Pure magic."
 __authors__ = ['meren', 'ozcan', 'ekiefl', 'ivagljiva', 'semiller10', 'mschecht']
-__requires__ = ["contigs-db", "profile-db", "pan-db", "genes-db", "genomes-storage-db", "structure-db", "modules-db", "workflow-config"]
+__requires__ = ['contigs-db']
+__can_use__ = ['profile-db', 'pan-db', 'genes-db', 'genomes-storage-db', 'structure-db', 'modules-db', 'workflow-config']
 __provides__ = []
 
 

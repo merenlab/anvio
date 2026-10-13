@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 
@@ -15,7 +14,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'qclayssen']
-__requires__ = ['contigs-db', 'scgs-taxonomy-db', 'hmm-hits']
+__requires__ = ['contigs-db', 'scgs-taxonomy-db']
+__can_use__ = ['hmm-hits']
 __provides__ = ['scgs-taxonomy']
 __resources__ = [("Usage examples and warnings", "http://merenlab.org/scg-taxonomy")]
 __description__ = ("The purpose of this program is to affiliate single-copy core genes in an anvi'o contigs database with "

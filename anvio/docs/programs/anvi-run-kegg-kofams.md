@@ -60,7 +60,7 @@ anvi-run-kegg-kofams -c %(contigs-db)s \
                      --no-hmmer-prefiltering
 {{ codestop }}
 
-In this case, we will set HMMER's reporting thresholds to be extremely low and bit score-based (`-T -20 and --domT -20`) so that we don't lose any hits with high bitscore yet high e-value. In most cases, this won't lead to many new annotations because the bitscore filtering we apply later will weed out most raw hits. But please exercise caution. Using this flag with `--keep-all-hits` is not recommended. 
+In this case, we will set HMMER's reporting thresholds to be extremely low and bit score-based (`-T -20 and --domT -20`) so that we don't lose any hits with high bitscore yet high e-value. In most cases, this won't lead to many new annotations because the bitscore filtering we apply later will weed out most raw hits. But please exercise caution. Using this flag with `--keep-all-hits` is not recommended.
 
 ## Keep all HMM hits
 Usually, this program parses out weak HMM hits and keeps only those that are above the score threshold for a given KO. If you would like to turn off this behavior and keep all hits (there will be _a lot_ of weak ones), you can follow the example below:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
+import argparse
 import anvio.profiler as profiler
 
 import anvio
@@ -19,7 +19,8 @@ __authors__ = ['meren', 'ekiefl', 'ozcan']
 __tags__ = ["metagenomics", "profile_db", "contigs_db", "bam", "variability", "clustering"]
 __resources__ = [("The usage of the profiler in metagenomics workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 __requires__ = ['bam-file', 'contigs-db']
-__provides__ = ['single-profile-db', 'misc-data-items-order', 'variability-profile']
+__provides__ = ['single-profile-db', 'variability-profile']
+__can_provide__ = ['misc-data-items-order']
 __description__ = ("The flagship anvi'o program to profile a BAM file. Running this program on a BAM file "
                    "will quantify coverages per nucleotide position in read recruitment results and will "
                    "average coverage and detection data per contig. It will also calculate single-nucleotide, "
@@ -68,7 +69,7 @@ def get_args():
                                         "These parameters will define which short reads from a BAM file will be considered "
                                         "during anvi'o profiling.")
     #############################################################################################################################
-    groupJ.add_argument(*anvio.A('min-percent-identity'), **anvio.K('min-percent-identity', {'help': 
+    groupJ.add_argument(*anvio.A('min-percent-identity'), **anvio.K('min-percent-identity', {'help':
                             'Ignore any reads with a percent identity to the reference less '
                             'than this number, e.g. 95. If not provided, all reads in the BAM '
                             'file will be used (and things will run faster).', 'default': None}))
@@ -114,7 +115,8 @@ def get_args():
     #############################################################################################################################
     groupZ.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupZ.add_argument(*anvio.A('queue-size'), **anvio.K('queue-size'))
-    groupZ.add_argument(*anvio.A('write-buffer-size-per-thread'), **anvio.K('write-buffer-size-per-thread'))
+    groupZ.add_argument(*anvio.A('write-buffer-size'), **anvio.K('write-buffer-size'))
+    groupZ.add_argument(*anvio.A('write-buffer-size-per-thread'), **anvio.K('write-buffer-size-per-thread', {'help': argparse.SUPPRESS}))
     groupZ.add_argument('--force-multi', action='store_true',
                         help="This is not useful to non-developers. It forces the multi-process "
                              "routine even when 1 thread is chosen.")

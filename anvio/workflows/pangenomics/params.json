@@ -1,0 +1,65 @@
+{
+    "general_params": {
+        "project_name":                  {"type": "str", "default": null},
+        "fasta_txt":                     {"type": "str", "default": "fasta.txt"},
+        "internal_genomes":              {"type": "str", "default": null},
+        "external_genomes":              {"type": "str", "default": null},
+        "sequence_source_for_phylogeny": {"type": "str", "default": null}
+    },
+    "rules": {
+        "anvi_gen_genomes_storage": {
+            "threads":       {"type": "int", "default": 1},
+            "--gene-caller": {"type": "str", "default": null}
+        },
+        "anvi_pan_genome": {
+            "threads":                           {"type": "int",   "default": 7},
+            "--project-name":                    {"type": "str",   "default": null},
+            "--genome-names":                    {"type": "str",   "default": null},
+            "--skip-alignments":                 {"type": "bool",  "default": null},
+            "--align-with":                      {"type": "str",   "default": null},
+            "--exclude-partial-gene-calls":      {"type": "bool",  "default": null},
+            "--use-ncbi-blast":                  {"type": "bool",  "default": null},
+            "--minbit":                          {"type": "float", "default": null},
+            "--mcl-inflation":                   {"type": "float", "default": null},
+            "--min-occurrence":                  {"type": "int",   "default": null},
+            "--min-percent-identity":            {"type": "float", "default": null},
+            "--description":                     {"type": "str",   "default": null},
+            "--overwrite-output-destinations":   {"type": "bool",  "default": null},
+            "--skip-hierarchical-clustering":    {"type": "bool",  "default": null},
+            "--enforce-hierarchical-clustering": {"type": "bool",  "default": null},
+            "--distance":                        {"type": "str",   "default": null},
+            "--linkage":                         {"type": "str",   "default": null},
+            "--I-know-this-is-not-a-good-idea":  {"type": "bool",  "default": null}
+        },
+        "anvi_get_sequences_for_gene_clusters": {
+            "threads":                                    {"type": "int",   "default": 1},
+            "--gene-cluster-id":                          {"type": "str",   "default": null},
+            "--gene-cluster-ids-file":                    {"type": "str",   "default": null},
+            "--collection-name":                          {"type": "str",   "default": null},
+            "--bin-id":                                   {"type": "str",   "default": null},
+            "--min-num-genomes-gene-cluster-occurs":      {"type": "int",   "default": null},
+            "--max-num-genomes-gene-cluster-occurs":      {"type": "int",   "default": null},
+            "--min-num-genes-from-each-genome":           {"type": "int",   "default": null},
+            "--max-num-genes-from-each-genome":           {"type": "int",   "default": null},
+            "--max-num-gene-clusters-missing-from-genome":{"type": "int",   "default": null},
+            "--min-functional-homogeneity-index":         {"type": "float", "default": null},
+            "--max-functional-homogeneity-index":         {"type": "float", "default": null},
+            "--min-geometric-homogeneity-index":          {"type": "float", "default": null},
+            "--max-geometric-homogeneity-index":          {"type": "float", "default": null},
+            "--add-into-items-additional-data-table":     {"type": "str",   "default": null},
+            "--concatenate-gene-clusters":                {"type": "bool",  "default": null},
+            "--separator":                                {"type": "str",   "default": null},
+            "--align-with":                               {"type": "str",   "default": null}
+        },
+        "import_phylogenetic_tree_to_pangenome": {
+            "threads":      {"type": "int",  "default": 1},
+            "tree_name":    {"type": "str",  "default": "phylogeny"},
+            "--just-do-it": {"type": "bool", "default": null}
+        },
+        "anvi_compute_genome_similarity": {
+            "threads":           {"type": "int",  "default": 1},
+            "run":               {"type": "bool", "default": false},
+            "additional_params": {"type": "str",  "default": ""}
+        }
+    }
+}

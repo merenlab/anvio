@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 import anvio
@@ -12,8 +11,8 @@ __copyright__ = "Copyleft 2015-2025, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ivagljiva']
-__requires__ = ['contigs-db', 'reaction-network', 'equivalent-compounds-txt', 'external-genomes', 'genome-pairs',
-                'reaction-ref-data', 'kegg-data']
+__requires__ = ['contigs-db']
+__can_use__ = ['reaction-network', 'equivalent-compounds-txt', 'external-genomes', 'genome-pairs', 'reaction-ref-data', 'kegg-data']
 __provides__ = ['metabolite-exchange-predictions']
 __description__ = "Predicts metabolic exchanges between microbes based on the reaction network"
 
@@ -77,6 +76,7 @@ def get_args():
     groupD.add_argument(*anvio.A('report-compounds-with-no-prediction'), **anvio.K('report-compounds-with-no-prediction'))
     groupD.add_argument(*anvio.A('exclude-pathway-maps'), **anvio.K('exclude-pathway-maps'))
     groupD.add_argument(*anvio.A('include-pathway-maps'), **anvio.K('include-pathway-maps'))
+    groupD.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
 
     groupE = parser.add_argument_group('PERFORMANCE', "Because ain't nobody got time for that")
     groupE.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
@@ -88,6 +88,7 @@ def get_args():
                                                             "number of genome pairs to process in parallel (but each comparison will get just 1 thread)."}))
     groupE.add_argument(*anvio.A('no-pathway-walk'), **anvio.K('no-pathway-walk'))
     groupE.add_argument(*anvio.A('pathway-walk-only'), **anvio.K('pathway-walk-only'))
+    groupE.add_argument(*anvio.A('max-reactions-for-pathway-map-walk'), **anvio.K('max-reactions-for-pathway-map-walk'))
 
     return parser.get_args(parser)
 

@@ -1,11 +1,9 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 import argparse
 
 import anvio.db as db
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError

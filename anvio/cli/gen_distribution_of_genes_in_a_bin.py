@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 import numpy as numpy
@@ -16,7 +15,8 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ["contigs-db", "profile-db", "collection", "bin"]
+__requires__ = ["contigs-db", "profile-db"]
+__can_use__ = ["collection", "bin"]
 __provides__ = ["view-data", "misc-data-items-txt"]
 __resources__ = [("This program in action as part of the metapangenomic workflow", "http://merenlab.org/data/prochlorococcus-metapangenome/#classification-of-genes-as-ecgs-and-eags-by-the-distribution-of-genes-in-a-genome-across-metagenomes")]
 __description__ = ("Quantify the detection of genes in genomes in metagenomes to identify the "
@@ -75,7 +75,7 @@ def run_program():
                     "average detection is %.2f across all metagenomes, %.2f being the maximum. Well, you can take a look at the "
                     "anvi-summarize output if you would like to learn more. The bottom line is this: the metagenomes you have in this "
                     "project are not the best ones to investigate the occurrence of the genes in this genome in the environment. So. "
-                    "This program will give you quite useless output files, but anvi'o hopes that you will enjoy them anyway :(" %\
+                    "This program will give you quite useless output files, but anvi'o hopes that you will enjoy them anyway :(" %
                             (num_metagenomes, min_detection, average_detection_of_genome, max_detection_of_genome))
     else:
         not_enough_detection = False

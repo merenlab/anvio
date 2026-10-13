@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 from anvio.argparse import ArgumentParser
@@ -19,7 +18,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
 __provides__ = ["coverages-txt", "detection-txt"]
-__requires__ = ["profile-db", "contigs-db", "genes-of-interest-txt"]
+__requires__ = ["profile-db", "contigs-db"]
+__can_use__ = ["genes-of-interest-txt"]
 __description__ = ("Export gene coverage and detection data for all genes associated with "
                    "contigs described in a profile database")
 

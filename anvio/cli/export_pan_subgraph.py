@@ -1,0 +1,61 @@
+#!/usr/bin/env python
+
+import sys
+
+import anvio
+import anvio.terminal as terminal
+
+from anvio.argparse import ArgumentParser
+from anvio.panops import PangenomeGraphSubGraph
+from anvio.errors import ConfigError, FilesNPathsError
+
+__copyright__ = "Copyleft 2015-2026, The Anvi'o Project (http://anvio.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__authors__ = ['meren', 'ahenoch']
+__requires__ = ['pan-graph-db']
+__can_use__ = ['external-genomes']
+__provides__ = ['contigs-db']
+__description__ = "Export genomic loci that is in between two nodes in a given pangenome graph."
+
+
+@terminal.time_program
+def main():
+    args = get_args()
+
+    try:
+        subgraph = PangenomeGraphSubGraph(args)
+        subgraph.export()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+
+
+def get_args():
+    parser = ArgumentParser(description=__description__)
+    groupA = parser.add_argument_group('INPUT FILES')
+    groupA.add_argument(*anvio.A('pan-graph-db'), **anvio.K('pan-graph-db'))
+    groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {'required': True}))
+
+    groupB = parser.add_argument_group('SUBGRAPH COORDINATES', description="This is where you describe the loci that you wish anvi'o to export. "
+                                       "Users will typically learn which nodes or region IDs they are interested in by visualizing the pangenome graph "
+                                       "in anvi'o using the program `anvi-display-pan-graph`. Provide either --graph-nodes, or "
+                                       "--component-id together with --region-id (not both approaches at once).")
+    groupB.add_argument(*anvio.A('graph-nodes'), **anvio.K('graph-nodes'))
+    groupB.add_argument(*anvio.A('component-id'), **anvio.K('component-id'))
+    groupB.add_argument(*anvio.A('region-id'), **anvio.K('region-id'))
+
+    groupC = parser.add_argument_group('OUTPUT', description="Provide a directory path, and anvi'o will generate all your contigs databases for "
+                                "exported loci in it.")
+    groupC.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
+    groupC.add_argument(*anvio.A('reset-gene-caller-ids'), **anvio.K('reset-gene-caller-ids'))
+
+    return parser.get_args(parser)
+
+
+if __name__ == '__main__':
+    main()

@@ -1,13 +1,12 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Generate summary output from anvi'o datbases"""
 
-import os
 import sys
 
 import anvio
 import anvio.utils as utils
 import anvio.dbops as dbops
+import anvio.constants as constants
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 
@@ -18,17 +17,18 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__authors__ = ['meren']
-__requires__ = ['profile-db', 'contigs-db', 'collection', 'pan-db', 'genomes-storage-db',]
-__provides__ = ['summary']
-__description__ = ("Summarizer for anvi'o pan or profile db's. Essentially, this program takes a collection id along with either "
-                   "a profile database and a contigs database or a pan database and a genomes storage and generates a static HTML "
-                   "output for what is described in a given collection. The output directory will contain almost everything any "
-                   "downstream analysis may need, and can be displayed using a browser without the need for an anvi'o installation. "
-                   "For this reason alone, reporting summary outputs as supplementary data with publications is a great idea for "
-                   "transparency and reproducibility")
+__authors__ = ['meren', 'btrouche']
+__requires__ = ['collection', 'profile-db']
+__can_use__ = ['contigs-db', 'pan-db', 'pan-graph-db', 'genomes-storage-db']
+__provides__ = ['pan-summary', 'pan-graph-summary', 'profile-summary']
+__can_provide__ = ['discov-stats']
+__description__ = ("Summarizer for anvi'o pan, pan-graph, or profile databases. Depending on the input, the program produces a "
+                   "output directory that contaisn flat files for rigorous downstream analyses by humans 🧠 or LLMs 🤖.")
 __resources__ = [("anvi-summarize in the metagenomic workflow tutorial", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-summarize"), ("anvi-summarize in the pangenomic workflow tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/#summarizing-an-anvio-pan-genome")]
 
+DISCOV_BIN_WLEN_DEFAULT = constants.discov_default_bin_window_length
+DISCOV_CONTIG_WPCT_DEFAULT = constants.discov_default_contig_window_percentage
+DISCOV_CONTIG_MIN_WLEN_DEFAULT = constants.discov_default_contig_min_window_length
 
 def main():
     try:
@@ -59,6 +59,9 @@ def run_program():
     if db_type == 'pan':
         args.pan_db = args.pan_or_profile_db
         summary = summarizer.PanSummarizer(args)
+    elif db_type == 'pan-graph':
+        args.pan_graph_db = args.pan_or_profile_db
+        summary = summarizer.PanGraphSummarizer(args)
     elif db_type == 'profile':
         args.profile_db = args.pan_or_profile_db
         profile_db = dbops.ProfileDatabase(args.profile_db)
@@ -76,7 +79,7 @@ def run_program():
 
         summary = summarizer.ProfileSummarizer(args)
     else:
-        raise ConfigError("Well. '%s' is neither an anvi'o pan database, nor an anvi'o profile database. There is nothing this "
+        raise ConfigError("Well. '%s' is not an anvi'o pan, pan-graph, or profile database. There is nothing this "
                            "program can't do for you if you feed it with the right stuff. Just sayin'" % args.pan_or_profile_db)
 
     summary.process()
@@ -100,6 +103,9 @@ def get_args():
                                         are summarizing a standard profile).")
     groupE = parser.add_argument_group('COMMONS', "Common parameters for both pan and standard profile summaries.")
     groupF = parser.add_argument_group('EXTRA', "Extra stuff because you're extra.")
+    groupG = parser.add_argument_group('DISTRIBUTION OF COVERAGE (DISCOV)', "Parameters for computing the DisCov metric \
+                                        as part of the summary (requires `--report-discov`). DisCov quantifies coverage spread \
+                                        (S) and evenness (E) and combines them into a single score.")
 
     groupA.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
 
@@ -109,9 +115,25 @@ def get_args():
     groupC.add_argument(*anvio.A('init-gene-coverages'), **anvio.K('init-gene-coverages'))
     groupC.add_argument(*anvio.A('calculate-Q2Q3-carefully'), **anvio.K('calculate-Q2Q3-carefully'))
     groupC.add_argument(*anvio.A('reformat-contig-names'), **anvio.K('reformat-contig-names'))
+    groupC.add_argument(*anvio.A('light-summary'), **anvio.K('light-summary'))
     groupC.add_argument('--report-aa-seqs-for-gene-calls', default=False, action='store_true', help="You can use this flag if\
                                   you would like amino acid AND dna sequences for your gene calls in the genes output\
                                   file. By default, only dna sequences are reported.")
+
+    groupG.add_argument(*anvio.A('report-discov'), **anvio.K('report-discov'))
+    groupG.add_argument(*anvio.A('window-length'), **anvio.K('window-length', {'default': None, 'help': f"How long to make the windows for "
+                                            f"computing the spread metric: S = # windows with coverage / # windows. Using this flag sets a "
+                                            f"fixed window length (in bp) for computing S at both bin and contig level. Important note: "
+                                            f"when neither this flag nor --window-length-as-percentage is provided, anvi'o uses context-sensitive "
+                                            f"defaults: `--window-length {DISCOV_BIN_WLEN_DEFAULT}` for bins and `--window-length-as-percentage "
+                                            f"{DISCOV_CONTIG_WPCT_DEFAULT} --min-window-length {DISCOV_CONTIG_MIN_WLEN_DEFAULT}` for individual "
+                                            f"contigs (which can be smaller than the default fixed length)."}))
+    groupG.add_argument(*anvio.A('window-length-as-percentage'), **anvio.K('window-length-as-percentage'))
+    groupG.add_argument(*anvio.A('min-window-length'), **anvio.K('min-window-length'))
+    groupG.add_argument(*anvio.A('foldrange-lower'), **anvio.K('foldrange-lower'))
+    groupG.add_argument(*anvio.A('foldrange-upper'), **anvio.K('foldrange-upper'))
+    groupG.add_argument(*anvio.A('alpha'), **anvio.K('alpha'))
+    groupG.add_argument(*anvio.A('discov-formula'), **anvio.K('discov-formula'))
 
     groupD.add_argument(
         *anvio.A('report-DNA-sequences'),

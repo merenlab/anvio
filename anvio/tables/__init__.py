@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """ Table schemas for databases."""
 
 from anvio.constants import codons, nucleotides, essential_genome_info, TRNA_FEATURE_NAMES
@@ -38,6 +36,28 @@ pan_reaction_network_metabolites_table_types     = [         'text'        ,    
 pan_reaction_network_kegg_table_name             = 'pan_reaction_network_kegg'
 pan_reaction_network_kegg_table_structure        = ['kegg_id', 'name', 'modules', 'pathways', 'brite_categorization']
 pan_reaction_network_kegg_table_types            = [ 'text'  , 'text',  'text'  ,   'text'  ,         'text'        ]
+
+####################################################################################################
+#
+#     TABLE DESCRIPTIONS SPECIFIC FOR THE PAN GRAP DB
+#
+####################################################################################################
+
+pan_graph_nodes_table_name           = 'pan_graph_nodes'
+pan_graph_nodes_table_structure      = ['node_id', 'node_type', 'region_id', 'gene_cluster_id', 'gene_calls_json', 'synteny_position_json', 'node_x' , 'node_y' , 'alignment_summary', 'component_id']
+pan_graph_nodes_table_types          = [  'str'  ,    'str'   ,    'str'   ,       'str'      ,       'str'      ,          'str'         , 'numeric', 'numeric',        'str'       ,     'str'     ]
+
+pan_graph_edges_table_name           = 'pan_graph_edges'
+pan_graph_edges_table_structure      = ['edge_id', 'source', 'target', 'weight' , 'genomes_json']
+pan_graph_edges_table_types          = [  'str'  ,   'str' ,   'str' , 'numeric',     'str'      ]
+
+pan_graph_regions_table_name         = 'pan_graph_regions'
+pan_graph_regions_table_structure    = ['component_id', 'region_id', 'region_type', 'x_min'  , 'x_max'  , 'num_synteny_gene_clusters', 'num_gene_clusters', 'num_gene_calls', 'max_expansion', 'min_expansion', 'complexity', 'complexity_normalized', 'diversity', 'diversity_normalized', 'weight' , 'weight_normalized', 'composite_variability_score', 'complexity_mm_scaled', 'diversity_mm_scaled', 'expansion_mm_scaled', 'weight_mm_scaled']
+pan_graph_regions_table_types        = [    'str'     ,    'str'   ,     'str'    , 'numeric', 'numeric',          'numeric'         ,      'numeric'     ,     'numeric'   ,    'numeric'   ,    'numeric'   ,  'numeric'  ,        'numeric'       ,  'numeric' ,        'numeric'      , 'numeric',      'numeric'     ,            'numeric'         ,        'numeric'      ,        'numeric'     ,        'numeric'     ,      'numeric'    ]
+
+pan_graph_genome_distances_table_name      = 'pan_graph_genome_distances'
+pan_graph_genome_distances_table_structure = ['genome_a', 'genome_b', 'distance']
+pan_graph_genome_distances_table_types     = [   'str'  ,    'str'  , 'numeric' ]
 
 ####################################################################################################
 #
@@ -121,6 +141,10 @@ trna_taxonomy_table_name                = 'trna_taxonomy'
 trna_taxonomy_table_structure           = ['gene_callers_id', 'amino_acid', 'anticodon', 'accession', 'percent_identity', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
 trna_taxonomy_table_types               = [    'numeric'    ,    'text'   ,    'text'  ,    'text'  ,       'text'      ,   'text'  ,   'text'  ,   'text' ,  'text'  ,   'text'  ,   'text' ,   'text'   ]
 
+contig_classification_table_name        = 'contig_classification'
+contig_classification_table_structure   = ['contig', 'class', 'source', 'tool_classification', 'confidence']
+contig_classification_table_types       = [ 'text' ,'numeric', 'text',        'text'          ,   'text'   ]
+
 nt_position_info_table_name            = 'nt_position_info'
 nt_position_info_table_structure       = ['contig_name', 'position_info']
 nt_position_info_table_types           = [    'str'    ,      'blob'    ]
@@ -150,6 +174,10 @@ gene_level_inseq_stats_table_types     = [    'numeric'    ,     'text'   ,    '
 trna_seed_feature_table_name            = 'trna_feature'
 trna_seed_feature_table_structure       = ['gene_callers_id'] + list(itertools.chain(*zip([f + '_start' for f in TRNA_FEATURE_NAMES[: -1]], [f + '_stop' for f in TRNA_FEATURE_NAMES[: -1]]))) + ['alpha_start', 'alpha_stop', 'beta_start', 'beta_stop']
 trna_seed_feature_table_types           = ['gene_callers_id'] + ['str'] * len(TRNA_FEATURE_NAMES[: -1]) * 2                                                                                    + ['numeric'    , 'numeric'   , 'numeric'   , 'numeric']
+
+trna_gene_hits_table_name               = 'trna_gene_hits'
+trna_gene_hits_table_structure          = ['entry_id', 'seed_gene_callers_id', 'seed_contig_name', 'gene_contigs_db_project_name', 'gene_contigs_db_hash', 'gene_contig_name', 'profile_db_sample_id', 'collection_name', 'bin_id', 'gene_gene_callers_id', 'decoded_amino_acid', 'anticodon', 'gene_start_in_contig', 'gene_stop_in_contig', 'trnascan_score', 'gene_sequence', 'mismatch', 'bitscore', 'seed_alignment_start', 'gene_alignment_start', 'gene_alignment_stop', 'unmodified_nucleotides']
+trna_gene_hits_table_types              = ['numeric' , 'numeric'             , 'text'            , 'text'                        , 'text'                , 'text'            , 'text'                , 'text'           , 'text'  , 'numeric'             , 'text'              , 'text'     , 'numeric'             , 'numeric'            , 'numeric'       , 'text'         , 'numeric' , 'numeric' , 'numeric'             , 'numeric'             , 'numeric'            , 'text']
 
 
 ####################################################################################################
@@ -199,6 +227,14 @@ views_table_types                    = [  'str'  ,      'str'    ]
 # can be found in `contsants.essential_data_fields_for_anvio_profiles`
 view_table_structure = ['item', 'layer',  'value' ]
 view_table_types     = ['text', 'text' , 'numeric']
+
+zero_coverage_splits_table_name       = 'zero_coverage_splits'
+zero_coverage_splits_table_structure  = ['item', 'layer']
+zero_coverage_splits_table_types      = ['text', 'text' ]
+
+zero_coverage_contigs_table_name      = 'zero_coverage_contigs'
+zero_coverage_contigs_table_structure = ['item', 'layer']
+zero_coverage_contigs_table_types     = ['text', 'text' ]
 
 protein_abundances_table_name        = 'protein_abundances'
 protein_abundances_table_structure   = ['protein_id', 'reference_source', 'reference_id', 'sample_name', 'abundance_value']
@@ -266,21 +302,37 @@ genome_gene_function_calls_table_types     = [    'str'    , ] + gene_function_c
 #
 ####################################################################################################
 
+# `protein_id` is the structure DB's within-DB key for a protein. For a contigs-db input it equals the
+# gene_callers_id; for other input types (e.g. pangenome) it is an opaque surrogate whose provenance
+# (genome, gene cluster, source id) is recorded in the `proteins` table below. NOTE: this rename does
+# NOT extend to the variability tables (variable_codons/variable_nucleotides/indels above), which keep
+# their own `corresponding_gene_call` column — that is a separate namespace.
 pdb_data_table_name       = 'structures'
-pdb_data_table_structure  = ['corresponding_gene_call', 'pdb_content']
-pdb_data_table_types      = [         'integer'       ,    'blob'    ]
+pdb_data_table_structure  = ['protein_id', 'pdb_content']
+pdb_data_table_types      = [  'integer' ,    'blob'    ]
 
 templates_table_name       = 'templates'
-templates_table_structure  = ['corresponding_gene_call' , 'pdb_id' , 'chain_id' , 'proper_percent_similarity', 'percent_similarity', 'align_fraction']
-templates_table_types      = ['integer'                 , 'text'   , 'text'     , 'real',                      'real',               'real']
+templates_table_structure  = ['protein_id' , 'pdb_id' , 'chain_id' , 'proper_percent_similarity', 'percent_similarity', 'align_fraction']
+templates_table_types      = ['integer'    , 'text'   , 'text'     , 'real',                      'real',               'real']
 
+# the MODELLER-specific score columns (molpdf, GA341_score, DOPE_score) are left NULL for structures
+# predicted with ColabFold, whose native model-level metrics (mean_plddt, ptm) are stored instead
 models_table_name       = 'models'
-models_table_structure  = ['corresponding_gene_call' , 'molpdf' , 'GA341_score' , 'DOPE_score' , 'picked_as_best']
-models_table_types      = ['integer'                 , 'real'   , 'real'        , 'real'       , 'integer']
+models_table_structure  = ['protein_id' , 'molpdf' , 'GA341_score' , 'DOPE_score' , 'mean_plddt' , 'ptm'  , 'picked_as_best']
+models_table_types      = ['integer'    , 'real'   , 'real'        , 'real'       , 'real'       , 'real' , 'integer']
 
+# `plddt` holds the per-residue ColabFold confidence (NULL for MODELLER/external structures)
 residue_info_table_name       = 'residue_info'
-residue_info_table_structure  = ['corresponding_gene_call', 'codon_order_in_gene', 'contact_numbers', 'codon', 'amino_acid', 'codon_number', 'sec_struct' , 'rel_solvent_acc' , 'phi'  , 'psi'  , 'NH_O_1_index' , 'NH_O_1_energy' , 'O_NH_1_index' , 'O_NH_1_energy' , 'NH_O_2_index' , 'NH_O_2_energy' , 'O_NH_2_index' , 'O_NH_2_energy']
-residue_info_table_types      = [        'integer'        ,        'integer'     ,   'text'          , 'text',  'text',       'integer',      'text'       , 'real'            , 'real' , 'real' , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real']
+residue_info_table_structure  = ['protein_id', 'codon_order_in_gene', 'contact_numbers', 'codon', 'amino_acid', 'codon_number', 'sec_struct' , 'rel_solvent_acc' , 'phi'  , 'psi'  , 'plddt' , 'NH_O_1_index' , 'NH_O_1_energy' , 'O_NH_1_index' , 'O_NH_1_energy' , 'NH_O_2_index' , 'NH_O_2_energy' , 'O_NH_2_index' , 'O_NH_2_energy']
+residue_info_table_types      = [  'integer' ,        'integer'     ,   'text'          , 'text',  'text',       'integer',      'text'       , 'real'            , 'real' , 'real' , 'real'  , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real']
+
+# one row per protein that a structure was attempted for. `protein_id` is the surrogate key shared with
+# the four tables above; `input_type` records where the protein came from ('contigs_db', 'pangenome',
+# 'fasta'); the remaining columns hold that input type's natural identity (all nullable, only the ones
+# relevant to `input_type` are populated), and `has_structure` is 1 if a structure was produced, else 0.
+proteins_table_name       = 'proteins'
+proteins_table_structure  = ['protein_id', 'input_type', 'genome_name', 'gene_callers_id', 'gene_cluster_id', 'source_key', 'has_structure']
+proteins_table_types      = [  'integer' ,    'text'   ,    'text'    ,    'integer'     ,      'text'      ,    'text'   ,    'integer'   ]
 
 ####################################################################################################
 #
@@ -357,6 +409,8 @@ table_requires_unique_entry_id = {'self': False,
                                   'abundance_contigs': True,
                                   'variability_splits': True,
                                   'variability_contigs': True,
+                                  'zero_coverage_splits': False,
+                                  'zero_coverage_contigs': False,
                                   'gene_cluster_frequencies': True,
                                   'gene_cluster_presence_absence': True,
                                   'clusters': False,
@@ -389,6 +443,10 @@ table_requires_unique_entry_id = {'self': False,
                                   'max_normalized_ratio_splits': False,
                                   'relative_abundance_splits': False,
                                   pan_gene_clusters_table_name: True,
+                                  'pan_graph_nodes': False,
+                                  'pan_graph_edges': False,
+                                  pan_graph_regions_table_name: False,
+                                  pan_graph_genome_distances_table_name: True,
                                   'gene_cluster_function_reactions': False, # renamed to 'pan_reaction_network_reactions'
                                   pan_reaction_network_reactions_table_name: False,
                                   'gene_cluster_function_metabolites': False, # renamed to 'pan_reaction_network_metabolites'
@@ -409,6 +467,7 @@ table_requires_unique_entry_id = {'self': False,
                                   gene_level_coverage_stats_table_name: True,
                                   gene_level_inseq_stats_table_name: True,
                                   trna_seed_feature_table_name: False,
+                                  trna_gene_hits_table_name: False,
                                   item_additional_data_table_name: True,
                                   layer_additional_data_table_name: True,
                                   variable_codons_table_name: True,
@@ -420,6 +479,7 @@ table_requires_unique_entry_id = {'self': False,
                                   templates_table_name: True,
                                   models_table_name: True,
                                   residue_info_table_name: True,
+                                  contig_classification_table_name: False,
                                   contig_sequences_table_name: False,
                                   contigs_info_table_name: False,
                                   splits_info_table_name: False,
@@ -443,6 +503,7 @@ table_requires_unique_entry_id = {'self': False,
                                   gene_info_table_name: False,
                                   genome_gene_function_calls_table_name: True,
                                   pdb_data_table_name: False,
+                                  proteins_table_name: False,   # protein_id is unique (enforced by an index)
                                   'kegg_modules': False,        # no longer in use as of modules db v3
                                   module_table_name: False,
                                   pathway_table_name: False,

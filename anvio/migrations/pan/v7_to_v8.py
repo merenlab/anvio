@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import os
 import sys
@@ -187,7 +186,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
         if not len(data_keys):
             raise ConfigError("There is something wrong with the additional data file for %s at %s. "
-                              "It does not seem to have any additional keys for data :/" \
+                              "It does not seem to have any additional keys for data :/"
                                             % (self.target, additional_data_file_path))
 
         if self.target == 'layer_orders':
@@ -296,7 +295,7 @@ def check_samples_db_status():
                           "between either sides of '='). If you have a samples database, you can tell anvi'o the location of it "
                           "using the same environmental variable: 'ANVIO_SAMPLES_DB=YOUR_SAMPLES_DB_PATH anvi-migrate "
                           "YOUR_PAN_DB_PATH'. If you are curious, this was necessary because there may be multiple samples "
-                          "databases for a given project, or a samples database may be at any location and may have any name." \
+                          "databases for a given project, or a samples database may be at any location and may have any name."
                             % current_version)
 
     if os.environ['ANVIO_SAMPLES_DB'] == 'SKIP':
@@ -380,7 +379,7 @@ def migrate(db_path):
     if fully_upgraded:
         shutil.move(samples_db_path, samples_db_path + '.OBSOLETE')
         run.info_single("Your pan db is now version %s. You no longer need your old samples database (which is now "
-                        "renamed to something ugly so you can see it." \
+                        "renamed to something ugly so you can see it."
                                                             % next_version, nl_after=1, nl_before=1, mc='green')
     elif samples_db_path:
         run.info_single("Your pan db is now version %s. BUT THERE WAS THIS: the actual purpose of this script was to "
@@ -388,7 +387,7 @@ def migrate(db_path):
                         "has failed. Probably everything is still alright, but you may have to do that step manually. The "
                         "Error messsage should be somewhere above." % next_version, nl_after=1, nl_before=1, mc='green')
     else:
-        run.info_single("Your pan db is now version %s. BUT WITHOUT the samples database incorporation as you wished."\
+        run.info_single("Your pan db is now version %s. BUT WITHOUT the samples database incorporation as you wished."
                                                     % next_version, nl_after=1, nl_before=1, mc='green')
 
 

@@ -14,10 +14,10 @@ Here is an example of an %(hmm-list)s using the HMM Ribosomal_L16 and Ribosomal_
 You can also use external %(hmm-source)ss! An easy way to get an anvi'o ready HMM directory is to use the script %(anvi-script-pfam-accessions-to-hmms-directory)s to download a [Pfam HMM](https://pfam.xfam.org/).
 
 {{ codestart }}
-anvi-script-pfam-accessions-to-hmms-directory --pfam-accessions-list PF00016 -O RuBisCO_large_HMM
+anvi-script-pfam-accessions-to-hmms-directory --pfam-accessions-list PF00016 -o RuBisCO_large_HMM
 {{ codestop }}
 
-Here is what the `hmm_list.txt` should look like with a combination of internal and external %(hmm-source)ss:  
+Here is what the `hmm_list.txt` should look like with a combination of internal and external %(hmm-source)ss:
 
 | name          | source            | path                       |
 |---------------|-------------------|----------------------------|

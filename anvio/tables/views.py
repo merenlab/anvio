@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 
 import anvio
 import anvio.tables as t
@@ -38,6 +36,9 @@ class TablesForViews(Table):
         if not isinstance(view_data, list):
             self.progress.reset()
             raise ConfigError(f"View data must be a list of tuples or list of lists :( Yours is a {type(view_data)}.")
+
+        if not view_data:
+            return
 
         if len(view_data[0]) != 3:
             self.progress.reset()
@@ -99,7 +100,7 @@ class TablesForViews(Table):
         if not append_mode:
             if view_name and view_name in views_in_db:
                 raise ConfigError("TablesForViews speaking: Yo yo yo. You already have a view in the db '%s' called '%s'. "
-                                   "You can't create another one before you get rid of the existing one, because rules."\
+                                   "You can't create another one before you get rid of the existing one, because rules."
                                                                             % (self.db_path, view_name))
 
             # first create the data table:
@@ -117,7 +118,8 @@ class TablesForViews(Table):
                                   "'%s'. Here is how the part of the code that was about this described the "
                                   "problem: '%s'." % (table_name, self.db_path, str(e)))
 
-        anvio_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(t.view_table_structure))), view_data)
+        if view_data:
+            anvio_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(t.view_table_structure))), view_data)
 
         if view_name and view_name not in views_in_db:
             anvio_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.views_table_name, (view_name, table_name))

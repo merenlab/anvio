@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Populate misc data tables"""
 
 import sys
@@ -18,7 +17,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'ekiefl']
 __resources__ = [("A primer on anvi'o misc data tables", "http://merenlab.org/2017/12/11/additional-data-tables/"),]
-__requires__ = ['pan-db', 'profile-db', 'contigs-db', 'misc-data-items-txt', 'dendrogram', 'phylogeny', 'misc-data-layers-txt', 'misc-data-layer-orders-txt', 'misc-data-nucleotides-txt',  'misc-data-amino-acids-txt']
+__requires__ = ['profile-db', 'misc-data-items-txt']
+__can_use__ = ['pan-db', 'contigs-db', 'dendrogram', 'phylogeny', 'misc-data-layers-txt', 'misc-data-layer-orders-txt', 'misc-data-nucleotides-txt', 'misc-data-amino-acids-txt']
 __provides__ = ['misc-data-items', 'misc-data-layers', 'misc-data-layer-orders', 'misc-data-nucleotides', 'misc-data-amino-acids']
 __description__ = ("Populate additional data or order tables in pan or profile databases for "
                    "items and layers, OR additional data in contigs databases for nucleotides "
@@ -92,4 +92,3 @@ def get_args():
 
 if __name__ == '__main__':
     main()
-

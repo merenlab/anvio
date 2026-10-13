@@ -19,7 +19,8 @@
  */
 
 
-function LoadCollectionDialog() {
+function LoadCollectionDialog(importFn) {
+    this.importFn = importFn || null;
     this.dialog = document.createElement('div');
     this.dialog.setAttribute('class', 'modal fade in');
 
@@ -39,7 +40,7 @@ function LoadCollectionDialog() {
                             <div class="col-md-8">Number of Items:</div><div class="col-md-4">n/a</div>
                             <div class="col-md-8">Number of Bins:</div><div class="col-md-4">n/a</div>
                     </div>
-                    <div class="col-md-6 col-md-offset-3 form-inline" style="${mode != 'full' ? 'display:none' : ''}">
+                    <div class="col-md-6 col-md-offset-3 form-inline threshold-section" style="${(typeof mode !== 'undefined' && mode == 'full') ? '' : 'display:none'}">
                         <br /> Minimum bin size: 
                         <input type="text" value="0" size="4" class="form-control input-xs threshold-value">
                         <select class="form-control input-xs threshold-base">
@@ -100,22 +101,30 @@ LoadCollectionDialog.prototype.LoadCollection = function() {
         toastr.warning('Please select a collection.');
     }
 
-    if (bins.GetTotalSelectionCount() > 0 && !confirm("You are trying to load a collection but you already have some selections,\
-                                                       you will lose them if they are not stored. Do you want to continue?")) {
+    if (!this.importFn && bins.GetTotalSelectionCount() > 0 &&
+            !confirm("You are trying to load a collection but you already have some selections, " +
+                     "you will lose them if they are not stored. Do you want to continue?")) {
         return;
     }
 
-    let threshold_value = this.dialog.querySelector('.threshold-value').value;
-    let threshold_base  = this.dialog.querySelector('.threshold-base').value;
-    let threshold = parseInt(threshold_value) * (parseInt(threshold_base) || 1);
+    let threshold = 0;
+    if (!this.importFn) {
+        let threshold_value = this.dialog.querySelector('.threshold-value').value;
+        let threshold_base  = this.dialog.querySelector('.threshold-base').value;
+        threshold = parseInt(threshold_value) * (parseInt(threshold_base) || 1);
+    }
 
     $.ajax({
         type: 'GET',
         cache: false,
         url: '/data/collection/' + collection_name,
         success: function(data) {
-            bins.ImportCollection(data, threshold);
-            
+            if (this.importFn) {
+                this.importFn(data);
+            } else {
+                bins.ImportCollection(data, threshold);
+            }
+
             $(this.dialog).modal('hide');
             this.dialog.remove();
         }.bind(this)

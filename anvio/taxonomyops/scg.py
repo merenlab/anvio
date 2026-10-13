@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8
 """
 Classes to setup remote SCG databases in local, use local databases to affiliate SCGs in anvi'o
 contigs databases with taxon names, and estimate taxonomy for genomes and metagenomes.
@@ -22,6 +21,7 @@ from anvio.dbops import ContigsDatabase, ContigsSuperclass
 from anvio.drivers.diamond import Diamond
 from anvio.genomedescriptions import GenomeDescriptions, MetagenomeDescriptions
 
+from anvio.taxonomyops import TaxonomyTree
 from anvio.taxonomyops import AccessionIdToTaxonomy
 from anvio.taxonomyops import TaxonomyEstimatorSingle
 from anvio.taxonomyops import PopulateContigsDatabaseWithTaxonomy
@@ -157,6 +157,35 @@ class SanityCheck(object):
 
             filesnpaths.is_output_file_writable(self.per_scg_output_file) if self.per_scg_output_file else None
 
+            if self.presence_absence_only and self.compute_scg_coverages:
+                raise ConfigError("The flag `--presence-absence-only` is not quite compatible with `--compute-scg-coverages` since "
+                                  "the presence/absence information is only meaningful when working without coverage data :/")
+
+            ###########################################################
+            # tree output, which is relevant to both estimator classes
+            ###########################################################
+            if self.__class__.__name__ in ['SCGTaxonomyEstimatorSingle', 'SCGTaxonomyEstimatorMulti']:
+                if self.tree_output_level and not self.tree_output:
+                    raise ConfigError(f"You asked anvi'o to not show anything deeper than '{self.tree_output_level}' in the tree "
+                                      f"output, but you didn't actually ask for a tree output :/ Perhaps you meant to add the "
+                                      f"flag `--tree-output` to your command? Or perhaps you were looking for the parameter "
+                                      f"`--taxonomic-level`, which is a completely different thing?")
+
+                if self.tree_output_level and self.tree_output_level not in constants.levels_of_taxonomy:
+                    raise ConfigError(f"The taxonomic level '{self.tree_output_level}' is not a level anvi'o knows about. Here is the "
+                                      f"list of taxonomic levels anvi'o recognizes: {', '.join(constants.levels_of_taxonomy)}.")
+
+                if self.tree_output and anvio.QUIET:
+                    raise ConfigError("You asked anvi'o for a tree output, and then you asked it to be quiet. But the tree is the "
+                                      "only thing `--tree-output` produces, so these two flags together mean 'please do all this "
+                                      "work and then show me nothing', which anvi'o refuses to believe is what you meant. Please "
+                                      "remove one of them and try again (and if you were after a file rather than a display, the "
+                                      "parameter you want is `--output-file`).")
+
+                if self.tree_output and anvio.AS_MARKDOWN:
+                    raise ConfigError("The flag `--as-markdown` will not do anything good to a tree since the characters anvi'o "
+                                      "uses to draw one do not survive markdown rendering :/ Please pick either `--tree-output` "
+                                      "or `--as-markdown`.")
 
             ###########################################################
             # PopulateContigsDatabaseWithSCGTaxonomy
@@ -184,7 +213,8 @@ class SanityCheck(object):
             if self.__class__.__name__ in ['SCGTaxonomyEstimatorSingle']:
                 if self.metagenomes:
                     raise ConfigError("Taxonomy estimation classes have been initiated with a single contigs database, but your "
-                            "arguments also include an input file for multiple (meta)genomes. It is a no no. Please choose either. ")
+                                      "arguments also include an input file for multiple (meta)genomes. It is a no no. "
+                                      "Please choose either. ")
 
                 if self.output_file_prefix:
                     raise ConfigError("When using SCG taxonomy estimation in this mode, you must provide an output file path "
@@ -237,7 +267,7 @@ class SanityCheck(object):
                 if self.scg_name_for_metagenome_mode and self.scg_name_for_metagenome_mode not in self.ctx.SCGs:
                     raise ConfigError("We understand that you wish to work with '%s' to study the taxonomic make up of your contigs "
                                       "database in metagenome mode. But then this gene is not one of those anvi'o recognizes as "
-                                      "suitable SCGs to do that. Here is a list for you to choose from: '%s'." \
+                                      "suitable SCGs to do that. Here is a list for you to choose from: '%s'."
                                                             % (self.scg_name_for_metagenome_mode, ', '.join(self.ctx.SCGs.keys())))
 
                 if self.compute_scg_coverages and not self.profile_db_path:
@@ -281,8 +311,15 @@ class SanityCheck(object):
                     raise ConfigError("More than one input file type (external genomes AND metagenomes) has been given to the "
                                       "taxonomy estimation classes. Please run this program with only one input type at a time.")
 
-                if not self.output_file_prefix and not self.output_file_path:
+                if not self.output_file_prefix and not self.output_file_path and not self.tree_output:
                     raise ConfigError("When using SCG taxonomy estimation in this mode, you must provide an output file path or prefix :/")
+
+                if self.tree_output and not self.output_file_prefix and not self.output_file_path and (self.matrix_format or self.raw_output):
+                    raise ConfigError("You asked anvi'o for a tree output and nothing else, but you also asked for the output to be "
+                                      "formatted as a matrix and/or to be reported raw. Those two only influence output files, and "
+                                      "you are not asking for any output files here, so anvi'o has no idea what to do with them. "
+                                      "Please either add an output file path/prefix to your command, or remove the flag(s) that "
+                                      "describe how output files should look like.")
 
                 if self.output_file_path and not self.output_file_prefix and self.matrix_format:
                     raise ConfigError("Matrix format output only works if you provide an output file prefix.")
@@ -326,11 +363,14 @@ class SCGTaxonomyArgs(object):
         self.metagenome_mode = True if A('metagenome_mode') else False
         self.scg_name_for_metagenome_mode = A('scg_name_for_metagenome_mode')
         self.compute_scg_coverages = A('compute_scg_coverages')
+        self.presence_absence_only = True if A('presence_absence_only') else False
         self.report_scg_frequencies_path = A('report_scg_frequencies')
         self.metagenomes = A('metagenomes')
         self.user_taxonomic_level = A('taxonomic_level')
         self.matrix_format = A('matrix_format')
         self.raw_output = A('raw_output')
+        self.tree_output = A('tree_output')
+        self.tree_output_level = A('tree_output_level')
 
         if format_args_for_single_estimator:
             # so you're here to get an args instance to fool a single estimator class.
@@ -341,6 +381,15 @@ class SCGTaxonomyArgs(object):
             self.output_file_prefix = None
             self.matrix_format = None
             self.raw_output = None
+            self.presence_absence_only = False
+
+            # the multi estimator class is the one that displays the tree for multiple (meta)genomes,
+            # and it does that once, after it is done with all of them. so the single estimators it
+            # runs under the hood should keep their mouths shut. NOTE: both of these must be
+            # nullified together, otherwise the sanity check that makes sure `--tree-output-level`
+            # is not used without `--tree-output` will complain.
+            self.tree_output = None
+            self.tree_output_level = None
 
         self.skip_sanity_check = A('skip_sanity_check')
 
@@ -372,8 +421,6 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
         # NOTE some enforced flags
         self.profile_dbs_available = False # we don't load profile dbs for external genomes, so this has to be off
-        if self.metagenome_mode:
-            self.metagenome_mode = False
 
         genomes_without_scg_taxonomy = [x for x in g.genomes if not g.genomes[x]['scg_taxonomy_was_run']]
         if genomes_without_scg_taxonomy:
@@ -401,14 +448,14 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                              "to compare different versions of the database, and if you would like to ensure consistency, you can re-run "
                              "`anvi-run-scg-taxonomy` on contigs databases that have a different version than what is installed on your "
                              "system, which is '%s' (if you run `anvi-db-info` on any contigs database you can learn the SCG database "
-                             "version of it). Anvi'o found these versions across your genomes: '%s'." % \
+                             "version of it). Anvi'o found these versions across your genomes: '%s'." %
                                         (self.ctx.scg_taxonomy_database_version, ', '.join(list(set(scg_taxonomy_database_versions_in_genomes)))))
         elif scg_taxonomy_database_versions_in_genomes[0] != self.ctx.scg_taxonomy_database_version:
             self.progress.reset()
             self.run.warning("While all of your genomes agree with each other and have the SCG taxonomy database version of %s, "
                               "this version differs from what is installed on your system, which is %s. If you don't do anything, "
                               "things will continue to work. But if you would like to get rid of this warning you will need to "
-                              "re-run the program `anvi-run-scg-taxonomy` on each one of them 😬" % \
+                              "re-run the program `anvi-run-scg-taxonomy` on each one of them 😬" %
                                         (scg_taxonomy_database_versions_in_genomes[0], self.ctx.scg_taxonomy_database_version))
 
         # we keep these attribute names the same as for metagenomes so that we don't have to duplicate every function later
@@ -453,14 +500,14 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                              "to compare different versions of the database, and if you would like to ensure consistency, you can re-run "
                              "`anvi-run-scg-taxonomy` on contigs databases that have a different version than what is installed on your "
                              "system, which is '%s' (if you run `anvi-db-info` on any contigs database you can learn the SCG database "
-                             "version of it). Anvi'o found these versions across your metagenomes: '%s'." % \
+                             "version of it). Anvi'o found these versions across your metagenomes: '%s'." %
                                         (self.ctx.scg_taxonomy_database_version, ', '.join(list(set(scg_taxonomy_database_versions_in_metagenomes)))))
         elif scg_taxonomy_database_versions_in_metagenomes[0] != self.ctx.scg_taxonomy_database_version:
             self.progress.reset()
             self.run.warning("While all of your metagenomes agree with each other and have the SCG taxonomy database version of %s, "
                               "this version differs from what is installed on your system, which is %s. If you don't do anything, "
                               "things will continue to work. But if you would like to get rid of this warning you will need to "
-                              "re-run the program `anvi-run-scg-taxonomy` on each one of them 😬" % \
+                              "re-run the program `anvi-run-scg-taxonomy` on each one of them 😬" %
                                         (scg_taxonomy_database_versions_in_metagenomes[0], self.ctx.scg_taxonomy_database_version))
 
         self.metagenomes = copy.deepcopy(g.metagenomes)
@@ -488,10 +535,30 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
             self.report_scg_frequencies_as_TAB_delimited_file()
             return
 
+        if self.metagenome_mode:
+            if not self.scg_name_for_metagenome_mode:
+                self.scg_name_for_metagenome_mode = self.get_best_scg_name_for_metagenome_mode()
+
+                self.run.warning(f"Please note that anvi'o just set the SCG for metagenome mode as "
+                                 f"'{self.scg_name_for_metagenome_mode}' since it was the most frequent SCG "
+                                 f"occurring across all {len(self.metagenomes)} contigs databases involved in "
+                                 f"this analysis. But this is nothing more than some heuristic for your "
+                                 f"convenience, and we strongly advice you to run this program with the parameter "
+                                 f"`--report-scg-frequencies` and examine the output to see if there is a better "
+                                 f"choice. As you can imagine, the most frequent SCG may not be the one that is "
+                                 f"more common across all genomes you are interested.")
+
+                self.run.info("SCG [determined by anvi'o]", self.scg_name_for_metagenome_mode, nl_after=1, mc="green")
+            else:
+                self.run.info("SCG [chosen by the user]", self.scg_name_for_metagenome_mode, nl_after=1, mc="green")
+
         scg_taxonomy_super_dict_multi = self.get_scg_taxonomy_super_dict_for_metagenomes()
 
         if self.sequences_file_path_prefix:
             self.store_sequences_for_items_multi(scg_taxonomy_super_dict_multi)
+
+        if self.tree_output:
+            self.print_scg_taxonomy_super_dict_multi_as_tree(scg_taxonomy_super_dict_multi)
 
         if self.output_file_path:
             self.store_scg_taxonomy_super_dict_multi_output_file(scg_taxonomy_super_dict_multi)
@@ -520,12 +587,12 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         if not self.scg_name_for_metagenome_mode:
             self.scg_name_for_metagenome_mode = self.get_best_scg_name_for_metagenome_mode()
 
-            self.run.warning("Please not that anvi'o just set the SCG for metagenome mode as '%s' since it was the most "
+            self.run.warning("Please note that anvi'o just set the SCG for metagenome mode as '%s' since it was the most "
                              "frequent SCG occurring across all %d contigs databases involved in this analysis. But this "
                              "is nothing more than some heuristic for your convenience, and we strongly advice you to "
                              "run this program with the parameter `--report-scg-frequencies` and examine the output "
                              "to see if there is a better choice. As you can imagine, the most frequent SCG may not be "
-                             "the one that is more common across all genomes or metagenomes you are interested." % \
+                             "the one that is more common across all genomes or metagenomes you are interested." %
                                                 (self.scg_name_for_metagenome_mode, len(self.metagenomes)))
 
             self.run.info("SCG [determined by anvi'o]", self.scg_name_for_metagenome_mode, nl_after=1, mc="green")
@@ -536,6 +603,9 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
         if self.sequences_file_path_prefix:
             self.store_sequences_for_items_multi(scg_taxonomy_super_dict_multi)
+
+        if self.tree_output:
+            self.print_scg_taxonomy_super_dict_multi_as_tree(scg_taxonomy_super_dict_multi)
 
         if self.output_file_path:
             self.store_scg_taxonomy_super_dict_multi_output_file(scg_taxonomy_super_dict_multi)
@@ -551,6 +621,58 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         else:
             raise ConfigError("Anvi'o is not sure how things got to this point, but somehow we find ourselves without input for the "
                               "SCGTaxonomyEstimatorMulti class's estimate() function.")
+
+
+    def print_scg_taxonomy_super_dict_multi_as_tree(self, scg_taxonomy_super_dict_multi):
+        """Display taxonomy across many (meta)genomes as a single, merged hierarchical tree.
+
+        A tree is not the ideal way to look at results that span multiple (meta)genomes since it
+        offers no way to tell which input a given taxon came from -- that is what the output files
+        are for. But if the user insists, the least anvi'o can do is to be explicit about what it
+        is showing them.
+        """
+
+        self.progress.reset()
+
+        self.run.warning("You asked anvi'o to display these results as a tree, which is not quite the appropriate "
+                         "display for results that describe multiple genomes or metagenomes, since a tree gives you "
+                         "no way to tell which of your inputs a given taxon was found in. But you are the boss, so "
+                         "here it is: a single tree in which the results from every single one of your inputs are "
+                         "merged together. If you need to know which input contributed what, please take a look at "
+                         "the output files.")
+
+        d = self.get_print_friendly_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
+
+        # here we merge everything into a single list of entries rather than a single dictionary, since
+        # two of the user's inputs may perfectly well have identical item names, and a dictionary would
+        # silently lose some of them.
+        entries = []
+        for metagenome_name in d:
+            entries.extend(list(d[metagenome_name].values()))
+
+        # a note on the unit of counting here: when the single estimators that produced these results
+        # ran in metagenome mode, every entry is a single copy of the SCG anvi'o chose for this
+        # analysis. otherwise each entry is the consensus taxonomy of an entire input, so what is
+        # being counted is (meta)genomes. rather than trying to guess which of these happened from
+        # the parameters (a rabbit hole, since some of them are set for the user based on whether
+        # there are profile databases around), we simply ask the data: consensus taxonomy entries
+        # are the only ones that come with a `total_scgs` key.
+        entries_describe_genomes = len(entries) and 'total_scgs' in entries[0]
+
+        if entries_describe_genomes:
+            unit = '(meta)genomes'
+        else:
+            unit = f"{self.scg_name_for_metagenome_mode} copies"
+
+        self.run.warning(None, header='Taxa across all of your inputs, merged', lc="green")
+
+        taxonomy_tree = TaxonomyTree(entries,
+                                     max_taxonomic_level=self.tree_output_level or 't_genus',
+                                     coverage_key='coverage' if self.compute_scg_coverages else None,
+                                     unit=unit,
+                                     run=self.run)
+
+        taxonomy_tree.print_tree()
 
 
     def store_sequences_for_items_multi(self, scg_taxonomy_super_dict_multi):
@@ -804,15 +926,15 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                 missing_taxa = [taxon for taxon in list_of_unique_taxon_names if taxon not in known_taxa]
                 for taxon in missing_taxa:
                     row = {'metagenome_name': metagenome_name, 'taxon': taxon, 'coverage': 0.0, 'taxonomic_level': taxonomic_level}
-                    x = x.append(row, ignore_index=True)
+                    x = pd.concat([x, pd.DataFrame([row])], ignore_index=True)
 
-            DFx = DFx.append(x, ignore_index=True)
+            DFx = pd.concat([DFx, x], ignore_index=True)
 
         DFx.sort_values(by=['metagenome_name', 'taxonomic_level', 'coverage'], ascending=[True, True, False], inplace=True)
 
         DF = pd.DataFrame(columns=['metagenome_name', 'taxon', 'coverage', 'taxonomic_level'])
         for taxonomic_level in constants.levels_of_taxonomy:
-            DF = DF.append(DFx[DFx['taxonomic_level'] == taxonomic_level], ignore_index=True)
+            DF = pd.concat([DF, DFx[DFx['taxonomic_level'] == taxonomic_level]], ignore_index=True)
 
         del DFx
 
@@ -832,6 +954,9 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         if not self.compute_scg_coverages:
             DF.rename(columns={"coverage": "times_observed"}, inplace = True)
             DF['times_observed'] = DF['times_observed'].astype(int)
+
+            if self.presence_absence_only:
+                DF['times_observed'] = DF['times_observed'].apply(lambda x: 1 if x > 0 else 0)
 
         self.progress.end()
 
@@ -950,7 +1075,6 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         implement that, let's leave a FIXME here only to be remove by
         that hero.
         """
-
         scgs_ordered_based_on_frequency, contigs_dbs_ordered_based_on_num_scgs, scg_frequencies = self.get_scg_frequencies()
 
         return scgs_ordered_based_on_frequency[0]
@@ -1026,18 +1150,32 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         scg_taxonomy_super_dict = {}
 
         if self.profile_dbs_available:
-            self.run.info_single("Your metagenome file DOES contain profile databases, so anvi'o will turn on `--metagenome-mode`, "
-                                 "set the SCG name to %s, and turn on `--compute-scg-coverages` flag. If this doesn't make sense, "
-                                 "please adjust your input parameters." % (self.scg_name_for_metagenome_mode), nl_after=1)
+            if self.presence_absence_only:
+                self.run.info_single(f"Since you asked anvi'o to estimate SCG taxonomy with profile-db files together with the flag "
+                                     f"`--presence-absence-only`, anvi'o will turn on `--metagenome-mode` and use "
+                                     f"'{self.scg_name_for_metagenome_mode}' to report presence/absence SCG taxonomy for your input data. "
+                                     f"You are really confusing anvi'o here, but you are the boss. If this doesn't make sense, please "
+                                     f"adjust your input parameters.", nl_after=1, nl_before=1)
+            else:
+                self.run.info_single(f"Since you asked anvi'o to estimate SCG taxonomy with profile-db files, anvi'o will turn on "
+                                     f"`--metagenome-mode` and `--compute-scg-coverages` and use '{self.scg_name_for_metagenome_mode}' "
+                                     f"to report SCG taxonomy for your input data. If this doesn't make sense, please adjust your input "
+                                     f"parameters.", nl_after=1, nl_before=1)
         else:
             if self.metagenome_mode:
-                self.run.info_single("Your metagenome file DOES NOT contain profile databases, but you asked anvi'o to estimate SCG "
-                                     "taxonomy in metagenome mode. So be it. SCG name is set to %s." \
-                                        % (self.scg_name_for_metagenome_mode), nl_after=1)
+                if self.presence_absence_only:
+                    self.run.info_single(f"Since you asked anvi'o to estimate SCG taxonomy in `--metagenome-mode` with `--presence-absence-only` "
+                                         f"and without any profile-db files, anvi'o will use '{self.scg_name_for_metagenome_mode}' and report "
+                                         f"its presence/absence across your contigs databases.", nl_after=1, nl_before=1)
+                else:
+                    self.run.info_single(f"Since you asked anvi'o to estimate SCG taxonomy in `--metagenome-mode` without any profile-db files, "
+                                         f"anvi'o will use '{self.scg_name_for_metagenome_mode}' and report its frequencies across your "
+                                         f"contigs databases.", nl_after=1, nl_before=1)
             else:
-                self.run.info_single("Your (meta)genome file DOES NOT contain profile databases, and you haven't asked anvi'o to "
-                                     "work in `--metagenome-mode`. Your contigs databases will be treated as genomes rather than "
-                                     "metagenomes.", nl_after=1)
+                self.run.info_single("Since you asked anvi'o to estimate SCG taxonomy without any profile-db files and without the "
+                                     "`--metagenome-mode` flag, anvi'o will treat your contigs-db file(s) as individual genomes rather "
+                                     "than metagenomes. If this doesn't make any sense, please revisit your parameters.", nl_after=1,
+                                     nl_before=1)
 
         self.progress.new("Recovering tax super dict", progress_total_items=len(self.metagenome_names))
         total_num_metagenomes = len(self.metagenome_names)
@@ -1047,9 +1185,9 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
             args.contigs_db = self.metagenomes[metagenome_name]['contigs_db_path']
 
             if self.profile_dbs_available:
-                args.metagenome_mode = True
+                args.metagenome_mode = False if self.presence_absence_only else True       # These two are confusing as in "why would anyone do this", but
+                args.compute_scg_coverages = False if self.presence_absence_only else True # the user is the boss, and they can do whatever the heck they want.
                 args.profile_db = self.metagenomes[metagenome_name]['profile_db_path']
-                args.compute_scg_coverages = True
                 args.scg_name_for_metagenome_mode = self.scg_name_for_metagenome_mode
             else:
                 if self.metagenome_mode:

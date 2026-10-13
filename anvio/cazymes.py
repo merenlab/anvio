@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """This file contains CAZyme related classes."""
 
 import os
@@ -93,9 +92,9 @@ class CAZymeSetup(object):
         if self.args.cazyme_version:
             self.db_version = self.args.cazyme_version.upper()
         else:
-            self.db_version = 'V13'
+            self.db_version = 'V14'
 
-        self.db_url = os.path.join("https://bcb.unl.edu/dbCAN2/download/Databases", f"{self.db_version}", f"dbCAN-HMMdb-{self.db_version}.txt")
+        self.db_url = os.path.join("https://pro.unl.edu/dbCAN2/download_file.php?file=", f"dbCAN-HMMdb-{self.db_version}.txt")
 
 
     def is_database_exists(self):
@@ -137,7 +136,7 @@ class CAZymeSetup(object):
             self.hmmpress_files()
 
         self.run.info_single(f"The CAZyme database {self.db_version} is successfully setup on your computer for anvi'o to use 🎉 Now you "
-                             f"can use the program `anvi-run-cazyme` on any contigs-db file to annotate genes in them with CAZymes.",
+                             f"can use the program `anvi-run-cazymes` on any contigs-db file to annotate genes in them with CAZymes.",
                              nl_before=1, nl_after=1, mc='green')
 
 
@@ -318,10 +317,13 @@ class CAZyme(object):
         counter = 0
         for hmm_hit in search_results_dict.values():
             accession = hmm_hit['gene_name'].removesuffix('.hmm') # removing the .hmm suffix from CAZyme HMM names
-            if hmm_hit['gene_hmm_id'].startswith('PF'): # expaned function string if from PFAM
+
+            # dbCAN HMMs carry no ACC line except for the few models taken from Pfam, and there is no
+            # family description to look up, so the CAZyme family name (e.g., GH13_36) is the function
+            if hmm_hit['gene_hmm_id'].startswith('PF'): # expanded function string if from PFAM
                function = f"{accession} ({hmm_hit['gene_hmm_id']})"
             else:
-               function = hmm_hit['gene_hmm_id']
+               function = accession
 
             functions_dict[counter] = {
                 'gene_callers_id': hmm_hit['gene_callers_id'],

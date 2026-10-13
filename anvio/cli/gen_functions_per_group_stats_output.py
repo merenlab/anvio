@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A program to generate a functions across groups stats output."""
 
 import sys
@@ -17,7 +16,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'adw96']
-__requires__ = ['functions', 'genomes-storage-db', 'internal-genomes', 'external-genomes']
+__requires__ = ['functions', 'external-genomes']
+__can_use__ = ['internal-genomes', 'genomes-storage-db']
 __provides__ = ['interactive']
 __description__ = "Generate a TAB delimited file for the distribution of functions across groups of genomes/metagenomes"
 
@@ -59,6 +59,7 @@ def get_args():
 
     groupD = parser.add_argument_group('OUTPUT', "A.k.a., what you're really here for")
     groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupD.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
 
     return parser.get_args(parser)
 

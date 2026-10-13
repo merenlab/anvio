@@ -1,0 +1,2 @@
+sample	sra_accession
+S06	ERR6450080,SRR11951439

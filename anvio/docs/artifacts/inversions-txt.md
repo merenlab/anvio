@@ -1,4 +1,4 @@
-This is the output of %(anvi-report-inversions)s. 
+This is the output of %(anvi-report-inversions)s.
 
 ### Per sample inversion report table
 

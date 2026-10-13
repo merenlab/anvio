@@ -1,20 +1,20 @@
 import os
-import sys
+import itertools
 import pandas as pd
 
 from copy import deepcopy
+from typing import Any, Union
 from argparse import Namespace
-from typing import Any, Literal, Union
+from collections import defaultdict
 from dataclasses import dataclass, field
 
-import anvio.metabolism.context as kcontext
 import anvio.kgml as kgml
 import anvio.terminal as terminal
 import anvio.reactionnetwork as rn
+import anvio.metabolism.context as kcontext
 
+from anvio.errors import ConfigError
 from anvio.dbops import ContigsDatabase
-from anvio.argparse import ArgumentParser
-from anvio.errors import ConfigError, FilesNPathsError
 
 @dataclass
 class Chain:
@@ -94,7 +94,7 @@ class Chain:
         cycle, such as acetyl-CoA entering the Krebs cycle by combining with oxaloacetate to form
         citrate using citrate synthase. The branching reaction occurs twice in the partly cyclic
         chain, once at the end. The non-negative integer is the index of the first occurrence of the
-        branching KGML reaction that also ends the chain. -1 if the chain is not partly cyclic.
+        branching reaction that also ends the chain. -1 if the chain is not partly cyclic.
     """
     kgml_compound_entries: list[kgml.Entry] = field(default_factory=list)
     is_consumed: bool = None
@@ -109,6 +109,161 @@ class Chain:
     consumption_reversibility_range: tuple[int, int] = None
     production_reversibility_range: tuple[int, int] = None
     cyclic_branch_index: int = None
+
+@dataclass
+class ConstituentReaction:
+    """
+    A single KGML reaction element folded into a CollapsedReaction. Constituents are retained so
+    that collapsed edges are mappable to specific KGML reaction elements and collapsed chains can be
+    expanded back to element-level chains at any time.
+
+    Attributes
+    ==========
+    kgml_reaction : kgml.Reaction
+        The KGML reaction element represented.
+
+    ko_ids : list[str], []
+        All KEGG ortholog IDs annotating the element in the KO type KGML pathway.
+
+    network_kos : tuple[rn.KO], ()
+        The subset of the element's KOs that are present in the reaction network.
+
+    aliased_modelseed_reactions : tuple[rn.ModelSEEDReaction], ()
+        ModelSEED reactions aliasing the element's KEGG reaction in the network.
+
+    orientation_matches_canonical : bool, True
+        True if the element's substrate and product entries match those of its CollapsedReaction's
+        canonical representative. False only for a 'reversible' element whose substrates and
+        products are swapped relative to the canonical orientation, in which case its reaction
+        direction is the negation of the collapsed chain's recorded direction.
+    """
+    kgml_reaction: kgml.Reaction
+    ko_ids: list[str] = field(default_factory=list)
+    network_kos: tuple[rn.KO] = ()
+    aliased_modelseed_reactions: tuple[rn.ModelSEEDReaction] = ()
+    orientation_matches_canonical: bool = True
+
+@dataclass
+class CollapsedReaction:
+    """
+    A stand-in for a set of parallel KGML reaction elements that are equivalent for walking chains:
+    identical KEGG reaction name, identical compound endpoints (orientation-agnostic for
+    'reversible' reactions), identical type, and identical gap status in the reaction network.
+
+    Collapsing parallel elements before the walk prevents a combinatorial explosion of element-level
+    chains in maps with many alternative KOs per reaction (e.g., fatty acid biosynthesis, 00061),
+    while the retained 'constituents' allow a collapsed chain to be expanded back to all traversing
+    element-level chains. A CollapsedReaction exposes the same 'id', 'name', 'type', and 'children'
+    interface as a kgml.Reaction so that the walker and downstream consumers can treat it as one.
+
+    Attributes
+    ==========
+    id : str
+        Synthetic edge ID, deterministically derived from the constituent KGML reaction IDs and
+        prefixed so as not to collide with any real KGML reaction ID.
+
+    name : str
+        KEGG reaction ID(s) shared by all constituents (their common 'name' attribute).
+
+    type : str
+        'reversible' or 'irreversible', shared by all constituents.
+
+    children : dict[str, list[str]]
+        The 'substrate' and 'product' child UUIDs of the canonical representative element, so that
+        substrate and product entries resolve against the KGML pathway exactly as for a real
+        reaction. For a 'reversible' edge, the canonical orientation is arbitrary.
+
+    is_gap : bool, None
+        True if every constituent is a gap (no constituent KO is in the reaction network), False if
+        not, None if there is no network.
+
+    network_kos : tuple[rn.KO], ()
+        Union of constituents' reaction network KOs, sorted by ID. Empty for a gap edge.
+        Semantically, any of these KOs realizes the edge.
+
+    aliased_modelseed_reactions : tuple[rn.ModelSEEDReaction], ()
+        Constituents' aliased ModelSEED reactions, sorted by ID. Because all constituents share the
+        same KEGG reaction name, this equals each constituent's set.
+
+    constituents : list[ConstituentReaction], []
+        The KGML reaction elements collapsed into this edge.
+    """
+    id: str
+    name: str
+    type: str
+    children: dict[str, list[str]]
+    is_gap: bool = None
+    network_kos: tuple[rn.KO] = ()
+    aliased_modelseed_reactions: tuple[rn.ModelSEEDReaction] = ()
+    constituents: list[ConstituentReaction] = field(default_factory=list)
+
+def expand_chain(chain: Chain) -> list[Chain]:
+    """
+    Expand a collapsed chain into all of the element-level chains it represents.
+
+    A collapsed chain has CollapsedReaction objects in its kgml_reactions, each standing for a set
+    of parallel KGML reaction elements (its constituents). The expansion is the Cartesian product of
+    constituent choices across reaction positions: each combination yields a Chain traversing
+    specific KGML reaction elements, exactly as the walker would have produced without collapsing.
+
+    Topological attributes (compound entries, consumption direction, gaps, termini, reversibility
+    ranges, and the cyclic branch index) are identical across an expansion and are copied.
+    Per-element attributes (the reaction elements, their network KOs, and aliased ModelSEED
+    reactions) are taken from each constituent. A constituent's reaction direction is the collapsed
+    direction, negated for a 'reversible' element whose substrate and product entries are swapped
+    relative to the canonical orientation.
+
+    Parameters
+    ==========
+    chain : Chain
+        A collapsed chain, i.e., one whose kgml_reactions are CollapsedReaction objects. A chain
+        that is not collapsed is returned unchanged in a singleton list.
+
+    Returns
+    =======
+    list[Chain]
+        Element-level chains.
+    """
+    if not chain.kgml_reactions or not all(
+        isinstance(kgml_reaction, CollapsedReaction) for kgml_reaction in chain.kgml_reactions
+    ):
+        return [chain]
+
+    constituent_options = [kgml_reaction.constituents for kgml_reaction in chain.kgml_reactions]
+
+    expanded_chains: list[Chain] = []
+    for combination in itertools.product(*constituent_options):
+        expanded_chain = Chain(
+            kgml_compound_entries=chain.kgml_compound_entries.copy(),
+            is_consumed=chain.is_consumed,
+            kgml_reactions=[constituent.kgml_reaction for constituent in combination],
+            kgml_reaction_directions=[
+                direction if constituent.orientation_matches_canonical else
+                not direction for direction, constituent in
+                zip(chain.kgml_reaction_directions, combination)
+            ],
+            gaps=chain.gaps.copy(),
+            aliased_modelseed_compounds=chain.aliased_modelseed_compounds.copy(),
+            aliased_modelseed_reactions=[
+                constituent.aliased_modelseed_reactions for constituent in combination
+            ],
+            network_kos=[constituent.network_kos for constituent in combination],
+            is_consumption_terminus=chain.is_consumption_terminus,
+            is_production_terminus=chain.is_production_terminus,
+            consumption_reversibility_range=chain.consumption_reversibility_range,
+            production_reversibility_range=chain.production_reversibility_range,
+            cyclic_branch_index=chain.cyclic_branch_index
+        )
+        expanded_chains.append(expanded_chain)
+
+    return expanded_chains
+
+def expand_chains(chains: list[Chain]) -> list[Chain]:
+    """Expand each collapsed chain in a list (see expand_chain), returning the flattened result."""
+    expanded_chains: list[Chain] = []
+    for chain in chains:
+        expanded_chains += expand_chain(chain)
+    return expanded_chains
 
 class KGMLNetworkWalker:
     """
@@ -400,6 +555,10 @@ class KGMLNetworkWalker:
             self.network_keggcpd_id_to_modelseed_compounds = None
             self.network_keggcpd_ids_in_pathway = None
 
+        # Build the collapsed reaction adjacency for walking chains without enumerating parallel
+        # KGML reaction elements. Constituent elements are retained for later expansion.
+        self.build_collapsed_edges()
+
     @staticmethod
     def check_pathway_number(kegg_pathway_number: str, kegg_context: kcontext.KeggContext) -> bool:
         """
@@ -506,16 +665,219 @@ class KGMLNetworkWalker:
 
         return keggcpd_ids
 
+    def _get_kgml_reaction_compound_ids(self, kgml_reaction: kgml.Reaction) -> tuple[frozenset, frozenset]:
+        """
+        Get the substrate and product KGML compound entry IDs of a KGML reaction.
+
+        Parameters
+        ==========
+        kgml_reaction : kgml.Reaction
+            Reaction whose substrate and product compound entry IDs are sought.
+
+        Returns
+        =======
+        tuple[frozenset, frozenset]
+            Substrate compound entry IDs and product compound entry IDs.
+        """
+        substrate_ids = frozenset(
+            self.kgml_rn_pathway.uuid_element_lookup[uuid].id
+            for uuid in kgml_reaction.children['substrate']
+        )
+        product_ids = frozenset(
+            self.kgml_rn_pathway.uuid_element_lookup[uuid].id
+            for uuid in kgml_reaction.children['product']
+        )
+        return substrate_ids, product_ids
+
+    def _classify_kgml_reaction(self, kgml_reaction: kgml.Reaction) -> tuple[bool, list]:
+        """
+        Classify a KGML reaction against the reaction network, independently of any chain context.
+
+        This is the network-dependent but chain-independent part of the gap determination made
+        during the walk (see _get_chains_from_kgml_compound_entry). A reaction is not a gap if it is
+        nonenzymatic or if any of its KOs is in the network; otherwise it is a gap. The contextual
+        gap criteria (gap budget, terminal gaps, alternative reaction gaps) are applied separately
+        during the walk.
+
+        Parameters
+        ==========
+        kgml_reaction : kgml.Reaction
+            Reaction to classify. A reaction network is assumed to be available.
+
+        Returns
+        =======
+        tuple[bool, list[rn.KO]]
+            Whether the reaction is a gap, and the network KOs encoding it (empty if a gap or
+            nonenzymatic).
+        """
+        if kgml_reaction.id in self.pathway_nonenzymatic_kgml_reaction_ids:
+            return False, []
+
+        network_kos: list[rn.KO] = []
+        for ko_id in self.rn_pathway_kgml_reaction_id_to_ko_ids.get(kgml_reaction.id, []):
+            try:
+                network_kos.append(self.network.kos[ko_id])
+            except KeyError:
+                pass
+
+        return (not network_kos), network_kos
+
+    def _get_kgml_reaction_modelseed_reactions(self, kgml_reaction: kgml.Reaction) -> list:
+        """
+        Get the ModelSEED reactions aliasing a KGML reaction's KEGG reaction IDs in the network.
+
+        Parameters
+        ==========
+        kgml_reaction : kgml.Reaction
+            Reaction whose aliased ModelSEED reactions are sought. A reaction network is assumed to
+            be available.
+
+        Returns
+        =======
+        list[rn.ModelSEEDReaction]
+            ModelSEED reactions, sorted by ModelSEED ID.
+        """
+        modelseed_reaction_dict: dict[str, rn.ModelSEEDReaction] = {}
+        for candidate_keggrn_id in kgml_reaction.name.split():
+            if candidate_keggrn_id[:3] != 'rn:':
+                continue
+            keggrn_id = candidate_keggrn_id[3:]
+            try:
+                modelseed_reactions = self.network_keggrn_id_to_modelseed_reactions[keggrn_id]
+            except KeyError:
+                continue
+            for modelseed_reaction in modelseed_reactions:
+                modelseed_reaction_dict[modelseed_reaction.modelseed_id] = modelseed_reaction
+        return [modelseed_reaction_dict[msid] for msid in sorted(modelseed_reaction_dict)]
+
+    def build_collapsed_edges(self) -> None:
+        """
+        Build the collapsed reaction adjacency used to walk chains without enumerating every
+        parallel KGML reaction element.
+
+        Parallel reaction elements that are equivalent for walking are grouped into a single
+        CollapsedReaction. Two elements are equivalent when they share a KEGG reaction name, a
+        reaction type, the same gap status in the reaction network (None if no network), and the
+        same compound endpoints. Endpoints are compared orientation-agnostically for 'reversible'
+        reactions, so an element drawn substrate->product and one drawn product->substrate for the
+        same reversible reaction collapse together.
+
+        Populates
+        =========
+        self.collapsed_edge_lookup : dict[str, CollapsedReaction]
+            Maps synthetic edge IDs to collapsed reactions.
+
+        self.collapsed_compound_id_to_edges : dict[str, list[CollapsedReaction]]
+            Maps KGML compound entry IDs to the collapsed edges they participate in as a substrate
+            or product of the canonical representative, mirroring
+            rn_pathway_kgml_compound_id_to_kgml_reactions over collapsed edges.
+        """
+        # Group reaction elements by collapse key.
+        groups: dict[tuple, list[tuple]] = defaultdict(list)
+        for reaction_uuid in self.kgml_rn_pathway.children['reaction']:
+            kgml_reaction: kgml.Reaction = self.kgml_rn_pathway.uuid_element_lookup[reaction_uuid]
+            substrate_ids, product_ids = self._get_kgml_reaction_compound_ids(kgml_reaction)
+
+            if self.network:
+                is_gap, network_kos = self._classify_kgml_reaction(kgml_reaction)
+            else:
+                is_gap, network_kos = None, []
+
+            if kgml_reaction.type == 'reversible':
+                # Orientation-agnostic: the unordered pair of substrate and product side-sets.
+                endpoints = frozenset((substrate_ids, product_ids))
+            else:
+                endpoints = (substrate_ids, product_ids)
+            key = (kgml_reaction.name, endpoints, kgml_reaction.type, is_gap)
+            groups[key].append((kgml_reaction, network_kos))
+
+        self.collapsed_edge_lookup: dict[str, CollapsedReaction] = {}
+        self.collapsed_compound_id_to_edges: dict[str, list[CollapsedReaction]] = defaultdict(list)
+
+        for (name, _endpoints, rxn_type, is_gap), members in groups.items():
+            # The canonical representative (lowest KGML reaction ID) fixes the orientation and the
+            # substrate/product children of the collapsed edge.
+            canonical_kgml_reaction = min(members, key=lambda m: int(m[0].id))[0]
+            canonical_substrate_ids, canonical_product_ids = self._get_kgml_reaction_compound_ids(
+                canonical_kgml_reaction
+            )
+
+            constituents: list[ConstituentReaction] = []
+            network_kos_union: dict[str, rn.KO] = {}
+            modelseed_reactions_union: dict[str, rn.ModelSEEDReaction] = {}
+            for kgml_reaction, network_kos in members:
+                substrate_ids, _ = self._get_kgml_reaction_compound_ids(kgml_reaction)
+                orientation_matches = substrate_ids == canonical_substrate_ids
+
+                if self.network:
+                    ko_ids = list(
+                        self.rn_pathway_kgml_reaction_id_to_ko_ids.get(kgml_reaction.id, [])
+                    )
+                    modelseed_reactions = self._get_kgml_reaction_modelseed_reactions(kgml_reaction)
+                else:
+                    ko_ids = []
+                    modelseed_reactions = []
+
+                constituents.append(ConstituentReaction(
+                    kgml_reaction=kgml_reaction,
+                    ko_ids=ko_ids,
+                    network_kos=tuple(sorted(network_kos, key=lambda ko: ko.id)),
+                    aliased_modelseed_reactions=tuple(modelseed_reactions),
+                    orientation_matches_canonical=orientation_matches
+                ))
+                for ko in network_kos:
+                    network_kos_union[ko.id] = ko
+                for modelseed_reaction in modelseed_reactions:
+                    modelseed_reactions_union[modelseed_reaction.modelseed_id] = modelseed_reaction
+
+            edge_id = 'e:' + '+'.join(sorted((c.kgml_reaction.id for c in constituents), key=int))
+            collapsed_reaction = CollapsedReaction(
+                id=edge_id,
+                name=name,
+                type=rxn_type,
+                children=canonical_kgml_reaction.children,
+                is_gap=is_gap,
+                network_kos=tuple(network_kos_union[ko_id] for ko_id in sorted(network_kos_union)),
+                aliased_modelseed_reactions=tuple(
+                    modelseed_reactions_union[msid] for msid in sorted(modelseed_reactions_union)
+                ),
+                constituents=constituents
+            )
+
+            self.collapsed_edge_lookup[edge_id] = collapsed_reaction
+            for compound_id in canonical_substrate_ids | canonical_product_ids:
+                self.collapsed_compound_id_to_edges[compound_id].append(collapsed_reaction)
+
+        self.collapsed_compound_id_to_edges = dict(self.collapsed_compound_id_to_edges)
+
+    def _expand_compound_id_chains(
+        self,
+        compound_id_chains: dict[str, list[Chain]]
+    ) -> dict[str, list[Chain]]:
+        """
+        Expand the collapsed chains in each value list of a compound-ID-keyed dict (see
+        expand_chain).
+        """
+        return {
+            compound_id: expand_chains(chains)
+            for compound_id, chains in compound_id_chains.items()
+        }
+
     def get_chains(
         self,
         keggcpd_ids: Union[str, list[str]] = None,
-        modelseed_compound_ids: Union[str, list[str]] = None
+        modelseed_compound_ids: Union[str, list[str]] = None,
+        expand: bool = False
     ) -> dict[str, list[Chain]]:
         """
         Get chains in the pathway starting from compounds. Select compounds can be requested. If
         none are requested and a reaction network is available, chains are sought from all compounds
         in the network and pathway; if no network is available, chains are sought for all compounds
         in the pathway.
+
+        Chains are walked over collapsed reaction edges (see build_collapsed_edges), which avoids a
+        combinatorial explosion of chains in maps with many parallel KGML reaction elements. By
+        default, collapsed chains are returned, with CollapsedReaction objects in kgml_reactions.
 
         Parameters
         ==========
@@ -525,6 +887,11 @@ class KGMLNetworkWalker:
         modelseed_compound_ids : Union[str, list[str]], None
             ModelSEED compound ID(s), which are mapped to KEGG compound IDs via a reaction
             network.
+
+        expand : bool, False
+            If True, expand each collapsed chain into the element-level chains it represents (see
+            expand_chain), so that kgml_reactions contain individual KGML reaction elements. This
+            can return a very large number of chains in maps with many parallel reaction elements.
 
         Returns
         =======
@@ -549,6 +916,8 @@ class KGMLNetworkWalker:
             keggcpd_ids = [keggcpd_ids]
         if isinstance(keggcpd_ids, list):
             compound_id_chains = self._get_chains_from_kegg_compound_ids(keggcpd_ids)
+            if expand:
+                compound_id_chains = self._expand_compound_id_chains(compound_id_chains)
             return compound_id_chains
 
         if modelseed_compound_ids is not None and self.network is None:
@@ -568,6 +937,8 @@ class KGMLNetworkWalker:
             compound_id_chains = self._get_chains_from_modelseed_compound_ids(modelseed_compound_ids)
             self.run.verbose = run_verbosity
 
+        if expand:
+            compound_id_chains = self._expand_compound_id_chains(compound_id_chains)
         return compound_id_chains
 
     def _get_chains_from_kegg_compound_ids(self, keggcpd_ids: list[str]) -> dict[str, list[Chain]]:
@@ -754,9 +1125,7 @@ class KGMLNetworkWalker:
         # Check that the target compound KGML ID is involved in any reactions at all in the
         # pathway.
         try:
-            kgml_reactions = self.rn_pathway_kgml_compound_id_to_kgml_reactions[
-                kgml_compound_entry.id
-            ]
+            kgml_reactions = self.collapsed_compound_id_to_edges[kgml_compound_entry.id]
         except KeyError:
             if terminal_chains:
                 raise AssertionError(
@@ -831,35 +1200,33 @@ class KGMLNetworkWalker:
             # Record each KGML reaction involving the compound that is to be explored. If comparing
             # to a reaction network, also record whether the reaction represents a gap (if not in
             # the network), and the network KOs encoding the reaction.
-            kgml_reaction_info: list[tuple[kgml.Reaction, bool, list[rn.KO]]] = []
+            kgml_reaction_info: list[
+                tuple[Union[kgml.Reaction, CollapsedReaction], bool, list[rn.KO]]
+            ] = []
+            previous_compound_ids = (
+                self._get_kgml_reaction_compound_ids(current_chain.kgml_reactions[-1])
+                if current_chain.kgml_reactions else None
+            )
             for kgml_reaction in kgml_reactions:
-                if current_chain.kgml_reactions:
-                    if kgml_reaction.id == current_chain.kgml_reactions[-1].id:
-                        # Do not record the same reaction as the previous one in the chain.
-                        continue
+                if (
+                    previous_compound_ids is not None and
+                    self._get_kgml_reaction_compound_ids(kgml_reaction) == previous_compound_ids
+                ):
+                    # Do not record the same reaction edge as the previous one in the chain,
+                    # matched by substrate and product compound entries rather than element
+                    # identity.
+                    continue
 
                 if not self.network:
                     kgml_reaction_info.append((kgml_reaction, None, None))
                     continue
 
-                if kgml_reaction.id in self.pathway_nonenzymatic_kgml_reaction_ids:
-                    kgml_reaction_info.append((kgml_reaction, False, []))
-                    continue
+                # The gap status and network KOs are precomputed per collapsed edge.
+                is_gap = kgml_reaction.is_gap
+                network_kos: list[rn.KO] = list(kgml_reaction.network_kos)
 
-                try:
-                    ko_ids = self.rn_pathway_kgml_reaction_id_to_ko_ids[kgml_reaction.id]
-                except KeyError:
-                    ko_ids = []
-
-                network_kos: list[rn.KO] = []
-                for ko_id in ko_ids:
-                    try:
-                        network_kos.append(self.network.kos[ko_id])
-                    except KeyError:
-                        pass
-
-                if network_kos:
-                    # The reaction is associated with one or more KOs in the reaction network.
+                if not is_gap:
+                    # The edge is nonenzymatic or associated with KO(s) in the reaction network.
                     kgml_reaction_info.append((kgml_reaction, False, network_kos))
                     continue
 
@@ -877,31 +1244,17 @@ class KGMLNetworkWalker:
 
             for kgml_reaction, is_gap, network_kos in kgml_reaction_info:
                 if not self.allow_alternative_reaction_gaps and is_gap:
-                    # Ignore KGML reaction gaps that transform the same KGML compounds as other
-                    # "parallel" KGML reactions that are in the reaction network.
-                    substrate_ids: list[str] = []
-                    for uuid in kgml_reaction.children['substrate']:
-                        substrate: kgml.Substrate = self.kgml_rn_pathway.uuid_element_lookup[uuid]
-                        substrate_ids.append(substrate.id)
-                    product_ids: list[str] = []
-                    for uuid in kgml_reaction.children['product']:
-                        product: kgml.Product = self.kgml_rn_pathway.uuid_element_lookup[uuid]
-                        product_ids.append(product.id)
-
+                    # Ignore gap reactions that have a non-gap "parallel" reaction in the network --
+                    # one that connects the same substrate and product compound entries, regardless
+                    # of element identity.
+                    compound_ids = self._get_kgml_reaction_compound_ids(kgml_reaction)
                     for other_kgml_reaction, other_is_gap, _ in kgml_reaction_info:
                         if kgml_reaction.id == other_kgml_reaction.id:
                             continue
                         if other_is_gap:
                             continue
-                        other_substrate_ids: list[str] = []
-                        for uuid in other_kgml_reaction.children['substrate']:
-                            substrate: kgml.Substrate = self.kgml_rn_pathway.uuid_element_lookup[uuid]
-                            other_substrate_ids.append(substrate.id)
-                        other_product_ids: list[str] = []
-                        for uuid in other_kgml_reaction.children['product']:
-                            product: kgml.Product = self.kgml_rn_pathway.uuid_element_lookup[uuid]
-                            other_product_ids.append(product.id)
-                        if substrate_ids == other_substrate_ids and product_ids == other_product_ids:
+                        if self._get_kgml_reaction_compound_ids(other_kgml_reaction) == \
+                            compound_ids:
                             is_alternative_reaction = True
                             break
                     else:
@@ -972,29 +1325,10 @@ class KGMLNetworkWalker:
                     continue
 
                 if self.network:
-                    # Get the ModelSEED reactions aliasing the KEGG reactions underlying the KGML
-                    # reaction.
+                    # The network KOs and aliased ModelSEED reactions are precomputed per collapsed
+                    # edge, as unions over the edge's constituent reaction elements.
                     network_kos = tuple(sorted(network_kos, key=lambda ko: ko.id))
-
-                    modelseed_reaction_dict: dict[str, rn.ModelSEEDReaction] = {}
-                    for candidate_keggrn_id in kgml_reaction.name.split():
-                        if candidate_keggrn_id[:3] != 'rn:':
-                            continue
-                        keggrn_id = candidate_keggrn_id[3:]
-                        try:
-                            modelseed_reactions = self.network_keggrn_id_to_modelseed_reactions[
-                                keggrn_id
-                            ]
-                        except KeyError:
-                            continue
-                        for modelseed_reaction in modelseed_reactions:
-                            modelseed_reaction_dict[
-                                modelseed_reaction.modelseed_id
-                            ] = modelseed_reaction
-                    modelseed_reactions = [
-                        modelseed_reaction_dict[modelseed_reaction_id]
-                        for modelseed_reaction_id in sorted(modelseed_reaction_dict)
-                    ]
+                    modelseed_reactions = list(kgml_reaction.aliased_modelseed_reactions)
 
                 # Recurse on each KGML compound on the other side of the reaction.
                 for next_kgml_compound_id in next_kgml_compound_ids:
@@ -1012,16 +1346,16 @@ class KGMLNetworkWalker:
                         kgml_compound_entries=current_chain.kgml_compound_entries.copy(),
                         is_consumed=is_explore_consumption,
                         kgml_reactions=current_chain.kgml_reactions + [kgml_reaction],
-                        kgml_reaction_directions=\
+                        kgml_reaction_directions=
                             current_chain.kgml_reaction_directions + [is_forward],
                         gaps=current_chain.gaps + [is_gap] if self.network else [],
-                        aliased_modelseed_compounds=\
-                            current_chain.aliased_modelseed_compounds.copy() \
+                        aliased_modelseed_compounds=
+                            current_chain.aliased_modelseed_compounds.copy()
                                 if self.network else [],
-                        network_kos=current_chain.network_kos + [tuple(network_kos)] \
+                        network_kos=current_chain.network_kos + [tuple(network_kos)]
                             if self.network else [],
-                        aliased_modelseed_reactions=\
-                            current_chain.aliased_modelseed_reactions + \
+                        aliased_modelseed_reactions=
+                            current_chain.aliased_modelseed_reactions +
                                 [tuple(modelseed_reactions)] if self.network else []
                     )
                     candidate_terminal_chain: Chain = \
@@ -1041,8 +1375,15 @@ class KGMLNetworkWalker:
                                 continue
 
                     # A subchain to each compound in a terminal chain is also generated as a
-                    # "candidate terminal chain" and is ignored.
-                    if terminal_chains:
+                    # "candidate terminal chain" and is ignored. The candidate is only a subchain of
+                    # the last terminal chain if the two run in the same direction: with a
+                    # compound_fate of 'both', a chain of reversible reactions is found in both
+                    # directions traversing identical compounds and reactions, and these are
+                    # distinct chains rather than subchains of one another.
+                    if (
+                        terminal_chains and
+                        terminal_chains[-1].is_consumed == candidate_terminal_chain.is_consumed
+                    ):
                         candidate_kgml_compound_ids = [
                             c.id for c in candidate_terminal_chain.kgml_compound_entries
                         ]
@@ -1265,20 +1606,24 @@ class KGMLNetworkWalker:
 
         return True
 
-    @staticmethod
-    def get_cyclic_branch_index(chain: Chain) -> int:
+    def get_cyclic_branch_index(self, chain: Chain) -> int:
         """
-        To identify a "partly cyclic" chain looping a cycle via the entry or exit of an uncycled
-        compound through a reaction in the cycle, check if the last reaction in the chain is
-        traversed earler in the chain.
+        Check whether a chain is "partly cyclic" and, if so, return the chain index of the
+        branching reaction's first occurrence.
 
-        This method distinguishes partly cyclic chains from purely cyclic chains, which do not
-        branch off and only include cycled compounds.
+        A partly cyclic chain has a linear segment that enters or exits a cycle through a single
+        "branching reaction" -- one reaction in the cycle that appears in the chain twice: once
+        where the linear segment joins the cycle, and once as the chain's last reaction, closing
+        the cycle by re-traversing the same edge. Purely cyclic chains, in contrast, visit only
+        the cycle's compounds and reactions.
 
-        Stringent criteria are imposed in the identification of a partly cyclic chain beyond the
-        last KGML reaction occurring a second time in the chain, although that might be sufficient
-        given experience. The branch KGML reaction must occur in the same direction and produce or
-        consume the same KGML compound, which is the cycle-closing compound last in the chain.
+        A reaction is identified by its endpoints in the pathway -- its set of substrate compound
+        entries and its set of product compound entries -- not by KGML element identity. Two
+        reaction elements therefore count as the same branching reaction when they connect the
+        same compound entries, even if they are distinct elements (such as alternative KOs for
+        the same reaction). The earlier occurrence must also produce or consume the chain's last
+        compound -- the cycle-closing compound -- so the edge is traversed the same way at both
+        positions.
 
         Parameters
         ==========
@@ -1288,36 +1633,29 @@ class KGMLNetworkWalker:
         Returns
         =======
         int
-            If the chain is partly cyclic, a non-negative int representing the index of the first
-            occurrence of the branching KGML reaction that also ends the chain. -1 if the chain is
-            not partly cyclic.
+            The chain index of the branching reaction's first occurrence, if the chain is partly
+            cyclic. -1 if not.
         """
-        last_kgml_reaction_id = chain.kgml_reactions[-1].id
-        last_direction = chain.kgml_reaction_directions[-1]
+        last_compound_ids = self._get_kgml_reaction_compound_ids(chain.kgml_reactions[-1])
         candidate_cycled_kgml_compound_id = chain.kgml_compound_entries[-1].id
 
-        for i, (kgml_reaction, direction) in enumerate(zip(
-            chain.kgml_reactions[: -1], chain.kgml_reaction_directions[: -1]
-        )):
-            if kgml_reaction.id == last_kgml_reaction_id and direction == last_direction:
-                break
-        else:
-            return -1
-
-        if (
-            chain.is_consumed and
-            candidate_cycled_kgml_compound_id == chain.kgml_compound_entries[i + 1].id
-        ):
-            # The partly cyclic consumption chain traversed the same KGML reaction in the same
-            # direction producing the same compound as before.
-            return i
-        elif (
-            not chain.is_consumed and
-            candidate_cycled_kgml_compound_id == chain.kgml_compound_entries[i].id
-        ):
-            # The partly cyclic production chain traversed the same KGML reaction in the same
-            # direction consuming the same reactant as before.
-            return i
+        for i, kgml_reaction in enumerate(chain.kgml_reactions[: -1]):
+            if self._get_kgml_reaction_compound_ids(kgml_reaction) != last_compound_ids:
+                continue
+            if (
+                chain.is_consumed and
+                candidate_cycled_kgml_compound_id == chain.kgml_compound_entries[i + 1].id
+            ):
+                # The partly cyclic consumption chain traversed the same reaction edge producing
+                # the same compound as before.
+                return i
+            if (
+                not chain.is_consumed and
+                candidate_cycled_kgml_compound_id == chain.kgml_compound_entries[i].id
+            ):
+                # The partly cyclic production chain traversed the same reaction edge consuming
+                # the same reactant as before.
+                return i
 
         return -1
 
@@ -1392,92 +1730,99 @@ class KGMLNetworkWalker:
 
             return shifted_kgml_ids
 
-        # Determine whether each chain is a subchain.
-        derep_compound_id_chains: dict[str, list[Chain]] = {}
+        # Precompute, once per chain, the data used to compare it against other chains. Each record
+        # is a tuple of (compound_id, chain, kgml_compound_ids, kgml_reaction_ids, is_cyclic_chain,
+        # shifted_kgml_ids).
+        records: list[tuple] = []
         for compound_id, chains in compound_id_chains.items():
-            derep_chains: list[Chain] = []
-
             for chain in chains:
-                kgml_compound_ids: list[str] = [c.id for c in chain.kgml_compound_entries]
-                kgml_reaction_ids: list[str] = [r.id for r in chain.kgml_reactions]
-
+                kgml_compound_ids = [c.id for c in chain.kgml_compound_entries]
+                kgml_reaction_ids = [r.id for r in chain.kgml_reactions]
                 if kgml_compound_ids[0] == kgml_compound_ids[-1]:
                     shifted_kgml_ids = shift_cyclic_chain(kgml_compound_ids, kgml_reaction_ids)
                     is_cyclic_chain = True
                 else:
                     shifted_kgml_ids = [(kgml_compound_ids, kgml_reaction_ids)]
                     is_cyclic_chain = False
+                records.append((
+                    compound_id, chain, kgml_compound_ids, kgml_reaction_ids, is_cyclic_chain,
+                    shifted_kgml_ids
+                ))
 
-                for other_compound_id, other_chains in compound_id_chains.items():
-                    if compound_id == other_compound_id:
-                        # Assume that there are no subchains starting from the same compound as
-                        # other chains.
+        # Index candidate "superchains" by consumption direction and the compound IDs they contain.
+        # A chain can only be a subchain of another chain that contains the subchain's first
+        # compound: the match is anchored at the first occurrence of that compound, and for a cyclic
+        # chain the first rotation is checked first and anchored there too, so a candidate lacking
+        # the first compound is rejected before any other rotation is considered. Restricting
+        # comparisons to chains satisfying this requirement is faster than an all-pairs scan.
+        superchains_by_first_compound: dict[tuple, list[tuple]] = defaultdict(list)
+        for record in records:
+            chain = record[1]
+            kgml_compound_ids = record[2]
+            for kgml_compound_id in set(kgml_compound_ids):
+                superchains_by_first_compound[
+                    (chain.is_consumed, kgml_compound_id)
+                ].append(record)
+
+        # A chain is kept unless it is a subchain of a chain that starts from a different compound,
+        # runs in the same direction, and is longer.
+        derep_compound_id_chains: dict[str, list[Chain]] = {}
+        for (
+            compound_id, chain, kgml_compound_ids, kgml_reaction_ids, is_cyclic_chain,
+            shifted_kgml_ids
+        ) in records:
+            is_subchain = False
+            for (
+                other_compound_id, other_chain, other_kgml_compound_ids, other_kgml_reaction_ids,
+                _other_is_cyclic_chain, _other_shifted_kgml_ids
+            ) in superchains_by_first_compound[(chain.is_consumed, kgml_compound_ids[0])]:
+                if other_compound_id == compound_id:
+                    # Assume that there are no subchains starting from the same compound as other
+                    # chains.
+                    continue
+                if len(other_kgml_compound_ids) - len(kgml_compound_ids) < 1:
+                    # Subchains must be shorter than the other chain.
+                    continue
+                if is_cyclic_chain and other_chain.cyclic_branch_index == -1:
+                    # Cyclic chains can only be subchains of partly cyclic chains.
+                    continue
+
+                start_index = -1
+                for (
+                    shifted_kgml_compound_ids, shifted_kgml_reaction_ids
+                ) in shifted_kgml_ids:
+                    if start_index == -2:
+                        continue
+                    try:
+                        # The start index of a cyclic chain's first compound in a partly cyclic
+                        # chain is the index of the first occurrence of the compound, and not the
+                        # second cycle-closing and chain-ending occurrence of the compound.
+                        start_index = other_kgml_compound_ids.index(
+                            shifted_kgml_compound_ids[0]
+                        )
+                    except ValueError:
+                        # The first compound of the chain is not in the other chain, so the chain
+                        # can't be a subchain of the other chain.
+                        start_index = -2
                         continue
 
-                    for other_chain in other_chains:
-                        if chain.is_consumed != other_chain.is_consumed:
-                            # Subchains run in the same direction as the other chain.
-                            continue
-
-                        other_kgml_compound_ids: list[str] = [
-                            c.id for c in other_chain.kgml_compound_entries
+                    if (
+                        shifted_kgml_compound_ids == other_kgml_compound_ids[
+                            start_index: start_index + len(kgml_compound_ids)
+                        ] and shifted_kgml_reaction_ids == other_kgml_reaction_ids[
+                            start_index: start_index + len(kgml_reaction_ids)
                         ]
-                        delta_length = len(other_kgml_compound_ids) - len(kgml_compound_ids)
-                        if delta_length < 1:
-                            # Subchains must be shorter than the other chain.
-                            continue
-
-                        if is_cyclic_chain and other_chain.cyclic_branch_index == -1:
-                            # Cyclic chains can only be subchains of partly cyclic chains.
-                            continue
-
-                        start_index = -1
-                        other_kgml_reaction_ids: list[str] = [
-                            r.id for r in other_chain.kgml_reactions
-                        ]
-                        for (
-                            shifted_kgml_compound_ids, shifted_kgml_reaction_ids
-                        ) in shifted_kgml_ids:
-                            if start_index == -2:
-                                continue
-                            try:
-                                # The start index of a cyclic chain's first compound in a partly
-                                # cyclic chain is the index of first occurrence of the compound in
-                                # the partly cyclic chain, and not the second cycle-closing and
-                                # chain-ending occurrence of the compound.
-                                start_index = other_kgml_compound_ids.index(
-                                    shifted_kgml_compound_ids[0]
-                                )
-                            except ValueError:
-                                # The first compound of the chain is not in the other chain, so the
-                                # chain can't be a subchain of the other chain.
-                                start_index = -2
-                                continue
-
-                            if (
-                                shifted_kgml_compound_ids == other_kgml_compound_ids[
-                                    start_index: start_index + len(kgml_compound_ids)
-                                ] and shifted_kgml_reaction_ids == other_kgml_reaction_ids[
-                                    start_index: start_index + len(kgml_reaction_ids)
-                                ]
-                            ):
-                                # The chain is a subchain because it shares the same compounds and
-                                # reactions in the same order as the other chain.
-                                break
-                        else:
-                            continue
-                        # Subchain was found.
+                    ):
+                        # The chain is a subchain because it shares the same compounds and reactions
+                        # in the same order as the other chain.
+                        is_subchain = True
                         break
-                    else:
-                        continue
-                    # Subchain was found.
+                if is_subchain:
                     break
-                else:
-                    # The chain was not a subchain, so record it.
-                    derep_chains.append(chain)
 
-            if derep_chains:
-                derep_compound_id_chains[compound_id] = derep_chains
+            if not is_subchain:
+                derep_compound_id_chains.setdefault(compound_id, []).append(chain)
+
         return derep_compound_id_chains
 
 @dataclass
@@ -2234,13 +2579,15 @@ class GapFiller:
             {'knum': 'accession', 'definition': 'function'}, axis=1
         )
 
-        # Find chains in the pathway with zero gaps and up to one gap.
+        # Find chains in the pathway with zero gaps and up to one gap. Expand collapsed chains to
+        # element-level chains, as the gap filler currently operates on individual KGML reaction
+        # elements. (A future revision will consume collapsed chains directly.)
         self.ungapped_chains: list[Chain] = []
-        for chains in self.walker.get_chains().values():
+        for chains in self.walker.get_chains(expand=True).values():
             self.ungapped_chains += chains
         self.walker.max_gaps = 1
         self.gapped_chains: list[Chain] = []
-        for chains in self.walker.get_chains().values():
+        for chains in self.walker.get_chains(expand=True).values():
             self.gapped_chains += chains
 
         # Compare gapped to ungapped chains. Rank gaps to prioritize for gap filling.

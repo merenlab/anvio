@@ -210,7 +210,7 @@ async function createDisplay(display_table){
         {
             var layer = state['layer-order'][layer_id];
 
-            if (state['layers'][layer]['height'] == 0)
+            if (state['layers'][layer]['height'] == 0 || state['layers'][layer]['visible'] === false)
                 continue;
 
             if (gene_cluster_data.genomes.indexOf(layer) === -1)

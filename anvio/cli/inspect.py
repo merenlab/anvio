@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """This program runs inspect page directly"""
 
 import sys
@@ -18,7 +17,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ozcan']
-__requires__ = ['profile-db', 'contigs-db', 'bin']
+__requires__ = ['profile-db', 'contigs-db']
+__can_use__ = ['bin']
 __provides__ = ['interactive', 'contig-inspection']
 __description__ = "Start an anvi'o inspect interactive interface"
 __resources__ = [("Visualizing contig coverages", "https://merenlab.org/2019/11/25/visualizing-coverages/")]

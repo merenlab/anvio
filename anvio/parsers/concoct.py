@@ -44,4 +44,3 @@ class CONCOCT(Parser):
             clusters_dict[entry['bin_name']].append(entry['split'])
 
         return clusters_dict
-

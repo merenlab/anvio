@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Further analyze one or more bins in a collection.
 
    This is especially useful when there are one or more highly contaminated
@@ -29,8 +28,9 @@ __resources__ = [("Refining a bin", "http://merenlab.org/2015/05/11/anvi-refine/
                  ("As part of the metagenomic workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-refine"),
                  ("A demo", "https://www.youtube.com/watch?v=vXPKP5vKiBM")
                  ]
-__requires__ = ['profile-db', 'contigs-db', 'bin',]
-__provides__ = ['bin',]
+__requires__ = ['profile-db', 'contigs-db']
+__can_use__ = ['bin']
+__provides__ = ['bin']
 __description__ = ("Start an anvi'o interactive interactive to manually curate or refine a genome, "
                    "whether it is a metagenome-assembled, single-cell, or an isolate genome")
 

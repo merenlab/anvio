@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A program to display the distribution of functions across genomes."""
 
 import sys
@@ -19,8 +18,10 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['functions', 'genomes-storage-db', 'internal-genomes', 'external-genomes', 'groups-txt']
-__provides__ = ['interactive', 'functional-enrichment-txt']
+__requires__ = ['functions', 'external-genomes']
+__can_use__ = ['internal-genomes', 'genomes-storage-db', 'groups-txt']
+__provides__ = ['interactive']
+__can_provide__ = ['functional-enrichment-txt']
 __description__ = "Start an anvi'o interactive display to see functions across genomes"
 
 
@@ -100,6 +101,7 @@ def get_args():
                                                                        nice to have).")
     groupG.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
     groupG.add_argument(*anvio.A('skip-news'), **anvio.K('skip-news'))
+    groupG.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
 
     groupH = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
     groupH.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))

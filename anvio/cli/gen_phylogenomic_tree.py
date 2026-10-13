@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Generate phylogenomic tree from aligment file"""
 
 import os

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 from anvio.argparse import ArgumentParser
@@ -96,7 +95,7 @@ def run_program():
 
         if taxa_excluded_count:
             run.warning("A total of %d taxon names, which made up %.2f%% of the input data altogether were excluded "
-                        "from this import due to the min abundance criterion of %.1f%% for inclusion." % \
+                        "from this import due to the min abundance criterion of %.1f%% for inclusion." %
                                 (len(taxa_excluded), taxa_excluded_count * 100 / total_count, args.min_abundance))
 
 

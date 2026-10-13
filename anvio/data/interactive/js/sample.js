@@ -306,7 +306,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
         var pretty_name = getNamedLayerDefaults(layer_name, 'pretty_name', layer_name);
         pretty_name = (pretty_name.indexOf('!') > -1) ? pretty_name.split('!')[0] : pretty_name;
 
-        var short_name = (pretty_name.length > 10) ? pretty_name.slice(0,10) + "..." : pretty_name;
+        var short_name = pretty_name;
 
         var hasSettings = false;
         if (typeof(samples_layers) !== 'undefined' &&
@@ -330,6 +330,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 var margin       = layer_settings['margin'];
                 var color_start  = layer_settings['color-start'];
                 var type         = layer_settings['type'];
+                var visible      = (layer_settings['visible'] !== undefined) ? layer_settings['visible'] : true;
             }
             else
             {
@@ -341,10 +342,12 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 var color_start  = getNamedLayerDefaults(layer_name, 'color-start', '#EFEFEF', group);
                 var type         = getNamedLayerDefaults(layer_name, 'type', 'bar', group);
                 var margin       = 15;
+                var visible      = true;
             }
 
-            var template = '<tr samples-group-name="{group}" samples-layer-name="{name}" data-type="{data-type}">' +
+            var template = '<tr samples-group-name="{group}" samples-layer-name="{name}" data-type="{data-type}" class="{hidden-class}">' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                '<td><i class="bi {eye-class} layer-visibility" title="Toggle visibility"></i></td>' +
                 '<td title="{name}" class="titles">{short-name}</td>' +
                 '<td><div class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div class="colorpicker" color="{color}" style="background-color: {color}"></div></td>' +
                 '<td style="width: 50px;">' +
@@ -381,7 +384,9 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                                .replace(new RegExp('{height}', 'g'), height)
                                .replace(new RegExp('{min}', 'g'), min)
                                .replace(new RegExp('{max}', 'g'), max)
-                               .replace(new RegExp('{margin}', 'g'), margin);
+                               .replace(new RegExp('{margin}', 'g'), margin)
+                               .replace(new RegExp('{eye-class}', 'g'), visible ? 'bi-eye' : 'bi-eye-slash')
+                               .replace(new RegExp('{hidden-class}', 'g'), visible ? '' : 'layer-hidden');
         }
         else if (layer_name.indexOf(';') > -1)
         {
@@ -392,16 +397,19 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 var norm   = layer_settings['normalization'];
                 var height = layer_settings['height'];
                 var margin = layer_settings['margin'];
+                var visible = (layer_settings['visible'] !== undefined) ? layer_settings['visible'] : true;
             }
             else
             {
                 var norm   = getNamedLayerDefaults(layer_name, 'norm', 'none', group);
                 var height = getNamedLayerDefaults(layer_name, 'height', 500, group);
                 var margin = 15;
+                var visible = true;
             }
 
-            var template = '<tr samples-group-name="{group}" samples-layer-name="{name}" data-type="{data-type}">' +
+            var template = '<tr samples-group-name="{group}" samples-layer-name="{name}" data-type="{data-type}" class="{hidden-class}">' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                '<td><i class="bi {eye-class} layer-visibility" title="Toggle visibility"></i></td>' +
                 '<td title="{pretty-name}" class="titles">{short-name}</td>' +
                 '<td style="width: 50px;">n/a</td>' +
                 '<td style="width: 50px;">n/a</td>' +
@@ -427,7 +435,9 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                                .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
                                .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
                                .replace(new RegExp('{height}', 'g'), height)
-                               .replace(new RegExp('{margin}', 'g'), margin);
+                               .replace(new RegExp('{margin}', 'g'), margin)
+                               .replace(new RegExp('{eye-class}', 'g'), visible ? 'bi-eye' : 'bi-eye-slash')
+                               .replace(new RegExp('{hidden-class}', 'g'), visible ? '' : 'layer-hidden');
         }
         else
         {
@@ -437,15 +447,18 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
             {
                 var height = layer_settings['height'];
                 var margin = layer_settings['margin'];
+                var visible = (layer_settings['visible'] !== undefined) ? layer_settings['visible'] : true;
             }
             else
             {
                 var height = getNamedLayerDefaults(layer_name, 'height', 80, group);
                 var margin = 15;
+                var visible = true;
             }
 
-            var template = '<tr samples-group-name="{group}" samples-layer-name="{name}" data-type="{data-type}">' +
+            var template = '<tr samples-group-name="{group}" samples-layer-name="{name}" data-type="{data-type}" class="{hidden-class}">' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                '<td><i class="bi {eye-class} layer-visibility" title="Toggle visibility"></i></td>' +
                 '<td title="{name}" class="titles">{short-name}</td>' +
                 '<td style="width: 50px;">n/a</td>' +
                 '<td style="width: 50px;">n/a</td>' +
@@ -462,7 +475,9 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                                .replace(new RegExp('{data-type}', 'g'), data_type)
                                .replace(new RegExp('{short-name}', 'g'), short_name)
                                .replace(new RegExp('{height}', 'g'), height)
-                               .replace(new RegExp('{margin}', 'g'), margin);
+                               .replace(new RegExp('{margin}', 'g'), margin)
+                               .replace(new RegExp('{eye-class}', 'g'), visible ? 'bi-eye' : 'bi-eye-slash')
+                               .replace(new RegExp('{hidden-class}', 'g'), visible ? '' : 'layer-hidden');
         }
         $('#tbody_samples').append(template);
     }
@@ -518,8 +533,10 @@ function drawSamplesLayers(settings) {
         var group                  = settings['samples-layer-order'][i]['group'];
         var samples_layer_settings = settings['samples-layers'][group][samples_layer_name];
 
-        var start = (samples_layer_settings['height'] == 0) ? 0 : samples_layer_settings['margin'];
-        var end   = start + samples_layer_settings['height'];
+        var is_visible = samples_layer_settings['visible'] !== false;
+        var effective_height = is_visible ? samples_layer_settings['height'] : 0;
+        var start = (effective_height == 0) ? 0 : samples_layer_settings['margin'];
+        var end   = start + effective_height;
 
         if (i > 0)
         {
@@ -547,7 +564,7 @@ function drawSamplesLayers(settings) {
         var pindex = settings['layer-order'][j];
         var sample_name = getLayerName(pindex);
 
-        if (settings['layers'][pindex]['height'] == 0)
+        if (settings['layers'][pindex]['height'] == 0 || settings['layers'][pindex]['visible'] === false)
             continue;
 
         sample_xy[sample_name] = {
@@ -568,7 +585,7 @@ function drawSamplesLayers(settings) {
             var samples_layer_settings = settings['samples-layers'][group][samples_layer_name];
             var samples_pretty_name    = (samples_layer_name.indexOf('!') > -1) ? samples_layer_name.split('!')[0] : samples_layer_name;
 
-            if (samples_layer_settings['height'] == 0) {
+            if (samples_layer_settings['height'] == 0 || samples_layer_settings['visible'] === false) {
                 continue;
             }
 
@@ -738,7 +755,7 @@ function drawSamplesLayers(settings) {
             var min = parseFloat(samples_layer_settings['min']['value']);
             var max = parseFloat(samples_layer_settings['max']['value']);
 
-            if (samples_layer_settings['height'] == 0) {
+            if (samples_layer_settings['height'] == 0 || samples_layer_settings['visible'] === false) {
                 continue;
             }
 

@@ -1,5 +1,3 @@
-#!/usr/bin/env python # -*- coding: utf-8
-# pylint: disable=line-too-long
 
 """Classes to work with ngrams of contig functions.
 
@@ -139,7 +137,7 @@ class NGram(object):
         # number of genomes in genome-storage
         if self.genome_names_to_focus:
             self.num_contigs_in_external_genomes_with_genes = len(self.genome_names_to_focus)
-        else:   
+        else:
             self.num_contigs_in_external_genomes_with_genes = len(self.genomes_storage.get_all_genome_names())
 
         if not skip_sanity_check:
@@ -195,7 +193,7 @@ class NGram(object):
             num_genes = len(gene_caller_ids)
 
             if self.window_range[1] > num_genes:
-                raise ConfigError("The largest window size you requested (%d) is larger than the number of genes found on this genome: %s" % \
+                raise ConfigError("The largest window size you requested (%d) is larger than the number of genes found on this genome: %s" %
                     (self.window_range[1], contigs_db_name))
 
 
@@ -379,29 +377,29 @@ class NGram(object):
             ngram = "::".join(map(str, list(ngram_attribute[0])))
             annotation = "::".join(map(str, list(ngram_attribute[2])))
             if self.pan_db and self.annotation_source:
-                df = pd.DataFrame(columns=['ngram','count', 'annotation', 'contig_db_name', 'N', 'number_of_loci'])
-                df = df.append({'ngram': ngram,
-                                'count': ngram_attribute[1],
-                                'annotation': annotation,
-                                'contig_db_name': ngram_attribute[3],
-                                'N':ngram_attribute[4],
-                                'number_of_loci':self.num_contigs_in_external_genomes_with_genes}, ignore_index=True)
+                df = pd.DataFrame([{'ngram': ngram,
+                                    'count': ngram_attribute[1],
+                                    'annotation': annotation,
+                                    'contig_db_name': ngram_attribute[3],
+                                    'N':ngram_attribute[4],
+                                    'number_of_loci':self.num_contigs_in_external_genomes_with_genes}],
+                                  columns=['ngram','count', 'annotation', 'contig_db_name', 'N', 'number_of_loci'])
             elif self.pan_db and not self.annotation_source:
                 ngram = "::".join(map(str, list(ngram_attribute[0])))
-                df = pd.DataFrame(columns=['ngram','count', 'contig_db_name', 'N', 'number_of_loci'])
-                df = df.append({'ngram': ngram,
-                                'count': ngram_attribute[1],
-                                'contig_db_name': ngram_attribute[3],
-                                'N':ngram_attribute[4],
-                                'number_of_loci':self.num_contigs_in_external_genomes_with_genes}, ignore_index=True)
+                df = pd.DataFrame([{'ngram': ngram,
+                                    'count': ngram_attribute[1],
+                                    'contig_db_name': ngram_attribute[3],
+                                    'N':ngram_attribute[4],
+                                    'number_of_loci':self.num_contigs_in_external_genomes_with_genes}],
+                                  columns=['ngram','count', 'contig_db_name', 'N', 'number_of_loci'])
             else:
                 ngram = "::".join(map(str, list(ngram_attribute[0])))
-                df = pd.DataFrame(columns=['ngram','count', 'contig_db_name', 'N', 'number_of_loci'])
-                df = df.append({'ngram': ngram,
-                                'count': ngram_attribute[1],
-                                'contig_db_name': ngram_attribute[3],
-                                'N':ngram_attribute[4],
-                                'number_of_loci':self.num_contigs_in_external_genomes_with_genes}, ignore_index=True)
+                df = pd.DataFrame([{'ngram': ngram,
+                                    'count': ngram_attribute[1],
+                                    'contig_db_name': ngram_attribute[3],
+                                    'N':ngram_attribute[4],
+                                    'number_of_loci':self.num_contigs_in_external_genomes_with_genes}],
+                                  columns=['ngram','count', 'contig_db_name', 'N', 'number_of_loci'])
 
             ngram_count_df_list.append(df)
 
@@ -522,4 +520,3 @@ class NGram(object):
             gene_callers_id_windows.append(window)
 
         return gene_callers_id_windows
-

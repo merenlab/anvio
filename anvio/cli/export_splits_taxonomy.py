@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Takes a contigs database, and export taxonomy information from it."""
 
 import sys

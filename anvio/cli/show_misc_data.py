@@ -1,12 +1,10 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """List misc data keys in pan or profile databases"""
 
 import sys
 from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.miscdata import MiscDataTableFactory
@@ -17,7 +15,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'ekiefl']
-__requires__ = ["pan-db", "profile-db", "contigs-db"]
+__requires__ = ['profile-db']
+__can_use__ = ['pan-db', 'contigs-db']
 __description__ = "Show all misc data keys in all misc data tables"
 
 

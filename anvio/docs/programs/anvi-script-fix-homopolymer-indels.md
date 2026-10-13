@@ -328,7 +328,7 @@ The following GIF shows three pangenomes for (1) the uncorrected genomes, (2) `W
 As this preliminary analysis shows, not only there is a reasonable reduction in spurious gene clusters, but also the homogeneity indices for core gene clusters display remarkable improvement. `--min-homopolymer-lenth 2` seems to be doing slightly better than `--min-homopolymer-lenth 3`. Overall, the script seems to be doing its job.
 
 {:.warning}
-Since in this example the 'reference genome', `W48` is also a genome with substantial homopolymer errors, the corrected sequences in `W01` do not necessarily yield amino acid sequences that are globally correct. But they are as incorrect as the ones in `W48` and not more. When a very closely related reference genome is used, the corrections will not only remove spurious gene clusters from pangenomes, but also yield more accurate amino acid sequences. 
+Since in this example the 'reference genome', `W48` is also a genome with substantial homopolymer errors, the corrected sequences in `W01` do not necessarily yield amino acid sequences that are globally correct. But they are as incorrect as the ones in `W48` and not more. When a very closely related reference genome is used, the corrections will not only remove spurious gene clusters from pangenomes, but also yield more accurate amino acid sequences.
 
 For posterity, the following shell script shows how each pangenome shown in the GIF above is generated and displayed:
 

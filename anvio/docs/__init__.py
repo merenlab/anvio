@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 """Everything about anvi'o workflows and artifacts"""
 
 # when defining a new anvi'o workflow, it is essential to document most critical
@@ -27,7 +26,7 @@ ANVIO_WORKFLOWS = {
     },
 
     "metagenomics": {
-        "authors": ['ShaiberAlon'],
+        "authors": ['FlorianTrigodet', 'ShaiberAlon'],
         "artifacts_produced": ['contigs-db', 'profile-db'],
         "artifacts_accepted": ['samples-txt', 'fasta-txt'],
         "anvio_workflows_inherited": ['contigs'],
@@ -50,7 +49,7 @@ ANVIO_WORKFLOWS = {
             "workflow, you can optionally run annotation programs on your contigs database as well.")
     },
     "ecophylo": {
-        "authors": ['mschecht'],
+        "authors": ['FlorianTrigodet', 'Kekananen', 'mschecht'],
         "artifacts_accepted": ['samples-txt', 'hmm-list', 'external-genomes', 'metagenomes'],
         "artifacts_produced": ['contigs-db', 'profile-db'],
         "anvio_workflows_inherited": [],
@@ -70,6 +69,22 @@ ANVIO_WORKFLOWS = {
             "using a user-defined [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms), and offers an integrated access "
             "to the phylogenetics of matching genes, and their distribution across environments.")
     },
+    "phylogenomics": {
+        "authors": ['Kekananen'],
+        "artifacts_produced": ['phylogeny'],
+        "artifacts_accepted": ['internal-genomes', 'external-genomes'],
+        "anvio_workflows_inherited": ['contigs'],
+        "third_party_programs_used": [
+            ('Trim multiple sequence alignment', ['trimal']),
+            ('Calculate phylogenetic tree', ['IQ-TREE']),
+            ],
+        "one_sentence_summary": "Infer a phylogeny from homologous protein sequences",
+        "one_paragraph_summary": ("This workflow is for users who want to infer a phylogeny from homologous protein "
+            "sequences extracted from anvi'o genome inputs. It uses the contigs workflow to prepare the underlying "
+            "contigs databases, retrieves single-copy core genes or other HMM hits from those genomes, aligns the "
+            "sequences, trims the alignment, and generates a phylogenetic tree that can be used downstream as a "
+            "phylogeny artifact.")
+    },
     "trnaseq": {
         "authors": ['semiller10'],
         "artifacts_accepted": ['samples-txt'],
@@ -88,7 +103,7 @@ ANVIO_WORKFLOWS = {
     },
 
     "sra-download": {
-        "authors": ['mschecht'],
+        "authors": ['mschecht', 'FlorianTrigodet', 'Kekananen'],
         "artifacts_accepted": [],
         "artifacts_produced": ['paired-end-fastq', 'samples-txt'],
         "anvio_workflows_inherited": [],
@@ -137,6 +152,12 @@ THIRD_PARTY_PROGRAMS = {
 ANVIO_ARTIFACTS ={
     "pan-db": {
         "name": "PAN",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "pan-graph-db": {
+        "name": "PAN GRAPH",
         "type": "DB",
         "provided_by_anvio": True,
         "provided_by_user": False
@@ -231,6 +252,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": True
     },
+    "single-end-fastq": {
+        "name": "SHORT READS",
+        "type": "FASTQ",
+        "provided_by_anvio": True,
+        "provided_by_user": True
+    },
     "genes-fasta": {
         "name": "GENES",
         "type": "FASTA",
@@ -245,6 +272,12 @@ ANVIO_ARTIFACTS ={
     },
     "bam-stats-txt": {
         "name": "BAM STATS TXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "discov-stats": {
+        "name": "DISCOV STATS",
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
@@ -271,6 +304,12 @@ ANVIO_ARTIFACTS ={
         "name": "SAMPLES TXT",
         "type": "TXT",
         "provided_by_anvio": False,
+        "provided_by_user":True
+    },
+    "sra-metadata-txt": {
+        "name": "SRA METADATA TXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
         "provided_by_user":True
     },
     "primers-txt": {
@@ -379,7 +418,19 @@ ANVIO_ARTIFACTS ={
         "name": "COLLECTION",
         "type": "TXT",
         "provided_by_anvio": True,
-        "provided_by_user":True
+        "provided_by_user": True
+    },
+    "contig-classification": {
+        "name": "CONTIG CLASSIFICATIONS",
+        "type": "COLLECTION",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "contig-classification-txt": {
+        "name": "CONTIG CLASSIFICATIONS",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
     },
     "genes-of-interest-txt": {
         "name": "GENES OF INTEREST",
@@ -389,6 +440,12 @@ ANVIO_ARTIFACTS ={
     },
     "pfam-accession": {
         "name": "PFAM ACCESSION",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "kofam-accession": {
+        "name": "KOFAM ACCESSION",
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user": True
@@ -419,6 +476,12 @@ ANVIO_ARTIFACTS ={
     },
     "cogs-data": {
         "name": "COGs DATA",
+        "type": "DATA",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "globdb-data": {
+        "name": "GLOBDB DATA",
         "type": "DATA",
         "provided_by_anvio": True,
         "provided_by_user": False
@@ -795,6 +858,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "trna-gene-hits": {
+        "name": "TRNA GENE HITS",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "trnaseq-plot": {
         "name": "TRNASEQ PLOT",
         "type": "DISPLAY",
@@ -807,8 +876,32 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "pan-summary": {
+        "name": "PAN SUMMARY",
+        "type": "SUMMARY",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "pan-graph-summary": {
+        "name": "PAN GRAPH SUMMARY",
+        "type": "SUMMARY",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "profile-summary": {
+        "name": "PROFILE SUMMARY",
+        "type": "SUMMARY",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "quick-summary": {
         "name": "QUICK SUMMARY",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "light-summary": {
+        "name": "LIGHT SUMMARY",
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
@@ -944,6 +1037,24 @@ ANVIO_ARTIFACTS ={
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user":True
+    },
+    "kegg-reaction-txt": {
+        "name": "KEGG REACTION TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "kegg-compound-txt": {
+        "name": "KEGG COMPOUND TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "kegg-category-colors-txt": {
+        "name": "KEGG CATEGORY COLORS TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
     },
     "enzymes-list-for-module": {
         "name": "ENZYMES LIST",

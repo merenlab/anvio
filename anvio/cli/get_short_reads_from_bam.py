@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 """A client to access short reads in BAM files.
 
@@ -19,7 +18,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'ekiefl']
-__requires__ = ['profile-db', 'contigs-db', 'bin', 'bam-file']
+__requires__ = ['bam-file']
+__can_use__ = ['profile-db', 'contigs-db', 'bin']
 __provides__ = ['short-reads-fasta']
 __description__ = ("Get short reads back from a BAM file with options for compression, splitting of "
                    "forward and reverse reads, etc")

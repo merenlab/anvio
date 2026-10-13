@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Main KEGG metabolism estimator classes."""
 
 import os
@@ -14,7 +13,7 @@ import anvio.ccollections as ccollections
 
 from anvio.dbinfo import DBInfo
 from anvio.errors import ConfigError
-from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
+from anvio.genomedescriptions import GenomeDescriptions
 
 from anvio.metabolism.modulesdb import ModulesDatabase
 from anvio.metabolism.algorithms import KeggEstimationAlgorithms
@@ -51,6 +50,10 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         self.profile_db_path = A('profile_db')
         self.pan_db_path = A('pan_db')
         self.genomes_storage_path = A('genomes_storage')
+        # module copy number is always computed, but it is not meaningful for pangenome bins (which
+        # aggregate gene clusters across genomes rather than enzyme hit counts within one), so we
+        # don't report it for pangenome input.
+        self.report_copy_number = not self.pan_db_path
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
         self.bin_ids_file = A('bin_ids_file')
@@ -67,7 +70,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         # INIT BASE CLASSES
         KeggEstimatorArgs.__init__(self, self.args)
         KeggDataLoader.__init__(self, self.args, self.run, self.progress)
-        KeggEstimationAlgorithms.__init__(self, self.run, self.progress, add_copy_number=self.add_copy_number)
+        KeggEstimationAlgorithms.__init__(self, self.run, self.progress, add_copy_number=self.report_copy_number)
 
         self.name_header = None
         if self.metagenome_mode:
@@ -150,8 +153,22 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                               "already have a collection of gene clusters in the pan database, please make one first. Then provide "
                               "the collection to this program; you can find the collection name parameter in the INPUT #2 section "
                               "of the `-h` output.")
-        if self.pan_db_path and (self.add_copy_number or self.add_coverage):
-            raise ConfigError("The flags --add-copy-number or --add-coverage do not work for pangenome input.")
+        if self.pan_db_path and self.add_coverage:
+            raise ConfigError("The flag --add-coverage does not work for pangenome input.")
+        # required/forbidden with per-population copy number
+        if self.add_per_population_copy_number:
+            if self.pan_db_path or self.enzymes_of_interest_df is not None or self.estimate_from_json:
+                raise ConfigError("The flag --add-per-population-copy-number only works when your input is a contigs "
+                                  "database representing a single (meta)genome. It does not work with a pangenome, "
+                                  "an enzymes-txt file, or JSON input.")
+            if self.metagenome_mode:
+                raise ConfigError("The flag --add-per-population-copy-number does not work with --per-contig-estimates. "
+                                  "Per-population copy number is a whole-(meta)genome statistic and cannot be computed "
+                                  "for an individual contig.")
+            if self.collection_name or self.bin_id or self.bin_ids_file:
+                raise ConfigError("The flag --add-per-population-copy-number does not work when estimating metabolism for "
+                                  "a bin or a collection of bins. It requires a whole contigs database representing a "
+                                  "single (meta)genome.")
         # required/forbidden with JSON estimation
         if self.store_json_without_estimation and not self.json_output_file_path:
             raise ConfigError("Whoops. You seem to want to store the metabolism dictionary in a JSON file, but you haven't provided the name of that file. "
@@ -164,7 +181,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
         if self.pan_db_path:
             utils.is_pan_db_and_genomes_storage_db_compatible(self.pan_db_path, self.genomes_storage_path)
-        
+
         # OUTPUT OPTIONS SANITY CHECKS
         if anvio.DEBUG:
             self.run.info("Output Modes", ", ".join(self.output_modes))
@@ -221,7 +238,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             else:
                 estimation_mode = "Individual contigs within a collection in a metagenome"
         elif self.metagenome_mode:
-            estimation_mode = "Individual contigs in a metagenome"
+            estimation_mode = "Individual contigs in a (meta)genome"
         elif self.enzymes_of_interest_df is not None:
             estimation_mode = "List of enzymes"
         elif self.pan_db_path:
@@ -229,9 +246,9 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
 
         self.run.info('Mode (what we are estimating metabolism for)', estimation_mode, quiet=self.quiet)
 
-        # a warning for high memory usage with metagenome mode in certain situations
+        # a warning for high memory usage with per-contig estimates in certain situations
         if self.metagenome_mode and (self.matrix_format or self.json_output_file_path):
-            self.run.warning("ALERT! You are running this program in --metagenome-mode, which can have a VERY LARGE "
+            self.run.warning("ALERT! You are running this program with --per-contig-estimates, which can have a VERY LARGE "
                              "memory footprint when used with --matrix-format or --get-raw-data-as-json, since both "
                              "of those options require storing all the per-contig data in memory. You have been warned. "
                              "The OOM-Killer may strike.")
@@ -243,6 +260,20 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             from anvio.dbops import ContigsDatabase # <- import here to avoid circular import
             contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
             self.contigs_db_project_name = contigs_db.meta['project_name']
+
+            # if self.num_populations was already provided (eg, pre-computed by KeggMetabolismEstimatorMulti for
+            # this contigs-db), we don't need to estimate or report it again here.
+            if self.add_per_population_copy_number and self.num_populations is None:
+                self.num_populations, per_domain_totals = self.get_num_populations_for_contigs_db(self.contigs_db_path, run=self.run)
+                self.run.warning(None, header="NUMBER OF POPULATIONS ESTIMATED FROM SINGLE-COPY CORE GENES", lc="green")
+                for domain, count in per_domain_totals.items():
+                    self.run.info(domain, count)
+                self.run.info("Total number of populations", self.num_populations)
+                if not self.num_populations:
+                    self.run.warning("It seems like there are too few single-copy core gene annotations in this "
+                                     "contigs database for anvi'o to come up with a reliable population count "
+                                     "estimate. There is nothing we can do about this, and the per-population copy "
+                                     "number values will be reported as NA.")
         elif self.enzymes_txt:
             self.contigs_db_project_name = os.path.basename(self.enzymes_txt).replace(".", "_")
         elif self.enzymes_of_interest_df is not None:
@@ -268,7 +299,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             # this function will initialize the profile db if necessary, and will create self.coverage_sample_list
             self.add_gene_coverage_to_headers_list()
 
-        if self.add_copy_number:
+        if self.report_copy_number:
             self.available_modes["module_paths"]["headers"].extend(["num_complete_copies_of_path"])
             self.available_modes["module_steps"]["headers"].extend(["step_copy_number"])
             self.available_modes["modules"]["headers"].extend(["pathwise_copy_number", "stepwise_copy_number", "per_step_copy_numbers"])
@@ -291,6 +322,17 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             self.available_headers["per_step_copy_numbers"] = {'cdict_key': None,
                                                        'mode_type': 'modules',
                                                        'description': "Number of copies of each top-level step in the module (the minimum of these is the stepwise module copy number)"
+                                                       }
+
+        if self.add_per_population_copy_number:
+            self.available_modes["modules"]["headers"].extend(["pathwise_ppcn", "stepwise_ppcn"])
+            self.available_headers["pathwise_ppcn"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Pathwise per-population copy number (PPCN): pathwise module copy number divided by the estimated number of populations in the (meta)genome"
+                                                       }
+            self.available_headers["stepwise_ppcn"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Stepwise per-population copy number (PPCN): stepwise module copy number divided by the estimated number of populations in the (meta)genome"
                                                        }
         # HEADERS SANITY CHECK
         if self.custom_output_headers:
@@ -502,12 +544,12 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             # we update the available header list so that these additional headers pass the sanity checks
             kofam_hits_coverage_headers.append(s + "_coverage")
             self.available_headers[s + "_coverage"] = {'cdict_key': None,
-                                                       'mode_type': 'kofams',
+                                                       'mode_type': 'hits',
                                                        'description': f"Mean coverage of gene in sample {s}"
                                                        }
             kofam_hits_detection_headers.append(s + "_detection")
             self.available_headers[s + "_detection"] = {'cdict_key': None,
-                                                        'mode_type': 'kofams',
+                                                        'mode_type': 'hits',
                                                         'description': f"Detection of gene in sample {s}"
                                                         }
             modules_coverage_headers.extend([s + "_gene_coverages", s + "_avg_coverage"])
@@ -1047,7 +1089,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                                     f"metabolic modules (that we know about). These enzymes will be ignored for the purposes of estimating module "
                                     f"completeness, but should still appear in enzyme-related outputs (if those were requested). In case you are "
                                     f"curious, here is one example: {example}")
-                
+
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_metabolism_for_enzymes_of_interest()
             elif self.pan_db_path:
                 gene_cluster_collections = ccollections.Collections()
@@ -1248,8 +1290,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                     value = ",".join(value)
             d[self.modules_unique_id][h] = value
 
-        # add module copy number if requested
-        if self.add_copy_number:
+        # add module copy number
+        if self.report_copy_number:
             # pathwise: we take the maximum copy number of all the paths of highest completeness
             if "pathwise_copy_number" in headers_to_include:
                 d[self.modules_unique_id]["pathwise_copy_number"] = c_dict["pathwise_copy_number"]
@@ -1262,6 +1304,13 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                 for step in c_dict["top_level_step_info"]:
                     step_copy_numbers.append(str(c_dict["top_level_step_info"][step]["copy_number"]))
                 d[self.modules_unique_id]["per_step_copy_numbers"] = ",".join(step_copy_numbers)
+
+        # add per-population copy number
+        if self.add_per_population_copy_number:
+            if "pathwise_ppcn" in headers_to_include:
+                d[self.modules_unique_id]["pathwise_ppcn"] = c_dict["pathwise_ppcn"]
+            if "stepwise_ppcn" in headers_to_include:
+                d[self.modules_unique_id]["stepwise_ppcn"] = c_dict["stepwise_ppcn"]
 
         # add coverage if requested
         if self.add_coverage:
@@ -1425,8 +1474,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                                         annotated.append(f"[MISSING {accession}]")
                             d[self.modules_unique_id]["annotated_enzymes_in_path"] = ",".join(annotated)
 
-                        # add path-level redundancy if requested
-                        if self.add_copy_number:
+                        # add path-level redundancy
+                        if self.report_copy_number:
                             d[self.modules_unique_id]["num_complete_copies_of_path"] = c_dict["num_complete_copies_of_all_paths"][p_index]
 
                         self.modules_unique_id += 1
@@ -1445,8 +1494,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                         if "step_completeness" in headers_to_include:
                             d[self.modules_unique_id]["step_completeness"] = 1 if step_dict["complete"] else 0
 
-                        # add step-level redundancy if requested
-                        if self.add_copy_number:
+                        # add step-level redundancy
+                        if self.report_copy_number:
                             d[self.modules_unique_id]["step_copy_number"] = step_dict["copy_number"]
 
                         self.modules_unique_id += 1
@@ -1559,8 +1608,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         """Here we extract and return subsets of data from the superdicts, for matrix formatted output.
 
         The subsets of data that we need are: module completeness scores, module presence/absence, KO hit frequency,
-                                              module top-level step completeness
-        If --add-copy-number was provided, we also need copy numbers for modules and module steps.
+                                              module top-level step completeness, and (except for pangenome input)
+                                              copy numbers for modules and module steps.
 
         Each of these is put into a dictionary (one for modules, one for ko hits, one for module steps) and returned.
 
@@ -1602,12 +1651,16 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                 mod_completeness_presence_subdict[bin][mnum]["stepwise_completeness"] = c_dict["stepwise_completeness"]
                 mod_completeness_presence_subdict[bin][mnum]["stepwise_is_complete"] = c_dict["stepwise_is_complete"]
 
-                if self.add_copy_number:
+                if self.report_copy_number:
                     if c_dict["num_complete_copies_of_most_complete_paths"]:
                         mod_completeness_presence_subdict[bin][mnum]['pathwise_copy_number'] = max(c_dict["num_complete_copies_of_most_complete_paths"])
                     else:
                         mod_completeness_presence_subdict[bin][mnum]['pathwise_copy_number'] = 'NA'
                     mod_completeness_presence_subdict[bin][mnum]['stepwise_copy_number'] = c_dict["stepwise_copy_number"]
+
+                if self.add_per_population_copy_number:
+                    mod_completeness_presence_subdict[bin][mnum]['pathwise_ppcn'] = c_dict["pathwise_ppcn"]
+                    mod_completeness_presence_subdict[bin][mnum]['stepwise_ppcn'] = c_dict["stepwise_ppcn"]
 
                 for step_id, step_dict in c_dict["top_level_step_info"].items():
                     step_key = mnum + "_" + f"{step_id:02d}"
@@ -1615,7 +1668,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                     steps_subdict[bin][step_key]["step_is_complete"] = step_dict["complete"]
                     # we include step metadata in this dictionary directly (rather than trying to access it out later using a function)
                     steps_subdict[bin][step_key]["step_definition"] = step_dict["step_definition"]
-                    if self.add_copy_number:
+                    if self.report_copy_number:
                         steps_subdict[bin][step_key]["step_copy_number"] = step_dict["copy_number"]
 
         for bin, ko_dict in ko_hits_superdict.items():
@@ -1648,8 +1701,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                                   "for the %s output mode. Something is terribly wrong, and it is probably a developer's fault. :("
                                   % (mode))
             if self.available_modes[mode]["data_dict"] == 'modules':
-                output_dict = self.generate_output_dict_for_modules(module_superdict_for_list_of_splits, headers_to_include=header_list, \
-                                                                    only_complete_modules=self.only_complete, \
+                output_dict = self.generate_output_dict_for_modules(module_superdict_for_list_of_splits, headers_to_include=header_list,
+                                                                    only_complete_modules=self.only_complete,
                                                                     exclude_zero_completeness=self.exclude_zero_modules)
             elif self.available_modes[mode]["data_dict"] == 'kofams':
                 output_dict = self.generate_output_dict_for_kofams(ko_superdict_for_list_of_splits, headers_to_include=header_list)
@@ -1684,8 +1737,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                                   "for the %s output mode. Something is terribly wrong, and it is probably a developer's fault. :("
                                   % (mode))
             if self.available_modes[mode]["data_dict"] == 'modules':
-                output_dict = self.generate_output_dict_for_modules(module_superdict, headers_to_include=header_list, \
-                                                                    only_complete_modules=self.only_complete, \
+                output_dict = self.generate_output_dict_for_modules(module_superdict, headers_to_include=header_list,
+                                                                    only_complete_modules=self.only_complete,
                                                                     exclude_zero_completeness=self.exclude_zero_modules)
             elif self.available_modes[mode]["data_dict"] == 'kofams':
                 output_dict = self.generate_output_dict_for_kofams(ko_superdict, headers_to_include=header_list)
@@ -1790,11 +1843,9 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
         self.databases = None
 
         # INPUT SANITY CHECKS
-        if (self.external_genomes_file and (self.internal_genomes_file or self.metagenomes_file)) \
-            or (self.internal_genomes_file and (self.external_genomes_file or self.metagenomes_file)) \
-            or (self.metagenomes_file and (self.external_genomes_file or self.internal_genomes_file)):
-                raise ConfigError("Multiple file inputs were provided. Please choose only one at a time to make "
-                                  "things easier on everybody.")
+        if self.external_genomes_file and self.internal_genomes_file:
+            raise ConfigError("Multiple file inputs were provided. Please choose only one at a time to make "
+                              "things easier on everybody.")
 
         if args.estimate_from_json or args.store_json_without_estimation or args.get_raw_data_as_json:
             raise ConfigError("You've provided some JSON parameters. We are sorry to say that these parameters don't "
@@ -1802,6 +1853,16 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
 
         if self.only_user_modules and not self.user_input_dir:
             raise ConfigError("You can only use the flag --only-user-modules if you provide a --user-modules directory.")
+
+        if self.add_per_population_copy_number:
+            if self.internal_genomes_file:
+                raise ConfigError("The flag --add-per-population-copy-number does not work with an internal-genomes file. "
+                                  "It requires a whole contigs database representing a single (meta)genome, so it only "
+                                  "works with a single contigs database (`-c`) or an external-genomes file (`-e`).")
+            if self.metagenome_mode:
+                raise ConfigError("The flag --add-per-population-copy-number does not work with --per-contig-estimates. "
+                                  "Per-population copy number is a whole-(meta)genome statistic and cannot be computed "
+                                  "for an individual contig.")
 
         # OUTPUT SANITY CHECKS
         if self.matrix_format and self.long_format_mode:
@@ -1819,7 +1880,7 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
                 filesnpaths.is_output_file_writable(matrix_output_file, ok_if_exists=False)
 
         # set name header
-        if self.metagenomes_file:
+        if self.metagenome_mode:
             self.name_header = 'contig_name'
         elif self.external_genomes_file:
             self.name_header = 'genome_name'
@@ -1932,8 +1993,8 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
         # we will find in the metagenomes file
         self.update_available_headers_for_multi()
 
-        self.run.warning("Just so you know, if you used the flags --add-copy-number or --add-coverage, you "
-                         "won't see the possible headers for these data in the list below. If you want to "
+        self.run.warning("Just so you know, if you used the flag --add-coverage, you "
+                         "won't see the possible headers for that data in the list below. If you want to "
                          "include this information in a custom output file and need to know which headers "
                          "you can choose from, you should re-run this command with --list-available-output-headers "
                          "on a SINGLE sample from your input file.")
@@ -1947,48 +2008,6 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
             self.run.info(header, f"{desc_str} [{type_str} {mode_str}]")
 
 ######### DRIVER ESTIMATION FUNCTIONS -- MULTI #########
-
-    def init_metagenomes(self):
-        """This function parses the input metagenomes file and adjusts class attributes as needed"""
-
-        g = MetagenomeDescriptions(self.args, run=self.run, progress=self.progress, enforce_single_profiles=False)
-        g.load_metagenome_descriptions(skip_functions=(not self.matrix_format))
-
-        # sanity check that all dbs are properly annotated with required sources
-        for src in self.annotation_sources_to_use:
-            bad_metagenomes = [v['name'] for v in g.metagenomes.values() if not v['gene_function_sources'] or src not in v['gene_function_sources']]
-            if len(bad_metagenomes):
-                bad_metagenomes_txt = [f"'{bad}'" for bad in bad_metagenomes]
-                n = len(bad_metagenomes)
-                it_or_them = P('it', n, alt='them')
-                raise ConfigError(f"Bad news :/ It seems {n} of your {P('metagenome', len(g.metagenomes))} "
-                                  f"{P('is', n, alt='are')} lacking any function annotations for "
-                                  f"`{src}`. This means you either need to annotate {it_or_them} by running the appropriate "
-                                  f"annotation program on {it_or_them}, import functional annotations into {it_or_them} from this source using "
-                                  f"`anvi-import-functions`, or remove {it_or_them} from your internal and/or external genomes files "
-                                  f"before re-running `anvi-estimate-metabolism. Here is the list of offenders: "
-                                  f"{', '.join(bad_metagenomes_txt)}.")
-
-        if self.matrix_format:
-            for name in g.metagenomes:
-                gene_functions_in_genome_dict, _, _= g.get_functions_and_sequences_dicts_from_contigs_db(name, requested_source_list=self.annotation_sources_to_use, return_only_functions=True)
-                # reminder, an entry in gene_functions_in_genome_dict looks like this:
-                # 4264: {'KOfam': None, 'COG20_FUNCTION': None, 'UpxZ': ('PF06603.14', 'UpxZ', 3.5e-53)}
-                for gcid, func_dict in gene_functions_in_genome_dict.items():
-                    for source, func_tuple in func_dict.items():
-                        if func_tuple:
-                            acc_string, func_def, evalue = func_tuple
-                            for acc in acc_string.split('!!!'):
-                                if acc not in self.ko_dict:
-                                    self.ko_dict[acc] = {'definition': func_def}
-
-        # enforce metagenome mode
-        if not self.metagenome_mode:
-            self.metagenome_mode = True
-
-        self.databases = copy.deepcopy(g.metagenomes)
-        self.database_names = copy.deepcopy(g.metagenome_names)
-
 
     def init_external_internal_genomes(self):
         """This function parses the input internal/external genomes file and adjusts class attributes as needed"""
@@ -2010,6 +2029,9 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
                                   f"before re-running `anvi-estimate-metabolism. Here is the list of offenders: "
                                   f"{', '.join(bad_genomes_txt)}.")
 
+        if self.add_per_population_copy_number:
+            self.check_scg_hmms_are_present(g.genomes)
+
         if self.matrix_format:
             for genome_name in g.genomes:
                 gene_functions_in_genome_dict, _, _= g.get_functions_and_sequences_dicts_from_contigs_db(genome_name, requested_source_list=self.annotation_sources_to_use, return_only_functions=True)
@@ -2023,15 +2045,68 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
                                 if acc not in self.ko_dict:
                                     self.ko_dict[acc] = {'definition': func_def}
 
-        # metagenome mode must be off
-        if self.metagenome_mode:
-            self.metagenome_mode = False
-
         self.databases = copy.deepcopy(g.genomes)
         if self.external_genomes_file:
             self.database_names = copy.deepcopy(g.external_genome_names)
         else:
             self.database_names = copy.deepcopy(g.internal_genome_names)
+
+
+    def init_num_populations_per_layer(self):
+        """Estimates the number of populations for each genome in self.databases.
+
+        This is used to normalize module copy number into per-population copy number (PPCN) when
+        `--add-per-population-copy-number` is requested (only ever called for external-genomes input, since that
+        flag is forbidden with internal-genomes and --per-contig-estimates).
+
+        Fills in `self.num_populations_per_layer`, a dict mapping genome name to its estimated population count.
+        Reports the per-genome, per-domain, and total estimates to the terminal, and writes them to a dedicated
+        output file (`<prefix>-POPULATION-ESTIMATES.txt`) so the numbers used for normalization are reproducible.
+        """
+
+        self.num_populations_per_layer = {}
+        per_domain_totals_per_layer = {}
+        all_domains = set([])
+        genomes_with_no_estimate = []
+
+        num_genomes = len(self.database_names)
+        self.progress.new("Estimating population sizes for contigs DBs", progress_total_items=num_genomes)
+        for i, genome_name in enumerate(sorted(self.database_names)):
+            self.progress.update(f"Estimating the number of populations [{i + 1} of {num_genomes}] {genome_name}")
+
+            contigs_db_path = self.databases[genome_name]['contigs_db_path']
+            num_populations, per_domain_totals = self.get_num_populations_for_contigs_db(contigs_db_path)
+
+            self.num_populations_per_layer[genome_name] = num_populations
+            per_domain_totals_per_layer[genome_name] = per_domain_totals
+            all_domains.update(per_domain_totals.keys())
+
+            if not num_populations:
+                genomes_with_no_estimate.append(genome_name)
+        self.progress.end()
+
+        if len(genomes_with_no_estimate):
+            self.run.warning(f"It seems like there are too few single-copy core gene annotations for anvi'o to come "
+                             f"up with a reliable population count estimate for these contigs databases: "
+                             f"{', '.join(sorted(genomes_with_no_estimate))}. There is nothing we can do, and anvi'o "
+                             f"will report per-population copy number as NA for them.")
+
+        self.run.warning(None, header="NUMBER OF POPULATIONS PER (META)GENOME", lc="green")
+        for i,genome_name in enumerate(sorted(self.num_populations_per_layer.keys())):
+            self.run.info(genome_name, self.num_populations_per_layer[genome_name], nl_after=0 if i < num_genomes - 1 else 1)
+
+        # write per-genome, per-domain, and total population estimates to a dedicated output file
+        sorted_domains = sorted(all_domains)
+        population_estimates_file_path = f"{self.output_file_prefix}-POPULATION-ESTIMATES.txt"
+        filesnpaths.is_output_file_writable(population_estimates_file_path)
+        with open(population_estimates_file_path, 'w') as output:
+            output.write('\t'.join(['genome_name'] + sorted_domains + ['total']) + '\n')
+            for genome_name in sorted(self.num_populations_per_layer.keys()):
+                row = [genome_name]
+                row += [str(per_domain_totals_per_layer[genome_name].get(domain, 0)) for domain in sorted_domains]
+                row.append(str(self.num_populations_per_layer[genome_name]))
+                output.write('\t'.join(row) + '\n')
+        self.run.info('Population estimates for per-population copy number', population_estimates_file_path)
 
 
     def get_args_for_single_estimator(self, db_name):
@@ -2070,6 +2145,11 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
         args.user_modules = self.user_input_dir or None
         args.only_user_modules = self.only_user_modules
 
+        if self.add_per_population_copy_number:
+            # pass down the value we already computed in init_num_populations_per_layer() so the single
+            # estimator doesn't redundantly recompute (and re-report) it for this contigs-db
+            args.num_populations = self.num_populations_per_layer[db_name]
+
         self.update_available_headers_for_multi()
 
         if anvio.DEBUG:
@@ -2106,12 +2186,12 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
             if not self.matrix_format:
                 KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(output_files_dictionary=files_dict)
             else:
-                metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name], module_steps_super_dict[metagenome_name] = KeggMetabolismEstimator(args, \
-                                                                                                    progress=progress_quiet, \
-                                                                                                    run=run_quiet).estimate_metabolism(skip_storing_data=True, \
-                                                                                                    return_subset_for_matrix_format=True, \
-                                                                                                    all_modules_in_db=self.all_modules_in_db, \
-                                                                                                    all_kos_in_db=self.all_kos_in_db, \
+                metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name], module_steps_super_dict[metagenome_name] = KeggMetabolismEstimator(args,
+                                                                                                    progress=progress_quiet,
+                                                                                                    run=run_quiet).estimate_metabolism(skip_storing_data=True,
+                                                                                                    return_subset_for_matrix_format=True,
+                                                                                                    all_modules_in_db=self.all_modules_in_db,
+                                                                                                    all_kos_in_db=self.all_kos_in_db,
                                                                                                     module_paths_dict=self.module_paths_dict)
 
             self.progress.increment()
@@ -2132,11 +2212,7 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
         if not self.databases:
             self.progress.new("Initializing contigs DBs")
             self.progress.update("...")
-            if self.metagenomes_file:
-                self.progress.reset()
-                self.run.info("Metagenomes file", self.metagenomes_file)
-                self.init_metagenomes()
-            elif self.external_genomes_file:
+            if self.external_genomes_file:
                 self.progress.reset()
                 self.run.info("External genomes file", self.external_genomes_file)
                 self.init_external_internal_genomes()
@@ -2151,7 +2227,10 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
                                   "without inputs. :/")
             self.progress.end()
             self.run.info("Num Contigs DBs in file", len(self.database_names))
-            self.run.info('Metagenome Mode', self.metagenome_mode)
+            self.run.info('Per-Contig Estimates', self.metagenome_mode)
+
+            if self.add_per_population_copy_number:
+                self.init_num_populations_per_layer()
 
         self.init_data_from_modules_db()
 
@@ -2303,12 +2382,15 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
                                "module_pathwise_presence" : "pathwise_is_complete",
                                "module_stepwise_completeness" : "stepwise_completeness",
                                "module_stepwise_presence" : "stepwise_is_complete",
+                               "module_pathwise_copy_number": "pathwise_copy_number",
+                               "module_stepwise_copy_number": "stepwise_copy_number",
                                }
-        module_step_matrix_stats = {"step_completeness" : "step_is_complete"}
-        if self.add_copy_number:
-            module_matrix_stats["module_pathwise_copy_number"] = "pathwise_copy_number"
-            module_matrix_stats["module_stepwise_copy_number"] = "stepwise_copy_number"
-            module_step_matrix_stats["step_copy_number"] = "step_copy_number"
+        if self.add_per_population_copy_number:
+            module_matrix_stats["module_pathwise_ppcn"] = "pathwise_ppcn"
+            module_matrix_stats["module_stepwise_ppcn"] = "stepwise_ppcn"
+
+        module_step_matrix_stats = {"step_completeness" : "step_is_complete",
+                                    "step_copy_number": "step_copy_number"}
 
         # all samples/bins have the same modules in the dict so we can pull the item list from the first pair
         first_sample = list(module_superdict_multi.keys())[0]
@@ -2317,22 +2399,22 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
         module_list.sort()
 
         for stat, key in module_matrix_stats.items():
-            self.write_stat_to_matrix(stat_name=stat, stat_header='module', stat_key=key, stat_dict=module_superdict_multi, \
-                                      item_list=module_list, stat_metadata_headers=MODULE_METADATA_HEADERS, \
+            self.write_stat_to_matrix(stat_name=stat, stat_header='module', stat_key=key, stat_dict=module_superdict_multi,
+                                      item_list=module_list, stat_metadata_headers=MODULE_METADATA_HEADERS,
                                       write_rows_with_all_zeros=include_zeros)
 
         module_step_list = list(steps_superdict_multi[first_sample][first_bin].keys())
         module_step_list.sort()
         for stat, key in module_step_matrix_stats.items():
-            self.write_stat_to_matrix(stat_name=stat, stat_header='module_step', stat_key=key, stat_dict=steps_superdict_multi, \
-                                      item_list=module_step_list, stat_metadata_headers=STEP_METADATA_HEADERS, \
+            self.write_stat_to_matrix(stat_name=stat, stat_header='module_step', stat_key=key, stat_dict=steps_superdict_multi,
+                                      item_list=module_step_list, stat_metadata_headers=STEP_METADATA_HEADERS,
                                       write_rows_with_all_zeros=include_zeros)
 
         # now we make a KO hit count matrix
         ko_list = list(self.ko_dict.keys())
         ko_list.sort()
-        self.write_stat_to_matrix(stat_name='enzyme_hits', stat_header='enzyme', stat_key='num_hits', stat_dict=ko_superdict_multi, \
-                                  item_list=ko_list, stat_metadata_headers=KO_METADATA_HEADERS, \
+        self.write_stat_to_matrix(stat_name='enzyme_hits', stat_header='enzyme', stat_key='num_hits', stat_dict=ko_superdict_multi,
+                                  item_list=ko_list, stat_metadata_headers=KO_METADATA_HEADERS,
                                   write_rows_with_all_zeros=include_zeros)
 
         # if necessary, make module specific KO matrices
@@ -2386,8 +2468,8 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
                     step_comments = None
 
                 stat = f"{mod}_enzyme_hits"
-                self.write_stat_to_matrix(stat_name=stat, stat_header="enzyme", stat_key='num_hits', stat_dict=ko_superdict_multi, \
-                                          item_list=kos_in_mod, stat_metadata_headers=KO_METADATA_HEADERS, \
+                self.write_stat_to_matrix(stat_name=stat, stat_header="enzyme", stat_key='num_hits', stat_dict=ko_superdict_multi,
+                                          item_list=kos_in_mod, stat_metadata_headers=KO_METADATA_HEADERS,
                                           write_rows_with_all_zeros=True, comment_dictionary=step_comments)
 
             if skipped_mods:

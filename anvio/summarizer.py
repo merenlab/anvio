@@ -1,5 +1,3 @@
-# coding: utf-8
-# pylint: disable=line-too-long
 """Summarizes information for a collection.
 
 It also gives access to bin data that may be useful. For instance, did you know
@@ -47,10 +45,10 @@ import anvio.completeness as completeness
 import anvio.taxonomyops.scg as scgtaxonomyops
 
 from anvio.errors import ConfigError
-from anvio.dbops import DatabasesMetaclass, ContigsDatabase, ContigsSuperclass, PanSuperclass
 from anvio.hmmops import SequencesForHMMHits
 from anvio.summaryhtml import SummaryHTMLOutput, humanize_n, pretty
-from anvio.tables.miscdata import TableForLayerAdditionalData, MiscDataTableFactory
+from anvio.tables.miscdata import TableForLayerAdditionalData, TableForLayerOrders, MiscDataTableFactory
+from anvio.dbops import DatabasesMetaclass, ContigsDatabase, ContigsSuperclass, PanSuperclass, PanGraphSuperclass
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -92,8 +90,17 @@ class ArgsTemplateForSummarizerClass:
         self.list_bins = None
         self.debug = None
         self.quick_summary = False
+        self.light_summary = False
         self.init_gene_coverages = False
         self.calculate_Q2Q3_carefully = False
+        self.report_discov = False
+        self.window_length = None
+        self.window_length_as_percentage = None
+        self.min_window_length = None
+        self.foldrange_lower = 0.5
+        self.foldrange_upper = 2.0
+        self.alpha = 0.5
+        self.discov_formula = 'linear'
         self.skip_check_collection_name = False
         self.skip_init_functions = False
         self.cog_data_dir = None
@@ -111,8 +118,10 @@ class SummarizerSuperClass(object):
 
         if self.summary_type == 'pan':
             self.collections.populate_collections_dict(self.pan_db_path)
+        elif self.summary_type == 'pan-graph':
+            self.collections.populate_collections_dict(self.pan_graph_db_path)
         else:
-            self.collections.populate_collections_dict(self.pan_db_path if self.summary_type == 'pan' else self.profile_db_path)
+            self.collections.populate_collections_dict(self.profile_db_path)
             self.collections.populate_collections_dict(self.contigs_db_path) if self.contigs_db_path else None
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
@@ -135,8 +144,17 @@ class SummarizerSuperClass(object):
         self.skip_init_functions = A('skip_init_functions')
         self.init_gene_coverages = A('init_gene_coverages')
         self.calculate_Q2Q3_carefully = A('calculate_Q2Q3_carefully')
+        self.report_discov = A('report_discov')
+        self.discov_window_length = A('window_length')
+        self.discov_window_percentage = A('window_length_as_percentage')
+        self.discov_min_window_length = A('min_window_length')
+        self.discov_foldrange_lower = A('foldrange_lower')
+        self.discov_foldrange_upper = A('foldrange_upper')
+        self.discov_alpha = A('alpha')
+        self.discov_formula = A('discov_formula')
         self.output_directory = A('output_dir')
         self.quick = A('quick_summary')
+        self.light_summary = A('light_summary')
         self.debug = A('debug')
         self.cog_data_dir = A('cog_data_dir')
         self.report_aa_seqs_for_gene_calls = A('report_aa_seqs_for_gene_calls')
@@ -148,7 +166,9 @@ class SummarizerSuperClass(object):
         if not self.lazy_init:
             self.sanity_check()
 
-        if self.output_directory:
+        if self.lazy_init:
+            self.output_directory = self.output_directory or "SUMMARY"
+        elif self.output_directory:
             self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=self.delete_output_directory_if_exists or self.just_do_it)
             filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.delete_output_directory_if_exists or self.just_do_it)
         else:
@@ -161,7 +181,12 @@ class SummarizerSuperClass(object):
 
         run_obj = terminal.Run(verbose=False)
 
-        db_path = self.pan_db_path if self.summary_type == 'pan' else self.profile_db_path
+        if self.summary_type == 'pan':
+            db_path = self.pan_db_path
+        elif self.summary_type == 'pan-graph':
+            db_path = self.pan_graph_db_path
+        else:
+            db_path = self.profile_db_path
         additional_data = MiscDataTableFactory(argparse.Namespace(pan_or_profile_db=db_path, target_data_table=target_table), r=run_obj)
 
         data_groups, data_dict = additional_data.get_all()
@@ -186,6 +211,12 @@ class SummarizerSuperClass(object):
 
             if self.collection_name not in self.collections.collections_dict:
                 raise ConfigError("%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % self.collection_name)
+
+        if self.report_discov:
+            utils.validate_discov_params(self.discov_window_length, self.discov_window_percentage,
+                                         self.discov_min_window_length, self.discov_foldrange_lower,
+                                         self.discov_foldrange_upper, self.discov_alpha, self.discov_formula,
+                                         require_window_param=False)
 
 
     def get_output_file_handle(self, sub_directory=None, prefix='output.txt', overwrite=False, within=None, compress_output=False, add_project_name=False):
@@ -244,6 +275,10 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         if not self.genomes_storage_is_available:
             raise ConfigError("No genomes storage no summary. Yes. Very simple stuff.")
 
+        if not self.lazy_init and not args.__dict__.get('output_dir'):
+            project_name = self.p_meta.get('project_name') or 'PROJECT'
+            args.output_dir = f'{project_name}-PAN-SUMMARY'
+
         SummarizerSuperClass.__init__(self, args, self.run, self.progress)
 
         # init gene clusters and functions from Pan super.
@@ -259,10 +294,18 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         if self.collection_name:
             self.collection_dict, self.bins_info_dict = self.init_collection_profile(self.collection_name)
             self.bin_ids = sorted(self.collection_dict.keys())
+        else:
+            self.gene_clusters_in_pan_db_but_not_binned = list(self.gene_clusters.keys())
 
         # see if COG functions or categories are available
         self.cog_functions_are_called = 'COG_FUNCTION' in self.gene_clusters_function_sources
         self.cog_categories_are_called = 'COG_CATEGORY' in self.gene_clusters_function_sources
+
+
+    def sanity_check(self):
+        """Collection is optional for pan summaries; validate only when supplied."""
+        if self.collection_name and self.collection_name not in self.collections.collections_dict:
+            raise ConfigError("%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % self.collection_name)
 
 
     def get_occurrence_of_functions_in_pangenome(self, gene_clusters_functions_summary_dict):
@@ -301,9 +344,9 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             v = None
             for gene_cluster_id in occurrence_of_functions_in_pangenome_dict[gene_cluster_function]['gene_clusters_ids']:
                 if v is None:
-                    v = gene_cluster_frequencies_dataframe.loc[gene_cluster_id, ].astype(int)
+                    v = gene_cluster_frequencies_dataframe.loc[gene_cluster_id].astype(int)
                 else:
-                    v = v.add(gene_cluster_frequencies_dataframe.loc[gene_cluster_id, ])
+                    v = v.add(gene_cluster_frequencies_dataframe.loc[gene_cluster_id])
             D[gene_cluster_function] = {}
             for genome in v.index:
                 D[gene_cluster_function][genome] = v[genome]
@@ -409,14 +452,14 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         if not values_that_are_not_none:
             raise ConfigError("The variable '%s' contains only values of type None,\
                                this is probably a mistake, surely you didn't mean to provide an empty category.\
-                               Do you think this is a mistake on our part? Let us know." % \
+                               Do you think this is a mistake on our part? Let us know." %
                                                                     category_variable)
 
         type_category_variable = type(values_that_are_not_none[0][category_variable])
         if type_category_variable != str:
             raise ConfigError("The variable '%s' does not seem to resemble anything that could be a category. "
                               "Anvi'o expects these variables to be of type string, yet yours is type %s :/ "
-                              "Do you think this is a mistake on our part? Let us know." % \
+                              "Do you think this is a mistake on our part? Let us know." %
                                                                     (category_variable, type_category_variable))
 
         gene_clusters_functions_summary_dict = self.get_gene_clusters_functions_summary_dict(functional_annotation_source)
@@ -447,7 +490,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         functions_in_categories = occurrence_of_functions_in_pangenome_dataframe.groupby('category').sum()
 
         # unique names of categories
-        categories = set([str(categories_dict[g][category_variable]) for g in categories_dict.keys() if\
+        categories = set([str(categories_dict[g][category_variable]) for g in categories_dict.keys() if
                             (categories_dict[g][category_variable] is not None or include_ungrouped)])
 
         categories_to_genomes_dict = {}
@@ -544,7 +587,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         genome_names = ', '.join(list(self.gene_clusters.values())[0].keys())
 
         # set up the initial summary dictionary
-        self.summary['meta'] = { \
+        self.summary['meta'] = {
                 'quick': self.quick,
                 'cog_functions_are_called': self.cog_functions_are_called,
                 'cog_categories_are_called': self.cog_categories_are_called,
@@ -564,7 +607,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         }
 
         # I am not sure whether this is the best place to do this,
-        self.summary['basics_pretty'] = { \
+        self.summary['basics_pretty'] = {
                 'pan': [('Created on', self.p_meta['creation_date']),
                         ('Version', anvio.__pan__version__),
                         ('Number of genes', pretty(int(self.p_meta['num_genes_in_gene_clusters']))),
@@ -588,7 +631,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.summary['files'] = {}
         self.summary['collection_profile'] = self.collection_profile # reminder; collection_profile comes from the superclass!
 
-        self.generate_gene_clusters_file(self.collection_dict)
+        self.generate_gene_clusters_file(self.collection_dict or {})
 
         self.report_misc_data_files(target_table='layers')
         self.report_misc_data_files(target_table='items')
@@ -651,7 +694,11 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                     # populate the entry with item aditional data
                     for items_additional_data_key in self.items_additional_data_keys:
                         if gene_cluster_name in self.items_additional_data_dict:
-                            entry.append(self.items_additional_data_dict[gene_cluster_name][items_additional_data_key])
+                            # avoid KeyError in when only some of the items have a particular key
+                            if items_additional_data_key in self.items_additional_data_dict[gene_cluster_name]:
+                                entry.append(self.items_additional_data_dict[gene_cluster_name][items_additional_data_key])
+                            else:
+                                entry.append('')
                         else:
                             entry.append('')
 
@@ -686,6 +733,385 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.progress.end()
 
 
+class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
+    """Generates a summary directory for an anvi'o pan-graph database.
+
+       Layout written to `self.output_directory`:
+
+         - SYNGCs.txt              one row per node (SynGC) with region/backbone/CVS join
+         - GENESxSYNGCs.txt        long format (node_id, genome, gene_caller_id) with functions
+         - REGIONS.txt             copy of the pan_graph_regions table
+         - GENOMES_DIST_MAT.txt    wide reconstruction from pan_graph_genome_distances
+         - GENOMES_DIST.newick     newick read from layer_orders
+    """
+
+    def __init__(self, args=None, lazy_init=False, r=run, p=progress):
+        self.summary_type = 'pan-graph'
+        self.debug = False
+        self.quick = False
+        self.pan_graph_db_path = None
+        self.lazy_init = lazy_init
+        self.output_directory = None
+        self.genomes_storage_path = None
+
+        self.run = r
+        self.progress = p
+
+        PanGraphSuperclass.__init__(self, args, self.run, self.progress)
+
+        if not self.genomes_storage_is_available:
+            raise ConfigError("No genomes storage no summary. Yes. Very simple stuff.")
+
+        # quick hack here to update the args object before it goes deeper with a meaningful
+        # defeault output directory (unless the user already explicitly set one).
+        if not args.__dict__.get('output_dir'):
+            project_name = self.p_meta.get('project_name') or 'PROJECT'
+            args.output_dir = f'{project_name}-PAN-GRAPH-SUMMARY'
+
+        SummarizerSuperClass.__init__(self, args, self.run, self.progress)
+
+        # populate synteny gene clusters and (optionally) their functions
+        self.init_synteny_gene_clusters()
+
+        if not self.skip_init_functions:
+            self.init_synteny_gene_clusters_functions()
+
+        self.collection_dict, self.bins_info_dict, self.bin_ids = None, None, None
+        if self.collection_name:
+            self.collection_dict, self.bins_info_dict = self.init_collection_profile(self.collection_name)
+            self.bin_ids = sorted(self.collection_dict.keys())
+
+        # newick layer order is stored in the layer_orders table; surface it here so the
+        # summary directory can write it as a stand-alone .newick file
+        self.newick = self._get_newick_from_layer_orders()
+
+
+    def sanity_check(self):
+        """Collection is optional for pan-graph summaries; validate only when supplied."""
+        if self.collection_name and self.collection_name not in self.collections.collections_dict:
+            raise ConfigError("%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % self.collection_name)
+
+
+    def _get_newick_from_layer_orders(self):
+        """Returns the 'default' newick stored in layer_orders, or '' if none."""
+
+        args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table='layer_orders')
+        layer_orders = TableForLayerOrders(args, r=terminal.Run(verbose=False)).get()
+
+        if 'default' in layer_orders and layer_orders['default']['newick'] is not None:
+            return layer_orders['default']['newick']
+        else:
+            return ''
+
+
+    def _function_consensus(self, syn_cluster_id, source):
+        """Returns (accession_consensus, annotation_consensus) for a SynGC + source.
+
+           Picks the single most-frequent annotation across genomes/copies. Returns
+           ('', '') when no genome carries an annotation for this source on this SynGC."""
+
+        if not getattr(self, 'gene_clusters_functions_dict', None):
+            return ('', '')
+
+        accession_counts = Counter()
+        annotation_counts = Counter()
+
+        per_genome = self.gene_clusters_functions_dict.get(syn_cluster_id, {})
+        for genome_name, gene_calls in per_genome.items():
+            for _gene_caller_id, anns in gene_calls.items():
+                blob = anns.get(source)
+                if not blob:
+                    continue
+                if isinstance(blob, bytes):
+                    blob = blob.decode('utf-8')
+                accs, annots = [piece.split('!!!') for piece in blob.split('|||')]
+                for a in accs:
+                    accession_counts[a] += 1
+                for a in annots:
+                    annotation_counts[a] += 1
+
+        acc = accession_counts.most_common(1)[0][0] if accession_counts else ''
+        ann = annotation_counts.most_common(1)[0][0] if annotation_counts else ''
+        return (acc, ann)
+
+
+    def process(self):
+        # we urrently do not generate an HTML output for pan-graph-db summaries,
+        # but since this class follows the previously existed PanSummarizer, we
+        # can also stash some metadata for any future HTML/index generation here.
+        self.summary['meta'] = {
+            'summary_type': self.summary_type,
+            'output_directory': self.output_directory,
+            'project_name': self.p_meta.get('project_name'),
+            'num_genomes': self.p_meta.get('num_genomes'),
+            'num_nodes': self.p_meta.get('num_nodes'),
+            'num_edges': self.p_meta.get('num_edges'),
+            'num_regions': len(self.regions),
+            'genome_names': self.genome_names,
+            'function_sources': sorted(self.gene_function_sources),
+            'collection_name': self.collection_name,
+            'num_bins': len(self.bin_ids) if self.bin_ids else 0,
+        }
+        self.summary['files'] = {}
+
+        node_to_bin = self._build_node_to_bin_map()
+
+        self.run.warning(None, header="SUMMARY OUTPUT FILES", lc="cyan")
+        self.generate_synteny_gene_clusters_file(node_to_bin)
+        self.generate_gene_calls_file(node_to_bin)
+        self.generate_regions_file()
+        self.generate_genome_distance_matrix_file()
+        self.write_newick_file()
+
+        # bin assignments live in the `bin_name` column of SYNGCs.txt and
+        # GENESxSYNGCs.txt, so any per-bin view the user wants is one filter away --
+        # no need to scatter redundant copies into a bins/ subfolder.
+
+        # dump misc-data (items / layers) the same way PanSummarizer does
+        self.report_misc_data_files(target_table='layers')
+        self.report_misc_data_files(target_table='items')
+
+        self.run.info('Summary output directory', self.output_directory, nl_before=1, mc='green')
+
+
+    @staticmethod
+    def _short_component_id(component_id):
+        """'CP_0001' -> 1: strip the padded prefix so summary tables carry the plain component number.
+
+           Region/component ids are name strings internally (e.g. 'CP_0001'), but users find bare
+           numbers less confusing in the output tables. Returns '' for missing values, and leaves
+           anything that doesn't parse untouched."""
+        if component_id is None or component_id == '':
+            return ''
+        try:
+            return int(str(component_id).split('_')[-1])
+        except (ValueError, IndexError):
+            return component_id
+
+    @staticmethod
+    def _short_region_id(region_id):
+        """'CP_0001_5' -> 5: keep just the region number within its component. See _short_component_id."""
+        if region_id is None or region_id == '':
+            return ''
+        try:
+            return int(str(region_id).rsplit('_', 1)[-1])
+        except (ValueError, IndexError):
+            return region_id
+
+
+    def _build_node_to_bin_map(self):
+        node_to_bin = {node_id: '' for node_id in self.synteny_gene_cluster_names}
+        if self.collection_dict:
+            for bin_id, node_ids in self.collection_dict.items():
+                for node_id in node_ids:
+                    node_to_bin[node_id] = bin_id
+        return node_to_bin
+
+
+    def generate_synteny_gene_clusters_file(self, node_to_bin):
+        """One row per SynGC: identity, region/backbone, CVS, items_additional_data layers,
+           per-source function consensus, and (when collection given) bin assignment."""
+
+        path = os.path.join(self.output_directory, 'SYNGCs.txt')
+
+        header = ['node_id', 'bin_name', 'source_gene_cluster_id', 'node_type', 'component_id', 'region_id', 'region_type',
+                  'node_x', 'node_y', 'num_genomes_present', 'genomes_present']
+
+        # items_additional_data layers (e.g. backbone), sorted for a stable column order
+        # so per-run SYNGCs.txt files can be combined positionally without scrambling.
+        layer_keys = sorted(self.items_additional_data_keys) if self.items_additional_data_keys else []
+        header += layer_keys
+
+        # function consensus columns: ACC + annotation per source
+        function_sources = sorted(self.gene_function_sources)
+        for source in function_sources:
+            header.append(source + '_ACC')
+            header.append(source)
+
+        self.progress.new('Writing SYNGCs.txt')
+        self.progress.update('...')
+
+        with open(path, 'w') as out:
+            out.write('\t'.join(header) + '\n')
+
+            for node_id in sorted(self.nodes.keys()):
+                node = self.nodes[node_id]
+                region_id = node.get('region_id')
+                component_id = node.get('component_id')
+                # region_id is plain per-component since v7 -- look up by
+                # the (component_id, region_id) composite key.
+                region_row = (self.regions.get((str(component_id), str(region_id)))
+                              if region_id is not None and component_id is not None
+                              else None)
+                region_type = region_row['region_type'] if region_row else ''
+
+                genomes_present = sorted([g for g, gcs in self.synteny_gene_clusters.get(node_id, {}).items() if gcs])
+
+                row = [node_id,
+                       node_to_bin.get(node_id, ''),
+                       node.get('gene_cluster_id', ''),
+                       node.get('node_type', ''),
+                       self._short_component_id(component_id),
+                       self._short_region_id(region_id),
+                       region_type,
+                       node.get('node_x', ''),
+                       node.get('node_y', ''),
+                       len(genomes_present),
+                       ','.join(genomes_present)]
+
+                # items_additional_data
+                node_layers = self.items_additional_data_dict.get(node_id, {}) if self.items_additional_data_dict else {}
+                for key in layer_keys:
+                    val = node_layers.get(key, '')
+                    row.append('' if val is None else val)
+
+                # function consensus
+                for source in function_sources:
+                    acc, ann = self._function_consensus(node_id, source)
+                    row.append(acc)
+                    row.append(ann)
+
+                out.write('\t'.join(['' if e is None else str(e) for e in row]) + '\n')
+
+        self.progress.end()
+        self.summary['files']['SYNGCs'] = os.path.basename(path)
+        self.run.info('SynGCs file', path)
+
+
+    def generate_gene_calls_file(self, node_to_bin):
+        """Long-format `(node_id, gene_cluster_id, genome, gene_caller_id, region_id,
+           region_type, bin_name, <function-source ACC + annotation columns>)`."""
+
+        path = os.path.join(self.output_directory, 'GENESxSYNGCs.txt')
+
+        function_sources = sorted(self.gene_function_sources)
+
+        header = ['node_id', 'bin_name', 'source_gene_cluster_id', 'genome_name', 'gene_caller_id',
+                  'component_id', 'region_id', 'region_type']
+        for source in function_sources:
+            header.append(source + '_ACC')
+            header.append(source)
+
+        sequences = None
+        if not self.quick:
+            header.append('dna_sequence' if self.report_DNA_sequences else 'aa_sequence')
+            sequences = self.get_sequences_for_synteny_gene_clusters(gene_cluster_names=set(self.nodes.keys()), report_DNA_sequences=self.report_DNA_sequences)
+
+        self.progress.new('Writing GENESxSYNGCs.txt')
+        self.progress.update('...')
+
+        with open(path, 'w') as out:
+            out.write('\t'.join(header) + '\n')
+
+            for node_id in sorted(self.nodes.keys()):
+                node = self.nodes[node_id]
+                gene_cluster_id = node.get('gene_cluster_id', '')
+                region_id = node.get('region_id')
+                component_id = node.get('component_id')
+                region_row = (self.regions.get((str(component_id), str(region_id)))
+                              if region_id is not None and component_id is not None
+                              else None)
+                region_type = region_row['region_type'] if region_row else ''
+                bin_name = node_to_bin.get(node_id, '')
+
+                per_genome = self.synteny_gene_clusters.get(node_id, {})
+                for genome_name in self.genome_names:
+                    for gene_caller_id in per_genome.get(genome_name, []):
+                        row = [node_id, bin_name, gene_cluster_id, genome_name, gene_caller_id,
+                               self._short_component_id(component_id),
+                               self._short_region_id(region_id),
+                               region_type]
+
+                        # per-call functions if available
+                        gene_anns = ((self.gene_clusters_functions_dict or {})
+                                     .get(node_id, {}).get(genome_name, {}).get(gene_caller_id, {}))
+                        for source in function_sources:
+                            blob = gene_anns.get(source)
+                            if blob is None:
+                                row.append('')
+                                row.append('')
+                                continue
+                            if isinstance(blob, bytes):
+                                blob = blob.decode('utf-8')
+                            accs, annots = [p.split('!!!') for p in blob.split('|||')]
+                            row.append('|'.join(accs))
+                            row.append('|'.join(annots))
+
+                        if sequences is not None:
+                            row.append(sequences.get(node_id, {}).get(genome_name, {}).get(gene_caller_id, ''))
+
+                        out.write('\t'.join(['' if e is None else str(e) for e in row]) + '\n')
+
+        self.progress.end()
+        self.summary['files']['GENESxSYNGCs'] = os.path.basename(path)
+        self.run.info('Genes x SynGCs file', path)
+
+
+    def generate_regions_file(self):
+        """Dumps the pan_graph_regions table 1:1."""
+
+        path = os.path.join(self.output_directory, 'REGIONS.txt')
+
+        if not self.regions:
+            self.run.info_single("No regions in the pan-graph-db; skipping REGIONS.txt")
+            return
+
+        # self.regions is keyed by (component_id, region_id) since v7. Both
+        # are already columns on each row dict, so a straight construction
+        # gives us a flat frame -- no need to lift the tuple key.
+        df = pd.DataFrame(list(self.regions.values()))
+        # match the plain-number component/region ids written into SYNGCs.txt and
+        # GENESxSYNGCs.txt so the three tables stay joinable on the same values
+        if 'component_id' in df.columns:
+            df['component_id'] = df['component_id'].map(self._short_component_id)
+        if 'region_id' in df.columns:
+            df['region_id'] = df['region_id'].map(self._short_region_id)
+        df.to_csv(path, sep='\t', index=False)
+
+        self.summary['files']['REGIONS'] = os.path.basename(path)
+        self.run.info('Regions file', path)
+
+
+    def generate_genome_distance_matrix_file(self):
+        """Reconstructs a square genome×genome distance matrix from the long-format table."""
+
+        path = os.path.join(self.output_directory, 'GENOMES_DIST_MAT.txt')
+
+        if not self.genome_distances:
+            self.run.info_single("No genome distances in the pan-graph-db; skipping GENOMES_DIST_MAT.txt")
+            return
+
+        rows = list(self.genome_distances.values())
+        long_df = pd.DataFrame(rows, columns=['genome_a', 'genome_b', 'distance'])
+        wide = long_df.pivot(index='genome_a', columns='genome_b', values='distance')
+
+        # diagonal isn't in the table; fill with zero so the matrix is complete
+        for g in self.genome_names:
+            if g not in wide.index:
+                wide.loc[g] = 0
+            if g not in wide.columns:
+                wide[g] = 0
+        wide = wide.reindex(index=self.genome_names, columns=self.genome_names).fillna(0)
+
+        wide.to_csv(path, sep='\t')
+        self.summary['files']['GENOMES_DIST_MAT'] = os.path.basename(path)
+        self.run.info('Genome distance matrix', path)
+
+
+    def write_newick_file(self):
+        path = os.path.join(self.output_directory, 'GENOMES_DIST.newick')
+
+        if not self.newick:
+            self.run.info_single("No newick tree stored in the pan-graph-db; skipping the .newick file.")
+            return
+
+        with open(path, 'w') as out:
+            out.write(self.newick + '\n')
+
+        self.summary['files']['newick'] = os.path.basename(path)
+        self.run.info('Newick tree', path)
+
+
 class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
     """Creates an über dictionary of 'summary' for anvi'o profiles."""
     def __init__(self, args=None, lazy_init=False, r=run, p=progress):
@@ -698,7 +1124,9 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         self.summary = {}
         self.summary_type = 'profile'
         self.debug = False
-        self.quick = False
+        A_local = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.quick = A_local('quick_summary') or False
+        self.light_summary = A_local('light_summary') or False
         self.profile_db_path = None
         self.contigs_db_path = None
         self.output_directory = None
@@ -722,7 +1150,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
     def init(self):
         # init profile data for colletion.
-        self.collection_dict, self.bins_info_dict = self.init_collection_profile(self.collection_name, calculate_Q2Q3_carefully=self.calculate_Q2Q3_carefully)
+        self.collection_dict, self.bins_info_dict = self.init_collection_profile(self.collection_name, calculate_Q2Q3_carefully=self.calculate_Q2Q3_carefully, report_discov=self.report_discov)
 
         # let bin names known to all
         self.bin_ids = list(self.collection_profile.keys())
@@ -845,6 +1273,220 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         self.initialized = True
 
 
+    def compute_discov_stats(self):
+        """Compute Distribution of Coverage (DisCov) stats for each bin and each contig.
+
+        Combines per-nucleotide coverage arrays taken from the auxiliary database and calls
+        utils.CoverageStats exactly once per contig and once per bin per sample. Contig arrays
+        are reused to assemble the bin array to avoid multiple reads of the auxiliary DB per split.
+
+        When calculate_Q2Q3_carefully is also True, the bin-level CoverageStats result
+        is additionally used to update self.collection_profile with accurate Q2Q3 mean
+        coverage values.
+
+        Writes two tab-delimited files to the bins_across_samples sub-directory:
+          discov_bins.txt    – one row per bin x sample
+          discov_contigs.txt – one row per contig x sample
+
+        Note that the DisCov parameters are established via self.discov_* attributes in SummarizerSuperClass.
+        """
+
+        if self.p_meta['blank']:
+            self.run.warning("DisCov calculation was requested, but this is a blank profile with "
+                             "no coverage data. Skipping DisCov output.")
+            return
+
+        if not self.auxiliary_profile_data_available:
+            q2q3_str = " and careful Q2Q3 calculation" if self.calculate_Q2Q3_carefully else ""
+            self.run.warning(f"DisCov calculation was requested (--report-discov), but the auxiliary "
+                             f"data file could not be found at '{self.auxiliary_data_path}'. "
+                             f"Skipping DisCov output{q2q3_str}. All other summary output is unaffected.",
+                             header="AUXILIARY DATA NOT FOUND")
+            return
+
+        if self.calculate_Q2Q3_carefully:
+            self.run.warning("Since both --report-discov and --calculate-Q2Q3-carefully were requested, "
+                             "anvi'o will compute careful Q2Q3 mean coverage values and DisCov scores simultaneously, "
+                             "using the same auxiliary coverage data. Depending on the size of your dataset and the number "
+                             "of contigs in your bins this step can take much much longer than usual, since anvi'o "
+                             "will have to do a lot of sorting of very large arrays. But be reassured that you will get the "
+                             "most complete summary possible at the end of this journey.",
+                             header="💀 THINGS WILL TAKE LONGER 💀")
+        else:
+            self.run.warning("Since --report-discov was requested, anvi'o will compute DisCov scores using the "
+                             "coverage data in the auxiliary database. Depending on the size of your dataset and the number "
+                             "of contigs in your bins this step can take much much longer than usual, since anvi'o "
+                             "will have to do a lot of sorting of very large arrays. But at least you will receive EVEN MOAR "
+                             "DATA as part of the summary output.",
+                             header="💀 THINGS WILL TAKE LONGER 💀")
+
+        # Determine effective window parameters for bin- or contig-level stats. When the user has not provided
+        # any window length option, use context-sensitive defaults from constants.py: bins get a
+        # fixed window (works well for large concatenated sequences), while contigs get a
+        # percentage-based window (to accommodate smaller contigs)
+        # If the user specifies either --window-length or --window-length-as-percentage, those
+        # values are applied uniformly to both levels.
+        user_specified_window = self.discov_window_length is not None or self.discov_window_percentage is not None
+        if user_specified_window:
+            bin_wlen = self.discov_window_length
+            bin_wpct = self.discov_window_percentage
+            bin_minlen = self.discov_min_window_length
+            contig_wlen = self.discov_window_length
+            contig_wpct = self.discov_window_percentage
+            contig_minlen = self.discov_min_window_length
+        else: # context-specific defaults
+            bin_wlen = constants.discov_default_bin_window_length
+            bin_wpct = None
+            bin_minlen = 0 # not used when --window-length is set
+            contig_wlen = None
+            contig_wpct = constants.discov_default_contig_window_percentage
+            if self.discov_min_window_length is None: # allow user to modify just this param
+                contig_minlen = constants.discov_default_contig_min_window_length
+            else:
+                contig_minlen = self.discov_min_window_length
+
+        if user_specified_window:
+            self.run.info('DisCov window length', bin_wlen if bin_wlen else f"{bin_wpct}% of sequence")
+            if bin_wpct:
+                self.run.info('Minimum window length', bin_minlen)
+        else:
+            self.run.info('DisCov window length (bins)', f"{bin_wlen} bp")
+            self.run.info('DisCov window length (contigs)', f"{contig_wpct}% of sequence, min {contig_minlen} bp")
+        self.run.info('DisCov fold-range', f"{self.discov_foldrange_lower}x to {self.discov_foldrange_upper}x of median nonzero coverage")
+        self.run.info('DisCov alpha value', self.discov_alpha)
+        self.run.info('DisCov formula', self.discov_formula)
+
+        bin_level_rows = []
+        contig_level_rows = []
+        DISCOV_BINS_OUTPUT='discov_bins.txt'
+        DISCOV_CONTIGS_OUTPUT='discov_contigs.txt'
+
+        self.progress.new('Computing DisCov', progress_total_items=len(self.collection_dict))
+
+        for bin_id in self.collection_dict:
+            self.progress.update(f"'{bin_id}'")
+            self.progress.increment()
+
+            # Group splits by parent contig, preserving within-contig order
+            splits_by_contig = {}
+            for split_name in self.collection_dict[bin_id]:
+                info = self.splits_basic_info[split_name]
+                parent = info['parent']
+                order = info['order_in_parent']
+                splits_by_contig.setdefault(parent, []).append((order, split_name))
+            for contig_name in splits_by_contig:
+                splits_by_contig[contig_name].sort()
+                splits_by_contig[contig_name] = [s for _, s in splits_by_contig[contig_name]]
+
+            sorted_contigs = sorted(splits_by_contig.keys())
+
+            # fetch each split's full coverage dict (all samples) once, outside the sample loop.
+            # self.split_coverage_values.get() runs a live SQLite query every call and returns
+            # {sample_name: array} for all samples at once
+            split_coverages = {}
+            failed_contigs = set()
+            for contig_name in sorted_contigs:
+                for split_name in splits_by_contig[contig_name]:
+                    try:
+                        split_coverages[split_name] = self.split_coverage_values.get(split_name)
+                    except Exception as e:
+                        self.progress.reset()
+                        self.run.warning(f"Anvi'o failed to retrieve the coverage arrays for split '{split_name}' "
+                                         f"in contig '{contig_name}' (bin '{bin_id}') from the auxiliary DB. Here is the "
+                                         f"error, in case it means anything to you: {e}.\n"
+                                         f"This contig will be excluded from contig-level DisCov output, and the bin it "
+                                         f"belongs to will be excluded from bin-level DisCov output (since its coverage "
+                                         f"array would be incomplete). Please investigate why this happened as it could "
+                                         f"be symptomatic of a more serious issue affecting your data.")
+                        failed_contigs.add(contig_name)
+                        break  # no need to fetch remaining splits for this contig
+
+            for sample_name in self.p_meta['samples']:
+                # assemble per-contig arrays from the cached per-split coverage dicts
+                contig_arrays = {}
+                for contig_name in sorted_contigs:
+                    if contig_name in failed_contigs:
+                        continue
+                    arrays = [split_coverages[split_name][sample_name]
+                              for split_name in splits_by_contig[contig_name]]
+                    contig_arrays[contig_name] = numpy.concatenate(arrays)
+
+                if not contig_arrays:
+                    continue
+
+                # Compute contig-level DisCov (one CoverageStats call per contig)
+                for contig_name, contig_array in contig_arrays.items():
+                    c_stats = utils.CoverageStats(contig_array,
+                                                  skip_outliers=True, # we don't need the self.is_outlier attribute
+                                                  discov_window_length=contig_wlen,
+                                                  discov_window_percentage=contig_wpct,
+                                                  discov_min_window_len=contig_minlen,
+                                                  discov_foldrange_lower=self.discov_foldrange_lower,
+                                                  discov_foldrange_upper=self.discov_foldrange_upper,
+                                                  discov_alpha=self.discov_alpha,
+                                                  discov_formula=self.discov_formula)
+                    contig_level_rows.append({'bin_name': bin_id,
+                                              'contig_name': contig_name,
+                                              'sample_name': sample_name,
+                                              'length': len(contig_array),
+                                              'num_windows': c_stats.num_windows,
+                                              'prop_windows_covered': c_stats.prop_win_covered,
+                                              'fold_range_coverage_depth': c_stats.fold_range_coverage_depth,
+                                              'dis_cov': c_stats.discov})
+
+                # Compute bin-level DisCov; reuse contig arrays
+                if failed_contigs: # unless one of the contig lookups failed; we don't want to compute based on partial bins
+                    continue
+                bin_array = numpy.concatenate([contig_arrays[c] for c in sorted_contigs if c in contig_arrays])
+                b_stats = utils.CoverageStats(bin_array,
+                                              skip_outliers=True,
+                                              discov_window_length=bin_wlen,
+                                              discov_window_percentage=bin_wpct,
+                                              discov_min_window_len=bin_minlen,
+                                              discov_foldrange_lower=self.discov_foldrange_lower,
+                                              discov_foldrange_upper=self.discov_foldrange_upper,
+                                              discov_alpha=self.discov_alpha,
+                                              discov_formula=self.discov_formula)
+                bin_level_rows.append({'bin_name': bin_id,
+                                       'sample_name': sample_name,
+                                       'length': len(bin_array),
+                                       'num_windows': b_stats.num_windows,
+                                       'prop_windows_covered': b_stats.prop_win_covered,
+                                       'fold_range_coverage_depth': b_stats.fold_range_coverage_depth,
+                                       'dis_cov': b_stats.discov})
+
+                # When careful Q2Q3 was also requested, extract it from the bin-level stats here (it was skipped
+                # in init_collection_profile) to avoid redundant array concatenation and computation
+                if self.calculate_Q2Q3_carefully:
+                    self.collection_profile[bin_id]['mean_coverage_Q2Q3'][sample_name] = b_stats.mean_Q2Q3
+
+        self.progress.end()
+
+        # Write bin-level output. Integer keys provide stable row order; the key column itself
+        # is suppressed so the file starts directly with the data columns.
+        bin_headers = ['key', 'bin_name', 'sample_name', 'length', 'num_windows',
+                       'prop_windows_covered', 'fold_range_coverage_depth', 'dis_cov']
+        output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix=DISCOV_BINS_OUTPUT)
+        utils.store_dict_as_TAB_delimited_file({i: row for i, row in enumerate(bin_level_rows)},
+                                               None,
+                                               headers=bin_headers,
+                                               file_obj=output_file_obj,
+                                               do_not_write_key_column=True)
+
+        # Write contig-level output
+        contig_headers = ['key', 'bin_name', 'contig_name', 'sample_name', 'length', 'num_windows',
+                          'prop_windows_covered', 'fold_range_coverage_depth', 'dis_cov']
+        output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix=DISCOV_CONTIGS_OUTPUT)
+        utils.store_dict_as_TAB_delimited_file({i: row for i, row in enumerate(contig_level_rows)},
+                                               None,
+                                               headers=contig_headers,
+                                               file_obj=output_file_obj,
+                                               do_not_write_key_column=True)
+
+        self.run.info('DisCov output (bins)', os.path.join(self.output_directory, 'bins_across_samples', DISCOV_BINS_OUTPUT))
+        self.run.info('DisCov output (contigs)', os.path.join(self.output_directory, 'bins_across_samples', DISCOV_CONTIGS_OUTPUT))
+
+
     def process(self):
         if not self.initialized:
             self.init()
@@ -852,6 +1494,11 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         if not self.output_directory:
             raise ConfigError("It seems the summarizer class have been inherited without an `output_directory` argument :/ Show stopper "
                               "mistake stopped the show. Bye!")
+
+        # if requested, compute DisCov from the coverage arrays in the aux DB. We do this first because it will also re-do Q2Q3
+        # if --calculate-Q2Q3-carefully was used
+        if self.report_discov:
+            self.compute_discov_stats()
 
         # summarize bins:
         self.progress.new("Summarizing ...", progress_total_items=len(self.bin_ids))
@@ -880,6 +1527,10 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         self.summary['meta']['bins'] = self.get_bins_ordered_by_completeness_and_size()
 
         if not self.quick:
+            self.report_misc_data_files(target_table='layers')
+            self.report_misc_data_files(target_table='items')
+
+        if self.light_summary or not self.quick:
             # generate a TAB-delimited text output file for bin summaries
             summary_of_bins = {}
             properties = ['total_length', 'num_contigs', 'N50', 'GC_content']
@@ -895,9 +1546,6 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
             output_file_obj = self.get_output_file_handle(prefix='bins_summary.txt')
             utils.store_dict_as_TAB_delimited_file(summary_of_bins, None, headers=['bins'] + properties, file_obj=output_file_obj)
-
-            self.report_misc_data_files(target_table='layers')
-            self.report_misc_data_files(target_table='items')
 
             # save merged matrices for bins x samples
             for table_name in self.summary['collection_profile_items']:
@@ -954,7 +1602,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
             import json
             print(json.dumps(self.summary, sort_keys=True, indent=4))
 
-        self.index_html = SummaryHTMLOutput(self.summary, r=self.run, p=self.progress).generate(quick=self.quick)
+        self.index_html = SummaryHTMLOutput(self.summary, r=self.run, p=self.progress).generate(quick=self.quick or self.light_summary)
 
 
     def get_bins_ordered_by_completeness_and_size(self):
@@ -1038,9 +1686,9 @@ class ContigSummarizer(SummarizerSuperClass):
             run.info_single('PLEASE READ CAREFULLY. Contigs db info summary will not include %d gene calls that were '
                             'not identified by "%s", the default gene caller. Other gene calls found in this contigs '
                             'database include, %s. If you are more interested in gene calls in any of those, you should '
-                            'indicate that through the `--gene-caller` parameter in your program.' \
-                                                                % (sum(gene_calls_from_other_gene_callers.values()), \
-                                                                   gene_caller_to_use, \
+                            'indicate that through the `--gene-caller` parameter in your program.'
+                                                                % (sum(gene_calls_from_other_gene_callers.values()),
+                                                                   gene_caller_to_use,
                                                                    ', '.join(['%d gene calls by %s' % (tpl[1], tpl[0]) for tpl in gene_calls_from_other_gene_callers.items()])))
 
         if len(impossible_gene_calls_missing_from_contigs_db):
@@ -1127,7 +1775,6 @@ class ContigSummarizer(SummarizerSuperClass):
         # import things that are only relevant for this context where we will
         # use the power of direct access to contigs-db tables to avoid long wait times
         # when we just need simple summaries of the contigs-db contents.
-        import anvio.db as db
         import anvio.tables as t
 
         # open contigs-db directly
@@ -1314,7 +1961,7 @@ class Bin:
         # in collections stored in the contigs database, split_names that are not in the
         # oritinal contigs used to generate contigs database *may* end up in the
         # collections table. we gotta make sure we deal with them properly:
-        missing_ids = [split_id for split_id in self.split_names if split_id not in self.summary.split_sequences]
+        missing_ids = [split_id for split_id in self.split_names if split_id not in self.summary.splits_basic_info]
         if len(missing_ids):
             for missing_id in missing_ids:
                 self.split_names.remove(missing_id)
@@ -1324,7 +1971,7 @@ class Bin:
                              'any sense, you may need make sure everything is in order. The thing is, '
                              'sometimes external clustering results that are added to the contigs via '
                              '`anvi-populate-collections-table` may include split names that are not used '
-                             'while the contigs database was generated.'\
+                             'while the contigs database was generated.'
                                                 % (len(missing_ids), bin_id, self.summary.collection_name))
 
 
@@ -1417,7 +2064,7 @@ class Bin:
 
 
     def store_profile_data(self):
-        if self.summary.quick:
+        if self.summary.quick or self.summary.light_summary:
             return
 
         self.progress.update('Storing profile data ...')
@@ -1447,9 +2094,6 @@ class Bin:
            up above later makes sense of all to generate files and matrices, as well as
            dictionaries to diplay part of this information in the interface.
         """
-
-        if self.summary.quick:
-            return
 
         info_dict = {}
 
@@ -1522,7 +2166,7 @@ class Bin:
 
 
     def store_gene_level_coverage_stats(self):
-        if self.summary.quick:
+        if self.summary.quick or self.summary.light_summary:
             return
 
         if not self.summary.gene_level_coverage_stats_dict:
@@ -1546,7 +2190,7 @@ class Bin:
 
 
     def store_genes_basic_info(self):
-        if self.summary.quick:
+        if self.summary.quick or self.summary.light_summary:
             return
 
         self.progress.update('Sorting out gene calls ...')
@@ -1626,7 +2270,7 @@ class Bin:
 
 
     def store_sequences_for_hmm_hits(self):
-        if self.summary.quick:
+        if self.summary.quick or self.summary.light_summary:
             return
 
         s = SequencesForHMMHits(self.summary.contigs_db_path, split_names_of_interest=self.split_names, progress=progress_quiet, bin_name=self.bin_id)
@@ -1672,7 +2316,7 @@ class Bin:
         self.bin_info_dict['contig_names'] = self.contig_names
         self.bin_info_dict['num_contigs'] = len(self.contig_names)
 
-        if self.summary.quick or quick:
+        if self.summary.quick or self.summary.light_summary or quick:
             return
 
         self.progress.update('Creating the FASTA file ...')

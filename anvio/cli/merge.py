@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Script to merge multiple profiles."""
 
 import sys
@@ -18,7 +17,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
 __requires__ = ['single-profile-db', 'contigs-db']
-__provides__ = ['profile-db', 'misc-data-items-order']
+__provides__ = ['profile-db']
+__can_provide__ = ['misc-data-items-order']
 __description__ = "Merge multiple anvio profiles"
 __resources__ = [("Another description as part of the metagenomic workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import os
 import sys
@@ -25,8 +24,9 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'ivagljiva', 'mschecht', 'ekiefl']
-__requires__ = ['contigs-db', 'hmm-source',]
-__provides__ = ['hmm-hits',]
+__requires__ = ['contigs-db']
+__can_use__ = ['hmm-source']
+__provides__ = ['hmm-hits']
 __description__ = ("This program deals with populating tables that store HMM hits in an "
                    "anvi'o contigs database")
 __resources__ = [("Another description as part of the metagenomic workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
@@ -73,7 +73,7 @@ def run_program():
         sources = utils.get_HMM_sources_dictionary([args.hmm_profile_dir], check_for_ACC_lines_in_HMM=args.add_to_functions_table)
         run.info('HMM profiles', '%d source%s been loaded: %s' % (len(sources),
                                                           's' if len(sources) > 1 else '',
-                                                          ', '.join(['%s (%d genes)' % (s, len(sources[s]['genes']))\
+                                                          ', '.join(['%s (%d genes)' % (s, len(sources[s]['genes']))
                                                                                                     for s in sources])))
     elif args.installed_hmm_profile:
         args.installed_hmm_profile = [p.strip() for p in args.installed_hmm_profile.split(',') if p.strip()]

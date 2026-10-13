@@ -11,7 +11,7 @@
 #     BUILDKIT_PROGRESS=plain docker build -t meren/anvio:$ANVIO_VERSION .
 #
 
-FROM continuumio/miniconda3:4.11.0
+FROM continuumio/miniconda3:26.1.1
 ENV ANVIO_VERSION "7.1_structure"
 
 SHELL ["/bin/bash", "--login", "-c"]

@@ -1,0 +1,46 @@
+LOCUS       MOCK_GENOME              1000 bp    DNA     linear   BCT 18-MAY-2026
+DEFINITION  Mock genome for testing anvi-script-process-genbank.
+ACCESSION   MOCK_01
+VERSION     MOCK_01
+KEYWORDS    .
+SOURCE      Mock bacterium
+  ORGANISM  Mock bacterium
+            Unclassified.
+FEATURES             Location/Qualifiers
+     source          1..1000
+                     /organism="Mock bacterium"
+                     /mol_type="genomic DNA"
+     CDS             100..400
+                     /locus_tag="MOCK_001"
+                     /product="Healthy coding protein"
+                     /translation="MTVKVGINGFGRIGR"
+     tRNA            450..520
+                     /locus_tag="MOCK_002"
+                     /product="tRNA-Ala"
+     rRNA            600..800
+                     /locus_tag="MOCK_003"
+                     /product="16S ribosomal RNA"
+     CDS             complement(850..950)
+                     /locus_tag="MOCK_004"
+                     /product="Problematic pseudogene"
+                     /pseudogene="unitary"
+                     /note="Internal stop codon"
+ORIGIN
+        1 gacctacgtc gttttgcgcc atttatacgc cacatcgcgt gggtttgcgc ttggtaatgg
+       61 ggcttagatg ctcctatgtg gtcctctccg gggtgtgttc taaggctaca aggatgtatt
+      121 ggatattccc gtgcagcgac cacacggcgg ggtgatctag tggaaatttc tgatctcgat
+      181 gtcgaaagct agtcttcctg tgggagccgt cattatactg tgcagctcta tcgtatgatt
+      241 gctcagctta cttttgaatt cgcaactttc tgctagccgg ctccgccgat cgatgtctca
+      301 atactgcaga tactaactcg cgatcgacac tcgggtgggt tttgcgatcc gagaagtgaa
+      361 atttcgaagc tgcggggacc atctcggtag atctagtatt ctgaagggag gatggaactt
+      421 agcttgggga ctgctacccg cggagggggg tctggataga ccacttggtc gtatactacg
+      481 ggtttgccaa gagccgtcga atcagagaat ctgcataccg ctgtctaact tcctgaggag
+      541 aacccctaaa tctcgtttac tttataactt aaagctaaat tattctgacg tgagggatcc
+      601 acactatcag cagcgctgtt gtcttacctt taggggttta catcatccag gacgcaattt
+      661 agtgtttgga gcctttttcc aagtacacca cctcggatag tcggtatgtg tacattagcc
+      721 ttcgccttgt caccatcggc cacccacgtt gttagggttt caagtgggag cccagtcatc
+      781 ggttttggta aatcgtacga cggtagtgcc atgcagtcat acacagagcc acaattaacc
+      841 tcgacgagtt tggcacccac cgagtggagc tccgtagcac gcgaggttct tacagcaact
+      901 gtactttaac ctgtgtccgg ttcgtgatac ggacagagga gtgtagcacc agagactgag
+      961 ccggttgcaa attagtgctc aatgcgtgca ctgtttcata
+//

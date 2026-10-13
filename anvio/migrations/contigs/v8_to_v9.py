@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 import argparse
@@ -56,7 +55,7 @@ def migrate(db_path):
     dbops.update_description_in_db(db_path, 'No description is given')
 
     run.info_single("The contigs database is now %s! All this upgrade did was to associate your contigs db with a "
-                    "project name (which happened to be 'NO_NAME', because anvi'o likes you very much)" \
+                    "project name (which happened to be 'NO_NAME', because anvi'o likes you very much)"
                                             % (next_version), nl_after=1, nl_before=1, mc='green')
 
 

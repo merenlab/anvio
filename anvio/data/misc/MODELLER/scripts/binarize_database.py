@@ -1,6 +1,6 @@
 """
 Positional arguments:
-1. INPUT - PIR database 
+1. INPUT - PIR database
 2. OUTPUT - BINARY database
 """
 import sys

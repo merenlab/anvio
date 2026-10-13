@@ -3,7 +3,7 @@ source 00.sh
 
 SETUP_WITH_OUTPUT_DIR $1 $2 $3
 
-python_script=`readlink -f run_component_tests_for_reaction_network`
+python_script=$(readlink -f run_component_tests_for_reaction_network)
 
 INFO "Checking for the required KEGG database set up by anvi'o in a default location"
 ${python_script} --check-default-kegg-database
@@ -24,20 +24,19 @@ anvi-gen-genomes-storage -e external-genomes.txt -o TEST-GENOMES.db --no-progres
 
 INFO "Running the pangenome analysis with default parameters"
 anvi-pan-genome -g TEST-GENOMES.db \
-                -o TEST/ \
                 -n TEST \
                 --use-ncbi-blast \
                 --description example_description.md \
                 --no-progress \
                 ${thread_controller}
 
-use_default_modelseed_db=`${python_script} --check-default-modelseed-database`
+use_default_modelseed_db=$(${python_script} --check-default-modelseed-database)
 if [ "${use_default_modelseed_db}" == "True" ]
 then
     INFO "Using the ModelSEED Biochemistry database already set up by anvi'o in a default location"
 else
     INFO "Setting up the ModelSEED Biochemistry database in a temporary directory (a permanent ModelSEED database can be installed in the default location with 'anvi-setup-modelseed-database')"
-    data_dir=`mktemp -d`
+    data_dir=$(mktemp -d)
     anvi-setup-modelseed-database --dir ${data_dir}
     modelseed_data_dir=${data_dir}/MODELSEED
 fi
@@ -59,7 +58,7 @@ anvi-get-metabolic-model-file --contigs-db E_faecalis_6240.db \
 
 INFO "Testing a pangenomic reaction network generated from the pan and genomes storage databases"
 args=()
-args+=( "--pan-db" "TEST/TEST-PAN.db" )
+args+=( "--pan-db" "TEST-PAN.db" )
 args+=( "--genomes-storage" "TEST-GENOMES.db" )
 args+=( "--test-dir" ${output_dir} )
 if [ ${use_default_modelseed_db} == "False" ]
@@ -70,7 +69,7 @@ args+=( "--no-progress" )
 ${python_script} "${args[@]}"
 
 INFO "Exporting the pangenomic reaction network to a file"
-anvi-get-metabolic-model-file --pan-db TEST/TEST-PAN.db \
+anvi-get-metabolic-model-file --pan-db TEST-PAN.db \
                               --genomes-storage TEST-GENOMES.db \
                               --record-genomes \
                               --output-file TEST-PAN-network.json

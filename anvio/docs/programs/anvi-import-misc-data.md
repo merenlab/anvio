@@ -1,4 +1,4 @@
-This program enables extending anvi'o projects with many kinds of **additional data**. Additional data will extend anvio' %(interactive)s displays, and appear in %(summary)s files, and become accessible to other anvi'o programs thorughout.
+This program enables extending anvi'o projects with many kinds of **additional data**. Additional data will extend anvio' %(interactive)s displays, and appear in %(pan-summary)s, %(pan-graph-summary)s, or %(profile-summary)s files, and become accessible to other anvi'o programs thorughout.
 
 This program can add additional data for your items or layers in a %(pan-db)s or %(profile-db)s, or add additional data for your nucleotides or amino acids in a %(contigs-db)s
 
@@ -9,6 +9,24 @@ Also see the program %(anvi-show-misc-data)s, %(anvi-export-misc-data)s, and %(a
 ## Items Data, Layers Data, and Orders
 
 Please see [this blog post](http://merenlab.org/2017/12/11/additional-data-tables) for a comprehensive documentation on these misc data types.
+
+### Data groups for items
+
+Items additional data is organized into **data groups**. When you import data without specifying a group, it goes into the `default` group. You can assign your data to a specific group using the `-D` flag:
+
+{{ codestart }}
+anvi-import-misc-data -p %(pan-db)s \
+                      -t items \
+                      -D my_analysis \
+                      %(misc-data-items-txt)s
+{{ codestop }}
+
+In the interactive interface, each group appears as a checkbox in the Main tab, allowing you to toggle entire groups of layers on or off. Groups also provide automatic visual separation between related layers.
+
+Several anvi'o programs automatically create named groups when they write items additional data. For instance, %(anvi-pan-genome)s creates groups like `gene_cluster_stats`, `SCG`, `homogeneity`, and `AAI`. See %(misc-data-items)s for the full list.
+
+{:.notice}
+Data key names must be unique across all groups. If you try to import a key that already exists in another group, anvi'o will report an error. You can remove the existing key first with %(anvi-delete-misc-data)s if needed.
 
 ## Nucleotides, Amino Acids, and Contigs Databases
 

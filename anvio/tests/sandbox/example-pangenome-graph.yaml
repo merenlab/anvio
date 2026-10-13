@@ -1,0 +1,11 @@
+---
+ G1:
+   - [A, B, C!, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z]
+ G2:
+   - [A, B, G, H, I, J, K, L, M, N, O, P, Q, R, s, T!, U, V, C, D, E, F, W, X, Y, Z]
+ G3:
+   - [A, B, C, D, E, F, G, H, I, X, J, K, L, M, N, P, Q, R, ß, T, U, V, W, X, Y, Z]
+ G4:
+   - [A, B, C!, D, E, F, G, H, I, X, J, K, l, M, N, P, Q, R, S, T, U, V, W, X, Y, Z]
+ G5:
+   - [A, B, C, D, E, F, G, H, I, X, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z]

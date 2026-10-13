@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Generator of genome storages"""
 
 import sys
@@ -16,7 +15,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['external-genomes', 'internal-genomes']
+__requires__ = ['external-genomes']
+__can_use__ = ['internal-genomes']
 __provides__ = ['genomes-storage-db']
 __description__ = "Create a genome storage from internal and/or external genomes for a pangenome analysis"
 __resources__ = [("A tutorial on pangenomics", "http://merenlab.org/2016/11/08/pangenomics-v2/"),]
@@ -55,6 +55,7 @@ def get_args():
 
     groupC = parser.add_argument_group("PRO STUFF", "Things you may not have to change. But you never know (unless you read the help).")
     groupC.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller'))
+    groupC.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
 
     groupD = parser.add_argument_group("OUTPUT", "Give it a nice name. Must end with '-GENOMES.db'. This is primarily due to the fact\
                                                   that there are other .db files used throughout anvi'o and it would be better to\

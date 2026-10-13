@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 DESCRIPTION = """This program exports a metabolic reaction network to a file suitable for flux balance analysis."""
 
 from sys import exit

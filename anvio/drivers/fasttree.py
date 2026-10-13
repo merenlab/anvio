@@ -1,4 +1,3 @@
-# coding: utf-8
 """Interface to FastTree."""
 
 from subprocess import Popen, PIPE

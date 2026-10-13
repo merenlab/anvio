@@ -2,7 +2,7 @@ This is a text file that **contains the information for a %(misc-data-items-orde
 
 ## NEWICK order
 
-If you intend to import a tree order, the contents of your file should look something like this (but probably much more complicated depending on the number of items in your anvi'o database): 
+If you intend to import a tree order, the contents of your file should look something like this (but probably much more complicated depending on the number of items in your anvi'o database):
 
 ```
 (contig_4, ((contig_1, contig_2), contig_3))

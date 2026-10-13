@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 import argparse
@@ -60,7 +59,7 @@ def migrate(db_path):
 
     progress.end()
     run.info_single("The contigs database is now %s. This upgrade added two more table to your contigs database "
-                    "so it can store data annotations at the nucleotide and amino acid levels" \
+                    "so it can store data annotations at the nucleotide and amino acid levels"
                     % (next_version), nl_after=1, nl_before=1, mc='green')
 
 

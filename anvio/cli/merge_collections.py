@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 """A program to merge multiple binning results into a single additional data file"""
 

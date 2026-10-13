@@ -27,7 +27,7 @@ OUTPUT() {
 SETUP_WITH_OUTPUT_DIR() {
     if [ -z "$1"  ]
     then
-        output_dir="`pwd`/sandbox/test-output"
+        output_dir="$(pwd)/sandbox/test-output"
         rm -rf $output_dir
     else
         output_dir="$1"
@@ -82,5 +82,41 @@ SETUP_WITH_OUTPUT_DIR() {
 
 SHOW_FILE() {
     OUTPUT $1
-    head -n 10 $1 | anvi-script-tabulate
+    if [[ "$2" == "--tail" ]]; then
+        tail -n 10 $1 | anvi-script-tabulate
+    else
+        head -n 10 $1 | anvi-script-tabulate
+    fi
+}
+
+# Run a command that is SUPPOSED to fail, and fail the test if it succeeds. Since `set -e` above
+# aborts these scripts on the first non-zero exit code, this is the only way to assert that
+# anvi'o rejects something it ought to reject.
+#
+#   EXPECT_FAIL "a description of what should be refused" anvi-run-workflow -w ... -c bad.json
+#
+EXPECT_FAIL() {
+    local description="$1"
+    shift
+
+    INFO "Expecting failure: $description"
+
+    if "$@" > expect_fail_output.txt 2>&1; then
+        echo "FAIL: anvi'o was supposed to refuse this, and did not: $description"
+        echo "This is the command that was expected to fail: $@"
+        cat expect_fail_output.txt
+        rm -f expect_fail_output.txt
+        exit 1
+    fi
+
+    cat expect_fail_output.txt
+    rm -f expect_fail_output.txt
+}
+
+# Fail the test unless a file contains a given string.
+ASSERT_FILE_CONTAINS() {
+    if ! grep -q -- "$2" "$1"; then
+        echo "FAIL: expected to find '$2' in '$1', and it is not there."
+        exit 1
+    fi
 }

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """anvi-analyze-synteny ... let's extract some order from this chaos!
 
 What do we say to loci that appear to have no coherent synteny patterns...?
@@ -29,7 +28,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['mschecht']
-__requires__ = ['genomes-storage-db', 'functions', 'pan-db']
+__requires__ = ['genomes-storage-db', 'pan-db']
+__can_use__ = ['functions']
 __provides__ = ['ngrams']
 __description__ = ("Extract ngrams, as in 'co-occurring genes in synteny', from genomes")
 

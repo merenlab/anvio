@@ -8,7 +8,7 @@ Please also see %(anvi-display-functions)s which can both calculate functional e
 
 ## Enriched functions in a pangenome
 
-For this to run, you must provide a %(pan-db)s and %(genomes-storage-db)s pair, as well as a %(misc-data-layers)s that associates genomes in your pan database with categorical data. The program will then find functions that are enriched in each group (i.e., functions that are associated with gene clusters that are characteristic of the genomes in that group). 
+For this to run, you must provide a %(pan-db)s and %(genomes-storage-db)s pair, as well as a %(misc-data-layers)s that associates genomes in your pan database with categorical data. The program will then find functions that are enriched in each group (i.e., functions that are associated with gene clusters that are characteristic of the genomes in that group).
 
 {:.notice}
 Note that your %(genomes-storage-db)s must have at least one functional annotation source for this to work.
@@ -23,7 +23,7 @@ What this program does can be broken down into three steps:
 
 2.  **Determine the "functional associations" of gene clusters**. In short, this is collecting the functional annotations for all of the genes in each cluster and assigning the one that appears most frequently to represent the entire cluster.
 
-3. **Quantify the distribution of functions in each group of genomes**. For this, the program determines to what extent a particular function is enriched in specific groups of genomes and reports it as a %(functional-enrichment-txt)s file. It does so by running the script `anvi-script-enrichment-stats`. 
+3. **Quantify the distribution of functions in each group of genomes**. For this, the program determines to what extent a particular function is enriched in specific groups of genomes and reports it as a %(functional-enrichment-txt)s file. It does so by running the script `anvi-script-enrichment-stats`.
 
 {:.notice}
 The script `anvi-script-enrichment-stats` was implemented by [Amy Willis](https://github.com/adw96), and described first in [this paper](https://doi.org/10.1186/s13059-020-02195-w).

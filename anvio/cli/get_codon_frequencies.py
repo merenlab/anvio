@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Get codon or amino acid frequency statistics from genomes, genes, and functions."""
 
 import sys
@@ -20,12 +19,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['semiller10', 'meren']
-__requires__ = ['contigs-db',
-                'profile-db',
-                'collection',
-                'bin',
-                'internal-genomes',
-                'external-genomes']
+__requires__ = ['contigs-db']
+__can_use__ = ['profile-db', 'collection', 'bin', 'internal-genomes', 'external-genomes']
 __provides__ = ['codon-frequencies-txt', 'aa-frequencies-txt']
 __description__ = (
     "Get codon or amino acid frequency statistics from genomes, genes, and functions")
@@ -122,7 +117,7 @@ def run_program():
 
     # Get gene frequency tables.
     if args.internal_genomes or args.external_genomes:
-        multigenome_codon_usage = codonusage.MultiGenomeCodonUsage(args, run=run)
+        multigenome_codon_usage = codonusage.MultiGenomeCodonUsage(args, r=run)
         frequency_df = multigenome_codon_usage.get_frequencies(
             from_function_sources=from_function_sources,
             return_functions=args.return_functions,
@@ -143,7 +138,7 @@ def run_program():
             label_amino_acids=args.header_amino_acids,
             infinity_to_zero=args.infinity_to_zero)
     else:
-        single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args, run=run)
+        single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args, r=run)
         frequency_df = single_genome_codon_usage.get_frequencies(
             from_function_sources=from_function_sources,
             return_functions=args.return_functions,
@@ -326,6 +321,8 @@ def get_args():
     groupF.add_argument(*anvio.A('sequence-min-amino-acids'), **anvio.K('sequence-min-amino-acids'))
     groupF.add_argument(*anvio.A('pansequence-min-amino-acids'), **anvio.K('pansequence-min-amino-acids'))
     groupF.add_argument(*anvio.A('min-codon-filter'), **anvio.K('min-codon-filter'))
+    groupF.add_argument(*anvio.A('ignore-start-codons'), **anvio.K('ignore-start-codons'))
+    groupF.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
 
     return parser.get_args(parser)
 

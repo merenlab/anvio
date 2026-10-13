@@ -1,6 +1,6 @@
-This a tab-delimited text file that describes information contained in a %(misc-data-layers)s. 
+This a tab-delimited text file that describes information contained in a %(misc-data-layers)s.
 
-To import this information into a database, use %(anvi-import-misc-data)s. 
+To import this information into a database, use %(anvi-import-misc-data)s.
 
 In this table, the first column should match the names of the samples that you're displaying, and the following columns can contain any categorical or numerical data of your choosing. (You can even be fancy and display data as a stacked bar graph.)
 

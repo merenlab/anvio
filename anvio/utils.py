@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 
 """Lonely, helper functions that are broadly used and don't fit anywhere"""
 
@@ -13,10 +11,12 @@ try:
     import os
     import sys
     import ssl
+    import json
     import yaml
     import gzip
     import time
     import copy
+    import random
     import socket
     import shutil
     import tarfile
@@ -26,7 +26,7 @@ try:
     import webbrowser
     import subprocess
     import tracemalloc
-    import urllib.request, urllib.error, urllib.parse
+    import urllib.request
 
     import numpy as np
     import pandas as pd
@@ -47,7 +47,7 @@ try:
     from anvio.sequence import Composition
     from anvio.version import versions_for_db_types
     from anvio.errors import ConfigError, FilesNPathsError
-    from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode
+    from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
 except ModuleNotFoundError as e:
     # Extract just the module name from "No module named 'modulename'"
     module_name = str(e).split("'")[1] if "'" in str(e) else str(e)
@@ -57,7 +57,7 @@ except ModuleNotFoundError as e:
           f"properly initialized since Python complains that it cannot\n"
           f"import '{module_name}'. Are you sure you have initialized\n"
           f"the anvi'o environment properly?\n\n")
-    sys.exit()
+    sys.exit(1)
 
 # psutil is causing lots of problems for lots of people :/
 with SuppressAllOutput():
@@ -175,11 +175,16 @@ def rev_comp(seq):
     return seq.translate(constants.complements)[::-1]
 
 
-def rev_comp_gene_calls_dict(gene_calls_dict, contig_sequence):
+def rev_comp_gene_calls_dict(gene_calls_dict, contig_sequence, preserve_gene_caller_ids=False):
     contig_length = len(contig_sequence)
     gene_caller_ids = list(gene_calls_dict.keys())
 
-    gene_caller_id_conversion_dict = dict([(gene_caller_ids[-i - 1], i) for i in range(0, len(gene_caller_ids))])
+    if preserve_gene_caller_ids:
+        # the caller wants to keep the original gene caller ids rather than resetting them to
+        # start from 0, so the conversion dict is simply an identity mapping
+        gene_caller_id_conversion_dict = dict([(g, g) for g in gene_caller_ids])
+    else:
+        gene_caller_id_conversion_dict = dict([(gene_caller_ids[-i - 1], i) for i in range(0, len(gene_caller_ids))])
     G = lambda g: gene_caller_id_conversion_dict[g]
 
     reverse_complemented_gene_calls = {}
@@ -230,7 +235,7 @@ def get_predicted_type_of_items_in_a_dict(d, key):
     This is a shitty function, but there was a real need for it, so here we are :/
     """
 
-    items = [x[key] for x in d.values()]
+    items = [x.get(key) for x in d.values()]
 
     if not items:
         # there is nothing to see here
@@ -446,7 +451,7 @@ def is_program_exists(program, dont_raise=False):
 
     raise ConfigError("An anvi'o function needs '%s' to be installed on your system, but it doesn't seem to appear "
                        "in your path :/ If you are certain you have it on your system (for instance you can run it "
-                       "by typing '%s' in your terminal window), you may want to send a detailed bug report. Sorry!"\
+                       "by typing '%s' in your terminal window), you may want to send a detailed bug report. Sorry!"
                         % (program, program))
 
 
@@ -518,13 +523,116 @@ def tar_extract_file(input_file_path, output_file_path=None, keep_original=True)
         os.remove(input_file_path)
 
 
+def validate_discov_params(window_length, window_length_as_percentage, min_window_length, foldrange_lower, foldrange_upper, alpha, discov_formula, require_window_param=True):
+    """Validate Distribution of Coverage (DisCov) parameters and raise ConfigError for any invalid combination.
+
+    Parameters
+    ==========
+    window_length : int or None
+        Fixed window length in bp.
+    window_length_as_percentage : int or None
+        Window length as a percentage of the sequence length.
+    min_window_length : int or None
+        Minimum window length when using window_length_as_percentage.
+    foldrange_lower : float
+        Lower fold-range boundary for evenness score E.
+    foldrange_upper : float
+        Upper fold-range boundary for evenness score E.
+    alpha : float
+        Weight of S in the DisCov score. Must be in [0, 1].
+    discov_formula : str
+        Combination formula. Must be 'linear' or 'geometric'.
+    require_window_param : bool
+        When True, raise an error if neither window_length nor window_length_as_percentage
+        is set. Set to False for callers (e.g. anvi-summarize) that supply context-sensitive
+        defaults when the user omits both flags.
+    """
+    if require_window_param and not window_length and not window_length_as_percentage:
+        raise ConfigError("In order to compute distribution of coverage (DisCov), we need you to specify a scheme "
+                          "for setting the window length. Either provide an exact length using --window-length or a "
+                          "percentage value (as an integer) using --window-length-as-percentage.")
+
+    if window_length and window_length_as_percentage:
+        raise ConfigError("Please choose either --window-length or --window-length-as-percentage, not both.")
+
+    if (window_length and window_length <= 0) or (window_length_as_percentage and window_length_as_percentage <= 0):
+        raise ConfigError("A positive window length (or percentage) is required for computing distribution of coverage (DisCov).")
+
+    if window_length_as_percentage and window_length_as_percentage > 100:
+        raise ConfigError("We cannot work with windows that are longer than 100% of a given sequence. Please change your "
+                          "--window-length-as-percentage value.")
+
+    if window_length and min_window_length:
+        raise ConfigError("The --min-window-length is only relevant when using the --window-length-as-percentage option.")
+
+    if min_window_length and min_window_length < 0:
+        raise ConfigError("The --min-window-length parameter has to be a positive integer.")
+
+    if foldrange_lower is None or foldrange_upper is None or alpha is None:
+        raise ConfigError("You'd better be a programmer messing with stuff, because it is not supposed to be possible "
+                          "to pass None values for DisCov foldrange or alpha parameters. Nor is it advisable (because it will "
+                          "throw off the calculation), so we are stopping the show right here.")
+
+    if foldrange_lower < 0 or foldrange_upper < 0:
+        raise ConfigError("Please provide positive numbers for the fold-range boundary values.")
+
+    if foldrange_lower >= foldrange_upper:
+        raise ConfigError(f"The --foldrange-lower value ({foldrange_lower}) cannot be greater than the --foldrange-upper value "
+                          f"({foldrange_upper}).")
+
+    if alpha < 0 or alpha > 1:
+        raise ConfigError("The --alpha parameter for DisCov should take a value between 0 and 1 (inclusive). Keep in "
+                          "mind that it is going to be used in the following equation: DisCov = αS + (1-α)E. Hopefully "
+                          "that helps explain these restrictions :)")
+
+    if discov_formula not in ('linear', 'geometric'):
+        raise ConfigError(f"The --discov-formula parameter must be either 'linear' or 'geometric', but you provided "
+                          f"'{discov_formula}'. Please fix that and try again.")
+
+
 class CoverageStats:
     """A class to return coverage stats for an array of nucleotide level coverages.
 
     FIXME: This class should replace `coverage_c` function in bamops to avoid redundancy.
+
+    In addition to the classic stats, this class also computes a distribution of coverage (DisCov)
+    score, which combines a metric for assessing spread of coverage across the sequence (proportion
+    of fixed-length windows with at least some coverage, S) and a metric for assessing the
+    evenness of nonzero coverage depth (proportion of bases with nonzero coverage that are within some
+    fold-range of the median nonzero coverage, E).
+
+    These metrics can be combined linearly with a weight α following the formula: DisCov = αS + (1-α)E.
+    Or, they can be combined by taking a weighted geometric mean following the formula: DisCov = S^α * E^(1-α)
+
+    Parameters
+    ==========
+    coverage : array
+        Nucleotide-level coverages. The only required parameter.
+    skip_outliers : boolean
+        Whether or not to compute the self.is_outlier attribute
+    discov_window_length : int
+        How long to make the windows for computing S
+    discov_window_percentage : int
+        If provided, window length will be computed dynamically as a percentage of the input sequence length
+    discov_min_window_len : int, None
+        Specifies the minimum window length when discov_window_percentage is used. If None is passed, it will
+        be converted to 0
+    discov_foldrange_lower : float
+        When computing E, count any bases with coverage over this value * the median nonzero coverage
+    discov_foldrange_upper : float
+        When computing E, count any bases with coverage under this value * the median nonzero coverage
+    discov_alpha : float
+        A value in [0,1] that indicates how much to weight S over E in the Discov score
+    discov_formula : string
+        Can be 'linear' or 'geometric', to choose which formula to use.
     """
 
-    def __init__(self, coverage, skip_outliers=False):
+    def __init__(self, coverage, skip_outliers=False, discov_window_length=10000, discov_window_percentage=None,
+                discov_min_window_len=500, discov_foldrange_lower=0.25, discov_foldrange_upper=4, discov_alpha=0.5,
+                return_window_info=False, discov_formula='geometric'):
+        if discov_min_window_len is None:
+            discov_min_window_len = 0
+
         self.min: float = np.amin(coverage)
         self.max: float = np.amax(coverage)
         self.median: float = np.median(coverage)
@@ -544,6 +652,118 @@ class CoverageStats:
             self.is_outlier = None
         else:
             self.is_outlier = get_list_of_outliers(coverage, median=self.median) # this is an array not a list
+
+        # compute proportion of windows that have at least some coverage
+        if discov_window_percentage:
+            discov_window_length = int(len(coverage) * discov_window_percentage / 100)
+            if discov_window_length < discov_min_window_len:
+                discov_window_length = discov_min_window_len
+        windows = self.get_window_regions(coverage, window_length=discov_window_length)
+        if len(windows) > 1:
+            final_window_len = windows[-1][1] - windows[-1][0]
+            if final_window_len < 0.1*discov_window_length: # don't count the last window if it is too small
+                windows = windows[:-1]
+        nonzero_window_means = [x for x in windows if x[2] > 0]
+        self.num_windows = len(windows)
+        self.prop_win_covered = len(nonzero_window_means) / self.num_windows
+
+        nonzero_coverage = coverage[coverage > 0]
+        self.fold_range_coverage_depth = self.fold_range_of_median_detection(nonzero_coverage, fold_lower=discov_foldrange_lower, fold_upper=discov_foldrange_upper)
+
+        if discov_formula == 'linear':
+            self.discov = discov_alpha * self.prop_win_covered + (1-discov_alpha) * self.fold_range_coverage_depth
+        else: # 'geometric'
+            self.discov = (self.prop_win_covered ** discov_alpha) * (self.fold_range_coverage_depth ** (1-discov_alpha))
+
+        if return_window_info:
+            self.windows = self._get_window_info(coverage, windows, nonzero_coverage, discov_foldrange_lower, discov_foldrange_upper)
+        else:
+            self.windows = None
+
+
+    def get_window_regions(self, coverage, window_length):
+        """Given an array of coverage values, divides it into non-overlapping windows of the requested length.
+
+        Each region is described as a tuple of (start_position, stop_position, mean_coverage), with start and stop
+        positions following Python indexing rules to enable slicing. If the array doesn't divide equally by the
+        window length, the final window will be shorter than the rest. And if the input array is smaller than the
+        window length, this function will return a single window covering the entire array.
+        """
+        if window_length > len(coverage): # if the input is smaller than the window size, make it one window
+            window_length = len(coverage)
+        elif window_length == 0:
+            raise ConfigError("The get_window_regions() function was requested to make zero-length windows. Impossible!")
+
+        windows = []
+        current_start = 0
+        current_stop = current_start + window_length
+        while current_stop <= len(coverage):
+            region_data = (current_start, current_stop, np.mean(coverage[current_start:current_stop]))
+            windows.append(region_data)
+            current_start = current_stop
+            current_stop = current_start + window_length
+            # EDGE CASE: final region is incomplete window
+            if current_stop > len(coverage) and current_start < len(coverage):
+                final_region = (current_start, len(coverage), np.mean(coverage[current_start:]))
+                windows.append(final_region)
+
+        return windows
+
+
+    def _get_window_info(self, coverage, windows, nonzero_coverage, fold_lower, fold_upper):
+        """Return a dict-of-dicts with per-window stats for optional window-level output.
+
+        Parameters
+        ==========
+        coverage : array
+            Full nucleotide-level coverage array.
+        windows : list
+            List of (start, stop, mean_coverage) tuples from get_window_regions().
+        nonzero_coverage : array
+            coverage[coverage > 0], pre-computed by the caller.
+        fold_lower : float
+            Lower fold-range boundary (same as discov_foldrange_lower).
+        fold_upper : float
+            Upper fold-range boundary (same as discov_foldrange_upper).
+
+        Returns
+        =======
+        window_info : dict
+            Dict-of-dicts keyed by sequential integer index. Each inner dict has keys:
+            start, stop, length, has_coverage, num_bases_within_foldrange,
+            num_bases_with_coverage.
+        """
+        window_info = {}
+
+        if not len(nonzero_coverage):
+            for i, (start, stop, _) in enumerate(windows):
+                window_info[i] = {'start': start, 'stop': stop, 'length': stop - start,
+                                  'has_coverage': 0, 'num_bases_within_foldrange': 0,
+                                  'num_bases_with_coverage': 0}
+            return window_info
+
+        global_median = np.median(nonzero_coverage)
+        lower_bound = fold_lower * global_median
+        upper_bound = fold_upper * global_median
+
+        for i, (start, stop, mean_cov) in enumerate(windows):
+            window_cov = coverage[start:stop]
+            num_within = int(np.sum((window_cov >= lower_bound) & (window_cov <= upper_bound)))
+            window_info[i] = {'start': start, 'stop': stop, 'length': stop - start,
+                              'has_coverage': int(mean_cov > 0), 'num_bases_within_foldrange': num_within,
+                              'num_bases_with_coverage': int(np.count_nonzero(window_cov))}
+
+        return window_info
+
+
+    def fold_range_of_median_detection(self, coverage, fold_lower=0.25, fold_upper=4):
+        """Returns the fraction of bases within the fold-range of the median coverage."""
+
+        if not len(coverage):
+            return 0.0
+        median = np.median(coverage)
+        num_within_range = len(coverage[(coverage >= fold_lower*median) & (coverage <= fold_upper*median)])
+        return num_within_range/len(coverage)
 
 
 class RunInDirectory(object):
@@ -586,8 +806,8 @@ def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remov
 
     if anvio.DEBUG:
         Progress().reset()
-        Run().info("[DEBUG] `run_command` is running", \
-                   ' '.join(['%s' % (('"%s"' % str(x)) if ' ' in str(x) else ('%s' % str(x))) for x in cmdline]), \
+        Run().info("[DEBUG] `run_command` is running",
+                   ' '.join(['%s' % (('"%s"' % str(x)) if ' ' in str(x) else ('%s' % str(x))) for x in cmdline]),
                    nl_before=1, nl_after=1, mc='red', lc='yellow')
 
     filesnpaths.is_output_file_writable(log_file_path)
@@ -1002,6 +1222,19 @@ def is_all_npm_packages_installed():
     # Check if node_modules exists and is not empty
     node_modules_path = os.path.join(interactive_dir_path, 'node_modules')
 
+    # package-lock.json is not part of anvi'o, so a clean install drops the one a previous install left
+    # behind, which may still point to versions npm upgraded
+    def show_npm_install_commands(restore_package_json=False, clean_install=False):
+        commands = [f"cd {interactive_dir_path}"]
+        if restore_package_json:
+            commands.append("git restore package.json")
+        if clean_install:
+            commands.append("rm -rf node_modules package-lock.json")
+        commands.extend(["npm install", "cd -"])
+
+        for i, command in enumerate(commands):
+            run.info_single(f"{i + 1}) {command}", level=0, overwrite_verbose=True)
+
     if not os.path.exists(node_modules_path) or not os.listdir(node_modules_path):
         run.warning("Anvi'o recently changed its use of external libraries for interactive interfaces"
                     "from git submodules to npm packages. Your current setup does not seem to have the "
@@ -1011,14 +1244,76 @@ def is_all_npm_packages_installed():
                     "on GitHub or Discord since this is a new feature and some hiccups may occur.",
                     header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True,
                     lc='yellow')
-        run.info_single(f"1) cd {interactive_dir_path}", level=0, overwrite_verbose=True)
-        run.info_single("2) npm install", level=0, overwrite_verbose=True)
-        run.info_single("3) cd -", level=0, overwrite_verbose=True)
+        show_npm_install_commands()
 
         raise ConfigError("Some npm packages seem to be missing in your interactive directory. "
                           "Please run 'npm install' in the interactive directory and try again.")
-    else:
-        return True
+
+    with open(os.path.join(interactive_dir_path, 'package.json')) as package_json:
+        dependencies = json.load(package_json).get('dependencies', {})
+
+    # Anvi'o pins every package to an exact version, since the interfaces only work with those
+    # versions (e.g., Bootstrap 4 refuses to run with jQuery 4). A version range in package.json
+    # (e.g., '^4.0.0') means `npm audit fix --force` or `npm install <package>` rewrote it, and an
+    # installed version that differs from its pin means node_modules no longer matches package.json
+    installed_versions = {}
+    for package in dependencies:
+        installed_package_json_path = os.path.join(node_modules_path, package, 'package.json')
+        if os.path.exists(installed_package_json_path):
+            with open(installed_package_json_path) as installed_package_json:
+                installed_versions[package] = json.load(installed_package_json).get('version')
+
+    unpinned_packages = [p for p, v in dependencies.items() if not all(part.isdigit() for part in v.split('.'))]
+    mismatched_packages = [p for p in installed_versions if p not in unpinned_packages and installed_versions[p] != dependencies[p]]
+
+    if unpinned_packages or mismatched_packages:
+        changed_packages = [f"{p} ({installed_versions.get(p, 'not installed')}, package.json asks for '{dependencies[p]}')" for p in unpinned_packages] + \
+                           [f"{p} ({installed_versions[p]}, expected {dependencies[p]})" for p in mismatched_packages]
+
+        is_git_checkout = os.path.exists(os.path.join(os.path.dirname(anvio_module_path), '.git'))
+
+        explanation = (f"The npm packages in your interactive directory do not match the versions anvi'o "
+                       f"was tested with: {', '.join(changed_packages)}. This most often happens after "
+                       f"running `npm audit fix --force` or `npm install <package>`, which upgrade packages "
+                       f"to versions the interactive interfaces do not work with (e.g., the interface hangs "
+                       f"on its loading screen). The vulnerabilities `npm audit` reports concern websites "
+                       f"served to the open internet, and do not apply to anvi'o interfaces running on your "
+                       f"own computer, so you can safely ignore them.")
+
+        if unpinned_packages and not is_git_checkout:
+            run.warning(f"{explanation} Since npm rewrote the package.json file of your anvi'o installation, "
+                        f"which is not a git checkout anvi'o could restore it from, please reinstall anvi'o "
+                        f"to get the original package.json back, and run `npm install` in the interactive "
+                        f"directory again.", header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True,
+                        lc='yellow')
+
+            raise ConfigError("The package.json file in your interactive directory no longer pins the npm "
+                              "package versions anvi'o needs. Please reinstall anvi'o and try again.")
+
+        run.warning(f"{explanation} If you run the commands below in your terminal, you will reinstall "
+                    f"the correct versions:", header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True,
+                    lc='yellow')
+        show_npm_install_commands(restore_package_json=bool(unpinned_packages), clean_install=True)
+
+        raise ConfigError("Some npm packages in your interactive directory are not the versions anvi'o "
+                          "needs. Please reinstall them with the commands above and try again.")
+
+    # Check if every package listed in package.json is in node_modules, since a node_modules
+    # directory from an earlier `npm install` lacks the packages added to anvi'o after it
+    missing_packages = [p for p in dependencies if not os.path.exists(os.path.join(node_modules_path, p, 'package.json'))]
+
+    if missing_packages:
+        run.warning(f"Your interactive directory is missing {pluralize('npm package', len(missing_packages))} "
+                    f"that anvi'o interfaces need: {', '.join(missing_packages)}. This happens when anvi'o "
+                    f"starts using a new library after your last `npm install`. If you run the commands below "
+                    f"in your terminal, you will most likely be fine :)",
+                    header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True, lc='yellow')
+        show_npm_install_commands()
+
+        raise ConfigError("Some npm packages seem to be missing in your interactive directory. "
+                          "Please run 'npm install' in the interactive directory and try again.")
+
+    return True
 
 
 def HTMLColorToRGB(colorstring, scaled=True):
@@ -1232,6 +1527,104 @@ def restore_alignment(sequence, alignment_summary, from_aa_alignment_summary_to_
         return alignment + ''.join(sequence)
     else:
         return alignment
+
+
+def get_representative_sequence_from_gene_cluster(sequence_entries):
+    """Select a single representative amino acid sequence for a gene cluster.
+
+    This is the shared implementation behind `anvio.dbops.PanSuperclass.get_gene_cluster_representative_sequences`
+    (the user-facing path, reached via `anvi-get-sequences-for-gene-clusters --representative-sequences`).
+    It is deliberately kept as a standalone function so that anvi'o's structural-pangenome build path can
+    reuse the exact same selection logic and both routes pick representatives identically.
+
+    Strategy
+    ========
+    1) exclude length outliers using the median length of non-partial genes (fall back to all genes).
+    2) compute a medoid based on pairwise similarity of the aligned sequences.
+    3) prefer non-partial genes; if all are partial, fall back to the best partial medoid.
+    4) if only one sequence exists, return it.
+
+    Parameters
+    ==========
+    sequence_entries : list of dict
+        One dict per gene in the cluster, each with AT LEAST the following keys:
+          'align_sequence' : str, the ALIGNED amino acid sequence (i.e., with gap characters).
+          'length'         : int, the ungapped amino acid sequence length.
+          'gap_count'      : int, the number of gap characters in 'align_sequence'.
+          'is_partial'     : bool, whether the gene call is partial.
+        Any additional keys (e.g., 'genome_name', 'gene_callers_id') are ignored by the
+        selection logic but preserved, since the winning entry is returned as-is.
+
+    Returns
+    =======
+    representative_entry : dict
+        The winning entry from `sequence_entries`, returned unchanged. Its 'align_sequence' value is
+        the aligned amino acid sequence (still with gaps); callers that want the raw sequence should
+        strip the gap characters themselves. Any identity keys the caller included (e.g.,
+        'genome_name', 'gene_callers_id') are carried through untouched.
+    """
+
+    if not len(sequence_entries):
+        raise ConfigError("get_representative_sequence_from_gene_cluster :: was called with an empty list of "
+                          "sequence entries, which should never happen.")
+
+    # short-circuit: single-member cluster
+    if len(sequence_entries) == 1:
+        return sequence_entries[0]
+
+    # compute median length excluding partials if possible
+    non_partial_lengths = [e['length'] for e in sequence_entries if not e['is_partial']]
+    lengths_for_median = non_partial_lengths if len(non_partial_lengths) else [e['length'] for e in sequence_entries]
+    median_length = np.median(lengths_for_median) if len(lengths_for_median) else 0
+
+    # exclude length outliers (+/-20% of median). If everything is excluded, fall back to all.
+    filtered_entries = sequence_entries
+    if median_length:
+        lower, upper = 0.8 * median_length, 1.2 * median_length
+        filtered_entries = [e for e in sequence_entries if lower <= e['length'] <= upper]
+        if not len(filtered_entries):
+            filtered_entries = sequence_entries
+
+    # compute pairwise similarities (identity over aligned positions without gaps)
+    def pairwise_similarity(seq_a, seq_b):
+        matches, positions = 0, 0
+        for aa, bb in zip(seq_a, seq_b):
+            if aa == '-' or bb == '-':
+                continue
+            positions += 1
+            if aa == bb:
+                matches += 1
+        if positions == 0:
+            return 0
+        return matches / positions
+
+    def average_distance(entry, entries):
+        if len(entries) == 1:
+            return 0
+        total = 0
+        for other in entries:
+            if other is entry:
+                continue
+            sim = pairwise_similarity(entry['align_sequence'], other['align_sequence'])
+            total += (1 - sim)
+        return total / (len(entries) - 1)
+
+    # rank candidates by average distance, then gaps, then length (longer preferred). The trailing
+    # index is a deterministic tiebreaker that also keeps the sort from ever comparing the entries.
+    ranked = []
+    for idx, entry in enumerate(filtered_entries):
+        avg_dist = average_distance(entry, filtered_entries)
+        ranked.append((avg_dist, entry['gap_count'], -entry['length'], entry['is_partial'], entry['align_sequence'], idx))
+
+    ranked.sort()
+
+    # prefer non-partial medoid if available
+    for _, _, _, is_partial, _, idx in ranked:
+        if not is_partial:
+            return filtered_entries[idx]
+
+    # all sequences are partial
+    return filtered_entries[ranked[0][5]]
 
 
 def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], expected_number_of_fields=None, separator='\t'):
@@ -1471,7 +1864,7 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
                           f"log file offers some clues: {log_file_path}")
 
     enrichment_stats = get_TAB_delimited_file_as_dictionary(enrichment_output_file_path)
-    
+
     # here we will naively try to cast every column that matches `p_*` to float, and every
     # column that matches `N_*` to int.
     column_names = list(enrichment_stats.values())[0].keys()
@@ -1504,7 +1897,7 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
                                   f"entry `{entry}` in your output file contained a value of `{enrichment_stats[entry][column_name]}`. "
                                   f"We have no idea how this happened, but it is not good :/ If you would like to mention this "
                                   f"to someone, please attach to your inquiry the following file: '{enrichment_output_file_path}'.")
-    
+
     # if everything went okay, we remove the log file
     if anvio.DEBUG or num_NA_qvals:
         run.warning(f"Due to the `--debug` flag or the presence of 'NA' q-values, anvi'o keeps the log file at '{log_file_path}'.", lc='green', header="JUST FYI")
@@ -1651,7 +2044,7 @@ def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, media
 
     median : array-like, None
         Pass median of values if you already calculated it to save time.
-    
+
     only_positive_outliers : bool
         If True, only returns outliers that are higher than the median.
 
@@ -2696,7 +3089,7 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs)
 
     if gene_call['contig'] not in contig_sequences_dict:
         raise ConfigError("get_list_of_AAs_for_gene_call: The contig sequences dict sent to "
-                           "this function does contain the contig name that appears in the gene call. "
+                           "this function does not contain the contig name that appears in the gene call. "
                            "Something is wrong here...")
 
     try:
@@ -2714,7 +3107,7 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs)
         reference_codon_sequence = contig_sequence[nt_positions[0]:nt_positions[2] + 1]
 
         # NOTE: here we make sure the codon sequence is composed of unambiguous nucleotides.
-        # and we will not inlcude those that contain anything other than proper
+        # and we will not include those that contain anything other than proper
         # nucleotides in the resulting list of codons.
         if set(reference_codon_sequence).issubset(constants.unambiguous_nucleotides):
             list_of_codons.append(constants.codon_to_codon_RC[reference_codon_sequence] if gene_call['direction'] == 'r' else reference_codon_sequence)
@@ -3070,7 +3463,7 @@ def is_amino_acid_functionally_conserved(amino_acid_residue_1, amino_acid_residu
 
     if group == 'Polar and Nonpolar':
         #they fall in more than one group, multiple tests needed
-        if amino_acid_residue_1 == 'H' and (amino_acid_residue_2 in constants.conserved_amino_acid_groups['Nonpolar'] \
+        if amino_acid_residue_1 == 'H' and (amino_acid_residue_2 in constants.conserved_amino_acid_groups['Nonpolar']
                                             or amino_acid_residue_2 in constants.conserved_amino_acid_groups['Bases']):
             return True
 
@@ -3177,7 +3570,7 @@ def check_contig_names(contig_names, dont_raise=False):
                            "digits. Names can also contain underscore ('_'), dash ('-') and dot ('.') "
                            "characters. anvio knows how much work this may require for you to go back and "
                            "re-generate your BAM files and is very sorry for asking you to do that, however, "
-                           "it is critical for later steps in the analysis." \
+                           "it is critical for later steps in the analysis."
                                 % ("contains multiple characters" if len(characters_anvio_doesnt_like) > 1 else "contains a character",
                                    ", ".join(['"%s"' % c for c in characters_anvio_doesnt_like])))
 
@@ -3496,13 +3889,13 @@ def export_sequences_from_contigs_db(contigs_db_path, output_file_path, seq_name
           if just_do_it:
               run.warning("Not all the sequences you requested are %s in this CONTIGS.db. %d names are contigs, "
                           "%d are splits, and %d are neither. BUT you're in just-do-it mode and we know you're in charge, so we'll "
-                          "proceed using any appropriate names." % \
+                          "proceed using any appropriate names." %
                           (mode, len(contig_names), len(split_names), len(missing_names),))
               seq_names_to_export = appropriate_seq_names
           else:
               raise ConfigError("Not all the sequences you requested are %s in this CONTIGS.db. %d names are contigs, "
                                 "%d are splits, and %d are neither. If you want to live on the edge and try to "
-                                "proceed using any appropriate names, try out the `--just-do-it` flag." % \
+                                "proceed using any appropriate names, try out the `--just-do-it` flag." %
                                 (mode, len(contig_names), len(split_names), len(missing_names)))
 
     for seq_name in seq_names_to_export:
@@ -3603,7 +3996,7 @@ def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict=
         output.write('''        <viz:size value="%d"/>\n''' % sample_size)
 
         if sample_mapping_dict and 'colors' in sample_mapping_dict[sample]:
-            output.write('''        <viz:color r="%d" g="%d" b="%d" a="1"/>\n''' %\
+            output.write('''        <viz:color r="%d" g="%d" b="%d" a="1"/>\n''' %
                                              HTMLColorToRGB(sample_mapping_dict[sample]['colors'], scaled=False))
 
         if sample_mapping_categories:
@@ -3884,7 +4277,7 @@ def to_jsonable(obj):
 
     Examples
     ========
-    >>> d = {...} # some dict of any size and level of nestedness 
+    >>> d = {...} # some dict of any size and level of nestedness
     >>> json.dumps(f, default=utils.to_jsonable)
     """
 
@@ -3902,9 +4295,9 @@ def to_jsonable(obj):
     raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
 
-def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_to_append=None, column_names=None,\
-                                        column_mapping=None, indexing_field=0, separator='\t', no_header=False,\
-                                        ascii_only=False, only_expected_fields=False, assign_none_for_missing=False,\
+def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_to_append=None, column_names=None,
+                                        column_mapping=None, indexing_field=0, separator='\t', no_header=False,
+                                        ascii_only=False, only_expected_fields=False, assign_none_for_missing=False,
                                         none_value=None, empty_header_columns_are_OK=False, return_failed_lines=False,
                                         ignore_duplicated_keys=False, key_prefix=None):
     """Takes a file path, returns a dictionary.
@@ -4153,7 +4546,7 @@ def get_pruned_HMM_hits_dict(hmm_hits_dict):
                 4: {'entry_id': 3, 'gene_name': 'Archaeal_16S_rRNA', 'contig_name': 'c_split_00001', 'start': 4988, 'stop': 3441, 'e_value': 7.7e-240}
            }
 
-       where entry 1 and entry 2 should be removed (becuse they overlap witth 3 and 4, respectively, and they are shorter).
+       where entry 1 and entry 2 should be removed (becuse they overlap with 3 and 4, respectively, and they are shorter).
     """
 
     # first create a simpler data structure where all hits in a single contig are accessible directly.
@@ -4187,7 +4580,7 @@ def get_pruned_HMM_hits_dict(hmm_hits_dict):
                 shortest_of_the_two = min(hits[i][0], hits[j][0])
 
                 if alignment_end - alignment_start > shortest_of_the_two / 2:
-                    # the overlap between these two is more than the half of the lenght of the
+                    # the overlap between these two is more than the half of the length of the
                     # shorter one. this is done
                     overlapping_hits_indices.add(i)
                     overlapping_hits_indices.add(j)
@@ -4217,7 +4610,7 @@ def get_HMM_sources_dictionary(source_dirs=[], check_for_ACC_lines_in_HMM=False)
        check_for_ACC_lines_in_HMM : bool
             If True, this function will throw an error if it finds any model without an `ACC`
             line in the genes.hmm.gz file
-    
+
        Each input 'source' directory must have five files:
 
        - genes.hmm.gz: compressed HMM for each gene.
@@ -4269,7 +4662,7 @@ def get_HMM_sources_dictionary(source_dirs=[], check_for_ACC_lines_in_HMM=False)
                               "counfusion around these parts of the code. Anvi'o could set some defualts for you, "
                               "but it would be much better if you set your own defaults explicitly. You're not "
                               "sure what would make a good default for your HMM collection? Reach out to "
-                              "a developer, and they will help you! Here are the files that are empty: %s." % \
+                              "a developer, and they will help you! Here are the files that are empty: %s." %
                                     (os.path.basename(source), ', '.join(empty_files)))
 
         ref = R('reference.txt')
@@ -4353,7 +4746,7 @@ def check_misc_data_keys_for_format(data_keys_list):
         raise ConfigError("Oh no :( We recently changed the description of the stacked bar data type, and your input data "
                           "file still has the older version. Here is the list of those that are violating the new format: "
                           "%s. To avoid this issue and to turn them into the new format, you could take '%s', and present "
-                          "it as %d separate TAB-delimited entries that look like this: %s. Sorry!" % \
+                          "it as %d separate TAB-delimited entries that look like this: %s. Sorry!" %
                                             (', '.join(['"%s"' % k for k in obsolete_stackedbar_keys]),
                                              key_violates_new_rule,
                                              len(new_rule_compatible_data_keys),
@@ -4370,7 +4763,7 @@ def sanity_check_hmm_model(model_path, genes, require_ACC_lines=False):
 
     with gzip.open(model_path, 'rt', encoding='utf-8') as f:
         for line in f:
-            if line.startswith('HMMER3/f'):
+            if line.startswith('HMMER3/'):
                 model_number += 1
                 model_num_to_details[model_number] = {'name': None, 'acc': None}
             if line.startswith('NAME'):
@@ -4394,7 +4787,7 @@ def sanity_check_hmm_model(model_path, genes, require_ACC_lines=False):
     if len(genes_in_model.difference(gene_names)):
         raise ConfigError(f"Some gene names in the genes.hmm.gz file do not seem to appear in genes.txt. "
                           f"Here is a list of the extra gene names: {', '.join(list(genes_in_model.difference(gene_names)))}")
-    
+
     if require_ACC_lines:
         models_no_acc = [(num, model_num_to_details[num]['name']) for num in model_num_to_details if not model_num_to_details[num]['acc']]
         if models_no_acc:
@@ -4514,8 +4907,15 @@ def get_all_item_names_from_the_database(db_path, run=run):
             return set([])
         else:
             all_items = set(database.get_single_column_from_table('mean_coverage_Q2Q3_splits', 'item'))
+
+            # zero-coverage splits are stored in a separate table rather than in the view tables,
+            # so we need to include them here to get the complete set of split names.
+            if 'zero_coverage_splits' in database.get_table_names():
+                all_items.update(database.get_single_column_from_table('zero_coverage_splits', 'item'))
     elif db_type == 'pan':
         all_items = set(database.get_single_column_from_table(t.pan_gene_clusters_table_name, 'gene_cluster_id'))
+    elif db_type == 'pan-graph':
+        all_items = set(database.get_single_column_from_table(t.pan_graph_nodes_table_name, 'node_id'))
     elif db_type == 'contigs':
         all_items = set(database.get_single_column_from_table(t.splits_info_table_name, 'split'))
     elif db_type == 'genes':
@@ -4569,8 +4969,8 @@ def is_trnaseq_db(db_path):
     return True
 
 
-def is_pan_or_profile_db(db_path, genes_db_is_also_accepted=False):
-    ok_db_types = ['pan', 'profile'] + (['genes'] if genes_db_is_also_accepted else [])
+def is_pan_or_profile_db(db_path, genes_db_is_also_accepted=False, pan_graph_db_is_also_accepted=False):
+    ok_db_types = ['pan', 'profile'] + (['genes'] if genes_db_is_also_accepted else []) + (['pan-graph'] if pan_graph_db_is_also_accepted else [])
     dbi(db_path, expecting=ok_db_types)
     return True
 
@@ -4596,6 +4996,11 @@ def is_blank_profile(db_path):
 
 def is_pan_db(db_path):
     dbi(db_path, expecting='pan')
+    return True
+
+
+def is_pan_graph_db(db_path):
+    dbi(db_path, expecting='pan-graph')
     return True
 
 
@@ -4662,7 +5067,7 @@ def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path
     if cdb.hash != sdb.hash:
         raise ConfigError('The contigs and structure databases do not seem compatible. '
                           'More specifically, the contigs database is not the one that '
-                          'was used when the structure database was created (%s != %s).'\
+                          'was used when the structure database was created (%s != %s).'
                                % (cdb.hash, sdb.hash))
 
     return True
@@ -4705,6 +5110,21 @@ def get_yaml_as_dict(file_path):
 
     try:
         return yaml.load(open(file_path), Loader=yaml.FullLoader)
+    except Exception as e:
+        raise ConfigError(f"Anvi'o run into some trouble when trying to parse the file at "
+                          f"{file_path} as a YAML file. It is likely that it is not a properly "
+                          f"formatted YAML file and it needs editing, but here is the error "
+                          f"message in case it clarifies things: '{e}'.")
+
+def save_dict_as_yaml(data, file_path):
+    """YAML parser"""
+
+    filesnpaths.is_output_file_writable(file_path)
+
+    try:
+        with open(file_path, 'w') as outfile:
+            yaml.dump(data, outfile, default_flow_style=False)
+
     except Exception as e:
         raise ConfigError(f"Anvi'o run into some trouble when trying to parse the file at "
                           f"{file_path} as a YAML file. It is likely that it is not a properly "
@@ -4897,12 +5317,111 @@ def download_protein_structure(protein_code, output_path=None, chain=None, raise
     return output_path
 
 
-def get_hash_for_list(l):
-    return 'hash' + str(hashlib.sha224(''.join(sorted(list(l))).encode('utf-8')).hexdigest()[0:8])
+def get_hash_for_list(l, num_hex_digits=24):
+    return str(hashlib.sha224(''.join(sorted(list(l))).encode('utf-8')).hexdigest()[0:num_hex_digits])
+
+
+def get_random_hash(num_hex_digits=24):
+    """Returns a random hash for anvi'o databases that need a unique identifier.
+
+    Please note that the number of hexadecimal digits here is not a cosmetic choice: the
+    probability of two independently generated hashes colliding is governed by the birthday
+    problem, and with the 8 hexadecimal digits anvi'o used to use (i.e., a space of only 32
+    bits), someone who generated tens of thousands of databases over the years would have been
+    more likely than not to end up with two databases that had the exact same hash. Which did
+    happen. Twice. Hence these 16 digits.
+
+    Parameters
+    ==========
+    num_hex_digits : int
+        The number of hexadecimal digits the hash will be composed of.
+
+    Returns
+    =======
+    hash : str
+        A string that looks like `hash0a1b2c3d4e5f6789`.
+    """
+
+    return f'{random.getrandbits(num_hex_digits * 4):0{num_hex_digits}x}'
+
+
+def get_digest_for_contig_sequence(contig_name, contig_sequence):
+    """Returns the raw digest of a single contig for `get_contigs_db_hash`"""
+
+    return hashlib.sha256(f"{contig_name}\n{contig_sequence}".encode('utf-8')).digest()
+
+
+def get_contigs_db_hash(contigs_db, contig_digests=None, num_hex_digits=24):
+    """Compute a deterministic hash that describes the identity of a contigs database.
+
+    The hash is a function of everything that defines the contigs-db cotnent AND structure:
+    contig names and sequences, split boundaries, gene calls, and the k-mer size. Which means two
+    contigs databases that are generated from the same FASTA file with the same parameters (and
+    with the same versions of the same gene caller) WILL HAVE the same hash, and any difference
+    that would invalidate a profile database that was generated from one of themm, will change it.
+
+    Notes
+    =====
+    - The hash of a contigs database is computed once, when the database is created. Things that
+      are added to a contigs database later (functions, HMM hits, taxonomy, and even the additional
+      gene calls that come from HMM sources that find rRNAs) do not change it, since none of them
+      invalidate the databases that are linked to a contigs database through this hash.
+    - The order in which contigs occur in the input FASTA file does not influence the hash, but
+      contig names do (since they influence BAMs that have emerged from and everything downstream).
+
+    Parameters
+    ==========
+    contigs_db : anvio.db.DB
+        A `db.DB` instance for a contigs database the contig sequences, splits, and gene calls of
+        which are already in place.
+    contig_digests : list
+        An optional list of per-contig digests that are generated by the function
+        `get_digest_for_contig_sequence`. When this is not None, contig sequences will not be read
+        from `contigs_db`, which is much more memory friendly for callers that already have all the
+        sequences at hand (see how `dbops.ContigsDatabase.create` uses this function).
+    num_hex_digits : int
+        The number of hexadecimal digits the hash will be composed of. None means use all digits.
+
+    Returns
+    =======
+    hash : str
+        A string that looks like gibberish to the untrained eye (yas -- some of us can read SHA sums thx).
+    """
+
+    if contig_digests is None:
+        contig_digests = [get_digest_for_contig_sequence(contig_name, sequence) for contig_name, sequence \
+                                in contigs_db.get_some_columns_from_table(t.contig_sequences_table_name, 'contig, sequence')]
+
+    hasher = hashlib.sha256()
+
+    # digests are sorted here so the hash does not depend on the order in which
+    # the contigs occurred in the input FASTA file
+    for digest in sorted(contig_digests):
+        hasher.update(digest)
+
+    # split boundaries. this is what distinguishes an otherwise identical contigs database that was
+    # generated with a different split length, or without paying attention to gene calls
+    splits = contigs_db.get_some_columns_from_table(t.splits_info_table_name, 'split, parent, start, end')
+    for entry in sorted(splits, key=lambda x: x[0]):
+        hasher.update(('\t'.join([str(f) for f in entry]) + '\n').encode('utf-8'))
+
+    # gene calls. gene caller ids are the currency of every downstream database, so a contigs
+    # database with different gene calls must have a different hash even if its sequences are
+    # identical
+    gene_calls = contigs_db.get_some_columns_from_table(t.genes_in_contigs_table_name, 'gene_callers_id, contig, start, stop, direction, partial, call_type, source, version')
+    for entry in sorted(gene_calls, key=lambda x: x[0]):
+        hasher.update(('\t'.join([str(f) for f in entry]) + '\n').encode('utf-8'))
+
+    hasher.update(f"kmer_size:{contigs_db.get_meta_value('kmer_size')}\n".encode('utf-8'))
+
+    if num_hex_digits:
+        return hasher.hexdigest()[:num_hex_digits]
+    else:
+        return hasher.hexdigest()
 
 
 def get_file_md5(file_path):
-    hash_md5 = hashlib.md5()
+    hash_md5 = hashlib.md5(usedforsecurity=False)
 
     with open(file_path, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
@@ -4911,7 +5430,28 @@ def get_file_md5(file_path):
     return hash_md5.hexdigest()
 
 
-def run_selenium_and_export_svg(url, output_file_path, browser_path=None, run=run):
+def run_selenium_and_export_svg(url, output_file_path, browser_path=None, run=run,
+                                 wait_text="Current view", pangraph_mode=False):
+    """Export SVG from anvi'o interactive interface using Selenium.
+
+    This function works for all anvi'o interactive interfaces. Use pangraph_mode=True
+    for pangenome graph visualizations which have a different rendering approach.
+
+    Parameters
+    ==========
+    url : str
+        The URL to the interactive interface page
+    output_file_path : str
+        Path where the SVG file should be saved
+    browser_path : str, optional
+        Path to alternative Chrome/Chromium browser executable
+    run : terminal.Run, optional
+        Run instance for logging
+    wait_text : str, optional
+        Text to wait for in title-panel-second-line element (default: "Current view")
+    pangraph_mode : bool, optional
+        Set to True for pangenome graph interface (default: False)
+    """
     if filesnpaths.is_file_exists(output_file_path, dont_raise=True):
         raise FilesNPathsError("The output file already exists. Anvi'o does not like overwriting stuff.")
 
@@ -4928,35 +5468,83 @@ def run_selenium_and_export_svg(url, output_file_path, browser_path=None, run=ru
                           "do that but you don't have it. If you are lucky, you probably can install it by "
                           "typing 'pip install selenium' or something :/")
 
+    # Configure Chrome options for headless operation (needed for HPC/servers without GUI)
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument('--headless=new')  # New headless mode
+    chrome_options.add_argument('--no-sandbox')  # Needed for running in restricted environments
+    chrome_options.add_argument('--disable-dev-shm-usage')  # Overcome limited resource problems
+    chrome_options.add_argument('--disable-gpu')  # Applicable to headless mode
+    chrome_options.add_argument('--window-size=1920,1080')
+
     if browser_path:
         filesnpaths.is_file_exists(browser_path)
         run.info_single('You are launching an alternative browser. Keep an eye on things!', mc='red', nl_before=1)
-        driver = webdriver.Chrome(executable_path=browser_path)
+        chrome_options.binary_location = browser_path
+        driver = webdriver.Chrome(options=chrome_options)
     else:
-        driver = webdriver.Chrome()
+        driver = webdriver.Chrome(options=chrome_options)
 
     driver.wait = WebDriverWait(driver, 10)
-    driver.set_window_size(1920, 1080)
     driver.get(url)
 
     try:
-        WebDriverWait(driver, 300).until(EC.text_to_be_present_in_element((By.ID, "title-panel-second-line"), "Current view"))
+        WebDriverWait(driver, 300).until(EC.text_to_be_present_in_element((By.ID, "title-panel-second-line"), wait_text))
     except TimeoutException:
-        print("Timeout occured, could not get the SVG drawing in 600 seconds.")
+        print("Timeout occurred, could not get the SVG drawing in 300 seconds.")
         driver.quit()
-    time.sleep(1)
+        raise
 
-    driver.execute_script("exportSvg(true);")
-    time.sleep(1)
+    # Extract SVG content - different approach for pangraph vs standard interfaces
+    try:
+        if pangraph_mode:
+            # Pangenome graph: generate SVG and insert into DOM, then wait for it to be ready
+            driver.execute_script("""
+                var svg = pgui.generate_svg(0);
+                $('#svgbox').empty().html(svg[0].outerHTML);
+            """)
 
-    svg = driver.find_element_by_id('panel-center')
+            # Wait for the SVG element to be present and have content
+            WebDriverWait(driver, 300).until(
+                EC.presence_of_element_located((By.ID, 'result'))
+            )
 
-    svg_file = open(output_file_path, 'w')
-    svg_file.write(svg.get_attribute('innerHTML'))
-    svg_file.close()
+            # Additional check: ensure SVG has actual content (not empty)
+            WebDriverWait(driver, 300).until(
+                lambda d: len(d.find_element(By.ID, 'result').get_attribute('outerHTML')) > 100
+            )
+
+            svg_content = driver.find_element(By.ID, 'result').get_attribute('outerHTML')
+        else:
+            # Standard interface: call exportSvg and wait for it to complete
+            driver.execute_script("exportSvg(true);")
+
+            # Wait for the SVG export to complete by checking if panel-center has SVG content
+            WebDriverWait(driver, 300).until(
+                lambda d: 'svg' in d.find_element(By.ID, 'panel-center').get_attribute('innerHTML').lower()
+            )
+
+            svg = driver.find_element(By.ID, 'panel-center')
+            svg_content = svg.get_attribute('innerHTML')
+    except Exception as e:
+        driver.quit()
+        raise ConfigError(f"Could not extract SVG from the page. Error: {e}")
+
+    # Write SVG to file
+    with open(output_file_path, 'w') as svg_file:
+        svg_file.write(svg_content)
+
     driver.quit()
 
     run.info_single('\'%s\' saved successfully.' % output_file_path)
+
+
+def run_selenium_and_export_svg_for_pangraph(url, output_file_path, browser_path=None, run=run):
+    """Export SVG from pangenome graph interface using Selenium.
+
+    This is a thin wrapper around run_selenium_and_export_svg with pangraph-specific settings.
+    """
+    return run_selenium_and_export_svg(url, output_file_path, browser_path=browser_path, run=run,
+                                       wait_text="Pangraph Detail", pangraph_mode=True)
 
 
 def open_url_in_browser(url, browser_path=None, run=run):
@@ -5001,7 +5589,7 @@ def split_by_delim_not_within_parens(d, delims, return_delims=False):
     d : str
         string to split
     delims : str or list of str
-        a single delimiter, or a list of delimiters, to split on. Note that if delims is the empty string (""), every 
+        a single delimiter, or a list of delimiters, to split on. Note that if delims is the empty string (""), every
         individual character in the string that is not within parentheses will be returned in the list of splits.
     return_delims : boolean
         if this is true then the list of delimiters found between each split is also returned
@@ -5029,7 +5617,7 @@ def split_by_delim_not_within_parens(d, delims, return_delims=False):
             parens_level += 1
         elif d[i] == ")":
             parens_level -= 1
-            if delims == "" and parens_level == 0: 
+            if delims == "" and parens_level == 0:
                 splits.append(d[last_split_index+1:i]) # we don't include the parentheses characters
                 last_split_index = i + 1
         elif delims == "" and parens_level == 0: # allow the use of "" as delimiter to split each character

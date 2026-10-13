@@ -1,4 +1,3 @@
-# coding: utf-8
 """Interface to PyANI."""
 
 import os
@@ -23,7 +22,7 @@ class PyANI:
     def __init__(self, args={}, run=terminal.Run(), progress=terminal.Progress(), program_name='average_nucleotide_identity.py'):
         self.run = run
         self.progress = progress
-        self.program_name = program_name 
+        self.program_name = program_name
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.num_threads = A('num_threads') or 1
@@ -72,7 +71,7 @@ class PyANI:
             raise ConfigError("PyANI returned with non-zero exit code, there may be some errors. "
                              "please check the log file for details.")
 
-        output_matrix_names = ['alignment_coverage', 'alignment_lengths', 'hadamard', \
+        output_matrix_names = ['alignment_coverage', 'alignment_lengths', 'hadamard',
                                'percentage_identity', 'similarity_errors', 'correlations']
 
         full_matrix_path = lambda name: os.path.join(input_path, 'output', self.method + '_' + name + '.tab')
@@ -89,11 +88,10 @@ class PyANI:
 
         if not self.quiet:
             self.run.info_single("Output matrices for the following items are stored in the output "
-                                 "directory: %s <success kid meme.png>." % \
+                                 "directory: %s <success kid meme.png>." %
                                             (', '.join(["'%s'" % m.replace('_', ' ') for m in matrices])), nl_before=1, mc='green')
 
         # restore old working directory
         os.chdir(old_wd)
 
         return matrices
-

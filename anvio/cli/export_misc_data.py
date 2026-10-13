@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Export misc data from target tables into TAB-delimited files"""
 
 import sys
@@ -16,7 +15,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'ekiefl']
-__requires__ = ['pan-db', 'profile-db', 'contigs-db', 'misc-data-items', 'misc-data-layers', 'misc-data-layer-orders', 'misc-data-nucleotides', 'misc-data-amino-acids']
+__requires__ = ['profile-db']
+__can_use__ = ['pan-db', 'contigs-db', 'misc-data-items', 'misc-data-layers', 'misc-data-layer-orders', 'misc-data-nucleotides', 'misc-data-amino-acids']
 __provides__ = ['misc-data-items-txt', 'misc-data-layers-txt', 'misc-data-layer-orders-txt', 'misc-data-nucleotides-txt', 'misc-data-amino-acids-txt']
 __description__ = "Export additional data or order tables in pan or profile databases for items or layers"
 __resources__ = [("Working with anvi'o additional data tables", "http://merenlab.org/2017/12/11/additional-data-tables/#views-items-layers-orders-some-anvio-terminology")]

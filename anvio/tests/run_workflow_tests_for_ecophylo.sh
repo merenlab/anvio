@@ -52,7 +52,7 @@ do
 done
 
 echo -e "sample\tr1\tr2" > samples.txt
-for reads in `ls output/*-R1.fastq`;
+for reads in $(ls output/*-R1.fastq);
 do 
     name=$(basename $reads -R1.fastq | sed 's|-|_|g')
     echo -e "${name}\t${reads}\t${reads/-R1.fastq/-R2.fastq}" >> samples.txt
@@ -80,9 +80,9 @@ INFO "Running ecophylo workflow (profile-mode)"
 anvi-run-workflow -w ecophylo -c default-config.json
 
 INFO "Running ecophylo workflow interactive (profile-mode)"
-HMM=`awk 'NR==2{print $2 "_" $1}' hmm_list.txt`
+HMM=$(awk 'NR==2{print $2 "_" $1}' hmm_list.txt)
 echo $HMM
-anvi-interactive -c ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS/${HMM}-contigs.db \
+anvi-interactive -c ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS/${HMM}.db \
                  -p ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED/${HMM}/PROFILE.db \
                  $dry_run_controller
 
@@ -130,8 +130,8 @@ INFO "Running ecophylo workflow - merge by group (profile mode)"
 anvi-run-workflow -w ecophylo -c merge-by-group-config.json
 
 INFO "Running ecophylo workflow interactive (merge by group - profile mode)"
-GROUP=`awk 'NR==2{print $4}' hmm_list_group.txt`
-anvi-interactive -c ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS/${GROUP}-contigs.db \
+GROUP=$(awk 'NR==2{print $4}' hmm_list_group.txt)
+anvi-interactive -c ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS/${GROUP}.db \
                  -p ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED/${GROUP}/PROFILE.db \
                  $dry_run_controller
 

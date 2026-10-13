@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A script to export run ANI on every contig in a FASTA file."""
 
 import os
@@ -17,7 +16,6 @@ import anvio.filesnpaths as filesnpaths
 from anvio.drivers import pyani
 
 from anvio.errors import ConfigError, FilesNPathsError
-import anvio.errors
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -59,7 +57,7 @@ def run_program():
             raise ConfigError("At least one of the deflines in your FASTA File does not comply with the 'simple deflines' "
                               "requirement of anvi'o. You can either use the script `anvi-script-reformat-fasta` to take "
                               "care of this issue, or do it manually, but you must know that anvi'o is very upset for "
-                              "making you deal with this. Here is more info on simple deflines %s" % \
+                              "making you deal with this. Here is more info on simple deflines %s" %
                                    ('http://merenlab.org/2016/06/22/anvio-tutorial-v2/#take-a-look-at-your-fasta-file'))
         num_contigs += 1
     fasta.reset()
@@ -109,7 +107,7 @@ def get_args():
                          the pyANI help for v0.2.7 at https://github.com/widdowquinn/pyani, the method 'ANIm' uses\
                          MUMmer (NUCmer) to align the input sequences. 'ANIb' uses BLASTN+ to align 1020nt fragments\
                          of the input sequences. 'ANIblastall': uses the legacy BLASTN to align 1020nt fragments\
-                         Finally, 'TETRA': calculates tetranucleotide frequencies of each input sequence",\
+                         Finally, 'TETRA': calculates tetranucleotide frequencies of each input sequence",
                          choices=['ANIm', 'ANIb', 'ANIblastall', 'TETRA'])
     parser.add_argument(*anvio.A('distance'), **anvio.K('distance', {'help': 'The distance metric for the hierarchical \
                          clustering. The default is "%(default)s".'}))

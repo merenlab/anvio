@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 from anvio.argparse import ArgumentParser
@@ -78,7 +77,7 @@ def run_program():
     if args.collection_name:
         progress.new('Initializing gene clusters')
         progress.update('...')
-        pan = summarizer.PanSummarizer(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+        pan = summarizer.PanSummarizer(args, lazy_init=True, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
         progress.end()
 
         if not args.bin_id:
@@ -117,6 +116,7 @@ def run_program():
 
     if args.store_in_db:
         args.just_do_it = True
+        args.target_data_group = 'homogeneity'
         miscdata.TableForItemAdditionalData(args).add(d, ['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index'])
 
     if args.output_file:

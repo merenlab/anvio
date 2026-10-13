@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Creates a network file for a given variability profile output"""
 
 import sys

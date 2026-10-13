@@ -19,7 +19,8 @@
  */
 
 
-function StoreCollectionDialog() {
+function StoreCollectionDialog(exportFn) {
+    this.exportFn = exportFn || null;
     this.dialog = document.createElement('div');
     this.dialog.setAttribute('class', 'modal fade in');
 
@@ -89,9 +90,15 @@ StoreCollectionDialog.prototype.StoreCollection = async function() {
 
     if (this.collections.hasOwnProperty(collection_name) && this.collections[collection_name]['read_only']) {
         toastr.warning('This collection is read only.');
+        return;
     }
 
-    let collection_info = bins.ExportCollection();
+    if (this.collections.hasOwnProperty(collection_name) &&
+            !confirm(`A collection named "${collection_name}" already exists. Do you want to overwrite it?`)) {
+        return;
+    }
+
+    let collection_info = this.exportFn ? this.exportFn() : bins.ExportCollection();
 
     $.ajax({
         type: 'POST',

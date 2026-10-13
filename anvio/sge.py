@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """Module to submit/track jobs for SUN Grid Engine"""
 
 import os
@@ -248,7 +246,7 @@ class SGE:
                             found = True
                             info_dict[s] += 1
                     if not found:
-                        raise ConfigError("Unknown state for qstat: '%s' (known states: '%s')"\
+                        raise ConfigError("Unknown state for qstat: '%s' (known states: '%s')"
                                  % (state, ', '.join(list(info_dict.keys()))))
 
                 line_no += 1
@@ -256,4 +254,3 @@ class SGE:
                 break
 
         return info_dict
-

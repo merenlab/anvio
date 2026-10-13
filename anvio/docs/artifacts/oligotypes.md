@@ -1,4 +1,4 @@
-Oligotyping is a computational strategy that **partitions a given set of sequences into homogeneous groups using only a subset of target nucleotide positions**. 
+Oligotyping is a computational strategy that **partitions a given set of sequences into homogeneous groups using only a subset of target nucleotide positions**.
 
 ### History
 

@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """The module that curates data for the interactive interface"""
 
 import os
@@ -35,7 +33,8 @@ from anvio.tables.collections import TablesForCollections
 from anvio.metabolism.estimate import KeggMetabolismEstimator
 from anvio.errors import ConfigError, RefineError, GenesDBError
 from anvio.clusteringconfuguration import ClusteringConfiguration
-from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
+
+from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, PanGraphSuperclass, TablesForStates, ProfileDatabase
 from anvio.tables.miscdata import TableForItemAdditionalData, TableForLayerAdditionalData
 from anvio.tables.miscdata import TableForLayerOrders, TableForAminoAcidAdditionalData
 
@@ -155,11 +154,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # get additional data for items and layers, and get layer orders data.
         try:
             a_db_is_found = (os.path.exists(self.pan_db_path) if self.pan_db_path else False) or (os.path.exists(self.profile_db_path) if self.profile_db_path else False)
-            self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(self.args).get() if a_db_is_found else ([], {})
+            if a_db_is_found:
+                self.items_additional_data_keys, self.items_additional_data_dict, self.items_additional_data_groups = TableForItemAdditionalData(self.args).get_all_flattened()
+            else:
+                self.items_additional_data_keys, self.items_additional_data_dict, self.items_additional_data_groups = [], {}, {}
             self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get_all() if a_db_is_found else ([], {})
             self.layers_order_data_dict = TableForLayerOrders(self.args).get() if a_db_is_found else {}
         except GenesDBError as e:
-            self.items_additional_data_keys, self.items_additional_data_dict = [], {}
+            self.items_additional_data_keys, self.items_additional_data_dict, self.items_additional_data_groups = [], {}, {}
             self.layers_additional_data_keys, self.layers_additional_data_dict = [], {}
             self.layers_order_data_dict = {}
 
@@ -534,8 +536,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         contig_name_to_splits_dict = utils.get_contig_name_to_splits_dict(self.contigs_db_path)
 
         # get a list of contig names based on their lengths
-        contig_names_sorted_by_length = [tpl[0] \
-                for tpl in sorted([(k, self.contigs_basic_info[k]['length']) \
+        contig_names_sorted_by_length = [tpl[0]
+                for tpl in sorted([(k, self.contigs_basic_info[k]['length'])
                 for k in self.contigs_basic_info], key = lambda x: x[1], reverse=True)]
 
         split_names = set(self.displayed_item_names_ordered)
@@ -761,8 +763,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.default_view = self.p_meta['default_view']
             self.views[self.default_view] = {'header': view_data_columns[1:],
                                              'dict': utils.get_TAB_delimited_file_as_dictionary(view_data_path)}
-            
-            # sanity check for items order stored in database, since we cannot check the consistency of items 
+
+            # sanity check for items order stored in database, since we cannot check the consistency of items
             # when we import items orders as the view data is not stored in the profile db
             if item_orders_in_db:
                 for item_order in item_orders_in_db:
@@ -950,7 +952,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # do a good old args switcheroo from the old hacker's guide to the galaxy, and prevent any
         # unexpected outcomes for young padawans.
         args_without_profile_db = copy.deepcopy(self.args); args_without_profile_db.profile_db = None
-        single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args_without_profile_db, run=terminal.Run(verbose=False))
+        single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args_without_profile_db, r=terminal.Run(verbose=False))
 
         ###################################################################
         # collecting some key data to build our interactive objects
@@ -1761,7 +1763,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                              "this step. Another way to do it is the good ol' way of ignoring these warnings as you usually "
                              "do. If you do the latter, you will probably be fine. But we wanted to keep you in the loop "
                              "just in case you are not fine and the code does not realize that yet. The sources for gene "
-                             "calls that will not be included in your gene view include these ones: '%s'." % \
+                             "calls that will not be included in your gene view include these ones: '%s'." %
                                     (len(gene_caller_ids_missing_in_gene_level_cov_stats_dict),
                                      ', '.join(gene_caller_sources_for_missing_gene_caller_ids_in_gene_level_cov_stats_dict)))
 
@@ -1921,7 +1923,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             raise ConfigError("There are some split names in your additional view data file ('%s') that are missing from "
                                "split names characterized in the database. There are in fact %d of them. For instance, "
                                "here is a random split name that is in your additional view data, yet not in the database: "
-                               "'%s'. This is not going to work for anvi'o :/" \
+                               "'%s'. This is not going to work for anvi'o :/"
                                     % (self.additional_view_path, len(splits_in_additional_view_but_not_in_tree), splits_in_additional_view_but_not_in_tree.pop()))
 
         if splits_in_tree_but_not_in_view_data:
@@ -1934,7 +1936,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if splits_in_tree_but_not_in_database:
             raise ConfigError('Some split names found in your tree are missing from your database. Hard to '
-                               'know why is this the case, but here is a couple of them: %s'\
+                               'know why is this the case, but here is a couple of them: %s'
                                     % ', '.join(list(splits_in_tree_but_not_in_database)[0:5]))
 
         if self.additional_layers_path:
@@ -2056,14 +2058,25 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             # (2) then add length and GC content IF we have sequences available
             if self.splits_basic_info:
                 basic_info_headers = ['length', 'gc_content']
+                if '__parent__' in view_headers:
+                    basic_info_headers.append('__parent__')
+                    view_headers = [h for h in view_headers if h != '__parent__']
                 json_header.extend(basic_info_headers)
+                self.items_additional_data_groups['basic_info'] = list(basic_info_headers)
 
             # (3) then add the view!
             json_header.extend(view_headers)
 
+            # add view headers to the 'default' group so they get a checkbox in the interface
+            if view_headers:
+                if 'default' not in self.items_additional_data_groups:
+                    self.items_additional_data_groups['default'] = []
+                self.items_additional_data_groups['default'] = list(view_headers) + self.items_additional_data_groups['default']
+
             # (4) then add 'additional' headers as the outer ring:
             if self.items_additional_data_keys:
-                self.items_additional_data_keys = sorted(self.get_layer_names_with_at_least_one_hit_for_splits(self.items_additional_data_keys, self.items_additional_data_dict))
+                keys_with_hits = set(self.get_layer_names_with_at_least_one_hit_for_splits(self.items_additional_data_keys, self.items_additional_data_dict))
+                self.items_additional_data_keys = [k for k in self.items_additional_data_keys if k in keys_with_hits]
                 json_header.extend(self.items_additional_data_keys)
 
             # (5) finally add hmm search results
@@ -2085,7 +2098,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 # let's sort these layers alphabetically
                 self.hmm_searches_header = sorted(self.hmm_searches_header)
 
-                json_header.extend([tpl[0] for tpl in self.hmm_searches_header])
+                hmm_layer_names = [tpl[0] for tpl in self.hmm_searches_header]
+                json_header.extend(hmm_layer_names)
+                self.items_additional_data_groups['HMM'] = hmm_layer_names
 
             # (6) add taxonomy, if exitsts:
             if len(self.splits_taxonomy_dict):
@@ -2100,14 +2115,18 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
                 # (2)
                 if self.splits_basic_info:
-                    json_entry.extend([self.splits_basic_info[split_name][header] for header in basic_info_headers])
+                    for header in basic_info_headers:
+                        if header == '__parent__':
+                            json_entry.append(view_dict[split_name].get('__parent__'))
+                        else:
+                            json_entry.append(self.splits_basic_info[split_name][header])
 
                 # (3) adding essential data for the view
                 json_entry.extend([view_dict[split_name][header] if header in view_dict[split_name] else 0 for header in view_headers])
 
                 # (4) adding additional layers
                 if self.items_additional_data_keys:
-                    json_entry.extend([self.items_additional_data_dict[split_name][header] if split_name in self.items_additional_data_dict else None for header in self.items_additional_data_keys])
+                    json_entry.extend([self.items_additional_data_dict.get(split_name, {}).get(header) for header in self.items_additional_data_keys])
 
                 # (5) adding hmm stuff
                 if self.hmm_searches_dict:
@@ -2293,46 +2312,67 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
 
 
     def get_model_info(self, gene_callers_id):
-        """Returns information about the protein model, e.g. template IDs, DOPE_score, etc"""
+        """Returns information about the protein model to display in the interface
+
+        What is reported depends on the engine that predicted the structure. MODELLER reports the
+        per-model DOPE/GA341/molpdf scores and the PDB templates it used. ColabFold is template-free
+        and reports mean pLDDT and pTM instead. External structures have neither scores nor templates.
+        """
 
         structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
+        engine = structure_db.db.get_meta_value('engine', return_none_if_not_in_table=True) or 'modeller'
 
-        models = structure_db.db.get_table_as_dataframe(
-            'models',
-            columns_of_interest=['GA341_score', 'DOPE_score', 'molpdf', 'picked_as_best'],
-            where_clause='corresponding_gene_call = %d' % gene_callers_id,
-        ).rename(columns={
-            'DOPE_score': 'DOPE',
-            'GA341_score': 'GA341',
-        })
-        models['Models tried'] = models.shape[0]
-        models = models.loc[models['picked_as_best'] == 1, ['DOPE', 'GA341', 'molpdf', 'Models tried']].reset_index(drop=True)
+        if engine == 'modeller':
+            models = structure_db.db.get_table_as_dataframe(
+                'models',
+                columns_of_interest=['GA341_score', 'DOPE_score', 'molpdf', 'picked_as_best'],
+                where_clause='protein_id = %d' % gene_callers_id,
+            ).rename(columns={
+                'DOPE_score': 'DOPE',
+                'GA341_score': 'GA341',
+            })
+            models['Models tried'] = models.shape[0]
+            models = models.loc[models['picked_as_best'] == 1, ['DOPE', 'GA341', 'molpdf', 'Models tried']].reset_index(drop=True)
 
-        templates = structure_db.db.get_table_as_dataframe(
-            'templates',
-            columns_of_interest=['pdb_id', 'chain_id'],
-            where_clause='corresponding_gene_call = %d' % gene_callers_id,
-        ).rename(columns={
-            'pdb_id': 'PDB',
-            'chain_id': 'Chain',
-        })
-
-        # Check if the columns exist before accessing them
-        if 'percent_similarity' in templates.columns and 'align_fraction' in templates.columns:
-            templates['%Identity'] = templates['percent_similarity']
-            templates['Align fraction'] = templates['align_fraction']
+            templates = structure_db.db.get_table_as_dataframe(
+                'templates',
+                columns_of_interest=['pdb_id', 'chain_id', 'percent_similarity', 'align_fraction'],
+                where_clause='protein_id = %d' % gene_callers_id,
+            ).rename(columns={
+                'pdb_id': 'PDB',
+                'chain_id': 'Chain',
+                'percent_similarity': '%Identity',
+                'align_fraction': 'Align fraction',
+            })
             templates = templates[['PDB', 'Chain', '%Identity', 'Align fraction']]
+
+        elif engine == 'colabfold':
+            models = structure_db.db.get_table_as_dataframe(
+                'models',
+                columns_of_interest=['mean_plddt', 'ptm', 'picked_as_best'],
+                where_clause='protein_id = %d' % gene_callers_id,
+            ).rename(columns={
+                'mean_plddt': 'Mean pLDDT',
+                'ptm': 'pTM',
+            })
+            models['Models tried'] = models.shape[0]
+            models = models.loc[models['picked_as_best'] == 1, ['Mean pLDDT', 'pTM', 'Models tried']].reset_index(drop=True)
+
+            # drop any confidence metric that was not stored, so the interface does not show it
+            models = models.dropna(axis=1, how='all')
+
+            # ColabFold is template-free
+            templates = pd.DataFrame({})
+
         else:
-            # Handle the case when columns are not present
-            # You can set default values or handle it in a way that makes sense for your application
-            templates['%Identity'] = 0
-            templates['Align fraction'] = 0
-            templates = templates[['PDB', 'Chain', '%Identity', 'Align fraction']]
-
+            # external structures have neither MODELLER-style scores nor templates
+            models = pd.DataFrame({})
+            templates = pd.DataFrame({})
 
         structure_db.disconnect()
 
         return {
+            'engine': engine,
             'models': models.to_json(orient='index'),
             'templates': templates.to_json(orient='index'),
         }
@@ -2605,6 +2645,18 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
                 'step': 0.01,
                 'min': 0,
                 'max': 1,
+            },
+            {
+                # only populated for ColabFold structures; dropped by the filter below for other
+                # engines because `plddt` is not among their variability data columns
+                'name': 'plddt',
+                'title': 'pLDDT',
+                'as_view': True,
+                'as_filter': 'slider',
+                'data_type': 'float',
+                'step': 1,
+                'min': 0,
+                'max': 100,
             },
             {
                 'name': 'sec_struct',
@@ -2986,6 +3038,7 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
         output['available_gene_callers_ids'] = list(self.available_genes)
         output['available_engines'] = self.available_engines
         output['sample_groups'] = self.sample_groups
+        output['title'] = self.a_meta['project_name']
         return output
 
 
@@ -3036,7 +3089,7 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
         from_contigs_db = self.amino_acid_additional_data.get_gene_dataframe(gene_callers_id)
 
         residue_info = from_structure_db.merge(from_contigs_db, 'left', on='codon_order_in_gene')
-        residue_info.drop(['entry_id', 'corresponding_gene_call', 'codon_order_in_gene'], axis=1, inplace=True)
+        residue_info.drop(['entry_id', 'protein_id', 'codon_order_in_gene'], axis=1, inplace=True)
 
         residue_info_types = residue_info.drop('codon_number', axis=1).aggregate([numpy.min, numpy.max, numpy.dtype]).T
         residue_info_types['dtype'] = residue_info_types['dtype'].astype(str)
@@ -3277,6 +3330,31 @@ class MetabolismInteractive():
 
     def get_metabolism_data(self):
         return self.estimator.get_metabolism_data_for_visualization()
+
+
+class PangraphInteractive(PanGraphSuperclass):
+    def __init__(self, args, run=run, progress=progress):
+        self.mode = "pangraph"
+
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.pan_graph_db_path = A('pan_graph_db')
+
+        if not self.pan_graph_db_path:
+            raise ConfigError("Unfortunately you can only use this program with a pangenome graph database.")
+
+        PanGraphSuperclass.__init__(self, self.args, r=self.run, p=self.progress)
+
+        self.collections = ccollections.Collections()
+        self.collections.populate_collections_dict(self.pan_graph_db_path)
+
+        self.init_pangenome_graph()
+        self.init_synteny_gene_clusters()
+        self.init_synteny_gene_clusters_functions()
+        self.init_synteny_gene_clusters_functions_summary_dict()
 
 
 class ContigsInteractive():

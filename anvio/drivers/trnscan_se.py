@@ -1,4 +1,3 @@
-# coding: utf-8
 """An interface for tRNAScan-SE"""
 
 import anvio
@@ -39,6 +38,7 @@ class tRNAScanSE:
         self.trna_hits_file_path = A('trna_hits_file')
         self.log_file_path = A('log_file')
         self.cutoff_score = A('trna_cutoff_score') or 20
+        self.trna_model = A('trna_model') or 'G'
         self.quiet = A('quiet')
 
         self.run = run or terminal.Run(verbose=(not self.quiet))
@@ -77,6 +77,9 @@ class tRNAScanSE:
         if self.cutoff_score < 20 or self.cutoff_score > 100:
             raise ConfigError("The cutoff score must be between 20 and 100.")
 
+        if self.trna_model not in ['G', 'E', 'B', 'A']:
+            raise ConfigError("The tRNAScan-SE model must be one of G (general), E (eukaryotic), B (bacterial), or A (archaeal).")
+
 
     def check_programs(self, quiet=False):
         utils.is_program_exists(self.program_name)
@@ -95,7 +98,7 @@ class tRNAScanSE:
                              "with. Anvi'o will continue to try to run everything as if this didn't happen. If you see this warning "
                              "but everything works fine, let us know so we can include this version number into the list of 'tested' "
                              "version numbers. If you see an unexpected error, please consider installing one of these versions "
-                             "of tRNAScan-SE (and again please let us know anyway so we can address it for later): '%s'" % \
+                             "of tRNAScan-SE (and again please let us know anyway so we can address it for later): '%s'" %
                                            (self.program_name, version_found, ', '.join(list(self.tested_versions))))
 
         self.installed_version = version_found
@@ -144,14 +147,14 @@ class tRNAScanSE:
                 if not len(fields) == 10:
                     raise ConfigError("The expected output of tRNAScan-SE includes exactly 10 columns. However, the output "
                                       "anvi'o is working contains at least one line with %d columns :/ This doesn't look "
-                                      "good. Here is the list of columns data of that line for your reference: '%s'." \
+                                      "good. Here is the list of columns data of that line for your reference: '%s'."
                                                             % (len(fields), fields))
 
                 d[entry_no] = {'contig_name': fields[0],
                                'trna_no': fields[1],
                                'start': int(fields[2]),
                                'stop': int(fields[3]),
-                               'amino_acid': fields[4],
+                               'decoded_amino_acid_type': fields[4],
                                'anticodon': fields[5],
                                'intron_start': int(fields[6]),
                                'intron_end': int(fields[7]),
@@ -164,7 +167,7 @@ class tRNAScanSE:
                         d[entry_no]['intron_end'] = int(fields[7]) - int(fields[6])
                     else:
                         d[entry_no]['intron_start'] = d[entry_no]['start'] - int(fields[6])
-                        d[entry_no]['intron_end'] = int(fields[6]) - int(fields[7]) 
+                        d[entry_no]['intron_end'] = int(fields[6]) - int(fields[7])
 
         self.progress.end()
 
@@ -192,7 +195,7 @@ class tRNAScanSE:
         command = [self.program_name,
                    self.fasta_file_path,
                    '--score', self.cutoff_score,
-                   '-G',
+                   '-' + self.trna_model,
                    '-o', self.trna_hits_file_path,
                    '--thread', self.num_threads]
 
@@ -214,5 +217,3 @@ class tRNAScanSE:
         d = self.parse_output()
 
         return d
-
-

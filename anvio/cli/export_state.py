@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 
@@ -17,8 +16,9 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['pan-db', 'profile-db', 'state']
-__provides__ = ['state-json',]
+__requires__ = ['profile-db']
+__can_use__ = ['pan-db', 'state']
+__provides__ = ['state-json']
 __description__ = "Export an anvi'o state into a profile database"
 
 
@@ -27,7 +27,7 @@ def main():
     run = terminal.Run()
 
     try:
-        utils.is_pan_or_profile_db(args.pan_or_profile_db, genes_db_is_also_accepted=True)
+        utils.is_pan_or_profile_db(args.pan_or_profile_db, genes_db_is_also_accepted=True, pan_graph_db_is_also_accepted=True)
 
         states_access = TablesForStates(args.pan_or_profile_db)
         states = states_access.states

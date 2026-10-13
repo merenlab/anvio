@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """Module to make sense of samples information and samples order input"""
 
 import os
@@ -182,8 +180,8 @@ class SamplesInformation:
             except:
                 return v
 
-        for sample_attribute_tuples in [[(F(self.samples_information_dict[sample][attribute]), sample, attribute) \
-                                            for sample in self.samples_information_dict] \
+        for sample_attribute_tuples in [[(F(self.samples_information_dict[sample][attribute]), sample, attribute)
+                                            for sample in self.samples_information_dict]
                                             for attribute in self.aliases_to_attributes_dict]:
             # skip bar charts:
             if ';' in str(sample_attribute_tuples[0][0]):
@@ -223,7 +221,7 @@ class SamplesInformation:
             if sorted(self.sample_names_in_samples_information_file) != sorted(self.sample_names_in_samples_order_file):
                 raise SamplesError('OK. Samples described in the information file and order file are not identical :/ '
                                     'Here are the %d sample names in the information file: "%s", versus the %d sample '
-                                    'names in the orders file: "%s". And here is the difference: "%s".'\
+                                    'names in the orders file: "%s". And here is the difference: "%s".'
                                                             % (len(self.sample_names_in_samples_information_file),
                                                                self.sample_names_in_samples_information_file,
                                                                len(self.sample_names_in_samples_order_file),

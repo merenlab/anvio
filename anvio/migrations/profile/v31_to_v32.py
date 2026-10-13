@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 import argparse
@@ -61,7 +60,7 @@ def migrate(db_path):
                         "of your database. All good now." % next_version, nl_after=1, nl_before=1, mc='green')
     else:
         run.info_single("Your profile db is now version %s. But essentially nothing really happened to your "
-                        "database since it was a blank profile (which is OK, move along)." \
+                        "database since it was a blank profile (which is OK, move along)."
                                                             % next_version, nl_after=1, nl_before=1, mc='green')
 
 if __name__ == '__main__':

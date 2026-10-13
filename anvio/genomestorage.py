@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """
     A module to dealing with genome storages.
 
@@ -174,8 +172,8 @@ class GenomeStorage(object):
                 raise ConfigError("%d of %d genome names you wanted to focus are missing from the genomes sotrage. "
                                 "Although this may not be a show-stopper, anvi'o likes to be explicit, so here we "
                                 "are. Not going anywhere until you fix this. For instance this is one of the missing "
-                                "genome names: '%s', and this is one random genome name from the database: '%s'" % \
-                                         (len(genome_names_to_focus_missing_from_db), len(self.genome_names_to_focus),\
+                                "genome names: '%s', and this is one random genome name from the database: '%s'" %
+                                         (len(genome_names_to_focus_missing_from_db), len(self.genome_names_to_focus),
                                          genome_names_to_focus_missing_from_db[0], ', '.join(self.genome_names_in_db)))
 
             self.genome_names = self.genome_names_to_focus
@@ -267,13 +265,16 @@ class GenomeStorage(object):
 
 
     def update_storage_hash(self):
-        # here we create a signature for the storage itself by concatenating all hash values from all genomes. even if one
-        # split is added or removed to any of these genomes will change this signature. since we will tie this information
-        # to the profile database we will generate for the pangenome analysis, even if one split is added or removed from any
-        # of the genomes will make sure that the profile databases from this storage and storage itself are not compatible:
+        """Create a signature for the storage itself by concatenating all hash values from all genomes.
+
+        Thanks to this strategy, even if one split is added or removed to any of these genomes we will
+        haev a different hash for the genomes-storage-db. Since we will tie this information to the
+        profile database we will generate for the pangenome analysis, even if one split is added or
+        removed from any of the genomes will make sure that the profile databases from this storage
+        and storage itself are not compatible. A bit like rocket science here."""
 
         concatenated_genome_hashes = '_'.join(sorted(map(str, self.db.get_single_column_from_table(t.genome_info_table_name, 'genome_hash'))))
-        new_hash = 'hash' + str(hashlib.sha224(concatenated_genome_hashes.encode('utf-8')).hexdigest()[0:8])
+        new_hash = str(hashlib.sha224(concatenated_genome_hashes.encode('utf-8')).hexdigest()[0:16])
 
         self.db.set_meta_value('hash', new_hash)
 

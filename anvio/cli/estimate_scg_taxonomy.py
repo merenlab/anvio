@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 
@@ -15,8 +14,10 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'qclayssen']
-__requires__ = ['profile-db', 'contigs-db', 'scgs-taxonomy', 'collection', 'bin', 'metagenomes']
-__provides__ = ['genome-taxonomy', 'genome-taxonomy-txt']
+__requires__ = ['contigs-db', 'scgs-taxonomy']
+__can_use__ = ['profile-db', 'collection', 'bin', 'metagenomes']
+__provides__ = ['genome-taxonomy']
+__can_provide__ = ['genome-taxonomy-txt']
 __resources__ = [("Usage examples and warnings", "http://merenlab.org/scg-taxonomy")]
 __description__ = ("Estimates taxonomy at genome and metagenome level. This program is the entry point to "
                    "estimate taxonomy for a given set of contigs (i.e., all contigs in a contigs database, "
@@ -85,6 +86,8 @@ def get_args():
                                                                                    "show you quickly the distribution of each taxon across all metagenomes "
                                                                                    "in programs like EXCEL. WELL TRY IT AND SEE."}))
     groupD.add_argument(*anvio.A('raw-output'), **anvio.K('raw-output'))
+    groupD.add_argument(*anvio.A('tree-output'), **anvio.K('tree-output'))
+    groupD.add_argument(*anvio.A('tree-output-level'), **anvio.K('tree-output-level'))
 
     groupE = parser.add_argument_group('PERFORMANCE', "We are not sure if allocating more threads for this operation will change anything.\
                                                        But hey. One can try.")
@@ -97,8 +100,10 @@ def get_args():
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     groupF = parser.add_argument_group('ADVANCED', "Very pro-like stuff.")
+    groupF.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
     groupF.add_argument(*anvio.A('simplify-taxonomy-information'), **anvio.K('simplify-taxonomy-information'))
     groupF.add_argument(*anvio.A('compute-scg-coverages'), **anvio.K('compute-scg-coverages'))
+    groupF.add_argument(*anvio.A('presence-absence-only'), **anvio.K('presence-absence-only'))
     groupF.add_argument(*anvio.A('update-profile-db-with-taxonomy'), **anvio.K('update-profile-db-with-taxonomy'))
 
     groupG = parser.add_argument_group('BORING', "Options that you will likely never need.")

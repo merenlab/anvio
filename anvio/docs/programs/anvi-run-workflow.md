@@ -31,3 +31,21 @@ anvi-run-workflow -w %(workflow)s \
 The flag `--save-workflow-graph` creates a visual representation of the anvio programs that the workflow you're running used.
 
 You can also use the `-A` flag at the end of the parameter list to change other [Snakemake](https://snakemake.readthedocs.io/en/stable/) parameters.
+
+### Logs and the workflow manifest
+
+Every workflow run writes rule logs under `00_LOGS`, within a subdirectory for the workflow or named run. Logs are then organized by rule name:
+
+{{ codestart }}
+00_LOGS/<workflow-or-run-name>/<rule-name>/<job-specific-name>.log
+{{ codestop }}
+
+For instance, a metagenomics profiling job may write to `00_LOGS/metagenomics/anvi_profile/G01-S01.log`, while an SRA download checksum job may write to `00_LOGS/sra_download/check_md5sum/SRR5965623.log`.
+
+Each workflow run also creates a tab-delimited manifest in the same workflow-specific log directory:
+
+{{ codestart }}
+00_LOGS/<workflow-or-run-name>/<workflow-name>-workflow-manifest.tsv
+{{ codestop }}
+
+This file lists the status of each Snakemake job, the rule name, the `group` and `read` wildcards when they exist, the rule log path, and the Snakemake log path when Snakemake reports one. If a workflow stops because a rule failed, this manifest is often the quickest way to find the relevant rule log.

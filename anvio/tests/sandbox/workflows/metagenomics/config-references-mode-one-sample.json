@@ -189,7 +189,7 @@
     },
     "minimap2": {
         "threads": 3,
-        "preset": "map-hifi",
+        "preset": "",
         "additional_params": "--secondary-seq",
         "conda_yaml": "",
         "conda_env": ""
@@ -273,9 +273,6 @@
     "anvi_get_sequences_for_gene_calls": {
         "threads": ""
     },
-    "gunzip_fasta": {
-        "threads": ""
-    },
     "reformat_external_gene_calls_table": {
         "threads": ""
     },
@@ -345,6 +342,6 @@
         "LOGS_DIR": "00_LOGS-references-mode-one-sample"
     },
     "max_threads": "",
-    "config_version": "4",
+    "config_version": "6",
     "workflow_name": "metagenomics"
 }

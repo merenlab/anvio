@@ -1,4 +1,3 @@
-# coding: utf-8
 """Interface to fastANI."""
 
 import os
@@ -192,5 +191,3 @@ class ManyToMany(FastANIDriver):
 
         self.results = self.gen_results_dict()
         return self.results
-
-

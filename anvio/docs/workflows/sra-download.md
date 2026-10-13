@@ -1,5 +1,8 @@
 The `sra_download` workflow is a Snakemake workflow that downloads FASTQ files from SRA-accessions from [NCBI](https://www.ncbi.nlm.nih.gov/sra) e.g. SRR000001 and ERR000001. using [NCBI sra-tools wiki](https://github.com/ncbi/sra-tools/wiki/08.-prefetch-and-fasterq-dump), verifies the downlaod the MD5 checksum, gzips them using [pigz](https://zlib.net/pigz/), and provides a %(samples-txt)s. You will need to have these tools installed before you start.
 
+{:.notice}
+This workflow downloads reads and keeps them, which is what you want when the reads themselves are the point. If instead you are after what the reads tell you — mapping a large set of public metagenomes against some references, say — the [metagenomics workflow](../metagenomics) can download them itself and delete each one as soon as it is done with it, so that you never need room for more than a few at a time. See its section on downloading metagenomes from the SRA.
+
 Let's get started.
 
 ## Required input
@@ -31,7 +34,7 @@ $ cat sra_download_config.json
     },
     "output_dirs": {
         "SRA_prefetch": "01_NCBI_SRA",
-        "FASTAS": "02_FASTA",
+        "FASTQ_DIR": "02_FASTQ",
         "LOGS_DIR": "00_LOGS"
     },
     "max_threads": "",
@@ -83,19 +86,21 @@ The power of Snakemake shines when you can leverage a High Performance Computing
 
 ### MD5 Checksum verification
 
-The `sra_download` workflow verifies that `prefetch` properly download all the `.sra` files you requested by comparing MD5 checksum values. 
+The `sra_download` workflow verifies that `prefetch` properly download all the `.sra` files you requested by comparing MD5 checksum values.
 
 If the workflow successfully runs then everything checked out! You can find the checksum messages by doing this:
 
 {{ codestart }}
-$ grep "Checksums match" 00_LOGS/*_check_md5sum.log
-00_LOGS/ERR6450080_check_md5sum.log:Checksums match: a09e0eafd4c01f9685fb72efce447a2e
-00_LOGS/ERR6450081_check_md5sum.log:Checksums match: 5c56ba814f649e77dac2091f1956e7aa
-00_LOGS/ERR770960_check_md5sum.log:Checksums match: d1043d78938fb132f5d4b585f65ad8d7
-00_LOGS/SRR5965623_check_md5sum.log:Checksums match: 95b69957f6381047763fb50782959cd8
+$ grep "Checksums match" 00_LOGS/sra_download/check_md5sum/*.log
+00_LOGS/sra_download/check_md5sum/ERR6450080.log:Checksums match: a09e0eafd4c01f9685fb72efce447a2e
+00_LOGS/sra_download/check_md5sum/ERR6450081.log:Checksums match: 5c56ba814f649e77dac2091f1956e7aa
+00_LOGS/sra_download/check_md5sum/ERR770960.log:Checksums match: d1043d78938fb132f5d4b585f65ad8d7
+00_LOGS/sra_download/check_md5sum/SRR5965623.log:Checksums match: 95b69957f6381047763fb50782959cd8
 {{ codestop }}
 
-If a SRA accession fails to download properly, the workflow will stop and show you an error like this: 
+The workflow also writes `00_LOGS/sra_download/sra_download-workflow-manifest.tsv`, which points to the rule log for each job and records whether it succeeded or failed.
+
+If a SRA accession fails to download properly, the workflow will stop and show you an error like this:
 {{ codestart }}
 RuleException:
 ValueError in file /Users/mschechter/github/anvio/anvio/workflows/sra_download/Snakefile, line 122:

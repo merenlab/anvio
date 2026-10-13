@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 from anvio.argparse import ArgumentParser
@@ -18,7 +17,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ivagljiva']
-__requires__ = ['contigs-db', "kegg-data", "kegg-functions", "profile-db", "collection", "bin"]
+__requires__ = ['contigs-db', 'kegg-data', 'kegg-functions']
+__can_use__ = ['profile-db', 'collection', 'bin']
 __provides__ = ['interactive']
 __description__ = "Start the anvi'o interactive interactive for viewing KEGG metabolism data"
 
