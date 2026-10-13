@@ -52,6 +52,9 @@ class DisCov:
                   "Log-normalized Shannon Entropy", # combines both spread and evenness
                   # combines proportion windows covered (fine) with nonzero depth fold-range detection (narrow)
                   "Spread-Evenness Score (linear)", "Spread-Evenness Score (geometric)",
+                  # combines spread-evenness score (C) with detection (D)
+                  *[f"Discov {opt} ({c_type} C, k={k})" for opt in ['A', 'B', 'X'] for c_type in ['linear', 'geometric'] for k in [2, 3]],
+                  *[f"Discov Y ({c_type} C)" for c_type in ['linear', 'geometric']]
         ]
         for outfile in [unfilt_output]:
             if not filesnpaths.is_file_exists(outfile, dont_raise=True):
@@ -138,6 +141,13 @@ class DisCov:
         SE_linear = self.spread_evenness_score(S=sliding_window_metrics["fine"]['Proportion_Covered'], E=nz_depth_foldrange_narrow, alpha=0.5, formula="linear")
         SE_geom = self.spread_evenness_score(S=sliding_window_metrics["fine"]['Proportion_Covered'], E=nz_depth_foldrange_narrow, alpha=0.5, formula="geometric")
 
+        ## discov (order must match the header)
+        C_versions = [SE_linear, SE_geom]
+        discov_A = [self.discov_option_A(C, self.detection, beta=1, k=k) for C in C_versions for k in [2, 3]]
+        discov_B = [self.discov_option_B(C, self.detection, beta=1, k=k) for C in C_versions for k in [2, 3]]
+        discov_X = [self.discov_option_X(C, self.detection, gamma=1, k=k) for C in C_versions for k in [2, 3]]
+        discov_Y = [self.discov_option_Y(C, self.detection) for C in C_versions]
+
         # append all metrics to file
         fmt = lambda x: "NA" if x is None else f"{float(x):.4}"
         output_list = [self.name, self.sample,
@@ -158,6 +168,7 @@ class DisCov:
                        fmt(nz_depth_foldrange_narrow), fmt(nz_depth_foldrange_wide),
                        fmt(shannon_entropy),
                        fmt(SE_linear), fmt(SE_geom),
+                       *[fmt(d) for d in discov_A + discov_B + discov_X + discov_Y],
                       ]
         with open(output_file, 'a') as f:
             f.write("\t".join(output_list) + "\n")
@@ -410,6 +421,34 @@ class DisCov:
             return S**(alpha) * E**(1-alpha)
         else:
             raise ConfigError(f"spread_evenness_score does not understand the formula parameter '{formula}'")
+
+    def discov_option_A(self, C, D, beta=1, k=2):
+        """Boosts C toward 1 by a detection-dependent fraction of its remaining distance: F = C + β·D^k·(1 − C)"""
+
+        if C is None or D is None:
+            return None
+        return C + beta * D**k * (1 - C)
+
+    def discov_option_B(self, C, D, beta=1, k=2):
+        """Adds a detection-dependent bonus to C, capped at 1: F = min(1, C + β·D^k)"""
+
+        if C is None or D is None:
+            return None
+        return min(1, C + beta * D**k)
+
+    def discov_option_X(self, C, D, gamma=1, k=2):
+        """Raises C to a detection-dependent exponent that shrinks as detection increases: F = C^(1 − γ·D^k)"""
+
+        if C is None or D is None:
+            return None
+        return C**(1 - gamma * D**k)
+
+    def discov_option_Y(self, C, D):
+        """Boosts C toward 1 by a fraction of its remaining distance equal to detection: F = C + (1 − C)·D"""
+
+        if C is None or D is None:
+            return None
+        return C + (1 - C) * D
 
 
     ##### HELPER FUNCTIONS #####
