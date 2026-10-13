@@ -29,10 +29,30 @@ class DisCov:
 
         # establish output files for testing
         unfilt_output = "TEST_UNFILTERED.txt"
-        header = ["name", "sample", 
-                  "SW Proportion Covered (fine)",
+        header = ["name", "sample",
+                  # spread of coverage metrics
+                  "Gini Gap Evenness",
+                  "Proportion Windows Covered (fine)", "Proportion Covered (medium)", "Proportion Covered (coarse)",
+                  "Detection",
+                  "Covered Region Midpoints Range", "Covered Region Midpoint Spread (CV of Distances)",
+                  "Dispersion of Covered Bases in Windows (n=10)", "Dispersion of Covered Bases in Windows (n=30)", "Dispersion of Covered Bases in Windows (n=50)",
+                  "Dispersion of Detection in Windows (n=10)", "Dispersion of Detection in Windows (n=30)",  "Dispersion of Detection in Windows (n=50)",
+                  # evenness of coverage depth metrics
+                  "Windows Depth Evenness MAD (fine)", "Windows Depth Evenness MAD (medium)", "Windows Depth Evenness MAD (coarse)",
+                  "Windows Depth Evenness MAD Nonzero (fine)", "Windows Depth Evenness MAD Nonzero (medium)", "Windows Depth Evenness MAD Nonzero (coarse)",
+                  "Windows Depth Evenness CV (fine)", "Windows Depth Evenness CV (medium)", "Windows Depth Evenness CV (coarse)", 
+                  "Windows Depth Evenness CV Nonzero (fine)", "Windows Depth Evenness CV Nonzero (medium)", "Windows Depth Evenness CV Nonzero (coarse)", 
+                  "Window-Scaling Variance", "Window-Scaling Variance Nonzero",
+                  "Nonzero Depth Range", "Nonzero Depth IQR", 
+                  "Nonzero Depth IQR/median", "Nonzero Depth Variance",
+                  "Depth Fold-Range Detection (Narrow: 0.5x - 2x)", 
+                  "Depth Fold-Range Detection (Wide: 0.25x - 4x)",
                   "Nonzero Depth Fold-Range Detection (Narrow: 0.5x - 2x)", 
-                  "Nonzero Depth Fold-Range Detection (Wide: 0.25x - 4x)"]
+                  "Nonzero Depth Fold-Range Detection (Wide: 0.25x - 4x)",
+                  "Log-normalized Shannon Entropy", # combines both spread and evenness
+                  # combines proportion windows covered (fine) with nonzero depth fold-range detection (narrow)
+                  "Spread-Evenness Score (linear)", "Spread-Evenness Score (geometric)",
+        ]
         for outfile in [unfilt_output]:
             if not filesnpaths.is_file_exists(outfile, dont_raise=True):
                 with open(outfile, 'w') as f:
