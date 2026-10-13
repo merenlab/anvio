@@ -139,10 +139,25 @@ class DisCov:
         SE_geom = self.spread_evenness_score(S=sliding_window_metrics["fine"]['Proportion_Covered'], E=nz_depth_foldrange_narrow, alpha=0.5, formula="geometric")
 
         # append all metrics to file
+        fmt = lambda x: "NA" if x is None else f"{float(x):.4}"
         output_list = [self.name, self.sample,
-                        sliding_window_proportion_covered,
-                        f"{nz_depth_foldrange_narrow:.4}",
-                        f"{nz_depth_foldrange_wide:.4}",
+                       fmt(gini_gap_evenness),
+                       *[fmt(sliding_window_metrics[s]['Proportion_Covered']) for s in scales],
+                       fmt(self.detection),
+                       fmt(midpoint_range), fmt(midpoint_spread),
+                       *[fmt(d) for d in covered_bases_dispersion],
+                       *[fmt(d) for d in detection_dispersion],
+                       *[fmt(sliding_window_metrics[s]['Depth_Evenness_MAD']) for s in scales],
+                       *[fmt(nz_sliding_window_metrics[s]['Depth_Evenness_MAD']) for s in scales],
+                       *[fmt(sliding_window_metrics[s]['Depth_Evenness_CV']) for s in scales],
+                       *[fmt(nz_sliding_window_metrics[s]['Depth_Evenness_CV']) for s in scales],
+                       fmt(window_scaling_variance), fmt(nz_window_scaling_variance),
+                       fmt(nz_depth_range), fmt(nz_depth_IQR),
+                       fmt(nz_depth_IQR_over_median), fmt(nz_depth_variance),
+                       fmt(depth_foldrange_narrow), fmt(depth_foldrange_wide),
+                       fmt(nz_depth_foldrange_narrow), fmt(nz_depth_foldrange_wide),
+                       fmt(shannon_entropy),
+                       fmt(SE_linear), fmt(SE_geom),
                       ]
         with open(output_file, 'a') as f:
             f.write("\t".join(output_list) + "\n")
