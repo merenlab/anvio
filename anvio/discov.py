@@ -88,6 +88,10 @@ class DisCov:
             nz_depth_foldrange_narrow = 0.0
             nz_depth_foldrange_wide = 0.0
 
+        ## combined metrics
+        SE_linear = self.spread_evenness_score(S=sw_prop_vals["fine"]['Proportion_Covered'], E=nz_depth_foldrange_narrow, alpha=0.5, formula="linear")
+        SE_geom = self.spread_evenness_score(S=sw_prop_vals["fine"]['Proportion_Covered'], E=nz_depth_foldrange_narrow, alpha=0.5, formula="geometric")
+
         # append all metrics to file
         output_list = [self.name, self.sample,
                         sliding_window_proportion_covered,
@@ -328,6 +332,20 @@ class DisCov:
         median = np.median(coverage)
         num_within_range = len(coverage[(coverage >= fold_lower*median) & (coverage <= fold_upper*median)])
         return num_within_range/len(coverage)
+
+    def spread_evenness_score(self, S, E, alpha=0.5, formula="linear"):
+        """Combines a measure of spread and a measure of evenness into a 0-1 score.
+        
+        Linear formula: alpha*S + (1 - alpha)*E
+        Geometric formula: S^alpha * E^(1-alpha)
+        """
+
+        if formula == "linear":
+            return alpha*S + (1-alpha)*E
+        elif formula == "geometric":
+            return S^(alpha) * E^(1-alpha)
+        else:
+            raise ConfigError(f"spread_evenness_score does not understand the formula parameter '{formula}'")
 
 
     ##### HELPER FUNCTIONS #####
