@@ -401,7 +401,7 @@ class DisCov:
         Geometric formula: S^alpha * E^(1-alpha)
         """
 
-        if not S or not E:
+        if S is None or E is None:
             return None
 
         if formula == "linear":
