@@ -28,7 +28,7 @@ class DisCov:
         self.contig_start_positions = contig_starts # optional for genome-level stats
 
         # establish output files for testing
-        unfilt_output = "TEST_UNFILTERED.txt"
+        unfilt_output = "TEST_METRICS_DISCOV.txt"
         header = ["name", "sample",
                   # spread of coverage metrics
                   "Gini Gap Evenness",
