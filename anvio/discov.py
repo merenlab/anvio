@@ -158,7 +158,7 @@ class DisCov:
                 continue
 
             windows = self.get_sliding_window_regions(coverage, wlen)
-            nonzero_window_means = [x for x in windows if x[2] > 0]
+            nonzero_window_means = [x[2] for x in windows if x[2] > 0]
             median_depth, depth_MAD = self.compute_median_and_MAD(nonzero_window_means) # will be None if <3 windows
             cv_of_means = self.compute_CV(nonzero_window_means) # will be None if mean of means is None
 
