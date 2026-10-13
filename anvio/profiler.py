@@ -801,6 +801,7 @@ class BAMProfilerQuick:
 
             combined_coverage = None
             cursor = 0
+            contig_boundaries = []
             contig_boundary_positions = []
 
             for contig_name in bin_data['contigs']:
