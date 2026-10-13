@@ -85,11 +85,11 @@ minimal_enzymes_input.txt > draw_kos_constant_coverage.reaction.txt
 # every map of an individual sample blank.
 awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","sample","log_abundance"} NR>1{s=((NR-2)%3)+1; print $1,$2,sprintf("SAMPLE_%d",s),$3}' \
 draw_kos_negative.reaction.txt > draw_kos_samples_negative.reaction.txt
-printf 'category\tcolor\nSAMPLE_1\t#1f77b4\nSAMPLE_2\t#ff7f0e\nSAMPLE_3\t#2ca02c\nSAMPLE_1, SAMPLE_2\t#7d5ba6\n' > draw-sample-colors-combo.txt
-printf 'category\tcolor\nSAMPLE_1\t#1f77b4\nSAMPLE_2\t#ff7f0e\n' > draw-sample-colors-incomplete.txt
+printf 'sample\tcolor\nSAMPLE_1\t#1f77b4\nSAMPLE_2\t#ff7f0e\nSAMPLE_3\t#2ca02c\nSAMPLE_1, SAMPLE_2\t#7d5ba6\n' > draw-sample-colors-combo.txt
+printf 'sample\tcolor\nSAMPLE_1\t#1f77b4\nSAMPLE_2\t#ff7f0e\n' > draw-sample-colors-incomplete.txt
 # Two samples given the same color, so that two of the seven combinations of three samples come out
 # the same and the membership scale cannot label its bands.
-printf 'category\tcolor\nSAMPLE_1\t#1f77b4\nSAMPLE_2\t#ff7f0e\nSAMPLE_3\t#1f77b4\n' > draw-sample-colors-clashing.txt
+printf 'sample\tcolor\nSAMPLE_1\t#1f77b4\nSAMPLE_2\t#ff7f0e\nSAMPLE_3\t#1f77b4\n' > draw-sample-colors-clashing.txt
 # Samples named after the output directory's own subdirectories and after a BRITE category: these
 # are drawn under 'individual', so they cannot collide with anything anvi'o creates for itself.
 printf 'accession\tsample\nK00844\tMetabolism\nK00845\tall_maps\nK02358\tgrid\nK00844\tunified\nK02358\tby_map\n' > draw_kos_awkward_sample_names.reaction.txt
@@ -151,7 +151,7 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
                         --reaction-gene-aggregation mean \
                         --reaction-sample-summary mean \
                         --reaction-value-limits 0 200 \
-                        --reaction-category-value-limits 0 200 \
+                        --reaction-individual-value-limits 0 200 \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \
@@ -196,9 +196,9 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_log_ratio.reaction.txt \
                         --reaction-sample-summary mean \
                         --reaction-colormap RdBu_r \
                         --reaction-value-center \
-                        --reaction-category-value-center \
+                        --reaction-individual-value-center \
                         --reaction-value-limits none 3 \
-                        --reaction-category-value-limits none 3 \
+                        --reaction-individual-value-limits none 3 \
                         --pathway-numbers $pathway_numbers \
                         --draw-grid \
                         --no-progress
@@ -213,9 +213,9 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_log_ratio.reaction.txt \
                         --reaction-sample-summary mean \
                         --reaction-colormap RdBu_r \
                         --reaction-value-center \
-                        --reaction-category-value-center \
+                        --reaction-individual-value-center \
                         --reaction-value-limits -3 3 \
-                        --reaction-category-value-limits -3 3 \
+                        --reaction-individual-value-limits -3 3 \
                         --pathway-numbers $pathway_numbers \
                         --draw-grid \
                         --no-progress
@@ -380,10 +380,10 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
 # A row of the colors file that names a combination of samples, which sets that combination's color
 # directly in place of the blend of its members' colors.
 INFO "Testing a row of the colors file that names a combination of samples"
-# Draws the global map too, for colors given per category, blends included.
+# Also draws the global map, in the colors of the samples and their blends.
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
-                        --reaction-category-colors draw-sample-colors-combo.txt \
-                        --output-dir draw_txt_samples_category_colors_combo \
+                        --reaction-membership-colors draw-sample-colors-combo.txt \
+                        --output-dir draw_txt_samples_membership_colors_combo \
                         --pathway-numbers $global_pathway_numbers \
                         --no-progress 2>&1 | tee draw_txt_samples_combo.log
 # A combination whose members do not parse back to the run's samples is reported and ignored rather
@@ -401,9 +401,9 @@ fi
 INFO "Testing that colors given per sample also color a compound layer"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
                         --compound-txt draw_compounds_samples.compound.txt \
-                        --reaction-category-colors draw-sample-colors.txt \
-                        --compound-category-colors draw-sample-colors-combo.txt \
-                        --output-dir draw_txt_two_layers_category_colors \
+                        --reaction-membership-colors draw-sample-colors.txt \
+                        --compound-membership-colors draw-sample-colors-combo.txt \
+                        --output-dir draw_txt_two_layers_membership_colors \
                         --pathway-numbers $pathway_numbers \
                         --no-progress
 
@@ -413,10 +413,10 @@ INFO "Testing the same group ramps with an explicit span"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
                         --groups-txt draw-sample-group-information.txt \
                         --group-threshold 0.5 \
-                        --reaction-category-colors draw-group-colors.txt \
-                        --group-colormap category 0.4 0.95 \
+                        --reaction-membership-colors draw-group-colors.txt \
+                        --group-colormap tint 0.4 0.95 \
                         --group-reverse-overlay \
-                        --output-dir draw_txt_groups_category_ramps_span \
+                        --output-dir draw_txt_groups_tint_ramps_span \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --no-progress
@@ -428,8 +428,8 @@ INFO "Testing '--group-colormap-scheme by_count_continuous'"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
                         --groups-txt draw-sample-group-information.txt \
                         --group-threshold 0.5 \
-                        --reaction-category-colors draw-group-colors.txt \
-                        --group-colormap category \
+                        --reaction-membership-colors draw-group-colors.txt \
+                        --group-colormap tint \
                         --group-colormap-scheme by_count_continuous \
                         --output-dir draw_txt_groups_scheme_continuous \
                         --pathway-numbers $pathway_numbers \
@@ -557,9 +557,9 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
                         --reaction-sample-summary mean \
                         --compound-sample-summary max \
                         --reaction-value-limits 5 35 \
-                        --reaction-category-value-limits 5 35 \
+                        --reaction-individual-value-limits 5 35 \
                         --compound-value-limits 55 none \
-                        --compound-category-value-limits 20 40 \
+                        --compound-individual-value-limits 20 40 \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \
@@ -571,21 +571,21 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
 INFO "Testing that each layer's TWO colormaps are chosen on their own as well"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
                         --compound-txt draw_compounds_samples.compound.txt \
-                        --output-dir draw_txt_both_layers_category_colormap \
+                        --output-dir draw_txt_both_layers_individual_colormap \
                         --reaction-gene-aggregation mean \
                         --reaction-sample-summary std \
                         --compound-sample-summary std \
                         --reaction-colormap viridis \
-                        --reaction-category-colormap RdYlGn \
+                        --reaction-individual-colormap RdYlGn \
                         --compound-colormap cividis \
-                        --compound-category-colormap PuOr \
+                        --compound-individual-colormap PuOr \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --no-progress
 
 for colorbar in reactions reactions_samples compounds compounds_samples
 do
-    if [ ! -s draw_txt_both_layers_category_colormap/colorbar_$colorbar.pdf ]
+    if [ ! -s draw_txt_both_layers_individual_colormap/colorbar_$colorbar.pdf ]
     then
         echo "ERROR: two layers with two colormaps each should have written four colorbars."
         exit 1
@@ -597,8 +597,8 @@ done
 INFO "Testing the reversed anvi'o colormap 'clocktime_r'"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
                         --output-dir draw_txt_samples_kos_clocktime_r \
-                        --reaction-category-colormap clocktime_r \
-                        --reaction-category-value-limits 0 24 \
+                        --reaction-individual-colormap clocktime_r \
+                        --reaction-individual-value-limits 0 24 \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --no-progress
@@ -945,7 +945,7 @@ then
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
-    --reaction-category-colors draw-sample-colors-incomplete.txt \
+    --reaction-membership-colors draw-sample-colors-incomplete.txt \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: a colors file leaving a sample of the run uncolored should have failed."
@@ -953,7 +953,7 @@ then
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
-    --reaction-category-colors draw-sample-colors-clashing.txt \
+    --reaction-membership-colors draw-sample-colors-clashing.txt \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: a colors file whose combinations cannot be told apart should have failed."
@@ -961,32 +961,32 @@ then
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
-    --reaction-category-colors draw-sample-colors.txt --reaction-colormap tab10 \
+    --reaction-membership-colors draw-sample-colors.txt --reaction-colormap tab10 \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: colors given per category together with a colormap should have failed."
+    echo "ERROR: a membership colors file together with a colormap should have failed."
     exit 1
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
-    --reaction-category-colors draw-sample-colors.txt --reaction-sample-summary count \
+    --reaction-membership-colors draw-sample-colors.txt --reaction-sample-summary count \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: colors given per category with a count summary should have failed."
+    echo "ERROR: a membership colors file with a count summary should have failed."
     exit 1
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
-    --reaction-category-colors draw-sample-colors.txt \
+    --reaction-membership-colors draw-sample-colors.txt \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: colors given per category for a layer with no 'sample' column should have failed."
+    echo "ERROR: a membership colors file for a layer with no 'sample' column should have failed."
     exit 1
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
     --groups-txt draw-sample-group-information.txt --group-threshold 0.5 --draw-individual-files \
-    --group-colormap category \
+    --group-colormap tint \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: group ramps built from each group's own color, with no colors given, should have failed."
@@ -998,7 +998,7 @@ fi
 # the drawing code partway through.
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
     --groups-txt draw-sample-group-information.txt --group-threshold 0.5 --draw-individual-files \
-    --reaction-category-colors draw-group-colors.txt --group-colormap category 0.0 1.0 \
+    --reaction-membership-colors draw-group-colors.txt --group-colormap tint 0.0 1.0 \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: a group ramp running all the way to white should have failed."
@@ -1201,7 +1201,7 @@ fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
     --reaction-value-period 24 --reaction-element-normalization difference_from_circular_mean \
-    --reaction-category-value-limits 0 24 --draw-individual-files \
+    --reaction-individual-value-limits 0 24 --draw-individual-files \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: limits other than -12 and 12 for offsets from a circular mean should have failed."
@@ -1210,7 +1210,7 @@ fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
     --reaction-value-period 24 --reaction-element-normalization difference_from_circular_mean \
-    --reaction-category-value-center 0 --draw-individual-files \
+    --reaction-individual-value-center 0 --draw-individual-files \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: a center for offsets from a circular mean should have failed."
@@ -1236,7 +1236,7 @@ fi
 # A period fixes each scale of values to run from 0 to the period, so it takes no other limits and
 # no center.
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
-    --reaction-value-period 24 --reaction-category-value-limits 6 18 --draw-individual-files \
+    --reaction-value-period 24 --reaction-individual-value-limits 6 18 --draw-individual-files \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: limits other than 0 and the period, with a period, should have failed."
@@ -1417,7 +1417,7 @@ then
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
-    --reaction-category-value-limits 5 40 \
+    --reaction-individual-value-limits 5 40 \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: limits on the individual maps' scale where the file has no 'sample' column should have failed."
@@ -1425,7 +1425,7 @@ then
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
-    --reaction-category-value-limits 5 40 --pathway-numbers $pathway_numbers \
+    --reaction-individual-value-limits 5 40 --pathway-numbers $pathway_numbers \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: limits on the individual maps' scale where no individual map is drawn should have failed."
@@ -1478,7 +1478,7 @@ then
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
-    --reaction-category-value-center \
+    --reaction-individual-value-center \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: a center on the individual maps' scale where the file has no 'sample' column should have failed."
@@ -1486,7 +1486,7 @@ then
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
-    --reaction-category-value-center --pathway-numbers $pathway_numbers \
+    --reaction-individual-value-center --pathway-numbers $pathway_numbers \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: a center on the individual maps' scale where no individual map is drawn should have failed."
@@ -1575,26 +1575,26 @@ fi
 # scale to color: no file, no value column, no 'sample' column, or a scale that is not colored by
 # value.
 if anvi-draw-kegg-pathways --compound-txt draw_compounds.compound.txt \
-    --reaction-category-colormap viridis \
+    --reaction-individual-colormap viridis \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: a category colormap for a layer with no file should have failed but did not."
+    echo "ERROR: '--reaction-individual-colormap' for a layer with no file should have failed but did not."
     exit 1
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
-    --reaction-category-colormap viridis --pathway-numbers $pathway_numbers \
+    --reaction-individual-colormap viridis --pathway-numbers $pathway_numbers \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: a category colormap for a layer with no value column should have failed."
+    echo "ERROR: '--reaction-individual-colormap' for a layer with no value column should have failed."
     exit 1
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
-    --reaction-category-colormap viridis \
+    --reaction-individual-colormap viridis \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: a category colormap where the file has no 'sample' column should have failed."
+    echo "ERROR: '--reaction-individual-colormap' where the file has no 'sample' column should have failed."
     exit 1
 fi
 
@@ -1602,29 +1602,29 @@ fi
 # summarized by presence they show within-group sample counts, which '--group-colormap' styles.
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
     --groups-txt draw-sample-group-information.txt --group-threshold 0.5 \
-    --reaction-category-colormap viridis --pathway-numbers $pathway_numbers \
+    --reaction-individual-colormap viridis --pathway-numbers $pathway_numbers \
     --draw-individual-files \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: a category colormap for group maps colored by presence should have failed."
+    echo "ERROR: '--reaction-individual-colormap' for group maps colored by presence should have failed."
     exit 1
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
-    --reaction-category-colormap viridis 0.9 0.1 --pathway-numbers $pathway_numbers \
+    --reaction-individual-colormap viridis 0.9 0.1 --pathway-numbers $pathway_numbers \
     --draw-individual-files \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: category colormap fractions the wrong way around should have failed."
+    echo "ERROR: '--reaction-individual-colormap' fractions the wrong way around should have failed."
     exit 1
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
-    --reaction-category-colormap viridis 0.1 0.5 0.9 --pathway-numbers $pathway_numbers \
+    --reaction-individual-colormap viridis 0.1 0.5 0.9 --pathway-numbers $pathway_numbers \
     --draw-individual-files \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: a category colormap given three numbers should have failed but did not."
+    echo "ERROR: '--reaction-individual-colormap' given three numbers should have failed but did not."
     exit 1
 fi
 
@@ -1691,10 +1691,10 @@ fi
 # Nor is there one for a second colormap to color: a database run's individual maps show one
 # database or genome each, in a single color rather than along a scale.
 if anvi-draw-kegg-pathways --external-genomes external-genomes.txt --draw-individual-files \
-    --reaction-category-colormap viridis \
+    --reaction-individual-colormap viridis \
     --output-dir draw_db_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: a category colormap on a database run should have failed but did not."
+    echo "ERROR: '--reaction-individual-colormap' on a database run should have failed but did not."
     exit 1
 fi
 
@@ -1786,13 +1786,13 @@ fi
 INFO "Testing the names a normalization cannot be given"
 # Each of these is a name that does the wrong thing with a set of values, and each is caught by a
 # different probe. A reduction such as 'mean' summarizes samples rather than rescaling each of them,
-# which is what '--reaction-sample-summary' is for. A name that reorders the categories would hand a
-# sample another sample's value. A name that reads one category against its neighbors reads an order
-# that is an artifact of how the samples happen to be named. 'duplicated' answers for one of two
-# equal samples according to which came first, which values that all differ never reveal. 'squeeze'
-# returns a bare number for the single value that an element found in one sample alone gives it,
-# which is commonplace and would otherwise fail in the middle of drawing. 'convert_dtypes' answers
-# in a nullable dtype, whose missing value no array of plain floats holds.
+# which is what '--reaction-sample-summary' is for. A name that reorders the samples would give a
+# sample another sample's value. A name that compares one sample with its neighbors depends on their
+# order. That order comes only from how the samples happen to be named. 'duplicated' answers for one
+# of two equal samples according to which came first, which values that all differ never reveal.
+# 'squeeze' returns a bare number for the single value that an element found in one sample alone
+# gives it, which is commonplace and would otherwise fail in the middle of drawing. 'convert_dtypes'
+# answers in a nullable dtype, whose missing value no array of plain floats holds.
 for normalization in not_a_pandas_method mean idxmax sort_values cumsum pct_change duplicated \
                      squeeze convert_dtypes
 do
@@ -1817,7 +1817,7 @@ fi
 # A normalization whose neutral value is zero centers the rescaled scale there, which means the run
 # holds a center that nobody asked for. Wherever that center is reported, the message has to name
 # the normalization that supplied it rather than the option for giving one by hand: naming
-# '--reaction-category-value-center' would send the reader to an option they never used. It is
+# '--reaction-individual-value-center' would send the reader to an option they never used. It is
 # reported in four places. The first is a per-group scale that is not colored by value at all. The
 # second is a scale whose limits leave no room for the center. The third is a scale whose two limits
 # do not have the center as their midpoint. The fourth is a limit that centering would move.
@@ -1838,7 +1838,7 @@ then
     exit 1
 fi
 if tr '\n' ' ' < draw_txt_normalization_grouped.log \
-    | grep -q "reaction-category-value-center"
+    | grep -q "reaction-individual-value-center"
 then
     echo "ERROR: the refusal over presence-summarized groups blamed a center nobody gave."
     exit 1
@@ -1846,7 +1846,7 @@ fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
     --reaction-element-normalization relative_to_mean \
-    --reaction-category-value-limits 1 5 --draw-individual-files \
+    --reaction-individual-value-limits 1 5 --draw-individual-files \
     --output-dir draw_txt_bad --overwrite-output-destinations \
     --no-progress > draw_txt_normalization_center.log 2>&1
 then
@@ -1862,7 +1862,7 @@ fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
     --reaction-element-normalization relative_to_mean \
-    --reaction-category-value-limits -0.5 1 --draw-individual-files \
+    --reaction-individual-value-limits -0.5 1 --draw-individual-files \
     --output-dir draw_txt_bad --overwrite-output-destinations \
     --no-progress > draw_txt_normalization_midpoint.log 2>&1
 then
@@ -1877,7 +1877,7 @@ fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
     --reaction-element-normalization relative_to_mean \
-    --reaction-category-value-limits -0.5 none --draw-individual-files \
+    --reaction-individual-value-limits -0.5 none --draw-individual-files \
     --pathway-numbers $pathway_numbers \
     --output-dir draw_txt_bad --overwrite-output-destinations \
     --no-progress > draw_txt_normalization_moved_limit.log 2>&1
@@ -2060,11 +2060,11 @@ then
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
-    --reaction-value-type categorical --reaction-category-colormap viridis --draw-grid \
+    --reaction-value-type categorical --reaction-individual-colormap viridis --draw-grid \
     --pathway-numbers $pathway_numbers \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: a category colormap for categorical values should have failed but did not."
+    echo "ERROR: '--reaction-individual-colormap' for categorical values should have failed but did not."
     exit 1
 fi
 
@@ -2262,9 +2262,9 @@ INFO "Testing colors given per group of contigs databases"
 anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db E_faecalis_6255.db E_faecalis_6512.db E_faecalis_6557.db E_faecalis_6563.db \
                         --groups-txt contigs-db-group-information.txt \
                         --group-threshold 0 \
-                        --reaction-category-colors draw-group-colors.txt \
-                        --group-colormap category \
-                        --output-dir contigs_dbs_kos_group_category_ramps \
+                        --reaction-membership-colors draw-group-colors.txt \
+                        --group-colormap tint \
+                        --output-dir contigs_dbs_kos_group_tint_ramps \
                         --draw-individual-files \
                         --draw-grid \
                         --pathway-numbers $pathway_numbers \

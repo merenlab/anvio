@@ -48,7 +48,7 @@ check_package_dependencies()
 from anvio.keggmapping import (
     AGGREGATION_FUNCTIONS, CATEGORICAL_RULES, CATEGORICAL_RULES_PHRASE, DEFAULT_CATEGORICAL_SEED,
     DEFAULT_CENTERED_COLORMAP, DEFAULT_GROUP_TINT_SPAN, DEFAULT_VALUE_COLORS,
-    ELEMENT_NORMALIZATION_PHRASE, GROUP_COLORMAP_FROM_CATEGORY, GROUP_SCHEME_OPTIONS,
+    ELEMENT_NORMALIZATION_PHRASE, GROUP_COLORMAP_TINT, GROUP_SCHEME_OPTIONS,
     MAX_DISCRETE_COUNT_BANDS, MIN_ANGULAR_DEVIATION_VALUES, SUMMARY_PRESENCE_PHRASE,
     SUMMARY_PRESENCE_SCHEMES, VALUE_TYPES, Mapper
 )
@@ -61,7 +61,7 @@ __version__ = VERSION
 __requires__ = ['kegg-data']
 __can_use__ = ['contigs-db', 'external-genomes', 'pan-db', 'genomes-storage-db',
                'reaction-network-json', 'kegg-reaction-txt', 'kegg-compound-txt',
-               'kegg-category-colors-txt', 'kegg-value-colors-txt']
+               'kegg-membership-colors-txt', 'kegg-value-colors-txt']
 __provides__ = ['kegg-pathway-map']
 __description__ = DESCRIPTION
 
@@ -237,7 +237,7 @@ def get_args() -> Namespace:
         f"value is a number, the values are sorted as numbers. Otherwise the digits in the values "
         f"are compared as numbers, so 'cluster 2' comes before 'cluster 10'. A random choice "
         f"depends on '--seed'. The map of each sample shows that sample's values. A value in one "
-        f"sample need not mean the same thing in another sample. So by default the 'unified' map "
+        f"sample need not mean the same thing in another sample, so by default the 'unified' map "
         f"counts the samples that contain each element. A rule given to "
         f"'--reaction-sample-summary' instead chooses one value across the samples. On global and "
         f"overview maps drawn from reactions alone, each compound takes the value that the "
@@ -259,7 +259,7 @@ def get_args() -> Namespace:
         f"The seed of random choices among categorical values. The rules 'plurality_random' and "
         f"'random' make these choices (see '--reaction-value-type'). The default is "
         f"{DEFAULT_CATEGORICAL_SEED}. Each choice comes from the seed and from what the value is "
-        f"chosen for, such as the KOs of a map element in one sample. So a map element gets the "
+        f"chosen for, such as the KOs of a map element in one sample, so a map element gets the "
         f"same value on every map, and in every run with the same seed. This option is refused "
         f"where no rule chooses at random."
     )
@@ -630,7 +630,7 @@ def get_args() -> Namespace:
         "sequential colormap that is sampled continuously to map reaction values (default "
         "'plasma_r'), and '--presence-colormap-scheme' does not apply. That one colormap then "
         "colors the 'unified' map and the maps of the individual samples or groups alike, unless "
-        "'--reaction-category-colormap' gives the latter a colormap of their own. With "
+        "'--reaction-individual-colormap' gives the latter a colormap of their own. With "
         "'--reaction-value-type categorical', each value takes a color of its own. This option "
         "then colors only presence across the samples or groups on the 'unified' map. It is "
         "refused where no map shows presence. See the following webpage for named Matplotlib "
@@ -638,14 +638,14 @@ def get_args() -> Namespace:
         "https://matplotlib.org/stable/users/explain/colors/colormaps.html#classes-of-colormaps"
     )
     groupCOLOR.add_argument(
-        '--reaction-category-colormap', nargs='+', help=
-        "Like '--reaction-colormap', but for the single color scale shared by the maps of the "
-        "individual samples ('--draw-individual-files'/'--draw-grid'), or of the individual groups "
-        "when the samples are grouped with '--groups-txt'. It takes the same values: a colormap "
-        "name on its own, or a name followed by two decimals limiting the fraction of the colormap "
-        "to sample. Without this option, one colormap colors both of those maps and the 'unified' "
-        "map, which is what you want when the two show the same quantity — the values of one "
-        "sample beside the mean of them all, for example. Give it when they do not. With "
+        '--reaction-individual-colormap', nargs='+', help=
+        "Like '--reaction-colormap', but for the single color scale shared by the individual maps "
+        "('--draw-individual-files'/'--draw-grid'). These are the maps of the samples, or of the "
+        "groups when the samples are grouped with '--groups-txt'. It takes the same values: a "
+        "colormap name on its own, or a name followed by two decimals limiting the fraction of the "
+        "colormap to sample. Without this option, one colormap colors both of those maps and the "
+        "'unified' map, which is what you want when the two show the same quantity — the values of "
+        "one sample beside the mean of them all, for example. Give it when they do not. With "
         "'--reaction-sample-summary std', for instance, the 'unified' map shows how much replicate "
         "samples disagree, a spread that is never negative and will not conform to the scale of "
         "the underlying values, so drawing it in the colors that show magnitude on the per-sample "
@@ -662,42 +662,47 @@ def get_args() -> Namespace:
         "categorical'), which take colors of their own."
     )
     groupCOLOR.add_argument(
-        '--compound-category-colormap', nargs='+', help=
-        "Like '--reaction-category-colormap', but for the compound layer of a '--compound-txt' "
+        '--compound-individual-colormap', nargs='+', help=
+        "Like '--reaction-individual-colormap', but for the compound layer of a '--compound-txt' "
         "file colored by a value column. The two layers are colored on independent scales, each "
         "with its own colorbar, so each takes its own colormaps."
     )
     groupCOLOR.add_argument(
-        '--reaction-category-colors', type=str, metavar='PATH', help=
-        "Path to a tab-delimited kegg-category-colors-txt file giving a color hex code to each "
-        "category of the run — each sample of a '--reaction-txt' file, each contigs database, each "
-        "genome of a pangenome, or each group of any of these when '--groups-txt' is used. This "
-        "colors the reaction layer by membership from colors you choose rather than from a "
-        "colormap, so it replaces '--reaction-colormap' and cannot be combined with it. Its first "
-        "column holds category names and can be headed anything; its 'color' column holds the hex "
-        "codes. Because coloring by membership colors an element by exactly WHICH categories "
-        "contain it, a color is needed for every combination of them: a category on its own takes "
-        "its own color, and a combination takes the blend of its members' colors, which a row "
-        "naming the combination — its category names separated by commas, exactly as the colorbar "
-        "labels it — overrides. Where the categories are samples, databases or genomes, the same "
-        "colors also color each category's own map ('--draw-individual-files'/'--draw-grid'), so a "
-        "panel of a grid says which category it is and matches the band it takes on the 'unified' "
-        "map; where they are groups, each group's own maps count that group's sources instead, and "
-        "'--group-colormap category' is what carries the group's color onto them. Every category "
-        "of the run needs a color; names in the file that are not categories of the run are "
-        "reported and ignored, so one file can serve runs drawing different subsets. Note that "
-        "giving this file colors the layer by membership however many categories there are, rather "
-        "than by count above the three that would otherwise switch to counting: six categories "
-        "then take a 63-band scale of every combination of them rather than a six-band scale of "
-        "counts. Since no color scale can distinguish combinations of more than a handful of "
-        "categories, anvi'o refuses rather than draw a scale whose bands cannot be told apart."
+        '--reaction-membership-colors', type=str, metavar='PATH', help=
+        "Path to a tab-delimited kegg-membership-colors-txt file. It gives a color hex code to "
+        "each sample of a '--reaction-txt' file, each contigs database, each genome of a "
+        "pangenome, or each group of any of these when '--groups-txt' is used. The file switches "
+        "the reaction layer to coloring by membership, with colors you choose rather than colors "
+        "from a colormap, so it replaces '--reaction-colormap' and cannot be combined with it. The "
+        "first column of the file holds the name of each sample, database, genome, or group. It "
+        "can be headed anything. Its 'color' column holds the hex codes. Coloring by membership "
+        "colors an element by exactly WHICH samples, databases, genomes, or groups contain it, so "
+        "a color is needed for every combination of them. Each of them on its own takes its own "
+        "color. A combination takes the blend of the colors of its members. A row naming the "
+        "combination overrides the blend. The row gives the names of the members separated by "
+        "commas, exactly as the colorbar labels the combination. Without groups, the same colors "
+        "also color the individual map of each sample, database, or genome "
+        "('--draw-individual-files'/'--draw-grid'), so the color of a panel of a grid says which "
+        "sample, database, or genome it is. That color matches the band of the same sample, "
+        "database, or genome on the 'unified' map. With groups, the individual maps of each group "
+        "count the group's samples, databases, or genomes instead. Only '--group-colormap tint' "
+        "puts the group's color on those maps. It colors them with a ramp of tints of the group's "
+        "color. Every sample, database, genome, or group of the run needs a color. Names in the "
+        "file that are not in the run are reported and ignored, so one file can serve runs that "
+        "draw different subsets. Note that giving this file colors the layer by membership however "
+        "many samples, databases, genomes, or groups there are. Without the file, more than three "
+        "of them would switch the layer to coloring by count. With the file, six of them take a "
+        "63-band scale of every combination, rather than a six-band scale of counts. No color "
+        "scale can distinguish the combinations of more than a handful of them, so anvi'o refuses "
+        "rather than draw a scale whose bands cannot be told apart."
     )
     groupCOLOR.add_argument(
-        '--compound-category-colors', type=str, metavar='PATH', help=
-        "Like '--reaction-category-colors', but for the compound layer of a '--compound-txt' file "
-        "colored by sample or group presence. The two layers are colored independently, so each "
-        "takes its own file; pointing both options at a single file gives the two layers one set "
-        "of category colors and so one legend. It cannot be combined with '--compound-colormap'."
+        '--compound-membership-colors', type=str, metavar='PATH', help=
+        "Like '--reaction-membership-colors', but for the compound layer of a '--compound-txt' "
+        "file colored by sample or group presence. The two layers are colored independently, so "
+        "each takes its own file. Pointing both options at a single file gives the two layers the "
+        "same color for each sample or group, and so one legend. It cannot be combined with "
+        "'--compound-colormap'."
     )
     groupCOLOR.add_argument(
         '--reaction-value-colors', type=str, metavar='PATH', help=
@@ -724,10 +729,10 @@ def get_args() -> Namespace:
         f"For a draw-kegg-pathways text file this choice is part of the sample and group summaries "
         f"instead ('--reaction-sample-summary' and the related options), so this option is "
         f"rejected for a text run. It is also rejected with '--skip-unified-maps', which leaves no "
-        f"map for it to color. A group's own map is drawn by '--group-colormap-scheme'; a "
-        f"database's or genome's own map takes that one category's single color. By default, with "
-        f"4 or more databases or groups, reactions are colored by count of database or group; with "
-        f"2 or 3, reactions are colored explicitly by database or group membership. In coloring by "
+        f"map for it to color. A group's own map is drawn by '--group-colormap-scheme'. A "
+        f"database's or genome's own map draws its reactions in a single color. By default, with 4 "
+        f"or more databases or groups, reactions are colored by count of database or group; with 2 "
+        f"or 3, reactions are colored explicitly by database or group membership. In coloring by "
         f"count, the colormap should be sequential, such that the color of a reaction changes "
         f"'smoothly' with the count. Because its colorbar labels one band per count, 'by_count' "
         f"additionally needs a distinguishable color for every count, and is refused when there "
@@ -739,19 +744,20 @@ def get_args() -> Namespace:
         f"which needs neither a distinguishable color nor a label per count, so a color there "
         f"reads as a position along the range rather than as an exact count; it is chosen "
         f"automatically, with a warning, wherever 'by_count' would be refused or its labels would "
-        f"be unreadable. In contrast, coloring by membership means reaction color is determined by "
-        f"membership in a database/group or combination of databases/groups, so a qualitative "
-        f"colormap can be used instead of a sequential colormap, as by default with 2 or 3 "
-        f"categories, to give a distinct color to each membership category."
+        f"be unreadable. In contrast, coloring by membership means that the color of a reaction is "
+        f"set by its membership in a database or group, or in a combination of databases or "
+        f"groups, so a qualitative colormap can be used instead of a sequential colormap, to give "
+        f"a distinct color to each combination. This is the default with 2 or 3 databases or "
+        f"groups."
     )
     groupCOLOR.add_argument(
         '--count-scale-max', metavar='NAME_OR_NUMBER', default='observed', help=
         "Where a color scale of counts stops, which decides how the colors are spread over the "
         "counts. By default, 'observed' stops at the highest count anything on the drawn maps "
         "actually has, so that the colors span the counts that occur. 'total' runs the scale to "
-        "every category there is — every sample, contigs database, genome, or group — which is "
-        "what the count could be at most. A number stops the scale there instead, and counts above "
-        "it take the top color, which is how separate figures are given the same scale. The "
+        "the number of samples, contigs databases, genomes, or groups being counted. That number "
+        "is the highest the count could be. A number stops the scale there instead, and counts "
+        "above it take the top color, which is how separate figures are given the same scale. The "
         "default matters most for sparse data: with 100 samples and no element in more than 10 of "
         "them, a scale running to 100 draws every element in indistinguishable shades at the "
         "bottom of the colormap, while one running to 10 spreads them across it. Use 'total' or a "
@@ -814,14 +820,14 @@ def get_args() -> Namespace:
         "the samples or groups."
     )
     groupCOLOR.add_argument(
-        '--reaction-category-value-limits', nargs=2, metavar='LIMIT', help=
-        "Like '--reaction-value-limits', but for the single color scale shared by the maps of the "
-        "individual samples ('--draw-individual-files'/'--draw-grid'), or of the individual groups "
-        "when the samples are grouped with '--groups-txt'. The two scales are limited separately "
-        "because they can span quite different things: where '--reaction-sample-summary mean' "
-        "colors the 'unified' map, that map shows means across samples, which cluster far more "
-        "tightly than the per-sample values underlying them, so limits that suit one can be badly "
-        "wrong for the other. Giving one of the two options without the other is perfectly "
+        '--reaction-individual-value-limits', nargs=2, metavar='LIMIT', help=
+        "Like '--reaction-value-limits', but for the single color scale shared by the individual "
+        "maps ('--draw-individual-files'/'--draw-grid'). These are the maps of the samples, or of "
+        "the groups when the samples are grouped with '--groups-txt'. The two scales are limited "
+        "separately because they can span quite different things: where '--reaction-sample-summary "
+        "mean' colors the 'unified' map, that map shows means across samples, which cluster far "
+        "more tightly than the per-sample values underlying them, so limits that suit one can be "
+        "badly wrong for the other. Giving one of the two options without the other is perfectly "
         "legitimate, and anvi'o warns when you do, since the scale left alone goes on spanning "
         "whatever its own values happen to reach."
     )
@@ -832,9 +838,9 @@ def get_args() -> Namespace:
         "its own colorbar, so each takes its own limits."
     )
     groupCOLOR.add_argument(
-        '--compound-category-value-limits', nargs=2, metavar='LIMIT', help=
-        "Like '--reaction-category-value-limits', but for the compound layer: the scale shared by "
-        "the compound colors of the individual sample or group maps."
+        '--compound-individual-value-limits', nargs=2, metavar='LIMIT', help=
+        "Like '--reaction-individual-value-limits', but for the compound layer: the scale shared "
+        "by the compound colors of the individual sample or group maps."
     )
     groupCOLOR.add_argument(
         '--reaction-value-center', nargs='?', const=VALUE_CENTER_DEFAULT, metavar='VALUE', help=
@@ -854,16 +860,16 @@ def get_args() -> Namespace:
         f"given, the center has to be their midpoint."
     )
     groupCOLOR.add_argument(
-        '--reaction-category-value-center', nargs='?', const=VALUE_CENTER_DEFAULT, metavar='VALUE',
-        help=
-        "Like '--reaction-value-center', but for the single color scale shared by the maps of the "
-        "individual samples ('--draw-individual-files'/'--draw-grid'), or of the individual groups "
-        "when the samples are grouped with '--groups-txt'. The two scales are centered separately, "
-        "for the same reason they are limited separately: a summary can put them on quite "
-        "different footings. Giving one of the two without the other is legitimate, and anvi'o "
-        "warns when you do, since one colormap colors both scales unless "
-        "'--reaction-category-colormap' gives them one each, and the middle color would then mean "
-        "the centered value on the one map and whatever the values leave in the middle on the "
+        '--reaction-individual-value-center', nargs='?', const=VALUE_CENTER_DEFAULT,
+        metavar='VALUE', help=
+        "Like '--reaction-value-center', but for the single color scale shared by the individual "
+        "maps ('--draw-individual-files'/'--draw-grid'). These are the maps of the samples, or of "
+        "the groups when the samples are grouped with '--groups-txt'. The two scales are centered "
+        "separately, for the same reason they are limited separately: a summary can put them on "
+        "quite different footings. Giving one of the two without the other is legitimate, and "
+        "anvi'o warns when you do, since one colormap colors both scales unless "
+        "'--reaction-individual-colormap' gives them one each, and the middle color would then "
+        "mean the centered value on the one map and whatever the values leave in the middle on the "
         "other."
     )
     groupCOLOR.add_argument(
@@ -873,10 +879,10 @@ def get_args() -> Namespace:
         "its own colorbar, so each takes its own center."
     )
     groupCOLOR.add_argument(
-        '--compound-category-value-center', nargs='?', const=VALUE_CENTER_DEFAULT, metavar='VALUE',
-        help=
-        "Like '--reaction-category-value-center', but for the compound layer: the scale shared by "
-        "the compound colors of the individual sample or group maps."
+        '--compound-individual-value-center', nargs='?', const=VALUE_CENTER_DEFAULT,
+        metavar='VALUE', help=
+        "Like '--reaction-individual-value-center', but for the compound layer: the scale shared "
+        "by the compound colors of the individual sample or group maps."
     )
     groupCOLOR.add_argument(
         '--reaction-element-normalization', nargs='+', metavar='NAME', help=
@@ -898,15 +904,15 @@ def get_args() -> Namespace:
         f"among the group's samples, which isn't something that should be rescaled. A "
         f"normalization whose neutral value is zero, such as 'relative_to_mean', centers the "
         f"rescaled scale on zero and colors it with the diverging colormap, "
-        f"'{DEFAULT_CENTERED_COLORMAP}'; override with '--reaction-category-value-center' and "
-        f"'--reaction-category-colormap'. An element the normalization cannot value is left "
+        f"'{DEFAULT_CENTERED_COLORMAP}'; override with '--reaction-individual-value-center' and "
+        f"'--reaction-individual-colormap'. An element the normalization cannot value is left "
         f"uncolored — a ratio needs a positive value to measure against, and a z-score needs an "
         f"element found in more than one sample. With '--reaction-value-period', the only "
         f"normalization is 'difference_from_circular_mean'. Each value becomes its offset from the "
         f"element's circular mean across the samples or groups, the shorter way around the circle. "
         f"With a period of 24, the offsets run from -12 to 12, and -12 and 12 are the same point. "
         f"Their scale is fixed, with 0 in the middle. It takes the cyclic 'clocktime' unless "
-        f"'--reaction-category-colormap' names another colormap. An element found in one sample "
+        f"'--reaction-individual-colormap' names another colormap. An element found in one sample "
         f"has an offset of 0. An element whose values cancel out has no circular mean, so it is "
         f"left uncolored, and a warning says so."
     )
@@ -935,18 +941,19 @@ def get_args() -> Namespace:
         f"layer's samples are pooled into a value instead — "
         f"'--reaction-sample-summary'/'--compound-sample-summary' given an aggregation — its group "
         f"maps show that value, and are colored by "
-        f"'--reaction-category-colormap'/'--compound-category-colormap', or by the layer's own "
+        f"'--reaction-individual-colormap'/'--compound-individual-colormap', or by the layer's own "
         f"'--reaction-colormap'/'--compound-colormap' if that is not given. In place of a colormap "
-        f"name, the value '{GROUP_COLORMAP_FROM_CATEGORY}' colors each group's own maps by a ramp "
-        f"running from a pale tint to that group's own color, which "
-        f"'--reaction-category-colors'/'--compound-category-colors' gives; every group's ramp is "
-        f"built the same way, so the panels of a grid stay comparable while each says which group "
-        f"it is. The two decimal values then say how far from white the ramp starts and stops "
-        f"rather than which fraction of a colormap to use, defaulting to "
-        f"{DEFAULT_GROUP_TINT_SPAN[0]} and {DEFAULT_GROUP_TINT_SPAN[1]}: the pale end stops short "
-        f"of white because standard and overview maps keep white for their own unhighlighted "
-        f"elements. A named colormap remains the default, since one built for showing magnitude "
-        f"usually reads better as a count than a color chosen to identify a group does."
+        f"name, give the value '{GROUP_COLORMAP_TINT}'. It colors the maps of each group with a "
+        f"ramp of tints of the group's color. The ramp runs from a pale tint to the group's color. "
+        f"'--reaction-membership-colors'/'--compound-membership-colors' gives the color of each "
+        f"group. Every group's ramp is built the same way, so the panels of a grid stay "
+        f"comparable, while each panel shows which group it is. The two decimal values then say "
+        f"how far from white the ramp starts and stops rather than which fraction of a colormap to "
+        f"use, defaulting to {DEFAULT_GROUP_TINT_SPAN[0]} and {DEFAULT_GROUP_TINT_SPAN[1]}: the "
+        f"pale end stops short of white because standard and overview maps keep white for their "
+        f"own unhighlighted elements. A named colormap remains the default, since one built for "
+        f"showing magnitude usually reads better as a count than a color chosen to identify a "
+        f"group does."
     )
     groupGROUP.add_argument(
         '--group-colormap-scheme', choices=list(GROUP_SCHEME_OPTIONS), help=
@@ -1034,14 +1041,14 @@ def map_json_network_ko_data(args: Namespace, mapper: Mapper) -> None:
         unsupported_args.append('--reaction-colormap')
     if args.compound_colormap is not None:
         unsupported_args.append('--compound-colormap')
-    if args.reaction_category_colormap is not None:
-        unsupported_args.append('--reaction-category-colormap')
-    if args.compound_category_colormap is not None:
-        unsupported_args.append('--compound-category-colormap')
-    if args.reaction_category_colors is not None:
-        unsupported_args.append('--reaction-category-colors')
-    if args.compound_category_colors is not None:
-        unsupported_args.append('--compound-category-colors')
+    if args.reaction_individual_colormap is not None:
+        unsupported_args.append('--reaction-individual-colormap')
+    if args.compound_individual_colormap is not None:
+        unsupported_args.append('--compound-individual-colormap')
+    if args.reaction_membership_colors is not None:
+        unsupported_args.append('--reaction-membership-colors')
+    if args.compound_membership_colors is not None:
+        unsupported_args.append('--compound-membership-colors')
     if args.compound_reverse_overlay:
         unsupported_args.append('--compound-reverse-overlay')
     for summary_arg, summary_flag in (
@@ -1149,21 +1156,20 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
             return None, None
         if len(colormap_arg) == 1:
             return colormap_arg[0], None
-        # Given '--group-colormap category' the two numbers are not a fraction of a colormap at all,
-        # but how far from white a group's own ramp starts and stops, so the messages say what the
+        # Given '--group-colormap tint' the two numbers are not a fraction of a colormap at all, but
+        # how far from white a group's own ramp starts and stops, so the messages say what the
         # numbers actually mean. The constraint on them is the same either way.
-        from_category = (
-            flag == '--group-colormap' and colormap_arg[0] == GROUP_COLORMAP_FROM_CATEGORY
+        tinted = (
+            flag == '--group-colormap' and colormap_arg[0] == GROUP_COLORMAP_TINT
         )
         limits_mean = (
             "how far from white towards a group's own color its ramp starts and stops"
-            if from_category else "the fraction of the colormap to use"
+            if tinted else "the fraction of the colormap to use"
         )
         if len(colormap_arg) != 3:
             example = (
-                f"'{GROUP_COLORMAP_FROM_CATEGORY} {DEFAULT_GROUP_TINT_SPAN[0]} "
-                f"{DEFAULT_GROUP_TINT_SPAN[1]}'"
-            ) if from_category else "'plasma 0.1 0.9'"
+                f"'{GROUP_COLORMAP_TINT} {DEFAULT_GROUP_TINT_SPAN[0]} {DEFAULT_GROUP_TINT_SPAN[1]}'"
+            ) if tinted else "'plasma 0.1 0.9'"
             raise ConfigError(
                 f"'{flag}' takes either a colormap name on its own, or a name followed by TWO "
                 f"decimal values giving {limits_mean}, such as {example}. "
@@ -1237,7 +1243,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
 
     draw_individual_files = _nargs_selection(args.draw_individual_files)
     draw_grid = _nargs_selection(args.draw_grid)
-    draw_category_maps = draw_individual_files is not False or draw_grid is not False
+    draw_individual_maps = draw_individual_files is not False or draw_grid is not False
 
     # Each layer's file flag, detected structure, and the two summaries reducing its samples and its
     # sample groups.
@@ -1317,7 +1323,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     raise ConfigError(
                         f"'{colors_flag}' gives a color to each categorical value. Here the "
                         f"samples are grouped, and '--{element_type}-sample-summary' gives no "
-                        f"rule. So each group's map counts the group's samples, and no map shows "
+                        f"rule, so each group's map counts the group's samples, and no map shows "
                         f"the values. Give '--{element_type}-sample-summary' a rule, such as "
                         f"'plurality_order', to color each group's map by a value chosen among its "
                         f"samples. Or drop the colors file."
@@ -1425,14 +1431,14 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     "'--compound-value-colors' instead."
                 )
 
-        # A color per category colors a layer by which samples or groups contain an element, and
-        # colors each of their own maps, so the layer's file needs a 'sample' column for there to be
-        # any categories at all. Which map contexts actually take those colors depends on the
-        # summaries, which the mapper resolves; it refuses there if none of them does.
+        # A membership colors file colors a layer by which samples or groups contain an element. It
+        # also colors their individual maps, so the layer's file needs a 'sample' column, or there
+        # are no samples or groups to color. Which map contexts actually take those colors depends
+        # on the summaries, which the mapper resolves; it refuses there if none of them does.
         for element_type, file_flag, layer, _, _ in summaries:
-            if getattr(args, f'{element_type}_category_colors') is None:
+            if getattr(args, f'{element_type}_membership_colors') is None:
                 continue
-            colors_flag = f'--{element_type}-category-colors'
+            colors_flag = f'--{element_type}-membership-colors'
             if layer is None:
                 raise ConfigError(
                     f"'{colors_flag}' colors the {element_type} layer, but no {element_type} file "
@@ -1440,9 +1446,9 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 )
             if not layer['has_sample']:
                 raise ConfigError(
-                    f"'{colors_flag}' gives a color to each sample, or to each group of samples, "
-                    f"but the {element_type} file has no 'sample' column, so there are no "
-                    f"categories to color. Set the single color of this layer with "
+                    f"'{colors_flag}' gives a color to each sample, or to each group of samples. "
+                    f"The {element_type} file has no 'sample' column, so it has no samples or "
+                    f"groups to color. Set the single color of this layer with "
                     f"'--{element_type}-color' instead."
                 )
 
@@ -1634,23 +1640,23 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         # checks everything past this point like a programmatic call, including the numbers
         # themselves and whether the context in question ends up colored by value once the summaries
         # have had their say.
-        for setting, flag, element_type, file_flag, layer, per_category, verb in (
+        for setting, flag, element_type, file_flag, layer, per_individual, verb in (
             (args.reaction_value_limits, '--reaction-value-limits', 'reaction', '--reaction-txt',
              reaction, False, 'bound'),
-            (args.reaction_category_value_limits, '--reaction-category-value-limits', 'reaction',
-             '--reaction-txt', reaction, True, 'bound'),
+            (args.reaction_individual_value_limits, '--reaction-individual-value-limits',
+             'reaction', '--reaction-txt', reaction, True, 'bound'),
             (args.compound_value_limits, '--compound-value-limits', 'compound', '--compound-txt',
              compound, False, 'bound'),
-            (args.compound_category_value_limits, '--compound-category-value-limits', 'compound',
-             '--compound-txt', compound, True, 'bound'),
+            (args.compound_individual_value_limits, '--compound-individual-value-limits',
+             'compound', '--compound-txt', compound, True, 'bound'),
             (args.reaction_value_center, '--reaction-value-center', 'reaction', '--reaction-txt',
              reaction, False, 'center'),
-            (args.reaction_category_value_center, '--reaction-category-value-center', 'reaction',
-             '--reaction-txt', reaction, True, 'center'),
+            (args.reaction_individual_value_center, '--reaction-individual-value-center',
+             'reaction', '--reaction-txt', reaction, True, 'center'),
             (args.compound_value_center, '--compound-value-center', 'compound', '--compound-txt',
              compound, False, 'center'),
-            (args.compound_category_value_center, '--compound-category-value-center', 'compound',
-             '--compound-txt', compound, True, 'center')
+            (args.compound_individual_value_center, '--compound-individual-value-center',
+             'compound', '--compound-txt', compound, True, 'center')
         ):
             if setting is None:
                 continue
@@ -1671,7 +1677,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"layer, but its file has no value column, so the layer is colored by presence "
                     f"and there is no scale of values to {verb}."
                 )
-            if per_category and not layer['has_sample']:
+            if per_individual and not layer['has_sample']:
                 raise ConfigError(
                     f"'{flag}' {verb}s the color scale shared by the maps of the individual "
                     f"samples or groups, but the {element_type} file has no 'sample' column, so it "
@@ -1719,13 +1725,13 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         # limits needs: the layer's file, a value column to put those maps on a scale, and the
         # samples they are drawn for. Whether that scale ends up colored by value once the summaries
         # have had their say is checked by the mapper, as for programmatic callers.
-        for category_colormap, element_type, file_flag, layer in (
-            (args.reaction_category_colormap, 'reaction', '--reaction-txt', reaction),
-            (args.compound_category_colormap, 'compound', '--compound-txt', compound)
+        for individual_colormap, element_type, file_flag, layer in (
+            (args.reaction_individual_colormap, 'reaction', '--reaction-txt', reaction),
+            (args.compound_individual_colormap, 'compound', '--compound-txt', compound)
         ):
-            if category_colormap is None:
+            if individual_colormap is None:
                 continue
-            flag = f'--{element_type}-category-colormap'
+            flag = f'--{element_type}-individual-colormap'
             if layer is None:
                 raise ConfigError(
                     f"'{flag}' colors the maps of the individual samples or groups of the "
@@ -1893,7 +1899,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                         f"'--skip-unified-maps' draws no 'unified' map to color. Please use "
                         f"'{flag}' or '--skip-unified-maps', not both."
                     )
-            # A group's value comes from the sample summary. So a rule or an aggregation across the
+            # A group's value comes from the sample summary, so a rule or an aggregation across the
             # groups needs one of the same kind among each group's samples.
             if (
                 layer is not None and layer['mode'] == 'categorical'
@@ -1954,7 +1960,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
             (args.group_colormap_scheme is not None, '--group-colormap-scheme'),
             (args.group_reverse_overlay, '--group-reverse-overlay')
         ) if present_flag]
-        if group_flags and not (group_presence_maps and draw_category_maps):
+        if group_flags and not (group_presence_maps and draw_individual_maps):
             message = ', '.join(f"'{flag}'" for flag in group_flags)
             raise ConfigError(
                 f"Group-map coloring options were given ({message}), but they apply only to "
@@ -1962,8 +1968,8 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 f"'--groups-txt' plus '--draw-individual-files' and/or '--draw-grid' for a layer "
                 f"whose samples are summarized by presence. A layer whose samples are summarized "
                 f"by pooling values colors its group maps continuously from "
-                f"'--reaction-category-colormap'/'--compound-category-colormap' (or the layer's "
-                f"own '--reaction-colormap'/'--compound-colormap') and "
+                f"'--reaction-individual-colormap'/'--compound-individual-colormap' (or the "
+                f"layer's own '--reaction-colormap'/'--compound-colormap') and "
                 f"'--reaction-reverse-overlay'/'--compound-reverse-overlay' instead. A layer of "
                 f"categorical values whose samples a rule summarizes colors its group maps by "
                 f"those values."
@@ -1975,11 +1981,11 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
     compound_colormap, compound_colormap_limits = _resolve_colormap(
         args.compound_colormap, '--compound-colormap'
     )
-    reaction_category_colormap, reaction_category_colormap_limits = _resolve_colormap(
-        args.reaction_category_colormap, '--reaction-category-colormap'
+    reaction_individual_colormap, reaction_individual_colormap_limits = _resolve_colormap(
+        args.reaction_individual_colormap, '--reaction-individual-colormap'
     )
-    compound_category_colormap, compound_category_colormap_limits = _resolve_colormap(
-        args.compound_category_colormap, '--compound-category-colormap'
+    compound_individual_colormap, compound_individual_colormap_limits = _resolve_colormap(
+        args.compound_individual_colormap, '--compound-individual-colormap'
     )
     group_colormap, group_colormap_limits = _resolve_colormap(
         args.group_colormap, '--group-colormap'
@@ -2019,20 +2025,20 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         'reaction_reverse_overlay': args.reaction_reverse_overlay,
         'compound_reverse_overlay': args.compound_reverse_overlay,
         'reaction_value_limits': _resolve_value_limits(args.reaction_value_limits),
-        'reaction_category_value_limits': _resolve_value_limits(
-            args.reaction_category_value_limits
+        'reaction_individual_value_limits': _resolve_value_limits(
+            args.reaction_individual_value_limits
         ),
         'compound_value_limits': _resolve_value_limits(args.compound_value_limits),
-        'compound_category_value_limits': _resolve_value_limits(
-            args.compound_category_value_limits
+        'compound_individual_value_limits': _resolve_value_limits(
+            args.compound_individual_value_limits
         ),
         # The centers go to the mapper as they were typed, bare flag included
         # ('VALUE_CENTER_DEFAULT' standing in for the value it did not carry), so that the number is
         # converted and checked in the one place programmatic callers reach too.
         'reaction_value_center': args.reaction_value_center,
-        'reaction_category_value_center': args.reaction_category_value_center,
+        'reaction_individual_value_center': args.reaction_individual_value_center,
         'compound_value_center': args.compound_value_center,
-        'compound_category_value_center': args.compound_category_value_center,
+        'compound_individual_value_center': args.compound_individual_value_center,
         # The periods go to the mapper as they were typed, as the centers do.
         'reaction_value_period': args.reaction_value_period,
         'compound_value_period': args.compound_value_period,
@@ -2059,24 +2065,24 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         kwargs['compound_colormap_limits'] = compound_colormap_limits
     # Left unset, each layer's per-sample/per-group scale is colored from that layer's own colormap,
     # which the mapper arranges, so only a colormap actually given is forwarded.
-    if reaction_category_colormap is not None:
-        kwargs['reaction_category_colormap'] = reaction_category_colormap
-        kwargs['reaction_category_colormap_limits'] = reaction_category_colormap_limits
-    if compound_category_colormap is not None:
-        kwargs['compound_category_colormap'] = compound_category_colormap
-        kwargs['compound_category_colormap_limits'] = compound_category_colormap_limits
+    if reaction_individual_colormap is not None:
+        kwargs['reaction_individual_colormap'] = reaction_individual_colormap
+        kwargs['reaction_individual_colormap_limits'] = reaction_individual_colormap_limits
+    if compound_individual_colormap is not None:
+        kwargs['compound_individual_colormap'] = compound_individual_colormap
+        kwargs['compound_individual_colormap_limits'] = compound_individual_colormap_limits
     if group_colormap is not None:
         kwargs['group_colormap'] = group_colormap
         # Limits left unset are resolved by the mapper, which defaults them differently for a named
         # colormap (the fraction of it to use) and for a ramp built from a group's own color (how
         # far from white it runs).
         kwargs['group_colormap_limits'] = group_colormap_limits
-    for category_colors, key in (
-        (args.reaction_category_colors, 'reaction_category_colors'),
-        (args.compound_category_colors, 'compound_category_colors')
+    for membership_colors, key in (
+        (args.reaction_membership_colors, 'reaction_membership_colors'),
+        (args.compound_membership_colors, 'compound_membership_colors')
     ):
-        if category_colors is not None:
-            kwargs[key] = category_colors
+        if membership_colors is not None:
+            kwargs[key] = membership_colors
     # A colormap of False tells the mapper that a static color was chosen for the layer, so presence
     # in any sample is drawn in that one color on the 'unified' map rather than being colored by
     # sample or group, matching how the same choice works for contigs databases and pangenomes.
@@ -2088,8 +2094,8 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         kwargs['compound_color'] = compound_color
         kwargs['compound_colormap'] = False
 
-    # A value type and the colors of categorical values go to the mapper only where given. So does
-    # the seed, which the mapper refuses where no rule chooses at random.
+    # A value type and the colors of categorical values go to the mapper only where given, and so
+    # does the seed, which the mapper refuses where no rule chooses at random.
     for element_type in ('reaction', 'compound'):
         value_type = getattr(args, f'{element_type}_value_type')
         if value_type is not None:
@@ -2185,11 +2191,11 @@ def map_multiple_contigs_dbs_ko_data(args: Namespace, mapper: Mapper) -> None:
             map_contigs_databases_kos, colormap_scheme=args.presence_colormap_scheme
         )
 
-    if args.reaction_category_colors is not None:
+    if args.reaction_membership_colors is not None:
         # Color reactions by membership from a color given per database, genome, or group, rather
         # than from a colormap.
         map_contigs_databases_kos = functools.partial(
-            map_contigs_databases_kos, reaction_category_colors=args.reaction_category_colors
+            map_contigs_databases_kos, reaction_membership_colors=args.reaction_membership_colors
         )
 
     if args.original_color:
@@ -2299,11 +2305,11 @@ def map_pan_db_ko_data(args: Namespace, mapper: Mapper) -> None:
             map_pan_database_kos, colormap_scheme=args.presence_colormap_scheme
         )
 
-    if args.reaction_category_colors is not None:
+    if args.reaction_membership_colors is not None:
         # Color reactions by membership from a color given per database, genome, or group, rather
         # than from a colormap.
         map_pan_database_kos = functools.partial(
-            map_pan_database_kos, reaction_category_colors=args.reaction_category_colors
+            map_pan_database_kos, reaction_membership_colors=args.reaction_membership_colors
         )
 
     if args.original_color:
@@ -2373,14 +2379,15 @@ def main() -> None:
                 raise ConfigError(
                     f"'--count-scale-max' was given as '{args.count_scale_max}', which is neither "
                     f"{' nor '.join(repr(rule) for rule in COUNT_SCALE_MAX_RULES)} nor a number. "
-                    f"Use 'observed' to stop a count scale at the highest count in the data, "
-                    f"'total' to run it to every category there is, or a number to stop it there."
+                    f"Use 'observed' to stop a count scale at the highest count in the data. Use "
+                    f"'total' to run it to the number of samples, contigs databases, genomes, or "
+                    f"groups being counted. Or give a number to stop it there."
                 )
             if args.count_scale_max < 1:
                 raise ConfigError(
                     f"'--count-scale-max' was given as {args.count_scale_max}, but a scale of "
-                    f"counts has to reach at least 1, since an element colored by count is in at "
-                    f"least one category."
+                    f"counts has to reach at least 1. An element colored by count is in at least "
+                    f"one sample, contigs database, genome, or group."
                 )
 
         # Only one primary data source can be drawn per run. Each source writes its map files (and
@@ -2432,40 +2439,41 @@ def main() -> None:
                 "colors compounds dynamically across a range. Please use only one."
             )
 
-        # A color per category and a colormap are two answers to the same question — where a layer's
-        # colors come from — so a layer takes one or the other. A static color, or the reference
-        # map's own colors, answers it a third way.
+        # A membership colors file and a colormap answer the same question. The question is where a
+        # layer's colors come from, so a layer takes one or the other. A static color, or the
+        # reference map's own colors, answers it a third way.
         for element_type in ('reaction', 'compound'):
-            if getattr(args, f'{element_type}_category_colors') is None:
+            if getattr(args, f'{element_type}_membership_colors') is None:
                 continue
-            colors_flag = f'--{element_type}-category-colors'
+            colors_flag = f'--{element_type}-membership-colors'
             if getattr(args, f'{element_type}_colormap') is not None:
                 raise ConfigError(
-                    f"'{colors_flag}' gives the {element_type} layer a color per category, and "
-                    f"'--{element_type}-colormap' has anvi'o choose its colors from a colormap "
-                    f"instead. Please use only one."
+                    f"'{colors_flag}' colors the {element_type} layer with the colors given in the "
+                    f"file. '--{element_type}-colormap' has anvi'o choose the colors of the layer "
+                    f"from a colormap instead. Please use only one."
                 )
             if getattr(args, f'{element_type}_color') is not None:
                 raise ConfigError(
-                    f"'{colors_flag}' gives the {element_type} layer a color per category, while "
-                    f"'--{element_type}-color' colors it one static color for presence in any "
-                    f"category. Please use only one."
+                    f"'{colors_flag}' colors the {element_type} layer with the colors given in the "
+                    f"file. '--{element_type}-color' colors the layer one static color for "
+                    f"presence anywhere. Please use only one."
                 )
             if args.original_color:
                 raise ConfigError(
-                    f"'{colors_flag}' gives the {element_type} layer a color per category, but "
-                    f"'--original-color' takes both its colors and its drawing order from the "
-                    f"reference map, so there is no color left to choose. Please use only one."
+                    f"'{colors_flag}' colors the {element_type} layer with the colors given in the "
+                    f"file. '--original-color' takes both the colors and the drawing order of the "
+                    f"layer from the reference map, so there is no color left to choose. Please "
+                    f"use only one."
                 )
 
-        # One contigs database is one category, so its membership has a single combination and a
-        # single color: that is a static color rather than a scale, and the run takes the
-        # single-database path, which has no category dimension for a colors file to describe.
-        if args.reaction_category_colors is not None and args.contigs_dbs is not None and (
+        # With one contigs database, membership has a single combination, and so a single color.
+        # That is a static color rather than a scale. The run takes the single-database path. That
+        # path has no set of databases for a membership colors file to give colors to.
+        if args.reaction_membership_colors is not None and args.contigs_dbs is not None and (
             len(args.contigs_dbs) == 1
         ):
             raise ConfigError(
-                "'--reaction-category-colors' gives a color to each contigs database or group of "
+                "'--reaction-membership-colors' gives a color to each contigs database or group of "
                 "them, which colors reactions by exactly which of them contain a reaction. Only "
                 "one contigs database was provided, so every reaction it contains is in the same "
                 "single database and there is nothing to tell apart by color. Please provide more "
@@ -2476,19 +2484,19 @@ def main() -> None:
         # somewhere. The layer-level checks in 'map_txt_data' and below decide whether the file
         # given is one this run can use; this only catches asking for the ramp without any file.
         if args.group_colormap is not None and args.group_colormap[0] == (
-            GROUP_COLORMAP_FROM_CATEGORY
-        ) and args.reaction_category_colors is None and args.compound_category_colors is None:
+            GROUP_COLORMAP_TINT
+        ) and args.reaction_membership_colors is None and args.compound_membership_colors is None:
             # A database, pangenome or JSON run has a reaction layer alone, so pointing it at
-            # '--compound-category-colors' would only earn it a second error.
+            # '--compound-membership-colors' would only earn it a second error.
             colors_flags = (
-                "'--reaction-category-colors'/'--compound-category-colors'" if is_txt_run
-                else "'--reaction-category-colors'"
+                "'--reaction-membership-colors'/'--compound-membership-colors'" if is_txt_run
+                else "'--reaction-membership-colors'"
             )
             raise ConfigError(
-                f"'--group-colormap {GROUP_COLORMAP_FROM_CATEGORY}' colors each group's own maps "
-                f"by a ramp running from a pale tint to that group's own color, but no color was "
-                f"given for any group. Give one per group with {colors_flags}, or name a "
-                f"Matplotlib colormap for the group maps instead."
+                f"'--group-colormap {GROUP_COLORMAP_TINT}' colors each group's own maps by a ramp "
+                f"running from a pale tint to that group's own color, but no color was given for "
+                f"any group. Give one per group with {colors_flags}, or name a Matplotlib colormap "
+                f"for the group maps instead."
             )
         # Only a compound text file provides a compound layer, so every option that shapes one has
         # nothing to act on without it. The same goes for the sample and group summaries and the
@@ -2499,7 +2507,7 @@ def main() -> None:
             compound_only_flags = [flag for present_flag, flag in (
                 (args.compound_color is not None, '--compound-color'),
                 (args.compound_colormap is not None, '--compound-colormap'),
-                (args.compound_category_colors is not None, '--compound-category-colors'),
+                (args.compound_membership_colors is not None, '--compound-membership-colors'),
                 (args.compound_reverse_overlay, '--compound-reverse-overlay'),
                 (args.compound_accession_aggregation is not None,
                  '--compound-accession-aggregation'),
@@ -2513,19 +2521,19 @@ def main() -> None:
                 (args.reaction_group_summary is not None, '--reaction-group-summary'),
                 (args.compound_group_summary is not None, '--compound-group-summary'),
                 (args.reaction_value_limits is not None, '--reaction-value-limits'),
-                (args.reaction_category_value_limits is not None,
-                 '--reaction-category-value-limits'),
+                (args.reaction_individual_value_limits is not None,
+                 '--reaction-individual-value-limits'),
                 (args.compound_value_limits is not None, '--compound-value-limits'),
-                (args.compound_category_value_limits is not None,
-                 '--compound-category-value-limits'),
+                (args.compound_individual_value_limits is not None,
+                 '--compound-individual-value-limits'),
                 (args.reaction_value_center is not None, '--reaction-value-center'),
-                (args.reaction_category_value_center is not None,
-                 '--reaction-category-value-center'),
+                (args.reaction_individual_value_center is not None,
+                 '--reaction-individual-value-center'),
                 (args.compound_value_center is not None, '--compound-value-center'),
-                (args.compound_category_value_center is not None,
-                 '--compound-category-value-center'),
-                (args.reaction_category_colormap is not None, '--reaction-category-colormap'),
-                (args.compound_category_colormap is not None, '--compound-category-colormap'),
+                (args.compound_individual_value_center is not None,
+                 '--compound-individual-value-center'),
+                (args.reaction_individual_colormap is not None, '--reaction-individual-colormap'),
+                (args.compound_individual_colormap is not None, '--compound-individual-colormap'),
                 (args.reaction_element_normalization is not None,
                  '--reaction-element-normalization'),
                 (args.compound_element_normalization is not None,
@@ -2557,21 +2565,21 @@ def main() -> None:
             )
 
         # The group-map coloring options style the individual maps of each group, which are drawn
-        # only for a grouped run that asks for them. Rather than accepting them and doing nothing,
-        # say so — as a text run does from 'map_txt_data', and a reaction-network-JSON run from its
-        # own dispatcher, which refuses the whole family outright for want of any categories at all.
-        # Note that a static reaction color does not make them idle: a group's own map still counts
-        # the group's databases or genomes, and still takes a colorbar of its own.
+        # only for a grouped run that asks for them. Rather than accept them and do nothing, refuse
+        # them here. A text run refuses them in 'map_txt_data'. A reaction-network-JSON run refuses
+        # the whole family in its own dispatcher, since it has no samples, databases, genomes, or
+        # groups at all. Note that a static reaction color does not make them idle: a group's own
+        # map still counts the group's databases or genomes, and still takes a colorbar of its own.
         if args.contigs_dbs is not None or args.pan_db is not None:
             group_flags = [flag for present_flag, flag in (
                 (args.group_colormap is not None, '--group-colormap'),
                 (args.group_colormap_scheme is not None, '--group-colormap-scheme'),
                 (args.group_reverse_overlay, '--group-reverse-overlay')
             ) if present_flag]
-            draws_category_maps = (
+            draws_individual_maps = (
                 args.draw_individual_files is not None or args.draw_grid is not None
             )
-            if group_flags and not (args.groups_txt is not None and draws_category_maps):
+            if group_flags and not (args.groups_txt is not None and draws_individual_maps):
                 message = ', '.join(f"'{flag}'" for flag in group_flags)
                 missing = (
                     "the databases or genomes are not grouped ('--groups-txt')"
@@ -2583,15 +2591,15 @@ def main() -> None:
                     f"Group-map coloring options were given ({message}), but they style the "
                     f"individual maps of each group, and here {missing}. Add what is missing, or "
                     f"drop these options: the 'unified' map summarizing every group is colored by "
-                    f"'--reaction-colormap'/'--reaction-category-colors' and "
+                    f"'--reaction-colormap'/'--reaction-membership-colors' and "
                     f"'--presence-colormap-scheme' instead."
                 )
 
-        # Categorical grouping of contigs databases or pan genomes pairs '--groups-txt' with the
-        # presence/absence '--group-threshold' (both or neither). '--skip-unified-maps' is the
-        # exception, as the threshold only applies to 'unified' maps; '--groups-txt' may be used
-        # alone in this case. A text run's grouping depends on each layer's auto-detected mode, so
-        # its group-option checks live in 'map_txt_data'.
+        # To group contigs databases or pan genomes, give both '--groups-txt' and the
+        # presence/absence '--group-threshold'. Give neither to leave them ungrouped.
+        # '--skip-unified-maps' is the exception, as the threshold only applies to 'unified' maps;
+        # '--groups-txt' may be used alone in this case. A text run's grouping depends on each
+        # layer's auto-detected mode, so its group-option checks live in 'map_txt_data'.
         if not is_txt_run and not args.skip_unified_maps and (
             (args.groups_txt is None and args.group_threshold is not None) or
             (args.groups_txt is not None and args.group_threshold is None)
@@ -2615,8 +2623,8 @@ def main() -> None:
         # quietly ignored. Wherever a run does draw them, it is honored however few they are: one
         # database or one sample gives a directory per map holding a single file, which is no less
         # than '--draw-individual-files' gives there on its own. A reaction-network-JSON run is left
-        # to its own dispatcher, which refuses this flag along with the rest of the family, for want
-        # of any categories at all to draw individually.
+        # to its own dispatcher. It refuses this flag along with the rest of the family, since the
+        # run has no samples, databases, genomes, or groups to draw individual maps for.
         if args.collate_files_by_map and args.reaction_network_json is None:
             if args.draw_individual_files is None:
                 raise ConfigError(
@@ -2665,11 +2673,11 @@ def main() -> None:
             if args.presence_colormap_scheme is not None:
                 raise ConfigError(
                     "'--presence-colormap-scheme' selects how the 'unified' map colors presence "
-                    "across contigs databases, genomes, or groups of either. Nothing else uses "
-                    "it. A group's own map is drawn by '--group-colormap'/"
-                    "'--group-colormap-scheme'. A database's or genome's own map takes that one "
-                    "category's single color. '--skip-unified-maps' draws no 'unified' map. "
-                    "Please use '--presence-colormap-scheme' or '--skip-unified-maps', not both."
+                    "across contigs databases, genomes, or groups of either. Nothing else uses it. "
+                    "A group's own map is drawn by '--group-colormap'/'--group-colormap-scheme'. A "
+                    "database's or genome's own map draws its reactions in a single color. "
+                    "'--skip-unified-maps' draws no 'unified' map. Please use "
+                    "'--presence-colormap-scheme' or '--skip-unified-maps', not both."
                 )
 
         mapper = Mapper(kegg_dir=args.kegg_dir,
@@ -2723,7 +2731,7 @@ def main() -> None:
                 layer_clause = (
                     "Specifically, a compound would be drawn in a reserved color. On a map drawn "
                     "from reactions alone, each compound takes its color from the reactions it "
-                    "touches. So the reaction color or colormap is what to change "
+                    "touches, so the reaction color or colormap is what to change "
                     "('--reaction-color' or '--reaction-colormap'). "
                 )
             elif "'ortholog' entries" in e_str:

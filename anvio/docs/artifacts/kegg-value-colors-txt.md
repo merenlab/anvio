@@ -21,7 +21,7 @@ Here is an example file:
 
 Every value of the layer needs a color. Anvi'o will not fill in the gaps with its default colors, since that would put colors you chose and colors chosen for you in one legend. Values in this file that the layer does *not* have are reported and ignored, so one file can serve several runs. Two values cannot share a color, since the maps and the legend could not tell them apart.
 
-A value is a whole name, so a comma in it is just part of the name. This differs from a %(kegg-category-colors-txt)s file, where a comma joins the names of a combination.
+A value is a whole name, so a comma in it is just part of the name. This differs from a %(kegg-membership-colors-txt)s file, where a comma joins the names of a combination.
 
 ## The order of the rows
 
@@ -29,7 +29,7 @@ The order of the rows is the order of the values. It is used in three places.
 
 - **The legend.** The legend lists the values in this order, with the first value at the top.
 - **Drawing.** Where map elements overlap, the first value is drawn on top. `--reaction-reverse-overlay`/`--compound-reverse-overlay` puts the last value on top instead.
-- **Choosing one value.** Where several values meet, a rule chooses one. The rules `plurality_order` and `order` use this order. `plurality_order` gives a tie to the value that comes first. `order` always takes the value that comes first. So the order can rank the values, for example to have `up` win over `same` in a map element whose KOs have both.
+- **Choosing one value.** Where several values meet, a rule chooses one. The rules `plurality_order` and `order` use this order. `plurality_order` gives a tie to the value that comes first. `order` always takes the value that comes first, so the order can rank the values, for example to have `up` win over `same` in a map element whose KOs have both.
 
 ## When this file does not apply
 
