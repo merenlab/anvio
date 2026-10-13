@@ -225,13 +225,13 @@ class DisCov:
         slope, _intercept = np.polyfit(log_w_vals, log_var_vals, 1)
         return slope
         
-    def midpoint_spread_and_evenness(self, regions):
-        """Returns the range and evenness based on the midpoints of coverage regions.
+    def midpoint_range_and_spread(self, regions):
+        """Returns the range and spread based on the midpoints of coverage regions.
         
         Given a list of region tuples, determines the midpoint of each region, normalizes by 
         contig length (so midpoints become fractions), and computes:
-            spread = fraction of contig between first and last coverage region
-            evenness = 1 / (1 + CV of midpoint distances)
+            range = fraction of contig between first and last coverage region
+            spread = 1 / (1 + CV of midpoint distances)
         """
 
         starts = np.sort(np.array([r[0] for r in regions if r[2] > 0]))
@@ -243,11 +243,11 @@ class DisCov:
         midpoint_range = normalized_midpoints.max() - normalized_midpoints.min()
         inter_region_distances = np.diff(normalized_midpoints)
         distance_CV = self.compute_CV(inter_region_distances)
-        midpoint_evenness = None
+        midpoint_spread = None
         if distance_CV is not None and len(normalized_midpoints) > 2:
-            midpoint_evenness = 1 / (1 + distance_CV)
+            midpoint_spread = 1 / (1 + distance_CV)
 
-        return midpoint_range, midpoint_evenness
+        return midpoint_range, midpoint_spread
 
     def binned_count_dispersion(self, coverage, num_windows=30, min_window_len=100, use_detection=False):
         """Returns index of dispersion D = variance(count)/mean(count), where count is the number of 
