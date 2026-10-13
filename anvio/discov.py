@@ -109,8 +109,8 @@ class DisCov:
             nz_depth_foldrange_wide = 0.0
 
         ## combined metrics
-        SE_linear = self.spread_evenness_score(S=sw_prop_vals["fine"]['Proportion_Covered'], E=nz_depth_foldrange_narrow, alpha=0.5, formula="linear")
-        SE_geom = self.spread_evenness_score(S=sw_prop_vals["fine"]['Proportion_Covered'], E=nz_depth_foldrange_narrow, alpha=0.5, formula="geometric")
+        SE_linear = self.spread_evenness_score(S=sliding_window_metrics["fine"]['Proportion_Covered'], E=nz_depth_foldrange_narrow, alpha=0.5, formula="linear")
+        SE_geom = self.spread_evenness_score(S=sliding_window_metrics["fine"]['Proportion_Covered'], E=nz_depth_foldrange_narrow, alpha=0.5, formula="geometric")
 
         # append all metrics to file
         output_list = [self.name, self.sample,
@@ -360,10 +360,13 @@ class DisCov:
         Geometric formula: S^alpha * E^(1-alpha)
         """
 
+        if not S or not E:
+            return None
+
         if formula == "linear":
             return alpha*S + (1-alpha)*E
         elif formula == "geometric":
-            return S^(alpha) * E^(1-alpha)
+            return S**(alpha) * E**(1-alpha)
         else:
             raise ConfigError(f"spread_evenness_score does not understand the formula parameter '{formula}'")
 
