@@ -493,6 +493,7 @@ class DisCov:
 
         if len(array) < 3:
             return None, None
+        array = np.asarray(array)
         median = np.median(array)
         mad = np.median(np.abs(array - median))
         return median, mad
