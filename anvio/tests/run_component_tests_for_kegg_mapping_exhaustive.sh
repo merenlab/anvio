@@ -102,6 +102,23 @@ printf 'accession\tgene_id\tcoverage\nK00844\tgene_1\t10\nK00844\tgene_1\t30\n' 
 printf 'accession\tcol_a\tcol_b\nK00844\t1\t2\n' > draw_bad_two_values.reaction.txt
 printf 'accession\tgene_id\nC00031\tgene_1\n' > draw_bad_compound_gene_id.compound.txt
 printf 'accession\tconcentration\nC00031\t10\nC00031\t30\n' > draw_bad_repeated_compounds.compound.txt
+# Categorical values without a 'sample' column, so that one map shows them. Each row cycles through
+# three classes, so the genes of an accession and the KOs of an element often differ.
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","class"} NR>1{split("alpha beta gamma", c, " "); print $1,$2,c[((NR-2)%3)+1]}' \
+draw_kos.reaction.txt > draw_kos_class.reaction.txt
+# Categorical values of compounds across samples.
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","sample","status"} NR>1{split("up down", s, " "); print $1,$2,s[((NR-2)%2)+1]}' \
+draw_compounds_samples.compound.txt > draw_compounds_samples_status.compound.txt
+# Nineteen different values, one more than anvi'o has default colors for.
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","class"} NR>1{print $1,$2,sprintf("class %d",((NR-2)%19)+1)}' \
+draw_kos.reaction.txt > draw_kos_class19.reaction.txt
+# A colors file missing a value, and one giving two values the same color.
+printf 'status\tcolor\nup\t#d62728\ndown\t#1f77b4\n' > draw-status-colors-incomplete.txt
+printf 'status\tcolor\nup\t#d62728\ndown\t#d62728\nsame\t#bcbd22\n' > draw-status-colors-shared.txt
+# A row without a categorical value.
+printf 'accession\tstatus\nK00844\tup\nK00845\t\n' > draw_bad_blank_status.reaction.txt
+# One KO with a different value in each of two samples, so that 'plurality' ties across them.
+printf 'accession\tsample\tstatus\nK00845\tS2\tup\nK00845\tS3\tdown\n' > draw_kos_tie.reaction.txt
 
 # A test that expects a refusal discards the output of the draw, so a fixture that was never written
 # would make that test pass for the wrong reason. Fail loudly here instead.
@@ -114,7 +131,10 @@ for fixture in contigs-db-group-information.txt draw_kos_samples300.reaction.txt
               draw_kos_awkward_sample_names.reaction.txt draw_kos_unusable_sample_names.reaction.txt \
               draw_bad_mixed_kr.reaction.txt draw_bad_repeated_rows.reaction.txt \
               draw_bad_two_values.reaction.txt draw_bad_compound_gene_id.compound.txt \
-              draw_bad_repeated_compounds.compound.txt
+              draw_bad_repeated_compounds.compound.txt draw_kos_class.reaction.txt \
+              draw_compounds_samples_status.compound.txt draw_kos_class19.reaction.txt \
+              draw-status-colors-incomplete.txt draw-status-colors-shared.txt \
+              draw_bad_blank_status.reaction.txt draw_kos_tie.reaction.txt
 do
     if [ ! -s $fixture ]
     then
@@ -1873,6 +1893,366 @@ fi
 if tr '\n' ' ' < draw_txt_normalization_moved_limit.log | grep -q "value-center' centers"
 then
     echo "ERROR: the refusal of a center that would move a limit blamed a center nobody gave."
+    exit 1
+fi
+
+# Categorical values on a global map. A compound there takes the value that the accession rule
+# chooses among the reactions touching it. The run reports how many choices the rule made.
+INFO "Testing categorical values on a global map, where compounds take a value from their reactions"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_class.reaction.txt \
+    --reaction-value-type categorical \
+    --output-dir draw_txt_kos_categorical_global \
+    --pathway-numbers $global_pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_categorical_global.log
+if ! tr '\n' ' ' < draw_txt_categorical_global.log | grep -q "Choices of a reaction value among"
+then
+    echo "ERROR: a run of categorical values did not report the choices of its rule."
+    exit 1
+fi
+
+INFO "Testing categorical values of compounds across samples"
+anvi-draw-kegg-pathways --compound-txt draw_compounds_samples_status.compound.txt \
+    --compound-value-type categorical \
+    --output-dir draw_txt_compounds_categorical \
+    --pathway-numbers $pathway_numbers --draw-grid \
+    --no-progress
+
+# 'plurality' gives no value where values tie, and 'majority' none where no value has more than
+# half of the votes. Elements given no value are left uncolored, and a warning says how many.
+INFO "Testing categorical rules that can give no value"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical \
+    --reaction-accession-aggregation plurality \
+    --reaction-sample-summary majority \
+    --output-dir draw_txt_categorical_no_value \
+    --pathway-numbers $pathway_numbers --draw-grid \
+    --no-progress 2>&1 | tee draw_txt_categorical_no_value.log
+if ! tr '\n' ' ' < draw_txt_categorical_no_value.log | grep -q "plurality' gave no value to"
+then
+    echo "ERROR: elements given no value by 'plurality' were not reported."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_categorical_no_value.log | grep -q "majority' gave no value to"
+then
+    echo "ERROR: elements given no value by 'majority' were not reported."
+    exit 1
+fi
+
+# A map where a rule gives no value to any element has nothing to color, so it is not drawn, as a
+# map lacking data is not.
+INFO "Testing that a map with no categorical value to color is not drawn"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_tie.reaction.txt \
+    --reaction-value-type categorical \
+    --reaction-sample-summary plurality \
+    --output-dir draw_txt_categorical_tie \
+    --pathway-numbers 00010 \
+    --no-progress
+if [ -e draw_txt_categorical_tie/unified/ko00010.pdf ]
+then
+    echo "ERROR: a map with no categorical value to color should not have been drawn."
+    exit 1
+fi
+
+# Grouped, each group's map counts the group's samples unless a rule chooses among them. The
+# values then color nothing, which is worth a warning. No legend of the values is written.
+INFO "Testing grouped categorical values without a rule among the samples of each group"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0 \
+    --output-dir draw_txt_groups_categorical_counts \
+    --pathway-numbers $pathway_numbers --draw-grid \
+    --no-progress 2>&1 | tee draw_txt_groups_categorical_counts.log
+if ! tr '\n' ' ' < draw_txt_groups_categorical_counts.log \
+    | grep -q "With groups of samples, each group's map counts"
+then
+    echo "ERROR: grouped categorical values coloring nothing did not warn."
+    exit 1
+fi
+if [ -e draw_txt_groups_categorical_counts/colorbar_reactions_groups.pdf ]
+then
+    echo "ERROR: grouped categorical values without a rule should have written no legend."
+    exit 1
+fi
+
+# The choices across the groups are reported with the others.
+INFO "Testing that choices of a categorical value across groups are reported"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical \
+    --groups-txt draw-sample-group-information.txt \
+    --reaction-sample-summary plurality_order --reaction-group-summary plurality_order \
+    --output-dir draw_txt_groups_categorical_report \
+    --pathway-numbers $pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_groups_categorical_report.log
+if ! tr '\n' ' ' < draw_txt_groups_categorical_report.log | grep -q "value among groups"
+then
+    echo "ERROR: choices of a categorical value across groups were not reported."
+    exit 1
+fi
+
+# The 'unified' map of a layer with samples shows presence by default. Drawing it alone colors
+# nothing by the values, which is worth a warning, whether the values are names or numbers.
+INFO "Testing the warning that a value column colors nothing where only the 'unified' map is drawn"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical \
+    --output-dir draw_txt_categorical_unified_only \
+    --pathway-numbers $pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_categorical_unified_only.log
+if ! tr '\n' ' ' < draw_txt_categorical_unified_only.log \
+    | grep -q "nothing on the maps is colored by it"
+then
+    echo "ERROR: categorical values coloring nothing did not warn."
+    exit 1
+fi
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --output-dir draw_txt_values_unified_only \
+    --pathway-numbers $pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_values_unified_only.log
+if ! tr '\n' ' ' < draw_txt_values_unified_only.log | grep -q "nothing on the maps is colored by it"
+then
+    echo "ERROR: numeric values coloring nothing did not warn."
+    exit 1
+fi
+
+# A column of names read as numbers is refused, and the refusal says how to read it as names.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_names_as_numbers.log 2>&1
+then
+    echo "ERROR: a column of names read as numbers should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_names_as_numbers.log | grep -q "If the column holds categorical values"
+then
+    echo "ERROR: refusing a column of names read as numbers did not say how to read it as names."
+    exit 1
+fi
+
+# Categorical values are refused wherever an option expects numbers, or expects something they do
+# not have (each command below is expected to fail).
+INFO "Testing that categorical values are refused where they cannot apply"
+# Categorical values take colors of their own, not a scale of numbers.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-value-limits 0 1 \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: value limits on categorical values should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-value-period 24 \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a period for categorical values should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-element-normalization z_score --draw-grid \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a normalization of categorical values should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-category-colormap viridis --draw-grid \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a category colormap for categorical values should have failed but did not."
+    exit 1
+fi
+
+# Categorical values cannot be averaged, across samples or within one.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-sample-summary mean \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: averaging categorical values across samples should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-accession-aggregation mean \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: averaging categorical values within an element should have failed but did not."
+    exit 1
+fi
+
+# With groups, a rule across the groups needs a rule among each group's samples. Without one,
+# the groups have no values to choose among.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0 \
+    --reaction-group-summary plurality_order \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a rule across groups without a rule among their samples should have failed."
+    exit 1
+fi
+
+# A rule across the groups leaves no group presence for a threshold to decide.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0 \
+    --reaction-sample-summary plurality_order --reaction-group-summary plurality_order \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a group threshold with a rule across the groups should have failed."
+    exit 1
+fi
+
+# Grouped, the values reach a map only through a rule among each group's samples, so a colors
+# file of values without one would color nothing.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-value-colors draw-status-colors.txt \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0 \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: value colors for grouped samples without a rule should have failed."
+    exit 1
+fi
+
+# A seed with no rule that chooses at random would change nothing.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --seed 1 \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a seed without a random rule should have failed but did not."
+    exit 1
+fi
+
+# Categorical values take colors of their own, not one presence color.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-color \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a static color for categorical values should have failed but did not."
+    exit 1
+fi
+
+# Every value needs a color, and no two values can share one.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-value-colors draw-status-colors-incomplete.txt \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a colors file missing a value should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-value-colors draw-status-colors-shared.txt \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a colors file giving two values one color should have failed but did not."
+    exit 1
+fi
+
+# A layer without samples shows its values on its one map, so no colormap colors presence.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_class.reaction.txt \
+    --reaction-value-type categorical --reaction-colormap viridis \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a colormap for categorical values without samples should have failed."
+    exit 1
+fi
+
+# More values than anvi'o has default colors for need a colors file.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_class19.reaction.txt \
+    --reaction-value-type categorical \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: nineteen categorical values without a colors file should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_blank_status.reaction.txt \
+    --reaction-value-type categorical \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a row without a categorical value should have failed but did not."
+    exit 1
+fi
+
+# A categorical value type needs a value column to read.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --reaction-value-type categorical \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a categorical value type for a file without values should have failed."
+    exit 1
+fi
+
+# Numbers are reduced with an aggregation. A rule chooses only among categorical values.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-sample-summary plurality_order \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a categorical rule for numeric values across samples should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-accession-aggregation order \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a categorical rule for numeric values within an element should have failed but did not."
+    exit 1
+fi
+
+# Colors per value need categorical values.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-value-colors draw-status-colors.txt \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: colors per value for numeric values should have failed but did not."
+    exit 1
+fi
+
+# A random rule given to numbers is refused for the rule. The seed given with it is not blamed.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-accession-aggregation random --seed 5 \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_random_rule_numbers.log 2>&1
+then
+    echo "ERROR: a random rule for numeric values should have failed but did not."
+    exit 1
+fi
+if tr '\n' ' ' < draw_txt_random_rule_numbers.log | grep -q "No rule here chooses at random"
+then
+    echo "ERROR: the refusal of a random rule for numeric values blamed the seed."
+    exit 1
+fi
+
+# Only a text file has a value column, so a database run has no values to read as names.
+if anvi-draw-kegg-pathways --external-genomes external-genomes.txt \
+    --reaction-value-type categorical \
+    --output-dir draw_db_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a value type on a database run should have failed but did not."
     exit 1
 fi
 

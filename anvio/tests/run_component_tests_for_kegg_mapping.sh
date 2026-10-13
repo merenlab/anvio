@@ -358,6 +358,61 @@ then
     exit 1
 fi
 
+## CATEGORICAL VALUES
+# A value column can hold names, such as 'up', 'down' and 'same', instead of numbers. Each name
+# takes a color of its own. The map of each sample shows that sample's values. The 'unified' map
+# shows presence across the samples, since a value need not mean the same thing in every sample.
+INFO "Coloring each sample's reactions by categorical values, as grids and a map per sample"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+                        --reaction-value-type categorical \
+                        --output-dir draw_txt_samples_kos_categorical \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
+if [ ! -s draw_txt_samples_kos_categorical/colorbar_reactions_samples.pdf ]
+then
+    echo "ERROR: a run of categorical values should have written a legend for the sample maps."
+    exit 1
+fi
+
+# A colors file gives each value a color of its own choosing. The order of its rows also ranks the
+# values, so 'order' gives a map element whose KOs have several values the first of them.
+INFO "Coloring categorical values with colors of your choosing, which also rank the values"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+                        --reaction-value-type categorical \
+                        --reaction-value-colors draw-status-colors.txt \
+                        --reaction-accession-aggregation order \
+                        --output-dir draw_txt_samples_kos_categorical_colors \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-grid \
+                        --no-progress
+
+# Where a value means the same thing in every sample, a rule chooses one value across the samples
+# for the 'unified' map. Here a tie between samples is broken at random, from a given seed.
+INFO "Choosing one categorical value across the samples, breaking ties at random"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+                        --reaction-value-type categorical \
+                        --reaction-sample-summary plurality_random \
+                        --seed 1 \
+                        --output-dir draw_txt_samples_kos_categorical_unified \
+                        --pathway-numbers $pathway_numbers \
+                        --no-progress
+
+# With groups, a rule among the samples of each group colors that group's map. A rule across the
+# groups colors the 'unified' map. Each group gives one vote, whatever its size.
+INFO "Choosing one categorical value in each group of samples, and one across the groups"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+                        --reaction-value-type categorical \
+                        --groups-txt draw-sample-group-information.txt \
+                        --reaction-sample-summary plurality_order \
+                        --reaction-group-summary plurality_order \
+                        --output-dir draw_txt_groups_kos_categorical \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-grid \
+                        --no-progress
+
 ## PRESENCE COLORING
 INFO "Mixing presence coloring of reactions with value coloring of compounds"
 anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \

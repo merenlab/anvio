@@ -1056,6 +1056,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
+    "kegg-value-colors-txt": {
+        "name": "KEGG VALUE COLORS TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
     "enzymes-list-for-module": {
         "name": "ENZYMES LIST",
         "type": "TXT",

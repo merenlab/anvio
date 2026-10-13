@@ -1,0 +1,4 @@
+status	color
+up	#d62728
+down	#1f77b4
+same	#bcbd22

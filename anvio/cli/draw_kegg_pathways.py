@@ -46,21 +46,22 @@ def check_package_dependencies():
 check_package_dependencies()
 
 from anvio.keggmapping import (
-    AGGREGATION_FUNCTIONS, DEFAULT_CENTERED_COLORMAP, DEFAULT_GROUP_TINT_SPAN,
+    AGGREGATION_FUNCTIONS, CATEGORICAL_RULES, CATEGORICAL_RULES_PHRASE, DEFAULT_CATEGORICAL_SEED,
+    DEFAULT_CENTERED_COLORMAP, DEFAULT_GROUP_TINT_SPAN, DEFAULT_VALUE_COLORS,
     ELEMENT_NORMALIZATION_PHRASE, GROUP_COLORMAP_FROM_CATEGORY, GROUP_SCHEME_OPTIONS,
     MAX_DISCRETE_COUNT_BANDS, MIN_ANGULAR_DEVIATION_VALUES, SUMMARY_PRESENCE_PHRASE,
-    SUMMARY_PRESENCE_SCHEMES, Mapper
+    SUMMARY_PRESENCE_SCHEMES, VALUE_TYPES, Mapper
 )
 
 
 __authors__ = ["semiller10"]
-__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
+__copyright__ = "Copyleft 2015-2026, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = VERSION
 __requires__ = ['kegg-data']
 __can_use__ = ['contigs-db', 'external-genomes', 'pan-db', 'genomes-storage-db',
                'reaction-network-json', 'kegg-reaction-txt', 'kegg-compound-txt',
-               'kegg-category-colors-txt']
+               'kegg-category-colors-txt', 'kegg-value-colors-txt']
 __provides__ = ['kegg-pathway-map']
 __description__ = DESCRIPTION
 
@@ -97,6 +98,10 @@ VALUE_CENTER_DEFAULT = '0'
 # other pandas aggregation reducing values to one number is accepted too ('_resolve_aggregation').
 RECOMMENDED_AGGREGATIONS = ', '.join(f"'{name}'" for name in AGGREGATION_FUNCTIONS)
 
+# The modes of a text layer with a value column ('_detect_txt_layer'). Its values are numbers or
+# categorical values.
+VALUE_MODES = ('quantitative', 'categorical')
+
 
 def get_args() -> Namespace:
     parser = ArgumentParser(description=DESCRIPTION)
@@ -121,9 +126,9 @@ def get_args() -> Namespace:
         "coloring; a value is aggregated per accession across rows). An optional 'sample' column "
         "assigns each row to a sample of origin, enabling comparison across samples (and, with "
         "'--groups-txt', groups of samples) as when using multiple contigs databases. The single "
-        "column that is not 'accession', 'gene_id', or 'sample' is auto-detected as a numeric "
-        "value column: with it, reactions are colored quantitatively by value; without it, by "
-        "presence."
+        "column that is not 'accession', 'gene_id', or 'sample' is auto-detected as the value "
+        "column: with it, reactions are colored by value; without it, by presence. Its values are "
+        "numbers, or categorical values with '--reaction-value-type categorical'."
     )
     groupTXT.add_argument(
         '--compound-txt', type=str, metavar='FILE', help=
@@ -131,8 +136,9 @@ def get_args() -> Namespace:
         "must have an 'accession' column whose values are all KEGG compound IDs ('C' followed by "
         "digits). It must NOT have a 'gene_id' column, since compounds are not gene products. An "
         "optional 'sample' column works as for '--reaction-txt'. The single column that is not "
-        "'accession' or 'sample' is auto-detected as a numeric value column: with it, compounds "
-        "are colored quantitatively by value; without it, by presence."
+        "'accession' or 'sample' is auto-detected as the value column: with it, compounds are "
+        "colored by value; without it, by presence. Its values are numbers, or categorical values "
+        "with '--compound-value-type categorical'."
     )
     groupTXT.add_argument(
         '--reaction-gene-aggregation', metavar='NAME', help=
@@ -147,7 +153,9 @@ def get_args() -> Namespace:
         f"genes. Where an aggregation is undefined for the values available, as 'std' is for a "
         f"single value, the element is left uncolored and a warning reports how many accessions "
         f"were affected. With '--reaction-value-period', the default is 'circular_mean', and no "
-        f"other name is accepted."
+        f"other name is accepted. With '--reaction-value-type categorical', this takes a rule that "
+        f"chooses one value among the genes instead: {CATEGORICAL_RULES_PHRASE}. The default is "
+        f"'plurality_order' (see '--reaction-value-type')."
     )
     groupTXT.add_argument(
         '--reaction-accession-aggregation', metavar='NAME', help=
@@ -158,7 +166,9 @@ def get_args() -> Namespace:
         "total. It takes the same names as '--reaction-gene-aggregation', and the two can differ: "
         "averaging across the genes of each KO while totaling across the KOs of a reaction, say. "
         "With '--reaction-value-period', the default is 'circular_mean', and no other name is "
-        "accepted."
+        "accepted. With '--reaction-value-type categorical', this takes a rule that chooses one "
+        "value among the accessions of a map element instead, with the same names and default as "
+        "'--reaction-gene-aggregation'."
     )
     groupTXT.add_argument(
         '--compound-accession-aggregation', metavar='NAME', help=
@@ -169,7 +179,10 @@ def get_args() -> Namespace:
         "one compound circle in fifty, so it rarely has anything to do. There is no reduction "
         "below it: a compound file names no genes, and rows repeating a compound are refused "
         "rather than combined, so each compound has one value per sample. With "
-        "'--compound-value-period', the default is 'circular_mean', and no other name is accepted."
+        "'--compound-value-period', the default is 'circular_mean', and no other name is accepted. "
+        "With '--compound-value-type categorical', this takes a rule that chooses one value among "
+        "the compounds of a circle instead, with the same names and default as "
+        "'--reaction-gene-aggregation'."
     )
     groupTXT.add_argument(
         '--reaction-value-period', metavar='PERIOD', help=
@@ -198,6 +211,57 @@ def get_args() -> Namespace:
     groupTXT.add_argument(
         '--compound-value-period', metavar='PERIOD', help=
         "Like '--reaction-value-period', but for the compound layer."
+    )
+    groupTXT.add_argument(
+        '--reaction-value-type', choices=list(VALUE_TYPES), help=
+        f"What the value column of the reaction file holds. 'numeric', the default, means numbers. "
+        f"They are colored along a scale. 'categorical' means named values, such as 'up', 'down' "
+        f"and 'same'. Each value takes a color of its own. Values written as numbers, such as 1 "
+        f"and 2, are names too. A value is read as text, so 'NA' is a value like any other. Every "
+        f"row needs a value. Each accession can have one value per sample, or one per gene and "
+        f"sample. The values take {len(DEFAULT_VALUE_COLORS)} default colors in sorted order. Up "
+        f"to 9 values take the colors of Matplotlib's 'tab10' without its gray. The 10th to 18th "
+        f"values take the light colors of 'tab20' without its light gray. "
+        f"'--reaction-value-colors' gives colors of your choosing instead. Where several values "
+        f"meet, a rule chooses one of them. '--reaction-gene-aggregation' chooses among the genes "
+        f"of an accession, and '--reaction-accession-aggregation' among the KOs or reactions of a "
+        f"map element. The rules are {CATEGORICAL_RULES_PHRASE}. 'plurality_order', the default, "
+        f"takes the most common value, even with less than half of the votes. It breaks a tie by "
+        f"the order of the values. 'plurality_random' breaks a tie at random. 'plurality' gives no "
+        f"value where there is a tie. 'majority' takes the value with more than half of the votes. "
+        f"Without one, it gives no value. 'order' takes the value that comes first in the order of "
+        f"the values. 'random' takes one of the values at random. An accession given no value does "
+        f"not vote in its map elements. An element given no value is left uncolored. It does not "
+        f"vote across the samples or groups. A warning says how many elements have no value. The "
+        f"order is the row order of '--reaction-value-colors', or else sorted order. Where every "
+        f"value is a number, the values are sorted as numbers. Otherwise the digits in the values "
+        f"are compared as numbers, so 'cluster 2' comes before 'cluster 10'. A random choice "
+        f"depends on '--seed'. The map of each sample shows that sample's values. A value in one "
+        f"sample need not mean the same thing in another sample. So by default the 'unified' map "
+        f"counts the samples that contain each element. A rule given to "
+        f"'--reaction-sample-summary' instead chooses one value across the samples. On global and "
+        f"overview maps drawn from reactions alone, each compound takes the value that the "
+        f"accession rule chooses among the reactions that touch it. A compound given no value "
+        f"keeps the color of a compound that no colored reaction touches. The options that shape a "
+        f"scale of numbers are refused. With '--groups-txt', each group's map counts its samples, "
+        f"and the 'unified' map counts the groups. A rule in '--reaction-sample-summary' colors "
+        f"each group's map instead. '--reaction-group-summary' can then give a rule for the "
+        f"'unified' map. A group given no value does not vote for the 'unified' map."
+    )
+    groupTXT.add_argument(
+        '--compound-value-type', choices=list(VALUE_TYPES), help=
+        "Like '--reaction-value-type', but for the value column of the compound file. A compound "
+        "file has no genes, so '--compound-accession-aggregation' is the only rule below the "
+        "samples."
+    )
+    groupTXT.add_argument(
+        '--seed', type=int, metavar='INT', help=
+        f"The seed of random choices among categorical values. The rules 'plurality_random' and "
+        f"'random' make these choices (see '--reaction-value-type'). The default is "
+        f"{DEFAULT_CATEGORICAL_SEED}. Each choice comes from the seed and from what the value is "
+        f"chosen for, such as the KOs of a map element in one sample. So a map element gets the "
+        f"same value on every map, and in every run with the same seed. This option is refused "
+        f"where no rule chooses at random."
     )
 
     groupJSON = parser.add_argument_group(
@@ -297,9 +361,10 @@ def get_args() -> Namespace:
         "and for a draw-kegg-pathways text layer whose "
         "'--reaction-group-summary'/'--compound-group-summary' summarizes presence ('count', "
         "'count_continuous', or 'membership'), which is the default. It does not apply when every "
-        "text layer's groups are summarized by pooling values instead. It also does not apply with "
-        "'--skip-unified-maps', since only the 'unified' map uses the threshold, while a group's "
-        "own map counts the group's own sources whatever the threshold is."
+        "text layer's groups are summarized by pooling values, or by choosing a categorical value "
+        "with a rule, instead. It also does not apply with '--skip-unified-maps', since only the "
+        "'unified' map uses the threshold, while a group's own map counts the group's own sources "
+        "whatever the threshold is."
     )
 
     groupSUMMARY = parser.add_argument_group(
@@ -308,7 +373,8 @@ def get_args() -> Namespace:
         "samples, and across groups of samples defined by '--groups-txt'. These are the two "
         "reductions above the within-sample gene and accession aggregations. Each can "
         "independently summarize presence (in how many, or exactly which, samples or groups an "
-        "element occurs) or pool the values of a value column."
+        "element occurs) or pool the values of a value column. For categorical values, each can "
+        "choose one value with a rule instead."
     )
     groupSUMMARY.add_argument(
         '--reaction-sample-summary', metavar='NAME', help=
@@ -329,21 +395,29 @@ def get_args() -> Namespace:
         f"These are the values that the maps of the individual samples draw. 'std' is an example "
         f"here, mapping how much replicate samples disagree. This summary colors the 'unified' map "
         f"when the samples are not grouped, and each group's map when they are grouped with "
-        f"'--groups-txt' — though only an aggregation affects a group's map, since presence there "
-        f"is always the count of the group's own samples, so the presence names are rejected in a "
-        f"grouped run as having nothing to choose between. Maps for individual samples are never "
-        f"summarized, always showing that one sample alone: its own values with a value column, "
-        f"its presence without one. Without this option, samples are summarized by presence, by "
-        f"membership with 3 or fewer samples, by count above that, and by a continuous count scale "
-        f"where a discrete one would run out of distinguishable colors or of room to label its "
-        f"bands (above {MAX_DISCRETE_COUNT_BANDS} of them). Presence is the default because it is "
-        f"meaningful for any set of samples, whereas pooling values is only meaningful when the "
-        f"samples are commensurable, such as replicates of one condition. If no summary of the "
-        f"samples is meaningful or desired, use '--skip-unified-maps' to leave the map out. "
-        f"Without groups, '--reaction-sample-summary' colors the 'unified' map alone; an ungrouped "
-        f"run with '--skip-unified-maps' therefore refuses this option. With "
-        f"'--reaction-value-period', its aggregations are 'circular_mean' and, without groups, "
-        f"'angular_deviation'."
+        f"'--groups-txt' — though only an aggregation, or a rule for categorical values, affects a "
+        f"group's map, since presence there is always the count of the group's own samples, so the "
+        f"presence names are rejected in a grouped run as having nothing to choose between. Maps "
+        f"for individual samples are never summarized, always showing that one sample alone: its "
+        f"own values with a value column, its presence without one. Without this option, samples "
+        f"are summarized by presence, by membership with 3 or fewer samples, by count above that, "
+        f"and by a continuous count scale where a discrete one would run out of distinguishable "
+        f"colors or of room to label its bands (above {MAX_DISCRETE_COUNT_BANDS} of them). "
+        f"Presence is the default because it is meaningful for any set of samples, whereas pooling "
+        f"values is only meaningful when the samples are commensurable, such as replicates of one "
+        f"condition. If no summary of the samples is meaningful or desired, use "
+        f"'--skip-unified-maps' to leave the map out. Without groups, '--reaction-sample-summary' "
+        f"colors the 'unified' map alone; an ungrouped run with '--skip-unified-maps' therefore "
+        f"refuses this option. With '--reaction-value-period', its aggregations are "
+        f"'circular_mean' and, without groups, 'angular_deviation'. With '--reaction-value-type "
+        f"categorical', aggregations are refused. Presence stays the default. It counts the "
+        f"samples, however few there are. Coloring by which samples contain an element would use "
+        f"the 'tab10' colors of the values. A color would then mean a sample on one map and a "
+        f"value on another. Without groups, a rule ({CATEGORICAL_RULES_PHRASE}) instead chooses "
+        f"one value across the samples for the 'unified' map (see '--reaction-value-type'). With "
+        f"'--groups-txt', the rule chooses one value among the samples of each group for that "
+        f"group's map. The 'unified' map then counts the groups, unless '--reaction-group-summary' "
+        f"gives a rule. Use a rule only where a value means the same thing in every sample."
     )
     groupSUMMARY.add_argument(
         '--compound-sample-summary', metavar='NAME', help=
@@ -368,7 +442,13 @@ def get_args() -> Namespace:
         "groups in which each element occurs. If no summary of the groups is meaningful or "
         "desired, use '--skip-unified-maps' to leave the map out, and without a map to color, "
         "'--reaction-group-summary' is refused. With '--reaction-value-period', its aggregations "
-        "are 'circular_mean' and 'angular_deviation'."
+        "are 'circular_mean' and 'angular_deviation'. With '--reaction-value-type categorical', "
+        "presence stays the default. It counts the groups, however few there are. A rule chooses "
+        "one value across the groups instead (see '--reaction-value-type'). Each group with a "
+        "value gives one vote, whatever its size. It also needs a rule in "
+        "'--reaction-sample-summary'. That rule chooses each group's value among its samples. With "
+        "few groups, ties are common. With two groups, every disagreement is a tie, so "
+        "'plurality_order' settles it by the order of the values."
     )
     groupSUMMARY.add_argument(
         '--compound-group-summary', metavar='NAME', help=
@@ -546,12 +626,15 @@ def get_args() -> Namespace:
         "without trimming. This colormap contains distinct colors suitable for clearly "
         "differentiating the databases or groups containing reactions. All of the above concerns "
         "occurrence coloring. When coloring a reaction layer by a value column instead (a "
-        "'--reaction-txt' file with a value column), this same option selects the sequential "
-        "colormap that is sampled continuously to map reaction values (default 'plasma_r'), and "
-        "'--presence-colormap-scheme' does not apply. That one colormap then colors the 'unified' "
-        "map and the maps of the individual samples or groups alike, unless "
-        "'--reaction-category-colormap' gives the latter a colormap of their own. See the "
-        "following webpage for named Matplotlib colormaps: "
+        "'--reaction-txt' file with a value column of numbers), this same option selects the "
+        "sequential colormap that is sampled continuously to map reaction values (default "
+        "'plasma_r'), and '--presence-colormap-scheme' does not apply. That one colormap then "
+        "colors the 'unified' map and the maps of the individual samples or groups alike, unless "
+        "'--reaction-category-colormap' gives the latter a colormap of their own. With "
+        "'--reaction-value-type categorical', each value takes a color of its own. This option "
+        "then colors only presence across the samples or groups on the 'unified' map. It is "
+        "refused where no map shows presence. See the following webpage for named Matplotlib "
+        "colormaps: "
         "https://matplotlib.org/stable/users/explain/colors/colormaps.html#classes-of-colormaps"
     )
     groupCOLOR.add_argument(
@@ -575,7 +658,8 @@ def get_args() -> Namespace:
         "those maps are colored by value: the reaction file needs a value column and a 'sample' "
         "column, and, with '--groups-txt', '--reaction-sample-summary' must pool the values of "
         "each group's samples rather than summarize their presence, which '--group-colormap' "
-        "colors instead."
+        "colors instead. It is refused for categorical values ('--reaction-value-type "
+        "categorical'), which take colors of their own."
     )
     groupCOLOR.add_argument(
         '--compound-category-colormap', nargs='+', help=
@@ -614,6 +698,22 @@ def get_args() -> Namespace:
         "colored by sample or group presence. The two layers are colored independently, so each "
         "takes its own file; pointing both options at a single file gives the two layers one set "
         "of category colors and so one legend. It cannot be combined with '--compound-colormap'."
+    )
+    groupCOLOR.add_argument(
+        '--reaction-value-colors', type=str, metavar='PATH', help=
+        "Path to a tab-delimited kegg-value-colors-txt file giving a color hex code to each "
+        "categorical value of the reaction layer ('--reaction-value-type categorical'). Its first "
+        "column holds the values and can be headed anything. Its 'color' column holds the hex "
+        "codes. The order of the rows is the order of the values. That order sets the legend, the "
+        "drawing order of overlapping elements, and the choices of the rules 'order' and "
+        "'plurality_order'. Every value of the reaction file needs a color. Values that the "
+        "reaction file does not have are reported and ignored, so one colors file can serve "
+        "several runs. Two values cannot share a color. With '--groups-txt', the file needs a rule "
+        "in '--reaction-sample-summary'. Without one, no map shows the values."
+    )
+    groupCOLOR.add_argument(
+        '--compound-value-colors', type=str, metavar='PATH', help=
+        "Like '--reaction-value-colors', but for the categorical values of the compound layer."
     )
     groupCOLOR.add_argument(
         '--presence-colormap-scheme',
@@ -673,7 +773,9 @@ def get_args() -> Namespace:
         "maps, reactions rarely overlap, so the order seldom matters.) This applies to the "
         "reaction layer across every source: contigs databases, pan genomes, and the reaction "
         "layer of draw-kegg-pathways text files ('--reaction-txt'). The compound layer has its own "
-        "'--compound-reverse-overlay'."
+        "'--compound-reverse-overlay'. For categorical values ('--reaction-value-type "
+        "categorical'), the value that comes first in their order is drawn on top, and this flag "
+        "puts the last value on top instead. It does not change which value a rule chooses."
     )
     groupCOLOR.add_argument(
         '--compound-colormap', nargs='+', help=
@@ -681,7 +783,8 @@ def get_args() -> Namespace:
         "'--compound-txt' file colored by a value column. The reaction and compound layers are "
         "colored on independent scales, each with its own colorbar (both default 'plasma_r'). As "
         "with '--reaction-colormap', this takes a colormap name, optionally followed by two "
-        "decimal limits."
+        "decimal limits. With '--compound-value-type categorical', it colors only presence across "
+        "the samples or groups on the 'unified' map."
     )
     groupCOLOR.add_argument(
         '--compound-reverse-overlay', action='store_true', default=False, help=
@@ -689,7 +792,9 @@ def get_args() -> Namespace:
         "By default, compounds with a greater value are drawn on top of those with a lesser value; "
         "with this flag, the opposite applies. Note that compound circles rarely overlap on a map, "
         "unlike the crossing reaction arrows of global and overview maps, so the compound drawing "
-        "order is usually of little visual consequence."
+        "order is usually of little visual consequence. For categorical values "
+        "('--compound-value-type categorical'), it puts the last value on top, as "
+        "'--reaction-reverse-overlay' does."
     )
     groupCOLOR.add_argument(
         '--reaction-value-limits', nargs=2, metavar='LIMIT', help=
@@ -1004,13 +1109,14 @@ def map_json_network_ko_data(args: Namespace, mapper: Mapper) -> None:
         draw_maps_lacking_data=args.draw_bare_maps
     )
 
-def _detect_txt_layer(path: str) -> dict:
+def _detect_txt_layer(path: str, value_type: str = None) -> dict:
     """Light structural peek at a per-layer text file for CLI flag validation.
 
-    Returns {'mode': 'quantitative'|'membership'|'single'|None, 'has_sample': bool}. 'mode' is None
-    when the file is malformed in a way the reader ('Mapper._read_element_txt') should report (no
-    'accession' column, or an ambiguous >1 value column); the caller then skips flag guards and lets
-    the reader raise the definitive error.
+    Returns {'mode': 'quantitative'|'categorical'|'membership'|'single'|None, 'has_sample': bool}.
+    'mode' is None when the file is malformed in a way the reader ('Mapper._read_element_txt')
+    should report (no 'accession' column, or an ambiguous >1 value column); the caller then skips
+    flag guards and lets the reader raise the definitive error. A value column is 'categorical'
+    where 'value_type' says so, and 'quantitative' otherwise.
     """
     filesnpaths.is_file_exists(path)
     try:
@@ -1026,7 +1132,7 @@ def _detect_txt_layer(path: str) -> dict:
     if len(value_columns) > 1:
         return {'mode': None, 'has_sample': has_sample, 'has_gene_id': has_gene_id}
     if len(value_columns) == 1:
-        mode = 'quantitative'
+        mode = 'categorical' if value_type == 'categorical' else 'quantitative'
     elif has_sample:
         mode = 'membership'
     else:
@@ -1116,11 +1222,16 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         return value
 
     # Detect the structure of each provided file for flag validation (full validation is deferred to
-    # the reader). A layer is 'quantitative' (a value column), 'membership' (presence + a 'sample'
-    # column), or 'single' (presence, no samples). This says what the file provides, from which the
-    # mapper derives how the layer colors each map context.
-    reaction = _detect_txt_layer(args.reaction_txt) if args.reaction_txt is not None else None
-    compound = _detect_txt_layer(args.compound_txt) if args.compound_txt is not None else None
+    # the reader). A layer is 'quantitative' (a value column of numbers), 'categorical' (a value
+    # column of categorical values), 'membership' (presence + a 'sample' column), or 'single'
+    # (presence, no samples). This says what the file provides. The mapper uses it to choose how the
+    # layer colors each map context.
+    reaction = _detect_txt_layer(
+        args.reaction_txt, args.reaction_value_type
+    ) if args.reaction_txt is not None else None
+    compound = _detect_txt_layer(
+        args.compound_txt, args.compound_value_type
+    ) if args.compound_txt is not None else None
     present = [layer for layer in (reaction, compound) if layer is not None]
     any_sample = any(layer['has_sample'] for layer in present)
 
@@ -1163,6 +1274,55 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
     # Skip the flag guards if a provided file is malformed/ambiguous, so the reader raises the
     # definitive file error rather than a guard reporting a misleading secondary problem.
     if not any(layer['mode'] is None for layer in present):
+        # A value type says what a layer's value column holds, so it needs that layer's file and its
+        # value column. Colors given per categorical value need categorical values, and a map that
+        # shows them. With groups, only a rule among each group's samples puts the values on a map.
+        for element_type, file_flag, layer, sample_summary, _ in summaries:
+            value_type = getattr(args, f'{element_type}_value_type')
+            type_flag = f'--{element_type}-value-type'
+            if value_type is not None and layer is None:
+                raise ConfigError(
+                    f"'{type_flag}' says what the value column of the {element_type} file holds, "
+                    f"but no {element_type} file ('{file_flag}') was provided."
+                )
+            if value_type is not None and layer['mode'] not in VALUE_MODES:
+                raise ConfigError(
+                    f"'{type_flag}' says what the value column of the {element_type} file holds, "
+                    f"but the file has no value column. Its layer is colored by presence."
+                )
+            colors_flag = f'--{element_type}-value-colors'
+            if getattr(args, f'{element_type}_value_colors') is not None:
+                if layer is None:
+                    raise ConfigError(
+                        f"'{colors_flag}' gives a color to each categorical value of the "
+                        f"{element_type} layer, but no {element_type} file ('{file_flag}') was "
+                        f"provided."
+                    )
+                if layer['mode'] not in VALUE_MODES:
+                    raise ConfigError(
+                        f"'{colors_flag}' gives a color to each categorical value of the "
+                        f"{element_type} layer, but the {element_type} file has no value column. "
+                        f"Its layer is colored by presence."
+                    )
+                if value_type != 'categorical':
+                    raise ConfigError(
+                        f"'{colors_flag}' gives a color to each categorical value of the "
+                        f"{element_type} layer, but '{type_flag} categorical' was not given. Give "
+                        f"it to read the value column as categorical values."
+                    )
+                if (
+                    layer['has_sample'] and args.groups_txt is not None
+                    and sample_summary not in CATEGORICAL_RULES
+                ):
+                    raise ConfigError(
+                        f"'{colors_flag}' gives a color to each categorical value. Here the "
+                        f"samples are grouped, and '--{element_type}-sample-summary' gives no "
+                        f"rule. So each group's map counts the group's samples, and no map shows "
+                        f"the values. Give '--{element_type}-sample-summary' a rule, such as "
+                        f"'plurality_order', to color each group's map by a value chosen among its "
+                        f"samples. Or drop the colors file."
+                    )
+
         # '--original-color' highlights the reaction layer in the reference map's colors (its
         # associated compounds follow, on global/overview maps) through a dedicated renderer that
         # draws only the reaction layer. Both the colors and their render order come from the
@@ -1183,12 +1343,12 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     "(on global and overview maps), so it cannot also take an explicit compound "
                     "file ('--compound-txt')."
                 )
-            if reaction['mode'] == 'quantitative':
+            if reaction['mode'] in VALUE_MODES:
                 raise ConfigError(
                     "'--original-color' colors reactions in the reference map's own colors, which "
-                    "leaves no color scale for a value column, but the reaction file has one. Draw "
-                    "the values with '--reaction-colormap' instead, or drop the value column to "
-                    "highlight the reactions in the reference colors."
+                    "leaves no colors for a value column, but the reaction file has one. Drop "
+                    "'--original-color' to color the reactions by their values, or drop the value "
+                    "column to highlight the reactions in the reference colors."
                 )
             # '--group-colormap'/'--group-reverse-overlay' are NOT listed here: with groups, the
             # per-group maps show within-group sample counts (as they do for databases and
@@ -1240,6 +1400,12 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     "colored by a value column; set its colormap with '--reaction-colormap' "
                     "instead."
                 )
+            if reaction['mode'] == 'categorical':
+                raise ConfigError(
+                    "'--reaction-color' sets a single presence color, but the reaction layer is "
+                    "colored by categorical values. Set the colors of the values with "
+                    "'--reaction-value-colors' instead."
+                )
         if args.compound_color is not None:
             if args.compound_txt is None:
                 raise ConfigError(
@@ -1251,6 +1417,12 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     "'--compound-color' sets a single presence color, but the compound layer is "
                     "colored by a value column; set its colormap with '--compound-colormap' "
                     "instead."
+                )
+            if compound['mode'] == 'categorical':
+                raise ConfigError(
+                    "'--compound-color' sets a single presence color, but the compound layer is "
+                    "colored by categorical values. Set the colors of the values with "
+                    "'--compound-value-colors' instead."
                 )
 
         # A color per category colors a layer by which samples or groups contain an element, and
@@ -1311,6 +1483,36 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"layer is colored by single-color presence (the file has no value column and "
                     f"no 'sample' column), which does not use them."
                 )
+
+        # Categorical values take colors of their own. A colormap of such a layer colors only its
+        # presence on the 'unified' map. It has nothing to color where that map shows the values, or
+        # where that map is not drawn. The 'unified' map is colored by the group summary with
+        # groups, and by the sample summary without them.
+        unified_level = 'group' if args.groups_txt is not None else 'sample'
+        for element_type, _, layer, sample_summary, group_summary in summaries:
+            colormap_flag = f'--{element_type}-colormap'
+            unified_summary = group_summary if args.groups_txt is not None else sample_summary
+            if layer is None or layer['mode'] != 'categorical':
+                continue
+            if getattr(args, f'{element_type}_colormap') is None:
+                continue
+            if not layer['has_sample']:
+                reason = "The file has no 'sample' column, so its one map shows the values."
+            elif unified_summary in CATEGORICAL_RULES:
+                reason = (
+                    f"'--{element_type}-{unified_level}-summary {unified_summary}' colors the "
+                    f"'unified' map by the values too."
+                )
+            elif args.skip_unified_maps:
+                reason = "'--skip-unified-maps' draws no 'unified' map."
+            else:
+                continue
+            raise ConfigError(
+                f"'{colormap_flag}' colors presence on the 'unified' map. Here no map of the "
+                f"{element_type} layer is colored by presence. {reason} Categorical values take "
+                f"their colors from '--{element_type}-value-colors', or from anvi'o's default "
+                f"colors."
+            )
 
         # Skipping the 'unified' map makes the maps of the individual samples or groups the whole
         # of the output. The run therefore needs samples. It also needs those maps to be asked for.
@@ -1375,11 +1577,18 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"'{flag}' reduces the values of the {element_type} layer, but no "
                     f"{element_type} file ('{file_flag}') was provided."
                 )
-            if layer['mode'] != 'quantitative':
+            if layer['mode'] not in VALUE_MODES:
                 raise ConfigError(
                     f"'{flag}' reduces the values of the {element_type} layer, but its file has no "
                     f"value column, so the layer is colored by presence and there are no values to "
                     f"reduce."
+                )
+            if aggregation in CATEGORICAL_RULES and layer['mode'] == 'quantitative':
+                raise ConfigError(
+                    f"'{flag}' was given as '{aggregation}', which chooses one categorical value "
+                    f"among several. The values of the {element_type} layer are numbers, so they "
+                    f"are reduced with an aggregation, such as 'sum' or 'mean'. To read them as "
+                    f"categorical values, give '--{element_type}-value-type categorical'."
                 )
             if flag == '--reaction-gene-aggregation' and not layer['has_gene_id']:
                 raise ConfigError(
@@ -1404,6 +1613,13 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 raise ConfigError(
                     f"'{flag}' says how far the values of the {element_type} layer go before they "
                     f"repeat, but no {element_type} file ('{file_flag}') was provided."
+                )
+            if layer['mode'] == 'categorical':
+                raise ConfigError(
+                    f"'{flag}' says how far the values of the {element_type} layer go before they "
+                    f"repeat. The values of that layer are categorical "
+                    f"('--{element_type}-value-type categorical'). They are names, which do not "
+                    f"repeat after a period."
                 )
             if layer['mode'] != 'quantitative':
                 raise ConfigError(
@@ -1443,6 +1659,12 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"'{flag}' {verb}s the color scale of the {element_type} layer, but no "
                     f"{element_type} file ('{file_flag}') was provided."
                 )
+            if layer['mode'] == 'categorical':
+                raise ConfigError(
+                    f"'{flag}' {verb}s a color scale of numbers. The values of the {element_type} "
+                    f"layer are categorical ('--{element_type}-value-type categorical'). Each "
+                    f"takes a color of its own, so there is no scale to {verb}."
+                )
             if layer['mode'] != 'quantitative':
                 raise ConfigError(
                     f"'{flag}' {verb}s the color scale spanning the values of the {element_type} "
@@ -1472,6 +1694,12 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 raise ConfigError(
                     f"'{flag}' rescales the values of the {element_type} layer, but no "
                     f"{element_type} file ('{file_flag}') was provided."
+                )
+            if layer['mode'] == 'categorical':
+                raise ConfigError(
+                    f"'{flag}' rescales numbers. The values of the {element_type} layer are "
+                    f"categorical ('--{element_type}-value-type categorical'). They are names, "
+                    f"which cannot be rescaled."
                 )
             if layer['mode'] != 'quantitative':
                 raise ConfigError(
@@ -1503,6 +1731,13 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"'{flag}' colors the maps of the individual samples or groups of the "
                     f"{element_type} layer, but no {element_type} file ('{file_flag}') was "
                     f"provided."
+                )
+            if layer['mode'] == 'categorical':
+                raise ConfigError(
+                    f"'{flag}' colors the maps of the individual samples or groups along a scale "
+                    f"of numbers. The values of the {element_type} layer are categorical "
+                    f"('--{element_type}-value-type categorical'). They take their colors from "
+                    f"'--{element_type}-value-colors', or from anvi'o's default colors."
                 )
             if layer['mode'] != 'quantitative':
                 raise ConfigError(
@@ -1549,7 +1784,51 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                         f"'{flag}' summarizes the samples of the {element_type} layer, but its "
                         f"file has no 'sample' column, so there are no samples to summarize."
                     )
-                if summary not in PRESENCE_SUMMARIES and layer['mode'] != 'quantitative':
+                # A categorical rule chooses one categorical value across the samples or groups.
+                # Every other name that is not presence is an aggregation, which pools numbers. A
+                # rule given where it cannot apply is refused with what the user can do instead.
+                # That depends on the file.
+                if summary in CATEGORICAL_RULES and layer['mode'] not in VALUE_MODES:
+                    raise ConfigError(
+                        f"'{flag}' was given as '{summary}', which chooses one categorical value "
+                        f"across the {level}s. The {element_type} file has no value column, so "
+                        f"there are no values to choose among. Summarize presence with one of "
+                        f"{SUMMARY_PRESENCE_PHRASE} instead."
+                    )
+                if summary in CATEGORICAL_RULES and layer['mode'] == 'quantitative':
+                    raise ConfigError(
+                        f"'{flag}' was given as '{summary}', which chooses one categorical value "
+                        f"across the {level}s. The values of the {element_type} file are numbers. "
+                        f"To read them as categorical values, give "
+                        f"'--{element_type}-value-type categorical'."
+                    )
+                if (
+                    layer['mode'] == 'categorical'
+                    and summary not in PRESENCE_SUMMARIES + CATEGORICAL_RULES
+                ):
+                    # With groups, the samples of a group are counted unless a rule chooses among
+                    # them, so presence names are no alternative at the sample level there.
+                    if level == 'sample' and args.groups_txt is not None:
+                        alternatives = (
+                            f"Choose one value among the samples of each group with one of "
+                            f"{CATEGORICAL_RULES_PHRASE}."
+                        )
+                    else:
+                        alternatives = (
+                            f"Summarize presence across the {level}s with "
+                            f"{SUMMARY_PRESENCE_PHRASE}. Or choose one value across the {level}s "
+                            f"with one of {CATEGORICAL_RULES_PHRASE}."
+                        )
+                    raise ConfigError(
+                        f"'{flag}' was given as '{summary}'. The values of the {element_type} "
+                        f"layer are categorical ('--{element_type}-value-type categorical'). They "
+                        f"cannot be added up or averaged across the {level}s. {alternatives} "
+                        f"Choosing assumes that a value means the same thing in every one of them."
+                    )
+                if (
+                    summary not in PRESENCE_SUMMARIES + CATEGORICAL_RULES
+                    and layer['mode'] != 'quantitative'
+                ):
                     raise ConfigError(
                         f"'{flag}' was given as '{summary}', which is an aggregation that pools "
                         f"values, but the {element_type} file has no value column, so there are no "
@@ -1569,16 +1848,22 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     level == 'sample' and args.groups_txt is not None
                     and summary in PRESENCE_SUMMARIES
                 ):
+                    alternative = (
+                        "give a rule such as 'plurality_order' to color each group's map by a "
+                        "value chosen among its samples"
+                    ) if layer['mode'] == 'categorical' else (
+                        "use an aggregation such as 'mean' to color each group's map by pooled "
+                        "values"
+                    )
                     raise ConfigError(
                         f"'{flag}' was given as '{summary}', but the samples here are grouped with "
                         f"'--groups-txt', and each group's map shows the count of that group's own "
                         f"samples regardless of how presence is asked for — in discrete bands or "
                         f"on a continuous scale, as '--group-colormap-scheme' says — so "
                         f"{SUMMARY_PRESENCE_PHRASE} would all draw the same thing. Summarizing the "
-                        f"samples by presence is already the default, so drop the option; use an "
-                        f"aggregation such as 'mean' to color each group's map by pooled values "
-                        f"instead, and note that '--{element_type}-group-summary' is what chooses "
-                        f"how presence is colored across the groups themselves."
+                        f"samples by presence is already the default, so drop the option; "
+                        f"{alternative} instead, and note that '--{element_type}-group-summary' is "
+                        f"what chooses how presence is colored across the groups themselves."
                     )
                 # A static color overrides summarizing across samples or groups, so asking for both
                 # is asking for two different things on the 'unified' map.
@@ -1608,9 +1893,23 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                         f"'--skip-unified-maps' draws no 'unified' map to color. Please use "
                         f"'{flag}' or '--skip-unified-maps', not both."
                     )
+            # A group's value comes from the sample summary. So a rule or an aggregation across the
+            # groups needs one of the same kind among each group's samples.
+            if (
+                layer is not None and layer['mode'] == 'categorical'
+                and group_summary in CATEGORICAL_RULES and sample_summary not in CATEGORICAL_RULES
+            ):
+                raise ConfigError(
+                    f"'--{element_type}-group-summary' was given as '{group_summary}', which "
+                    f"chooses one value among the values of the groups. Each group's value comes "
+                    f"from '--{element_type}-sample-summary'. Without a rule, that option counts "
+                    f"each group's samples, so the groups have no values to choose among. Please "
+                    f"also give '--{element_type}-sample-summary' a rule, such as "
+                    f"'plurality_order'."
+                )
             if group_summary is not None and group_summary not in PRESENCE_SUMMARIES and (
                 sample_summary is None or sample_summary in PRESENCE_SUMMARIES
-            ):
+            ) and group_summary not in CATEGORICAL_RULES:
                 raise ConfigError(
                     f"'--{element_type}-group-summary' was given as '{group_summary}', which pools "
                     f"the values of the groups, but each group's value comes from "
@@ -1631,7 +1930,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 "must occur for the group to be considered to contain it, so it applies when a "
                 "layer's groups are summarized by presence. No layer's groups are summarized that "
                 "way here: either no samples are grouped with '--groups-txt', or every sampled "
-                "layer's '--*-group-summary' pools values instead."
+                "layer's '--*-group-summary' pools values or chooses a categorical value instead."
             )
         if args.group_threshold is not None and args.skip_unified_maps:
             raise ConfigError(
@@ -1647,7 +1946,8 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 "which is the default, '--group-threshold' must also be given: the proportion of a "
                 "group's samples in which an element must be present for the group to be "
                 "considered to contain it. Alternatively, summarize the groups by pooling their "
-                "values with '--reaction-group-summary'/'--compound-group-summary'."
+                "values, or by choosing a categorical value with a rule, with "
+                "'--reaction-group-summary'/'--compound-group-summary'."
             )
         group_flags = [flag for present_flag, flag in (
             (args.group_colormap is not None, '--group-colormap'),
@@ -1664,7 +1964,9 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 f"by pooling values colors its group maps continuously from "
                 f"'--reaction-category-colormap'/'--compound-category-colormap' (or the layer's "
                 f"own '--reaction-colormap'/'--compound-colormap') and "
-                f"'--reaction-reverse-overlay'/'--compound-reverse-overlay' instead."
+                f"'--reaction-reverse-overlay'/'--compound-reverse-overlay' instead. A layer of "
+                f"categorical values whose samples a rule summarizes colors its group maps by "
+                f"those values."
             )
 
     reaction_colormap, reaction_colormap_limits = _resolve_colormap(
@@ -1785,6 +2087,18 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
     if compound_color is not None:
         kwargs['compound_color'] = compound_color
         kwargs['compound_colormap'] = False
+
+    # A value type and the colors of categorical values go to the mapper only where given. So does
+    # the seed, which the mapper refuses where no rule chooses at random.
+    for element_type in ('reaction', 'compound'):
+        value_type = getattr(args, f'{element_type}_value_type')
+        if value_type is not None:
+            kwargs[f'{element_type}_value_type'] = value_type
+        value_colors = getattr(args, f'{element_type}_value_colors')
+        if value_colors is not None:
+            kwargs[f'{element_type}_value_colors'] = value_colors
+    if args.seed is not None:
+        kwargs['seed'] = args.seed
 
     kwargs['count_scale_max'] = args.count_scale_max
 
@@ -2179,7 +2493,8 @@ def main() -> None:
         # Only a compound text file provides a compound layer, so every option that shapes one has
         # nothing to act on without it. The same goes for the sample and group summaries and the
         # value limits, which only the text engine reads: a value column is what puts elements on a
-        # continuous scale, and only a text file has one.
+        # continuous scale, and only a text file has one. The options for categorical values and the
+        # seed of their random choices need a value column too.
         if not is_txt_run:
             compound_only_flags = [flag for present_flag, flag in (
                 (args.compound_color is not None, '--compound-color'),
@@ -2214,18 +2529,22 @@ def main() -> None:
                 (args.reaction_element_normalization is not None,
                  '--reaction-element-normalization'),
                 (args.compound_element_normalization is not None,
-                 '--compound-element-normalization')
+                 '--compound-element-normalization'),
+                (args.reaction_value_type is not None, '--reaction-value-type'),
+                (args.compound_value_type is not None, '--compound-value-type'),
+                (args.reaction_value_colors is not None, '--reaction-value-colors'),
+                (args.compound_value_colors is not None, '--compound-value-colors'),
+                (args.seed is not None, '--seed')
             ) if present_flag]
             if compound_only_flags:
                 message = ', '.join(f"'{flag}'" for flag in compound_only_flags)
                 raise ConfigError(
-                    f"These options were given: {message}. They color a compound layer; or "
-                    f"summarize the samples of a draw-kegg-pathways text file; or say how its "
-                    f"values repeat; or bound, center, color, or rescale a scale of values — all "
-                    f"of which only '--reaction-txt'/'--compound-txt' provide. Database, "
-                    f"pangenome, and reaction-network-JSON inputs have a reaction layer alone, "
-                    f"drawn from one source per database or genome and colored by how many of them "
-                    f"contain an element rather than by a value, so none of these can apply."
+                    f"These options were given: {message}. They apply only to a text file given "
+                    f"with '--reaction-txt' or '--compound-txt'. Database, pangenome, and "
+                    f"reaction-network-JSON inputs have only a reaction layer. That layer is "
+                    f"colored by how many databases or genomes contain an element. It has no "
+                    f"samples of a text file and no column of values, so these options have "
+                    f"nothing to act on."
                 )
         # '--original-color' draws only the reaction layer (its compounds follow in the reference
         # colors on global/overview maps); it cannot also stage an explicit compound file.
