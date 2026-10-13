@@ -850,7 +850,7 @@ class BAMProfilerQuick:
 
             combined_coverage = combined_coverage[:cursor]
 
-            self._write_bin_stats(output, bin_name, bam_file_name, bin_data, combined_coverage, bin_num_reads, contig_boundary_positions)
+            self._write_bin_stats(output, bin_name, bam_file_name, bin_data, combined_coverage, bin_num_reads, contig_boundary_positions, window_output=window_output, contig_boundaries=contig_boundaries)
 
         return mem_usage, mem_diff
 
@@ -916,14 +916,14 @@ class BAMProfilerQuick:
         return coverage_obj
 
 
-    def _write_bin_stats(self, output, bin_name, bam_file_name, bin_data, coverage_array, num_reads, contig_boundaries):
+    def _write_bin_stats(self, output, bin_name, bam_file_name, bin_data, coverage_array, num_reads, contig_boundary_positions, window_output=None, contig_boundaries=None):
         if self.report_minimal:
             mean = np.mean(coverage_array)
             detection = np.sum(coverage_array > 0) / len(coverage_array)
             self._write_bin_stats_minimal(output, bin_name, bam_file_name, bin_data, mean, detection, num_reads)
         else:
-            C = utils.CoverageStats(coverage_array, skip_outliers=True)
-            D = DisCov(coverage_array, bin_name, bam_file_name, contig_boundaries)
+            C = utils.CoverageStats(coverage_array, skip_outliers=True, return_window_info=window_output is not None)
+            D = DisCov(coverage_array, bin_name, bam_file_name, contig_boundary_positions)
             output.write(f"{bin_name}\t"
                          f"{bam_file_name}\t"
                          f"{bin_data['length']}\t"
@@ -966,7 +966,7 @@ class BAMProfilerQuick:
                          f"{detection:.4}\t"
                          f"{mean:.4}\n")
         else:
-            C = utils.CoverageStats(coverage_obj.c, skip_outliers=True)
+            C = utils.CoverageStats(coverage_obj.c, skip_outliers=True, return_window_info=window_output is not None)
             D = DisCov(coverage_obj.c, contig_name, bam_file_name)
             output.write(f"{contig_name}\t"
                          f"{bam_file_name}\t"
