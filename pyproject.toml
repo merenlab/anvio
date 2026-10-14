@@ -75,6 +75,7 @@ dependencies = [
     "pulp==2.7.0",
     "biopython",
     "reportlab",
+    "rl_accel",
     "pymupdf",
     "tomli==2.2.1",
     "pyyaml"

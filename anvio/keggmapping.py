@@ -7679,12 +7679,14 @@ class Mapper:
                     )
                 specs = _individual_specs(individual)
                 for pathway_number in pathway_numbers:
+                    progress.update(pathway_number)
                     drawn_individual[pathway_number] = self._draw_map_elements(
                         pathway_number, specs, individual_output_dir,
                         draw_map_lacking_data=draw_maps_lacking_data
                     )
             elif original_run:
                 for pathway_number in pathway_numbers:
+                    progress.update(pathway_number)
                     drawn_individual[pathway_number] = self._draw_map_kos_original_color(
                         pathway_number, layers[0]['source_accessions'].get(individual, set()),
                         individual_output_dir, draw_map_lacking_data=draw_maps_lacking_data
@@ -7692,6 +7694,7 @@ class Mapper:
             else:
                 specs = _individual_specs(individual)
                 for pathway_number in pathway_numbers:
+                    progress.update(pathway_number)
                     drawn_individual[pathway_number] = self._draw_map_elements(
                         pathway_number, specs, individual_output_dir,
                         draw_map_lacking_data=draw_maps_lacking_data
@@ -10338,9 +10341,10 @@ class Mapper:
             is.
 
         check_maps_lacking_kos : bool, True
-            If True, draw a blank map for each panel of a grid whose map was not drawn. This covers
-            the individual maps and the 'unified' map. The blank maps are deleted after the grids
-            are drawn.
+            If True, give a blank map to each panel of a grid whose map was not drawn. This covers
+            the individual maps and the 'unified' map. The blank map of a pathway is drawn once and
+            copied to each panel that needs it. The blank maps are deleted after the grids are
+            drawn.
 
         source_type : Literal['contigs database', 'pangenome', 'sample'], 'unknown'
             The kind of source a group is made of, which labels the per-group colorbars of source
@@ -10369,64 +10373,63 @@ class Mapper:
                     except KeyError:
                         drawn_pathway_number[pathway_number] = {individual: drawn_map}
 
-            # Draw empty maps as needed, for pathways with some but not all maps drawn.
+            def _map_path(map_dir: str, pathway_number: str) -> str:
+                # The path of the pathway's map in a directory of maps.
+                if self.pathway_categorization is None:
+                    return os.path.join(map_dir, self._map_basename(pathway_number))
+                return os.path.join(
+                    map_dir, *self.pathway_categorization[pathway_number],
+                    self._map_basename(pathway_number)
+                )
+
+            # Find the panels that need a blank map. A sample, contigs database, genome, or group in
+            # the grid needs one where it has no map of a pathway that another one has.
+            unified_dir = os.path.join(output_dir, UNIFIED_SUBDIR)
+            blank_dirs: Dict[str, List[str]] = {}
+            for pathway_number in pathway_numbers:
+                drawn_individual = drawn_pathway_number.get(pathway_number, {})
+                map_dirs: List[str] = []
+                if set(drawn_individual.values()) == set([True, False]):
+                    map_dirs = [
+                        os.path.join(output_dir, INDIVIDUAL_SUBDIR, individual)
+                        for individual in draw_grid_individuals
+                        if not drawn_individual.get(individual, False)
+                    ]
+                # A 'unified' map is not drawn where it has nothing to color. For example, a rule
+                # for categorical values can leave every element of the map without a value. A grid
+                # with an individual map of the pathway then gets a blank 'unified' panel, as it
+                # does for a missing individual panel. Otherwise the grid would not be drawn.
+                if include_unified and any(
+                    drawn_individual.get(individual, False) for individual in draw_grid_individuals
+                ) and not os.path.exists(_map_path(unified_dir, pathway_number)):
+                    map_dirs.append(unified_dir)
+                    unified_fillers = True
+                if map_dirs:
+                    blank_dirs[pathway_number] = map_dirs
+
+            # The blank map of a pathway is the same in every panel, so it is drawn once and copied
+            # to the other panels.
             progress = self.progress
             self.progress = terminal.Progress(verbose=False)
             run = self.run
             self.run = terminal.Run(verbose=False)
 
-            for pathway_number, drawn_individual in drawn_pathway_number.items():
-                if set(drawn_individual.values()) != set([True, False]):
-                    continue
-
-                pathway_basename = self._map_basename(pathway_number)
-                for individual, drawn_map in drawn_individual.items():
-                    if drawn_map:
-                        continue
-
-                    out_dir = os.path.join(output_dir, INDIVIDUAL_SUBDIR, individual)
-
-                    self._map_kos_fixed_colors(
-                        [], out_dir, [pathway_number], draw_maps_lacking_data=True
-                    )
-
-                    if self.pathway_categorization is None:
-                        out_path = os.path.join(out_dir, pathway_basename)
-                    else:
-                        out_path = os.path.join(
-                            out_dir, *self.pathway_categorization[pathway_number], pathway_basename
-                        )
-                    paths_to_remove.append(out_path)
-                    if self.categorize_files:
-                        paths_to_remove.append(os.path.join(out_dir, FLAT_SUBDIR, pathway_basename))
-
-            # A 'unified' map is not drawn where it has nothing to color. For example, a rule for
-            # categorical values can leave every element of the map without a value. A grid with an
-            # individual map of the pathway then gets a blank 'unified' panel, as it does for a
-            # missing individual panel. Otherwise the grid would not be drawn.
-            unified_dir = os.path.join(output_dir, UNIFIED_SUBDIR)
-            for pathway_number in pathway_numbers if include_unified else []:
-                if not any(
-                    drawn['individual'].get(individual, {}).get(pathway_number, False)
-                    for individual in draw_grid_individuals
-                ):
-                    continue
-                pathway_basename = self._map_basename(pathway_number)
-                if self.pathway_categorization is None:
-                    out_path = os.path.join(unified_dir, pathway_basename)
-                else:
-                    out_path = os.path.join(
-                        unified_dir, *self.pathway_categorization[pathway_number], pathway_basename
-                    )
-                if os.path.exists(out_path):
-                    continue
+            for pathway_number, map_dirs in blank_dirs.items():
+                progress.update(f"{pathway_number}: blank map")
                 self._map_kos_fixed_colors(
-                    [], unified_dir, [pathway_number], draw_maps_lacking_data=True
+                    [], map_dirs[0], [pathway_number], draw_maps_lacking_data=True
                 )
-                paths_to_remove.append(out_path)
+                blank_path = _map_path(map_dirs[0], pathway_number)
+                paths_to_remove.append(blank_path)
                 if self.categorize_files:
-                    paths_to_remove.append(os.path.join(unified_dir, FLAT_SUBDIR, pathway_basename))
-                unified_fillers = True
+                    paths_to_remove.append(
+                        os.path.join(map_dirs[0], FLAT_SUBDIR, os.path.basename(blank_path))
+                    )
+                for map_dir in map_dirs[1:]:
+                    out_path = _map_path(map_dir, pathway_number)
+                    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+                    shutil.copyfile(blank_path, out_path)
+                    paths_to_remove.append(out_path)
 
             self.progress = progress
             self.run = run
