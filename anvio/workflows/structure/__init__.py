@@ -40,6 +40,10 @@ class StructureModule(WorkflowSuperClass):
 
     valid_structure_engines = ['modeller', 'colabfold']
 
+    # the workflows whose targets include the structure databases. Other workflows inherit this module
+    # through the contigs workflow, but do not run its rules yet
+    workflows_with_structure_prediction = ['contigs']
+
     # parameters of `anvi_gen_structure_database` that are passed verbatim to the program (see
     # get_structure_engine_params). `--colabfold-additional-parameters` is not in this list because its
     # value starts with dashes and must be attached with an equals sign
@@ -68,6 +72,11 @@ class StructureModule(WorkflowSuperClass):
 
         if not self.run_structure:
             return
+
+        if self.name not in self.workflows_with_structure_prediction:
+            raise ConfigError(f"Structure prediction is not available in the {self.name} workflow yet, only in the "
+                              f"{', '.join(self.workflows_with_structure_prediction)} workflow. Please set `run` to "
+                              f"false for `anvi_gen_structure_database` in your config.")
 
         if self.structure_engine not in self.valid_structure_engines:
             raise ConfigError(f"The `--engine` for `anvi_gen_structure_database` must be one of "
