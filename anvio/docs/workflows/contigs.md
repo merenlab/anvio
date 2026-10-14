@@ -92,4 +92,22 @@ ColabFold generates multiple sequence alignments (MSA) on the CPU, then predicts
 
 The rules that predict structures with ColabFold (`colabfold_predict`, and `anvi_gen_structure_database` when `--engine` is `colabfold`) declare a GPU through the snakemake resource `gpu=1`. MODELLER and `colabfold_msa` declare `gpu=0`. You can change this number with the `gpu` parameter of `anvi_gen_structure_database` and `colabfold_predict`.
 
-It is up to you to map this resource onto your scheduler, e.g., through your snakemake cluster profile. On a single machine with one GPU, you can make sure that only one prediction runs at a time with `--additional-params --resources gpu=1 nodes=N`, where `N` is the total number of threads for your workflow (anvi'o sets `nodes` itself only when you do not pass your own `--resources`).
+It is up to you to map this resource onto your scheduler. On a single machine with one GPU, you can make sure that only one prediction runs at a time with `--additional-params --resources gpu=1 nodes=N`, where `N` is the total number of threads for your workflow (anvi'o sets `nodes` itself only when you do not pass your own `--resources`).
+
+On a cluster, you can pass the number of GPUs of each job to your submission command with `{resources.gpu}` in the snakemake `--cluster` string. Since only the structure rules declare a `gpu` resource, you also need to give every other rule a default value with `--default-resources gpu=0`. Otherwise snakemake cannot fill in `{resources.gpu}` for them and stops before submitting any job. Your submission command must then treat `0` as "no GPU".
+
+If your cluster has a dedicated partition for GPU jobs, you can use the same mechanism with a custom `partition` resource: a default for every rule with `--default-resources`, and a different value for the rules that need a GPU with `--set-resources`. Here is an example with SLURM's `sbatch`, where `cpu_part` and `gpu_part` are the names of your partitions:
+
+```bash
+anvi-run-workflow -w contigs \
+                  -c config-contigs.json \
+                  --additional-params \
+                      --cluster "sbatch --cpus-per-task={threads} --gres=gpu:{resources.gpu} --partition={resources.partition}" \
+                      --default-resources gpu=0 partition=cpu_part \
+                      --set-resources colabfold_predict:partition=gpu_part \
+                      --jobs 20 \
+                      --resources nodes=64 \
+                      --latency-wait 100
+```
+
+Only list the rules that actually use a GPU under `--set-resources`: `colabfold_predict` when `split_msa_and_predict` is `true`, or `anvi_gen_structure_database` when it runs ColabFold in a single step. With MODELLER, `anvi_gen_structure_database` belongs on the CPU partition. You can also add `gpu=N` to `--resources` to limit the number of GPU jobs submitted at the same time.
