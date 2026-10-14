@@ -11,7 +11,7 @@ The file must have a header line with a required `accession` column; the other c
 |`accession`|YES|A KEGG ID. Accessions in the file must **all** be **KEGG Ortholog (KO) IDs** (`K#####`) or **KEGG reaction IDs** (`R#####`) — a single file cannot mix the two. Both KOs and Reactions address the reaction layer, so combining them can clash with two scales on the same map elements.|
 |`gene_id`|NO|An identifier for the gene a value came from. Several genes may carry the same accession, and their values are combined into that accession's value (by default their `sum` — see `--reaction-gene-aggregation`).|
 |`sample`|NO|A sample of origin, enabling comparison across samples (and, with a %(groups-txt)s, across groups of samples). If this column is present, every row must have a sample.|
-|*a value column*|NO|A SINGLE numeric column with any name of your choosing, for coloring by a continuous quantitative value instead of by presence/absence. Its meaning is up to you (coverage, expression, flux, ...). If this column is present, every row must have a value. This column is **auto-detected** as not being named `accession`, `gene_id`, or `sample`.|
+|*a value column*|NO|A SINGLE column with any name of your choosing, for coloring by a value instead of by presence/absence. Its values are numbers by default, for coloring by a continuous quantitative value. Its meaning is up to you (coverage, expression, flux, ...). With `--reaction-value-type categorical`, its values are categorical values instead, such as `up` and `down` (see below). If this column is present, every row must have a value. This column is **auto-detected** as not being named `accession`, `gene_id`, or `sample`.|
 
 To color by **presence** of accessions, do not include a value column.
 
@@ -41,11 +41,47 @@ Per-gene values are aggregated to a per-accession value, and a map element's con
 
 With a `sample` column, `--draw-individual-files` and/or `--draw-grid` color maps of value column data that share a single `colorbar_reactions_samples.pdf` so that samples are comparable on the same scale. How the `unified` map, and with %(groups-txt)s the per-group maps, summarize samples is a separate choice (see below).
 
-Each of these scales spans exactly the values it is given, which a few extreme elements can stretch until the rest cannot be told apart. `--reaction-value-limits` bounds the `unified` map's scale and `--reaction-category-value-limits` the scale its per-sample or per-group maps share. These parameters take an argument of two values, a minimum and a maximum, either of which can be `none` to leave that end open while setting the other. A limit sets its end of the scale whether or not any value reaches it. The colorbar labels each limit. A limit that values lie past is marked `≤` or `≥`, since its color then stands for that value or anything past it.
+Each of these scales spans exactly the values it is given, which a few extreme elements can stretch until the rest cannot be told apart. `--reaction-value-limits` bounds the `unified` map's scale and `--reaction-individual-value-limits` the scale its per-sample or per-group maps share. These parameters take an argument of two values, a minimum and a maximum, either of which can be `none` to leave that end open while setting the other. A limit sets its end of the scale whether or not any value reaches it. The colorbar labels each limit. A limit that values lie past is marked `≤` or `≥`, since its color then stands for that value or anything past it.
 
-A scale also sits wherever its own values leave it, which for a signed quantity means the neutral middle color of a diverging colormap lands somewhere other than zero. `--reaction-value-center` and `--reaction-category-value-center` put a value at the middle of those two scales: used as a bare flag each centers its scale on 0, and each takes a number as an argument to center it on that instead. The scale is only ever widened to make room, running the same distance either side of the center and staying linear, so nothing is clipped that was not clipped already.
+A scale also sits wherever its own values leave it, which for a signed quantity means the neutral middle color of a diverging colormap lands somewhere other than zero. `--reaction-value-center` and `--reaction-individual-value-center` put a value at the middle of those two scales: used as a bare flag each centers its scale on 0, and each takes a number as an argument to center it on that instead. The scale is only ever widened to make room, running the same distance either side of the center and staying linear, so nothing is clipped that was not clipped already.
 
-The two scales are colored by one colormap, `--reaction-colormap`, unless `--reaction-category-colormap` gives the per-sample or per-group scale one of its own. That is worth doing where the two show quantities of different kinds: with `--reaction-sample-summary std` the `unified` map shows how much samples disagree rather than how large their values are, so drawing it in the colors that show magnitude on the per-sample maps invites mistaking one scale for the other.
+The two scales are colored by one colormap, `--reaction-colormap`, unless `--reaction-individual-colormap` gives the per-sample or per-group scale one of its own. That is worth doing where the two show quantities of different kinds: with `--reaction-sample-summary std` the `unified` map shows how much samples disagree rather than how large their values are, so drawing it in the colors that show magnitude on the per-sample maps invites mistaking one scale for the other.
+
+## Coloring by categorical values
+
+A value column can hold **categorical values** instead of numbers. These are names, such as `up`, `down` and `same`, or the names of clusters. Give `--reaction-value-type categorical` to read the column this way. Values written as numbers, such as `1` and `2`, are names too. A value is read as text, so `NA` is a value like any other. Every row needs a value. Each accession can have one value per gene and sample, so repeated rows are refused, as they are for numbers.
+
+Each value takes a color of its own. By default, the values take colors in sorted order. Where every value is a number, such as `-1`, `0` and `1`, the values are sorted as numbers. Otherwise the digits in the values are compared as numbers, so `cluster 2` comes before `cluster 10`. Up to 9 values take the colors of Matplotlib's `tab10` without its gray. The 10th to 18th values take the light colors of `tab20` without its light gray. Gray is left out because global maps draw the reactions they do not highlight in gray. To choose the colors yourself, give a %(kegg-value-colors-txt)s file with `--reaction-value-colors`. The order of its rows is then the order of the values. More than 18 values need such a file, except in a grouped run without a sample rule, where no map shows the values. The legend lists the values in order, with the first value at the top.
+
+**Choosing one value where several meet.** Each row has one value. Several values can still meet in two places within a sample. The genes of one accession can have different values. The KOs or reactions of one map element can have different values. A rule chooses one value in each place. `--reaction-gene-aggregation` sets the rule for the genes of an accession, and `--reaction-accession-aggregation` the rule for the accessions of an element. Each gene or accession gives one vote.
+
+|Rule|What it does|
+|:--|:--|
+|`plurality_order`|The default. Takes the most common value, even with less than half of the votes. A tie goes to the value that comes first in the order of the values.|
+|`plurality_random`|Takes the most common value. A tie is broken at random.|
+|`plurality`|Takes the most common value. A tie gives no value.|
+|`majority`|Takes the value with more than half of the votes. Without one, there is no value.|
+|`order`|Takes the value that comes first in the order of the values, whatever the votes.|
+|`random`|Takes one of the values at random, whatever the votes.|
+
+The order of the values is the row order of the colors file, or else the sorted order described above. If a colors file lists `up` before `same`, `order` chooses `up` for a map element whose KOs have both. A random choice comes from `--seed` (42 by default) and from what the value is chosen for, such as the KOs of one element in one sample. The same element then gets the same value on every map, and in every run with the same seed. The run reports how many choices each rule made, and how: by plurality, by majority, by value order, at random, or without a value.
+
+`plurality` and `majority` can give no value. An accession given no value has no value in that sample, so it does not vote in its map elements. A map element given no value is left uncolored. That looks like an element the file lacks, so a warning says how many there are. These two rules suit a map that should show only clear choices. With two voters, `majority` means that both agree.
+
+On global and overview maps drawn from reactions alone, each compound takes a color from the reactions that touch it. The accession rule chooses among their values. `plurality` and `majority` can leave a compound without a value. It then keeps the color of a compound that no colored reaction touches. A warning says how many such compounds there are. `--reaction-reverse-overlay` puts the last value on top where reactions overlap. It does not change which value a rule chooses.
+
+**Samples.** With a `sample` column, the map of each sample shows that sample's values. Draw these maps with `--draw-individual-files` and/or `--draw-grid`. They share one legend, `colorbar_reactions_samples.pdf`. A value in one sample need not mean the same thing in another sample. For example, cluster 1 of one sample need not be cluster 1 of another. The `unified` map therefore shows presence across the samples by default. It counts the samples that contain each element, however few samples there are. A run that draws only the `unified` map then colors nothing by the values. anvi'o warns about it. Coloring by which samples contain an element would use the `tab10` colors of the values. A color would then mean a sample on one map and a value on another. `--reaction-sample-summary membership` still asks for it. Where a value does mean the same thing in every sample, give a rule to `--reaction-sample-summary`. The rule then chooses one value per element across the samples, and the `unified` map shows it. Each sample with a value for the element gives one vote. A sample without one does not vote.
+
+**Groups of samples.** With a %(groups-txt)s, maps are drawn for groups rather than samples. By default, each group's map counts the group's samples, and the `unified` map counts the groups. Such a run colors nothing by the values, and anvi'o warns about it. A rule given to `--reaction-sample-summary` chooses one value per element among the samples of each group. Each group's map then shows that value. A rule given to `--reaction-group-summary` then chooses one value across the groups for the `unified` map. It needs a rule for the samples, since the groups otherwise have no values. Each sample with a value gives one vote in its group. Each group with a value gives one vote across the groups, whatever its size. With few voters, ties are common. With two groups, every disagreement between them is a tie, so `plurality_order` settles it by the order of the values. `majority` among the samples of a group shows a value only where more than half of the samples with a value agree. A sample without a value does not count, so one sample with a value is enough. Where the `unified` map counts the groups, `--group-threshold` decides when a group contains an element, as for any layer.
+
+The options that shape a scale of numbers are refused for categorical values. These are the value limits and centers, `--reaction-value-period`, `--reaction-element-normalization` and `--reaction-individual-colormap`. `--reaction-colormap` colors only the presence on the `unified` map.
+
+{{ codestart }}
+anvi-draw-kegg-pathways --reaction-txt kegg-reaction.txt \
+                        --reaction-value-type categorical \
+                        --draw-grid \
+                        -o output_dir
+{{ codestop }}
 
 ## Summarizing across samples and groups
 
@@ -53,23 +89,23 @@ There are four distinct reductions, each with its own option, plus one rescaling
 
 |Level|Option|What it does|
 |:--|:--|:--|
-|genes of an accession|`--reaction-gene-aggregation` (an aggregation; `sum` by default)|the genes carrying an accession → that accession's value|
-|accessions of a map element|`--reaction-accession-aggregation` (an aggregation; `sum` by default)|the constituent accessions of a map element → that element's value|
-|across samples|`--reaction-sample-summary` (`count`, `count_continuous`, `membership`, or an aggregation)|a set of samples → one continuous value or one presence value per map element|
-|across groups|`--reaction-group-summary` (`count`, `count_continuous`, `membership`, or an aggregation)|the groups of a %(groups-txt)s → one continuous value or one presence value per map element|
+|genes of an accession|`--reaction-gene-aggregation` (an aggregation; `sum` by default; or a rule for categorical values)|the genes carrying an accession → that accession's value|
+|accessions of a map element|`--reaction-accession-aggregation` (an aggregation; `sum` by default; or a rule for categorical values)|the constituent accessions of a map element → that element's value|
+|across samples|`--reaction-sample-summary` (`count`, `count_continuous`, `membership`, an aggregation, or a rule for categorical values)|a set of samples → one value or one presence value per map element|
+|across groups|`--reaction-group-summary` (`count`, `count_continuous`, `membership`, an aggregation, or a rule for categorical values)|the groups of a %(groups-txt)s → one value or one presence value per map element|
 |each sample's or group's value for an element|`--reaction-element-normalization` (a normalization; none by default)|an element's value in one sample or group → that value rescaled against the element's values across all samples or groups|
 
 An **aggregation** is `sum` (default), `mean`, `max`, `min`, `median`, `std` — or any other unsuggested pandas aggregation that reduces a series of numbers to one number, such as `var` or `sem`. Names that transform rather than reduce (`cumsum`) or that only a grouping offers (`first`) are rejected. Where an aggregation is undefined for the values available, as `std` is for a single value, the affected elements are left uncolored. `circular_mean` averages values that repeat after a period, such as clock times, and requires `--reaction-value-period`. `angular_deviation` measures how far such values are spread apart, on the `unified` map only.
 
-A summary pools the values of a **map element**, not of an accession. An element's value in a sample is the aggregate of its accessions in that sample. Without `--reaction-element-normalization`, this is the value that the sample's own map draws. So the sample summary pools what the maps of the individual samples show. With groups, the group summary then pools the values of the groups.
+A summary pools the values of a **map element**, not of an accession. An element's value in a sample is the aggregate of its accessions in that sample. Without `--reaction-element-normalization`, this is the value that the sample's own map draws, so the sample summary pools what the maps of the individual samples show. With groups, the group summary then pools the values of the groups.
 
 The sample summary drives the `unified` map when there are no groups, and each per-group map (produced when using `--draw-individual-files` or `--draw-grid`) when there are. The group summary drives the `unified` map when there are groups.
 
-Note that with groups, the per-group map either shows the count of that group's sample — the default case — or, with a `--reaction-sample-summary` aggregation argument, the samples' pooled value; `--reaction-sample-summary` is therefore not permitted with a presence name (`count`, `count_continuous` or `membership`) when using groups.
+Note that with groups, the per-group map either shows the count of that group's sample — the default case — or, with a `--reaction-sample-summary` aggregation argument, the samples' pooled value; `--reaction-sample-summary` is therefore not permitted with a presence name (`count`, `count_continuous` or `membership`) when using groups. For categorical values, a rule given to `--reaction-sample-summary` colors each group's map by the value that it chooses among the group's samples.
 
-The sample and group summaries in the `unified` maps both default to **presence** (`membership` for 3 or fewer categories, `count` above that, and `count_continuous` where there are more categories than the colormap has distinguishable colors), even with a quantitative value column, because presence is meaningful across any set of samples while pooling values is only meaningful for commensurable ones. For example, it makes sense to average transcript abundances across samples from replicate conditions, but not from unrelated conditions. Pooling values across samples is triggered by providing an aggregation argument to `--reaction-sample-summary` or `--reaction-group-summary`. `std` at this level maps how much samples disagree.
+The sample and group summaries in the `unified` maps both default to **presence**, even with a quantitative value column. The default is `membership` for 3 or fewer samples or groups. Above that, it is `count`. Where there are more samples or groups than the colormap has distinguishable colors, it is `count_continuous`. Presence is the default because it is meaningful across any set of samples. Pooling values is only meaningful across commensurable samples. For example, it makes sense to average transcript abundances across samples from replicate conditions, but not from unrelated conditions. Pooling values across samples is triggered by providing an aggregation argument to `--reaction-sample-summary` or `--reaction-group-summary`. `std` at this level maps how much samples disagree. A layer of categorical values counts the samples by default, however few there are.
 
-A layer can be **categorical in the overview and continuous per sample or group**. With the default presence summary, the `unified` map gets a colorbar of sample or group counts or memberships, while per-sample maps keep a continuous colorbar. The sample and group levels can be treated independently — replicate samples can be averaged within each condition (group) while the `unified` map summarizing all conditions shows in how many conditions each reaction occurs, with a group containing a reaction when at least half of its samples do:
+A layer can show **presence in the overview and values per sample or group**. With the default presence summary, the `unified` map gets a colorbar of sample or group counts or memberships, while per-sample maps keep a continuous colorbar. The sample and group levels can be treated independently — replicate samples can be averaged within each condition (group) while the `unified` map summarizing all conditions shows in how many conditions each reaction occurs, with a group containing a reaction when at least half of its samples do:
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt kegg-reaction.txt \
@@ -127,6 +163,24 @@ Color reactions directly by a per-reaction value, such as a flux from a metaboli
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt kegg-reaction.txt \
+                        -o output_dir
+{{ codestop }}
+
+### Expression status per sample (categorical)
+
+Color each sample's reactions by a status of its KOs. The `status` column holds names, which `--reaction-value-type categorical` reads as categorical values. A colors file gives each status a color of its own.
+
+|accession|sample|status|
+|:--|:--|:--|
+|K00844|treated|up|
+|K00845|treated|same|
+|K00844|control|down|
+
+{{ codestart }}
+anvi-draw-kegg-pathways --reaction-txt kegg-reaction.txt \
+                        --reaction-value-type categorical \
+                        --reaction-value-colors %(kegg-value-colors-txt)s \
+                        --draw-individual-files \
                         -o output_dir
 {{ codestop }}
 

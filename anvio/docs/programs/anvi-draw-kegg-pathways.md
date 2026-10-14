@@ -208,35 +208,35 @@ When comparing a larger number of contigs databases, it makes more sense to colo
 
 ##### Counts on a continuous scale
 
-`by_count` labels one band per count, which asks two things of the colorbar. It needs a distinguishable color for each count, and is refused when there are more categories than the colormap can supply — a few hundred at most. It also needs room to set every one of those labels: a label is sized to fit its band, so past about 40 bands they are too small to read. Asking for `by_count` above that draws the bands anyway, with a warning that the labels will be tiny.
+`by_count` labels one band per count, which asks two things of the colorbar. It needs a distinguishable color for each count. It is refused when the colormap cannot supply that many. A colormap supplies a few hundred distinguishable colors at most. It also needs room to set every one of those labels: a label is sized to fit its band, so past about 40 bands they are too small to read. Asking for `by_count` above that draws the bands anyway, with a warning that the labels will be tiny.
 
-`by_count_continuous` colors counts from the same colormap but draws the colorbar as a gradient and not a discrete band per count, so it needs neither a color nor a label per count and works with any number of categories. It is chosen automatically, with a warning, wherever `by_count` would be refused or its labels would be unreadable.
+`by_count_continuous` colors counts from the same colormap. It draws the colorbar as a gradient rather than as a discrete band per count, so it needs neither a color nor a label per count. It works with any number of samples, contigs databases, genomes, or groups. It is chosen automatically, with a warning, wherever `by_count` would be refused or its labels would be unreadable.
 
 For a %(kegg-reaction-txt)s or %(kegg-compound-txt)s file this is the summaries' `count_continuous` rather than `--presence-colormap-scheme`; see [Compare samples in an input text file](#compare-samples-in-an-input-text-file). The count scale of a group's own maps has the same two choices under its own option, `--group-colormap-scheme`; see [counts in bands or on a gradient](#counts-in-bands-or-on-a-gradient).
 
 ##### Where a count scale stops
 
-A count scale runs from 1 to a maximum set by `--count-scale-max`: `observed` (the default) stops at the highest count on the drawn maps, `total` runs to every category there is, and a number pins it, with higher counts assigned the top color.
+A count scale runs from 1 to a maximum set by `--count-scale-max`. `observed` (the default) stops the scale at the highest count on the drawn maps. `total` runs it to the number of samples, contigs databases, genomes, or groups being counted. A number sets the maximum. Higher counts take the top color.
 
 This matters for sparse data. With 100 samples and no compound in more than 10 of them, a scale to 100 draws every compound in nearly indistinguishable shades at the bottom of the colormap, while a scale to 10 spreads them across it. The cost of `observed` is that the scale depends on which maps were drawn, so use `total` or a number where figures have to be comparable between runs.
 
-#### Choose the color of each category yourself
+#### Choose the membership colors yourself
 
-Instead of having anvi'o sample a colormap, a color can be given to each category — each contigs database, genome, sample, or group — in a %(kegg-category-colors-txt)s file, passed with `--reaction-category-colors` (and `--compound-category-colors` for the compound layer of a %(kegg-compound-txt)s file). This is what to reach for when a category's color has to mean the same thing across every figure in a paper.
+Instead of having anvi'o sample a colormap, a color can be given to each sample, contigs database, genome, or group in a %(kegg-membership-colors-txt)s file. Pass the file with `--reaction-membership-colors`. Pass it with `--compound-membership-colors` for the compound layer of a %(kegg-compound-txt)s file. Use this file when each color has to mean the same thing across every figure in a paper.
 
-|category|color|
+|genome|color|
 |:--|:--|
 |E_faecalis_6240|#1f77b4|
 |E_faecalis_6255|#ff7f0e|
 |E_faecalis_6512|#2ca02c|
 
-Coloring by membership colors a reaction by exactly *which* categories contain it, so it needs a color per *combination* of them: a category on its own takes its own color, and a combination takes the perceptual blend of its members' colors, which a row naming the combination (its names separated by commas) overrides. Where the categories are samples, databases or genomes, the same colors also color each category's own map, so a panel of a grid says which category it is and matches the band it takes on the `unified` map. Where they are groups, each group's own maps count that group's sources rather than showing which of them an element is in, so it is `--group-colormap category` that carries a group's color onto them.
+Coloring by membership colors a reaction by exactly *which* samples, contigs databases, genomes, or groups contain it, so it needs a color for each *combination* of them. Each sample, contigs database, genome, or group on its own takes its own color. A combination takes the perceptual blend of its members' colors. A row naming the combination overrides that blend. The row gives the names in the combination separated by commas. Where the file colors samples, contigs databases, or genomes, the same colors also color the map of each one. A panel of a grid then shows which sample, database, or genome it is. The panel also matches the band of that sample, database, or genome on the `unified` map. Where the file colors groups, each group's own maps count that group's sources. They do not show which of the sources an element is in, so a group's maps take the group's color only with `--group-colormap tint`. That option colors them with a ramp of tints of the group's color.
 
-Because the colors answer the same question a colormap does, this replaces `--reaction-colormap` and cannot be combined with it. It also does not apply to coloring by *count*, which says how many categories contain a reaction rather than which, and so has no category whose color it could take.
+Because the colors answer the same question a colormap does, this replaces `--reaction-colormap` and cannot be combined with it. It also does not apply to coloring by *count*. A count says how many samples, contigs databases, genomes, or groups contain a reaction, not which ones, so a count has no one sample, database, genome, or group whose color it could take.
 
 {{ codestart }}
 anvi-draw-kegg-pathways --external-genomes %(external-genomes)s \
-                        --reaction-category-colors %(kegg-category-colors-txt)s \
+                        --reaction-membership-colors %(kegg-membership-colors-txt)s \
                         --draw-grid \
                         -o output_dir
 {{ codestop }}
@@ -335,16 +335,16 @@ anvi-draw-kegg-pathways --external-genomes %(external-genomes)s \
 
 ##### Give each group's maps its own color
 
-A group's own maps show a *magnitude* — the number of the group's databases, genomes, or samples containing a reaction — while a group's color on the `unified` map is an *identity*. The two are separate by default: `--group-colormap` names a colormap engineered for showing magnitude, and a %(kegg-category-colors-txt)s file does not change it.
+A group's own maps show a *magnitude* — the number of the group's databases, genomes, or samples containing a reaction — while a group's color on the `unified` map is an *identity*. The two are separate by default: `--group-colormap` names a colormap engineered for showing magnitude, and a %(kegg-membership-colors-txt)s file does not change it.
 
-To bind them, give `--group-colormap category`. Each group's scale is then a ramp running from a pale tint to that group's own color, so `faecalis` panels are drawn in shades of one hue and `faecium` panels in shades of another. Every group's ramp is built the same way, so the panels of a grid stay comparable while each says which group it is.
+To give each group's maps the group's own color, give `--group-colormap tint`. Each group's scale is then a ramp running from a pale tint to that group's own color, so `faecalis` panels are drawn in shades of one hue and `faecium` panels in shades of another. Every group's ramp is built the same way, so the panels of a grid stay comparable while each says which group it is.
 
 {{ codestart }}
 anvi-draw-kegg-pathways --external-genomes %(external-genomes)s \
                         --groups-txt %(groups-txt)s \
                         --group-threshold 0 \
-                        --reaction-category-colors %(kegg-category-colors-txt)s \
-                        --group-colormap category \
+                        --reaction-membership-colors %(kegg-membership-colors-txt)s \
+                        --group-colormap tint \
                         --draw-individual-files \
                         --draw-grid \
                         -o output_dir
@@ -352,7 +352,7 @@ anvi-draw-kegg-pathways --external-genomes %(external-genomes)s \
 
 The two decimal values `--group-colormap` also accepts then say how far from white each ramp starts and stops rather than which fraction of a colormap to use, defaulting to `0.25 1.0`. The pale end stops short of white on purpose: standard and overview maps keep white for their own unhighlighted elements, so a ramp reaching it could not be drawn there. Anvi'o checks every group's ramp against those reserved colors before writing any file, and if one collides it says to start the ramp further from white — that is, to raise the first of the two values.
 
-Since one scale styles every layer's group maps at once, a run whose reaction and compound layers give the same group different colors is refused; pointing both `--reaction-category-colors` and `--compound-category-colors` at a single file is the simplest way to keep them in step.
+Since one scale styles every layer's group maps at once, a run whose reaction and compound layers give the same group different colors is refused; pointing both `--reaction-membership-colors` and `--compound-membership-colors` at a single file is the simplest way to keep them in step.
 
 ##### Counts in bands or on a gradient
 
@@ -382,7 +382,7 @@ The %(kegg-reaction-txt)s and %(kegg-compound-txt)s files introduced above can c
 
 When a layer's file has a `sample` column but no value column, its elements are compared across samples just as reactions are across contigs databases: they are colored by the sample or by the number of samples in which they occur, a `colorbar_reactions.pdf` (and, for the compound layer, `colorbar_compounds.pdf`) key is written, and all of the same coloring and output options apply, including `--reaction-colormap`, `--compound-colormap`, `--reaction-reverse-overlay`, `--draw-individual-files`, and `--draw-grid`. Whether elements are colored by *which* samples or by *how many* is set per layer with `--reaction-sample-summary`/`--compound-sample-summary` (`membership`, `count` or `count_continuous`; by default `membership` for 3 or fewer samples, `count` above that, and `count_continuous` where a discrete scale would run out of distinguishable colors or of room to label its bands). `count` writes a discrete colorbar with one band per count and `count_continuous` writes a gradient from the lowest count to the highest, as described under [counts on a continuous scale](#counts-on-a-continuous-scale). These per-layer options take the place of `--presence-colormap-scheme`, which applies to contigs database and pangenome inputs only and is rejected for a text run. (If a file has a value column, that value colors each sample's own map; see [Color elements by a quantitative value](#color-elements-by-a-quantitative-value).)
 
-When elements are colored by *which* samples or groups contain them, the color of each of them can be given explicitly in a %(kegg-category-colors-txt)s file rather than sampled from a colormap — `--reaction-category-colors` for the reaction layer and `--compound-category-colors` for the compound layer, each taking the place of that layer's colormap. See [Choose the color of each category yourself](#choose-the-color-of-each-category-yourself), which works the same way here as it does for contigs databases and genomes.
+When elements are colored by *which* samples or groups contain them, the color of each of them can be given explicitly in a %(kegg-membership-colors-txt)s file rather than sampled from a colormap — `--reaction-membership-colors` for the reaction layer and `--compound-membership-colors` for the compound layer, each taking the place of that layer's colormap. See [Choose the membership colors yourself](#choose-the-membership-colors-yourself). The file works the same way here as it does for contigs databases and genomes. Without a %(groups-txt)s, the map of each sample of a layer with a value column shows that sample's values, so the file colors only the `unified` map.
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
@@ -456,7 +456,7 @@ For a reaction file of KO accessions, the value of a KO is the aggregate of its 
 
 The **reaction layer** and the **compound layer** are colored on independent scales, each through its own sequential colormap and each getting its own continuous key: `colorbar_reactions.pdf` and `colorbar_compounds.pdf`. The reaction colormap is set with `--reaction-colormap` and the compound colormap with `--compound-colormap` (both default `plasma_r`). The drawing order of overlapping elements can be flipped per layer with `--reaction-reverse-overlay` and `--compound-reverse-overlay`.
 
-If a layer's file has a `sample` column, the value column colors **each sample's own magnitude**: maps for individual samples are added with `--draw-individual-files` and/or `--draw-grid`, as when comparing samples by presence/absence, and they share a single `colorbar_reactions_samples.pdf` and `colorbar_compounds_samples.pdf` so their colors are directly comparable across samples. That makes two scales per layer, the `unified` map's and the one those individual maps share. They are colored by the layer's one colormap from `--reaction-colormap`/`--compound-colormap` unless `--reaction-category-colormap`/`--compound-category-colormap` gives the individual maps a distinct colormap; see [Give the two scales different colormaps](#give-the-two-scales-different-colormaps).
+If a layer's file has a `sample` column, the value column colors **each sample's own magnitude**: maps for individual samples are added with `--draw-individual-files` and/or `--draw-grid`, as when comparing samples by presence/absence, and they share a single `colorbar_reactions_samples.pdf` and `colorbar_compounds_samples.pdf` so their colors are directly comparable across samples. That makes two scales per layer, the `unified` map's and the one those individual maps share. They are colored by the layer's one colormap from `--reaction-colormap`/`--compound-colormap` unless `--reaction-individual-colormap`/`--compound-individual-colormap` gives the individual maps a distinct colormap; see [Give the two scales different colormaps](#give-the-two-scales-different-colormaps).
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
@@ -471,24 +471,24 @@ A layer with a `sample` column involves multiple separate reductions, and each h
 
 |Level|Option|What it reduces|
 |:--|:--|:--|
-|genes of an accession|`--reaction-gene-aggregation` (an aggregation; `sum` by default)|the genes carrying one KO or KEGG reaction accession → that accession's value|
-|accessions of an element|`--reaction-accession-aggregation`/`--compound-accession-aggregation` (an aggregation; `sum` by default)|the constituent accessions of a map element → that element's value|
-|across samples|`--reaction-sample-summary`/`--compound-sample-summary` (`count`, `count_continuous`, `membership`, or an aggregation)|a set of samples → one continuous value or one presence value per map element|
-|across groups|`--reaction-group-summary`/`--compound-group-summary` (`count`, `count_continuous`, `membership`, or an aggregation)|the groups of a %(groups-txt)s → one continuous value or one presence value per map element|
+|genes of an accession|`--reaction-gene-aggregation` (an aggregation; `sum` by default; or a rule for categorical values)|the genes carrying one KO or KEGG reaction accession → that accession's value|
+|accessions of an element|`--reaction-accession-aggregation`/`--compound-accession-aggregation` (an aggregation; `sum` by default; or a rule for categorical values)|the constituent accessions of a map element → that element's value|
+|across samples|`--reaction-sample-summary`/`--compound-sample-summary` (`count`, `count_continuous`, `membership`, an aggregation, or a rule for categorical values)|a set of samples → one value or one presence value per map element|
+|across groups|`--reaction-group-summary`/`--compound-group-summary` (`count`, `count_continuous`, `membership`, an aggregation, or a rule for categorical values)|the groups of a %(groups-txt)s → one value or one presence value per map element|
 
 An **aggregation** is `sum` (default), `mean`, `max`, `min`, `median`, `std` — or any other unsuggested pandas aggregation that reduces a series of numbers to one number, such as `var` or `sem`. Names that transform rather than reduce (`cumsum`) or that only a grouping offers (`first`) are rejected. Where an aggregation is undefined for the values available, as `std` is for a single value, the affected elements are left uncolored. `circular_mean` averages values that repeat after a period, such as clock times, and requires `--reaction-value-period`/`--compound-value-period` (see [Color clock times with a cyclic colormap](#color-clock-times-with-a-cyclic-colormap)). `angular_deviation` measures how far such values are spread apart, on the `unified` map only.
 
-A summary pools the values of a **map element**, not of an accession. An element's value in a sample is the aggregate of its accessions in that sample. Without `--reaction-element-normalization`/`--compound-element-normalization`, this is the value that the sample's own map draws. So the sample summary pools what the maps of the individual samples show. With groups, the group summary then pools the values of the groups.
+A summary pools the values of a **map element**, not of an accession. An element's value in a sample is the aggregate of its accessions in that sample. Without `--reaction-element-normalization`/`--compound-element-normalization`, this is the value that the sample's own map draws, so the sample summary pools what the maps of the individual samples show. With groups, the group summary then pools the values of the groups.
 
 The sample summary drives the `unified` map when there are no groups, and each per-group map (produced when using `--draw-individual-files` or `--draw-grid`) when there are. The group summary colors the `unified` map when there are groups.
 
-Note that with groups, the per-group map either shows the count of that group's sample — the default case — or, with a `--reaction-sample-summary`/`--compound-sample-summary` aggregation argument, the samples' pooled value; `--*-sample-summary` is therefore not permitted with a presence name (`count`, `count_continuous` or `membership`) when using groups. Whether that count is drawn in bands or on a gradient is set for every layer's group maps at once by `--group-colormap-scheme`, not per layer; see [counts in bands or on a gradient](#counts-in-bands-or-on-a-gradient).
+Note that with groups, the per-group map either shows the count of that group's sample — the default case — or, with a `--reaction-sample-summary`/`--compound-sample-summary` aggregation argument, the samples' pooled value; `--*-sample-summary` is therefore not permitted with a presence name (`count`, `count_continuous` or `membership`) when using groups. Whether that count is drawn in bands or on a gradient is set for every layer's group maps at once by `--group-colormap-scheme`, not per layer; see [counts in bands or on a gradient](#counts-in-bands-or-on-a-gradient). For categorical values, a rule given to `--reaction-sample-summary`/`--compound-sample-summary` colors each group's map by the value that it chooses among the group's samples.
 
-Both summaries default to **presence**: in how many (`count` and `count_continuous`) or exactly which (`membership`) samples or groups an element occurs. `membership` is chosen automatically for 3 or fewer categories and `count` above that, matching the presence/absence behavior for contigs databases and genomes; where a discrete scale would run out of distinguishable colors or of room to label its bands, `count_continuous` is chosen instead and a warning says so. `count` draws a discrete colorbar with one band per count, while `count_continuous` draws a gradient from the lowest count to the highest — see [counts on a continuous scale](#counts-on-a-continuous-scale). Presence is the default because it is meaningful for any set of samples, whereas pooling values is only meaningful when the samples are commensurable: averaging the coverages or concentrations of replicates of one condition makes sense, while pooling them across unrelated conditions does not. Name an aggregation to pool values instead, which draws a continuous colorbar for that view; `std` across replicate samples turns the map into a picture of where they disagree. Note that `count`, `count_continuous` and `membership` always mean presence at these two levels, so pandas `count` (a row count) is not reachable through a summary option — use it with `--reaction-gene-aggregation` if you want it.
+Both summaries default to **presence**: in how many (`count` and `count_continuous`) or exactly which (`membership`) samples or groups an element occurs. `membership` is chosen automatically for 3 or fewer samples or groups, and `count` is chosen above that. This matches the presence/absence behavior for contigs databases and genomes. Where a discrete scale would run out of distinguishable colors or of room to label its bands, `count_continuous` is chosen instead. A warning says so. `count` draws a discrete colorbar with one band per count, while `count_continuous` draws a gradient from the lowest count to the highest — see [counts on a continuous scale](#counts-on-a-continuous-scale). Presence is the default because it is meaningful for any set of samples, whereas pooling values is only meaningful when the samples are commensurable: averaging the coverages or concentrations of replicates of one condition makes sense, while pooling them across unrelated conditions does not. Name an aggregation to pool values instead, which draws a continuous colorbar for that view; `std` across replicate samples turns the map into a picture of where they disagree. Note that `count`, `count_continuous` and `membership` always mean presence at these two levels, so pandas `count` (a row count) is not reachable through a summary option — use it with `--reaction-gene-aggregation` if you want it.
 
-The sample and group summaries in the `unified` maps both default to **presence** (`membership` for 3 or fewer categories, `count` above that, and `count_continuous` beyond what the colormap can distinguish), even with a quantitative value column, because presence is meaningful across any set of samples while pooling values is only meaningful for commensurable ones. For example, it makes sense to average transcript abundances across samples from replicate conditions, but not from unrelated conditions. Pooling values across samples is triggered by providing an aggregation argument to `--reaction-sample-summary`/`--compound-sample-summary` or `--reaction-group-summary`/`--compound-group-summary`. `std` at sample and group levels map how much samples and groups disagree. Note that `count`, `count_continuous` and `membership` always mean presence at these two levels, so pandas `count` (a row count) is not reachable through a summary option, but may be used through gene and accession aggregation options, say for drawing counts of the number of genes per reaction.
+The sample and group summaries in the `unified` maps both default to **presence**, even with a quantitative value column. The default is `membership` for 3 or fewer samples or groups, `count` above that, and `count_continuous` beyond what the colormap can distinguish. Presence is the default because it is meaningful across any set of samples. Pooling values is only meaningful for commensurable samples. For example, it makes sense to average transcript abundances across samples from replicate conditions, but not from unrelated conditions. Pooling values across samples is triggered by providing an aggregation argument to `--reaction-sample-summary`/`--compound-sample-summary` or `--reaction-group-summary`/`--compound-group-summary`. `std` at sample and group levels map how much samples and groups disagree. Note that `count`, `count_continuous` and `membership` always mean presence at these two levels, so pandas `count` (a row count) is not reachable through a summary option, but may be used through gene and accession aggregation options, say for drawing counts of the number of genes per reaction.
 
-A layer can be **categorical in the overview and continuous per sample or group**. With the default presence summary, the `unified` map gets a colorbar of sample or group counts or memberships, while per-sample maps keep a continuous colorbar. The sample and group levels can be treated independently — replicate samples can be averaged within each condition (group) while the `unified` map summarizing all conditions shows in how many conditions each element occurs, with a group containing an element when at least half of its samples do:
+A layer can show **presence in the overview and values per sample or group**. With the default presence summary, the `unified` map gets a colorbar of sample or group counts or memberships, while per-sample maps keep a continuous colorbar. The sample and group levels can be treated independently — replicate samples can be averaged within each condition (group) while the `unified` map summarizing all conditions shows in how many conditions each element occurs, with a group containing an element when at least half of its samples do:
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
@@ -516,19 +516,19 @@ A limit **sets that end of the scale**, whether or not any value reaches it. Giv
 
 Limits are read in the units of the colorbar, which are the values of **map elements** after both reductions — gene to accession (optional) and accession to map element — have been applied. With a `sample` column, the `unified` map shows a summary of these element values across the samples or groups. With the default `sum` at the accession level, an element standing for a dozen KOs may sit well past any single value in the file, so limits should be chosen against the scale that is actually drawn rather than against the input column.
 
-A layer with a `sample` column has **two** continuous scales, and each is limited separately: `--reaction-value-limits` bounds the `unified` map's scale, while `--reaction-category-value-limits` bounds the single scale shared by the per-sample maps (or the per-group maps given a %(groups-txt)s). The two are kept apart because a summary can put them on quite different footings — for example, the mean across samples clusters more tightly than the per-sample values behind it — so limits that suit one can be inappropriate for the other. Setting only one of the two is perfectly legitimate, and anvi'o warns when you do, since the scale left alone goes on spanning whatever its own values reach.
+A layer with a `sample` column has **two** continuous scales, and each is limited separately: `--reaction-value-limits` bounds the `unified` map's scale, while `--reaction-individual-value-limits` bounds the single scale shared by the per-sample maps (or the per-group maps given a %(groups-txt)s). The two are kept apart because a summary can put them on quite different footings — for example, the mean across samples clusters more tightly than the per-sample values behind it — so limits that suit one can be inappropriate for the other. Setting only one of the two is perfectly legitimate, and anvi'o warns when you do, since the scale left alone goes on spanning whatever its own values reach.
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
                         --reaction-sample-summary mean \
                         --reaction-value-limits -6 none \
-                        --reaction-category-value-limits -7 none \
+                        --reaction-individual-value-limits -7 none \
                         --draw-individual-files \
                         --draw-grid \
                         -o output_dir
 {{ codestop }}
 
-The compound layer takes the same pair, `--compound-value-limits` and `--compound-category-value-limits`, on its own independent scale.
+The compound layer takes the same pair, `--compound-value-limits` and `--compound-individual-value-limits`, on its own independent scale.
 
 Note that these options are a different thing from the two decimals `--reaction-colormap`/`--compound-colormap` accept, which choose what fraction *of the colormap* to sample and say nothing at all about the values.
 
@@ -552,14 +552,14 @@ The price of that is the shorter side of the colormap going partly unused — th
 
 Limits and a center act on a scale in that order. The limits set their ends of the scale, and the center then widens whichever side falls short. The two can therefore conflict. Centering never moves a limit. Where it would have to, anvi'o refuses. It does not quietly undo the limit. A center lying outside its own scale's limits, or on one of them, is refused as well.
 
-A layer with a `sample` column has **two** scales here as well, centered separately: `--reaction-value-center` centers the `unified` map's, and `--reaction-category-value-center` the one shared by the per-sample (or per-group) maps. Centering only one of the two earns a warning, because unless `--reaction-category-colormap` (described in the next section) gives them each a colormap, one colormap colors both, and its middle color would then mean the centered value on the one map and whatever the values happen to leave in the middle on the other.
+A layer with a `sample` column has **two** scales here as well, centered separately: `--reaction-value-center` centers the `unified` map's, and `--reaction-individual-value-center` the one shared by the per-sample (or per-group) maps. Centering only one of the two earns a warning, because unless `--reaction-individual-colormap` (described in the next section) gives them each a colormap, one colormap colors both, and its middle color would then mean the centered value on the one map and whatever the values happen to leave in the middle on the other.
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
                         --reaction-sample-summary mean \
                         --reaction-colormap RdYlGn \
                         --reaction-value-center \
-                        --reaction-category-value-center \
+                        --reaction-individual-value-center \
                         --draw-individual-files \
                         --draw-grid \
                         -o output_dir
@@ -571,14 +571,14 @@ Centering says nothing to a reader looking at a sequential colormap, which has n
 
 The `unified` and per-sample/per-group scales are on one colormap by default, which can work when they show the same quantity, such as the values of one sample beside the mean of them all. The different types of maps can also show quantities of different **kinds**, and then a single colormap invites mistaking one scale for the other. For example, with `--reaction-sample-summary std`, the `unified` map shows how much replicate samples *disagree*, a spread that is never negative and is not measured equivalently to the underlying values shown in the per-sample maps, which may include negative numbers.
 
-`--reaction-category-colormap` gives the per-sample or per-group scale a colormap of its own, leaving `--reaction-colormap` to the `unified` map. The argument structure is the same as `--reaction-colormap`, a colormap name optionally followed by two decimals limiting the fraction of it to sample.
+`--reaction-individual-colormap` gives the per-sample or per-group scale a colormap of its own, leaving `--reaction-colormap` to the `unified` map. The argument structure is the same as `--reaction-colormap`, a colormap name optionally followed by two decimals limiting the fraction of it to sample.
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
                         --reaction-accession-aggregation mean \
                         --reaction-sample-summary std \
                         --reaction-colormap cool \
-                        --reaction-category-colormap RdYlBu \
+                        --reaction-individual-colormap RdYlBu \
                         --draw-individual-files \
                         --draw-grid \
                         -o output_dir
@@ -586,7 +586,7 @@ anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
 
 Here the `unified` map draws the standard deviation across samples on a sequential scale, whereas each sample's own map draws its signed values on a diverging scale. Each scale writes its own colorbar either way — `colorbar_reactions.pdf` for the `unified` map and `colorbar_reactions_samples.pdf` or `colorbar_reactions_groups.pdf` for the individual maps — so which colors mean what is never left implicit.
 
-The compound layer takes `--compound-category-colormap` on its own independent scales, so a run drawing both layers across samples can have four colormaps and four colorbars. A category colormap applies only where those individual maps are actually colored by value: the file needs a value column and a `sample` column, and under a %(groups-txt)s the sample summary must pool each group's values rather than summarize their presence, which `--group-colormap` colors instead.
+The compound layer takes `--compound-individual-colormap` on its own independent scales, so a run drawing both layers across samples can have four colormaps and four colorbars. `--reaction-individual-colormap` and `--compound-individual-colormap` apply only where those individual maps are actually colored by value. The file needs a value column and a `sample` column. Under a %(groups-txt)s, the sample summary must also pool each group's values rather than summarize their presence. Group maps that show presence are colored by `--group-colormap` instead.
 
 #### Color clock times with a cyclic colormap
 
@@ -642,9 +642,9 @@ anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
                         -o output_dir
 {{ codestop }}
 
-The scale of offsets is fixed from -12 to 12, with 0 in the middle. It takes `clocktime` unless `--reaction-category-colormap` names another colormap. Here 0 takes the light yellow middle of `clocktime`. Offsets grow darker the farther they are from 0, through the morning colors for earlier times and the afternoon colors for later ones. Both ends are the same purple. Limits other than `-12 12` are refused, and so are centers. An element found in a single sample gets an offset of 0, as with `difference_from_mean`. An element whose times cancel out, such as 6 h and 18 h, has no circular mean. It is left uncolored, and a warning says how many there are. Large offsets often come from elements whose samples do not agree at all. A `unified` map of `angular_deviation` shows where that is the case.
+The scale of offsets is fixed from -12 to 12, with 0 in the middle. It takes `clocktime` unless `--reaction-individual-colormap` names another colormap. Here 0 takes the light yellow middle of `clocktime`. Offsets grow darker the farther they are from 0, through the morning colors for earlier times and the afternoon colors for later ones. Both ends are the same purple. Limits other than `-12 12` are refused, and so are centers. An element found in a single sample gets an offset of 0, as with `difference_from_mean`. An element whose times cancel out, such as 6 h and 18 h, has no circular mean. It is left uncolored, and a warning says how many there are. Large offsets often come from elements whose samples do not agree at all. A `unified` map of `angular_deviation` shows where that is the case.
 
-`clocktime` can also be given to a colormap option without a period: `--reaction-category-colormap` for the maps of individual samples, or `--reaction-colormap` for a file without a `sample` column. The scale then needs limits of 0 and 24, such as `--reaction-category-value-limits 0 24`. Without the limits, the scale would run from the lowest map element value to the highest, and the colors would not match the hours described above. Without a period, the values are not averaged on a circle.
+`clocktime` can also be given to a colormap option without a period: `--reaction-individual-colormap` for the maps of individual samples, or `--reaction-colormap` for a file without a `sample` column. The scale then needs limits of 0 and 24, such as `--reaction-individual-value-limits 0 24`. Without the limits, the scale would run from the lowest map element value to the highest, and the colors would not match the hours described above. Without a period, the values are not averaged on a circle.
 
 Do not trim `clocktime` with the two decimals that a colormap option accepts, as different colors would appear at each end, breaking the cyclic nature of the colormap.
 
@@ -684,19 +684,41 @@ Any other name given to `--*-element-normalization` is taken to be a **pandas Se
 
 **Only the individual sample and group maps are rescaled**, so this option needs `--draw-individual-files` and/or `--draw-grid`. The `unified` map summarizes samples using unnormalized values, so is unaffected by normalization. With a %(groups-txt)s the rescaling happens across **groups**, each group's value being whatever `--reaction-sample-summary` pooled from its samples — that summary must therefore pool values rather than falling back to the group default of counting samples containing an element, so that group maps are colored by counts not suitable for normalization rescaling.
 
-A normalization whose neutral value is zero also **centers the rescaled scale on zero** and colors it with the diverging colormap `RdYlGn`, so that one color means "no different from usual" and the two ramps either side of it mean more and less. `--reaction-category-value-center` and `--reaction-category-colormap` override each of those independently.
+A normalization whose neutral value is zero also **centers the rescaled scale on zero** and colors it with the diverging colormap `RdYlGn`, so that one color means "no different from usual" and the two ramps either side of it mean more and less. `--reaction-individual-value-center` and `--reaction-individual-colormap` override each of those independently.
 
 The colorbar of the rescaled scale is relabeled to say what it now shows — e.g., `coverage relative to mean` rather than `coverage` — since it and the `unified` map's colorbar are quantities of different kinds. A second value after the normalization replaces that label with one of your own; quote it if it contains spaces.
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
                         --reaction-element-normalization log2_ratio_to_mean "log2 fold change" \
-                        --reaction-category-colormap coolwarm \
+                        --reaction-individual-colormap coolwarm \
                         --draw-individual-files \
                         -o output_dir
 {{ codestop }}
 
 An element the normalization cannot give a value to is left uncolored, just as one with an undefined aggregation is, and where no element can be given one a warning says so rather than leaving every individual map blank unexplained. A ratio needs the value it is measured against to be **positive**: an element whose values are negative throughout has none, because +25%% of a negative mean would describe a *decrease* while reading as an increase. `difference_from_mean`, `difference_from_median`, `z_score`, and `rank` measure no ratio against the reference and so are defined for signed data — a z-score divides by the spread of the values, which is positive wherever they differ at all. A z-score also needs an element found in more than one sample, and an element found in only one sample is exactly as much as it usually is, so the mean-relative normalizations put it at zero.
+
+### Color elements by categorical values
+
+A value column can hold **categorical values** instead of numbers: names such as `up`, `down` and `same`, or the names of clusters. Give `--reaction-value-type categorical` or `--compound-value-type categorical` to read a layer's value column this way. Values written as numbers, such as `1` and `2`, are names too, so the type is given rather than detected. A column of numbers with a typo in it is still refused.
+
+The command below draws the map of each sample, so its file needs a `sample` column. For a file without one, leave out `--draw-individual-files` and `--draw-grid`. The `unified` map then shows the values.
+
+{{ codestart }}
+anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
+                        --reaction-value-type categorical \
+                        --draw-individual-files \
+                        --draw-grid \
+                        -o output_dir
+{{ codestop }}
+
+Each value takes a color of its own. The legend lists the values with the first one at the top. By default, the values take colors in sorted order. Where every value is a number, such as `-1`, `0` and `1`, the values are sorted as numbers. Otherwise the digits in the values are compared as numbers, so `cluster 2` comes before `cluster 10`. Up to 9 values take the colors of Matplotlib's `tab10` without its gray. The 10th to 18th values take the light colors of `tab20` without its light gray. To choose the colors yourself, give a %(kegg-value-colors-txt)s file with `--reaction-value-colors` or `--compound-value-colors`. The order of its rows is then the order of the values. More than 18 values need such a file, except in a grouped run without a sample rule, where no map shows the values.
+
+Each row has one value, but values can still meet. The genes of one accession, and the accessions of one map element, can have different values. A rule then chooses one, set by the same options that aggregate numbers: `--reaction-gene-aggregation`, `--reaction-accession-aggregation` and `--compound-accession-aggregation`. `plurality_order`, the default, takes the most common value and breaks a tie by the order of the values. `plurality_random` breaks a tie at random. `plurality` gives no value where there is a tie. `majority` takes the value with more than half of the votes. Without one, it gives no value. `order` takes the first value in the order of the values. `random` takes any of the values at random. An element given no value is left uncolored, and a warning says how many there are. A random choice depends on `--seed` (42 by default) and on what the value is chosen for, so a map element gets the same value on every map. The run reports how many choices each rule made. On global and overview maps drawn from reactions alone, each compound takes the value that the accession rule chooses among the reactions that touch it. A compound given no value keeps the color of a compound that no colored reaction touches.
+
+With a `sample` column, the map of each sample shows that sample's values, and these maps share one legend. A value in one sample need not mean the same thing in another, so by default the `unified` map counts the samples that contain each element, however few samples there are. A run drawing only the `unified` map then colors nothing by the values. A warning says so, as it does for numbers. Coloring by which samples contain an element would use the `tab10` colors of the values. A color would then mean a sample on one map and a value on another. Where a value means the same thing in every sample, give a rule to `--reaction-sample-summary`/`--compound-sample-summary` instead. The rule then chooses one value per element across the samples for the `unified` map.
+
+The options that shape a scale of numbers are refused for categorical values. These are the value limits and centers, the value period, the element normalization, and `--*-individual-colormap`. `--reaction-colormap` and `--compound-colormap` color only the presence on the `unified` map. With a %(groups-txt)s, each group's map counts its samples by default, and the `unified` map counts the groups. A rule given to `--reaction-sample-summary`/`--compound-sample-summary` chooses one value per element among the samples of each group. A rule given to `--reaction-group-summary`/`--compound-group-summary` then chooses one value across the groups for the `unified` map. Each sample with a value gives one vote in its group. Each group with a value gives one vote across the groups. With two groups, every disagreement between them is a tie, so `plurality_order` settles it by the order of the values.
 
 ### Mixed coloring across reaction and compound layers
 
@@ -706,4 +728,4 @@ Text-file presence layers use their own default colors (reaction green, compound
 
 A reaction presence layer can instead be highlighted in the reference map's colors with `--original-color`, which also works with a `sample` column: the `unified` map shows the union of the samples and `--draw-individual-files`/`--draw-grid` add a reference-colored map per sample, just as they do for multiple contigs databases. Because the reference map dictates both the colors and their drawing order, that flag, like a fixed color, cannot be combined with a value column, with the sample or group summaries, with `--reaction-reverse-overlay`, or with `--group-threshold`. With a %(groups-txt)s the `unified` map is still the union, while each group's map falls back to counting the group's samples — one color cannot distinguish them — styled by `--group-colormap`/`--group-reverse-overlay`.
 
-Avoid purely grayscale colormaps or colormaps whose ends are pure white or black, as these can collide with the reserved colors that anvi'o uses for un-highlighted reactions and compounds; if that happens, the error names which layer's colormap (`--reaction-colormap` or `--compound-colormap`) to change. The same check covers the colors given per category in a %(kegg-category-colors-txt)s file and the scale of each group's own maps, including a ramp built from a group's own color (`--group-colormap category`), which runs towards white by construction and so is the most likely of them to collide. The check also covers the compounds of global and overview maps drawn without a compound layer — compounds take their colors from the average colors of touching reactions, so a compound can come out in a reserved color even where no reaction has that color.
+Avoid purely grayscale colormaps or colormaps whose ends are pure white or black, as these can collide with the reserved colors that anvi'o uses for un-highlighted reactions and compounds; if that happens, the error names which layer's colormap (`--reaction-colormap` or `--compound-colormap`) to change. The same check covers the colors given per categorical value in a %(kegg-value-colors-txt)s file. It covers the colors given in a %(kegg-membership-colors-txt)s file. It also covers the scale of each group's own maps. That includes the ramp of tints of a group's color that `--group-colormap tint` builds. This ramp runs towards white by construction, so it is the most likely of these colors to collide. The check also covers the compounds of global and overview maps drawn without a compound layer — compounds take their colors from the average colors of touching reactions, so a compound can come out in a reserved color even where no reaction has that color.

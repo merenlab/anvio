@@ -145,7 +145,7 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
                         --reaction-gene-aggregation mean \
                         --reaction-sample-summary mean \
                         --reaction-value-limits 5 35 \
-                        --reaction-category-value-limits 5 35 \
+                        --reaction-individual-value-limits 5 35 \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \
@@ -161,7 +161,7 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_log_ratio.reaction.txt \
                         --reaction-sample-summary mean \
                         --reaction-colormap RdBu_r \
                         --reaction-value-center \
-                        --reaction-category-value-center \
+                        --reaction-individual-value-center \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \
@@ -187,18 +187,18 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_negative.reaction.txt \
 # read as the same quantity, and each scale writes its own colorbar.
 INFO "Giving the per-sample color scale a colormap of its own, with a colorbar for each"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
-                        --output-dir draw_txt_samples_kos_category_colormap \
+                        --output-dir draw_txt_samples_kos_individual_colormap \
                         --reaction-gene-aggregation mean \
                         --reaction-sample-summary std \
                         --reaction-colormap viridis \
-                        --reaction-category-colormap RdYlGn 0.1 0.9 \
+                        --reaction-individual-colormap RdYlGn 0.1 0.9 \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \
                         --no-progress
 
-if [ ! -s draw_txt_samples_kos_category_colormap/colorbar_reactions.pdf ] \
-    || [ ! -s draw_txt_samples_kos_category_colormap/colorbar_reactions_samples.pdf ]
+if [ ! -s draw_txt_samples_kos_individual_colormap/colorbar_reactions.pdf ] \
+    || [ ! -s draw_txt_samples_kos_individual_colormap/colorbar_reactions_samples.pdf ]
 then
     echo "ERROR: two colormaps for one layer should have written a colorbar for each scale."
     exit 1
@@ -230,7 +230,7 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
                         --draw-grid \
                         --no-progress
 
-## COUNTS AND CATEGORY COLORS
+## COUNTS AND MEMBERSHIP COLORS
 INFO "Summarizing samples by count rather than by membership"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
                         --output-dir draw_txt_samples_kos_count \
@@ -247,8 +247,8 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples4.reaction.txt \
 
 INFO "Coloring sample membership from a color given per sample"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
-                        --reaction-category-colors draw-sample-colors.txt \
-                        --output-dir draw_txt_samples_category_colors \
+                        --reaction-membership-colors draw-sample-colors.txt \
+                        --output-dir draw_txt_samples_membership_colors \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \
@@ -258,8 +258,8 @@ INFO "Coloring group membership from a color given per group"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
                         --groups-txt draw-sample-group-information.txt \
                         --group-threshold 0.5 \
-                        --reaction-category-colors draw-group-colors.txt \
-                        --output-dir draw_txt_groups_category_colors \
+                        --reaction-membership-colors draw-group-colors.txt \
+                        --output-dir draw_txt_groups_membership_colors \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \
@@ -267,13 +267,13 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
 
 # Each group's ramp runs from white to that group's own color, so a group's maps are read on a
 # scale of their own while staying recognizable as that group's.
-INFO "Building each group's color scale as a ramp with '--group-colormap category'"
+INFO "Building each group's color scale as a ramp with '--group-colormap tint'"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
                         --groups-txt draw-sample-group-information.txt \
                         --group-threshold 0.5 \
-                        --reaction-category-colors draw-group-colors.txt \
-                        --group-colormap category \
-                        --output-dir draw_txt_groups_category_ramps \
+                        --reaction-membership-colors draw-group-colors.txt \
+                        --group-colormap tint \
+                        --output-dir draw_txt_groups_tint_ramps \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \
@@ -281,18 +281,18 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
 
 INFO "Giving the per-group color scale a colormap of its own"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
-                        --output-dir draw_txt_groups_kos_category_colormap \
+                        --output-dir draw_txt_groups_kos_individual_colormap \
                         --groups-txt draw-sample-group-information.txt \
                         --reaction-sample-summary mean \
                         --reaction-group-summary std \
                         --reaction-colormap cividis \
-                        --reaction-category-colormap RdBu_r \
+                        --reaction-individual-colormap RdBu_r \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \
                         --no-progress
 
-if [ ! -s draw_txt_groups_kos_category_colormap/colorbar_reactions_groups.pdf ]
+if [ ! -s draw_txt_groups_kos_individual_colormap/colorbar_reactions_groups.pdf ]
 then
     echo "ERROR: a grouped run with two colormaps should have written a per-group colorbar."
     exit 1
@@ -357,6 +357,61 @@ then
     echo "ERROR: a normalized grouped run should have written a colorbar for the per-group scale."
     exit 1
 fi
+
+## CATEGORICAL VALUES
+# A value column can hold names, such as 'up', 'down' and 'same', instead of numbers. Each name
+# takes a color of its own. The map of each sample shows that sample's values. The 'unified' map
+# shows presence across the samples, since a value need not mean the same thing in every sample.
+INFO "Coloring each sample's reactions by categorical values, as grids and a map per sample"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+                        --reaction-value-type categorical \
+                        --output-dir draw_txt_samples_kos_categorical \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
+if [ ! -s draw_txt_samples_kos_categorical/colorbar_reactions_samples.pdf ]
+then
+    echo "ERROR: a run of categorical values should have written a legend for the sample maps."
+    exit 1
+fi
+
+# A colors file gives each value a color of its own choosing. The order of its rows also ranks the
+# values, so 'order' gives a map element whose KOs have several values the first of them.
+INFO "Coloring categorical values with colors of your choosing, which also rank the values"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+                        --reaction-value-type categorical \
+                        --reaction-value-colors draw-status-colors.txt \
+                        --reaction-accession-aggregation order \
+                        --output-dir draw_txt_samples_kos_categorical_colors \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-grid \
+                        --no-progress
+
+# Where a value means the same thing in every sample, a rule chooses one value across the samples
+# for the 'unified' map. Here a tie between samples is broken at random, from a given seed.
+INFO "Choosing one categorical value across the samples, breaking ties at random"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+                        --reaction-value-type categorical \
+                        --reaction-sample-summary plurality_random \
+                        --seed 1 \
+                        --output-dir draw_txt_samples_kos_categorical_unified \
+                        --pathway-numbers $pathway_numbers \
+                        --no-progress
+
+# With groups, a rule among the samples of each group colors that group's map. A rule across the
+# groups colors the 'unified' map. Each group gives one vote, whatever its size.
+INFO "Choosing one categorical value in each group of samples, and one across the groups"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+                        --reaction-value-type categorical \
+                        --groups-txt draw-sample-group-information.txt \
+                        --reaction-sample-summary plurality_order \
+                        --reaction-group-summary plurality_order \
+                        --output-dir draw_txt_groups_kos_categorical \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-grid \
+                        --no-progress
 
 ## PRESENCE COLORING
 INFO "Mixing presence coloring of reactions with value coloring of compounds"
@@ -541,8 +596,8 @@ anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db E_faecalis_6255.db E_fa
 # Each database's own map takes that database's color and matches its band on the 'unified' map.
 INFO "Coloring contigs database membership from a color given per database"
 anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db E_faecalis_6255.db E_faecalis_6512.db \
-                        --reaction-category-colors draw-contigs-db-colors.txt \
-                        --output-dir contigs_dbs_kos_category_colors \
+                        --reaction-membership-colors draw-contigs-db-colors.txt \
+                        --output-dir contigs_dbs_kos_membership_colors \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \

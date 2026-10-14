@@ -1050,8 +1050,14 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
-    "kegg-category-colors-txt": {
-        "name": "KEGG CATEGORY COLORS TXT",
+    "kegg-membership-colors-txt": {
+        "name": "KEGG MEMBERSHIP COLORS TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "kegg-value-colors-txt": {
+        "name": "KEGG VALUE COLORS TXT",
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user": True

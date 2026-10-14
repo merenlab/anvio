@@ -25,7 +25,7 @@ from Bio.KEGG.KGML import KGML_parser
 from Bio.Graphics.KGML_vis import KGMLCanvas
 from matplotlib.colors import Colormap, rgb2hex, to_hex
 
-from typing import Dict, Iterable, List, Literal, Tuple, Union
+from typing import Callable, Dict, Iterable, List, Literal, Tuple, Union
 
 import anvio.terminal as terminal
 
@@ -269,7 +269,10 @@ class Pathway(Element):
         self,
         new_color_priority: Dict[str, Dict[str, Dict[Tuple[str, str], float]]],
         recolor_unprioritized_entries: Union[str, Dict[str, Tuple[str, str]]] = False,
-        color_associated_compounds: Literal['high', 'low', 'average', 'circular_average'] = None,
+        color_associated_compounds: Union[
+            Literal['high', 'low', 'average', 'circular_average'],
+            Callable[[str, List[Tuple[str, float]]], Union[Tuple[str, float], None]]
+        ] = None,
         colormap: Colormap = None
     ) -> None:
         """
@@ -351,7 +354,10 @@ class Pathway(Element):
                 }
             }
 
-        color_associated_compounds : Literal['high', 'low', 'average', 'circular_average'], None
+        color_associated_compounds : Union[
+            Literal['high', 'low', 'average', 'circular_average'],
+            Callable[[str, List[Tuple[str, float]]], Union[Tuple[str, float], None]]
+        ], None
             Automatically set the background color of compound entries based on the color priority
             of ortholog entries involving the compounds. By default, compounds participating in
             reactions are circles, and orthologs are lines on global/overview maps and boxes or
@@ -370,6 +376,9 @@ class Pathway(Element):
             takes the mean direction of the priorities on that circle. So priorities of 0.99 and
             0.01 give 0, not 0.5. Some priorities have no mean direction, such as 0.25 and 0.75. The
             compound then takes the 'average' color.
+
+            A function can be given instead of a name. It chooses the color of each compound
+            ('color_associated_compounds').
 
             Automatically colored compound entries are added to the color_priority attribute, and
             Entry elements in the children attribute are reordered accordingly. Compound entries
@@ -671,7 +680,10 @@ class Pathway(Element):
 
     def color_associated_compounds(
         self,
-        transfer: Literal['high', 'low', 'average', 'circular_average'],
+        transfer: Union[
+            Literal['high', 'low', 'average', 'circular_average'],
+            Callable[[str, List[Tuple[str, float]]], Union[Tuple[str, float], None]]
+        ],
         colormap: Colormap = None
     ) -> None:
         """
@@ -688,7 +700,10 @@ class Pathway(Element):
 
         Parameters
         ==========
-        transfer : Literal['high', 'low', 'average', 'circular_average']
+        transfer : Union[
+            Literal['high', 'low', 'average', 'circular_average'],
+            Callable[[str, List[Tuple[str, float]]], Union[Tuple[str, float], None]]
+        ]
             An argument of 'high' or 'low' sets the compound color to the bg color of the ortholog
             with the highest or lowest priority fg/bg color combination. 'average' sets the compound
             color to the average bg color of orthologs with prioritized colors -- unprioritized
@@ -702,6 +717,13 @@ class Pathway(Element):
             takes the mean direction of the priorities on that circle. So priorities of 0.99 and
             0.01 give 0, not 0.5. Some priorities have no mean direction, such as 0.25 and 0.75. The
             compound then takes the 'average' color.
+
+            A function chooses the color itself. It is called for each compound Entry that has no
+            color yet, and it can be called more than once for one Entry. It takes the Entry's name,
+            such as 'cpd:C00031', and the color and priority of each ortholog. It returns the color
+            and priority of the compound. It can return None instead. The compound then keeps the
+            color given to unprioritized entries. The name lets the function make the same choice
+            for a compound wherever it appears.
 
             Compound entries that are already in the color_priority attribute are exempt from
             recoloring and given higher priority than recolored compound entries.
@@ -850,7 +872,9 @@ class Pathway(Element):
             priority = round(float(np.arctan2(sine, cosine) / (2 * np.pi)), 12) % 1.0
             return rgb2hex(colormap(priority)), priority
 
-        if transfer == 'high':
+        if callable(transfer):
+            get_color_priority = None
+        elif transfer == 'high':
             get_color_priority = _get_high_color
         elif transfer == 'low':
             get_color_priority = _get_low_color
@@ -885,7 +909,13 @@ class Pathway(Element):
             if not set_color:
                 continue
 
-            compound_color, compound_priority = get_color_priority(color_priorities)
+            if get_color_priority is None:
+                chosen = transfer(compound_entry.name, color_priorities)
+                if chosen is None:
+                    continue
+                compound_color, compound_priority = chosen
+            else:
+                compound_color, compound_priority = get_color_priority(color_priorities)
             # Set the color of each Graphics element.
             for graphics in graphics_elements:
                 graphics.bgcolor = compound_color
