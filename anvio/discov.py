@@ -18,6 +18,13 @@ run.verbose = False
 class DisCov:
     """Computes and reports various metrics for coverage evenness."""
 
+    # evenness metrics (E) combined with S = proportion windows covered (fine) in the spread-evenness scores
+    SE_EVENNESS_METRICS = ["Nonzero Depth Fold-Range Detection (Narrow: 0.5x - 2x)",
+                           "Nonzero Depth Fold-Range Detection (Wide: 0.25x - 4x)",
+                           "Windows Depth Evenness CV (coarse)",
+                           "Windows Depth Evenness CV (medium)",
+                           "Windows Depth Evenness CV (fine)"]
+
     def __init__(self, coverage, contig_or_genome_name=None, sample_name=None, contig_starts=None):
         self.median: float = np.median(coverage)
         self.mean: float = np.mean(coverage)
@@ -50,9 +57,9 @@ class DisCov:
                   "Nonzero Depth Fold-Range Detection (Narrow: 0.5x - 2x)", 
                   "Nonzero Depth Fold-Range Detection (Wide: 0.25x - 4x)",
                   "Log-normalized Shannon Entropy", # combines both spread and evenness
-                  # combines proportion windows covered (fine) with nonzero depth fold-range detection (narrow)
-                  "Spread-Evenness Score (linear)", "Spread-Evenness Score (geometric)",
-                  # combines spread-evenness score (C) with detection (D)
+                  # combines proportion windows covered (fine) with an evenness metric E
+                  *[f"Spread-Evenness Score [{formula}; E = {E}]" for E in self.SE_EVENNESS_METRICS for formula in ['linear', 'geometric']],
+                  # combines spread-evenness score (C, with E = nonzero depth fold-range detection (narrow)) with detection (D)
                   *[f"Discov {opt} ({c_type} C, k={k})" for opt in ['A', 'B', 'X'] for c_type in ['linear', 'geometric'] for k in [2, 3]],
                   *[f"Discov Y ({c_type} C)" for c_type in ['linear', 'geometric']]
         ]
@@ -138,8 +145,15 @@ class DisCov:
             shannon_entropy = None
 
         ## combined metrics
-        SE_linear = self.spread_evenness_score(S=sliding_window_metrics["fine"]['Proportion_Covered'], E=nz_depth_foldrange_narrow, alpha=0.5, formula="linear")
-        SE_geom = self.spread_evenness_score(S=sliding_window_metrics["fine"]['Proportion_Covered'], E=nz_depth_foldrange_narrow, alpha=0.5, formula="geometric")
+        E_values = {"Nonzero Depth Fold-Range Detection (Narrow: 0.5x - 2x)": nz_depth_foldrange_narrow,
+                    "Nonzero Depth Fold-Range Detection (Wide: 0.25x - 4x)": nz_depth_foldrange_wide,
+                    "Windows Depth Evenness CV (coarse)": sliding_window_metrics['coarse']['Depth_Evenness_CV'],
+                    "Windows Depth Evenness CV (medium)": sliding_window_metrics['medium']['Depth_Evenness_CV'],
+                    "Windows Depth Evenness CV (fine)": sliding_window_metrics['fine']['Depth_Evenness_CV']}
+        SE_scores = {(E, formula): self.spread_evenness_score(S=sliding_window_metrics["fine"]['Proportion_Covered'], E=E_values[E], alpha=0.5, formula=formula)
+                     for E in self.SE_EVENNESS_METRICS for formula in ['linear', 'geometric']}
+        SE_linear = SE_scores[("Nonzero Depth Fold-Range Detection (Narrow: 0.5x - 2x)", 'linear')]
+        SE_geom = SE_scores[("Nonzero Depth Fold-Range Detection (Narrow: 0.5x - 2x)", 'geometric')]
 
         ## discov (order must match the header)
         C_versions = [SE_linear, SE_geom]
@@ -167,7 +181,7 @@ class DisCov:
                        fmt(depth_foldrange_narrow), fmt(depth_foldrange_wide),
                        fmt(nz_depth_foldrange_narrow), fmt(nz_depth_foldrange_wide),
                        fmt(shannon_entropy),
-                       fmt(SE_linear), fmt(SE_geom),
+                       *[fmt(SE_scores[(E, formula)]) for E in self.SE_EVENNESS_METRICS for formula in ['linear', 'geometric']],
                        *[fmt(d) for d in discov_A + discov_B + discov_X + discov_Y],
                       ]
         with open(output_file, 'a') as f:
