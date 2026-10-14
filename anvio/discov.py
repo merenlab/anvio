@@ -1,4 +1,3 @@
-# coding: utf-8
 # pylint: disable=line-too-long
 """A class to compute distribution of coverage by evaluating various metrics for 'evenness' of breadth/depth."""
 
@@ -47,14 +46,14 @@ class DisCov:
                   # evenness of coverage depth metrics
                   "Windows Depth Evenness MAD (fine)", "Windows Depth Evenness MAD (medium)", "Windows Depth Evenness MAD (coarse)",
                   "Windows Depth Evenness MAD Nonzero (fine)", "Windows Depth Evenness MAD Nonzero (medium)", "Windows Depth Evenness MAD Nonzero (coarse)",
-                  "Windows Depth Evenness CV (fine)", "Windows Depth Evenness CV (medium)", "Windows Depth Evenness CV (coarse)", 
-                  "Windows Depth Evenness CV Nonzero (fine)", "Windows Depth Evenness CV Nonzero (medium)", "Windows Depth Evenness CV Nonzero (coarse)", 
+                  "Windows Depth Evenness CV (fine)", "Windows Depth Evenness CV (medium)", "Windows Depth Evenness CV (coarse)",
+                  "Windows Depth Evenness CV Nonzero (fine)", "Windows Depth Evenness CV Nonzero (medium)", "Windows Depth Evenness CV Nonzero (coarse)",
                   "Window-Scaling Variance", "Window-Scaling Variance Nonzero",
-                  "Nonzero Depth Range", "Nonzero Depth IQR", 
+                  "Nonzero Depth Range", "Nonzero Depth IQR",
                   "Nonzero Depth IQR/median", "Nonzero Depth Variance",
-                  "Depth Fold-Range Detection (Narrow: 0.5x - 2x)", 
+                  "Depth Fold-Range Detection (Narrow: 0.5x - 2x)",
                   "Depth Fold-Range Detection (Wide: 0.25x - 4x)",
-                  "Nonzero Depth Fold-Range Detection (Narrow: 0.5x - 2x)", 
+                  "Nonzero Depth Fold-Range Detection (Narrow: 0.5x - 2x)",
                   "Nonzero Depth Fold-Range Detection (Wide: 0.25x - 4x)",
                   "Log-normalized Shannon Entropy", # combines both spread and evenness
                   # combines proportion windows covered (fine) with an evenness metric E
@@ -74,11 +73,11 @@ class DisCov:
     def compute_all(self, cov_array, output_file, filter_nonspecific_mapping: bool = False):
         """Compute all metrics for the input coverage array and print to the specified output file"""
 
-        run.warning(f"Anvi'o is now attempting to compute how coverage is distributed across a contig. The "
-                    f"terminal output below relates to this calculation.", header="Computing Distribution of Coverage", 
+        run.warning("Anvi'o is now attempting to compute how coverage is distributed across a contig. The "
+                    "terminal output below relates to this calculation.", header="Computing Distribution of Coverage",
                     lc='green', overwrite_verbose=anvio.DEBUG)
-        run.info(f"Sequence name", self.name if self.name else 'Unknown', overwrite_verbose=anvio.DEBUG)
-        run.info(f"Sample", self.sample if self.sample else 'Unknown', overwrite_verbose=anvio.DEBUG)
+        run.info("Sequence name", self.name if self.name else 'Unknown', overwrite_verbose=anvio.DEBUG)
+        run.info("Sample", self.sample if self.sample else 'Unknown', overwrite_verbose=anvio.DEBUG)
         run.info("Filtering out non-specific read recruitment", filter_nonspecific_mapping, overwrite_verbose=anvio.DEBUG)
         run.info("Detection of contig", self.detection, overwrite_verbose=anvio.DEBUG)
 
@@ -202,7 +201,7 @@ class DisCov:
             return 1 - G
         else:
             return None
-    
+
     def sliding_window_evenness(self, coverage, window_len_dict):
         """Evenness of coverage depth and proportion of covered windows at multiple window lengths.
         Given a dictionary of labeled window lengths, returns a dictionary of values for each window length:
@@ -211,7 +210,7 @@ class DisCov:
             Proportion_Covered : # windows with nonzero mean coverage / # windows
 
             Note that the 1 / (1 + x) is a strategy to get an evenness score between 0 and 1.
-            For edge cases where there is not enough coverage to compute the metrics, we return the 
+            For edge cases where there is not enough coverage to compute the metrics, we return the
             maximum unevenness score of 0
         """
 
@@ -249,8 +248,8 @@ class DisCov:
         Divides the coverage array into non-overlapping windows of logarithmically-spaced
         sizes ranging from max(100, 1% of array length) to max_window_fraction * array length.
         For each window size, computes the variance of the per-window mean coverages.
-        Returns the slope of log(variance) vs log(window_size), fit by linear regression. The closer 
-        to -1 this slope is, the more stationary the coverage distribution. The closer to 0, the more 
+        Returns the slope of log(variance) vs log(window_size), fit by linear regression. The closer
+        to -1 this slope is, the more stationary the coverage distribution. The closer to 0, the more
         sparse it is.
 
         Parameters
@@ -277,7 +276,7 @@ class DisCov:
         if min_w >= max_w:
             run.warning(f"compute_window_scaling_variance() could not construct a valid window size range: "
                         f"min window size ({min_w}) >= max window size ({max_w}). Your coverage array "
-                        f"(length {L}) may be too short, or max_window_fraction ({max_window_fraction}) too small.", 
+                        f"(length {L}) may be too short, or max_window_fraction ({max_window_fraction}) too small.",
                         overwrite_verbose=anvio.DEBUG)
             return None
 
@@ -314,11 +313,11 @@ class DisCov:
 
         slope, _intercept = np.polyfit(log_w_vals, log_var_vals, 1)
         return slope
-        
+
     def midpoint_range_and_spread(self, regions):
         """Returns the range and spread based on the midpoints of coverage regions.
-        
-        Given a list of region tuples, determines the midpoint of each region, normalizes by 
+
+        Given a list of region tuples, determines the midpoint of each region, normalizes by
         contig length (so midpoints become fractions), and computes:
             range = fraction of contig between first and last coverage region
             spread = 1 / (1 + CV of midpoint distances)
@@ -340,7 +339,7 @@ class DisCov:
         return midpoint_range, midpoint_spread
 
     def binned_count_dispersion(self, coverage, num_windows=30, min_window_len=100, use_detection=False):
-        """Returns index of dispersion D = variance(count)/mean(count), where count is the number of 
+        """Returns index of dispersion D = variance(count)/mean(count), where count is the number of
         bases with coverage in each equal-sized window.
 
         D should be low (moderate dispersion) for present populations and high (overdispersion) for absent populations.
@@ -368,7 +367,7 @@ class DisCov:
         if use_detection:
             detection_vals = np.array(counts) / window_len
             return np.var(detection_vals) / np.mean(detection_vals)
-        
+
         return np.var(counts) / np.mean(counts)
 
     def Shannon_entropy_evenness(self, coverage):
@@ -421,7 +420,7 @@ class DisCov:
 
     def spread_evenness_score(self, S, E, alpha=0.5, formula="linear"):
         """Combines a measure of spread and a measure of evenness into a 0-1 score.
-        
+
         Linear formula: alpha*S + (1 - alpha)*E
         Geometric formula: S^alpha * E^(1-alpha)
         """
@@ -468,11 +467,11 @@ class DisCov:
     ##### HELPER FUNCTIONS #####
     def get_list_of_coverage_and_gap_regions(self, coverage, min_gap_length=0):
         """Given an array of coverage values, divides the sequence into gap regions and regions of nonzero coverage.
-        
-        Each region is described as a tuple of (start_position, stop_position, mean_coverage). If the mean_coverage 
+
+        Each region is described as a tuple of (start_position, stop_position, mean_coverage). If the mean_coverage
         is 0, then the region is a gap region. Otherwise, it is a covered region.
 
-        Note that start and stop positions follow Python indexing rules to enable slicing of the coverage array: 
+        Note that start and stop positions follow Python indexing rules to enable slicing of the coverage array:
         indices start from 0, and the last index of the region is stop_position - 1
 
         If a gap is too small, the two coverage regions around it are combined into one.
@@ -485,7 +484,7 @@ class DisCov:
         # create the list of regions
         for i,p in enumerate(coverage):
             current_state = 'covered' if p > 0 else 'gap'
-                
+
             if i == len(coverage) - 1: # EXIT CASE: end of the input sequence
                 region_data = (current_start, i+1, np.mean(coverage[current_start:i+1]))
                 regions.append(region_data)
@@ -532,15 +531,15 @@ class DisCov:
     def get_sliding_window_regions(self, coverage, window_length):
         """Given an array of coverage values, divides it into non-overlapping windows of the requested length.
 
-        Each region is described as a tuple of (start_position, stop_position, mean_coverage), with start and stop 
+        Each region is described as a tuple of (start_position, stop_position, mean_coverage), with start and stop
         positions following Python indexing rules to enable slicing.
         """
         if window_length > len(coverage):
             raise ConfigError(f"get_sliding_window_regions() function was requested to make windows of length {window_length}, "
                               f"but the input coverage array is smaller than that (length {len(coverage)}).")
         elif window_length == 0:
-            raise ConfigError(f"get_sliding_window_regions() function was requested to make zero-length windows. Impossible!")
-        
+            raise ConfigError("get_sliding_window_regions() function was requested to make zero-length windows. Impossible!")
+
         windows = []
         current_start = 0
         current_stop = current_start + window_length
@@ -555,7 +554,7 @@ class DisCov:
                 windows.append(final_region)
 
         return windows
-    
+
     def compute_CV(self, array):
         """Returns coefficient of variation from an input array. Returns None if array is empty or mean is 0."""
 
@@ -571,14 +570,14 @@ class DisCov:
         """Computes the Gini coefficient from an input array.
 
         The equation we use comes from https://en.wikipedia.org/wiki/Gini_coefficient#Alternative_expressions:
-        for a list of m values sorted such that g_1 <= g_2 <= .... <= g_m, 
+        for a list of m values sorted such that g_1 <= g_2 <= .... <= g_m,
         Gini = (2 x Σᵢ₌₁ᵐ (i x g₍ᵢ₎)) / (m x Σᵢ₌₁ᵐ g₍ᵢ₎) - (m+1)/m
         """
 
         array = np.sort(array)
         m = array.size
         index = np.arange(1, m + 1)
-        
+
         gini = (2 * np.sum(index * array)) / (m * np.sum(array)) - (m+1)/m
         return gini
 
@@ -596,13 +595,13 @@ class DisCov:
     ##### FILTER FUNCTIONS #####
     def filter_nonspecific_regions(self, coverage, region_tuples, mod_z_score_threshold_external, mod_z_score_threshold_internal, min_regions=5, min_detection_for_internal_filter=0.5):
         """Given a set of coverage regions, this function finds and removes outlier coverage values.
-        
-        If there are many regions, it first selects which of them to investigate further by looking at their mean coverage values. This 
+
+        If there are many regions, it first selects which of them to investigate further by looking at their mean coverage values. This
         is the 'external filter': subsetting regions of coverage with suspiciously high mean coverage relative to the other regions.
-        Otherwise, if the detection is high enough (ie, there are a few long regions), it examines every single region. 
-        
+        Otherwise, if the detection is high enough (ie, there are a few long regions), it examines every single region.
+
         Selected regions of interest undergo the 'internal filter': identifying outliers in an array of per-nucleotide coverages.
-        These outlier regions are simply removed from the original input array of coverages before recomputing the set of coverage 
+        These outlier regions are simply removed from the original input array of coverages before recomputing the set of coverage
         vs gap regions in the sequence. Thus, the internal filter returns a new set of coverage regions based on a 'shorter' input
         sequence without outlier bases.
 
@@ -611,14 +610,14 @@ class DisCov:
         coverage: List of int
             The coverage array of the entire input sequence
         region_tuples : List of tuples
-            A list of alternating gap regions and regions of nonzero coverage. Each tuple contains 
+            A list of alternating gap regions and regions of nonzero coverage. Each tuple contains
             (start_position, stop_position, mean_coverage) for a region. This function works only on
             the regions of nonzero coverage.
         mod_z_score_threshold (internal and external): float
             A value will be flagged as an outlier if its modified z-score is greater than this number.
         min_regions : int
             The minimum number of coverage regions needed for the 'external' filter. If we have fewer
-            than this many regions, we instead choose to filter all regions or none depending on the 
+            than this many regions, we instead choose to filter all regions or none depending on the
             overall detection value.
         min_detection_for_internal_filter : float
             When there are not enough regions for the 'external' filter, we use this detection threshold
@@ -635,7 +634,7 @@ class DisCov:
             for i, cov in enumerate(nonzero_mean_coverages):
                 if outlier_mean_coverages[i]:
                     if not min_outlier_mean_coverage or min_outlier_mean_coverage > cov:
-                        min_outlier_mean_coverage = cov 
+                        min_outlier_mean_coverage = cov
             run.info("EXTERNAL FILTER: smallest mean coverage of outlier region", min_outlier_mean_coverage, overwrite_verbose=anvio.DEBUG)
             # get the indices of regions with outlier mean coverage in region_tuples
             if not min_outlier_mean_coverage: # there are no outlier regions to filter out
@@ -645,7 +644,7 @@ class DisCov:
             else:
                 outlier_region_indices = [i for i,r_tuple in enumerate(region_tuples) if r_tuple[2] >= min_outlier_mean_coverage]
                 run.info("EXTERNAL FILTER: num outlier regions found", len(outlier_region_indices), overwrite_verbose=anvio.DEBUG)
-                filtered_regions, new_cov_array = self.filter_nonspecific_coverage_internal(coverage, region_tuples, mod_z_score_threshold_internal, 
+                filtered_regions, new_cov_array = self.filter_nonspecific_coverage_internal(coverage, region_tuples, mod_z_score_threshold_internal,
                                         regions_to_check_indices = outlier_region_indices, drop_entire_region_if_no_internal_outliers=True)
         elif self.detection >= min_detection_for_internal_filter:
             filtered_regions, new_cov_array = self.filter_nonspecific_coverage_internal(coverage, region_tuples, mod_z_score_threshold_internal)
@@ -662,19 +661,19 @@ class DisCov:
         return filtered_regions, new_cov_array
 
 
-    def filter_nonspecific_coverage_internal(self, coverage, region_tuples, mod_z_score_threshold, regions_to_check_indices = None, 
+    def filter_nonspecific_coverage_internal(self, coverage, region_tuples, mod_z_score_threshold, regions_to_check_indices = None,
                                              drop_entire_region_if_no_internal_outliers=False, min_region_length=20):
         """This function goes through each region of nonzero coverage and removes nucleotides with suspiciously high coverage.
 
-        It creates a subset of the coverage array with the bases of outlier coverage values removed, and returns a new 
+        It creates a subset of the coverage array with the bases of outlier coverage values removed, and returns a new
         region list created that subset of coverage values. It also returns the subset coverage array.
-        
+
         Parameters
         ==========
         coverage: List of int
             The coverage array of the entire input sequence
         region_tuples : List of tuples
-            A list of alternating gap regions and regions of nonzero coverage. Each tuple contains 
+            A list of alternating gap regions and regions of nonzero coverage. Each tuple contains
             (start_position, stop_position, mean_coverage) for a region. This function works only on
             the regions of nonzero coverage.
         mod_z_score_threshold : float
@@ -682,7 +681,7 @@ class DisCov:
         regions_to_check_indices : List of int
             Indices (in region_tuples) of the specific regions to check. If None, check all regions.
         drop_entire_region_if_no_internal_outliers : bool
-            If True, it means the parent function flagged these regions as having suspiciously high coverage 
+            If True, it means the parent function flagged these regions as having suspiciously high coverage
             (ie, due to the external filter) and we should remove the entire region (because if the entire
             region consists entirely of outliers, the internal check won't find them).
         min_region_length : int
@@ -696,7 +695,7 @@ class DisCov:
             if (not regions_to_check_indices) or (i in regions_to_check_indices):
                 # skip gaps and regions that are too small
                 if r_tuple[2] == 0:
-                    run.info(f"\tREGION {i}", f"gap region (SKIPPING)", overwrite_verbose=anvio.DEBUG)
+                    run.info(f"\tREGION {i}", "gap region (SKIPPING)", overwrite_verbose=anvio.DEBUG)
                     continue
                 elif (stop - start) < min_region_length:
                     run.info(f"\tREGION {i}", f"too small to check (<{min_region_length} bp)", overwrite_verbose=anvio.DEBUG)
@@ -707,14 +706,14 @@ class DisCov:
                 if outlier_cov_in_region.shape[0] == 0 and drop_entire_region_if_no_internal_outliers:
                     # we use the region length here because we will add the start position to every element in the array later
                     outlier_cov_in_region = np.arange(0, len(region_cov_array))
-                    run.info(f"\tREGION {i}", f"no internal outliers; will remove entire region", overwrite_verbose=anvio.DEBUG)
+                    run.info(f"\tREGION {i}", "no internal outliers; will remove entire region", overwrite_verbose=anvio.DEBUG)
 
                 if outlier_cov_in_region.shape[0] > 0:
                     outlier_cov_in_original_array = outlier_cov_in_region + start # we add the region start position to each index
                     cov_indices_to_remove.extend(list(outlier_cov_in_original_array))
                     run.info(f"\tREGION {i}", f"removing {outlier_cov_in_region.shape[0]} bases with outlier coverage", overwrite_verbose=anvio.DEBUG)
                 else:
-                    run.info(f"\tREGION {i}", f"no outliers found", overwrite_verbose=anvio.DEBUG)
+                    run.info(f"\tREGION {i}", "no outliers found", overwrite_verbose=anvio.DEBUG)
 
         # remove all bases with outlier coverage
         new_coverage = np.delete(coverage, cov_indices_to_remove)
