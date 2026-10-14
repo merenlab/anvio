@@ -6447,7 +6447,7 @@ class Mapper:
         pathway_numbers: Iterable[str] = None,
         individuals: Union[List[str], None] = None,
         individual_noun: Union[str, None] = None,
-        grid_source_type: Union[str, None] = None,
+        grid_source_type: str = 'unknown',
         colorbar_individual_suffix: Union[str, None] = None,
         subset_subject: Union[str, None] = None,
         unified_plural: Union[str, None] = None,
@@ -6598,8 +6598,10 @@ class Mapper:
         'individual_noun'/'grid_source_type'/'colorbar_individual_suffix'/'subset_subject'/
         'unified_plural'/'membership_*'/'grouped_membership' carry the terminology and grouping that
         the public methods supply; the remaining parameters mirror those methods. 'grid_source_type'
-        labels the per-group grid colorbar (which counts sources) and defaults to 'individual_noun'.
-        Quantitative layers carry their own colorbar label in 'colorbar_label'.
+        is the kind of source: 'contigs database', 'pangenome', or 'sample'. It labels the per-group
+        grid colorbars, which count sources, and the grid's 'unified' panel. Its default, 'unknown',
+        labels the colorbars 'source count' and the panel 'all'. Quantitative layers carry their own
+        colorbar label in 'colorbar_label'.
         """
         has_individuals = individuals is not None
         grouped = grouped_membership is not None
@@ -7729,7 +7731,7 @@ class Mapper:
                 group_cmaps=group_cmaps,
                 group_colormap_scheme=group_colormap_scheme,
                 check_maps_lacking_kos=not draw_maps_lacking_data,
-                source_type=grid_source_type if grid_source_type is not None else individual_noun,
+                source_type=grid_source_type,
                 include_unified=draw_unified_maps
             )
 
@@ -9035,7 +9037,8 @@ class Mapper:
             order.
 
         source_type : Literal['contigs database', 'pangenome', 'sample']
-            The kind of source, selecting terminology for messages and colorbar labels.
+            The kind of source, selecting terminology for messages, colorbar labels, and the label
+            of the grid's 'unified' panel.
 
         Notes
         =====
@@ -9089,6 +9092,9 @@ class Mapper:
             # must then name a group. It labels the messages about each one. It also labels the
             # subdirectory each one is drawn into.
             individual_noun=group_phrase if grouped else singular,
+            # The grid labels its per-group colorbars and its 'unified' panel by the kind of source,
+            # which stays the same when the sources are grouped.
+            grid_source_type=source_type,
             subset_subject=f"{singular} groups" if grouped else plural,
             unified_plural=plural,
             membership_count_label=count_label,
@@ -10347,9 +10353,10 @@ class Mapper:
             drawn.
 
         source_type : Literal['contigs database', 'pangenome', 'sample'], 'unknown'
-            The kind of source a group is made of, which labels the per-group colorbars of source
-            counts. The text engine passes 'sample', including for a grouped run, since a group is
-            made of samples.
+            The kind of source in the run. It labels the per-group colorbars of source counts. The
+            'unified' panel is labeled 'pangenome' for a pangenome and 'all' otherwise. Each engine
+            passes its kind of source even for a grouped run, since a group is made of sources of
+            that kind.
 
         include_unified : bool, True
             If True, each grid leads with the 'unified' map. It summarizes every sample, contigs
