@@ -1176,7 +1176,7 @@ class Mapper:
 
         Values that cancel out have no mean direction. Examples are 6 and 18, or 0, 8 and 16, with a
         period of 24. The mean is then undefined, and the result is NaN. The value is then dropped
-        as any undefined aggregation is ('_finite_values', '_reduce_entry_value').
+        as any undefined aggregation is ('_finite_values', '_reduce_element_value').
 
         Parameters
         ==========
@@ -1227,7 +1227,7 @@ class Mapper:
         values close together, it is close to their standard deviation.
 
         Fewer than 'MIN_ANGULAR_DEVIATION_VALUES' values give NaN. The value is then dropped as any
-        undefined aggregation is ('_finite_values', '_reduce_entry_value').
+        undefined aggregation is ('_finite_values', '_reduce_element_value').
 
         Parameters
         ==========
@@ -1280,7 +1280,7 @@ class Mapper:
         order. It returns a new value for each of them, in the same order. A value it cannot define
         is returned as 'nan' or as an infinity. Either leaves that element uncolored on the map of
         that sample or group, exactly as an undefined aggregation leaves it uncolored
-        ('_reduce_entry_value').
+        ('_reduce_element_value').
 
         Parameters
         ==========
@@ -5976,47 +5976,39 @@ class Mapper:
         return list(dict.fromkeys(token.split(':')[1] for token in source.split()))
 
     @staticmethod
-    def _reduce_entry_value(
-        entry: kgml.Entry,
+    def _reduce_element_value(
+        accessions: Iterable[str],
         values: Dict[str, float],
-        aggregate,
-        use_reaction_attribute: bool = False
+        aggregate: Callable
     ) -> Union[float, None]:
         """
-        Reduce the values of an Entry's KEGG accessions to a single element value.
+        Reduce the values of a map element's KEGG accessions to a single element value.
 
         Parameters
         ==========
-        entry : kgml.Entry
-            An Entry (ortholog or compound) whose accessions are read by '_get_entry_kegg_ids'.
+        accessions : Iterable[str]
+            The accessions the element stands for, each once ('_get_entry_kegg_ids').
 
         values : Dict[str, float]
             Keys are KEGG accessions (KO, reaction, or compound IDs), values are per-accession
             values.
 
-        aggregate : callable
+        aggregate : Callable
             Reduces a list of values to a single value (see 'AGGREGATION_FUNCTIONS').
-
-        use_reaction_attribute : bool, False
-            Passed to '_get_entry_kegg_ids' to read reaction IDs rather than KO/compound IDs.
 
         Returns
         =======
         Union[float, None]
-            The aggregated value, or None if none of the Entry's accessions have a value or the
-            aggregation is undefined for the values they do have.
+            The aggregated value, or None if none of the accessions have a value or the aggregation
+            is undefined for the values they do have.
         """
-        entry_values = [
-            values[kegg_id]
-            for kegg_id in Mapper._get_entry_kegg_ids(entry, use_reaction_attribute)
-            if kegg_id in values
-        ]
-        if not entry_values:
+        element_values = [values[accession] for accession in accessions if accession in values]
+        if not element_values:
             return None
-        # An aggregation can be undefined for the values of this Entry even when it is defined
+        # An aggregation can be undefined for the values of this element even when it is defined
         # elsewhere on the map, as the standard deviation is for an element with a single accession,
-        # in which case the Entry has no value and is left uncolored.
-        value = aggregate(entry_values)
+        # in which case the element has no value and is left uncolored.
+        value = aggregate(element_values)
         return value if np.isfinite(value) else None
 
     @staticmethod
@@ -6027,9 +6019,44 @@ class Mapper:
         """
         Find an Entry's value in each sample or group of a layer, and on the 'unified' map.
 
+        The Entry's accessions name its map element ('_get_entry_kegg_ids').
+        '_summarize_element_values' finds the element's values with the layer's accession
+        aggregation and keeps them in the layer's '_element_cache'.
+
+        Parameters
+        ==========
+        entry : kgml.Entry
+            An Entry (ortholog or compound).
+
+        layer : dict
+            A 'quantitative' layer model from '_build_txt_model'. The range-finding pass of
+            '_map_elements' gives it an '_element_cache' ('_summarize_element_values').
+
+        Returns
+        =======
+        Tuple[Dict[str, float], Union[float, None]]
+            The element's value in each sample (ungrouped) or group (grouped) that has one, and its
+            value on the 'unified' map, or None where it has none. The first is empty for a layer
+            without samples.
+        """
+        accessions = tuple(Mapper._get_entry_kegg_ids(entry, layer['use_reaction_attribute']))
+        return Mapper._summarize_element_values(
+            accessions, layer, layer['aggregate'], layer['_element_cache']
+        )
+
+    @staticmethod
+    def _summarize_element_values(
+        accessions: Tuple[str, ...],
+        layer: dict,
+        aggregate: Callable,
+        cache: Dict[Tuple[str, ...], Tuple[Dict[str, float], Union[float, None]]]
+    ) -> Tuple[Dict[str, float], Union[float, None]]:
+        """
+        Find a map element's value in each sample or group of a layer, and on the 'unified' map.
+
         An element's value in a sample is the aggregate of its accessions in that sample
-        ('_reduce_entry_value'). This is the value the sample's own map draws. A summary then pools
-        these element values, so the 'unified' map summarizes what the maps of the individual
+        ('_reduce_element_value'). This is the value the sample's own map draws. A summary then
+        pools these element values, so the 'unified' map summarizes what the maps of the individual
         samples or groups draw. Grouped, each group's value is the sample summary of its samples'
         element values. The 'unified' value is then the group summary of the groups' values.
 
@@ -6042,16 +6069,26 @@ class Mapper:
 
         Parameters
         ==========
-        entry : kgml.Entry
-            An Entry (ortholog or compound) whose accessions are read by '_get_entry_kegg_ids'.
+        accessions : Tuple[str, ...]
+            The accessions the element stands for, each once ('_get_entry_kegg_ids'). They name the
+            element in the cache and in the layer's undefined sets.
 
         layer : dict
             A 'quantitative' layer model from '_build_txt_model'. A layer without samples has
             'sample_values' of None. Its one value per element comes from 'unified_values'. The
-            range-finding pass of '_map_elements' gives the layer an '_element_cache' and the two
-            undefined sets. Results are kept in the cache, keyed by an Entry's accessions. These are
-            all an answer depends on. Entries on different maps, with different IDs, can stand for
-            the same accessions.
+            range-finding pass of '_map_elements' gives the layer the two undefined sets.
+
+        aggregate : Callable
+            Reduces the values of the element's accessions to one value ('_reduce_element_value').
+            Each sample gets its own value, and a layer without samples gets one from
+            'unified_values'. '_summarize_entry_values' passes the layer's accession aggregation.
+
+        cache : Dict[Tuple[str, ...], Tuple[Dict[str, float], Union[float, None]]]
+            Results already worked out for this layer and aggregation, keyed by an element's
+            accessions. With the layer and aggregation fixed, a result depends only on the
+            accessions. Entries on different maps, with different IDs, can stand for the same
+            accessions and share one result. '_summarize_entry_values' passes the layer's
+            '_element_cache'.
 
         Returns
         =======
@@ -6060,27 +6097,22 @@ class Mapper:
             value on the 'unified' map, or None where it has none. The first is empty for a layer
             without samples.
         """
-        use_reaction_attribute = layer['use_reaction_attribute']
         # One call works out the element's value in every sample or group and on the 'unified' map.
         # The range-finding pass makes the first call. The result is then reused by the 'unified'
-        # map and the map of each sample or group. The result is keyed by the accessions the Entry
-        # stands for, not by its ID, which is unique to one map. An element's value depends only on
+        # map and the map of each sample or group. The result is keyed by the element's accessions,
+        # not by the ID of an Entry, which is unique to one map. An element's value depends only on
         # its accessions, so the result is also reused for an Entry on another KEGG map, or a second
         # Entry on one KEGG map, that stands for the same accessions.
-        key = tuple(Mapper._get_entry_kegg_ids(entry, use_reaction_attribute))
-        cache = layer['_element_cache']
-        if key in cache:
-            return cache[key]
+        if accessions in cache:
+            return cache[accessions]
 
         # A layer without samples has one value per accession. The element's value is the aggregate
         # of its accessions, and every map shows it.
-        aggregate = layer['aggregate']
         if layer['sample_values'] is None:
-            result = {}, Mapper._reduce_entry_value(
-                entry, layer['unified_values'], aggregate,
-                use_reaction_attribute=use_reaction_attribute
+            result = {}, Mapper._reduce_element_value(
+                accessions, layer['unified_values'], aggregate
             )
-            cache[key] = result
+            cache[accessions] = result
             return result
 
         # The element's value in each sample is the aggregate of the accessions the sample has
@@ -6088,20 +6120,18 @@ class Mapper:
         # below.
         sample_element_values: Dict[str, float] = {}
         for sample, values in layer['sample_values'].items():
-            value = Mapper._reduce_entry_value(
-                entry, values, aggregate, use_reaction_attribute=use_reaction_attribute
-            )
+            value = Mapper._reduce_element_value(accessions, values, aggregate)
             if value is not None:
                 sample_element_values[sample] = value
 
         # A summary can be undefined for the values it is given, as a standard deviation is for a
-        # single value. The element then has no value at that level. Its key is recorded for
+        # single value. The element then has no value at that level. Its accessions are recorded for
         # '_warn_undefined_summaries'.
         def _summarize(values: List[float], summary: Callable, undefined_key: str):
             value = summary(values)
             if np.isfinite(value):
                 return value
-            layer[undefined_key].add(key)
+            layer[undefined_key].add(accessions)
             return None
 
         if layer['group_samples'] is None:
@@ -6138,7 +6168,7 @@ class Mapper:
                 list(individual_values.values()), unified_aggregate, '_undefined_unified'
             )
         result = individual_values, unified_value
-        cache[key] = result
+        cache[accessions] = result
         return result
 
     @staticmethod
@@ -6148,19 +6178,52 @@ class Mapper:
         individual: Union[str, None] = None
     ) -> Tuple[Dict[str, str], Union[str, None]]:
         """
-        Find an Entry's categorical value in each sample, and on the 'unified' map.
+        Find an Entry's categorical value in each sample or group, and on the 'unified' map.
 
-        This is the categorical counterpart of '_summarize_entry_values'. Each accession of the
-        element that has a value gives one vote. An accession listed twice by the element votes
-        once. The accession rule chooses among the votes in each sample
-        ('_choose_categorical_value'). Where the layer has no samples, it chooses among the votes
-        for the one map. Where the sample summary is a rule, each sample with a value for the
+        The Entry's accessions name its map element ('_get_entry_kegg_ids').
+        '_summarize_element_individuals' finds the element's values.
+
+        Parameters
+        ==========
+        entry : kgml.Entry
+            An Entry (ortholog or compound).
+
+        layer : dict
+            A layer model of categorical values ('_build_categorical_txt_model').
+
+        individual : Union[str, None], None
+            The sample or group whose map asks for the values, or None for the 'unified' map
+            ('_summarize_element_individuals').
+
+        Returns
+        =======
+        Tuple[Dict[str, str], Union[str, None]]
+            The element's value in each sample (ungrouped) or group (grouped) that has one, and its
+            value on the 'unified' map, or None where it has none. The first is empty for a layer
+            without samples, and for a grouped layer without a rule for its samples.
+        """
+        accessions = tuple(Mapper._get_entry_kegg_ids(entry, layer['use_reaction_attribute']))
+        return Mapper._summarize_element_individuals(accessions, layer, individual)
+
+    @staticmethod
+    def _summarize_element_individuals(
+        accessions: Tuple[str, ...],
+        layer: dict,
+        individual: Union[str, None] = None
+    ) -> Tuple[Dict[str, str], Union[str, None]]:
+        """
+        Find a map element's categorical value in each sample or group, and on the 'unified' map.
+
+        This is the categorical counterpart of '_summarize_element_values'. Each accession of the
+        element that has a value gives one vote. The accession rule chooses among the votes in each
+        sample ('_choose_categorical_value'). Where the layer has no samples, it chooses among the
+        votes for the one map. Where the sample summary is a rule, each sample with a value for the
         element gives one vote, and that rule chooses among them. Ungrouped, it chooses for the
         'unified' map. Grouped, it chooses for each group among the group's samples. The group rule
         then chooses for the 'unified' map among the groups. A sample or group without a value does
         not vote. Without a rule, the 'unified' map shows presence, and no value is chosen for it.
 
-        Results are kept in the layer's '_element_cache', keyed by the Entry's sorted accessions.
+        Results are kept in the layer's '_element_cache', keyed by the element's sorted accessions.
         The values of an element are worked out for every sample at once. The layer's '_choices'
         counts how each choice among different values was made ('_report_categorical_choices'). A
         choice is counted the first time a map that uses it asks for the element. It is therefore
@@ -6171,8 +6234,8 @@ class Mapper:
 
         Parameters
         ==========
-        entry : kgml.Entry
-            An Entry (ortholog or compound) whose accessions are read by '_get_entry_kegg_ids'.
+        accessions : Tuple[str, ...]
+            The accessions the element stands for, each once ('_get_entry_kegg_ids').
 
         layer : dict
             A layer model of categorical values ('_build_categorical_txt_model').
@@ -6188,7 +6251,6 @@ class Mapper:
             value on the 'unified' map, or None where it has none. The first is empty for a layer
             without samples, and for a grouped layer without a rule for its samples.
         """
-        accessions = tuple(Mapper._get_entry_kegg_ids(entry, layer['use_reaction_attribute']))
         # The element is named by its sorted accessions, in the cache and in the key of a random
         # choice. Two maps can list the same accessions in different orders. The element then gets
         # the same value on both maps, and its choices are counted once.
@@ -6299,10 +6361,10 @@ class Mapper:
         """
         Rescale an Entry's value in each sample or group against its values across all of them.
 
-        An element's value in each sample or group comes from '_summarize_entry_values'. It is built
-        from the aggregate of the element's accessions. Which accessions an element stands for is
-        known only from the KEGG map itself, so a ratio against the element's mean, for instance, is
-        a ratio of aggregates.
+        An element's value in each sample or group comes from '_summarize_entry_values', and
+        '_normalize_element_values' rescales these values. Each value is built from the aggregate of
+        the element's accessions. Which accessions an element stands for is known only from the KEGG
+        map itself, so a ratio against the element's mean, for instance, is a ratio of aggregates.
 
         The normalization sees the values of only the samples or groups in which the element has a
         value at all. A sample with no row for any of the element's accessions is not counted as a
@@ -6325,12 +6387,12 @@ class Mapper:
 
         cache : Union[Dict[Tuple[str, ...], Dict[str, float]], None], None
             Results already worked out for this layer, keyed by an Entry's accessions, which is all
-            an answer depends on once the layer's values, aggregation and normalization are fixed. A
-            normalized value needs the element's value in every sample or group. Without the cache,
-            the map of each sample or group would work out the values of all the others again. The
-            range-finding pass fills the cache beforehand. The drawing passes then have nothing to
-            recompute. Pass None to rescale every element afresh. The element values themselves stay
-            cached on the layer ('_summarize_entry_values').
+            an answer depends on once the layer's values, aggregation, and normalization are fixed.
+            A normalized value needs the element's value in every sample or group. Without the
+            cache, the map of each sample or group would work out the values of all the others
+            again. The range-finding pass fills the cache beforehand. The drawing passes then have
+            nothing to recompute. Pass None to rescale every element afresh. The element values
+            themselves stay cached on the layer ('_summarize_entry_values').
 
         Returns
         =======
@@ -6344,25 +6406,55 @@ class Mapper:
             key = tuple(Mapper._get_entry_kegg_ids(entry, layer['use_reaction_attribute']))
             if key in cache:
                 return cache[key]
-        element_values = Mapper._summarize_entry_values(entry, layer)[0]
+        normalized_values = Mapper._normalize_element_values(
+            Mapper._summarize_entry_values(entry, layer)[0], individuals, normalize
+        )
+        if cache is not None:
+            cache[key] = normalized_values
+        return normalized_values
+
+    @staticmethod
+    def _normalize_element_values(
+        element_values: Dict[str, float],
+        individuals: Iterable[str],
+        normalize
+    ) -> Dict[str, float]:
+        """
+        Rescale a map element's values in the samples or groups against each other.
+
+        Parameters
+        ==========
+        element_values : Dict[str, float]
+            The element's value in each sample or group that has one ('_summarize_element_values').
+
+        individuals : Iterable[str]
+            The samples or groups to normalize across, in the order they are colored in.
+
+        normalize : callable
+            Rescales an element's values across the samples or groups that have one
+            ('_resolve_element_normalization').
+
+        Returns
+        =======
+        Dict[str, float]
+            The normalized value in each sample or group. It holds only the samples or groups that
+            the normalization defined a value for. It is empty if the element has no value in any of
+            the samples or groups.
+        """
         values: Dict[str, float] = {
             individual: element_values[individual] for individual in individuals
             if individual in element_values
         }
         if not values:
-            normalized_values: Dict[str, float] = {}
-        else:
-            # A normalization can be undefined for the values of this element even where it is
-            # defined elsewhere on the map (a z-score needs more than one value, and a ratio needs a
-            # positive reference), in which case the element has no value and is left uncolored.
-            normalized = normalize(list(values.values()))
-            normalized_values = {
-                individual: float(value)
-                for individual, value in zip(values, normalized) if np.isfinite(value)
-            }
-        if cache is not None:
-            cache[key] = normalized_values
-        return normalized_values
+            return {}
+        # A normalization can be undefined for the values of this element even where it is defined
+        # elsewhere on the map (a z-score needs more than one value, and a ratio needs a positive
+        # reference), in which case the element has no value and is left uncolored.
+        normalized = normalize(list(values.values()))
+        return {
+            individual: float(value)
+            for individual, value in zip(values, normalized) if np.isfinite(value)
+        }
 
     def _draw_quantitative_colorbar(
         self,
@@ -9315,23 +9407,61 @@ class Mapper:
         See '_draw_map_elements' for the colorer contract. 'entry_value' gives an Entry's value on
         this map. It is the element's value in one sample, a summary of samples or groups
         ('_summarize_entry_values'), or a value rescaled across them ('_normalize_entry_value').
-        None leaves the Entry uncolored. The color is 'cmap' sampled at the normalized value, and
-        the priority is that fraction, or its complement under 'reverse_overlay', which 'clip=True'
-        on the norm keeps in [0, 1]. A degenerate range (no norm) leaves every element at the top of
-        the colormap, except on a centered scale, where the one value the range collapsed to is the
-        center itself and so takes the middle color, the very color the centering was asked for.
+        None leaves the Entry uncolored. '_quantitative_color_priority' turns the value into a color
+        and a priority.
         """
         def colorer(entry: kgml.Entry) -> Union[Tuple[str, float], None]:
             value = entry_value(entry)
             if value is None:
                 return None
-            if norm is None:
-                fraction = 0.5 if center is not None else 1.0
-            else:
-                fraction = float(norm(value))
-            priority = (1.0 - fraction) if reverse_overlay else fraction
-            return mcolors.rgb2hex(cmap(fraction)), priority
+            return Mapper._quantitative_color_priority(value, norm, cmap, reverse_overlay, center)
         return colorer
+
+    @staticmethod
+    def _quantitative_color_priority(
+        value: float,
+        norm: Union[mcolors.Normalize, None],
+        cmap: mcolors.Colormap,
+        reverse_overlay: bool,
+        center: Union[float, None] = None
+    ) -> Tuple[str, float]:
+        """
+        Find the color and priority of a continuous value on a color scale.
+
+        The norm rescales the value to a fraction of the scale, and 'clip=True' keeps it in [0, 1].
+        The color is 'cmap' sampled at that fraction. The priority is the fraction, or one minus it
+        under 'reverse_overlay'. A degenerate range has no norm, so every value takes the top of the
+        colormap. On a centered scale, the one value of such a range is the center itself, so it
+        takes the middle color.
+
+        Parameters
+        ==========
+        value : float
+            The value to color.
+
+        norm : Union[mcolors.Normalize, None]
+            The scale's norm, or None for a degenerate range.
+
+        cmap : mcolors.Colormap
+            The scale's colormap.
+
+        reverse_overlay : bool
+            If True, a lower value gets a higher priority, so it is drawn on top.
+
+        center : Union[float, None], None
+            The value at the middle of a centered scale, or None for a scale that is not centered.
+
+        Returns
+        =======
+        Tuple[str, float]
+            The color as a hex code, and the priority.
+        """
+        if norm is None:
+            fraction = 0.5 if center is not None else 1.0
+        else:
+            fraction = float(norm(value))
+        priority = (1.0 - fraction) if reverse_overlay else fraction
+        return mcolors.rgb2hex(cmap(fraction)), priority
 
     def _categorical_colorer(
         self,
