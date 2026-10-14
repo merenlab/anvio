@@ -3,6 +3,7 @@
 
 import os
 import re
+import csv
 import fitz
 import json
 import math
@@ -330,10 +331,9 @@ VALUE_TYPES: Tuple[str, ...] = ('numeric', 'categorical')
 
 # The colors that categorical values take when no colors file gives them ('_resolve_value_colors').
 # The values take the colors in order. The first nine colors are those of Matplotlib's 'tab10'
-# without its gray. They serve up to nine values. The next nine are the light colors of 'tab20'
-# without its light gray, in the same order of hues. They serve the tenth to the eighteenth values,
-# so the tenth value is light blue, and the first value is blue. Gray is left out because global
-# maps draw the elements they do not highlight in gray.
+# without its gray. The next nine are the light colors of 'tab20' without its light gray, in the
+# same order of hues. The first value is blue, for instance, and the tenth value is light blue. Gray
+# is left out because global maps draw the elements they do not highlight in gray.
 DEFAULT_VALUE_COLORS: Tuple[str, ...] = (
     '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#bcbd22',
     '#17becf',
@@ -375,9 +375,10 @@ RANDOM_CATEGORICAL_RULES: Tuple[str, ...] = ('plurality_random', 'random')
 # The seed of random choices where no seed is given.
 DEFAULT_CATEGORICAL_SEED = 42
 
-# The name that a kegg-membership-colors-txt file gives its color column. Its other column holds the
-# names of samples, contigs databases, genomes, or groups. That column can be headed anything,
-# exactly as the item column of a groups-txt file can, so one file can describe samples in one run
+# The header of the color column of a kegg-membership-colors-txt file and of a kegg-value-colors-txt
+# file. The first column holds the names of samples, contigs databases, genomes, or groups in the
+# first file, and categorical values in the second. That column can be headed anything, as the item
+# column of a groups-txt file can. One membership colors file can then describe samples in one run
 # and groups in another without being renamed.
 COLORS_COLUMN = 'color'
 
@@ -799,7 +800,9 @@ class Mapper:
         if present, must be filled in every row.
 
         A value column can hold categorical values instead of numbers ('VALUE_TYPES'). Such values
-        are names. They are read as text, so 'NA' is a name like any other. Every row needs one.
+        are names. They are read as text, so 'NA' is a name like any other. A pair of double quotes
+        enclosing a whole field is dropped, as R writes them ('_unquote'). Other quotes are kept as
+        part of a name. Every row needs one.
 
         Parameters
         ==========
@@ -839,12 +842,18 @@ class Mapper:
         self.progress.new(f"Loading the kegg-{element_type}-txt file")
         self.progress.update("...")
 
-        # An empty file has no header row for pandas to find, which it reports as an exception rather
-        # than as an empty table. Pandas reads text such as 'NA' as a missing value by default.
-        # Categorical values keep such text as a name.
+        # An empty file has no header row for pandas to find, which it reports as an exception
+        # rather than as an empty table. Pandas reads text such as 'NA' as a missing value by
+        # default. Categorical values keep such text as a name. Pandas also takes a double quote to
+        # start a quoted field, which can hold tabs and line breaks. Categorical files are read with
+        # quotes left as text, so a stray quote cannot merge the rows after it into one value. Then
+        # only a pair of quotes enclosing a whole field is dropped, as in a colors file
+        # ('_read_value_colors_txt').
+        categorical = value_type == 'categorical'
         try:
             df = pd.read_csv(
-                path, sep='\t', dtype=str, keep_default_na=value_type != 'categorical'
+                path, sep='\t', dtype=str, keep_default_na=not categorical,
+                quoting=csv.QUOTE_NONE if categorical else csv.QUOTE_MINIMAL
             )
         except pd.errors.EmptyDataError:
             self.progress.end()
@@ -852,6 +861,9 @@ class Mapper:
                 f"The kegg-{element_type}-txt file at '{path}' is empty. It needs a header row with "
                 f"an 'accession' column, and a row for each accession to color."
             )
+        if categorical:
+            df.columns = [self._unquote(column) for column in df.columns]
+            df = df.applymap(self._unquote)
         original_columns = list(df.columns)
 
         if 'accession' not in df.columns:
@@ -1079,9 +1091,9 @@ class Mapper:
             element_type = flag.split('-')[2]
             raise ConfigError(
                 f"'{flag}' was given as '{aggregation}', which chooses one categorical value among "
-                f"several, but the values here are numbers, so they are reduced with an "
-                f"aggregation, such as 'sum' or 'mean'. To read the value column as categorical "
-                f"values, give '--{element_type}-value-type categorical'."
+                f"several. The values here are numbers, so they are reduced with an aggregation, "
+                f"such as 'sum' or 'mean'. To read the value column as categorical values, give "
+                f"'--{element_type}-value-type categorical'."
             )
         if aggregation in CIRCULAR_AGGREGATIONS + CIRCULAR_SPREADS:
             if period is None:
@@ -1708,7 +1720,9 @@ class Mapper:
         self,
         layers: List[dict],
         draw_unified_maps: bool,
-        draw_individual_maps: bool
+        drawn_individuals: List[str],
+        draw_maps_lacking_data: bool = False,
+        draw_grid: bool = False
     ) -> None:
         """
         Report how often a rule chose one categorical value among different values.
@@ -1722,14 +1736,13 @@ class Mapper:
         Where they differ, a rule chooses one of them ('_choose_categorical_value'). The choices
         among genes are counted for every gene of the file, when the file is read
         ('_select_accession_values'). The choices among accessions, samples, and groups are counted
-        for the elements of the maps that are colored ('_summarize_entry_individuals'). The choices
-        for compounds are counted once per compound and set of votes
-        ('_categorical_compound_chooser'). They are reported here once per layer and level. Each
-        count says how the choices were made, so the effect of the rule can be seen: by plurality,
-        by majority, by the order of the values, at random, or without a value. A choice without a
-        value can leave a blank on a map, which looks like an absent element — those choices are
-        also reported in a warning, which says what they change in this run. A layer whose values
-        color no drawn map is not reported.
+        where a drawn map uses them ('_summarize_entry_individuals'). The choices for compounds are
+        counted once per compound and set of votes ('_categorical_compound_chooser'). They are
+        reported here once per layer and level. Each count says how the choices were made, so the
+        effect of the rule can be seen: by plurality, by majority, by the order of the values, at
+        random, or without a value. A choice without a value can leave an element uncolored, so it
+        looks absent. These choices are also reported in a warning that says what they change in
+        this run. A layer whose values color no drawn map is not reported.
 
         Parameters
         ==========
@@ -1739,13 +1752,27 @@ class Mapper:
         draw_unified_maps : bool
             True if the 'unified' map is drawn.
 
-        draw_individual_maps : bool
-            True if the maps of the individual samples or groups are drawn.
+        drawn_individuals : List[str]
+            The samples or groups drawn on their own maps.
+
+        draw_maps_lacking_data : bool, False
+            True if maps with nothing to color are drawn.
+
+        draw_grid : bool, False
+            True if map grids are drawn.
         """
         ways = (
             ('plurality', 'by plurality'), ('majority', 'by majority'), ('order', 'by value order'),
             ('random', 'at random'), ('none', 'without a value')
         )
+        draw_individual_maps = bool(drawn_individuals)
+        # A map with nothing to color is not drawn unless such maps are asked for. A grid shows a
+        # blank panel in place of a missing 'unified' map ('_draw_map_grids').
+        unified_skip = ''
+        if not draw_maps_lacking_data:
+            unified_skip = " A 'unified' map on which no element has a value is not drawn."
+            if draw_grid:
+                unified_skip += " The map grid shows a blank panel in its place."
         for layer in layers:
             if layer.get('value_type') != 'categorical':
                 continue
@@ -1760,36 +1787,88 @@ class Mapper:
             in_sample = ' in a sample' if has_samples else ''
 
             # What a choice without a value changes depends on what the run draws, and on whether a
-            # rule at the next level counts its votes.
+            # rule at the next level counts its votes. The 'unified' map has such a rule only where
+            # one was given for it.
+            unified_votes = draw_unified_maps and (
+                layer['group_rule' if grouped else 'sample_rule'] is not None
+            )
+            # A choice that the 'unified' map uses is counted even where the map of its sample or
+            # group is not drawn.
+            if_drawn = ''
+            if has_samples and unified_votes and draw_individual_maps:
+                individuals = layer['group_samples'] if grouped else layer['sample_values']
+                if not set(individuals) <= set(drawn_individuals):
+                    if_drawn = ' if that map is drawn'
+            # An accession without a value can leave an element with no votes. The element then has
+            # no value either.
             gene_consequence = (
                 f"Such an accession has no value{' in that sample' if has_samples else ''}. It "
                 f"does not vote in its map elements."
             )
             if not has_samples:
+                gene_consequence += (
+                    " An element is left uncolored on its map if none of its accessions has a "
+                    "value. It looks like an element the file lacks."
+                )
+            elif draw_individual_maps and not grouped:
+                gene_consequence += (
+                    " An element is left uncolored on a sample's map if none of its accessions has "
+                    "a value in that sample. It looks like an element the file lacks."
+                )
+            elif draw_individual_maps:
+                gene_consequence += (
+                    " An element is left uncolored on a group's map if none of its accessions has "
+                    "a value in any of the group's samples. It looks like an element the group's "
+                    "samples lack."
+                )
+            if has_samples and unified_votes:
+                gene_consequence += (
+                    " An element is left uncolored on the 'unified' map if none of its accessions "
+                    "has a value in any sample."
+                )
+            if not has_samples:
                 element_consequence = (
                     "Such an element is left uncolored on its map. It looks like an element the "
                     "file lacks."
                 )
+            elif grouped:
+                element_consequence = (
+                    "Such an element has no value in that sample. It does not vote among the "
+                    "samples of its group."
+                )
+                if draw_individual_maps:
+                    element_consequence += (
+                        " An element is left uncolored on a group's map if it has no value in any "
+                        "of the group's samples. It looks like an element the group's samples lack."
+                    )
+                if unified_votes:
+                    element_consequence += (
+                        " An element is left uncolored on the 'unified' map if it has no value in "
+                        "any sample."
+                    )
             else:
                 element_consequence = "Such an element has no value in that sample."
-                if draw_individual_maps and not grouped:
+                if draw_individual_maps:
                     element_consequence += (
-                        " It is left uncolored on the map of that sample. It looks like an element "
-                        "the file lacks."
+                        f" It is left uncolored on the map of that sample{if_drawn}. It looks like "
+                        f"an element the file lacks."
                     )
-                if layer['sample_rule'] is not None:
+                if unified_votes:
                     element_consequence += (
-                        " It does not vote among the samples of its group." if grouped else
-                        " It does not vote across the samples."
+                        " It does not vote across the samples. An element is left uncolored on the "
+                        "'unified' map if it has no value in any sample."
                     )
             group_consequence = "Such an element has no value in that group."
             if draw_individual_maps:
                 group_consequence += (
-                    " It is left uncolored on the map of that group. It looks like an element the "
-                    "group's samples lack."
+                    f" It is left uncolored on the map of that group{if_drawn}. It looks like an "
+                    f"element the group's samples lack."
                 )
-            if layer['group_rule'] is not None:
-                group_consequence += " It does not vote across the groups."
+            if unified_votes:
+                group_consequence += (
+                    " It does not vote across the groups. An element is left uncolored on the "
+                    "'unified' map if no group has a value for it."
+                )
 
             for level, voters, rule_key, flag_suffix, what, consequence in (
                 (
@@ -1806,14 +1885,14 @@ class Mapper:
                 ) if grouped else (
                     'sample', 'samples', 'sample_rule', 'sample-summary',
                     "map element(s) on the 'unified' map",
-                    "Such an element is left uncolored on that map. It looks like an element that "
-                    "no sample has."
+                    f"Such an element is left uncolored on that map. It looks like an element that "
+                    f"no sample has.{unified_skip}"
                 ),
                 (
                     'group', 'groups', 'group_rule', 'group-summary',
                     "map element(s) on the 'unified' map",
-                    "Such an element is left uncolored on that map. It looks like an element that "
-                    "no group has."
+                    f"Such an element is left uncolored on that map. It looks like an element that "
+                    f"no group has.{unified_skip}"
                 ),
                 (
                     'compound', 'reactions touching a compound', 'accession_rule',
@@ -1850,6 +1929,7 @@ class Mapper:
         value_column: str,
         aggregation: Union[str, Callable],
         path: str,
+        element_type: str,
         undefined: Set[str] = None
     ) -> Dict[str, float]:
         """
@@ -1878,6 +1958,9 @@ class Mapper:
         path : str
             Path to the layer's text file, used in error messages.
 
+        element_type : str
+            'reaction' or 'compound', used in an error message.
+
         undefined : Set[str], None
             Accessions whose aggregated value is undefined are added to this set.
 
@@ -1896,8 +1979,8 @@ class Mapper:
             # with typos in it. Pandas reads a blank cell as a missing value, not as text.
             text = rows_df.loc[invalid & numeric_values.isna(), value_column].dropna()
             categorical_clause = (
-                " If the column holds categorical values, such as names, read it as such with "
-                "'--reaction-value-type categorical' or '--compound-value-type categorical'."
+                f" If the column holds categorical values, such as names, read it as such with "
+                f"'--{element_type}-value-type categorical'."
             ) if not text.empty else ""
             self.progress.end()
             raise ConfigError(
@@ -2086,7 +2169,7 @@ class Mapper:
         """
         Sort categorical values, with the numbers in them compared as numbers.
 
-        Plain sorting puts '10' before '2', and '1' before '-1'. Where every value is a finite
+        Plain sorting puts '10' before '2', and '-1' before '-2'. Where every value is a finite
         number, such as '-1', '0' and '1.5', the values are sorted as numbers. Otherwise each value
         is split into runs of digits and runs of other characters, and the runs of digits are
         compared as numbers, so 'cluster 2' comes before 'cluster 10'. A minus sign or a decimal
@@ -2124,6 +2207,28 @@ class Mapper:
             ), text
         return sorted(values, key=natural_key)
 
+    @staticmethod
+    def _unquote(text: str) -> str:
+        """
+        Drop a pair of double quotes that encloses a whole field, as R's 'write.table' writes it.
+
+        A doubled quote inside such a field stands for one quote. A quote anywhere else is part of
+        the text, so a stray quote stays in the value it was typed in.
+
+        Parameters
+        ==========
+        text : str
+            The text of one field.
+
+        Returns
+        =======
+        str
+            The text without its enclosing quotes.
+        """
+        if len(text) >= 2 and text[0] == text[-1] == '"':
+            return text[1:-1].replace('""', '"')
+        return text
+
     def _read_value_colors_txt(self, path: str, flag: str) -> Dict[str, str]:
         """
         Load a file that gives a color to each categorical value (artifact 'kegg-value-colors-txt').
@@ -2157,25 +2262,28 @@ class Mapper:
                 f"headed '{COLORS_COLUMN}' and holds a color hex code for each value. Its columns "
                 f"are: {', '.join(repr(column) for column in columns)}."
             )
-        table = utils.get_TAB_delimited_file_as_dictionary(path)
+        # The rows are keyed by line, not by value. The utility then does not stop at a value named
+        # twice, and the check below reports it. A blank cell comes back as None.
+        table = utils.get_TAB_delimited_file_as_dictionary(path, indexing_field=-1)
         value_colors: Dict[str, str] = {}
-        for name, row in table.items():
-            value = name.strip()
-            color = str(row[COLORS_COLUMN]).strip()
+        for row in table.values():
+            value = self._unquote(row[columns[0]].strip())
+            color = self._unquote((row[COLORS_COLUMN] or '').strip())
             # Only hex codes are accepted, as in a kegg-membership-colors-txt file. Reserved colors
             # are compared as hex codes ('_check_reserved_colors').
             if not re.fullmatch(r'#[0-9A-Fa-f]{6}', color):
+                shown = f"'{color}'" if color else 'blank'
                 self.progress.end()
                 raise ConfigError(
                     f"Each color in the file given to '{flag}', at '{path}', must be a six-digit "
-                    f"hex code such as '#FFA500'. The color of '{value}' is '{color}'."
+                    f"hex code such as '#FFA500'. The color of '{value}' is {shown}."
                 )
-            # Two rows can name one value with different spaces around it.
+            # Two rows can name one value, exactly or with different spaces around it.
             if value in value_colors:
                 self.progress.end()
                 raise ConfigError(
-                    f"The colors file given to '{flag}', at '{path}', gives two colors to the "
-                    f"value '{value}'. Please give it one row."
+                    f"The colors file given to '{flag}', at '{path}', names the value '{value}' in "
+                    f"more than one row. Please give each value one row."
                 )
             value_colors[value] = kgml.canonical_color(color)
         if not value_colors:
@@ -2241,23 +2349,29 @@ class Mapper:
                 )
             return dict(zip(ordered, DEFAULT_VALUE_COLORS))
 
+        def _listed(names: List[str]) -> str:
+            # A long list is cut at 10 values.
+            shown = ', '.join(repr(name) for name in names[:10])
+            if len(names) > 10:
+                return f"The first 10 are: {shown}."
+            return f"The value is {shown}." if len(names) == 1 else f"The values are {shown}."
+
         file_colors = self._read_value_colors_txt(value_colors_txt, flag)
         missing = self._sort_values(values - set(file_colors))
         if missing:
-            examples = ', '.join(repr(value) for value in missing[:10])
             raise ConfigError(
                 f"The colors file given to '{flag}', at '{value_colors_txt}', has no color for "
                 f"{len(missing)} of the categorical values of the {element_type} file at '{path}'. "
-                f"These are some of them: {examples}. Every value needs a color. Anvi'o does not "
-                f"fill in missing colors, since chosen colors and default colors would then share "
-                f"one legend."
+                f"{_listed(missing)} Every value needs a color. Anvi'o does not fill in missing "
+                f"colors, since chosen colors and default colors would then share one legend."
             )
         extra = [value for value in file_colors if value not in values]
         if extra:
             self.run.warning(
                 f"The colors file given to '{flag}', at '{value_colors_txt}', names {len(extra)} "
-                f"value(s) that the {element_type} file at '{path}' does not have. These are some "
-                f"of them: {', '.join(repr(value) for value in extra[:10])}. They are ignored."
+                f"{'value' if len(extra) == 1 else 'values'} that the {element_type} file at "
+                f"'{path}' does not have. {_listed(extra)} "
+                f"{'It is' if len(extra) == 1 else 'They are'} ignored."
             )
         value_colors = {value: color for value, color in file_colors.items() if value in values}
         values_by_color: Dict[str, List[str]] = {}
@@ -2322,8 +2436,8 @@ class Mapper:
         drawn from a random number generator. A generator would give the same element different
         values on two maps, or in two runs that draw the maps in a different order. Each random
         choice is taken instead from a hash of the seed and of 'key', which names what the value is
-        chosen for, so the same element gets the same value on every map. The hash is SHA-256.
-        Python's own hash of a string changes from one run to the next.
+        chosen for. The same element then gets the same value on every map. The hash is SHA-256,
+        since Python's own hash of a string changes from one run to the next.
 
         Parameters
         ==========
@@ -3336,7 +3450,7 @@ class Mapper:
                     'color_hexcode': color
                 }
             unified_values = self._aggregate_accession_quantities(
-                df, value_column, gene_reduction, path, undefined
+                df, value_column, gene_reduction, path, element_type, undefined
             )
             self._warn_undefined_values(undefined, gene_aggregation, path)
             cmap = self._resolve_sequential_colormap(
@@ -3571,7 +3685,7 @@ class Mapper:
         sample_values: Dict[str, Dict[str, float]] = {s: {} for s in all_sample_names}
         for sample_name, sample_rows in df.groupby('__sample'):
             sample_values[sample_name] = self._aggregate_accession_quantities(
-                sample_rows, value_column, gene_reduction, path, undefined
+                sample_rows, value_column, gene_reduction, path, element_type, undefined
             )
         self._warn_undefined_values(undefined, gene_aggregation, path)
 
@@ -3718,7 +3832,9 @@ class Mapper:
         the samples of each group. Each group's map shows it. Without that rule, each group's map
         counts the group's samples. A rule given as 'group_summary' then chooses one value per
         element across the groups for the 'unified' map. It needs a rule for the samples, since the
-        groups otherwise have no values. Without it, the 'unified' map counts the groups.
+        groups otherwise have no values. Without it, the 'unified' map counts the groups. Without a
+        rule for the samples, no map shows the values. They then take no colors, however many there
+        are.
 
         Parameters
         ==========
@@ -3805,8 +3921,8 @@ class Mapper:
         if grouped and sample_rule is None and value_colors_txt is not None:
             raise ConfigError(
                 f"'--{element_type}-value-colors' gives a color to each categorical value. Here "
-                f"the samples are grouped, and '{sample_summary_flag}' gives no rule, so each "
-                f"group's map counts the group's samples, and no map shows the values. Give "
+                f"the samples are grouped, and '{sample_summary_flag}' gives no rule. Each group's "
+                f"map therefore counts the group's samples, and no map shows the values. Give "
                 f"'{sample_summary_flag}' a rule, such as 'plurality_order', to color each group's "
                 f"map by a value chosen among its samples. Or drop the colors file."
             )
@@ -3838,20 +3954,31 @@ class Mapper:
 
         # The order of the values sets their colors, their place in the legend, and their drawing
         # priority. The first value is drawn on top. Its priority is 1. The priorities of the others
-        # fall evenly towards 0, which no value reaches. 'reverse_overlay' turns this around.
-        value_colors = self._resolve_value_colors(
-            df['__value'], value_colors_txt, element_type, path
-        )
-        value_order = {value: position for position, value in enumerate(value_colors)}
-        value_count = len(value_colors)
-        value_color_priorities = {
-            value: (
-                color,
-                (position + 1) / value_count if reverse_overlay
-                else (value_count - position) / value_count
+        # fall evenly towards 0, which no value reaches. 'reverse_overlay' reverses the priorities,
+        # so the last value is drawn on top. Where no map shows the values, they take no colors. Any
+        # number of them can then be read without a colors file. The rule among the genes of an
+        # accession still needs their order ('_select_accession_values').
+        if grouped and sample_rule is None:
+            value_colors = None
+            value_color_priorities = None
+            value_order = {
+                value: position
+                for position, value in enumerate(self._sort_values(set(df['__value'])))
+            }
+        else:
+            value_colors = self._resolve_value_colors(
+                df['__value'], value_colors_txt, element_type, path
             )
-            for position, (value, color) in enumerate(value_colors.items())
-        }
+            value_order = {value: position for position, value in enumerate(value_colors)}
+            value_count = len(value_colors)
+            value_color_priorities = {
+                value: (
+                    color,
+                    (position + 1) / value_count if reverse_overlay
+                    else (value_count - position) / value_count
+                )
+                for position, (value, color) in enumerate(value_colors.items())
+            }
 
         # The genes of an accession can have different values. A rule chooses one value for the
         # accession in each sample. The choices are counted for '_report_categorical_choices'.
@@ -4039,8 +4166,8 @@ class Mapper:
         reaction_value_type : Literal['numeric', 'categorical'], 'numeric'
             What the value column of the reaction file holds ('VALUE_TYPES'). Categorical values are
             names. Each takes a color of its own ('_build_categorical_txt_model'). The gene and
-            accession aggregations then take the rules of 'CATEGORICAL_RULES', which choose one
-            value where several meet, and so do the sample and group summaries. Without a rule, the
+            accession aggregations and the sample and group summaries then take the rules of
+            'CATEGORICAL_RULES'. A rule chooses one value where several meet. Without a rule, the
             sample summary shows presence on the 'unified' map. With groups and without a rule, it
             counts each group's samples on that group's map.
 
@@ -4448,13 +4575,14 @@ class Mapper:
         mirror the presence engine; see the CLI help and '_map_element_membership'.
         'reaction_membership_colors' is the path to a kegg-membership-colors-txt file. It gives the
         color of each contigs database, or of each group when the contigs databases are grouped. The
-        layer is then colored by membership in place of a colormap. The file also colors each
-        database's or group's own map. 'group_colormap' may be 'GROUP_COLORMAP_TINT' to color each
-        group's own maps by a ramp running to that group's own color instead of by a named colormap,
-        in which case 'group_colormap_limits' is how far from white that ramp runs
-        ('_group_map_colors'). 'group_colormap_scheme' draws the count scale of every group's maps
-        in discrete bands ('by_count') or as a gradient ('by_count_continuous'), and by default
-        keeps the bands while the colors can be told apart.
+        layer is then colored by membership in place of a colormap. Without groups, the file also
+        colors the individual map of each contigs database. With groups, a group's own maps take the
+        group's color only where 'group_colormap' is 'GROUP_COLORMAP_TINT'. That value colors each
+        group's own maps by a ramp running to the group's own color instead of by a named colormap.
+        'group_colormap_limits' is then how far from white the ramp runs ('_group_map_colors').
+        'group_colormap_scheme' draws the count scale of every group's maps in discrete bands
+        ('by_count') or as a gradient ('by_count_continuous'), and by default keeps the bands while
+        the colors can be told apart.
 
         Returns
         =======
@@ -4752,10 +4880,11 @@ class Mapper:
         mirror the presence engine; see the CLI help and '_map_element_membership'.
         'reaction_membership_colors' is the path to a kegg-membership-colors-txt file. It gives the
         color of each genome, or of each group when the genomes are grouped. The layer is then
-        colored by membership in place of a colormap. The file also colors each genome's or group's
-        own map. 'group_colormap' may be 'GROUP_COLORMAP_TINT' to color each group's own maps by a
-        ramp running to that group's own color instead of by a named colormap, in which case
-        'group_colormap_limits' is how far from white that ramp runs ('_group_map_colors').
+        colored by membership in place of a colormap. Without groups, the file also colors the
+        individual map of each genome. With groups, a group's own maps take the group's color only
+        where 'group_colormap' is 'GROUP_COLORMAP_TINT'. That value colors each group's own maps by
+        a ramp running to the group's own color instead of by a named colormap.
+        'group_colormap_limits' is then how far from white the ramp runs ('_group_map_colors').
         'group_colormap_scheme' draws the count scale of every group's maps in discrete bands
         ('by_count') or as a gradient ('by_count_continuous'), and by default keeps the bands while
         the colors can be told apart.
@@ -6010,7 +6139,8 @@ class Mapper:
     @staticmethod
     def _summarize_entry_individuals(
         entry: kgml.Entry,
-        layer: dict
+        layer: dict,
+        individual: Union[str, None] = None
     ) -> Tuple[Dict[str, str], Union[str, None]]:
         """
         Find an Entry's categorical value in each sample, and on the 'unified' map.
@@ -6026,10 +6156,13 @@ class Mapper:
         not vote. Without a rule, the 'unified' map shows presence, and no value is chosen for it.
 
         Results are kept in the layer's '_element_cache', keyed by the Entry's sorted accessions.
-        The layer's '_choices' counts how each choice among different values was made
-        ('_report_categorical_choices'). Thanks to the cache, each choice is counted once. The
-        values of an element are worked out for every sample at once, so the counts cover every
-        sample of an element on a drawn map, including samples whose own maps are not drawn.
+        The values of an element are worked out for every sample at once. The layer's '_choices'
+        counts how each choice among different values was made ('_report_categorical_choices'). A
+        choice is counted the first time a map that uses it asks for the element. It is therefore
+        counted once, and only if a drawn map uses it. The map of a sample uses the choice made in
+        that sample. The map of a group uses the choices made in its samples and the choice among
+        them. The 'unified' map uses every choice that leads to its value. A layer without samples
+        has one choice per element, which every map uses.
 
         Parameters
         ==========
@@ -6038,6 +6171,10 @@ class Mapper:
 
         layer : dict
             A layer model of categorical values ('_build_categorical_txt_model').
+
+        individual : Union[str, None], None
+            The sample or group whose map asks for the values, or None for the 'unified' map. It
+            sets which choices are counted. The values returned do not depend on it.
 
         Returns
         =======
@@ -6054,11 +6191,33 @@ class Mapper:
         # the same value on both maps, and its choices are counted once.
         element_key = tuple(sorted(accessions))
         cache = layer['_element_cache']
+        choices = layer['_choices']
+
+        def _count_used(result):
+            # Count the choices that the asking map uses. A counted choice is dropped, so no choice
+            # is counted twice.
+            individual_values, unified_value, uncounted = result
+            if individual is None or layer['sample_values'] is None:
+                used = list(uncounted)
+            elif layer['group_samples'] is None:
+                used = [('element', individual)]
+            else:
+                used = [('element', sample) for sample in layer['group_samples'][individual]]
+                used.append(('sample', individual))
+            for level, voter in used:
+                how = uncounted.pop((level, voter), None)
+                if how is not None:
+                    choices[level][how] += 1
+            return individual_values, unified_value
+
         if element_key in cache:
-            return cache[element_key]
+            return _count_used(cache[element_key])
         order = layer['value_order']
         seed = layer['seed']
-        choices = layer['_choices']
+        # How each choice among different values was made, keyed by its level and by the sample or
+        # group it was made for. The key holds '' instead for a choice on the 'unified' map, and for
+        # a choice in a layer without samples.
+        uncounted: Dict[Tuple[str, str], str] = {}
 
         def _choose(values: Dict[str, str], sample: str) -> Union[str, None]:
             votes = [values[accession] for accession in accessions if accession in values]
@@ -6068,13 +6227,12 @@ class Mapper:
                 votes, layer['accession_rule'], order, seed, ('accession', sample) + element_key
             )
             if how is not None:
-                choices['element'][how] += 1
+                uncounted[('element', sample)] = how
             return value
 
         if layer['sample_values'] is None:
-            result = {}, _choose(layer['unified_values'], '')
-            cache[element_key] = result
-            return result
+            cache[element_key] = {}, _choose(layer['unified_values'], ''), uncounted
+            return _count_used(cache[element_key])
 
         sample_element_values: Dict[str, str] = {}
         for sample, values in layer['sample_values'].items():
@@ -6082,10 +6240,12 @@ class Mapper:
             if value is not None:
                 sample_element_values[sample] = value
 
-        def _choose_across(votes: List[str], rule: str, level: str, key: Tuple[str, ...]):
+        def _choose_across(
+            votes: List[str], rule: str, level: str, voter: str, key: Tuple[str, ...]
+        ) -> Union[str, None]:
             value, how = Mapper._choose_categorical_value(votes, rule, order, seed, key)
             if how is not None:
-                choices[level][how] += 1
+                uncounted[(level, voter)] = how
             return value
 
         group_samples = layer['group_samples']
@@ -6110,7 +6270,8 @@ class Mapper:
                     if not votes:
                         continue
                     value = _choose_across(
-                        votes, layer['sample_rule'], 'sample', ('sample', group) + element_key
+                        votes, layer['sample_rule'], 'sample', group,
+                        ('sample', group) + element_key
                     )
                     if value is not None:
                         individual_values[group] = value
@@ -6118,12 +6279,11 @@ class Mapper:
         unified_value = None
         if unified_rule is not None and individual_values:
             unified_value = _choose_across(
-                list(individual_values.values()), unified_rule, unified_level,
+                list(individual_values.values()), unified_rule, unified_level, '',
                 (unified_level,) + element_key
             )
-        result = individual_values, unified_value
-        cache[element_key] = result
-        return result
+        cache[element_key] = individual_values, unified_value, uncounted
+        return _count_used(cache[element_key])
 
     @staticmethod
     def _normalize_entry_value(
@@ -6384,7 +6544,7 @@ class Mapper:
             - 'accessions', 'sample_values', 'unified_values', 'group_samples' and 'colorbar_label',
               as for a 'quantitative' layer. The values are names.
             - 'value_color_priorities': the color and priority of each value, in the order of the
-              values.
+              values. It is None where no map shows the values.
             - 'value_order', 'gene_rule', 'accession_rule', 'sample_rule', 'group_rule' and 'seed',
               which choose one value where several meet ('_summarize_entry_individuals').
               'sample_rule' and 'group_rule' are None where no rule was given.
@@ -6667,19 +6827,25 @@ class Mapper:
                     group_ramps if grouped else True
                 ):
                     continue
+                # The file colors the individual maps only for a layer without values, and only
+                # without groups. A grouped run that reaches this point did not ask for tints.
+                own = not grouped and layer['individual_mode'] == 'membership'
+                own_maps = (
+                    f" The file also colors the map of each {individual_noun}." if own else ""
+                )
                 grouped_clause = (
-                    f" Grouped, a group's own maps are colored by the number of the group's "
-                    f"{membership_singular}s containing an element, which takes its colors from "
-                    f"'--group-colormap': ask for '--group-colormap {GROUP_COLORMAP_TINT}' to "
-                    f"build each group's scale from that group's own color."
+                    f" A group's own maps are colored by the number of the group's "
+                    f"{membership_singular}s containing an element, in the colors of "
+                    f"'--group-colormap'. Give '--group-colormap {GROUP_COLORMAP_TINT}' to build "
+                    f"each group's scale from the group's color in the file."
                 ) if grouped and layer['individual_mode'] == 'membership' else ""
                 raise ConfigError(
                     f"The colors file given to '{layer['membership_colors_flag']}' gives a color "
-                    f"to each {individual_noun}, which colors an element by exactly which "
-                    f"{individual_noun}s contain it, and colors each {individual_noun}'s own map. "
-                    f"Nothing in this run is colored either way for the {layer['element_type']} "
-                    f"layer, so the file would go unused.{grouped_clause} Please remove it, or "
-                    f"color this layer by presence."
+                    f"to each {individual_noun}. On the 'unified' map, these colors show exactly "
+                    f"which {individual_noun}s contain an element.{own_maps} Nothing in this run "
+                    f"is colored {'either way' if own else 'that way'} for the "
+                    f"{layer['element_type']} layer, so the file would go unused.{grouped_clause} "
+                    f"Please remove the file, or color this layer by presence."
                 )
 
         # With groups, a static color or reference map colors only apply to the 'unified' map. A
@@ -7182,7 +7348,8 @@ class Mapper:
                     ) else _sample_accessions(layer, layer['group_samples'][individual])
 
                     def entry_value(entry):
-                        return self._summarize_entry_individuals(entry, layer)[0].get(individual)
+                        values = self._summarize_entry_individuals(entry, layer, individual)[0]
+                        return values.get(individual)
                 return {
                     'element_type': layer['element_type'],
                     'use_reaction_attribute': layer['use_reaction_attribute'],
@@ -7291,6 +7458,15 @@ class Mapper:
         value_modes = ('quantitative', 'categorical')
         for layer in layers:
             element_type = layer['element_type']
+            # A file of categorical values with a header and no rows has no values to show. The
+            # other warnings here tell the user how to show values, so they do not apply.
+            if layer.get('value_type') == 'categorical' and not layer['value_order']:
+                self.run.warning(
+                    f"The text file at '{layer['path']}' has a header but no rows. The "
+                    f"{element_type} layer has no categorical values to color the maps by, so no "
+                    f"legend of values was drawn."
+                )
+                continue
             # Grouped categorical values reach a map only through a rule among each group's samples
             # ('_build_categorical_txt_model'). Without one, every map counts samples or groups.
             if (
@@ -7387,10 +7563,14 @@ class Mapper:
                         color_labels=labels,
                         label=label
                     )
-            if layer.get('value_type') == 'categorical':
-                # One band per value. The first value is drawn on top, so its band is at the top. A
-                # layer without samples draws its values on the individual maps too, so its legend
-                # is drawn where only those maps are.
+            # A categorical layer has no legend where no map shows its values, or where its file has
+            # a header and no rows. It has no colors in the first case and no values in the second.
+            if layer.get('value_type') == 'categorical' and layer['value_color_priorities']:
+                # One band per value, in the order of the values, with the first value at the top.
+                # This order does not depend on 'reverse_overlay'. A colorbar draws its first band
+                # at the bottom, so it is given the values in reverse. A layer without samples draws
+                # its values on the individual maps too, so its legend is drawn where only those
+                # maps are.
                 legend_colors = [
                     color for color, _ in reversed(layer['value_color_priorities'].values())
                 ]
@@ -7453,7 +7633,10 @@ class Mapper:
             self.progress.end()
 
         if not draw_individuals:
-            self._report_categorical_choices(layers, draw_unified_maps, draw_individual_maps)
+            self._report_categorical_choices(
+                layers, draw_unified_maps, draw_individuals,
+                draw_maps_lacking_data=draw_maps_lacking_data
+            )
             count = sum(drawn['unified'].values()) if drawn['unified'] else 0
             self.run.info("Number of maps drawn", count)
             return drawn
@@ -7555,7 +7738,10 @@ class Mapper:
             collated_count = self._collate_maps_by_map(output_dir, draw_files_individuals)
             self.progress.end()
 
-        self._report_categorical_choices(layers, draw_unified_maps, draw_individual_maps)
+        self._report_categorical_choices(
+            layers, draw_unified_maps, draw_individuals,
+            draw_maps_lacking_data=draw_maps_lacking_data, draw_grid=draw_grid is not False
+        )
         if draw_unified_maps:
             count = sum(drawn['unified'].values()) if drawn['unified'] else 0
             self.run.info(
@@ -7607,10 +7793,11 @@ class Mapper:
             to white.
 
         drawn_individuals : List[str]
-            The samples, contigs databases, genomes, or groups drawn on their own maps. The color
-            that the membership colors file gives one of them is the color of its own map, so only
-            the colors of these are checked here. Where the 'unified' map is drawn, its own scale is
-            checked as well. That scale includes the color of every sample, contigs database,
+            The samples, contigs databases, genomes, or groups drawn on their own maps. Only the
+            colors that the membership colors file gives these are checked here. Without groups,
+            each such color is the color of a map. With groups, a group's own maps take the group's
+            color only with '--group-colormap tint'. Where the 'unified' map is drawn, its own scale
+            is checked as well. That scale includes the color of every sample, contigs database,
             genome, or group.
 
         group_color_priorities : Dict[str, List[Tuple[str, float]]], None
@@ -7935,9 +8122,17 @@ class Mapper:
                 f"'--reaction-colormap'. {colormaps}"
             )
         # The colors of categorical values come from a colors file. Anvi'o's default colors are
-        # never reserved.
+        # never reserved. A compound takes the color of one of the values. The file gives each value
+        # a color of its own, so exactly one value has the reserved color.
         if mode == 'categorical':
-            return f"Remove {reserved_color} from the file given to '--reaction-value-colors'."
+            value = next(
+                value for value, (color, _) in layer['value_color_priorities'].items()
+                if kgml.canonical_color(color) == reserved_color
+            )
+            return (
+                f"Give the value '{value}' a color other than {reserved_color} in the file given "
+                f"to '--reaction-value-colors'."
+            )
         # The membership colors file gives each sample, contigs database, genome, or group a color.
         # Presence is then colored by those colors in place of a colormap.
         if mode == 'membership' and layer.get('membership_colors') is not None:
@@ -10140,8 +10335,9 @@ class Mapper:
             is.
 
         check_maps_lacking_kos : bool, True
-            If True, check for "empty" individual map files that are needed to complete the map grid
-            and draw them as temporary files, deleting them at after map grids are drawn.
+            If True, draw a blank map for each panel of a grid whose map was not drawn. This covers
+            the individual maps and the 'unified' map. The blank maps are deleted after the grids
+            are drawn.
 
         source_type : Literal['contigs database', 'pangenome', 'sample'], 'unknown'
             The kind of source a group is made of, which labels the per-group colorbars of source
@@ -10158,6 +10354,7 @@ class Mapper:
 
         # Draw empty maps needed to fill in grids.
         paths_to_remove: List[str] = []
+        unified_fillers = False
         if check_maps_lacking_kos:
             # Make a new dictionary. Its outer keys are pathway numbers. Its inner dictionaries say
             # whether the map was drawn for each sample, contigs database, genome, or group.
@@ -10199,6 +10396,34 @@ class Mapper:
                     paths_to_remove.append(out_path)
                     if self.categorize_files:
                         paths_to_remove.append(os.path.join(out_dir, FLAT_SUBDIR, pathway_basename))
+
+            # A 'unified' map is not drawn where it has nothing to color. For example, a rule for
+            # categorical values can leave every element of the map without a value. A grid with an
+            # individual map of the pathway then gets a blank 'unified' panel, as it does for a
+            # missing individual panel. Otherwise the grid would not be drawn.
+            unified_dir = os.path.join(output_dir, UNIFIED_SUBDIR)
+            for pathway_number in pathway_numbers if include_unified else []:
+                if not any(
+                    drawn['individual'].get(individual, {}).get(pathway_number, False)
+                    for individual in draw_grid_individuals
+                ):
+                    continue
+                pathway_basename = self._map_basename(pathway_number)
+                if self.pathway_categorization is None:
+                    out_path = os.path.join(unified_dir, pathway_basename)
+                else:
+                    out_path = os.path.join(
+                        unified_dir, *self.pathway_categorization[pathway_number], pathway_basename
+                    )
+                if os.path.exists(out_path):
+                    continue
+                self._map_kos_fixed_colors(
+                    [], unified_dir, [pathway_number], draw_maps_lacking_data=True
+                )
+                paths_to_remove.append(out_path)
+                if self.categorize_files:
+                    paths_to_remove.append(os.path.join(unified_dir, FLAT_SUBDIR, pathway_basename))
+                unified_fillers = True
 
             self.progress = progress
             self.run = run
@@ -10291,9 +10516,15 @@ class Mapper:
 
         self.progress.end()
 
-        # Remove individual maps and their links that were only needed for map grids.
+        # Remove the maps and their links that were only needed for map grids.
         for path in paths_to_remove:
             os.remove(path)
+        # Remove the directories left empty by the blank 'unified' maps. Where no 'unified' map was
+        # drawn, this removes the 'unified' directory itself.
+        if unified_fillers:
+            for dir_path, _, _ in os.walk(unified_dir, topdown=False):
+                if not os.listdir(dir_path):
+                    os.rmdir(dir_path)
         for individual in set(draw_individuals).difference(set(draw_files_individuals)):
             shutil.rmtree(os.path.join(output_dir, INDIVIDUAL_SUBDIR, individual))
             drawn['individual'].pop(individual)

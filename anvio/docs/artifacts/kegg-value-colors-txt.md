@@ -29,10 +29,10 @@ The order of the rows is the order of the values. It is used in three places.
 
 - **The legend.** The legend lists the values in this order, with the first value at the top.
 - **Drawing.** Where map elements overlap, the first value is drawn on top. `--reaction-reverse-overlay`/`--compound-reverse-overlay` puts the last value on top instead.
-- **Choosing one value.** Where several values meet, a rule chooses one. The rules `plurality_order` and `order` use this order. `plurality_order` gives a tie to the value that comes first. `order` always takes the value that comes first, so the order can rank the values, for example to have `up` win over `same` in a map element whose KOs have both.
+- **Choosing one value.** Where several values meet, a rule chooses one. `plurality_order` gives a tie to the value that comes first, and `order` always takes the value that comes first. If `up` is in an earlier row than `same`, `order` chooses `up` for a map element whose KOs have both.
 
 ## When this file does not apply
 
 This file needs categorical values. It is refused unless the layer's value type is `categorical`.
 
-With a %(groups-txt)s, it is also refused unless the layer's sample summary gives a rule. That is `--reaction-sample-summary` for the reaction layer and `--compound-sample-summary` for the compound layer. Without a rule, each group's map counts the group's samples. No map then shows the values.
+With a %(groups-txt)s, a layer whose file has a `sample` column also needs a rule in its sample summary, or this file is refused. That is `--reaction-sample-summary` for the reaction layer and `--compound-sample-summary` for the compound layer. Without a rule, each group's map counts the group's samples. No map then shows the values, so they take no colors, and there can be more than 18 of them without this file. A layer whose file has no `sample` column shows the same values on every group's map, so this file is accepted for that layer without a rule.

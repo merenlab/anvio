@@ -242,11 +242,15 @@ def get_args() -> Namespace:
         f"'--reaction-sample-summary' instead chooses one value across the samples. On global and "
         f"overview maps drawn from reactions alone, each compound takes the value that the "
         f"accession rule chooses among the reactions that touch it. A compound given no value "
-        f"keeps the color of a compound that no colored reaction touches. The options that shape a "
-        f"scale of numbers are refused. With '--groups-txt', each group's map counts its samples, "
-        f"and the 'unified' map counts the groups. A rule in '--reaction-sample-summary' colors "
-        f"each group's map instead. '--reaction-group-summary' can then give a rule for the "
-        f"'unified' map. A group given no value does not vote for the 'unified' map."
+        f"keeps the color of a compound that no colored reaction touches. These options for a "
+        f"scale of numbers are refused: '--reaction-value-limits', "
+        f"'--reaction-individual-value-limits', '--reaction-value-center', "
+        f"'--reaction-individual-value-center', '--reaction-value-period', "
+        f"'--reaction-element-normalization', and '--reaction-individual-colormap'. With "
+        f"'--groups-txt', each group's map counts its samples, and the 'unified' map counts the "
+        f"groups. A rule in '--reaction-sample-summary' colors each group's map instead. "
+        f"'--reaction-group-summary' can then give a rule for the 'unified' map. A group given no "
+        f"value does not vote for the 'unified' map."
     )
     groupTXT.add_argument(
         '--compound-value-type', choices=list(VALUE_TYPES), help=
@@ -259,8 +263,8 @@ def get_args() -> Namespace:
         f"The seed of random choices among categorical values. The rules 'plurality_random' and "
         f"'random' make these choices (see '--reaction-value-type'). The default is "
         f"{DEFAULT_CATEGORICAL_SEED}. Each choice comes from the seed and from what the value is "
-        f"chosen for, such as the KOs of a map element in one sample, so a map element gets the "
-        f"same value on every map, and in every run with the same seed. This option is refused "
+        f"chosen for, such as the KOs of a map element in one sample. A map element therefore gets "
+        f"the same value on every map, and in every run with the same seed. This option is refused "
         f"where no rule chooses at random."
     )
 
@@ -444,11 +448,11 @@ def get_args() -> Namespace:
         "'--reaction-group-summary' is refused. With '--reaction-value-period', its aggregations "
         "are 'circular_mean' and 'angular_deviation'. With '--reaction-value-type categorical', "
         "presence stays the default. It counts the groups, however few there are. A rule chooses "
-        "one value across the groups instead (see '--reaction-value-type'). Each group with a "
-        "value gives one vote, whatever its size. It also needs a rule in "
-        "'--reaction-sample-summary'. That rule chooses each group's value among its samples. With "
-        "few groups, ties are common. With two groups, every disagreement is a tie, so "
-        "'plurality_order' settles it by the order of the values."
+        "one value across the groups instead (see '--reaction-value-type'). It needs "
+        "'--reaction-sample-summary' to give a rule as well, to choose each group's value among "
+        "its samples. Each group with a value gives one vote, whatever its size. With few groups, "
+        "ties are common. With two groups, every disagreement is a tie, so 'plurality_order' "
+        "settles it by the order of the values."
     )
     groupSUMMARY.add_argument(
         '--compound-group-summary', metavar='NAME', help=
@@ -633,8 +637,8 @@ def get_args() -> Namespace:
         "'--reaction-individual-colormap' gives the latter a colormap of their own. With "
         "'--reaction-value-type categorical', each value takes a color of its own. This option "
         "then colors only presence across the samples or groups on the 'unified' map. It is "
-        "refused where no map shows presence. See the following webpage for named Matplotlib "
-        "colormaps: "
+        "refused where the 'unified' map shows the values, or where no 'unified' map is drawn. See "
+        "the following webpage for named Matplotlib colormaps: "
         "https://matplotlib.org/stable/users/explain/colors/colormaps.html#classes-of-colormaps"
     )
     groupCOLOR.add_argument(
@@ -671,30 +675,33 @@ def get_args() -> Namespace:
         '--reaction-membership-colors', type=str, metavar='PATH', help=
         "Path to a tab-delimited kegg-membership-colors-txt file. It gives a color hex code to "
         "each sample of a '--reaction-txt' file, each contigs database, each genome of a "
-        "pangenome, or each group of any of these when '--groups-txt' is used. The file switches "
-        "the reaction layer to coloring by membership, with colors you choose rather than colors "
-        "from a colormap, so it replaces '--reaction-colormap' and cannot be combined with it. The "
-        "first column of the file holds the name of each sample, database, genome, or group. It "
-        "can be headed anything. Its 'color' column holds the hex codes. Coloring by membership "
-        "colors an element by exactly WHICH samples, databases, genomes, or groups contain it, so "
-        "a color is needed for every combination of them. Each of them on its own takes its own "
-        "color. A combination takes the blend of the colors of its members. A row naming the "
-        "combination overrides the blend. The row gives the names of the members separated by "
-        "commas, exactly as the colorbar labels the combination. Without groups, the same colors "
-        "also color the individual map of each sample, database, or genome "
-        "('--draw-individual-files'/'--draw-grid'), so the color of a panel of a grid says which "
+        "pangenome, or each group of any of these when '--groups-txt' is used. The file colors the "
+        "reaction layer by membership, in colors you choose. It replaces '--reaction-colormap', so "
+        "the two cannot be combined. The first column of the file holds the name of each sample, "
+        "database, genome, or group. It can be headed anything. Its 'color' column holds the hex "
+        "codes. Coloring by membership colors an element by exactly WHICH samples, databases, "
+        "genomes, or groups contain it, so a color is needed for every combination of them. Each "
+        "of them on its own takes its own color. A combination takes the blend of the colors of "
+        "its members. A row naming the combination overrides the blend. The row gives the names of "
+        "the members separated by commas, exactly as the colorbar labels the combination. Without "
+        "groups, the same colors also color the individual map of each sample, database, or genome "
+        "('--draw-individual-files'/'--draw-grid'). The color of a panel of a grid then says which "
         "sample, database, or genome it is. That color matches the band of the same sample, "
-        "database, or genome on the 'unified' map. With groups, the individual maps of each group "
-        "count the group's samples, databases, or genomes instead. Only '--group-colormap tint' "
-        "puts the group's color on those maps. It colors them with a ramp of tints of the group's "
-        "color. Every sample, database, genome, or group of the run needs a color. Names in the "
-        "file that are not in the run are reported and ignored, so one file can serve runs that "
-        "draw different subsets. Note that giving this file colors the layer by membership however "
-        "many samples, databases, genomes, or groups there are. Without the file, more than three "
-        "of them would switch the layer to coloring by count. With the file, six of them take a "
-        "63-band scale of every combination, rather than a six-band scale of counts. No color "
-        "scale can distinguish the combinations of more than a handful of them, so anvi'o refuses "
-        "rather than draw a scale whose bands cannot be told apart."
+        "database, or genome on the 'unified' map. For a layer with a value column, the map of "
+        "each sample shows that sample's values instead. With groups, the individual maps of each "
+        "group count the group's samples, databases, or genomes. Only '--group-colormap tint' puts "
+        "the group's color on those maps. It colors them with a ramp of tints of the group's "
+        "color. Where '--reaction-sample-summary' gives an aggregation or a rule, a group's maps "
+        "show values, not counts. Every sample, database, genome, or group of the run needs a "
+        "color. Names in the file that are not in the run are reported and ignored, so one file "
+        "can serve runs that draw different subsets. Note that giving this file colors the layer "
+        "by membership however many samples, databases, genomes, or groups there are. Without the "
+        "file, a layer with more than three of them is colored by count. A layer of categorical "
+        "values ('--reaction-value-type categorical') is colored by count even with two or three "
+        "samples or groups. With the file, six of them take a 63-band scale of every combination, "
+        "rather than a six-band scale of counts. No color scale can distinguish the combinations "
+        "of more than a handful of them, so anvi'o refuses rather than draw a scale whose bands "
+        "cannot be told apart."
     )
     groupCOLOR.add_argument(
         '--compound-membership-colors', type=str, metavar='PATH', help=
@@ -713,8 +720,9 @@ def get_args() -> Namespace:
         "drawing order of overlapping elements, and the choices of the rules 'order' and "
         "'plurality_order'. Every value of the reaction file needs a color. Values that the "
         "reaction file does not have are reported and ignored, so one colors file can serve "
-        "several runs. Two values cannot share a color. With '--groups-txt', the file needs a rule "
-        "in '--reaction-sample-summary'. Without one, no map shows the values."
+        "several runs. Two values cannot share a color. With '--groups-txt' and a 'sample' column "
+        "in the reaction file, the colors file needs a rule in '--reaction-sample-summary'. "
+        "Without one, each group's map counts its samples, and no map shows the values."
     )
     groupCOLOR.add_argument(
         '--compound-value-colors', type=str, metavar='PATH', help=
@@ -1323,8 +1331,8 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     raise ConfigError(
                         f"'{colors_flag}' gives a color to each categorical value. Here the "
                         f"samples are grouped, and '--{element_type}-sample-summary' gives no "
-                        f"rule, so each group's map counts the group's samples, and no map shows "
-                        f"the values. Give '--{element_type}-sample-summary' a rule, such as "
+                        f"rule. Each group's map therefore counts the group's samples, and no map "
+                        f"shows the values. Give '--{element_type}-sample-summary' a rule, such as "
                         f"'plurality_order', to color each group's map by a value chosen among its "
                         f"samples. Or drop the colors file."
                     )
@@ -1493,7 +1501,9 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         # Categorical values take colors of their own. A colormap of such a layer colors only its
         # presence on the 'unified' map. It has nothing to color where that map shows the values, or
         # where that map is not drawn. The 'unified' map is colored by the group summary with
-        # groups, and by the sample summary without them.
+        # groups, and by the sample summary without them. In a grouped run without a sample rule,
+        # each group's map counts the group's samples, and '--group-colormap' colors those counts. A
+        # rule across the groups in such a run is refused further below.
         unified_level = 'group' if args.groups_txt is not None else 'sample'
         for element_type, _, layer, sample_summary, group_summary in summaries:
             colormap_flag = f'--{element_type}-colormap'
@@ -1502,8 +1512,18 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 continue
             if getattr(args, f'{element_type}_colormap') is None:
                 continue
+            group_counts = args.groups_txt is not None and sample_summary not in CATEGORICAL_RULES
             if not layer['has_sample']:
                 reason = "The file has no 'sample' column, so its one map shows the values."
+            elif group_counts and args.skip_unified_maps:
+                raise ConfigError(
+                    f"'{colormap_flag}' colors presence on the 'unified' map, but "
+                    f"'--skip-unified-maps' draws no 'unified' map. Each group's map counts the "
+                    f"group's samples, because '--{element_type}-sample-summary' gives no rule. "
+                    f"Use '--group-colormap' to color those counts."
+                )
+            elif group_counts:
+                continue
             elif unified_summary in CATEGORICAL_RULES:
                 reason = (
                     f"'--{element_type}-{unified_level}-summary {unified_summary}' colors the "
@@ -1790,6 +1810,11 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                         f"'{flag}' summarizes the samples of the {element_type} layer, but its "
                         f"file has no 'sample' column, so there are no samples to summarize."
                     )
+                if level == 'group' and args.groups_txt is None:
+                    raise ConfigError(
+                        f"'{flag}' summarizes groups of samples, but no groups were defined with "
+                        f"'--groups-txt'."
+                    )
                 # A categorical rule chooses one categorical value across the samples or groups.
                 # Every other name that is not presence is an aggregation, which pools numbers. A
                 # rule given where it cannot apply is refused with what the user can do instead.
@@ -1805,8 +1830,8 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     raise ConfigError(
                         f"'{flag}' was given as '{summary}', which chooses one categorical value "
                         f"across the {level}s. The values of the {element_type} file are numbers. "
-                        f"To read them as categorical values, give "
-                        f"'--{element_type}-value-type categorical'."
+                        f"To read them as categorical values, give '--{element_type}-value-type "
+                        f"categorical'."
                     )
                 if (
                     layer['mode'] == 'categorical'
@@ -1821,7 +1846,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                         )
                     else:
                         alternatives = (
-                            f"Summarize presence across the {level}s with "
+                            f"Summarize presence across the {level}s with one of "
                             f"{SUMMARY_PRESENCE_PHRASE}. Or choose one value across the {level}s "
                             f"with one of {CATEGORICAL_RULES_PHRASE}."
                         )
@@ -1840,11 +1865,6 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                         f"values, but the {element_type} file has no value column, so there are no "
                         f"values to pool. Summarize presence with one of {SUMMARY_PRESENCE_PHRASE} "
                         f"instead, or add a value column to the file."
-                    )
-                if level == 'group' and args.groups_txt is None:
-                    raise ConfigError(
-                        f"'{flag}' summarizes groups of samples, but no groups were defined with "
-                        f"'--groups-txt'."
                     )
                 # With groups, presence at the SAMPLE level is always the count of a group's own
                 # samples in discrete bands from '--group-colormap', so every presence name
@@ -2094,8 +2114,8 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         kwargs['compound_color'] = compound_color
         kwargs['compound_colormap'] = False
 
-    # A value type and the colors of categorical values go to the mapper only where given, and so
-    # does the seed, which the mapper refuses where no rule chooses at random.
+    # A value type, the colors of categorical values, and the seed go to the mapper only where
+    # given. The mapper refuses a seed where no rule chooses at random.
     for element_type in ('reaction', 'compound'):
         value_type = getattr(args, f'{element_type}_value_type')
         if value_type is not None:
