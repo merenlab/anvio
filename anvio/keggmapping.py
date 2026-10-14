@@ -7679,12 +7679,14 @@ class Mapper:
                     )
                 specs = _individual_specs(individual)
                 for pathway_number in pathway_numbers:
+                    progress.update(pathway_number)
                     drawn_individual[pathway_number] = self._draw_map_elements(
                         pathway_number, specs, individual_output_dir,
                         draw_map_lacking_data=draw_maps_lacking_data
                     )
             elif original_run:
                 for pathway_number in pathway_numbers:
+                    progress.update(pathway_number)
                     drawn_individual[pathway_number] = self._draw_map_kos_original_color(
                         pathway_number, layers[0]['source_accessions'].get(individual, set()),
                         individual_output_dir, draw_map_lacking_data=draw_maps_lacking_data
@@ -7692,6 +7694,7 @@ class Mapper:
             else:
                 specs = _individual_specs(individual)
                 for pathway_number in pathway_numbers:
+                    progress.update(pathway_number)
                     drawn_individual[pathway_number] = self._draw_map_elements(
                         pathway_number, specs, individual_output_dir,
                         draw_map_lacking_data=draw_maps_lacking_data
