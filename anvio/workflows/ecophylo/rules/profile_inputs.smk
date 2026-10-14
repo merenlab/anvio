@@ -46,7 +46,7 @@ there are NO repeating gene-callers-id values.
     params:
         external_gene_calls_all=rules.combine_sequence_data.output.external_gene_calls_all,
     script:
-        "scripts/subset_external_gene_calls_file.py"
+        "../scripts/subset_external_gene_calls_file.py"
 
 
 rule make_fasta_txt:

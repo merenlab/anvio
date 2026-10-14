@@ -29,4 +29,5 @@ INFO "Importing default state for pangenome"
 anvi-import-state -p 03_PAN/TEST-PAN.db -s default-state.json -n default
 
 INFO "Vizualize pangenomic results"
-anvi-display-pan -g 03_PAN/TEST-GENOMES.db -p 03_PAN/TEST-PAN.db
+anvi-display-pan -g 03_PAN/TEST-GENOMES.db -p 03_PAN/TEST-PAN.db \
+                 $dry_run_controller

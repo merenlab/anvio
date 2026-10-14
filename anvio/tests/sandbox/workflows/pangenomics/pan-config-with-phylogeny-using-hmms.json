@@ -25,6 +25,7 @@
         "tree_name": "phylogeny_hmms"
     },
     "workflow_name": "pangenomics",
+    "max_threads": 1,
     "project_name": "FIVE_TEST",
     "internal_genomes": "",
     "external_genomes": "five-external-genomes.txt",

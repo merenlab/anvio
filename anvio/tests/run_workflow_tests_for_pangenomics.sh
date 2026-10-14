@@ -18,13 +18,15 @@ INFO "Running pangenomics workflow with phylogeny based on hmms"
 anvi-run-workflow -w pangenomics -c pan-config-with-phylogeny-using-hmms.json
 
 INFO "Vizualize pangenomic results"
-anvi-display-pan -g 03_PAN_FIVE_PAN/FIVE_TEST-GENOMES.db -p 03_PAN_FIVE_PAN/FIVE_TEST-PAN.db
+anvi-display-pan -g 03_PAN_FIVE_PAN/FIVE_TEST-GENOMES.db -p 03_PAN_FIVE_PAN/FIVE_TEST-PAN.db \
+                 $dry_run_controller
 
 INFO "Running pangenomics workflow with phylogeny based on gene clusters"
 anvi-run-workflow -w pangenomics -c pan-config-with-phylogeny.json
 
 INFO "Vizualize pangenomic results"
-anvi-display-pan -g 03_PAN_FIVE_PAN/FIVE_TEST-GENOMES.db -p 03_PAN_FIVE_PAN/FIVE_TEST-PAN.db
+anvi-display-pan -g 03_PAN_FIVE_PAN/FIVE_TEST-GENOMES.db -p 03_PAN_FIVE_PAN/FIVE_TEST-PAN.db \
+                 $dry_run_controller
 
 INFO "Creating a default config for pangenomics workflow"
 anvi-run-workflow -w pangenomics --get-default-config default-config.json
@@ -42,4 +44,5 @@ INFO "Importing default state for pangenome"
 anvi-import-state -p 03_PAN/TEST-PAN.db -s default-state.json -n default
 
 INFO "Vizualize pangenomic results"
-anvi-display-pan -g 03_PAN/TEST-GENOMES.db -p 03_PAN/TEST-PAN.db
+anvi-display-pan -g 03_PAN/TEST-GENOMES.db -p 03_PAN/TEST-PAN.db \
+                 $dry_run_controller

@@ -42,7 +42,8 @@ class MCGPlots:
         self.samples_nuc_coverage_dict = {}
         self.gene_id = gene_id
 
-        self.samples = set(mcg.gene_presence_absence_in_samples.loc[gene_id, mcg.gene_presence_absence_in_samples.loc[gene_id,]==True].index)
+        gene_presence_absence = mcg.gene_presence_absence_in_samples.loc[gene_id]
+        self.samples = set(gene_presence_absence[gene_presence_absence == True].index)
         # taking only the positive samples in which the gene is present
         self.samples = self.samples.intersection(mcg.positive_samples)
         if not self.samples:
@@ -111,7 +112,7 @@ class MCGPlots:
                 plt.plot(self.x, np.apply_along_axis(f(fit_slope - 2*fit_slope_std),0,self.x),'g')
 
             # adding the text to the plot
-            text_for_fit = u'$R^2 = %.2f$\n $slope = %.2f$\n $slope\ precision = %.2f$' % (fit_R_squered, fit_slope, fit_slope_precision)
+            text_for_fit = '$R^2 = %.2f$\n $slope = %.2f$\n $slope\\ precision = %.2f$' % (fit_R_squered, fit_slope, fit_slope_precision)
             axes.text(0.2, 0.9, text_for_fit, ha='center', va='center', transform=axes.transAxes)
 
         if self.plot_gene_nuc_coverage:

@@ -12,7 +12,7 @@ anvio_codename = 'eunice' # after Eunice Newton Foote -- see the release notes f
 
 # Mandatory Python version
 major_python_version_required = 3
-minor_python_version_required = 10
+minor_python_version_required = 13
 
 # Version numbers for anvi'o artifacts -- if you need to change any
 # of these numbers, you better have a well-tested migration script

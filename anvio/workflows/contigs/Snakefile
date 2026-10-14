@@ -21,7 +21,7 @@ __email__ = "alon.shaiber@gmail.com"
 run = terminal.Run()
 
 this_workflow_is_inherited_by_another = (
-    False if "anvio/workflows/contigs" in str(workflow.included[0].abspath()) else True
+    False if "anvio/workflows/contigs" in w.get_entry_snakefile_path(workflow) else True
 )
 if not this_workflow_is_inherited_by_another:
     # don't be confused, child. when things come to this point, the variable `config`
@@ -77,7 +77,7 @@ include: w.get_workflow_rule_file_path("contigs", "gene_taxonomy.smk")
 include: w.get_workflow_rule_file_path("contigs", "external_genomes.smk")
 
 
-if "anvio/workflows/contigs" in str(workflow.included[0].abspath()):
+if "anvio/workflows/contigs" in w.get_entry_snakefile_path(workflow):
     # check if all program dependencies are met. for this line to be effective,
     # there should be an initial dry run step (which is the default behavior of
     # the `WorkflowSuperClass`, so you are most likely covered).

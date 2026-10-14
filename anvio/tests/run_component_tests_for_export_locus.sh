@@ -1,4 +1,3 @@
-
 #!/bin/bash
 source 00.sh
 

@@ -297,15 +297,11 @@ class SharedDataStore:
     def from_existing(cls, shm_name, index, mode='bytes'):
         """Attach to an existing shared memory segment (for use in workers)."""
         from multiprocessing.shared_memory import SharedMemory
-        from multiprocessing import resource_tracker
 
         obj = cls.__new__(cls)
         obj.mode = mode
         obj.index = index
-        obj.shm = SharedMemory(name=shm_name, create=False)
-
-        # Worker doesn't own cleanup — unregister from resource tracker
-        resource_tracker.unregister('/' + obj.shm.name, 'shared_memory')
+        obj.shm = SharedMemory(name=shm_name, create=False, track=False)
 
         return obj
 

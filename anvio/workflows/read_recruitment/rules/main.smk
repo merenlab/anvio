@@ -529,7 +529,13 @@ rule import_percent_of_reads_mapped:
     """Calculate and import read-mapping percentages into profile layers."""
     input:
         total_reads=dirs_dict["QC_DIR"] + "/{readset}-total_num_reads.txt",
-        profiledb=dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/PROFILE.db",
+        profiledb=ancient(
+            dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/PROFILE.db"
+        ),
+        # Profiling replaces this directory; its immutable log tracks recreation
+        # while the mutable database remains ancient to avoid import feedback.
+        runlog=dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/RUNLOG.txt",
+        bam=dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.bam",
     output:
         layers_txt=dirs_dict["PROFILE_DIR"]
         + "/{group}/{readset}/layers-additional-data.txt",
@@ -543,14 +549,12 @@ rule import_percent_of_reads_mapped:
     threads: 1
     resources:
         nodes=1,
-    params:
-        bam=dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.bam",
     run:
         import subprocess, shlex
 
         with open(input.total_reads) as f:
             reads_total = int(f.read().strip() or 0)
-        cmd_mapped = f"samtools view -c -F 2308 {shlex.quote(params.bam)}"
+        cmd_mapped = f"samtools view -c -F 2308 {shlex.quote(input.bam)}"
         mapped_out = subprocess.check_output(
             cmd_mapped, shell=True, text=True, stderr=subprocess.PIPE
         )
@@ -566,5 +570,6 @@ rule import_percent_of_reads_mapped:
         shell(
             "anvi-import-misc-data {output.layers_txt} "
             "-p {input.profiledb} "
-            "--target-data-table layers >> {log} 2>&1"
+            "--target-data-table layers "
+            "--just-do-it >> {log} 2>&1"
         )

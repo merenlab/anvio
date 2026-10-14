@@ -6,6 +6,9 @@ The currently available programs for calculating similarity metrics include, cho
 - [fastANI](https://github.com/ParBLiSS/FastANI) also to calcualte the ANI but at a faster speed (at the drawback of a slight reduction in accuracy)
 - [sourmash](https://sourmash.readthedocs.io/en/latest/) to calculate the mash distance between genomes.  Though we provide this option, we don't recommend using sourmash for genome comparisons--it excels at other tasks--yet it remains as a legacy option.
 
+If you omit `--program`, anvi'o uses fastANI. Choose pyANI explicitly when it is installed and you need its higher sensitivity for more divergent genomes.
+The pyANI options `--method`, `--min-alignment-fraction`, `--significant-alignment-length`, and `--min-full-percent-identity` require `--program pyANI`; supplying them with fastANI or sourmash raises an error.
+
 ### Input/Output
 
 The expected input is any combination of %(external-genomes)s, %(internal-genomes)s, and text files that contains paths to %(fasta)s files that describe each of your genomes. This is a tab-delimited file with two columns (`name` and `path` to the fasta files, each of which is assumed to be a single genome).

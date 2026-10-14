@@ -21,7 +21,7 @@ run = terminal.Run()
 
 this_workflow_is_inherited_by_another = (
     False
-    if "anvio/workflows/pangenomics" in str(workflow.included[0].abspath())
+    if "anvio/workflows/pangenomics" in w.get_entry_snakefile_path(workflow)
     else True
 )
 
@@ -63,7 +63,7 @@ rule pangenomics_target_rule:
 include: w.get_workflow_rule_file_path("pangenomics", "core.smk")
 
 
-if "anvio/workflows/pangenomics" in str(workflow.included[0].abspath()):
+if "anvio/workflows/pangenomics" in w.get_entry_snakefile_path(workflow):
     M.check_workflow_program_dependencies(workflow)
 
 

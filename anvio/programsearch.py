@@ -253,7 +253,7 @@ class ProgramSearch:
 
 
     def make_row_printable(self, row, description_width=None):
-        for header, info in row.iteritems():
+        for header, info in row.items():
             if header == 'Program':
                 formatted_info = F(info) # never linebreaks the program name
 

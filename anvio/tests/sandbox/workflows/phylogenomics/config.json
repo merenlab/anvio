@@ -24,6 +24,7 @@
     },
     "workflow_name": "phylogenomics",
     "project_name": "TEST",
+    "max_threads": 1,
     "internal_genomes": "",
     "external_genomes": "external-genomes.txt",
     "fasta_txt": "five-genomes-fasta.txt",

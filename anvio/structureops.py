@@ -13,7 +13,7 @@ import warnings
 import datetime
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
-# using the multiprocessing module directly results in a pickling error in Python 3.10 which
+# using the multiprocessing module directly results in a pickling error in Python 3.13 which
 # goes like this:
 #
 #   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
@@ -3047,7 +3047,7 @@ class ExternalStructuresFile(object):
         self.input_source = input_source
 
         filesnpaths.is_file_tab_delimited(self.path)
-        self.content = pd.read_csv(self.path, sep='\t')
+        self.content = pd.read_csv(self.path, sep='\t', keep_default_na=False, dtype={'path': str})
 
         if not len(self.content):
             raise ConfigError("Your external-structures file ('%s') has a header but no rows, so there are no "

@@ -14,6 +14,7 @@
         "run": false
     },
     "workflow_name": "pangenomics",
+    "max_threads": 1,
     "anvi_get_sequences_for_gene_clusters": {
         "--min-num-genomes-gene-cluster-occurs": 5,
         "--max-num-genes-from-each-genome": 1,

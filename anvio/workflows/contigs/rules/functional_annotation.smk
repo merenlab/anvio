@@ -19,10 +19,10 @@ rule reformat_external_functions:
         gene_functional_annotation_file = input.gene_functional_annotation
         external_gene_calls_file = input.external_gene_calls
         gene_functional_annotation = pd.read_csv(
-            gene_functional_annotation_file, sep="\t", index_col=0
+            gene_functional_annotation_file, sep="\t", index_col=0, keep_default_na=False
         )
         external_gene_calls = pd.read_csv(
-            external_gene_calls_file, sep="\t", index_col=0
+            external_gene_calls_file, sep="\t", index_col=0, keep_default_na=False
         )
         genes_in_both = [
             g

@@ -12,14 +12,14 @@ on:
         required: true
         type: string
       python-version:
-        description: Python version to use (e.g., "3.10")
+        description: Python version to use (e.g., "3.13")
         required: false
-        default: "3.10"
+        default: "3.13"
         type: string
       miniconda-version:
-        description: Miniconda version to use (e.g., "py310_26.1.1-1")
+        description: Miniconda version to use (e.g., "py313_26.1.1-1")
         required: false
-        default: "py310_26.1.1-1"
+        default: "py313_26.1.1-1"
         type: string
 
 jobs:
@@ -40,11 +40,11 @@ jobs:
         #   The next version (26.3.2-2) causes https://github.com/merenlab/anvio/issues/2590
         #   Release notes: https://www.anaconda.com/docs/getting-started/miniconda/release-notes
         #   Available versions: https://repo.continuum.io/miniconda/
-        miniconda-version: ${{ env.MINICONDA_VERSION }}
+        miniconda-version: ${{ inputs.miniconda-version }}
         auto-update-conda: true
         activate-environment: anvio_env
         environment-file: .conda/environment.yaml
-        python-version: ${{ env.PYTHON_VERSION }}
+        python-version: ${{ inputs.python-version }}
 
     - name: "Export Python paths"
       shell: bash -l {0}

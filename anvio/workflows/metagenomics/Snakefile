@@ -32,7 +32,7 @@ progress = terminal.Progress()
 
 this_workflow_is_inherited_by_another = (
     False
-    if "anvio/workflows/metagenomics" in str(workflow.included[0].abspath())
+    if "anvio/workflows/metagenomics" in w.get_entry_snakefile_path(workflow)
     else True
 )
 
@@ -180,7 +180,7 @@ include: w.get_workflow_rule_file_path("metagenomics", "taxonomy.smk")
 include: w.get_workflow_rule_file_path("metagenomics", "binning.smk")
 
 
-if "anvio/workflows/metagenomics" in str(workflow.included[0].abspath()):
+if "anvio/workflows/metagenomics" in w.get_entry_snakefile_path(workflow):
     # check if all program dependencies are met. for this line to be effective,
     # there should be an initial dry run step (which is the default behavior of
     # the `WorkflowSuperClass`, so you are most likely covered).

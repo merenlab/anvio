@@ -34,6 +34,7 @@ anvio/data/misc/Pfam/
 anvio/data/misc/PDB.db
 anvio/data/misc/CAZyme/
 anvio/data/misc/GlobDB/
+anvio/data/misc/MODELSEED/
 anvio/data/misc/ModelSEED/
 anvio/data/misc/Interacdome/
 anvio/data/misc/MODELLER/db/
