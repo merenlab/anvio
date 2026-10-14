@@ -5951,7 +5951,9 @@ class Mapper:
         'ko:K00844 ko:K12407' -> ['K00844', 'K12407']) and compound IDs for compound entries (e.g.,
         'cpd:C00031' -> ['C00031']). With 'use_reaction_attribute', they come instead from the
         'reaction' attribute of ortholog entries: reaction IDs (e.g., 'rn:R00764 rn:R00756' ->
-        ['R00764', 'R00756']). The source can name multiple accessions or be absent.
+        ['R00764', 'R00756']). The source can name multiple accessions or be absent. An accession
+        that it names twice, as entry 179 of map 00670 names R08557, is returned once, so it counts
+        once in the value of the element.
 
         Parameters
         ==========
@@ -5965,13 +5967,13 @@ class Mapper:
         Returns
         =======
         List[str]
-            The accessions (the part of each token after the colon), or an empty list if the source
-            attribute is absent.
+            The accessions (the part of each token after the colon), each once and in the order they
+            first appear, or an empty list if the source attribute is absent.
         """
         source = entry.reaction if use_reaction_attribute else entry.name
         if not source:
             return []
-        return [token.split(':')[1] for token in source.split()]
+        return list(dict.fromkeys(token.split(':')[1] for token in source.split()))
 
     @staticmethod
     def _reduce_entry_value(
@@ -6186,9 +6188,7 @@ class Mapper:
             value on the 'unified' map, or None where it has none. The first is empty for a layer
             without samples, and for a grouped layer without a rule for its samples.
         """
-        accessions = tuple(
-            dict.fromkeys(Mapper._get_entry_kegg_ids(entry, layer['use_reaction_attribute']))
-        )
+        accessions = tuple(Mapper._get_entry_kegg_ids(entry, layer['use_reaction_attribute']))
         # The element is named by its sorted accessions, in the cache and in the key of a random
         # choice. Two maps can list the same accessions in different orders. The element then gets
         # the same value on both maps, and its choices are counted once.
