@@ -2210,10 +2210,11 @@ class Mapper:
     @staticmethod
     def _unquote(text: str) -> str:
         """
-        Drop a pair of double quotes that encloses a whole field, as R's 'write.table' writes it.
+        Drop a pair of double quotes that encloses a whole field, as R writes it.
 
-        A doubled quote inside such a field stands for one quote. A quote anywhere else is part of
-        the text, so a stray quote stays in the value it was typed in.
+        A doubled quote inside such a field stands for one quote, as R's 'write.csv' writes it. A
+        quote anywhere else is part of the text, so a stray quote stays in the value it was typed
+        in.
 
         Parameters
         ==========
@@ -2253,7 +2254,9 @@ class Mapper:
             Maps each value to its color hex code, in the order of the rows.
         """
         filesnpaths.is_file_tab_delimited(path)
-        columns = utils.get_columns_of_TAB_delim_file(path, include_first_column=True)
+        # The header is read as the rows are, so a header written with quotes is accepted.
+        raw_columns = utils.get_columns_of_TAB_delim_file(path, include_first_column=True)
+        columns = [self._unquote(column) for column in raw_columns]
         if COLORS_COLUMN not in columns or len(columns) < 2 or columns[0] == COLORS_COLUMN:
             self.progress.end()
             raise ConfigError(
@@ -2267,8 +2270,8 @@ class Mapper:
         table = utils.get_TAB_delimited_file_as_dictionary(path, indexing_field=-1)
         value_colors: Dict[str, str] = {}
         for row in table.values():
-            value = self._unquote(row[columns[0]].strip())
-            color = self._unquote((row[COLORS_COLUMN] or '').strip())
+            value = self._unquote(row[raw_columns[0]].strip())
+            color = self._unquote((row[raw_columns[columns.index(COLORS_COLUMN)]] or '').strip())
             # Only hex codes are accepted, as in a kegg-membership-colors-txt file. Reserved colors
             # are compared as hex codes ('_check_reserved_colors').
             if not re.fullmatch(r'#[0-9A-Fa-f]{6}', color):
