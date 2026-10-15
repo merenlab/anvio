@@ -137,6 +137,15 @@ printf 'accession\tstatus\nK00844\t"high\nK01810\tlow"\nK00850\tmid\n' > draw_ko
 printf 'status\tcolor\n"high\t#d62728\nlow"\t#1f77b4\nmid\t#bcbd22\n' > draw-stray-quote-colors.txt
 # Every field in double quotes, as R's write.table writes a file by default.
 printf '"accession"\t"status"\n"K00844"\t"up"\n"K01810"\t"down"\n' > draw_kos_quoted_fields.reaction.txt
+# Weights without a 'sample' column. Element 18 of map 00010 is sliced between K01624 and K01622,
+# since K16306 has a weight of 0. Both KOs of element 154 have a weight of 0, so that element is
+# left uncolored.
+printf 'accession\tcoverage\tweight\nK00174\t1.5\t0\nK00175\t3.0\t0\nK01624\t2.0\t3\nK01622\t4.0\t1\nK16306\t6.0\t0\n' > draw_kos_weights.reaction.txt
+# Four of the five KOs of entry 6838 of the global map, a line too short for four slices, and KOs
+# that share longer lines of that map.
+printf 'accession\tcoverage\nK08907\t1\nK08908\t2\nK08909\t3\nK08910\t4\nK00174\t5\nK00175\t6\nK01624\t7\nK01622\t8\nK16306\t9\n' > draw_kos_global_slices.reaction.txt
+# A negative weight.
+printf 'accession\tcoverage\tweight\nK00174\t1.5\t-1\nK00175\t3.0\t2\n' > draw_bad_negative_weight.reaction.txt
 
 # A test that expects a refusal discards the output of the draw, so a fixture that was never written
 # would make that test pass for the wrong reason. Fail loudly here instead.
@@ -156,7 +165,9 @@ for fixture in contigs-db-group-information.txt draw_kos_samples300.reaction.txt
               draw_kos_class18.reaction.txt draw_kos_samples_class19.reaction.txt \
               draw_bad_repeated_status.reaction.txt draw_kos_header_only_status.reaction.txt \
               draw_kos_gene_votes.reaction.txt draw_kos_stray_quote.reaction.txt \
-              draw-stray-quote-colors.txt draw_kos_quoted_fields.reaction.txt
+              draw-stray-quote-colors.txt draw_kos_quoted_fields.reaction.txt \
+              draw_kos_weights.reaction.txt draw_kos_global_slices.reaction.txt \
+              draw_bad_negative_weight.reaction.txt
 do
     if [ ! -s $fixture ]
     then
@@ -2408,6 +2419,582 @@ if anvi-draw-kegg-pathways --external-genomes external-genomes.txt \
     --output-dir draw_db_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: a value type on a database run should have failed but did not."
+    exit 1
+fi
+
+# A column of weights gives the slices their shares, and the key table lists them. Element 154 of
+# map 00010 stands for K00174 and K00175. Their weights are 90 and 10 in SAMPLE_1, where K00174 has
+# two genes of 60 and 30. They are 1 and 9 in SAMPLE_2, and SAMPLE_3 has K00174 alone. The shares of
+# the two KOs are therefore 0.9 and 0.1 in SAMPLE_1, 0.1 and 0.9 in SAMPLE_2, and 1 and 0 in
+# SAMPLE_3. Group G1 holds SAMPLE_1 alone and takes its shares. Group G2 averages the shares of
+# SAMPLE_2 and SAMPLE_3 to 0.55 and 0.45. The 'unified' map averages the groups to 0.725 and 0.275.
+INFO "Testing the shares of weighted slices averaged within groups and across them"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+                        --groups-txt draw-sample-group-information.txt \
+                        --reaction-sample-summary mean \
+                        --reaction-group-summary mean \
+                        --reaction-slice-by accession \
+                        --reaction-slice-weights coverage \
+                        --output-dir draw_txt_slices_share_mean \
+                        --pathway-numbers 00010 \
+                        --draw-individual-files \
+                        --no-progress
+
+slice_key=draw_txt_slices_share_mean/slice_key_reactions.txt
+if [ "$(head -n 1 $slice_key | tr '\t' ' ')" \
+     != "map drawn_map entry_id x y label slice accession value share color drawn_whole" ]
+then
+    echo "ERROR: the key table of slices does not have the expected header."
+    exit 1
+fi
+shares=$(awk -F'\t' '$3 == "154" {printf "%s %s %.3f\n", $2, $8, $10}' $slice_key)
+expected_shares=$(printf '%s\n' "unified K00174 0.725" "unified K00175 0.275" \
+                  "G1 K00174 0.900" "G1 K00175 0.100" "G2 K00174 0.550" "G2 K00175 0.450")
+if [ "$shares" != "$expected_shares" ]
+then
+    echo "ERROR: the shares of weighted slices were not averaged within groups and across them."
+    exit 1
+fi
+# Slices follow the order of the KOs in the KGML file, where K00172 comes before K00171.
+if [ "$(awk -F'\t' '$2 == "G2" && $3 == "133" {print $8}' $slice_key | tr '\n' ' ')" \
+     != "K00169 K00170 K00172 K00171 " ]
+then
+    echo "ERROR: the slices of an element did not follow the order of its KOs in the KGML file."
+    exit 1
+fi
+
+# 'pooled_sum' adds up the weights of each KO across the samples and divides each sum by the total
+# of the element. On the 'unified' map, K00174 has 96 of the 115 units of weight of element 154, and
+# K00175 has 19.
+INFO "Testing the shares of weighted slices pooled by the sum of their weights"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+                        --reaction-sample-summary mean \
+                        --reaction-slice-by accession \
+                        --reaction-slice-weights coverage \
+                        --reaction-slice-share-summary pooled_sum \
+                        --output-dir draw_txt_slices_pooled_sum \
+                        --pathway-numbers 00010 \
+                        --no-progress
+
+shares=$(awk -F'\t' '$3 == "154" {printf "%s %s %.3f\n", $2, $8, $10}' \
+         draw_txt_slices_pooled_sum/slice_key_reactions.txt)
+if [ "$shares" != "$(printf '%s\n' "unified K00174 0.835" "unified K00175 0.165")" ]
+then
+    echo "ERROR: the shares of weighted slices were not pooled by the sum of their weights."
+    exit 1
+fi
+
+# The weights of the genes of a KO are added up by default. With 'mean', K00174 has a weight of 45
+# in SAMPLE_1, the mean of its two genes, and K00175 has a weight of 10.
+INFO "Testing the weights of the genes of a KO reduced by their mean"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+                        --reaction-slice-by accession \
+                        --reaction-slice-weights coverage \
+                        --reaction-slice-weight-aggregation mean \
+                        --output-dir draw_txt_slices_weight_mean \
+                        --pathway-numbers 00010 \
+                        --draw-individual-files \
+                        --no-progress
+
+shares=$(awk -F'\t' '$2 == "SAMPLE_1" && $3 == "154" {printf "%s %.3f\n", $8, $10}' \
+         draw_txt_slices_weight_mean/slice_key_reactions.txt)
+if [ "$shares" != "$(printf '%s\n' "K00174 0.818" "K00175 0.182")" ]
+then
+    echo "ERROR: the weights of the genes of a KO were not reduced by their mean."
+    exit 1
+fi
+
+# A KO with a weight of 0 gets no slice. Element 18 of map 00010 is sliced between K01624 and K01622
+# in the shares 0.75 and 0.25. Both KOs of element 154 have a weight of 0, so the element is left
+# uncolored. It has no rows in the key table, and a warning counts it.
+INFO "Testing that a KO with a weight of 0 gets no slice"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_weights.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights weight \
+    --output-dir draw_txt_slices_zero_weights --pathway-numbers 00010 \
+    --no-progress 2>&1 | tee draw_txt_slices_zero_weights.log
+if ! tr '\n' ' ' < draw_txt_slices_zero_weights.log | grep -q "were left uncolored, since every"
+then
+    echo "ERROR: an element whose KOs all have a weight of 0 was not reported as uncolored."
+    exit 1
+fi
+shares=$(awk -F'\t' '$3 == "18" || $3 == "154" {printf "%s %s %.3f\n", $3, $8, $10}' \
+         draw_txt_slices_zero_weights/slice_key_reactions.txt)
+if [ "$shares" != "$(printf '%s\n' "18 K01624 0.750" "18 K01622 0.250")" ]
+then
+    echo "ERROR: a KO with a weight of 0 was given a slice."
+    exit 1
+fi
+
+# Lines on the global map keep the widths of the KGML file. Entry 6838 is a line 20 points long and
+# 6 points wide. A quarter of it is shorter than it is wide, so its four KOs with values do not fit
+# as slices. The line is drawn whole, and a warning says so. The key table lists the slices the line
+# would have had, with the reason. Other KOs share longer lines of the map, which are sliced.
+INFO "Testing slices on the global map, where a line too short for its slices is drawn whole"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_global_slices.reaction.txt \
+    --reaction-slice-by accession \
+    --output-dir draw_txt_slices_global --pathway-numbers $global_pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_slices_global.log
+if ! tr '\n' ' ' < draw_txt_slices_global.log | grep -q "had more slices than fit"
+then
+    echo "ERROR: a line too short for its slices was not reported as drawn whole."
+    exit 1
+fi
+slice_key=draw_txt_slices_global/slice_key_reactions.txt
+if [ "$(awk -F'\t' '$3 == "6838" && $7 == "" && $12 == "line too short" {n++} END {print n + 0}' \
+       $slice_key)" != 4 ]
+then
+    echo "ERROR: the key table did not list the four slices of a line drawn whole."
+    exit 1
+fi
+if ! awk -F'\t' '$1 == "01100" && $7 == "2" {found = 1} END {exit !found}' $slice_key
+then
+    echo "ERROR: no line of the global map was sliced."
+    exit 1
+fi
+
+# A summary can be undefined for a slice, as the standard deviation is for a KO found in one sample.
+# Such a slice is not drawn, and the warning about undefined summaries counts it.
+INFO "Testing the warning that a summary was undefined for slices"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-slice-by accession --reaction-sample-summary std \
+    --output-dir draw_txt_slices_std --pathway-numbers $pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_slices_std.log
+if ! tr '\n' ' ' < draw_txt_slices_std.log | grep -q "These slices are not drawn on the"
+then
+    echo "ERROR: slices with an undefined summary were not reported."
+    exit 1
+fi
+
+# Slicing is refused where it has no values to slice or where another option rules it out (each
+# command below is expected to fail).
+INFO "Testing that slicing is refused where it cannot apply"
+# Only a text file has values to slice, not a database run or a reaction network JSON.
+if anvi-draw-kegg-pathways --external-genomes external-genomes.txt --reaction-slice-by accession \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_db_bad --overwrite-output-destinations \
+    --no-progress > draw_db_slice_by.log 2>&1
+then
+    echo "ERROR: '--reaction-slice-by' on a database run should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_db_slice_by.log | grep -q "These options were given: '--reaction-slice-by'"
+then
+    echo "ERROR: '--reaction-slice-by' on a database run was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-network-json pan-network.json \
+    --reaction-slice-weights coverage --pathway-numbers $pathway_numbers \
+    --output-dir draw_db_bad --overwrite-output-destinations \
+    --no-progress > draw_json_slice_weights.log 2>&1
+then
+    echo "ERROR: slice weights on a reaction network JSON should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_json_slice_weights.log \
+    | grep -q "These options were given: '--reaction-slice-weights'"
+then
+    echo "ERROR: slice weights on a reaction network JSON were refused for another reason."
+    exit 1
+fi
+
+# Slicing applies to the reaction layer alone.
+if anvi-draw-kegg-pathways --compound-txt draw_compounds.compound.txt \
+    --reaction-slice-by accession --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_no_reaction_txt.log 2>&1
+then
+    echo "ERROR: '--reaction-slice-by' with no reaction file should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_no_reaction_txt.log \
+    | grep -q "no reaction file ('--reaction-txt') was provided"
+then
+    echo "ERROR: '--reaction-slice-by' with no reaction file was refused for another reason."
+    exit 1
+fi
+
+# The options that size and pool slices need '--reaction-slice-by'.
+for slice_option in "--reaction-slice-weights coverage" "--reaction-slice-weight-aggregation mean" \
+                    "--reaction-slice-share-summary pooled_sum"
+do
+    if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+        $slice_option --pathway-numbers $pathway_numbers \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_slice_option_alone.log 2>&1
+    then
+        echo "ERROR: '$slice_option' without '--reaction-slice-by' should have failed but did not."
+        exit 1
+    fi
+    if ! tr '\n' ' ' < draw_txt_slice_option_alone.log | grep -q "was not given, so no element"
+    then
+        echo "ERROR: '$slice_option' without '--reaction-slice-by' was refused for another reason."
+        exit 1
+    fi
+done
+
+# A column of weights cannot be one of the columns that identify a row. It has to exist, and it
+# cannot be the only column that could hold values, since the slices then have no values to color.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights sample \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_weights_key_column.log 2>&1
+then
+    echo "ERROR: weights in the 'sample' column should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_weights_key_column.log \
+    | grep -q "one of the columns that identify a row"
+then
+    echo "ERROR: weights in the 'sample' column were refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights weight \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_weights_missing.log 2>&1
+then
+    echo "ERROR: weights in a column the file lacks should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_weights_missing.log | grep -q "has no column with that header"
+then
+    echo "ERROR: weights in a column the file lacks were refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights coverage --draw-individual-files \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_weights_only_column.log 2>&1
+then
+    echo "ERROR: weights in the only column that could hold values should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_weights_only_column.log \
+    | grep -q "so it would otherwise be the value column"
+then
+    echo "ERROR: weights in the only column that could hold values were refused for another reason."
+    exit 1
+fi
+
+# Every weight is a number of 0 or more.
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_negative_weight.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights weight \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_negative_weight.log 2>&1
+then
+    echo "ERROR: a negative weight should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_negative_weight.log \
+    | grep -q "A weight is a finite number of 0 or more"
+then
+    echo "ERROR: a negative weight was refused for another reason."
+    exit 1
+fi
+
+# Reducing the weights of the genes of a KO needs weights and genes.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weight-aggregation mean \
+    --draw-individual-files --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_weight_aggregation_no_weights.log 2>&1
+then
+    echo "ERROR: a weight aggregation without weights should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_weight_aggregation_no_weights.log \
+    | grep -q "no column of weights was named"
+then
+    echo "ERROR: a weight aggregation without weights was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_weights.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights weight \
+    --reaction-slice-weight-aggregation mean --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_weight_aggregation_no_genes.log 2>&1
+then
+    echo "ERROR: a weight aggregation without a 'gene_id' column should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_weight_aggregation_no_genes.log \
+    | grep -q "has no 'gene_id' column naming"
+then
+    echo "ERROR: a weight aggregation without a 'gene_id' column was refused for another reason."
+    exit 1
+fi
+
+# Pooling the shares of slices needs weights, since without them the slices are equal on every map.
+# It also needs a drawn map that pools samples and shows values. A file without a 'sample' column
+# has no such map. Without groups, only the 'unified' map pools samples, so it has to be drawn and
+# show values.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-share-summary pooled_sum \
+    --reaction-sample-summary mean --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_share_summary_no_weights.log 2>&1
+then
+    echo "ERROR: a share summary without weights should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_share_summary_no_weights.log \
+    | grep -q "no column of weights was named"
+then
+    echo "ERROR: a share summary without weights was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_weights.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights weight \
+    --reaction-slice-share-summary pooled_sum --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_share_summary_no_samples.log 2>&1
+then
+    echo "ERROR: a share summary for a file with no 'sample' column should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_share_summary_no_samples.log \
+    | grep -q "has no 'sample' column, so no map pools samples"
+then
+    echo "ERROR: a share summary for a file with no 'sample' column was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights coverage \
+    --reaction-slice-share-summary pooled_sum --draw-individual-files \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_share_summary_presence.log 2>&1
+then
+    echo "ERROR: a share summary for a 'unified' map of presence should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_share_summary_presence.log \
+    | grep -q "are therefore drawn whole"
+then
+    echo "ERROR: a share summary for a 'unified' map of presence was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights coverage \
+    --reaction-slice-share-summary pooled_sum --draw-individual-files --skip-unified-maps \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_share_summary_skip_unified.log 2>&1
+then
+    echo "ERROR: a share summary for a skipped 'unified' map should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_share_summary_skip_unified.log \
+    | grep -q "draws no 'unified' map"
+then
+    echo "ERROR: a share summary for a skipped 'unified' map was refused for another reason."
+    exit 1
+fi
+
+# Each slice takes the color of its own value, so the layer cannot take one color.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --original-color --reaction-slice-by accession --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_original_color.log 2>&1
+then
+    echo "ERROR: '--reaction-slice-by' with '--original-color' should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_original_color.log \
+    | grep -q "These options were given along with '--original-color': '--reaction-slice-by'"
+then
+    echo "ERROR: '--reaction-slice-by' with '--original-color' was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-color --reaction-slice-by accession --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_reaction_color.log 2>&1
+then
+    echo "ERROR: '--reaction-slice-by' with '--reaction-color' should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_reaction_color.log \
+    | grep -q "sets a single presence color"
+then
+    echo "ERROR: '--reaction-slice-by' with '--reaction-color' was refused for another reason."
+    exit 1
+fi
+
+# A file without a value column is colored by presence, which is not sliced yet. Rescaling each
+# slice on its own is not supported yet either.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --reaction-slice-by accession --draw-individual-files --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_presence.log 2>&1
+then
+    echo "ERROR: slicing a file with no value column should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_presence.log | grep -q "of presence are not supported yet"
+then
+    echo "ERROR: slicing a file with no value column was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-slice-by accession --reaction-element-normalization relative_to_mean \
+    --draw-individual-files --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_normalization.log 2>&1
+then
+    echo "ERROR: slicing with a normalization should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_normalization.log \
+    | grep -q "Rescaling each slice on its own is not supported"
+then
+    echo "ERROR: slicing with a normalization was refused for another reason."
+    exit 1
+fi
+
+# Each slice shows the value of one KO. An element drawn whole takes the weighted mean of its slice
+# values in place of an aggregation of numbers across its KOs.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-slice-by accession --reaction-accession-aggregation mean \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_accession_aggregation.log 2>&1
+then
+    echo "ERROR: slicing with an accession aggregation of numbers should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_accession_aggregation.log \
+    | grep -q "in place of this reduction"
+then
+    echo "ERROR: slicing with an accession aggregation of numbers was refused for another reason."
+    exit 1
+fi
+
+# Slicing needs a drawn map that shows values. The refusal names an option that would draw one, in
+# words that fit the run: without groups, with group maps of values, and with group maps of
+# presence, drawn or not.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-slice-by accession --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_no_value_maps.log 2>&1
+then
+    echo "ERROR: slicing with no drawn map of values should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_no_value_maps.log \
+    | grep -q "The map of each sample shows values, but none were"
+then
+    echo "ERROR: slicing with no drawn map of values was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0.5 \
+    --reaction-sample-summary mean --reaction-slice-by accession \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_no_value_maps_groups.log 2>&1
+then
+    echo "ERROR: slicing with no drawn group map of values should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_no_value_maps_groups.log \
+    | grep -q "The map of each group shows values"
+then
+    echo "ERROR: slicing with no drawn group map of values was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0.5 \
+    --draw-individual-files --reaction-slice-by accession \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_group_presence.log 2>&1
+then
+    echo "ERROR: slicing group maps of presence should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_group_presence.log \
+    | grep -q "The map of each group counts its samples"
+then
+    echo "ERROR: slicing group maps of presence was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0.5 \
+    --reaction-slice-by accession --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_group_presence_no_maps.log 2>&1
+then
+    echo "ERROR: slicing undrawn group maps of presence should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_group_presence_no_maps.log \
+    | grep -q "Then either draw those maps"
+then
+    echo "ERROR: slicing undrawn group maps of presence was refused for another reason."
+    exit 1
+fi
+
+# The refusal names an option that fits the values. Categorical values need a rule, and values with
+# a period need a circular mean.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-slice-by accession \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_no_value_maps_categorical.log 2>&1
+then
+    echo "ERROR: slicing categorical values with no drawn map of values should have failed."
+    exit 1
+fi
+for phrase in "no drawn map of the reaction layer" "a rule such as 'plurality_order'"
+do
+    if ! tr '\n' ' ' < draw_txt_slice_no_value_maps_categorical.log | grep -q "$phrase"
+    then
+        echo "ERROR: slicing categorical values with no map of values was misreported ($phrase)."
+        exit 1
+    fi
+done
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
+    --reaction-value-period 24 --reaction-slice-by accession \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_no_value_maps_period.log 2>&1
+then
+    echo "ERROR: slicing values with a period and no drawn map of values should have failed."
+    exit 1
+fi
+for phrase in "no drawn map of the reaction layer" "an aggregation such as 'circular_mean'"
+do
+    if ! tr '\n' ' ' < draw_txt_slice_no_value_maps_period.log | grep -q "$phrase"
+    then
+        echo "ERROR: slicing values with a period and no map of values was misreported ($phrase)."
+        exit 1
+    fi
+done
+
+# Only accessions can be slices so far.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-slice-by gene --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: slicing by gene should have failed but did not."
     exit 1
 fi
 

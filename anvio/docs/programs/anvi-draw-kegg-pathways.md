@@ -70,7 +70,7 @@ Map files are sorted into up to four subdirectories, one for each kind of map:
 |`grid`|The map grids, each showing the `unified` map alongside the individual ones, or the individual ones alone with `--skip-unified-maps`. Drawn on request with `--draw-grid`.|
 |`by_map`|The same individual maps arranged the other way round: one subdirectory per map, each holding one file per data source, named after it. Written on request with `--collate-files-by-map`.|
 
-Colorbars, which are keys to the colors of every map in the run, are written at the top of the output directory beside these subdirectories.
+Colorbars, which are keys to the colors of every map in the run, are written at the top of the output directory beside these subdirectories. With `--reaction-slice-by`, a %(kegg-slice-key-txt)s named `slice_key_reactions.txt` is written there too (see [Draw elements in slices](#draw-elements-in-slices)).
 
 Because the names in `individual` come from your own data, they are kept in that subdirectory of their own: a sample, genome, or group may be named anything at all — including `unified`, `grid`, `by_map`, `all_maps`, or `Metabolism` — without ever colliding with a directory this program creates for itself.
 
@@ -472,13 +472,17 @@ A layer with a `sample` column involves multiple separate reductions, and each h
 |Level|Option|What it reduces|
 |:--|:--|:--|
 |genes of an accession|`--reaction-gene-aggregation` (an aggregation; `sum` by default; or a rule for categorical values)|the genes carrying one KO or KEGG reaction accession → that accession's value|
-|accessions of an element|`--reaction-accession-aggregation`/`--compound-accession-aggregation` (an aggregation; `sum` by default; or a rule for categorical values)|the constituent accessions of a map element → that element's value|
-|across samples|`--reaction-sample-summary`/`--compound-sample-summary` (`count`, `count_continuous`, `membership`, an aggregation, or a rule for categorical values)|a set of samples → one value or one presence value per map element|
-|across groups|`--reaction-group-summary`/`--compound-group-summary` (`count`, `count_continuous`, `membership`, an aggregation, or a rule for categorical values)|the groups of a %(groups-txt)s → one value or one presence value per map element|
+|accessions of an element|`--reaction-accession-aggregation`/`--compound-accession-aggregation` (an aggregation; `sum` by default; or a rule for categorical values)|the constituent accessions of a map element → that element's value. With `--reaction-slice-by`, each slice keeps the value of its own accession instead.|
+|across samples|`--reaction-sample-summary`/`--compound-sample-summary` (`count`, `count_continuous`, `membership`, an aggregation, or a rule for categorical values)|a set of samples → one value or one presence value per map element, or per slice with `--reaction-slice-by`|
+|across groups|`--reaction-group-summary`/`--compound-group-summary` (`count`, `count_continuous`, `membership`, an aggregation, or a rule for categorical values)|the groups of a %(groups-txt)s → one value or one presence value per map element, or per slice with `--reaction-slice-by`|
+|weights of the genes of an accession|`--reaction-slice-weight-aggregation` (`sum` by default, or `mean`)|the weights of the genes carrying one accession → that accession's weight, which sizes its slice|
+|shares across samples and groups|`--reaction-slice-share-summary` (`share_mean` by default, or `pooled_sum`)|the shares of a slice in a set of samples, or in the groups → its share on the map of a group or the `unified` map|
 
 An **aggregation** is `sum` (default), `mean`, `max`, `min`, `median`, `std` — or any other unsuggested pandas aggregation that reduces a series of numbers to one number, such as `var` or `sem`. Names that transform rather than reduce (`cumsum`) or that only a grouping offers (`first`) are rejected. Where an aggregation is undefined for the values available, as `std` is for a single value, the affected elements are left uncolored. `circular_mean` averages values that repeat after a period, such as clock times, and requires `--reaction-value-period`/`--compound-value-period` (see [Color clock times with a cyclic colormap](#color-clock-times-with-a-cyclic-colormap)). `angular_deviation` measures how far such values are spread apart, on the `unified` map only.
 
 A summary pools the values of a **map element**, not of an accession. An element's value in a sample is the aggregate of its accessions in that sample. Without `--reaction-element-normalization`/`--compound-element-normalization`, this is the value that the sample's own map draws, so the sample summary pools what the maps of the individual samples show. With groups, the group summary then pools the values of the groups.
+
+With `--reaction-slice-by`, a summary pools the values of each **slice** instead. A slice's value in a sample is the value of its one accession, so the summary pools the values of that accession across the samples or groups. The last two rows of the table apply only to slices sized by `--reaction-slice-weights`. See [Draw elements in slices](#draw-elements-in-slices).
 
 The sample summary drives the `unified` map when there are no groups, and each per-group map (produced when using `--draw-individual-files` or `--draw-grid`) when there are. The group summary colors the `unified` map when there are groups.
 
@@ -514,7 +518,7 @@ anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
 
 A limit **sets that end of the scale**, whether or not any value reaches it. Given the limits above, the scale runs from -6 up to the highest value. Every element below -6 is drawn in the color at the bottom of the scale. Where values lie past a limit, its label is marked `≥` or `≤`: the color there stands for that value *or anything beyond it*. A scale whose values all stay above -6 still starts at -6.
 
-Limits are read in the units of the colorbar, which are the values of **map elements** after both reductions — gene to accession (optional) and accession to map element — have been applied. With a `sample` column, the `unified` map shows a summary of these element values across the samples or groups. With the default `sum` at the accession level, an element standing for a dozen KOs may sit well past any single value in the file, so limits should be chosen against the scale that is actually drawn rather than against the input column.
+Limits are read in the units of the colorbar, which are the values of **map elements** after both reductions — gene to accession (optional) and accession to map element — have been applied. With a `sample` column, the `unified` map shows a summary of these element values across the samples or groups. With the default `sum` at the accession level, an element standing for a dozen KOs may sit well past any single value in the file, so limits should be chosen against the scale that is actually drawn rather than against the input column. With `--reaction-slice-by`, the colorbar shows the values of slices instead, each the value of one accession, so limits are read in those values.
 
 A layer with a `sample` column has **two** continuous scales, and each is limited separately: `--reaction-value-limits` bounds the `unified` map's scale, while `--reaction-individual-value-limits` bounds the single scale shared by the per-sample maps (or the per-group maps given a %(groups-txt)s). The two are kept apart because a summary can put them on quite different footings — for example, the mean across samples clusters more tightly than the per-sample values behind it — so limits that suit one can be inappropriate for the other. Setting only one of the two is perfectly legitimate, and anvi'o warns when you do, since the scale left alone goes on spanning whatever its own values reach.
 
@@ -719,6 +723,124 @@ Each row has one value, but values can still meet. The genes of one accession, a
 With a `sample` column, the map of each sample shows that sample's values, and these maps share one legend. A value in one sample need not mean the same thing in another, so by default the `unified` map counts the samples that contain each element, however few samples there are. A run drawing only the `unified` map then colors nothing by the values. A warning says so, as it does for numbers. Coloring by which samples contain an element would use the `tab10` colors of the values. A color would then mean a sample on one map and a value on another. Where a value means the same thing in every sample, give a rule to `--reaction-sample-summary`/`--compound-sample-summary` instead. The rule then chooses one value per element across the samples for the `unified` map.
 
 The options that shape a scale of numbers are refused for categorical values. These are the value limits and centers, the value period, the element normalization, and `--*-individual-colormap`. `--reaction-colormap` and `--compound-colormap` color only the presence on the `unified` map. With a %(groups-txt)s, each group's map counts its samples by default, and the `unified` map counts the groups. A rule given to `--reaction-sample-summary`/`--compound-sample-summary` chooses one value per element among the samples of each group. A rule given to `--reaction-group-summary`/`--compound-group-summary` then chooses one value across the groups for the `unified` map. Each sample with a value gives one vote in its group. Each group with a value gives one vote across the groups. With two groups, every disagreement between them is a tie, so `plurality_order` settles it by the order of the values.
+
+### Draw elements in slices
+
+A box or line on a map often stands for several KOs or KEGG reactions. By default, their values are reduced to one value per element, and the element is drawn in one color. `--reaction-slice-by accession` draws the element in slices instead. Each slice stands for one accession of the element. It takes the color of that accession's value and a share of the element's width or length. A KO file is sliced by KO, and a file of KEGG reactions by KEGG reaction. Slicing applies to the reaction layer of a %(kegg-reaction-txt)s with a value column, of numbers or of categorical values. Compounds are never sliced.
+
+The command below draws the map of each sample, so its file needs a `sample` column. For a file without one, leave out `--draw-individual-files`. The `unified` map then shows the slices.
+
+{{ codestart }}
+anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
+                        --reaction-slice-by accession \
+                        --draw-individual-files \
+                        -o output_dir
+{{ codestop }}
+
+#### Which maps and accessions are sliced
+
+A drawn map is sliced where it shows the values of the reaction layer. A map that shows presence is drawn whole, as it is without this option. Which maps show values depends on the file and on the summaries:
+
+- Without a `sample` column, every map shows values.
+- With a `sample` column, the map of each sample shows that sample's values. These maps are drawn with `--draw-individual-files` and/or `--draw-grid`.
+- The map of a group shows values where `--reaction-sample-summary` names an aggregation or a rule.
+- The `unified` map shows values where its summary names an aggregation or a rule. That summary is `--reaction-sample-summary` without groups, and `--reaction-group-summary` with them.
+
+Both summaries default to presence. With the default summaries, a run without groups slices only the maps of the samples, and a run with groups has no map to slice. Slicing is refused where no drawn map shows values. The error names the option that would give a map of values.
+
+On each map, an accession of an element gets a slice where it has a value on that map. An accession without data on a map takes no space there. An accession whose summary is undefined on the map takes no space either. Examples are `std` over a single sample, a rule with no winner, and the circular mean of times that cancel out. The other slices then take the whole width or length of the element, and a warning counts the accessions whose summary was undefined. An element is left uncolored on a map where none of its accessions has a value, as before. An element with one slice is drawn whole, in the color of that slice.
+
+Slices follow the order of the accessions in the map's KGML file. With a KO file, the leftmost slice of a box is the KO that the box label names, whenever that KO has data. Only the accessions with values are drawn, so one position can hold different accessions on different maps. The slices still keep the same order relative to each other. Slices are never ordered by value or by weight.
+
+Each slice shows the value of one accession. Within a sample, `--reaction-gene-aggregation` reduces the values of the accession's genes to that value. The maps of groups and the `unified` map pool the values of the accession with the sample and group summaries, as they pool the values of elements without slices. `--reaction-accession-aggregation` is never applied to a slice, so it is refused for numbers. For categorical values, it still chooses the stand-in value of an element among the accessions of its slices (see below). The run's report of choices counts the choices of the accession rule only for these stand-in values. The color scales span the values of single accessions, not of whole elements, and their limits and centers are read in these values too. An element drawn whole adds only its stand-in value to a scale, since none of its slices is drawn.
+
+#### Size slices by weights
+
+Without weights, every slice drawn on a map takes the same share of its element. `--reaction-slice-weights` names a column of the reaction file that holds weights. Each slice then takes a share in proportion to its weight. The column can have any name, and it is never taken for the value column. The value column colors the slices, and the column of weights sizes them. Every row needs a weight, which is a finite number of 0 or more.
+
+On the map of a sample, the share of a slice is its weight in that sample divided by the total weight of the slices drawn on the map. A file without a `sample` column works the same way, with the weight of each accession in the file. An accession with a weight of 0 gets no slice. An element is left uncolored where every slice with a value has a weight of 0 on the map, and a warning counts these elements.
+
+With a `gene_id` column, the weights of the genes of an accession in a sample are added up to give the weight of the accession. This suits amounts that add up over genes, such as counts and coverage. `--reaction-slice-weight-aggregation mean` takes their mean instead, which suits rates and scores of single genes. With `mean`, a KO with ten genes takes the same share as a KO with one gene, if all of their genes have the same weight.
+
+The command below sizes the slices by a column headed `coverage` and colors them by the file's value column. The map of each sample draws the shares of that sample. The `unified` map shows the mean of each accession's values across the samples, and it pools the shares as described next.
+
+{{ codestart }}
+anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
+                        --reaction-slice-by accession \
+                        --reaction-slice-weights coverage \
+                        --reaction-sample-summary mean \
+                        --draw-individual-files \
+                        -o output_dir
+{{ codestop }}
+
+#### Pool the shares of samples
+
+The map of a group and the `unified` map pool several samples. With weights, `--reaction-slice-share-summary` sets how these maps pool the shares of slices. There are two choices:
+
+- `share_mean`, the default, finds the share of each accession in each sample and averages these shares over the samples. In each sample, the share of an accession is its weight divided by the element's total weight in that sample. An accession absent from a sample has a share of 0 there. A sample in which the element has no weight is skipped. Each sample counts once, so the weights need to be comparable only within each sample.
+- `pooled_sum` adds up the weights of each accession over the samples and divides each sum by the total over the accessions of the element. A sample with more weight counts for more. Use it where the weights are in the same units in every sample, such as counts at comparable sequencing depth.
+
+With a %(groups-txt)s, the map of each group pools its samples, and the `unified` map pools the groups by the same rule. Under `share_mean`, the `unified` map averages the shares of the groups, so each group counts once. Under `pooled_sum`, it adds up the weights of all of the samples. After pooling, the slices without a value on the map are dropped, and the shares of the others are scaled to sum to 1.
+
+Here is an element with two KOs, K1 and K2, in three samples. K2 has no data in S3.
+
+|sample|weight of K1|weight of K2|shares on the sample's map|
+|:--|:--|:--|:--|
+|S1|90|10|0.90 / 0.10|
+|S2|1|9|0.10 / 0.90|
+|S3|5|none|1.00 for K1, and no slice for K2|
+
+Without groups, `share_mean` gives K1 a share of (0.90 + 0.10 + 1.00) / 3 = 0.67 on the `unified` map, and K2 a share of (0.10 + 0.90 + 0) / 3 = 0.33. `pooled_sum` adds up the weights, 96 for K1 and 19 for K2, and gives shares of 96 / 115 = 0.83 and 19 / 115 = 0.17. S1 has ten times the total weight of S2, so it counts ten times as much under `pooled_sum`. With S1 and S2 in group G1 and S3 in group G2, `share_mean` gives 0.50 / 0.50 on the map of G1. The map of G2 draws K1 alone. The `unified` map averages the two groups, which gives 0.75 for K1 and 0.25 for K2.
+
+Equal shares are not the same as weights of 1. Without weights, the slices are equal on every map, including the maps that pool samples. In the example, they are 0.50 / 0.50 on the `unified` map. Weights of 1 give 0.67 / 0.33 under `share_mean`, which is the mean of the equal splits on the maps of the samples. Under `pooled_sum`, they give the prevalence described below.
+
+**Color and width are pooled separately.** The color of a slice summarizes the accession's values in the samples that have one. Its width comes from the weights. The summary of values does not use the weights. Under `pooled_sum` in the example, the width of K1 comes mostly from S1, while its color pools the values of S1, S2, and S3.
+
+**Prevalence.** The prevalence of an accession is the number of samples that have it. To size slices by prevalence on the maps that pool samples, give the file a column of 1s. Name it with `--reaction-slice-weights`, and give `--reaction-slice-share-summary pooled_sum`. In the example, K1 is in 3 samples and K2 is in 2, so the shares on the `unified` map are 0.60 / 0.40. With a `gene_id` column, also give `--reaction-slice-weight-aggregation mean`. An accession then weighs 1 in each sample, rather than the number of its genes.
+
+#### How slices are drawn
+
+A box is cut into columns, left to right. A thin gray line separates neighboring columns, so that two neighbors of the same color can still be told apart. The box keeps one black outline and one label.
+
+A line is cut into repeating dashes with no gaps. Each cycle of dashes holds one dash per slice, in order from the first point of the line in the KGML file. On global maps, compound circles cover about 10 points at each end of almost every line. The dashes fill the part of the line that the circles leave visible. That part holds a whole number of cycles, so each slice shows exactly its share of it. It holds as many cycles as it can while its shortest dash stays at least twice as long as the line is wide. A short line holds one cycle. Neighboring dashes overlap by 0.5 points, so no seams show between them. A line in several pieces shows every slice on each piece.
+
+Where elements overlap, an element in slices is drawn in the order of its top slice. That is the slice that would be drawn on top if it were an element of its own. For numbers, it is the slice of the highest value. `--reaction-reverse-overlay` reverses this order, as it does for elements without slices.
+
+**Too many slices.** A box is drawn whole where a slice of equal width would be narrower than 8 points. Boxes on standard maps are 92 points wide, so a box holds up to 11 slices. A line is drawn whole where any of its pieces would give a slice of equal length shorter than the line is wide. Only the part of the piece that compound circles leave visible counts. This limit counts slices, not shares, so a slice with a small weight can still be thin.
+
+An element drawn whole takes the color of a stand-in value. For numbers, this is the mean of the slice values, weighted by their shares. With `--reaction-value-period`, it is their circular mean, weighted the same way. A spread from `angular_deviation` is averaged as a plain number. For categorical values, the stand-in is the value chosen among the accessions of the slices, by `--reaction-accession-aggregation` and then by the sample and group rules. In both cases, only the accessions of the slices count. An element whose stand-in is undefined is left uncolored. A warning counts the elements drawn whole on each KEGG map, and the key table lists them with the reason.
+
+**Compound colors.** On global and overview maps drawn from reactions alone, each compound takes a color from the reactions that touch it. An element in slices casts one vote, in the color of its stand-in value. One vote per slice would let a line with six KOs outvote a neighbor with one. An element whose stand-in is undefined casts no vote.
+
+#### Find each slice in the key table
+
+Slices are too narrow to label, and a box label names only the first KO of the element. The program therefore writes a key table at the top of the output directory, beside the colorbars. It is a %(kegg-slice-key-txt)s named `slice_key_reactions.txt`, with one row per slice on each drawn map. A row gives the KEGG map, the drawn map (`unified`, a sample, or a group), the KGML entry, the position and label of the element, and the slice's position, accession, value, share, and color. An element drawn whole has a row for each slice it would have had, with the reason it was drawn whole.
+
+#### What is refused
+
+Slicing is refused in these cases:
+
+- A run without `--reaction-txt`. This includes runs of contigs databases, a pangenome, or a reaction network JSON file.
+- A reaction file without a value column. Slices of presence are not supported yet.
+- `--reaction-color` or `--original-color`, which give the layer fixed colors.
+- `--reaction-element-normalization`. Slices cannot be normalized yet.
+- `--reaction-accession-aggregation` with numbers. Each slice shows the value of one accession, and an element drawn whole takes the weighted mean of its slice values in place of this reduction.
+- A run in which no drawn map shows the values of the reaction layer.
+
+The options that size slices need `--reaction-slice-by`. The column named by `--reaction-slice-weights` must be in the file, and it cannot be `accession`, `gene_id`, or `sample`. The file still needs a separate value column. `--reaction-slice-weight-aggregation` needs `--reaction-slice-weights` and a `gene_id` column. `--reaction-slice-share-summary` needs `--reaction-slice-weights` and a drawn map that pools samples and shows values.
+
+Slices are drawn with private methods of Biopython's map canvas, which a Biopython release could rename. Anvi'o then stops with an error that names the installed version of Biopython, before it draws any map.
+
+#### Read sliced maps
+
+- A slice is one KO or one KEGG reaction. The KOs of a box can be subunits of one enzyme, which are all needed, or alternative enzymes, any one of which is enough. KEGG does not say which for every box.
+- The same KO can appear in several elements of a map. Each of them shows a slice of that KO in the same color, though its share can differ.
+- The width of a slice shows its share of one element, not an amount. A box with weights of 1000 and 1000 looks the same as a box with weights of 1 and 1. A small share draws a thin slice. Shares of 0.95 and 0.05 give a box a slice 4.6 points wide, which can look like a border.
+- Color and width are pooled separately on the maps of groups and the `unified` map, as described above.
+- On the `unified` map, the slices of one element can come from different samples. One sample may have data only for K1, and another only for K2.
+- Only the accessions with values on a map are drawn on it, so the same position can hold different KOs on different maps. The key table says which.
+- In a view of a whole map and in the panels of a grid, slices are small. Dashes of two colors can then blend into a third color that looks like a value between them. Zoom in, or check the key table.
+- Neighboring colors can look alike to readers with color-vision deficiency. For categorical values, `--reaction-value-colors` can set colors that are easier to tell apart.
 
 ### Mixed coloring across reaction and compound layers
 

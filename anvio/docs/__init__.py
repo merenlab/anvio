@@ -1062,6 +1062,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
+    "kegg-slice-key-txt": {
+        "name": "KEGG SLICE KEY TXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "enzymes-list-for-module": {
         "name": "ENZYMES LIST",
         "type": "TXT",
