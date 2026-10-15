@@ -141,9 +141,10 @@ printf '"accession"\t"status"\n"K00844"\t"up"\n"K01810"\t"down"\n' > draw_kos_qu
 # since K16306 has a weight of 0. Both KOs of element 154 have a weight of 0, so that element is
 # left uncolored.
 printf 'accession\tcoverage\tweight\nK00174\t1.5\t0\nK00175\t3.0\t0\nK01624\t2.0\t3\nK01622\t4.0\t1\nK16306\t6.0\t0\n' > draw_kos_weights.reaction.txt
-# Four of the five KOs of entry 6838 of the global map, a line too short for four slices, and KOs
-# that share longer lines of that map.
-printf 'accession\tcoverage\nK08907\t1\nK08908\t2\nK08909\t3\nK08910\t4\nK00174\t5\nK00175\t6\nK01624\t7\nK01622\t8\nK16306\t9\n' > draw_kos_global_slices.reaction.txt
+# Four of the five KOs of entry 6838 of the global map, a line too short for four slices, the three
+# KOs of entry 1327, a line whose visible part is too short for three slices, and KOs that share
+# longer lines of that map.
+printf 'accession\tcoverage\nK08907\t1\nK08908\t2\nK08909\t3\nK08910\t4\nK16043\t5\nK16044\t6\nK22230\t7\nK00174\t8\nK00175\t9\nK01624\t10\nK01622\t11\nK16306\t12\n' > draw_kos_global_slices.reaction.txt
 # A negative weight.
 printf 'accession\tcoverage\tweight\nK00174\t1.5\t-1\nK00175\t3.0\t2\n' > draw_bad_negative_weight.reaction.txt
 
@@ -2544,6 +2545,15 @@ if [ "$(awk -F'\t' '$3 == "6838" && $7 == "" && $12 == "line too short" {n++} EN
        $slice_key)" != 4 ]
 then
     echo "ERROR: the key table did not list the four slices of a line drawn whole."
+    exit 1
+fi
+# Entry 1327 is a line 32 points long. Compound circles cover 19 points of its ends, and 13 points
+# stay visible. A third of its whole length would fit as a slice, but a third of its visible part is
+# shorter than the line is wide, so the line is drawn whole.
+if [ "$(awk -F'\t' '$1 == "01100" && $3 == "1327" && $12 == "line too short" {n++}
+                    END {print n + 0}' $slice_key)" != 3 ]
+then
+    echo "ERROR: a line whose visible part is too short for its slices was not drawn whole."
     exit 1
 fi
 if ! awk -F'\t' '$1 == "01100" && $7 == "2" {found = 1} END {exit !found}' $slice_key

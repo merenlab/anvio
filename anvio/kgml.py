@@ -23,11 +23,10 @@ import xml.etree.ElementTree as ET
 
 from io import StringIO
 from argparse import Namespace
+from matplotlib.colors import Colormap, rgb2hex, to_hex
+from typing import Callable, Dict, Iterable, List, Literal, Tuple, Union
 from Bio.KEGG.KGML import KGML_parser, KGML_pathway
 from Bio.Graphics.KGML_vis import KGMLCanvas, color_to_reportlab, darken
-from matplotlib.colors import Colormap, rgb2hex, to_hex
-
-from typing import Callable, Dict, Iterable, List, Literal, Tuple, Union
 
 import anvio.terminal as terminal
 
@@ -40,7 +39,7 @@ from anvio.metabolism.downloads import download_org_pathway_image_files
 from anvio.metabolism.constants import GLOBAL_MAP_ID_PATTERN, OVERVIEW_MAP_ID_PATTERN
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2026, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = VERSION
