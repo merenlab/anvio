@@ -147,6 +147,16 @@ printf 'accession\tcoverage\tweight\nK00174\t1.5\t0\nK00175\t3.0\t0\nK01624\t2.0
 printf 'accession\tcoverage\nK08907\t1\nK08908\t2\nK08909\t3\nK08910\t4\nK16043\t5\nK16044\t6\nK22230\t7\nK00174\t8\nK00175\t9\nK01624\t10\nK01622\t11\nK16306\t12\n' > draw_kos_global_slices.reaction.txt
 # A negative weight.
 printf 'accession\tcoverage\tweight\nK00174\t1.5\t-1\nK00175\t3.0\t2\n' > draw_bad_negative_weight.reaction.txt
+# A row without a gene ID.
+printf 'accession\tgene_id\tcoverage\nK00844\tgene_1\t10\nK00845\t\t30\n' > draw_bad_blank_gene_id.reaction.txt
+# Gene caller IDs of two assemblies, used as they are. Gene 0 has K01623 in S1 and K01624 in S2, so
+# the ID names two genes. Gene 1 has K01622 in both samples.
+printf 'accession\tgene_id\tsample\tcoverage\nK01623\t0\tS1\t1\nK01624\t0\tS2\t9\nK01622\t1\tS1\t2\nK01622\t1\tS2\t4\n' > draw_kos_gene_id_collision.reaction.txt
+# Genes with rows for one or two KOs of element 18 of map 00010. The values are numbers, categorical
+# values across samples, and clock times.
+printf 'accession\tgene_id\tcoverage\nK01623\tgene_1\t2\nK01624\tgene_1\t5\nK01622\tgene_2\t4\n' > draw_kos_genes_coverage.reaction.txt
+printf 'accession\tgene_id\tsample\tstatus\nK01623\tgene_1\tS1\tup\nK01624\tgene_1\tS1\tdown\nK01622\tgene_2\tS1\tup\nK01622\tgene_2\tS2\tup\nK01624\tgene_2\tS3\tdown\nK01622\tgene_2\tS3\tdown\nK01622\tgene_3\tS1\tdown\nK01624\tgene_3\tS1\tup\n' > draw_kos_samples_genes_status.reaction.txt
+printf 'accession\tgene_id\tclocktime\nK01623\tgene_1\t23\nK01624\tgene_1\t3\nK01622\tgene_2\t12\n' > draw_kos_genes_clocktime.reaction.txt
 
 # A test that expects a refusal discards the output of the draw, so a fixture that was never written
 # would make that test pass for the wrong reason. Fail loudly here instead.
@@ -168,7 +178,9 @@ for fixture in contigs-db-group-information.txt draw_kos_samples300.reaction.txt
               draw_kos_gene_votes.reaction.txt draw_kos_stray_quote.reaction.txt \
               draw-stray-quote-colors.txt draw_kos_quoted_fields.reaction.txt \
               draw_kos_weights.reaction.txt draw_kos_global_slices.reaction.txt \
-              draw_bad_negative_weight.reaction.txt
+              draw_bad_negative_weight.reaction.txt draw_bad_blank_gene_id.reaction.txt \
+              draw_kos_gene_id_collision.reaction.txt draw_kos_genes_coverage.reaction.txt \
+              draw_kos_samples_genes_status.reaction.txt draw_kos_genes_clocktime.reaction.txt
 do
     if [ ! -s $fixture ]
     then
@@ -2443,12 +2455,18 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
 
 slice_key=draw_txt_slices_share_mean/slice_key_reactions.txt
 if [ "$(head -n 1 $slice_key | tr '\t' ' ')" \
-     != "map drawn_map entry_id x y label slice accession value share color drawn_whole" ]
+     != "map drawn_map entry_id x y label slice accession gene_id value share color drawn_whole" ]
 then
     echo "ERROR: the key table of slices does not have the expected header."
     exit 1
 fi
-shares=$(awk -F'\t' '$3 == "154" {printf "%s %s %.3f\n", $2, $8, $10}' $slice_key)
+# A slice of a KO names no gene, so its 'gene_id' is empty, though the file has a 'gene_id' column.
+if awk -F'\t' 'NR > 1 && $9 != "" {found = 1} END {exit !found}' $slice_key
+then
+    echo "ERROR: a slice of a KO named a gene in the key table."
+    exit 1
+fi
+shares=$(awk -F'\t' '$3 == "154" {printf "%s %s %.3f\n", $2, $8, $11}' $slice_key)
 expected_shares=$(printf '%s\n' "unified K00174 0.725" "unified K00175 0.275" \
                   "G1 K00174 0.900" "G1 K00175 0.100" "G2 K00174 0.550" "G2 K00175 0.450")
 if [ "$shares" != "$expected_shares" ]
@@ -2477,7 +2495,7 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
                         --pathway-numbers 00010 \
                         --no-progress
 
-shares=$(awk -F'\t' '$3 == "154" {printf "%s %s %.3f\n", $2, $8, $10}' \
+shares=$(awk -F'\t' '$3 == "154" {printf "%s %s %.3f\n", $2, $8, $11}' \
          draw_txt_slices_pooled_sum/slice_key_reactions.txt)
 if [ "$shares" != "$(printf '%s\n' "unified K00174 0.835" "unified K00175 0.165")" ]
 then
@@ -2497,7 +2515,7 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
                         --draw-individual-files \
                         --no-progress
 
-shares=$(awk -F'\t' '$2 == "SAMPLE_1" && $3 == "154" {printf "%s %.3f\n", $8, $10}' \
+shares=$(awk -F'\t' '$2 == "SAMPLE_1" && $3 == "154" {printf "%s %.3f\n", $8, $11}' \
          draw_txt_slices_weight_mean/slice_key_reactions.txt)
 if [ "$shares" != "$(printf '%s\n' "K00174 0.818" "K00175 0.182")" ]
 then
@@ -2518,7 +2536,7 @@ then
     echo "ERROR: an element whose KOs all have a weight of 0 was not reported as uncolored."
     exit 1
 fi
-shares=$(awk -F'\t' '$3 == "18" || $3 == "154" {printf "%s %s %.3f\n", $3, $8, $10}' \
+shares=$(awk -F'\t' '$3 == "18" || $3 == "154" {printf "%s %s %.3f\n", $3, $8, $11}' \
          draw_txt_slices_zero_weights/slice_key_reactions.txt)
 if [ "$shares" != "$(printf '%s\n' "18 K01624 0.750" "18 K01622 0.250")" ]
 then
@@ -2541,7 +2559,7 @@ then
     exit 1
 fi
 slice_key=draw_txt_slices_global/slice_key_reactions.txt
-if [ "$(awk -F'\t' '$3 == "6838" && $7 == "" && $12 == "line too short" {n++} END {print n + 0}' \
+if [ "$(awk -F'\t' '$3 == "6838" && $7 == "" && $13 == "line too short" {n++} END {print n + 0}' \
        $slice_key)" != 4 ]
 then
     echo "ERROR: the key table did not list the four slices of a line drawn whole."
@@ -2550,7 +2568,7 @@ fi
 # Entry 1327 is a line 32 points long. Compound circles cover 19 points of its ends, and 13 points
 # stay visible. A third of its whole length would fit as a slice, but a third of its visible part is
 # shorter than the line is wide, so the line is drawn whole.
-if [ "$(awk -F'\t' '$1 == "01100" && $3 == "1327" && $12 == "line too short" {n++}
+if [ "$(awk -F'\t' '$1 == "01100" && $3 == "1327" && $13 == "line too short" {n++}
                     END {print n + 0}' $slice_key)" != 3 ]
 then
     echo "ERROR: a line whose visible part is too short for its slices was not drawn whole."
@@ -2574,6 +2592,174 @@ then
     echo "ERROR: slices with an undefined summary were not reported."
     exit 1
 fi
+
+# Element 18 of map 00010 stands for K01623, K01624, K01622, K11645, K16305, and K16306. Its slices
+# of genes are ordered by the first of these KOs that each gene has a row for, and then by gene ID,
+# with digits compared as numbers. gene_2 therefore comes before gene_10, and gene_10 before gene_1.
+# gene_5 has rows for K01624 and K01622, so it is one slice that lists both KOs. In SAMPLE_1, these
+# rows have values of 2 and 6 and weights of 30 and 10. The slice takes their means, a value of 4
+# and a weight of 20. The slices of the element there weigh 10, 20, 20, and 50.
+INFO "Testing slices of genes, ordered by KO and then by gene ID"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-sample-summary mean --reaction-slice-by gene --reaction-slice-weights coverage \
+    --output-dir draw_txt_slices_genes --pathway-numbers 00010 --draw-individual-files \
+    --no-progress 2>&1 | tee draw_txt_slices_genes.log
+slice_key=draw_txt_slices_genes/slice_key_reactions.txt
+slices=$(awk -F'\t' '$2 == "unified" && $3 == "18" {print $9, $8}' $slice_key)
+expected_slices=$(printf '%s\n' "gene_2 K01623" "gene_10 K01623" "gene_1 K01624" \
+                  "gene_5 K01624,K01622" "gene_3 K01622" "gene_4 K16306")
+if [ "$slices" != "$expected_slices" ]
+then
+    echo "ERROR: the slices of genes were not ordered by KO and then by gene ID."
+    exit 1
+fi
+slices=$(awk -F'\t' '$2 == "SAMPLE_1" && $3 == "18" {printf "%s %.3f %.3f\n", $9, $10, $11}' \
+         $slice_key)
+expected_slices=$(printf '%s\n' "gene_2 1.000 0.100" "gene_10 5.000 0.200" "gene_5 4.000 0.200" \
+                  "gene_3 8.000 0.500")
+if [ "$slices" != "$expected_slices" ]
+then
+    echo "ERROR: a gene with rows for two KOs of an element did not take the means of its rows."
+    exit 1
+fi
+# Element 64 lists K01622 but not K01624, so gene_5 there stands for its rows of K01622 alone. The
+# 'unified' map takes the mean of the values of a gene in the samples where it has rows for the
+# element. gene_10 has rows in SAMPLE_1 and SAMPLE_3 alone, with values of 5 and 7, so its mean is
+# 6. In element 18, gene_5 has values of 4, 6, and 8 in the three samples, so its mean is 6. It has
+# no row for K01622 in SAMPLE_3, so SAMPLE_3 is skipped in element 64. There its values of 6 and 9
+# give a mean of 7.5.
+values=$(awk -F'\t' '$2 == "unified" && ($9 == "gene_5" || $9 == "gene_10") {
+                     printf "%s %s %s %.3f\n", $3, $9, $8, $10}' $slice_key)
+expected_values=$(printf '%s\n' "18 gene_10 K01623 6.000" "18 gene_5 K01624,K01622 6.000" \
+                  "64 gene_5 K01622 7.500")
+if [ "$values" != "$expected_values" ]
+then
+    echo "ERROR: the values of a gene were not pooled from its own rows in each element."
+    exit 1
+fi
+# Several genes of this file occur in two or more samples, so the warning that none do is not given.
+# gene_5 has K01624 and K01622 in SAMPLE_1 and SAMPLE_2, but K01624 alone in SAMPLE_3. Its rows in
+# any two samples share K01624, so its ID is not named as one that may name two genes.
+for phrase in "Each slice of a gene there shows the value of a single sample" \
+              "suggest that one ID names two genes"
+do
+    if tr '\n' ' ' < draw_txt_slices_genes.log | grep -q "$phrase"
+    then
+        echo "ERROR: the gene IDs of a file whose genes are shared were reported ($phrase)."
+        exit 1
+    fi
+done
+
+# '--reaction-accession-aggregation' reduces the rows of a gene for the KOs of an element when it
+# is given. gene_1 has rows for K01623 and K01624 of element 18, with values of 2 and 5. 'sum' gives
+# its slice a value of 7, where the default, 'mean', would give 3.5. gene_2 has one row, for K01622,
+# and takes its value of 4.
+INFO "Testing the rows of a gene reduced by their sum"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_genes_coverage.reaction.txt \
+    --reaction-slice-by gene --reaction-accession-aggregation sum \
+    --output-dir draw_txt_slices_genes_sum --pathway-numbers 00010 --no-progress
+values=$(awk -F'\t' '$3 == "18" {printf "%s %s %.3f\n", $9, $8, $10}' \
+         draw_txt_slices_genes_sum/slice_key_reactions.txt)
+if [ "$values" != "$(printf '%s\n' "gene_1 K01623,K01624 7.000" "gene_2 K01622 4.000")" ]
+then
+    echo "ERROR: the rows of a gene for the KOs of an element were not reduced by their sum."
+    exit 1
+fi
+
+# With '--reaction-value-period', the rows of a gene for the KOs of an element are reduced by their
+# circular mean by default. gene_1 has rows for K01623 and K01624 of element 18 at 23 and 3 hours,
+# an hour before and three hours after midnight. Their circular mean is 1, the hour halfway between
+# them across midnight. Their arithmetic mean would be 13. The circular mean can differ from 1 by a
+# tiny amount, so it is read to three decimal places. gene_2 has one row, for K01622, and takes its
+# value of 12.
+INFO "Testing the rows of a gene reduced by their circular mean by default"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_genes_clocktime.reaction.txt \
+    --reaction-value-period 24 --reaction-slice-by gene \
+    --output-dir draw_txt_slices_genes_period --pathway-numbers 00010 --no-progress
+values=$(awk -F'\t' '$3 == "18" {printf "%s %s %.3f\n", $9, $8, $10}' \
+         draw_txt_slices_genes_period/slice_key_reactions.txt)
+if [ "$values" != "$(printf '%s\n' "gene_1 K01623,K01624 1.000" "gene_2 K01622 12.000")" ]
+then
+    echo "ERROR: the rows of a gene with a period were not reduced by their circular mean."
+    exit 1
+fi
+
+# A categorical slice of a gene takes the value that the accession rule chooses among the rows of
+# the gene for the element in a sample. In S1, gene_1 has rows for K01623 and K01624 of element 18,
+# valued 'up' and 'down'. Each row gives one vote, and 'plurality_order', the default rule, breaks
+# the tie by the order of the values. Without a colors file, the values are sorted, so 'down' comes
+# first and gene_1 takes it. gene_1 has no rows in S2 and S3, so it has no slice there. gene_2 takes
+# the value of its one row in S1 and S2, 'up'. Its two rows in S3 are both 'down'. gene_3 ties in S1
+# as gene_1 does, but its 'down' row comes first, so the check fails if a gene takes its last row.
+INFO "Testing the categorical values of slices of genes in samples and across them"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes_status.reaction.txt \
+    --reaction-value-type categorical --reaction-sample-summary plurality_order \
+    --reaction-slice-by gene --output-dir draw_txt_slices_genes_categorical \
+    --pathway-numbers 00010 --draw-individual-files --no-progress
+slice_key=draw_txt_slices_genes_categorical/slice_key_reactions.txt
+values=$(awk -F'\t' '$2 != "unified" && $3 == "18" {print $2, $9, $10}' $slice_key)
+expected_values=$(printf '%s\n' "S1 gene_1 down" "S1 gene_2 up" "S1 gene_3 down" "S2 gene_2 up" \
+                  "S3 gene_2 down")
+if [ "$values" != "$expected_values" ]
+then
+    echo "ERROR: the accession rule did not choose the value of a gene among its rows."
+    exit 1
+fi
+# On the 'unified' map, '--reaction-sample-summary' chooses among the values of a gene in the
+# samples where it has rows for the element, and each sample gives one vote. gene_2 has 'up' in S1
+# and S2 and 'down' in S3, so 'plurality_order' gives it 'up', though 'down' comes first in the
+# order of the values. If each row voted, 'up' and 'down' would tie at two votes, and the tie would
+# go to 'down'. gene_1 and gene_3 have rows in S1 alone and keep 'down'.
+values=$(awk -F'\t' '$2 == "unified" && $3 == "18" {print $9, $10}' $slice_key)
+if [ "$values" != "$(printf '%s\n' "gene_1 down" "gene_2 up" "gene_3 down")" ]
+then
+    echo "ERROR: the sample rule did not choose the value of a gene among the samples."
+    exit 1
+fi
+
+# No gene ID of this file occurs in two or more samples. On a map that pools samples, each slice of
+# a gene then shows the value of a single sample, and a warning names these maps. Group G1 holds
+# SAMPLE_1 alone, so its map pools nothing and is not named.
+INFO "Testing the warning that no gene ID occurs in two or more samples of a map that pools them"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --groups-txt draw-sample-group-information.txt --reaction-sample-summary mean \
+    --reaction-group-summary mean --reaction-slice-by gene \
+    --output-dir draw_txt_slices_genes_unshared --pathway-numbers 00010 --draw-individual-files \
+    --no-progress 2>&1 | tee draw_txt_slices_genes_unshared.log
+for phrase in "Each slice of a gene there shows the value of a single sample" \
+              "'unified' map and the map of group 'G2'"
+do
+    if ! tr '\n' ' ' < draw_txt_slices_genes_unshared.log | grep -q "$phrase"
+    then
+        echo "ERROR: maps that pool no gene across samples were misreported ($phrase)."
+        exit 1
+    fi
+done
+if tr '\n' ' ' < draw_txt_slices_genes_unshared.log | grep -q "'G1'"
+then
+    echo "ERROR: the map of a group of one sample was named in the warning about gene IDs."
+    exit 1
+fi
+
+# Gene caller IDs start at 0 in every contigs database. Here gene 0 of one assembly has K01623 in
+# S1, and gene 0 of another has K01624 in S2, so its rows in the two samples share no KO. The
+# 'unified' map would pool them as one gene, so a warning names the ID. Gene 1 has the same KO in
+# both samples and is not named.
+INFO "Testing the warning that a gene ID has no KO in common between two samples"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_gene_id_collision.reaction.txt \
+    --reaction-sample-summary mean --reaction-slice-by gene \
+    --output-dir draw_txt_slices_genes_collision --pathway-numbers 00010 \
+    --no-progress 2>&1 | tee draw_txt_slices_genes_collision.log
+for phrase in "1 gene ID of the reaction file" \
+              "no accession in common between its rows in two samples" \
+              "'0'. A gene of one contigs database is annotated once"
+do
+    if ! tr '\n' ' ' < draw_txt_slices_genes_collision.log | grep -q "$phrase"
+    then
+        echo "ERROR: a gene ID with no KO in common between two samples was misreported ($phrase)."
+        exit 1
+    fi
+done
 
 # Slicing is refused where it has no values to slice or where another option rules it out (each
 # command below is expected to fail).
@@ -2875,8 +3061,8 @@ then
     exit 1
 fi
 
-# Each slice shows the value of one KO. An element drawn whole takes the weighted mean of its slice
-# values in place of an aggregation of numbers across its KOs.
+# A slice of a KO shows the value of that KO. An element drawn whole takes the weighted mean of its
+# slice values in place of an aggregation of numbers across its KOs.
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
     --reaction-slice-by accession --reaction-accession-aggregation mean \
     --pathway-numbers $pathway_numbers \
@@ -2999,12 +3185,86 @@ do
     fi
 done
 
-# Only accessions can be slices so far.
-if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+# Slices of genes need a 'gene_id' column, and a gene ID in every row.
+if anvi-draw-kegg-pathways --reaction-txt draw_reactions.reaction.txt \
     --reaction-slice-by gene --pathway-numbers $pathway_numbers \
-    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_genes_no_gene_id.log 2>&1
 then
-    echo "ERROR: slicing by gene should have failed but did not."
+    echo "ERROR: slicing by gene without a 'gene_id' column should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_genes_no_gene_id.log \
+    | grep -q "draws each gene of a reaction element as a slice"
+then
+    echo "ERROR: slicing by gene without a 'gene_id' column was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_blank_gene_id.reaction.txt \
+    --reaction-slice-by gene --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_genes_blank_gene_id.log 2>&1
+then
+    echo "ERROR: slicing by gene with a row without a gene ID should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_genes_blank_gene_id.log | grep -q "in its 'gene_id' column"
+then
+    echo "ERROR: slicing by gene with a row without a gene ID was refused for another reason."
+    exit 1
+fi
+
+# Each gene is a slice of its own, so the values and the weights of the genes of a KO are never
+# reduced to those of the KO.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-slice-by gene --reaction-gene-aggregation mean \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_genes_gene_aggregation.log 2>&1
+then
+    echo "ERROR: slicing by gene with a gene aggregation should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_genes_gene_aggregation.log \
+    | grep -q "so no values of genes are reduced to an accession"
+then
+    echo "ERROR: slicing by gene with a gene aggregation was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+    --reaction-slice-by gene --reaction-slice-weights coverage \
+    --reaction-slice-weight-aggregation mean --draw-individual-files \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_genes_weight_aggregation.log 2>&1
+then
+    echo "ERROR: slicing by gene with a weight aggregation should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_genes_weight_aggregation.log \
+    | grep -q "so no weights are reduced to an accession"
+then
+    echo "ERROR: slicing by gene with a weight aggregation was refused for another reason."
+    exit 1
+fi
+
+# A gene with one row for an element shows the value of that row. 'std' does not return a single
+# value unchanged, so it cannot reduce the rows of a gene.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-slice-by gene --reaction-accession-aggregation std \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_genes_std.log 2>&1
+then
+    echo "ERROR: slicing by gene with 'std' over a gene's rows should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_genes_std.log \
+    | grep -q "return a single value unchanged, so genes with several rows"
+then
+    echo "ERROR: slicing by gene with 'std' over a gene's rows was refused for another reason."
     exit 1
 fi
 

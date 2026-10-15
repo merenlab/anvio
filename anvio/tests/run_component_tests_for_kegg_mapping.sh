@@ -487,6 +487,39 @@ anvi-draw-kegg-pathways --reaction-txt draw_reactions_shared_element.reaction.tx
                         --pathway-numbers $pathway_numbers \
                         --no-progress
 
+# With '--reaction-slice-by gene', each gene with a value on a map takes a slice of each element
+# whose KOs it has rows for. A gene with rows for two KOs of one element is one slice. One gene ID
+# names the same gene in every sample, so the 'unified' map pools the values of each gene across the
+# samples. Here the color of a slice shows the expression of its gene, and its width shows the
+# coverage of the gene.
+INFO "Slicing each element by gene, with the values of each gene pooled across the samples"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+                        --reaction-sample-summary mean \
+                        --reaction-slice-by gene \
+                        --reaction-slice-weights coverage \
+                        --output-dir draw_txt_samples_genes_slices \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
+# With groups, the map of each group pools the genes of its samples. Under 'pooled_sum', the map of
+# a group adds up the weights of each gene over the samples of the group, and the 'unified' map adds
+# them up over every sample.
+INFO "Slicing each element by gene on the maps of groups, with weights pooled by their sum"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+                        --groups-txt draw-sample-group-information.txt \
+                        --reaction-sample-summary mean \
+                        --reaction-group-summary mean \
+                        --reaction-slice-by gene \
+                        --reaction-slice-weights coverage \
+                        --reaction-slice-share-summary pooled_sum \
+                        --output-dir draw_txt_groups_genes_slices_pooled_sum \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
 ## PRESENCE COLORING
 INFO "Mixing presence coloring of reactions with value coloring of compounds"
 anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \

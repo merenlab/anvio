@@ -376,10 +376,11 @@ RANDOM_CATEGORICAL_RULES: Tuple[str, ...] = ('plurality_random', 'random')
 DEFAULT_CATEGORICAL_SEED = 42
 
 # What the reaction elements of a map can be sliced by ('--reaction-slice-by'). A slice is one
-# accession of the reaction file's own type, a KO or a KEGG reaction. Each slice of a box or line
-# takes the color of its own value and a share of the element's width or length ('_slice_result').
-# Only maps that show the values of the layer are sliced. Compounds are never sliced.
-SLICE_UNITS: Tuple[str, ...] = ('accession',)
+# accession of the reaction file's own type, a KO or a KEGG reaction. A slice can instead be one
+# gene of the file's 'gene_id' column. Each slice of a box or line takes the color of its own value
+# and a share of the element's width or length ('_slice_result'). Only maps that show the values of
+# the layer are sliced. Compounds are never sliced.
+SLICE_UNITS: Tuple[str, ...] = ('accession', 'gene')
 
 # How the shares of slices are pooled on a map that summarizes several samples, which is the map of
 # a group or the 'unified' map ('--reaction-slice-share-summary'). They apply only with a column of
@@ -396,10 +397,12 @@ SLICE_WEIGHT_AGGREGATIONS: Tuple[str, ...] = ('sum', 'mean')
 # standard maps are 92 points wide, so they hold up to 11 slices.
 MIN_BOX_SLICE_WIDTH = 8
 
-# The columns of the key table that lists the slices of a layer ('_write_slice_keys').
+# The columns of the key table that lists the slices of a layer ('_write_slice_keys'). A slice of a
+# gene lists the gene's accessions in the element, joined by commas. 'gene_id' is empty for a slice
+# of an accession.
 SLICE_KEY_COLUMNS: Tuple[str, ...] = (
-    'map', 'drawn_map', 'entry_id', 'x', 'y', 'label', 'slice', 'accession', 'value', 'share',
-    'color', 'drawn_whole'
+    'map', 'drawn_map', 'entry_id', 'x', 'y', 'label', 'slice', 'accession', 'gene_id', 'value',
+    'share', 'color', 'drawn_whole'
 )
 
 # The header of the color column of a kegg-membership-colors-txt file and of a kegg-value-colors-txt
@@ -823,7 +826,8 @@ class Mapper:
         path: str,
         element_type: Literal['reaction', 'compound'],
         value_type: Literal['numeric', 'categorical'] = 'numeric',
-        slice_weights: Union[str, None] = None
+        slice_weights: Union[str, None] = None,
+        slice_by: Union[str, None] = None
     ) -> dict:
         """
         Read and validate a per-layer draw-kegg-pathways text file into a map-layer table.
@@ -848,6 +852,11 @@ class Mapper:
         a value column besides it. Every row needs a weight, a finite number of 0 or more. The
         weights are read as text first, as every column is, and then converted to numbers.
 
+        Slices of genes ('--reaction-slice-by gene') need a 'gene_id' column. Every row then needs a
+        gene ID. The spaces around each ID are dropped before repeated rows are looked for. Without
+        slices of genes, the 'gene_id' column is read as it is. A file without a value column is not
+        checked for gene IDs, since slices of presence are refused ('_build_slice_model').
+
         Parameters
         ==========
         path : str
@@ -862,6 +871,9 @@ class Mapper:
         slice_weights : Union[str, None], None
             The name of the column of slice weights, or None for a file without one.
 
+        slice_by : Union[str, None], None
+            What the elements are sliced by ('SLICE_UNITS'), or None where they are not sliced.
+
         Returns
         =======
         dict
@@ -874,7 +886,8 @@ class Mapper:
               it. A file with a 'sample' column also gets a '__sample' column, made the same way. A
               file of categorical values also gets a '__value' column, made the same way from the
               value column. Every column is read as text. Numbers are converted later
-              ('_aggregate_accession_quantities').
+              ('_aggregate_accession_quantities'). With slices of genes, a file with a value column
+              also gets a '__gene_id' column, which holds each row's gene ID, made the same way.
             - 'value_column': the name of the value column. It is None for a file without one,
               whose layer is colored by presence.
             - 'value_type': the 'value_type' argument.
@@ -1034,6 +1047,34 @@ class Mapper:
                 f"slices by '{slice_weights}'."
             )
 
+        # Slices of genes are named by the 'gene_id' column, so every row needs a gene ID. Blanks
+        # around an ID are dropped. Without slices of genes, the column is read as it is. A file
+        # without a value column is not checked here. Its layer shows presence, and slicing it is
+        # refused for that reason first ('_build_slice_model').
+        if slice_by == 'gene' and value_column is not None:
+            if 'gene_id' not in df.columns:
+                self.progress.end()
+                raise ConfigError(
+                    f"'--{element_type}-slice-by gene' gives each gene a slice of its own, but the "
+                    f"kegg-{element_type}-txt file at '{path}' has no 'gene_id' column. Its "
+                    f"columns are: {', '.join(original_columns)}. Add a 'gene_id' column that "
+                    f"names the gene of each row, or give '--{element_type}-slice-by accession' "
+                    f"instead."
+                )
+            gene_id = df['gene_id'].fillna('').astype(str).str.strip()
+            blank = gene_id == ''
+            if blank.any():
+                bad = sorted(set(df.loc[blank, '__accession']))[:5]
+                self.progress.end()
+                raise ConfigError(
+                    f"'--{element_type}-slice-by gene' gives each gene a slice of its own, so "
+                    f"every row of the kegg-{element_type}-txt file at '{path}' needs a gene ID in "
+                    f"its 'gene_id' column. {int(blank.sum())} "
+                    f"{'rows have' if blank.sum() > 1 else 'row has'} none. The accessions with "
+                    f"such rows include these: {', '.join(bad)}."
+                )
+            df = df.assign(__gene_id=gene_id)
+
         # Categorical values are names, so each row needs one. Blanks around a name are dropped.
         if value_type == 'categorical':
             if value_column is None:
@@ -1052,8 +1093,8 @@ class Mapper:
                 raise ConfigError(
                     f"Every row of the kegg-{element_type}-txt file at '{path}' needs a "
                     f"categorical value in its '{value_column}' column. {int(blank.sum())} "
-                    f"{'rows have' if blank.sum() > 1 else 'row has'} none. Their accessions "
-                    f"include these: {', '.join(bad)}."
+                    f"{'rows have' if blank.sum() > 1 else 'row has'} none. The accessions with "
+                    f"such rows include these: {', '.join(bad)}."
                 )
             df = df.assign(__value=value)
 
@@ -1098,10 +1139,12 @@ class Mapper:
         # refused rather than combined by a rule the user did not choose. What counts as "the same
         # thing" is the file's own key: a reaction file naming genes describes one gene's value for
         # one accession, so several genes carrying one accession are not repeats and remain the
-        # ordinary case.
+        # ordinary case. Slices of genes read the gene IDs without the spaces around them.
         if value_column is not None:
+            gene_column = '__gene_id' if slice_by == 'gene' else 'gene_id'
             key_columns = [
-                column for column in ('__accession', 'gene_id', '__sample') if column in df.columns
+                column for column in ('__accession', gene_column, '__sample')
+                if column in df.columns
             ]
             duplicated = df.duplicated(subset=key_columns, keep=False)
             if duplicated.any():
@@ -1113,6 +1156,12 @@ class Mapper:
                     ', '.join(str(value) for value in row) for row in examples.itertuples(index=False)
                 )
                 self.progress.end()
+                # Rows that differ only in the spaces around their gene IDs look different in the
+                # file, so the message says why they repeat.
+                stripped = (
+                    f" With '--{element_type}-slice-by gene', the spaces around gene IDs are "
+                    f"dropped before rows are compared." if slice_by == 'gene' else ''
+                )
                 if value_type == 'categorical':
                     raise ConfigError(
                         f"Every row of the kegg-{element_type}-txt file at '{path}' must describe "
@@ -1120,7 +1169,7 @@ class Mapper:
                         f"of {described}. The first repeated "
                         f"{'combinations are' if len(key_columns) > 1 else 'accessions are'}: "
                         f"{shown}. Each of these can have only one categorical value in the "
-                        f"'{value_column}' column. Please keep one row for each."
+                        f"'{value_column}' column. Please keep one row for each.{stripped}"
                     )
                 raise ConfigError(
                     f"Every row of the kegg-{element_type}-txt file at '{path}' must describe a "
@@ -1130,7 +1179,7 @@ class Mapper:
                     f"{shown}. Anvi'o will not guess how repeated rows should be combined -- averaging "
                     f"replicate measurements and adding up separate contributions, such as the ions of "
                     f"one metabolite, are both reasonable and give different answers. Please combine "
-                    f"them in the way that suits your data before drawing."
+                    f"them in the way that suits your data before drawing.{stripped}"
                 )
 
         self.progress.end()
@@ -1781,7 +1830,9 @@ class Mapper:
         colors the 'unified' map. Grouped, the sample summary colors the map of each group. The
         group summary then pools the groups' values on the 'unified' map, so a sample summary that
         is undefined in a group also changes the 'unified' map where the group summary pools values.
-        A sliced layer is summarized one accession at a time, so its report counts accessions.
+        A layer sliced by accession is summarized one accession at a time, so its report counts
+        accessions. A layer sliced by gene is summarized one slice of a gene at a time. Its report
+        counts these slices, and a gene with the same rows in two elements counts once.
 
         Parameters
         ==========
@@ -1796,9 +1847,9 @@ class Mapper:
         """
         element_type = layer['element_type']
         grouped = layer['group_samples'] is not None
-        # A sliced layer summarizes each accession of an element on its own ('_slice_result'). A
-        # slice whose summary is undefined is not drawn. The other slices of the element then take
-        # its whole width or length.
+        # A sliced layer summarizes each accession or gene of an element on its own
+        # ('_slice_result'). A slice whose summary is undefined is not drawn. The other slices of
+        # the element then take its whole width or length.
         sliced = layer.get('slice_by') is not None
         reports = []
         if grouped:
@@ -1839,6 +1890,19 @@ class Mapper:
             ))
         for undefined, flag, summary, where, consequence in reports:
             if not undefined:
+                continue
+            if layer.get('slice_by') == 'gene':
+                # Each key names the rows of one gene, as the gene ID and the accession joined by a
+                # tab ('_gene_members').
+                genes = self._sort_values({
+                    member.rsplit('\t', 1)[0] for key in undefined for member in key
+                })
+                self.run.warning(
+                    f"The summary '{flag} {summary}' was undefined{where} for {len(undefined)} "
+                    f"slice(s) of genes. Their genes include these: {', '.join(genes[:5])}. "
+                    f"{Mapper._undefined_cause(summary, 'a summary')} {consequence} The other "
+                    f"slices of an element take its whole width or length."
+                )
                 continue
             examples = ', '.join(sorted({
                 kegg_id for key in undefined for kegg_id in key if kegg_id in layer['accessions']
@@ -1884,9 +1948,11 @@ class Mapper:
         effect of the rule can be seen: by plurality, by majority, by the order of the values, at
         random, or without a value. A choice without a value can leave an element uncolored, so it
         looks absent. With slices, the accession rule chooses only the stand-in values of elements
-        ('_slicer'), and a choice without a value can leave a slice undrawn. These choices are also
-        reported in a warning that says what they change in this run. A layer whose values color no
-        drawn map is not reported.
+        ('_slicer'), and a choice without a value can leave a slice undrawn. With slices of genes,
+        it also chooses the value of a gene among its rows for the accessions of an element. The
+        genes of an accession are then never reduced, so the choices among them are not reported.
+        These choices are also reported in a warning that says what they change in this run. A layer
+        whose values color no drawn map is not reported.
 
         Parameters
         ==========
@@ -1978,7 +2044,41 @@ class Mapper:
                 "casts no vote for the color of its compounds, and it is left uncolored if it has "
                 "more slices than fit"
             )
-            if sliced:
+            # With slices of genes, the rule also chooses the value of a gene among its rows for the
+            # accessions of an element. A choice without a value leaves the gene without a slice.
+            gene_sliced = layer.get('slice_by') == 'gene'
+            if gene_sliced:
+                element_consequence = (
+                    "With slices of genes, this rule chooses the value of a gene with rows for two "
+                    "or more accessions of an element, and the stand-in value of an element."
+                )
+                if not has_samples:
+                    element_consequence += (
+                        f" Such a gene gets no slice. Such an element {standin_effect}."
+                    )
+                elif grouped:
+                    element_consequence += (
+                        " Such a gene or element has no value in that sample. It does not vote "
+                        "among the samples of its group."
+                    )
+                    if draw_individual_maps or unified_votes:
+                        element_consequence += (
+                            f" A gene with no value on a drawn map gets no slice there. An element "
+                            f"with no stand-in value on a drawn map {standin_effect}."
+                        )
+                else:
+                    element_consequence += " Such a gene or element has no value in that sample."
+                    if draw_individual_maps:
+                        element_consequence += (
+                            f" On the map of that sample{if_drawn}, such a gene gets no slice. "
+                            f"Such an element there {standin_effect}."
+                        )
+                    if unified_votes:
+                        element_consequence += (
+                            " Such a gene or element does not vote across the samples for the "
+                            "'unified' map."
+                        )
+            elif sliced:
                 element_consequence = (
                     "With slices, this rule chooses only the stand-in value of an element."
                 )
@@ -2075,8 +2175,11 @@ class Mapper:
                     gene_consequence
                 ),
                 (
-                    'element', 'accessions of a map element', 'accession_rule',
-                    'accession-aggregation', f'map element(s){in_sample}', element_consequence
+                    'element',
+                    f"accessions{' or genes' if gene_sliced else ''} of a map element",
+                    'accession_rule', 'accession-aggregation',
+                    f"{'gene(s) or ' if gene_sliced else ''}map element(s){in_sample}",
+                    element_consequence
                 ),
                 (
                     'sample', 'samples of a group', 'sample_rule', 'sample-summary',
@@ -2104,6 +2207,10 @@ class Mapper:
                     "touches."
                 )
             ):
+                # Slices of genes never reduce the genes of an accession, so the choices made among
+                # them when the file was read color no map.
+                if level == 'gene' and gene_sliced:
+                    continue
                 counts = layer['_choices'][level]
                 total = sum(counts.values())
                 if not total:
@@ -3212,7 +3319,8 @@ class Mapper:
         element_normalization_label: Union[str, None] = None,
         value_period: Union[float, str, None] = None,
         value_colors_txt: Union[str, None] = None,
-        seed: int = DEFAULT_CATEGORICAL_SEED
+        seed: int = DEFAULT_CATEGORICAL_SEED,
+        slice_by: Union[str, None] = None
     ) -> dict:
         """
         Build one layer's coloring model for '_map_elements' from a per-layer reader result.
@@ -3289,6 +3397,11 @@ class Mapper:
 
         A layer of categorical values ('VALUE_TYPES') is built by '_build_categorical_txt_model'
         instead. 'value_colors_txt' and 'seed' apply only to such a layer.
+
+        'slice_by' says what the elements of the layer are sliced by ('SLICE_UNITS'), or None.
+        Slices of genes take their values from the rows of each gene ('_build_slice_model'). The
+        values of the accessions are then not drawn, so an accession whose genes reduce to an
+        undefined value is not reported.
         """
         if data['value_type'] == 'categorical':
             return self._build_categorical_txt_model(
@@ -3658,7 +3771,8 @@ class Mapper:
             unified_values = self._aggregate_accession_quantities(
                 df, value_column, gene_reduction, path, element_type, undefined
             )
-            self._warn_undefined_values(undefined, gene_aggregation, path)
+            if slice_by != 'gene':
+                self._warn_undefined_values(undefined, gene_aggregation, path)
             cmap = self._resolve_sequential_colormap(
                 colormap if colormap is not None else default_colormap, colormap_limits,
                 subject=f'{element_type}s'
@@ -3893,7 +4007,8 @@ class Mapper:
             sample_values[sample_name] = self._aggregate_accession_quantities(
                 sample_rows, value_column, gene_reduction, path, element_type, undefined
             )
-        self._warn_undefined_values(undefined, gene_aggregation, path)
+        if slice_by != 'gene':
+            self._warn_undefined_values(undefined, gene_aggregation, path)
 
         if 'quantitative' not in (model['unified_mode'], model['individual_mode']):
             # Both summaries color presence, which only happens with groups (the per-sample maps of
@@ -4266,12 +4381,14 @@ class Mapper:
         share_summary: Union[str, None],
         element_normalization: Union[str, None],
         color: str,
-        colormap: Union[bool, str, mcolors.Colormap, None]
+        colormap: Union[bool, str, mcolors.Colormap, None],
+        gene_aggregation: Union[str, None] = None
     ) -> None:
         """
         Check the options that slice reaction elements, as far as that can be done without the file.
 
         '_build_slice_model' checks the rest once the file is read and the layer model is built. The
+        reader checks the 'gene_id' column that slices of genes need ('_read_element_txt'). The
         command line makes the same checks, and these repeat them for programmatic callers. Where
         slicing is on, the private methods of Biopython that draw slices are checked too
         ('kgml.SlicedKGMLCanvas.check_biopython').
@@ -4305,10 +4422,13 @@ class Mapper:
                 f"but no reaction file ('--reaction-txt') was provided."
             )
         if slice_by is None:
+            # Weights of genes are reduced to an accession only when slicing by accession.
+            units = ('accession',) if weight_aggregation is not None else SLICE_UNITS
+            suggestion = ' or '.join(f"'--reaction-slice-by {unit}'" for unit in units)
             raise ConfigError(
                 f"{listed} {'apply' if plural else 'applies'} to the slices of reaction elements. "
                 f"No element is sliced here, because '--reaction-slice-by' was not given. To slice "
-                f"elements, give '--reaction-slice-by accession'. Otherwise, drop "
+                f"elements, give {suggestion}. Otherwise, drop "
                 f"{'these options' if plural else 'it'}."
             )
         for flag, setting, choices in (
@@ -4321,6 +4441,24 @@ class Mapper:
                     f"'{flag}' was given as '{setting}'. It can be "
                     f"{' or '.join(repr(choice) for choice in choices)}."
                 )
+        # Each gene is a slice of its own, so no genes are reduced to an accession.
+        if slice_by == 'gene':
+            for flag, setting, action in (
+                (
+                    '--reaction-gene-aggregation', gene_aggregation,
+                    "reduces the values of the genes of an accession to one value"
+                ),
+                (
+                    '--reaction-slice-weight-aggregation', weight_aggregation,
+                    "reduces the weights of the genes of an accession to one weight"
+                )
+            ):
+                if setting is not None:
+                    raise ConfigError(
+                        f"'{flag}' {action}. '--reaction-slice-by gene' gives each gene a slice of "
+                        f"its own, so the genes of an accession are never reduced. Please drop "
+                        f"'{flag}'."
+                    )
         if weights is None:
             for flag, setting, action in (
                 (
@@ -4381,10 +4519,13 @@ class Mapper:
         mode is 'quantitative' or 'categorical'. Slicing is refused where no drawn map shows the
         values. A summary of shares is refused where no drawn map pools the samples and shows the
         values. Such maps are the maps of groups and the 'unified' map of a layer with samples. An
-        aggregation of the accessions of an element is refused for numeric values.
+        aggregation of the accessions of an element is refused for numeric values sliced by
+        accession. For numeric values sliced by gene, it is refused if it does not return a single
+        value unchanged.
 
-        The weights of the genes of an accession are reduced to one weight per accession and sample,
-        or per accession for a layer without samples.
+        With slices of accessions, the weights of the genes of an accession are reduced to one
+        weight per accession and sample, or per accession for a layer without samples. Slices of
+        genes keep the values and weights of each row ('_build_gene_slice_keys').
 
         Parameters
         ==========
@@ -4433,6 +4574,7 @@ class Mapper:
             - '_slice_results': the slices of each element on each map ('_slice_result').
             - '_slice_key' and '_slice_uncolored': what the drawn maps record for the key table
               and the warnings ('_write_slice_keys').
+            Slices of genes add the keys of '_build_gene_slice_keys'.
         """
         path = model['path']
         df = data['df']
@@ -4443,14 +4585,41 @@ class Mapper:
                 f"presence, and slices of presence are not supported yet. Add a value column to "
                 f"the file, or drop '--reaction-slice-by'."
             )
-        if accession_aggregation is not None and data['value_type'] != 'categorical':
+        # A slice of a gene can stand for rows of several accessions of an element. The accession
+        # aggregation reduces these rows, so it is accepted there.
+        if (
+            accession_aggregation is not None and data['value_type'] != 'categorical'
+            and slice_by == 'accession'
+        ):
             raise ConfigError(
                 "'--reaction-accession-aggregation' reduces the values of the accessions of a map "
-                "element to one value. With '--reaction-slice-by', each slice shows the value of "
-                "one accession. An element drawn whole takes the mean of its slice values, "
-                "weighted by their shares, in place of this reduction. Please drop "
+                "element to one value. With '--reaction-slice-by accession', each slice shows the "
+                "value of one accession. An element drawn whole takes the mean of its slice "
+                "values, weighted by their shares, in place of this reduction. Please drop "
                 "'--reaction-accession-aggregation'."
             )
+        # A gene with one row for an element shows the value of that row ('_build_gene_slice_keys').
+        # An aggregation that does not return a single value unchanged, such as 'std' or 'count',
+        # would give genes with several rows values of another kind on the same scale. With a
+        # period, only 'circular_mean' is accepted, and it keeps a single value.
+        if (
+            accession_aggregation is not None and data['value_type'] != 'categorical'
+            and slice_by == 'gene' and model['value_period'] is None
+        ):
+            try:
+                single = float(model['aggregate']([3.0]))
+            except (TypeError, ValueError):
+                single = float('nan')
+            if not (np.isfinite(single) and abs(single - 3.0) < 1e-9):
+                raise ConfigError(
+                    f"'--reaction-accession-aggregation' was given as '{accession_aggregation}'. "
+                    f"With '--reaction-slice-by gene', it reduces the rows of a gene for the "
+                    f"accessions of an element to one value. A gene with one such row shows the "
+                    f"value of that row. '{accession_aggregation}' does not return a single value "
+                    f"unchanged, so genes with several rows would show another kind of value on "
+                    f"the same color scale. Please give 'mean', 'sum', 'max', 'min', or 'median' "
+                    f"instead."
+                )
         if weight_aggregation is not None and 'gene_id' not in df.columns:
             raise ConfigError(
                 f"'--reaction-slice-weight-aggregation' reduces the weights of the genes of an "
@@ -4521,11 +4690,17 @@ class Mapper:
             '_slice_key': {},
             '_slice_uncolored': {}
         }
+        if weighted:
+            keys['slice_share_summary'] = (
+                SLICE_SHARE_SUMMARIES[0] if share_summary is None else share_summary
+            )
+        if slice_by == 'gene':
+            keys.update(self._build_gene_slice_keys(
+                model, data, accession_aggregation, all_sample_names
+            ))
+            return keys
         if not weighted:
             return keys
-        keys['slice_share_summary'] = (
-            SLICE_SHARE_SUMMARIES[0] if share_summary is None else share_summary
-        )
         aggregation = (
             SLICE_WEIGHT_AGGREGATIONS[0] if weight_aggregation is None else weight_aggregation
         )
@@ -4545,6 +4720,147 @@ class Mapper:
             keys['sample_weights'] = sample_weights
         else:
             keys['unified_weights'] = _accession_weights(df)
+        return keys
+
+    def _build_gene_slice_keys(
+        self,
+        model: dict,
+        data: dict,
+        accession_aggregation: Union[str, None],
+        all_sample_names: Union[List[str], None]
+    ) -> dict:
+        """
+        Build the keys of a layer model for slices of genes.
+
+        One gene ID names the same gene in every sample. A slice of a gene stands for the rows of
+        the gene for the accessions of an element. Each row is a member, named by its gene and its
+        accession ('_gene_members'). Members keep the values and weights of their rows. A view of
+        the layer puts them in place of accessions ('_gene_view').
+
+        A numeric slice reduces the rows of its gene in a sample by the accession aggregation. Where
+        none was given, the rows are reduced by 'mean', or by 'circular_mean' with a period. Rows of
+        one gene usually repeat one measurement, so a sum would count it more than once. A gene with
+        one row takes the value of that row. An aggregation that does not return a single value
+        unchanged, such as 'std', is refused ('_build_slice_model'). A categorical slice takes the
+        value that the accession rule chooses among the rows.
+
+        Parameters
+        ==========
+        model : dict
+            The layer model built from the reaction file ('_build_txt_model').
+
+        data : dict
+            The '_read_element_txt' result for the reaction file, read for slices of genes.
+
+        accession_aggregation : Union[str, None]
+            The aggregation or rule given for the accessions of an element, or None.
+
+        all_sample_names : Union[List[str], None]
+            The samples of the run, or None for a run without samples.
+
+        Returns
+        =======
+        dict
+            These keys:
+            - 'accession_genes': the genes that have a row for each accession, in natural sort order
+              ('_sort_values').
+            - 'gene_sample_values': the value of each member in each sample, for a layer with
+              samples. It is None otherwise.
+            - 'gene_unified_values': the value of each member, for a layer without samples. It is
+              None otherwise.
+            - 'gene_sample_weights' and 'gene_unified_weights': the weights of the members in the
+              same form. They are None without a column of weights.
+            - 'gene_sample_accessions': the accessions of the rows of each gene in each sample in
+              which it has rows ('_warn_gene_ids'). It is None without samples.
+            - 'slice_accessions': the accessions with rows, sorted, in each sample, or in the file
+              for a layer without samples. They find the entries to slice ('_map_elements').
+            - 'gene_aggregate': reduces the values of the rows of a gene in a sample to one value.
+              It is None for categorical values.
+            - '_gene_elements', '_gene_cache', and '_gene_standin_cache': the slices that each
+              element can have ('_gene_element'), the values of slices ('_slice_values'), and the
+              categorical stand-ins of elements ('_gene_standin_individuals').
+        """
+        df = data['df']
+        categorical = data['value_type'] == 'categorical'
+        genes = df['__gene_id']
+        members = (genes + '\t' + df['__accession']).tolist()
+        if categorical:
+            values = df['__value'].tolist()
+        else:
+            # The values were checked when the model was built ('_aggregate_accession_quantities').
+            values = pd.to_numeric(df[data['value_column']], errors='coerce').astype(float).tolist()
+        weighted = data['slice_weights'] is not None
+        weights = df['__slice_weight'].tolist() if weighted else [None] * len(df)
+
+        # The genes of each accession are kept in natural sort order. The slices of an element
+        # follow the KGML order of their genes' first accessions, and then this order
+        # ('_gene_element').
+        ranks = {gene: rank for rank, gene in enumerate(self._sort_values(set(genes)))}
+        accession_genes: Dict[str, Set[str]] = {}
+        for accession, gene in zip(df['__accession'], genes):
+            accession_genes.setdefault(accession, set()).add(gene)
+        keys = {
+            'accession_genes': {
+                accession: tuple(sorted(gene_set, key=ranks.__getitem__))
+                for accession, gene_set in accession_genes.items()
+            },
+            'gene_sample_values': None,
+            'gene_unified_values': None,
+            'gene_sample_weights': None,
+            'gene_unified_weights': None,
+            'gene_sample_accessions': None,
+            '_gene_elements': {},
+            '_gene_cache': {},
+            '_gene_standin_cache': {}
+        }
+        if data['sample_names'] is None:
+            keys['gene_unified_values'] = dict(zip(members, values))
+            if weighted:
+                keys['gene_unified_weights'] = dict(zip(members, weights))
+            keys['slice_accessions'] = dict.fromkeys(sorted(accession_genes))
+        else:
+            sample_values: Dict[str, Dict[str, Union[float, str]]] = {
+                sample: {} for sample in all_sample_names
+            }
+            sample_weights: Dict[str, Dict[str, float]] = {
+                sample: {} for sample in all_sample_names
+            }
+            sample_accessions: Dict[str, Set[str]] = {sample: set() for sample in all_sample_names}
+            gene_sample_accessions: Dict[str, Dict[str, Set[str]]] = {}
+            for sample, gene, accession, member, value, weight in zip(
+                df['__sample'], genes, df['__accession'], members, values, weights
+            ):
+                sample_values[sample][member] = value
+                sample_weights[sample][member] = weight
+                sample_accessions[sample].add(accession)
+                gene_sample_accessions.setdefault(gene, {}).setdefault(sample, set()).add(accession)
+            keys['gene_sample_values'] = sample_values
+            if weighted:
+                keys['gene_sample_weights'] = sample_weights
+            keys['gene_sample_accessions'] = gene_sample_accessions
+            keys['slice_accessions'] = {
+                sample: dict.fromkeys(sorted(sample_accessions[sample]))
+                for sample in all_sample_names
+            }
+
+        if categorical:
+            keys['gene_aggregate'] = None
+            return keys
+        period = model['value_period']
+        aggregate = model['aggregate'] if accession_aggregation is not None else (
+            self._resolve_aggregation(
+                'circular_mean' if period is not None else 'mean',
+                '--reaction-accession-aggregation', period, '--reaction-value-period'
+            )
+        )
+
+        def reduce_rows(row_values: List[float]) -> float:
+            # A gene with one row takes the value of that row. With a period, the circular mean
+            # gives that value as a point in the period, from 0 up to the period.
+            if period is None and len(row_values) == 1:
+                return float(row_values[0])
+            return aggregate(row_values)
+        keys['gene_aggregate'] = reduce_rows
         return keys
 
     def map_kegg_pathways_txt(
@@ -4643,7 +4959,9 @@ class Mapper:
 
         reaction_accession_aggregation : str, None
             How to reduce the values of the several accessions a map's reaction element stands to
-            that element's value. The default is the same as for 'reaction_gene_aggregation'.
+            that element's value. The default is the same as for 'reaction_gene_aggregation'. With
+            slices of genes, it reduces the rows of a gene for the accessions of an element. The
+            default is then 'mean', or 'circular_mean' when 'reaction_value_period' is given.
 
         compound_accession_aggregation : str, None
             The same reduction for the compound layer: the several compounds that one map circle
@@ -4781,24 +5099,30 @@ class Mapper:
             normalization derives from the value column's name.
 
         reaction_slice_by : str, None
-            Slice each reaction element by its accessions, given as 'accession' ('SLICE_UNITS').
-            Each accession of an element with a value on a map takes a slice in the color of its own
-            value. Only the maps that show the values of the reaction layer are sliced. The reaction
-            file needs a value column. Slices are summarized one accession at a time, so
-            'reaction_accession_aggregation' is refused for numeric values.
-            'reaction_element_normalization' is not supported with slices yet. The slices drawn are
-            listed in a key table, 'slice_key_reactions.txt', in the output directory. The default
-            of None draws every element whole.
+            Slice each reaction element by its accessions ('accession') or by its genes ('gene'), as
+            'SLICE_UNITS' lists. Each accession or gene of an element with a value on a map takes a
+            slice in the color of its own value. Only the maps that show the values of the reaction
+            layer are sliced. The reaction file needs a value column. Slices of accessions are
+            summarized one accession at a time, so 'reaction_accession_aggregation' is refused for
+            numeric values. Slices of genes need a 'gene_id' column with an ID in every row. One
+            gene ID names the same gene in every sample. For numeric values sliced by gene,
+            'reaction_accession_aggregation' reduces the rows of a gene for the accessions of an
+            element. It is refused if it does not return a single value unchanged.
+            'reaction_gene_aggregation' and 'reaction_slice_weight_aggregation' are refused, since
+            no genes are reduced to an accession. 'reaction_element_normalization' is not supported
+            with slices yet. The slices drawn are listed in a key table, 'slice_key_reactions.txt',
+            in the output directory. The default of None draws every element whole.
 
         reaction_slice_weights : str, None
             The column of the reaction file that weighs the slices. The shares of the slices of an
-            element then follow the weights. The default of None gives every slice on a map the same
-            share.
+            element then follow the weights. A slice of a gene weighs the mean of the weights of its
+            rows for the element's accessions. The default of None gives every slice on a map the
+            same share.
 
         reaction_slice_weight_aggregation : str, None
             How the weights of the genes of an accession are reduced to the accession's weight, for
-            a reaction file with a 'gene_id' column ('SLICE_WEIGHT_AGGREGATIONS'). The default of
-            None is 'sum'.
+            a reaction file with a 'gene_id' column sliced by accession
+            ('SLICE_WEIGHT_AGGREGATIONS'). The default of None is 'sum'.
 
         reaction_slice_share_summary : str, None
             How the shares of slices are pooled on the maps of groups and on the 'unified' map,
@@ -4849,7 +5173,8 @@ class Mapper:
         self._check_slice_options(
             reaction_txt, reaction_slice_by, reaction_slice_weights,
             reaction_slice_weight_aggregation, reaction_slice_share_summary,
-            reaction_element_normalization, reaction_color, reaction_colormap
+            reaction_element_normalization, reaction_color, reaction_colormap,
+            gene_aggregation=reaction_gene_aggregation
         )
 
         raw_layers: List[dict] = []
@@ -4859,8 +5184,9 @@ class Mapper:
                 'path': reaction_txt,
                 'data': self._read_element_txt(
                     reaction_txt, 'reaction', reaction_value_type,
-                    slice_weights=reaction_slice_weights
+                    slice_weights=reaction_slice_weights, slice_by=reaction_slice_by
                 ),
+                'slice_by': reaction_slice_by,
                 'gene_aggregation': reaction_gene_aggregation,
                 'accession_aggregation': reaction_accession_aggregation,
                 'color': reaction_color,
@@ -7017,25 +7343,213 @@ class Mapper:
         return float(values[0])
 
     @staticmethod
+    def _gene_members(unit: Tuple[str, Tuple[str, ...]]) -> Tuple[str, ...]:
+        """
+        Name the rows of the file that a slice of a gene stands for.
+
+        A member is the row of a gene for one accession. It is named by the gene ID and the
+        accession, joined by a tab ('_build_gene_slice_keys'). The members are sorted, so the same
+        rows get the same name on every map. The value of a slice depends on which rows of its gene
+        fall in the element, so the members name the slice in the caches.
+
+        Parameters
+        ==========
+        unit : Tuple[str, Tuple[str, ...]]
+            A gene and its accessions in an element ('_gene_element').
+
+        Returns
+        =======
+        Tuple[str, ...]
+            The members.
+        """
+        gene, accessions = unit
+        return tuple(sorted(f'{gene}\t{accession}' for accession in accessions))
+
+    @staticmethod
+    def _gene_view(layer: dict, cache: dict) -> dict:
+        """
+        Make a view of a layer sliced by gene, in which members take the place of accessions.
+
+        '_summarize_element_values' and '_summarize_element_individuals' read the values of
+        accessions from a layer. The view gives them the values of members instead
+        ('_gene_members'). A slice of a gene is then summarized as an element whose accessions are
+        its members. The view shares the rules, summaries, choices, and undefined sets of the layer.
+
+        Parameters
+        ==========
+        layer : dict
+            A layer model sliced by gene ('_build_gene_slice_keys').
+
+        cache : dict
+            The cache of the view, which takes the place of the layer's '_element_cache'.
+
+        Returns
+        =======
+        dict
+            The view.
+        """
+        view = {
+            key: layer[key] for key in (
+                'group_samples', 'sample_aggregate', 'group_aggregate', 'value_order', 'seed',
+                'accession_rule', 'sample_rule', 'group_rule', '_choices', '_undefined_individual',
+                '_undefined_unified'
+            ) if key in layer
+        }
+        view['sample_values'] = layer['gene_sample_values']
+        view['unified_values'] = layer['gene_unified_values']
+        view['_element_cache'] = cache
+        return view
+
+    @staticmethod
+    def _gene_element(accessions: Tuple[str, ...], layer: dict) -> dict:
+        """
+        Find the slices of genes that a map element can have, and their weights.
+
+        A gene can have a slice where it has a row for any of the element's accessions. A gene with
+        rows for two or more of them has one slice. The slices are ordered by the position of each
+        gene's first accession in the element, then by gene ID in natural sort order. The weight of
+        a gene in a sample is the mean weight of its rows for the element's accessions in that
+        sample, so a gene with two accessions does not take twice the width. Results are kept in the
+        layer's '_gene_elements', keyed by the accessions.
+
+        Parameters
+        ==========
+        accessions : Tuple[str, ...]
+            The accessions of the element, each once, in KGML order ('_get_entry_kegg_ids').
+
+        layer : dict
+            A layer model sliced by gene ('_build_gene_slice_keys').
+
+        Returns
+        =======
+        dict
+            These keys:
+            - 'units': the slices in order, each as a gene and its accessions in the element in KGML
+              order.
+            - 'sample_weights': the weight of each slice in each sample, for a layer with samples
+              and weights. It is None otherwise.
+            - 'unified_weights': the weight of each slice, for a layer without samples and with
+              weights. It is None otherwise.
+        """
+        cache = layer['_gene_elements']
+        if accessions in cache:
+            return cache[accessions]
+        genes: Dict[str, List[str]] = {}
+        for accession in accessions:
+            for gene in layer['accession_genes'].get(accession, ()):
+                genes.setdefault(gene, []).append(accession)
+        units = tuple((gene, tuple(gene_accessions)) for gene, gene_accessions in genes.items())
+        members = [Mapper._gene_members(unit) for unit in units]
+
+        def _weights(row_weights: Dict[str, float]) -> Dict[Tuple[str, Tuple[str, ...]], float]:
+            unit_weights = {}
+            for unit, unit_members in zip(units, members):
+                found = [row_weights[member] for member in unit_members if member in row_weights]
+                if found:
+                    unit_weights[unit] = sum(found) / len(found)
+            return unit_weights
+
+        element = {'units': units, 'sample_weights': None, 'unified_weights': None}
+        if layer['gene_sample_weights'] is not None:
+            element['sample_weights'] = {
+                sample: _weights(row_weights)
+                for sample, row_weights in layer['gene_sample_weights'].items()
+            }
+        elif layer['gene_unified_weights'] is not None:
+            element['unified_weights'] = _weights(layer['gene_unified_weights'])
+        cache[accessions] = element
+        return element
+
+    @staticmethod
+    def _gene_standin_individuals(
+        units: Tuple[Tuple[str, Tuple[str, ...]], ...],
+        layer: dict,
+        individual: Union[str, None]
+    ) -> Tuple[Dict[str, str], Union[str, None]]:
+        """
+        Find the categorical stand-in value of an element sliced by gene.
+
+        The element stands for its drawn slices. In each sample, each gene has the value that the
+        accession rule chose among its rows ('_slice_values'). The accession rule then chooses among
+        the values of the genes. Each gene gives one vote. The sample and group rules choose across
+        the samples and groups ('_summarize_element_individuals'). Results are kept in the layer's
+        '_gene_standin_cache'. A gene is named there by its members, since its value depends on
+        which of its rows fall in the element.
+
+        Parameters
+        ==========
+        units : Tuple[Tuple[str, Tuple[str, ...]], ...]
+            The drawn slices, each as a gene and its accessions in the element ('_gene_element').
+
+        layer : dict
+            A layer model of categorical values sliced by gene ('_build_gene_slice_keys').
+
+        individual : Union[str, None]
+            The sample or group whose map asks for the value, or None for the 'unified' map.
+
+        Returns
+        =======
+        Tuple[Dict[str, str], Union[str, None]]
+            The stand-in value in each sample or group, and on the 'unified' map, in the form of
+            '_summarize_element_individuals'.
+        """
+        names = {'\n'.join(members): members for members in map(Mapper._gene_members, units)}
+        cache = layer['_gene_standin_cache']
+        view = Mapper._gene_view(layer, cache)
+        # The votes of the genes are needed only where the stand-in is not yet in the cache, which
+        # is keyed by the sorted names. The value of each gene repeats the choice made for its own
+        # slice. That choice was counted when the map asked for the slice.
+        if tuple(sorted(names)) not in cache:
+            def _gene_values(values: Dict[str, str], sample: str) -> Dict[str, str]:
+                chosen = {}
+                for name, members in names.items():
+                    votes = [values[member] for member in members if member in values]
+                    if not votes:
+                        continue
+                    value, _ = Mapper._choose_categorical_value(
+                        votes, layer['accession_rule'], layer['value_order'], layer['seed'],
+                        ('accession', sample) + members
+                    )
+                    if value is not None:
+                        chosen[name] = value
+                return chosen
+            if view['sample_values'] is None:
+                view['unified_values'] = _gene_values(view['unified_values'], '')
+            else:
+                view['sample_values'] = {
+                    sample: _gene_values(values, sample)
+                    for sample, values in view['sample_values'].items()
+                }
+        return Mapper._summarize_element_individuals(tuple(names), view, individual)
+
+    @staticmethod
     def _slice_values(
         accessions: Tuple[str, ...],
         layer: dict,
         context: Union[str, None]
-    ) -> Dict[str, Union[float, str]]:
+    ) -> Dict[Union[str, Tuple[str, Tuple[str, ...]]], Union[float, str]]:
         """
-        Find the value of each accession of a map element on one map, for the slices of the element.
+        Find the value of each slice of a map element on one map.
 
-        A slice's value is the value of its accession, summarized as if the accession were a map
-        element of its own. The accession aggregation is never applied to it. Within a sample, the
-        value is the accession's value, to which the gene aggregation has already reduced its genes.
-        The sample and group summaries then pool these values, as they pool the values of elements.
-        A numeric slice is summarized by '_summarize_element_values' with '_take_single_value', and
-        its result is kept in the layer's '_slice_cache'. The element cache cannot hold it, since a
-        one-accession element and a slice share a key, and an element's value comes from the
-        accession aggregation. A categorical slice is summarized by
+        A slice of an accession takes the value of the accession, summarized as if the accession
+        were a map element of its own. The accession aggregation is never applied to it. Within a
+        sample, the value is the accession's value, to which the gene aggregation has already
+        reduced its genes. The sample and group summaries then pool these values, as they pool the
+        values of elements. A numeric slice is summarized by '_summarize_element_values' with
+        '_take_single_value', and its result is kept in the layer's '_slice_cache'. The element
+        cache cannot hold it, since a one-accession element and a slice share a key, and an
+        element's value comes from the accession aggregation. A categorical slice is summarized by
         '_summarize_element_individuals'. It shares the layer's '_element_cache' with the elements.
         A slice and a one-accession element then get the same value, and their choices are counted
         once.
+
+        A slice of a gene is summarized as an element whose accessions are its members, the rows of
+        the gene for the accessions of the element ('_gene_members', '_gene_view'). Within a sample,
+        a numeric slice takes the value that 'gene_aggregate' reduces these rows to. A categorical
+        slice takes the value that the accession rule chooses among them. The sample and group
+        summaries then pool these values. A sample in which the gene has no row for the element is
+        left out. The results are kept in the layer's '_gene_cache', keyed by the members, so a
+        slice never takes a result found for other rows.
 
         Parameters
         ==========
@@ -7051,12 +7565,30 @@ class Mapper:
 
         Returns
         =======
-        Dict[str, Union[float, str]]
-            The value of each accession that has one on the map, in the order of 'accessions'. An
-            accession whose summary is undefined has no value.
+        Dict[Union[str, Tuple[str, Tuple[str, ...]]], Union[float, str]]
+            The value of each slice that has one on the map, in the order of the slices. A slice of
+            an accession is keyed by the accession. A slice of a gene is keyed by the gene and its
+            accessions in the element ('_gene_element'). A slice whose summary is undefined has no
+            value.
         """
         categorical = layer.get('value_type') == 'categorical'
-        values: Dict[str, Union[float, str]] = {}
+        values: Dict[Union[str, Tuple[str, Tuple[str, ...]]], Union[float, str]] = {}
+        if layer['slice_by'] == 'gene':
+            view = Mapper._gene_view(layer, layer['_gene_cache'])
+            for unit in Mapper._gene_element(accessions, layer)['units']:
+                members = Mapper._gene_members(unit)
+                if categorical:
+                    individual_values, unified_value = Mapper._summarize_element_individuals(
+                        members, view, context
+                    )
+                else:
+                    individual_values, unified_value = Mapper._summarize_element_values(
+                        members, view, layer['gene_aggregate'], layer['_gene_cache']
+                    )
+                value = unified_value if context is None else individual_values.get(context)
+                if value is not None:
+                    values[unit] = value
+            return values
         for accession in accessions:
             if accession not in layer['accessions']:
                 continue
@@ -7098,13 +7630,19 @@ class Mapper:
         'pooled_sum' adds up the weights of each accession over the samples of the group, or over
         every sample for the 'unified' map.
 
+        Slices of genes take the place of accessions in all of this. '_slice_result' then passes the
+        genes of the element and their weights in this element ('_gene_element'). T(s) is the total
+        weight of all of the element's genes in s.
+
         Parameters
         ==========
         accessions : Tuple[str, ...]
-            The accessions of the element, each once ('_get_entry_kegg_ids').
+            The accessions of the element, each once ('_get_entry_kegg_ids'). For slices of genes,
+            these are the genes of the element ('_gene_element').
 
         layer : dict
-            A sliced layer model ('_build_slice_model').
+            A sliced layer model ('_build_slice_model'). For slices of genes, its weights are those
+            of the genes in the element.
 
         context : Union[str, None]
             The sample or group whose map is drawn, or None for the 'unified' map, as in
@@ -7178,10 +7716,11 @@ class Mapper:
         """
         Find the slices of a map element on one map.
 
-        An accession gets a slice where it has a value on the map ('_slice_values') and a share
-        above 0 ('_slice_shares'). The shares of these slices are then scaled to sum to 1. The
-        slices follow the order of the accessions in the KGML entry. Results are kept in the layer's
-        '_slice_results'. The range of values is found from them, and the maps are drawn from them.
+        An accession or gene gets a slice where it has a value on the map ('_slice_values') and a
+        share above 0 ('_slice_shares'). The shares of these slices are then scaled to sum to 1.
+        Slices of accessions follow the order of the accessions in the KGML entry. Slices of genes
+        follow the order of '_gene_element'. Results are kept in the layer's '_slice_results'. The
+        range of values is found from them, and the maps are drawn from them.
 
         Parameters
         ==========
@@ -7198,9 +7737,10 @@ class Mapper:
         Returns
         =======
         Union[List[Tuple[str, Union[float, str], float]], None]
-            None where no accession of the element has a value on the map. Otherwise the slices, as
-            (accession, value, share) tuples. The list is empty where every accession with a value
-            has a share of 0. The element is then left uncolored.
+            None where no accession or gene of the element has a value on the map. Otherwise the
+            slices, as (unit, value, share) tuples. The unit is the accession, or the gene and its
+            accessions in the element ('_slice_values'). The list is empty where every slice with a
+            value has a share of 0. The element is then left uncolored.
         """
         key = (accessions, context)
         cache = layer['_slice_results']
@@ -7210,11 +7750,24 @@ class Mapper:
         if not values:
             cache[key] = None
             return None
-        shares = Mapper._slice_shares(accessions, layer, context, list(values))
+        units, shares_layer = accessions, layer
+        if layer['slice_by'] == 'gene':
+            element = Mapper._gene_element(accessions, layer)
+            units = element['units']
+            if layer['slice_weights']:
+                shares_layer = {
+                    'slice_weights': True,
+                    'sample_values': layer['sample_values'],
+                    'group_samples': layer.get('group_samples'),
+                    'slice_share_summary': layer['slice_share_summary'],
+                    'sample_weights': element['sample_weights'],
+                    'unified_weights': element['unified_weights']
+                }
+        shares = Mapper._slice_shares(units, shares_layer, context, list(values))
         total = sum(share for share in shares.values() if share > 0)
         cache[key] = [
-            (accession, value, shares[accession] / total)
-            for accession, value in values.items() if shares[accession] > 0
+            (unit, value, shares[unit] / total)
+            for unit, value in values.items() if shares[unit] > 0
         ]
         return cache[key]
 
@@ -7298,8 +7851,9 @@ class Mapper:
         stand-in counts the choices that make it ('_report_categorical_choices'). A numeric stand-in
         is the share-weighted mean of the slice values ('_slice_standin_value'). A categorical
         stand-in is the value that '_summarize_element_individuals' gives the accessions of the
-        drawn slices on the map, as if they formed an element of their own. An accession without a
-        slice on the map does not vote in either case.
+        drawn slices on the map, as if they formed an element of their own. With slices of genes,
+        each drawn gene gives one vote in each sample instead ('_gene_standin_individuals'). An
+        accession or gene without a slice on the map does not vote in either case.
 
         Parameters
         ==========
@@ -7343,15 +7897,18 @@ class Mapper:
             if result is None:
                 return None
             slices = [
-                (accession, value, share) + tuple(color_priority(value))
-                for accession, value, share in result
+                (unit, value, share) + tuple(color_priority(value))
+                for unit, value, share in result
             ]
 
             def standin() -> Union[Tuple[Union[float, str], str, float], None]:
                 if categorical:
-                    # Only the accessions of the drawn slices vote, as in the numeric mean.
-                    individual_values, unified_value = Mapper._summarize_element_individuals(
-                        tuple(accession for accession, _, _ in result), layer, context
+                    # Only the accessions or genes of the drawn slices vote, as in the numeric mean.
+                    drawn = tuple(unit for unit, _, _ in result)
+                    individual_values, unified_value = (
+                        Mapper._gene_standin_individuals(drawn, layer, context)
+                        if layer['slice_by'] == 'gene' else
+                        Mapper._summarize_element_individuals(drawn, layer, context)
                     )
                     value = unified_value if context is None else individual_values.get(context)
                 else:
@@ -7586,10 +8143,10 @@ class Mapper:
             A layer that is 'quantitative' in one context and 'membership' in the other has the keys
             of both.
 
-            A reaction layer sliced by accession has the keys that '_build_slice_model' returns.
-            Every drawn map that shows its values ('quantitative' or 'categorical') is sliced
-            ('_slicer'). The range of each scale is found from the values of the slices drawn. The
-            slices drawn are listed in a key table ('_write_slice_keys').
+            A sliced reaction layer has the keys that '_build_slice_model' returns. Every drawn map
+            that shows its values ('quantitative' or 'categorical') is sliced ('_slicer'). The range
+            of each scale is found from the values of the slices drawn. The slices drawn are listed
+            in a key table ('_write_slice_keys').
 
         output_dir : str
             Path to the output directory in which pathway map and colorbar PDF files are drawn.
@@ -8419,10 +8976,30 @@ class Mapper:
         # drawn.
         slice_ranks = {individual: rank for rank, individual in enumerate(draw_individuals, 1)}
 
+        def _gene_entry_keys(layer, individual):
+            # A map sliced by gene finds the entries of the accessions that have rows in its
+            # samples. The values of the accessions are not used for this. They leave out an
+            # accession whose genes reduce to an undefined value, such as values that cancel out on
+            # a circle. The samples, and the accessions of each sample, are taken in turn, as in
+            # '_sample_accessions'.
+            found = layer['slice_accessions']
+            if layer['sample_values'] is None:
+                return found
+            group_samples = layer['group_samples']
+            if individual is not None:
+                samples = [individual] if group_samples is None else group_samples[individual]
+            elif group_samples is None:
+                samples = list(found)
+            else:
+                samples = [sample for members in group_samples.values() for sample in members]
+            return dict.fromkeys(accession for sample in samples for accession in found[sample])
+
         def _sliced(spec, layer, individual=None):
             mode = layer['unified_mode'] if individual is None else layer['individual_mode']
             if layer.get('slice_by') is None or mode not in ('quantitative', 'categorical'):
                 return spec
+            if layer['slice_by'] == 'gene':
+                spec = {**spec, 'entry_keys': _gene_entry_keys(layer, individual)}
             return {
                 **spec,
                 'slicer': self._slicer(layer, individual),
@@ -8560,6 +9137,7 @@ class Mapper:
                 f"maps of the individual {noun}, and none are drawn here. Draw them with "
                 f"'--draw-individual-files' or '--draw-grid'. Or {remedy}"
             )
+        self._warn_gene_ids(layers, draw_unified_maps, draw_individuals)
 
         # Draw per-layer colorbars for the unified map. Their file names include the layer's name,
         # so the colorbars of two layers do not collide. Each layer colored quantitatively on the
@@ -8892,17 +9470,139 @@ class Mapper:
                 if individual in layer['_individual_maps']:
                     layer['_individual_maps'][individual].add(pathway_number)
 
+    def _warn_gene_ids(
+        self,
+        layers: List[dict],
+        draw_unified_maps: bool,
+        drawn_individuals: List[str]
+    ) -> None:
+        """
+        Warn about the gene IDs of layers sliced by gene on the maps that pool samples.
+
+        One gene ID names the same gene in every sample. The 'unified' map of a layer with samples,
+        and the map of each group, pool a gene's values across samples on that basis. Only the drawn
+        maps of this kind that show values and pool two or more samples with rows are checked. Two
+        warnings can follow, each given once per layer.
+
+        One warning names the gene IDs that have no accession in common between their rows in two
+        samples of such a map. A gene of one contigs database is annotated once, so it has the same
+        accessions in every sample. A sample can lack rows for some of them, so sets of accessions
+        that merely differ are not reported. Sets with no accession in common suggest that one ID
+        names two genes. Gene caller IDs start at 0 in every contigs database, so the IDs of
+        separate assemblies collide unless they are made unique. Colliding IDs pool unrelated genes
+        as one.
+
+        The other warning names the maps where no gene ID occurs in two or more samples. Each slice
+        of a gene there shows the value of a single sample, and nothing is pooled. This is expected
+        where the IDs of separate assemblies were made unique.
+
+        Parameters
+        ==========
+        layers : List[dict]
+            The layer models. Only layers sliced by gene are read.
+
+        draw_unified_maps : bool
+            True if the 'unified' map is drawn.
+
+        drawn_individuals : List[str]
+            The samples or groups drawn on their own maps.
+        """
+        def join_names(names: List[str]) -> str:
+            # Two names read "'a' and 'b'". Three or more take commas and 'and' before the last.
+            if len(names) > 1:
+                names = names[:-1] + [f"and {names[-1]}"]
+            return (', ' if len(names) > 2 else ' ').join(names)
+
+        value_modes = ('quantitative', 'categorical')
+        for layer in layers:
+            if layer.get('slice_by') != 'gene' or layer['gene_sample_accessions'] is None:
+                continue
+            gene_sample_accessions = layer['gene_sample_accessions']
+            with_rows = {
+                sample for sample_accessions in gene_sample_accessions.values()
+                for sample in sample_accessions
+            }
+            pooled = []
+            if draw_unified_maps and layer['unified_mode'] in value_modes:
+                pooled.append((None, set(layer['sample_values'])))
+            group_samples = layer['group_samples']
+            if group_samples is not None and layer['individual_mode'] in value_modes:
+                pooled.extend((group, set(group_samples[group])) for group in drawn_individuals)
+            # A map that pools fewer than two samples with rows pools no genes.
+            unshared = []
+            colliding = set()
+            for name, samples in pooled:
+                if len(samples & with_rows) < 2:
+                    continue
+                shared = False
+                for gene, sample_accessions in gene_sample_accessions.items():
+                    found = [
+                        accessions for sample, accessions in sample_accessions.items()
+                        if sample in samples
+                    ]
+                    if len(found) < 2:
+                        continue
+                    shared = True
+                    if gene in colliding:
+                        continue
+                    # A sample can lack rows for some accessions of a gene, so only sets with no
+                    # accession in common are reported. Each distinct set is compared once.
+                    distinct = {frozenset(accessions) for accessions in found}
+                    if any(a.isdisjoint(b) for a, b in combinations(distinct, 2)):
+                        colliding.add(gene)
+                if not shared:
+                    unshared.append(name)
+
+            element_type = layer['element_type']
+            path = layer['path']
+            if colliding:
+                genes = self._sort_values(colliding)
+                several = len(genes) > 1
+                shown = join_names([repr(gene) for gene in genes[:5]])
+                if len(genes) > 5:
+                    listed = f"The first 5 are {shown}."
+                else:
+                    listed = f"The IDs are {shown}." if several else f"The ID is {shown}."
+                self.run.warning(
+                    f"{len(genes)} gene {'IDs' if several else 'ID'} of the {element_type} file at "
+                    f"'{path}' {'have' if several else 'has'} no accession in common between "
+                    f"{'their' if several else 'its'} rows in two samples of a map that pools "
+                    f"samples. {listed} A gene of one contigs database is annotated once, so it "
+                    f"has the same accessions in every sample. A sample can lack rows for some of "
+                    f"them, but rows with no accession in common suggest that one ID names two "
+                    f"genes. Gene caller IDs start at 0 in every contigs database, so the IDs of "
+                    f"separate assemblies must be made unique, for example with a sample prefix. "
+                    f"Otherwise, unrelated genes are pooled as one."
+                )
+            if not unshared:
+                continue
+            groups = [name for name in unshared if name is not None]
+            parts = ["the 'unified' map"] if None in unshared else []
+            if len(groups) > 5:
+                parts.append(f"the maps of {len(groups)} groups")
+            elif groups:
+                plural = 's' if len(groups) > 1 else ''
+                joined = join_names([f"'{group}'" for group in groups])
+                parts.append(f"the map{plural} of group{plural} {joined}")
+            self.run.warning(
+                f"No gene ID of the {element_type} file at '{path}' occurs in two or more samples "
+                f"of {' and '.join(parts)}. Each slice of a gene there shows the value of a single "
+                f"sample, and nothing is pooled. This is expected where the gene IDs of separate "
+                f"assemblies were made unique."
+            )
+
     def _write_slice_keys(self, layers: List[dict], output_dir: str) -> None:
         """
         Write the key table of each sliced layer, and warn about the elements that were not sliced.
 
-        The key table lists every slice drawn on every drawn map ('SLICE_KEY_COLUMNS'). Its name is
-        'slice_key_<layer name>.txt', such as 'slice_key_reactions.txt', in the output directory.
-        Each row names a KEGG map and a drawn map ('unified', or a sample or group), not a file. An
-        element drawn whole over the cap gets one row for each slice it would have had. Such a row
-        has no position, the color of the whole element, and the reason in 'drawn_whole'. The rows
-        are sorted by KEGG map, by drawn map in the order the maps are drawn, by entry ID, and by
-        slice.
+        The key table lists every slice drawn on every drawn map ('SLICE_KEY_COLUMNS'). A slice of a
+        gene names the gene in 'gene_id', and its accessions in the element in 'accession', in KGML
+        order and joined by commas. Its name is 'slice_key_<layer name>.txt', such as
+        'slice_key_reactions.txt', in the output directory. Each row names a KEGG map and a drawn
+        map ('unified', or a sample or group), not a file. An element drawn whole over the cap gets
+        one row for each slice it would have had. Such a row has no position, the color of the whole
+        element, and the reason in 'drawn_whole'. The rows are sorted by KEGG map, by drawn map in
+        the order the maps are drawn, by entry ID, and by slice.
 
         Two warnings follow, each counting an element once on each drawn map. One counts the
         elements drawn whole by KEGG map. The other counts the elements left uncolored, since every
@@ -8934,7 +9634,10 @@ class Mapper:
             )
             if whole:
                 if layer.get('value_type') == 'categorical':
-                    standin = "the value chosen among the accessions of its slices"
+                    standin = (
+                        f"the value chosen among the "
+                        f"{'genes' if layer['slice_by'] == 'gene' else 'accessions'} of its slices"
+                    )
                 elif layer.get('value_period') is not None:
                     standin = "the circular mean of its slice values, weighted by their shares"
                 else:
@@ -10589,6 +11292,27 @@ class Mapper:
             x, y = graphics.x, graphics.y
         return f'{x:g}', f'{y:g}', label
 
+    @staticmethod
+    def _slice_unit_labels(unit: Union[str, Tuple[str, Tuple[str, ...]]]) -> Tuple[str, str]:
+        """
+        Name what a slice stands for, in the 'accession' and 'gene_id' columns of the key table.
+
+        Parameters
+        ==========
+        unit : Union[str, Tuple[str, Tuple[str, ...]]]
+            An accession, or a gene and its accessions in the element ('_slice_values').
+
+        Returns
+        =======
+        Tuple[str, str]
+            The accession and an empty gene ID for a slice of an accession. The accessions of the
+            gene in KGML order, joined by commas, and the gene ID for a slice of a gene.
+        """
+        if isinstance(unit, tuple):
+            gene, accessions = unit
+            return ','.join(accessions), gene
+        return unit, ''
+
     def _stage_entry_slices(
         self,
         pathway_number: str,
@@ -10612,9 +11336,9 @@ class Mapper:
         colors of every slice are registered in 'color_priority', in the form of a whole Entry
         ('_stage_element_color'). The top slice is registered last, so its color keeps its priority
         where another slice of the Entry has the same color. Each Graphics element then gets the
-        slices, as (color, share) pairs in KGML order, in its 'slices' attribute. On a map that
-        derives the colors of compounds from reactions, the stand-in casts the Entry's one vote
-        ('compound_vote'). Where the stand-in is undefined, the vote is an empty tuple, and the
+        slices, as (color, share) pairs in the order of the slices, in its 'slices' attribute. On a
+        map that derives the colors of compounds from reactions, the stand-in casts the Entry's one
+        vote ('compound_vote'). Where the stand-in is undefined, the vote is an empty tuple, and the
         Entry casts no vote.
 
         '_find_element_entries' can find an Entry more than once. Each staging therefore overwrites
@@ -10708,11 +11432,11 @@ class Mapper:
             rows = [
                 (
                     pathway_number, spec['slice_map'], entry.id, x, y, label,
-                    '' if reason else str(position + 1), accession,
+                    '' if reason else str(position + 1), *self._slice_unit_labels(unit),
                     value if isinstance(value, str) else str(float(value)), str(float(share)),
                     color, reason or ''
                 )
-                for position, ((accession, value, share, _, _), color)
+                for position, ((unit, value, share, _, _), color)
                 in enumerate(zip(slices, colors))
             ]
             slice_records.append((spec, key, rows, None))
@@ -11107,10 +11831,11 @@ class Mapper:
 
             A sliced layer has these keys too ('_stage_entry_slices'):
             - 'slicer': a function used in place of 'colorer'. It takes an Entry. It returns None
-              where no accession of the Entry has a value on the map. Otherwise it returns a
+              where no accession or gene of the Entry has a value on the map. Otherwise it returns a
               dictionary. Its 'accessions' are those of the Entry. Its 'slices' are the slices to
-              draw, as (accession, value, share, color_hexcode, priority) tuples in KGML order, or
-              an empty list where every share is 0. Its 'standin' is a function that takes nothing
+              draw, as (unit, value, share, color_hexcode, priority) tuples in the order of
+              '_slice_result', or an empty list where every share is 0. The unit is an accession, or
+              a gene and its accessions in the Entry. Its 'standin' is a function that takes nothing
               and returns the (value, color_hexcode, priority) of the stand-in value, or None where
               that is undefined ('_slicer').
             - 'slice_map': what the key table calls the map, 'unified' or the name of a sample or
