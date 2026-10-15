@@ -23,6 +23,9 @@ class DisCov:
                            "Windows Depth Evenness CV (coarse)",
                            "Windows Depth Evenness CV (medium)",
                            "Windows Depth Evenness CV (fine)"]
+    # subset of the above whose spread-evenness scores (C) are combined with detection (D) in the Discov scores
+    DISCOV_EVENNESS_METRICS = ["Nonzero Depth Fold-Range Detection (Narrow: 0.5x - 2x)",
+                               "Windows Depth Evenness CV (fine)"]
 
     def __init__(self, coverage, contig_or_genome_name=None, sample_name=None, contig_starts=None):
         self.median: float = np.median(coverage)
@@ -58,9 +61,9 @@ class DisCov:
                   "Log-normalized Shannon Entropy", # combines both spread and evenness
                   # combines proportion windows covered (fine) with an evenness metric E
                   *[f"Spread-Evenness Score [{formula}; E = {E}]" for E in self.SE_EVENNESS_METRICS for formula in ['linear', 'geometric']],
-                  # combines spread-evenness score (C, with E = nonzero depth fold-range detection (narrow)) with detection (D)
-                  *[f"Discov {opt} ({c_type} C, k={k})" for opt in ['A', 'B', 'X'] for c_type in ['linear', 'geometric'] for k in [2, 3]],
-                  *[f"Discov Y ({c_type} C)" for c_type in ['linear', 'geometric']]
+                  # combines spread-evenness score (C) with detection (D)
+                  *[f"Discov {opt} [{formula} C, k={k}; E = {E}]" if k else f"Discov {opt} [{formula} C; E = {E}]"
+                    for E, opt, formula, k in self.get_discov_versions()]
         ]
         for outfile in [unfilt_output]:
             if not filesnpaths.is_file_exists(outfile, dont_raise=True):
@@ -151,15 +154,13 @@ class DisCov:
                     "Windows Depth Evenness CV (fine)": sliding_window_metrics['fine']['Depth_Evenness_CV']}
         SE_scores = {(E, formula): self.spread_evenness_score(S=sliding_window_metrics["fine"]['Proportion_Covered'], E=E_values[E], alpha=0.5, formula=formula)
                      for E in self.SE_EVENNESS_METRICS for formula in ['linear', 'geometric']}
-        SE_linear = SE_scores[("Nonzero Depth Fold-Range Detection (Narrow: 0.5x - 2x)", 'linear')]
-        SE_geom = SE_scores[("Nonzero Depth Fold-Range Detection (Narrow: 0.5x - 2x)", 'geometric')]
 
-        ## discov (order must match the header)
-        C_versions = [SE_linear, SE_geom]
-        discov_A = [self.discov_option_A(C, self.detection, beta=1, k=k) for C in C_versions for k in [2, 3]]
-        discov_B = [self.discov_option_B(C, self.detection, beta=1, k=k) for C in C_versions for k in [2, 3]]
-        discov_X = [self.discov_option_X(C, self.detection, gamma=1, k=k) for C in C_versions for k in [2, 3]]
-        discov_Y = [self.discov_option_Y(C, self.detection) for C in C_versions]
+        ## discov
+        discov_funcs = {'A': lambda C, k: self.discov_option_A(C, self.detection, beta=1, k=k),
+                        'B': lambda C, k: self.discov_option_B(C, self.detection, beta=1, k=k),
+                        'X': lambda C, k: self.discov_option_X(C, self.detection, gamma=1, k=k),
+                        'Y': lambda C, k: self.discov_option_Y(C, self.detection)}
+        discov_scores = [discov_funcs[opt](SE_scores[(E, formula)], k) for E, opt, formula, k in self.get_discov_versions()]
 
         # append all metrics to file
         fmt = lambda x: "NA" if x is None else f"{float(x):.4}"
@@ -181,7 +182,7 @@ class DisCov:
                        fmt(nz_depth_foldrange_narrow), fmt(nz_depth_foldrange_wide),
                        fmt(shannon_entropy),
                        *[fmt(SE_scores[(E, formula)]) for E in self.SE_EVENNESS_METRICS for formula in ['linear', 'geometric']],
-                       *[fmt(d) for d in discov_A + discov_B + discov_X + discov_Y],
+                       *[fmt(d) for d in discov_scores],
                       ]
         with open(output_file, 'a') as f:
             f.write("\t".join(output_list) + "\n")
@@ -434,6 +435,14 @@ class DisCov:
             return S**(alpha) * E**(1-alpha)
         else:
             raise ConfigError(f"spread_evenness_score does not understand the formula parameter '{formula}'")
+
+    def get_discov_versions(self):
+        """Returns an (E, option, C formula, k) tuple for each Discov version, in output order. Option Y has no k (None)."""
+
+        return [(E, opt, formula, k) for E in self.DISCOV_EVENNESS_METRICS
+                                     for opt in ['A', 'B', 'X', 'Y']
+                                     for formula in ['linear', 'geometric']
+                                     for k in ([2, 3] if opt != 'Y' else [None])]
 
     def discov_option_A(self, C, D, beta=1, k=2):
         """Boosts C toward 1 by a detection-dependent fraction of its remaining distance: F = C + β·D^k·(1 − C)"""
