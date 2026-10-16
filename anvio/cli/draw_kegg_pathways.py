@@ -279,10 +279,10 @@ def get_args() -> Namespace:
         f"sample need not mean the same thing in another sample, so by default the 'unified' map "
         f"counts the samples that contain each element. A rule given to "
         f"'--reaction-sample-summary' instead chooses one value across the samples. On global and "
-        f"overview maps drawn from reactions alone, each compound takes the value that the "
-        f"accession rule chooses among the reactions that touch it. A compound given no value "
-        f"keeps the color of a compound that no colored reaction touches. These options for a "
-        f"scale of numbers are refused: '--reaction-value-limits', "
+        f"overview maps where no compound layer colors the fills, each compound takes the value "
+        f"that the accession rule chooses among the reactions that touch it. A compound given no "
+        f"value keeps the color of a compound that no colored reaction touches. These options for "
+        f"a scale of numbers are refused: '--reaction-value-limits', "
         f"'--reaction-individual-value-limits', '--reaction-value-center', "
         f"'--reaction-individual-value-center', '--reaction-value-period', "
         f"'--reaction-element-normalization', and '--reaction-individual-colormap'. With "
@@ -897,22 +897,29 @@ def get_args() -> Namespace:
     groupCOLOR = parser.add_argument_group("COLOR", "Everything to do with coloring.")
     groupCOLOR.add_argument(
         '--reaction-color', nargs='?', const=DEFAULT_REACTION_COLOR, metavar='HEX', help=
-        "Color reaction elements a single static color for presence/absence, rather than "
-        "dynamically (across databases, genomes, samples, or groups) or by a value column. Used as "
-        "a flag (without a value), reactions are colored the default color (green). Alternatively, "
-        "give a color hex code, such as '#FFA500' for orange. A COLOR HEX CODE MUST BE ENCLOSED IN "
-        "QUOTES, SINCE AN UNQUOTED '#' MAKES THE SHELL IGNORE THE REST OF THE COMMAND. This "
-        "applies to the reaction layer of any input; for multiple databases, genomes, samples, or "
-        "groups it overrides dynamic coloring to show simple presence/absence. It cannot be "
-        "combined with '--reaction-colormap' (dynamic reaction coloring) or '--original-color'."
+        "Color the fills of reaction elements a single static color for presence/absence, rather "
+        "than dynamically (across databases, genomes, samples, or groups) or by a value column. "
+        "Used as a flag (without a value), the fills take the default color (green). "
+        "Alternatively, give a six-digit color hex code, such as '#FFA500' for orange. A COLOR HEX "
+        "CODE MUST BE ENCLOSED IN QUOTES, SINCE AN UNQUOTED '#' MAKES THE SHELL IGNORE THE REST OF "
+        "THE COMMAND. This applies to the reaction layer of any input; for multiple databases, "
+        "genomes, samples, or groups it overrides dynamic coloring to show simple "
+        "presence/absence. For a reaction file with a border column ('--reaction-border-column') "
+        "and no fill value column, the option also takes 'none', which leaves the fills uncolored "
+        "so that only the rings of the border column are drawn. It cannot be combined with "
+        "'--reaction-colormap' (dynamic reaction coloring) or '--original-color'."
     )
     groupCOLOR.add_argument(
         '--compound-color', nargs='?', const=DEFAULT_COMPOUND_COLOR, metavar='HEX', help=
-        "Like '--reaction-color', but for the compound layer of a '--compound-txt' file colored by "
-        "presence/absence. Used as a flag, compounds are colored the default color (pink); or give "
-        "a quoted color hex code. Database, pangenome, and reaction-network-JSON inputs have no "
-        "compound layer, so this applies only to a compound text file. It cannot be combined with "
-        "'--compound-colormap' or '--original-color'."
+        "Like '--reaction-color', but for the fills of the compound layer of a '--compound-txt' "
+        "file colored by presence/absence. Used as a flag, the fills take the default color "
+        "(pink); or give a quoted color hex code. For a compound file with a border column "
+        "('--compound-border-column') and no fill value column, the option also takes 'none', "
+        "which leaves the fills uncolored so that only rings are drawn. Compounds on global and "
+        "overview maps then keep the fills that they take from a reaction layer. Database, "
+        "pangenome, and reaction-network-JSON inputs have no compound layer, so this applies only "
+        "to a compound text file. It cannot be combined with '--compound-colormap' or "
+        "'--original-color'."
     )
     groupCOLOR.add_argument(
         '--original-color', action='store_true', default=False, help=
@@ -1634,7 +1641,8 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
     # summary pools values instead. A layer whose colors come from the reference map
     # ('--original-color') or from one static color ('--reaction-color'/'--compound-color')
     # summarizes nothing: its 'unified' map is presence in any sample, so no group-level presence
-    # threshold applies to it.
+    # threshold applies to it. A color of 'none' leaves the fills uncolored, so it summarizes
+    # nothing either.
     def _statically_colored(element_type: str) -> bool:
         return args.original_color or getattr(args, f'{element_type}_color') is not None
     group_presence = args.groups_txt is not None and any(
@@ -1642,10 +1650,13 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         and (group_summary is None or group_summary in PRESENCE_SUMMARIES)
         for element_type, _, layer, _, group_summary in summaries
     )
+    # '--reaction-color none' and '--compound-color none' leave the fills of a layer uncolored, so
+    # the maps of its groups count no samples for it.
     group_presence_maps = args.groups_txt is not None and any(
         layer is not None and layer['has_sample']
+        and getattr(args, f'{element_type}_color') != 'none'
         and (sample_summary is None or sample_summary in PRESENCE_SUMMARIES)
-        for _, _, layer, sample_summary, _ in summaries
+        for element_type, _, layer, sample_summary, _ in summaries
     )
 
     # Skip the flag guards if a provided file is malformed/ambiguous, so the reader raises the
@@ -1691,10 +1702,11 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"{units.replace('-slice-by', '-border-slice-by')}. Otherwise, drop '{flag}'."
                 )
         # Slices by gene need the genes of a 'gene_id' column. A file without a value column skips
-        # this check, so that the refusal of slices of presence below comes first.
+        # this check, so that the refusal of slices of presence below comes first. A layer given
+        # '--reaction-color none' skips it too, since its own refusals come below.
         if (
             args.reaction_slice_by == 'gene' and reaction['mode'] in VALUE_MODES
-            and not reaction['has_gene_id']
+            and not reaction['has_gene_id'] and args.reaction_color != 'none'
         ):
             raise ConfigError(
                 "'--reaction-slice-by gene' draws each gene of a reaction element as a slice, but "
@@ -1724,9 +1736,12 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"of slices, but the reaction file has no column with that header."
                 )
             # Weights can size the slices of rings without a value column. The border column then
-            # colors them.
+            # colors them. A layer given '--reaction-color none' is refused below.
             sliced_rings = reaction['has_border'] and args.reaction_border_slice_by is not None
-            if reaction['mode'] not in VALUE_MODES and not sliced_rings:
+            if (
+                reaction['mode'] not in VALUE_MODES and not sliced_rings
+                and args.reaction_color != 'none'
+            ):
                 key_columns = "'accession', 'gene_id', and 'sample'"
                 remedy = "Add a value column, or drop '--reaction-slice-weights'"
                 if reaction['has_border']:
@@ -1822,6 +1837,52 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 raise ConfigError(
                     f"'{column_flag}' names the column '{column}' as the border column, but the "
                     f"{element_type} file has no column with that header."
+                )
+
+        # '--reaction-color none' and '--compound-color none' leave the fills of a layer without
+        # values uncolored, so that the layer draws only the rings of its border column. Main has
+        # checked that the layer has a file and names a border column, and the check above that its
+        # file has the column. A fill value column and the options of the fill are refused here. The
+        # guards of slices above skip such a layer, and the guards of the other options come below.
+        # Those guards take a layer without values to be colored by presence. The colormap and the
+        # membership colors were refused in main. The mapper repeats these checks for programmatic
+        # callers.
+        for element_type, layer in (('reaction', reaction), ('compound', compound)):
+            if getattr(args, f'{element_type}_color') != 'none':
+                continue
+            none_flag = f'--{element_type}-color none'
+            unfilled = (
+                f"'{none_flag}' leaves the fills of the {element_type} layer uncolored, so that "
+                f"only the rings of its border column are drawn."
+            )
+            if layer['mode'] in VALUE_MODES:
+                raise ConfigError(
+                    f"{unfilled} The {element_type} file has a fill value column. Please drop "
+                    f"'{none_flag}' to color the fills by it."
+                )
+            options = [
+                'value-type', 'value-colors', 'gene-aggregation', 'accession-aggregation',
+                'value-period', 'sample-summary', 'group-summary', 'value-limits',
+                'individual-value-limits', 'value-center', 'individual-value-center',
+                'element-normalization', 'individual-colormap', 'reverse-overlay', 'slice-by'
+            ]
+            given = {
+                option: getattr(args, f"{element_type}_{option.replace('-', '_')}", None)
+                for option in options
+            }
+            fill_flags = [
+                f"'--{element_type}-{option}'" for option, value in given.items()
+                if value is not None and value is not False
+            ]
+            if fill_flags:
+                slice_note = (
+                    " To slice the rings, give '--reaction-border-slice-by' in place of "
+                    "'--reaction-slice-by'." if "'--reaction-slice-by'" in fill_flags else ""
+                )
+                raise ConfigError(
+                    f"These options color the fills of the {element_type} layer: "
+                    f"{', '.join(fill_flags)}. {unfilled} Please drop these options. The options "
+                    f"of the rings start with '--{element_type}-border-'.{slice_note}"
                 )
 
         # Rings sliced by gene need the genes of a 'gene_id' column. As for the slices of the fill,
@@ -2037,19 +2098,6 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"'sample' column, '--original-color' draws the union of the samples in the "
                     f"'unified' map and a map per sample, which "
                     f"'--draw-individual-files'/'--draw-grid' request."
-                )
-
-        # The mapper takes the literal string 'original' as its way of asking for the reference
-        # map's colors, which is what '--original-color' sets. Passing it through a color option
-        # instead would bypass every guard above, so it is rejected in favor of the flag.
-        for color_value, color_flag in (
-            (args.reaction_color, '--reaction-color'), (args.compound_color, '--compound-color')
-        ):
-            if color_value == 'original':
-                raise ConfigError(
-                    f"'{color_flag}' takes a color hex code, such as '#FFA500'. To use the "
-                    f"reference map's own colors, use the '--original-color' flag instead of "
-                    f"passing 'original' here."
                 )
 
         # '--reaction-color'/'--compound-color' set a single presence color for a layer; they do not
@@ -2629,19 +2677,31 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"aggregation such as 'mean'."
                 )
 
-        # Group options.
+        # Group options. A color of 'none' leaves the fills of a layer uncolored, so the layer uses
+        # no group option. The refusals of unused group options below name such a layer.
         if args.groups_txt is not None and not any_sample:
             raise ConfigError(
                 "'--groups-txt' groups the samples of the text files, but neither file has a "
                 "'sample' column, so there are no samples to group."
             )
+        unfilled_types = [
+            element_type for element_type, _, layer, _, _ in summaries
+            if layer is not None and layer['has_sample']
+            and getattr(args, f'{element_type}_color') == 'none'
+        ]
         if args.group_threshold is not None and not group_presence:
+            unfilled_note = ''.join(
+                f" The fills of the {element_type} layer do not summarize its groups by presence, "
+                f"since '--{element_type}-color none' leaves them uncolored."
+                for element_type in unfilled_types
+            ) if args.groups_txt is not None else ""
             raise ConfigError(
-                "'--group-threshold' sets the proportion of a group's samples in which an element "
-                "must occur for the group to be considered to contain it, so it applies when a "
-                "layer's groups are summarized by presence. No layer's groups are summarized that "
-                "way here: either no samples are grouped with '--groups-txt', or every sampled "
-                "layer's '--*-group-summary' pools values or chooses a categorical value instead."
+                f"'--group-threshold' sets the proportion of a group's samples in which an element "
+                f"must occur for the group to be considered to contain it, so it applies when a "
+                f"layer's groups are summarized by presence. No layer's groups are summarized that "
+                f"way here: either no samples are grouped with '--groups-txt', or every sampled "
+                f"layer's '--*-group-summary' pools values or chooses a categorical value instead."
+                f"{unfilled_note}"
             )
         if args.group_threshold is not None and args.skip_unified_maps:
             raise ConfigError(
@@ -2667,6 +2727,11 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         ) if present_flag]
         if group_flags and not (group_presence_maps and draw_individual_maps):
             message = ', '.join(f"'{flag}'" for flag in group_flags)
+            unfilled_note = ''.join(
+                f" The maps of the groups count nothing for the {element_type} layer, since "
+                f"'--{element_type}-color none' leaves its fills uncolored."
+                for element_type in unfilled_types
+            ) if args.groups_txt is not None else ""
             raise ConfigError(
                 f"Group-map coloring options were given ({message}), but they apply only to "
                 f"individual group maps showing within-group sample counts, which are drawn with "
@@ -2677,7 +2742,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 f"layer's own '--reaction-colormap'/'--compound-colormap') and "
                 f"'--reaction-reverse-overlay'/'--compound-reverse-overlay' instead. A layer of "
                 f"categorical values whose samples a rule summarizes colors its group maps by "
-                f"those values."
+                f"those values.{unfilled_note}"
             )
 
         # Each slice takes the color of its own value, so slicing needs a reaction layer of values
@@ -2984,7 +3049,8 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
             kwargs[key] = membership_colors
     # A colormap of False tells the mapper that a static color was chosen for the layer, so presence
     # in any sample is drawn in that one color on the 'unified' map rather than being colored by
-    # sample or group, matching how the same choice works for contigs databases and pangenomes.
+    # sample or group, matching how the same choice works for contigs databases and pangenomes. A
+    # color of 'none' leaves the fills uncolored on every map instead.
     if reaction_color is not None:
         kwargs['reaction_color'] = reaction_color
         if not args.original_color:
@@ -3361,9 +3427,58 @@ def main() -> None:
                 f"directories."
             )
 
+        # '--reaction-color' and '--compound-color' take a six-digit hex code, as the colors files
+        # do. Biopython reads 'none' as black, which hides the labels of boxes. Other values stop
+        # the drawing or give a wrong color. For a text file with a border column and no fill value
+        # column, the options also take 'none'. It leaves the fills uncolored, so that the layer
+        # draws only the rings of its border column. The mapper takes 'original' as its way of
+        # asking for the reference map's colors, which '--original-color' asks for instead. Only a
+        # text file has a compound layer, so '--compound-color' is refused below in other runs.
+        for element_type in ('reaction', 'compound'):
+            color = getattr(args, f'{element_type}_color')
+            color_flag = f'--{element_type}-color'
+            if element_type == 'compound' and not is_txt_run:
+                continue
+            if color is None or re.fullmatch(r'#[0-9A-Fa-f]{6}', color):
+                continue
+            if color == 'original':
+                raise ConfigError(
+                    f"'{color_flag}' takes a color hex code, such as '#FFA500'. To use the "
+                    f"reference map's own colors, use the '--original-color' flag instead of "
+                    f"passing 'original' here."
+                )
+            if color != 'none':
+                raise ConfigError(
+                    f"'{color_flag}' was given as '{color}'. It takes a six-digit color hex code, "
+                    f"such as '#FFA500'. For a text file with a border column and no fill value "
+                    f"column, it also takes 'none', which leaves the fills uncolored so that only "
+                    f"rings are drawn."
+                )
+            none_clause = (
+                f"'{color_flag} none' leaves the fills of the {element_type} layer uncolored, so "
+                f"that only the rings of its border column are drawn."
+            )
+            if not is_txt_run:
+                raise ConfigError(
+                    f"{none_clause} Only a text file given with '--reaction-txt' or "
+                    f"'--compound-txt' has a border column. Please give a color hex code instead."
+                )
+            if getattr(args, f'{element_type}_txt') is None:
+                raise ConfigError(
+                    f"'{color_flag}' colors the {element_type} layer, but no {element_type} file "
+                    f"('--{element_type}-txt') was provided."
+                )
+            if getattr(args, f'{element_type}_border_column') is None:
+                raise ConfigError(
+                    f"{none_clause} No border column was named with "
+                    f"'--{element_type}-border-column', so the layer would draw nothing. Name the "
+                    f"column whose values color the rings, or give a color hex code."
+                )
+
         # Static presence colors vs. dynamic colormaps: a layer is colored one way or the other.
         # '--original-color' preempts custom colors (it uses the reference map's colors); the color
-        # flags preempt their layer's colormap (several dispatchers below also assert this).
+        # flags preempt their layer's colormap (several dispatchers below also assert this). A color
+        # of 'none' leaves the fills uncolored, so a colormap has nothing to color.
         if args.original_color and (
             args.reaction_color is not None or args.compound_color is not None
         ):
@@ -3371,6 +3486,15 @@ def main() -> None:
                 "'--original-color' uses the reference map's original colors, so it cannot be "
                 "combined with '--reaction-color' or '--compound-color'."
             )
+        for element_type in ('reaction', 'compound'):
+            if getattr(args, f'{element_type}_color') == 'none' and (
+                getattr(args, f'{element_type}_colormap') is not None
+            ):
+                raise ConfigError(
+                    f"'--{element_type}-color none' leaves the fills of the {element_type} layer "
+                    f"uncolored, while '--{element_type}-colormap' colors them across a range. "
+                    f"Please use only one."
+                )
         if (args.original_color or args.reaction_color is not None) and (
             args.reaction_colormap is not None
         ):
@@ -3397,6 +3521,12 @@ def main() -> None:
                     f"'{colors_flag}' colors the {element_type} layer with the colors given in the "
                     f"file. '--{element_type}-colormap' has anvi'o choose the colors of the layer "
                     f"from a colormap instead. Please use only one."
+                )
+            if getattr(args, f'{element_type}_color') == 'none':
+                raise ConfigError(
+                    f"'{colors_flag}' colors the fills of the {element_type} layer with the colors "
+                    f"given in the file. '--{element_type}-color none' leaves the fills uncolored. "
+                    f"Please use only one."
                 )
             if getattr(args, f'{element_type}_color') is not None:
                 raise ConfigError(
@@ -3438,11 +3568,18 @@ def main() -> None:
                 "'--reaction-membership-colors'/'--compound-membership-colors'" if is_txt_run
                 else "'--reaction-membership-colors'"
             )
+            # A layer given 'none' counts nothing on the maps of its groups.
+            unfilled_note = ''.join(
+                f" The maps of the groups count nothing for the {element_type} layer, since "
+                f"'--{element_type}-color none' leaves its fills uncolored."
+                for element_type in ('reaction', 'compound')
+                if getattr(args, f'{element_type}_color') == 'none'
+            )
             raise ConfigError(
                 f"'--group-colormap {GROUP_COLORMAP_TINT}' colors each group's own maps by a ramp "
                 f"running from a pale tint to that group's own color, but no color was given for "
                 f"any group. Give one per group with {colors_flags}, or name a Matplotlib colormap "
-                f"for the group maps instead."
+                f"for the group maps instead.{unfilled_note}"
             )
         # Only a compound text file provides a compound layer, so every option that shapes one has
         # nothing to act on without it. The same goes for the sample and group summaries and the
@@ -3686,9 +3823,9 @@ def main() -> None:
             # colors produced it.
             if "'compound' entries" in e_str:
                 layer_clause = (
-                    "Specifically, a compound would be drawn in a reserved color. On a map drawn "
-                    "from reactions alone, each compound takes its color from the reactions it "
-                    "touches, so the reaction color or colormap is what to change "
+                    "Specifically, a compound would be drawn in a reserved color. Where no "
+                    "compound layer colors the fills, each compound takes its color from the "
+                    "reactions it touches, so the reaction color or colormap is what to change "
                     "('--reaction-color' or '--reaction-colormap'). "
                 )
             elif "'ortholog' entries" in e_str:

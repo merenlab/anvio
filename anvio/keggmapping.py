@@ -126,11 +126,12 @@ ANVIO_COLORMAPS: Dict[str, Tuple[str, ...]] = {
 }
 
 # Colormaps for values that repeat, such as clock times. Each has the same color at both ends. On a
-# global or overview map drawn from reactions alone, each compound takes a color from the reaction
-# lines that touch it. With one of these colormaps, the values of those lines are averaged on a
-# circle. A layer with a period ('--reaction-value-period') averages them on a circle with any
-# colormap. '_is_cyclic_colormap' matches colormap names against this list. Matplotlib's cyclic
-# colormaps are not listed. People often use one of them, 'hsv', for values that do not repeat.
+# global or overview map where no compound layer colors the fills, each compound takes a color from
+# the reaction lines that touch it. With one of these colormaps, the values of those lines are
+# averaged on a circle. A layer with a period ('--reaction-value-period') averages them on a circle
+# with any colormap. '_is_cyclic_colormap' matches colormap names against this list. Matplotlib's
+# cyclic colormaps are not listed. People often use one of them, 'hsv', for values that do not
+# repeat.
 CYCLIC_COLORMAPS: Tuple[str, ...] = (
     'clocktime',
 )
@@ -364,9 +365,9 @@ DEFAULT_BORDER_COLORMAP_LIMITS: Tuple[float, float] = (0.2, 1.0)
 # of one map element ('--*-accession-aggregation'), and among the samples on the 'unified' map
 # ('--*-sample-summary'). With groups, they meet among the samples of each group
 # ('--*-sample-summary'), and then among the groups on the 'unified' map ('--*-group-summary'). On
-# global and overview maps drawn from reactions alone, they meet among the reactions that touch a
-# compound, where the accession rule chooses. Each gene, accession, sample, group, or reaction with
-# a value gives one vote. These are the rules:
+# global and overview maps where no compound layer colors the fills, they meet among the reactions
+# that touch a compound, where the accession rule chooses. Each gene, accession, sample, group, or
+# reaction with a value gives one vote. These are the rules:
 # - 'plurality_order' takes the most common value, even with less than half of the votes. A tie
 #   goes to the value that comes first in the order of the values. That order is the row order of
 #   the colors file, or else sorted order ('_resolve_value_colors').
@@ -3859,7 +3860,9 @@ class Mapper:
         column there is nothing to summarize, so the two agree: 'quantitative' with a value column
         ('_read_element_txt'), or 'single' (one fixed presence color) without one. An
         '--original-color' layer is the exception. It always pairs a 'unified_mode' of 'original'
-        with an 'individual_mode' of 'membership'. The reason is given where it is built.
+        with an 'individual_mode' of 'membership'. The reason is given where it is built. A 'color'
+        of 'none' gives a layer without values the mode 'none' in both contexts, with or without
+        samples. Its fills are left uncolored, and it draws only the rings of its border column.
 
         With a 'sample' column the two contexts can differ, since the value column only colors a
         single sample's magnitude while the summaries independently choose what the views across
@@ -3940,6 +3943,59 @@ class Mapper:
         if channel is None:
             channel = self._txt_channel(data['element_type'])
         flag_stem = channel['flag_stem']
+        # A color of 'none' leaves the fills of a layer without values uncolored, so that the layer
+        # draws only the rings of its border column. The layer takes the fill mode 'none' on every
+        # map. Every option of the fill is refused, since it would have nothing to act on. The CLI
+        # makes these checks too.
+        if color == 'none':
+            element_type = data['element_type']
+            none_flag = f"--{element_type}-color none"
+            unfilled = (
+                f"'{none_flag}' leaves the fills of the {element_type} layer uncolored, so that "
+                f"only the rings of its border column are drawn."
+            )
+            if data['border_column'] is None:
+                raise ConfigError(
+                    f"{unfilled} No border column was named with '--{element_type}-border-column', "
+                    f"so the layer would draw nothing. Name the column whose values color the "
+                    f"rings, or give a color hex code."
+                )
+            if data['value_column'] is not None:
+                raise ConfigError(
+                    f"{unfilled} The file at '{path}' has a fill value column, "
+                    f"'{data['value_column']}'. Please drop '{none_flag}' to color the fills by it."
+                )
+            fill_flags = list(dict.fromkeys(f"'--{element_type}-{option}'" for option, given in (
+                ('gene-aggregation', gene_aggregation is not None),
+                ('accession-aggregation', accession_aggregation is not None),
+                ('colormap', colormap is not None and colormap is not False),
+                ('colormap', colormap_limits is not None),
+                ('individual-colormap', individual_colormap is not None),
+                ('individual-colormap', individual_colormap_limits is not None),
+                ('membership-colors', membership_colors_txt is not None),
+                ('reverse-overlay', reverse_overlay),
+                ('sample-summary', sample_summary is not None),
+                ('group-summary', group_summary is not None),
+                ('value-limits', value_limits is not None),
+                ('individual-value-limits', individual_value_limits is not None),
+                ('value-center', value_center is not None),
+                ('individual-value-center', individual_value_center is not None),
+                ('element-normalization', element_normalization is not None),
+                ('element-normalization', element_normalization_label is not None),
+                ('value-period', value_period is not None),
+                ('slice-by', slice_by is not None)
+            ) if given))
+            if fill_flags:
+                raise ConfigError(
+                    f"These options color the fills of the {element_type} layer: "
+                    f"{', '.join(fill_flags)}. {unfilled} Please drop these options. The options "
+                    f"of the rings start with '--{element_type}-border-'."
+                )
+            return {
+                **self._txt_model_common(name, data, path, None, channel),
+                'unified_mode': 'none',
+                'individual_mode': 'none'
+            }
         if data['value_type'] == 'categorical':
             return self._build_categorical_txt_model(
                 name, data, path, gene_aggregation, accession_aggregation, color, colormap,
@@ -5212,8 +5268,9 @@ class Mapper:
         Notes
         =====
         The other parameters are the arguments of 'map_kegg_pathways_txt' of the same names, without
-        the 'reaction_' prefix. 'color' is 'original' for '--original-color', and 'colormap' is
-        False where a single color was chosen with '--reaction-color'.
+        the 'reaction_' prefix. 'color' is 'original' for '--original-color', and 'none' where the
+        fills are left uncolored. 'colormap' is False where a color was chosen with
+        '--reaction-color'.
         """
         given = [
             flag for flag, setting in (
@@ -5317,6 +5374,13 @@ class Mapper:
                 "'--reaction-slice-by' colors each slice of a reaction element by its own value, "
                 "but '--original-color' takes the colors of the reactions from the reference map. "
                 "Please use only one of them."
+            )
+        if color == 'none':
+            raise ConfigError(
+                "'--reaction-slice-by' colors each slice of a reaction element by its own value, "
+                "but '--reaction-color none' leaves the fills of the reaction layer uncolored. To "
+                "slice the rings of the border column, give '--reaction-border-slice-by' in place "
+                "of '--reaction-slice-by'."
             )
         if colormap is False:
             raise ConfigError(
@@ -5786,7 +5850,7 @@ class Mapper:
         compound_element_normalization_label: Union[str, None] = None,
         reaction_border: Union[Dict[str, object], None] = None,
         compound_border: Union[Dict[str, object], None] = None,
-        group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
+        group_colormap: Union[str, mcolors.Colormap, None] = None,
         group_colormap_limits: Tuple[float, float] = None,
         group_reverse_overlay: bool = False,
         group_colormap_scheme: Literal['by_count', 'by_count_continuous'] = None,
@@ -6034,9 +6098,11 @@ class Mapper:
         options; see the CLI help and '_map_elements'. 'group_colormap' may be 'GROUP_COLORMAP_TINT'
         to color each group's own maps by a ramp running to that group's own color instead of by a
         named colormap, in which case 'group_colormap_limits' is how far from white that ramp runs
-        ('_group_map_colors'). 'group_colormap_scheme' draws the count scale of every group's maps
-        in discrete bands ('by_count') or as a gradient ('by_count_continuous'), and by default
-        keeps the bands while the colors can be told apart.
+        ('_group_map_colors'). A 'group_colormap' of None is 'plasma_r'. 'group_colormap_scheme'
+        draws the count scale of every group's maps in discrete bands ('by_count') or as a gradient
+        ('by_count_continuous'), and by default keeps the bands while the colors can be told apart.
+        A layer whose 'reaction_color' or 'compound_color' is 'none' uses none of the group options.
+        They are refused where no other layer uses them.
 
         Returns
         =======
@@ -6258,8 +6324,13 @@ class Mapper:
             )
             # Each column and the aggregations that reduce its values are reported. The two channels
             # reduce values by different defaults, so the same column can give an element different
-            # values as its fill and as its border.
+            # values as its fill and as its border. A layer in the fill mode 'none' colors no fills.
+            # Its rows without a border value then show nothing.
             label = element_type.capitalize()
+            no_column = (
+                f"none, and '--{element_type}-color none' leaves the fills uncolored"
+                if model['unified_mode'] == 'none' else "none, so the fills show presence"
+            )
             for name, column, value_type, aggregations in (
                 ('value', data['value_column'], data['value_type'],
                  _used(model.get('aggregations'), layer.get('slice_by'))),
@@ -6268,8 +6339,7 @@ class Mapper:
             ):
                 self.run.info(
                     f"{label} {name} column",
-                    f"{column} ({value_type})" if column is not None
-                    else "none, so the fills show presence"
+                    f"{column} ({value_type})" if column is not None else no_column
                 )
                 for level, aggregation in (aggregations or {}).items():
                     if column is None or level == 'gene' and 'gene_id' not in data['df'].columns:
@@ -6326,6 +6396,34 @@ class Mapper:
                     f"Please drop '--reaction-slice-share-summary'."
                 )
 
+        # A layer in the fill mode 'none' colors no fills, so it neither summarizes the groups by
+        # presence nor counts the samples of a group on the group's map. The group options that do
+        # these things are refused where no other layer uses them. The CLI makes this check too.
+        unfilled = [model for model in models if model['unified_mode'] == 'none']
+        if unfilled and group_samples is not None:
+            others = [model for model in models if model['unified_mode'] != 'none']
+            threshold_used = any(model['unified_mode'] == 'membership' for model in others)
+            counts_used = any(model['individual_mode'] == 'membership' for model in others)
+            idle = [f"'{flag}'" for flag, given, used in (
+                ('--group-threshold', group_threshold is not None, threshold_used),
+                (
+                    '--group-colormap',
+                    group_colormap is not None or group_colormap_limits is not None, counts_used
+                ),
+                ('--group-colormap-scheme', group_colormap_scheme is not None, counts_used),
+                ('--group-reverse-overlay', group_reverse_overlay, counts_used)
+            ) if given and not used]
+            if idle:
+                unfilled_clauses = ' '.join(
+                    f"'--{model['element_type']}-color none' leaves the fills of the "
+                    f"{model['element_type']} layer uncolored." for model in unfilled
+                )
+                raise ConfigError(
+                    f"These options shape how the fills of a layer show groups of samples: "
+                    f"{', '.join(idle)}. No layer here uses them. {unfilled_clauses} Such a layer "
+                    f"draws only the rings of its border column. Please drop these options."
+                )
+
         # Groups are carried through whenever they are defined: they set which samples each group's
         # map summarizes, and, for a group summary of presence, which groups the 'unified' map shows
         # an element in (per 'group_threshold').
@@ -6335,7 +6433,7 @@ class Mapper:
                 'source_group': sample_group,
                 'group_sources': group_samples,
                 'group_threshold': group_threshold,
-                'group_colormap': group_colormap,
+                'group_colormap': 'plasma_r' if group_colormap is None else group_colormap,
                 'group_colormap_limits': group_colormap_limits,
                 'group_reverse_overlay': group_reverse_overlay,
                 'group_colormap_scheme': group_colormap_scheme
@@ -9379,9 +9477,10 @@ class Mapper:
         A layer's mode sets how it colors its elements: 'quantitative' (continuous value),
         'categorical' (a color per categorical value), 'membership' (by the sources/groups
         containing an element, or their count), 'single' (one fixed presence/absence color),
-        'static' (one fixed color pooled across sources, for the db/pan single-color path), or
-        'original' (preserve the reference map's colors, drawn by a separate drawer). The mode can
-        differ between the two map contexts, given as 'unified_mode' for the 'unified' map and
+        'static' (one fixed color pooled across sources, for the db/pan single-color path),
+        'original' (preserve the reference map's colors, drawn by a separate drawer), or 'none' (no
+        fill, so that a text layer draws only the rings of its border column). The mode can differ
+        between the two map contexts, given as 'unified_mode' for the 'unified' map and
         'individual_mode' for the individual sample/source/group maps: a text layer with a value
         column and a 'sample' column, for instance, colors per-sample magnitude continuously while
         summarizing the samples or groups by presence on the 'unified' map. Note that 'original' is
@@ -9497,6 +9596,9 @@ class Mapper:
             'color_hexcode'. 'color_hexcode' is 'original' for an 'original' layer.
 
             A 'single' layer needs 'accessions' and 'color_hexcode'.
+
+            A 'none' layer needs 'accessions' and a 'border'. It is 'none' in both contexts. Its
+            matched entries do not count as data, so a map is drawn for it only where a ring shows.
 
             A layer that is 'quantitative' in one context and 'membership' in the other has the keys
             of both.
@@ -9862,7 +9964,8 @@ class Mapper:
         pathway_numbers = self._find_maps(check_dirs, patterns=pathway_numbers)
         # A border that no map of the run can show is refused before any output is written.
         self._check_border_maps(
-            borders, pathway_numbers, draw_unified_maps, draw_individual_maps, individual_noun
+            borders, pathway_numbers, draw_unified_maps, draw_individual_maps, individual_noun,
+            unfilled={layer['element_type'] for layer in layers if layer['unified_mode'] == 'none'}
         )
         filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
         # The key table of a sliced layer is written once the maps are drawn. Whether it can be
@@ -9901,6 +10004,18 @@ class Mapper:
             layer['_ring_maps'] = {'unified': set(), 'individual': set()}
             layer['_line_entries'] = {}
         fills = {id(layer['border']): layer for layer in layers if layer.get('border') is not None}
+
+        def _unfilled(border: dict) -> str:
+            # The rings of a layer in the fill mode 'none' are all that the layer draws, so the
+            # warnings about rings that no map shows end by saying so.
+            fill = fills[id(border)]
+            if fill['unified_mode'] != 'none':
+                return ""
+            element_type = fill['element_type']
+            return (
+                f" '--{element_type}-color none' leaves the fills of the {element_type} layer "
+                f"uncolored, so the layer shows nothing where it shows no border."
+            )
 
         if norm_layers or ring_layers:
             self.progress.new("Computing the range of values across maps")
@@ -10045,7 +10160,7 @@ class Mapper:
                             f"'{layer['value_column']}' column of the {layer['element_type']} "
                             f"layer. Either none of the drawn maps shows a border for its "
                             f"accessions, or the normalization is undefined for every map element. "
-                            f"{cause}{unaffected_clause}"
+                            f"{cause}{unaffected_clause}{_unfilled(layer)}"
                         )
                     else:
                         self.run.warning(
@@ -10090,7 +10205,7 @@ class Mapper:
                         f"of the {layer['element_type']} layer, so no color scale was drawn for "
                         f"it. Either none of the drawn maps shows a border for its accessions, or "
                         f"the aggregation reducing them is undefined for every map element, as the "
-                        f"standard deviation of a single value is."
+                        f"standard deviation of a single value is.{_unfilled(layer)}"
                     )
                 elif not layer['_unified_vals'] and not layer['_individual_vals']:
                     self.run.warning(
@@ -10183,19 +10298,25 @@ class Mapper:
                         f"No map shows a border from the '{layer['value_column']}' border column "
                         f"of the {layer['element_type']} layer, so no legend was drawn for it. "
                         f"Either none of the drawn maps shows a border for its accessions, or the "
-                        f"rules that choose among its values gave no value."
+                        f"rules that choose among its values gave no value.{_unfilled(layer)}"
                     )
             # Lines show no ring, so a reaction element that a standard map draws as a line shows
-            # only its fill. Users may expect a ring there.
+            # only its fill. Users may expect a ring there. A layer in the fill mode 'none' shows
+            # nothing there.
             for layer in borders:
                 lines = layer['_line_entries']
                 if not lines:
                     continue
                 count = sum(len(entries) for entries in lines.values())
+                shown = (
+                    "no border. '--reaction-color none' leaves their fills uncolored, so these "
+                    "elements show nothing" if fills[id(layer)]['unified_mode'] == 'none'
+                    else "no border, so these elements show only their fills"
+                )
                 self.run.warning(
                     f"On {len(lines)} standard map(s), {count} reaction element(s) with border "
                     f"values in the column '{layer['value_column']}' are drawn as lines. Lines "
-                    f"show no border, so these elements show only their fills. The maps are these: "
+                    f"show {shown}. The maps are these: "
                     f"{', '.join(sorted(lines)[:10])}{', and more' if len(lines) > 10 else ''}."
                 )
 
@@ -10254,11 +10375,11 @@ class Mapper:
             )
 
         def _reaction_derived(layer, mode, cmap_key='cmap', spread=False):
-            # How a reaction layer derives compound colors on a reaction-only global/overview map.
-            # The derived colors come from the same scale as the reactions they are derived from, so
-            # the caller names the context's colormap: the two can differ ('individual_cmap'). The
-            # caller also says whether the context shows a spread, which is a plain number and so is
-            # averaged as one.
+            # How a reaction layer derives compound colors on a global or overview map where no
+            # compound layer stages fills ('_derives_compounds'). The derived colors come from the
+            # same scale as the reactions they are derived from, so the caller names the context's
+            # colormap: the two can differ ('individual_cmap'). The caller also says whether the
+            # context shows a spread, which is a plain number and so is averaged as one.
             if layer['element_type'] != 'reaction':
                 return None
             # Categorical values are chosen, not averaged, by the layer's accession rule. The
@@ -10298,8 +10419,22 @@ class Mapper:
                 accession for sample in samples for accession in layer['sample_values'][sample]
             )
 
+        def _unfilled_spec(layer):
+            # A layer in the fill mode 'none' colors no fill, so its spec has no colorer. Its
+            # entries do not count as data, and it stages only the rings of its border
+            # ('_with_border', '_stage_map_elements').
+            return {
+                'element_type': layer['element_type'],
+                'use_reaction_attribute': layer['use_reaction_attribute'],
+                'entry_keys': layer['accessions'],
+                'colorer': None,
+                'derived_compound': _reaction_derived(layer, 'none')
+            }
+
         def _unified_spec(layer):
             mode = layer['unified_mode']
+            if mode == 'none':
+                return _unfilled_spec(layer)
             if mode == 'quantitative':
                 def entry_value(entry):
                     return self._summarize_entry_values(entry, layer)[1]
@@ -10370,6 +10505,8 @@ class Mapper:
 
         def _individual_spec(layer, individual):
             mode = layer['individual_mode']
+            if mode == 'none':
+                return _unfilled_spec(layer)
             if mode == 'quantitative':
                 normalize = layer.get('element_normalize')
                 maps = None
@@ -10624,6 +10761,24 @@ class Mapper:
         value_modes = ('quantitative', 'categorical')
         for layer in layers:
             element_type = layer['element_type']
+            # A layer in the fill mode 'none' draws only rings. Where its border shows no ring on
+            # the 'unified' map, that map shows nothing of the layer. A run in which no map can show
+            # the rings was refused ('_check_border_maps').
+            if layer['unified_mode'] == 'none':
+                border = layer['border']
+                if draw_unified_maps and border['unified_mode'] is None:
+                    grouped_layer = border.get('group_samples') is not None
+                    summary_flag = (
+                        f"--{element_type}-border-{'group' if grouped_layer else 'sample'}-summary"
+                    )
+                    self.run.warning(
+                        f"The 'unified' map shows nothing of the {element_type} layer. "
+                        f"'--{element_type}-color none' leaves its fills uncolored. Its border "
+                        f"shows no ring there, since '{summary_flag}' was not given. Give that "
+                        f"option an aggregation or a rule to show rings on the 'unified' map, or "
+                        f"leave that map out with '--skip-unified-maps'."
+                    )
+                continue
             # A file of categorical values with a header and no rows has no values to show. The
             # other warnings here tell the user how to show values, so they do not apply.
             if layer.get('value_type') == 'categorical' and not layer['value_order']:
@@ -11028,7 +11183,8 @@ class Mapper:
         pathway_numbers: List[str],
         draw_unified_maps: bool,
         draw_individual_maps: bool,
-        individual_noun: Union[str, None]
+        individual_noun: Union[str, None],
+        unfilled: Union[Set[str], None] = None
     ) -> None:
         """
         Refuse a border that no map of a run can show, and count the maps that show none.
@@ -11055,6 +11211,10 @@ class Mapper:
 
         individual_noun : Union[str, None]
             'sample' or 'group', or None for a run without samples.
+
+        unfilled : Union[Set[str], None], None
+            The element types of the layers in the fill mode 'none'. Their rings are all that they
+            draw, so a refusal does not suggest dropping their border columns.
         """
         def kind(number: str) -> str:
             if re.match(GLOBAL_MAP_ID_PATTERN, number):
@@ -11082,10 +11242,15 @@ class Mapper:
                 else:
                     shapes = "compound circles on standard and overview maps"
                     others = "Global maps draw their circles without an outline, and no borders."
+                remedy = (
+                    f"Draw a map that shows borders. '--{element_type}-color none' leaves the "
+                    f"fills of the {element_type} layer uncolored, so its rings are all that it "
+                    f"draws." if element_type in (unfilled or set())
+                    else f"Draw a map that shows borders, or drop '{column_flag}'."
+                )
                 raise ConfigError(
                     f"'{column_flag}' colors the borders of {shapes}. This run draws no such map. "
-                    f"Its maps are these: {listed}{more}. {others} Draw a map that shows borders, "
-                    f"or drop '{column_flag}'."
+                    f"Its maps are these: {listed}{more}. {others} {remedy}"
                 )
             if len(showing) < len(pathway_numbers):
                 self.run.info(f"Maps that show no {noun}s", len(pathway_numbers) - len(showing))
@@ -11771,14 +11936,14 @@ class Mapper:
         """
         Check that no compound is given a reserved color derived from the reactions it touches.
 
-        A global or overview map drawn without a compound layer colors each compound from the
-        reactions it touches ('kgml.Pathway.color_associated_compounds'). Where the reactions are
-        colored by value, a compound takes the color at the average position of its reactions on
-        the color scale. Otherwise it takes the color of its reaction drawn on top. That color can
-        be the one the map keeps for the compounds it does not highlight. This can happen even where
-        no reaction has that color. 'kgml' then refuses to draw the map. This check finds such a
-        clash before any map or colorbar is drawn. '_check_reserved_colors' does the same for the
-        colors of the layers themselves.
+        A global or overview map colors each compound from the reactions it touches
+        ('kgml.Pathway.color_associated_compounds'), where a reaction layer stages fills and no
+        compound layer does. Where the reactions are colored by value, a compound takes the color at
+        the average position of its reactions on the color scale. Otherwise it takes the color of
+        its reaction drawn on top. That color can be the one the map keeps for the compounds it does
+        not highlight. This can happen even where no reaction has that color. 'kgml' then refuses to
+        draw the map. This check finds such a clash before any map or colorbar is drawn.
+        '_check_reserved_colors' does the same for the colors of the layers themselves.
 
         The derived colors depend on which reactions touch each compound. Each map is therefore
         colored here without being drawn. That costs about as much as drawing the map, less the
@@ -11789,7 +11954,8 @@ class Mapper:
         Parameters
         ==========
         layers : List[dict]
-            The layer models. Compound colors are derived only where no layer is a compound layer.
+            The layer models. Compound colors are derived only where a reaction layer stages fills
+            and no compound layer does. A layer in the fill mode 'none' stages no fills.
 
         pathway_numbers : List[str]
             The maps about to be drawn. Only global and overview maps derive compound colors.
@@ -11805,8 +11971,12 @@ class Mapper:
             The colors of each group's individual maps ('_group_map_colors'). A compound on a
             group's map can take one of them.
         """
-        # A compound layer colors the compounds itself, so no compound color is derived.
-        if any(layer['element_type'] == 'compound' for layer in layers):
+        # Compound colors are derived from a reaction layer that stages fills. A compound layer that
+        # stages fills colors the compounds itself, so no compound color is derived then. A layer in
+        # the fill mode 'none' stages none. A compound layer in this mode draws only rings, so the
+        # compounds keep their derived fills ('_derives_compounds').
+        fills = {layer['element_type'] for layer in layers if layer['unified_mode'] != 'none'}
+        if 'reaction' not in fills or 'compound' in fills:
             return
         reserved: Dict[str, str] = {}
         for pathway_number in pathway_numbers:
@@ -11882,12 +12052,12 @@ class Mapper:
                     f"Some compounds would be colored {reserved_color} on pathway map "
                     f"{pathway_number}{drawn_for}. The map keeps this color for the compounds it "
                     f"does not highlight. They could not be told apart from those compounds. No "
-                    f"compound layer is drawn. The map therefore colors each compound from the "
-                    f"reactions it touches. Where the reactions are colored by value, a compound "
-                    f"takes the color at the average position of its reactions on the color scale. "
-                    f"Where they are colored by categorical values, a rule chooses one of their "
-                    f"values for it. Otherwise it takes the color of its reaction drawn on top. "
-                    f"{remedy}"
+                    f"compound layer colors the compounds. The map therefore colors each compound "
+                    f"from the reactions it touches. Where the reactions are colored by value, a "
+                    f"compound takes the color at the average position of its reactions on the "
+                    f"color scale. Where they are colored by categorical values, a rule chooses "
+                    f"one of their values for it. Otherwise it takes the color of its reaction "
+                    f"drawn on top. {remedy}"
                 )
         self.progress.end()
 
@@ -11907,7 +12077,8 @@ class Mapper:
         Parameters
         ==========
         layers : List[dict]
-            The layer models. The run has no compound layer, so its one reaction layer is here.
+            The layer models. No compound layer of the run stages fills, and its one reaction layer
+            is here.
 
         unified : bool
             True for the 'unified' map. False for the map of one sample, contigs database, genome,
@@ -13524,13 +13695,13 @@ class Mapper:
         """
         Build the function that colors a compound by the categorical values of its reactions.
 
-        On a global or overview map drawn from reactions alone, each compound takes a color from the
-        reactions that touch it ('kgml.Pathway.color_associated_compounds'). Each touching reaction
-        gives one vote for its value. The layer's accession rule chooses among the votes, as it does
-        among the accessions of one map element ('_choose_categorical_value'). The key of a random
-        choice is the compound's name, so a compound with the same votes gets the same value on
-        every map. The choices are counted in the layer's '_choices', once per compound and set of
-        votes.
+        On a global or overview map where no compound layer colors the fills, each compound takes a
+        color from the reactions that touch it ('kgml.Pathway.color_associated_compounds'). Each
+        touching reaction gives one vote for its value. The layer's accession rule chooses among the
+        votes, as it does among the accessions of one map element ('_choose_categorical_value'). The
+        key of a random choice is the compound's name, so a compound with the same votes gets the
+        same value on every map. The choices are counted in the layer's '_choices', once per
+        compound and set of votes.
 
         Parameters
         ==========
@@ -13746,12 +13917,15 @@ class Mapper:
               accessions. A color keeps the priority of the last entry given it, so if the colorer
               can give a color more than one priority, this order must not change between runs.
             - 'colorer': a function that takes an Entry. It returns a '(color_hexcode, priority)'
-              pair, or None to leave the Entry uncolored.
+              pair, or None to leave the Entry uncolored. The colorer of a layer in the fill mode
+              'none' is None. Such a layer stages no fill, and its entries do not count as matching
+              the map.
             - 'derived_compound': how a reaction layer colors compounds by the reactions that touch
-              them. It is used only on a global or overview map without a compound layer. It is a
-              '(mode, colormap)' pair, such as ('average', cmap), ('circular_average', cmap) or
-              ('high', None). The mode is passed to 'kgml.Pathway.set_color_priority' as
-              'color_associated_compounds'. A compound layer has None here; it is not read.
+              them. It is used only on a global or overview map without a compound layer that stages
+              fills ('_derives_compounds'). It is a '(mode, colormap)' pair, such as ('average',
+              cmap), ('circular_average', cmap) or ('high', None). The mode is passed to
+              'kgml.Pathway.set_color_priority' as 'color_associated_compounds'. A compound layer
+              has None here; it is not read.
 
             A spec can also have these keys:
             - 'pathway_numbers': the maps on which the layer has a value to color. On any other map
@@ -13836,11 +14010,11 @@ class Mapper:
         if compound_layer is not None:
             self._warn_unrenderable_compounds(pathway, compound_layer['entry_keys'])
 
-        # When a compound layer supplies compound colors, or the map is neither global nor overview,
-        # colors are applied directly. Otherwise, on a reaction-only global/overview map, compounds
-        # are derived from their associated reactions per the reaction layer's 'derived_compound'.
+        # On a global or overview map where a reaction layer stages fills and no compound layer
+        # does, compounds are derived from their associated reactions per the reaction layer's
+        # 'derived_compound' ('_derives_compounds'). Otherwise, colors are applied directly.
         recolor = 'g' if pathway.is_global_map else 'w'
-        if compound_layer is not None or not (pathway.is_global_map or pathway.is_overview_map):
+        if not self._derives_compounds(pathway, layer_specs):
             pathway.set_color_priority(color_priority, recolor_unprioritized_entries=recolor)
         else:
             reaction_layer = next(
@@ -13910,12 +14084,10 @@ class Mapper:
         color_priority: dict = {}
         found_entries = False
         borders: dict = {}
-        # A global or overview map without a compound layer colors compounds from the reactions that
-        # touch them. A sliced entry then casts the vote of its stand-in value, or no vote where
-        # that is undefined.
-        derives_compounds = (pathway.is_global_map or pathway.is_overview_map) and not any(
-            spec['element_type'] == 'compound' for spec in layer_specs
-        )
+        # A global or overview map can color compounds from the reactions that touch them
+        # ('_derives_compounds'). A sliced entry then casts the vote of its stand-in value, or no
+        # vote where that is undefined.
+        derives_compounds = self._derives_compounds(pathway, layer_specs)
         for spec in layer_specs:
             # A layer with a border stages its rings after its fill. The border keeps its own maps,
             # so a map that the fill skips can still show rings.
@@ -13927,7 +14099,9 @@ class Mapper:
                 ):
                     found_entries = True
                 continue
-            entries = self._find_element_entries(
+            # A layer in the fill mode 'none' has no colorer. Its entries are not staged and do not
+            # count as data, so it stages only its rings.
+            entries = [] if spec['colorer'] is None else self._find_element_entries(
                 pathway, spec['use_reaction_attribute'], spec['entry_keys']
             )
             if entries and not spec.get('require_color', False):
@@ -13954,6 +14128,35 @@ class Mapper:
             ):
                 found_entries = True
         return color_priority, found_entries, borders
+
+    @staticmethod
+    def _derives_compounds(pathway: kgml.Pathway, layer_specs: List[dict]) -> bool:
+        """
+        Say whether a map colors its compounds from the reactions that touch them.
+
+        A global or overview map does this where a reaction layer stages fills and no compound layer
+        does. A layer in the fill mode 'none' stages none. A compound layer in this mode draws only
+        rings, so the compounds keep the fills derived from the reactions
+        ('kgml.Pathway.color_associated_compounds'). '_check_derived_compound_colors' makes the same
+        test of the layers.
+
+        Parameters
+        ==========
+        pathway : kgml.Pathway
+            The map.
+
+        layer_specs : List[dict]
+            One spec per layer, with the keys '_draw_map_elements' describes.
+
+        Returns
+        =======
+        bool
+            True if the compounds of the map take colors from its reactions.
+        """
+        if not (pathway.is_global_map or pathway.is_overview_map):
+            return False
+        fills = {spec['element_type'] for spec in layer_specs if spec['colorer'] is not None}
+        return 'reaction' in fills and 'compound' not in fills
 
     def _stage_entry_borders(
         self,

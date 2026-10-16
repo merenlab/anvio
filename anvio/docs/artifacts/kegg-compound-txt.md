@@ -13,9 +13,9 @@ Each column name may appear only once, and names that start with `__` are reserv
 |`accession`|YES|A KEGG compound ID (`C#####`).|
 |`sample`|NO|A sample of origin, enabling comparison across samples (and, with a %(groups-txt)s, across groups of samples). If this column is present, every row must have a sample.|
 |*a value column*|NO|A SINGLE column with any name of your choosing, for coloring by a value instead of by presence/absence. Its values are numbers by default, for coloring by a continuous quantitative value. Its meaning is up to you (concentration, intensity, ...). With `--compound-value-type categorical`, its values are categorical values instead, such as `up` and `down` (see below). If this column is present, every row must have a value. This column is **auto-detected** as not being named `accession` or `sample`, and not being named by `--compound-border-column`.|
-|*a border column*|NO|A column whose values color the borders of compound circles on standard and overview maps. Each border is a ring just inside the black outline of a circle, and the value column still colors the fill. Global maps draw their circles without an outline, so they show no borders. The column can have any name. It is not auto-detected, so name it with `--compound-border-column`. Without that option, a file with a value column would have two candidate value columns and be refused. It cannot be `accession` or `sample`. Its values are numbers by default, and each must be a finite number. With `--compound-border-value-type categorical`, its values are categorical values instead. A row can leave its border cell empty, and then it has no border value. A border column with no values at all is refused. A file with a border column is read as text, so `NA` is a name in every column, including `sample`. See %(anvi-draw-kegg-pathways)s for the border options and their defaults.|
+|*a border column*|NO|A column whose values color the borders of compound circles on standard and overview maps. Each border is a ring just inside the black outline of a circle, and the value column still colors the fill. Global maps draw their circles without an outline, so they show no borders. The column can have any name. It is not auto-detected, so name it with `--compound-border-column`. Without that option, a file with a value column would have two candidate value columns and be refused. It cannot be `accession` or `sample`. Its values are numbers by default, and each must be a finite number. With `--compound-border-value-type categorical`, its values are categorical values instead. A row can leave its border cell empty, and then it has no border value. A border column with no values at all is refused. A file with a border column is read as text, so `NA` is a name in every column, including `sample`. With `--compound-color none`, a file without a value column leaves its fills uncolored and colors only the rings of its circles. See %(anvi-draw-kegg-pathways)s for the border options and their defaults.|
 
-To color by **presence** of accessions, do not include a value column. A border column is not a value column, so a file with a border column and no value column colors its fills by presence. On global and overview maps, these fills replace the colors that compounds would otherwise take from reactions. Global maps show no borders, so there such a file shows only presence.
+To color by **presence** of accessions, do not include a value column. A border column is not a value column, so a file with a border column and no value column colors its fills by presence. On global and overview maps, these fills replace the colors that compounds would otherwise take from reactions. Global maps show no borders, so there such a file shows only presence. `--compound-color none` leaves the fills of such a file uncolored instead, so that the file colors only the rings of its circles. Compounds on global and overview maps then keep the colors that they take from a reaction layer. A circle on an overview map can then show the value of its reactions in its fill and the value of its compound in its ring. Without a reaction layer that colors fills, the circles are white inside their rings. A compound whose border cell is empty looks like a compound that is not in the file, and the run counts such rows.
 
 With a value column or a border column, no two rows may name the same accession in the same sample. Combine repeated measurements, or the separate ions of the same molecule, in whichever way suits your data.
 
@@ -27,7 +27,7 @@ The inclusion of different columns results in different coloring modes.
 
 **No sample column, no value column**
 
-Compounds are colored a single presence color, pink by default — set it with `--compound-color`.
+Compounds are colored a single presence color, pink by default — set it with `--compound-color`, which takes a six-digit color hex code.
 
 On global and overview maps, if reaction layer data supplied by %(kegg-reaction-txt)s is colored with `--original-color`, the compounds of those reactions are automatically colored to match, just as they appear in the reference maps.
 
@@ -166,5 +166,23 @@ Pair this file with a %(kegg-reaction-txt)s file to color both layers on the sam
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
                         --compound-txt kegg-compound.txt \
+                        -o output_dir
+{{ codestop }}
+
+### Compound rings over reaction colors
+
+On global and overview maps, compounds take their colors from the reactions that touch them. A compound file with only a border column keeps these colors with `--compound-color none`, and on overview maps it adds a ring to the circle of each of its compounds. Here the fills of the circles show the values of the reaction layer, and their rings show measured concentrations.
+
+|accession|concentration|
+|:--|:--|
+|C00074|30.5|
+|C00267|14.0|
+
+{{ codestart }}
+anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
+                        --compound-txt kegg-compound.txt \
+                        --compound-border-column concentration \
+                        --compound-color none \
+                        --pathway-numbers 01200 \
                         -o output_dir
 {{ codestop }}

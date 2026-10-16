@@ -593,6 +593,32 @@ then
     exit 1
 fi
 
+# '--compound-color none' leaves the fills of a compound file without a value column uncolored, so
+# that its circles show only their rings. On the overview map 01200, the circles keep the fills that
+# they take from the reactions that touch them. A circle there shows the coverage of its reactions
+# in its fill and the mean concentration of its compound in its ring. The compound layer writes a
+# key of its rings and none of its fills.
+INFO "Drawing compound rings alone, over the fills that compounds take from reactions"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+                        --compound-txt draw_compounds_samples.compound.txt \
+                        --compound-border-column concentration \
+                        --compound-border-sample-summary mean \
+                        --compound-color none \
+                        --output-dir draw_txt_both_layers_compound_rings_alone \
+                        --pathway-numbers $pathway_numbers \
+                        --no-progress
+
+if [ ! -s draw_txt_both_layers_compound_rings_alone/colorbar_compounds_border.pdf ]
+then
+    echo "ERROR: a compound layer of rings alone should have written a key of its rings."
+    exit 1
+fi
+if [ -e draw_txt_both_layers_compound_rings_alone/colorbar_compounds.pdf ]
+then
+    echo "ERROR: a compound layer of rings alone should have written no key of its fills."
+    exit 1
+fi
+
 # '--reaction-border-slice-by' divides the ring of each box among its KOs or genes. Here the fill
 # is sliced by KO as well, so the rings are aligned with it. Each column of the fill takes the
 # status of its own KO, as bands above and below the column. The coverage of each KO sizes its

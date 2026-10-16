@@ -487,6 +487,11 @@ class Pathway(Element):
         attribute of the Pathway object. This determines how entries are ordered in KGML files and
         rendered in maps.
 
+        Among the entries without a color priority, those with a ring ('Graphics.border') are put
+        after the others, which otherwise keep their order. A ring on an element without a fill
+        color is then drawn over an element at the same position that shows nothing, such as a box
+        of map 00230 that lies on top of another box.
+
         Returns
         =======
         List[str]
@@ -495,7 +500,19 @@ class Pathway(Element):
         # Entries have different types ('ortholog', 'compound', etc.). Group entries into two
         # classes. "Qualifying" entries have types in the color priority outermost dict. Other
         # entries do not have types in the dict and are assigned the lowest nominal priority of
-        # -1.0. No effort is made to sort these entries in any way.
+        # -1.0. These entries keep their order, except that those with rings come last.
+        def _rings_last(entry_uuids: List[str]) -> List[str]:
+            ringed = {
+                entry_uuid for entry_uuid in entry_uuids if any(
+                    self.uuid_element_lookup[graphics_uuid].border
+                    for graphics_uuid in self.uuid_element_lookup[entry_uuid].children['graphics']
+                )
+            }
+            return (
+                [entry_uuid for entry_uuid in entry_uuids if entry_uuid not in ringed]
+                + [entry_uuid for entry_uuid in entry_uuids if entry_uuid in ringed]
+            )
+
         reordered_entry_uuids: List[str] = []
         unprioritized_entry_uuids: List[str] = []
         qualifying_entry_uuids: Dict[str, List[str]] = {
@@ -508,6 +525,7 @@ class Pathway(Element):
             else:
                 reordered_entry_uuids.append(entry_uuid)
                 unprioritized_entry_uuids.append(entry_uuid)
+        reordered_entry_uuids = _rings_last(reordered_entry_uuids)
 
         # Sort "qualifying" entries. Loop through each Entry type in the color priority dict.
         for entry_type, entry_type_color_priority in self.color_priority.items():
@@ -557,9 +575,12 @@ class Pathway(Element):
                     type_priority_entry_uuids[priority] = [entry_uuid]
 
             # Add the reordered UUIDs of the Entry type to the new list of Entry UUIDs and to the
-            # dict mapping priority values to UUIDs of entries of all types.
+            # dict mapping priority values to UUIDs of entries of all types. The entries of the type
+            # without a color priority come first, with those with rings last among them.
             for priority, entry_uuids in sorted(type_priority_entry_uuids.items()):
-                reordered_entry_uuids += entry_uuids
+                reordered_entry_uuids += (
+                    _rings_last(entry_uuids) if priority == -1.0 else entry_uuids
+                )
 
             try:
                 unprioritized_entry_uuids += type_priority_entry_uuids[-1.0]

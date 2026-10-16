@@ -198,6 +198,9 @@ cut -f 1-3,6 draw_kos_samples_weights_status.reaction.txt > draw_kos_samples_gen
 # Weights of 0 with border values. K16306 of box 18 of map 00010 has no slice of the fill, but it
 # has a border value. Both KOs of box 154 have a weight of 0.
 printf 'accession\tcoverage\tweight\tstatus\nK00174\t1.5\t0\tup\nK00175\t3.0\t0\tdown\nK01624\t2.0\t3\tup\nK01622\t4.0\t1\tdown\nK16306\t6.0\t0\tsame\n' > draw_kos_weights_status.reaction.txt
+# A border column alone, with an empty border cell. K00844, K01810, and K00850 are boxes of map
+# 00010.
+printf 'accession\tstatus\nK00844\tup\nK01810\tdown\nK00850\t\n' > draw_kos_status_empty_cell.reaction.txt
 
 # A test that expects a refusal discards the output of the draw, so a fixture that was never written
 # would make that test pass for the wrong reason. Fail loudly here instead.
@@ -233,7 +236,8 @@ for fixture in contigs-db-group-information.txt draw_kos_samples300.reaction.txt
               draw_kos_border_stray_quote.reaction.txt draw_kos_border_no_fill.reaction.txt \
               draw_kos_border_lines.reaction.txt draw_kos_genes12_status.reaction.txt \
               draw_kos_genes11_status.reaction.txt draw_kos_samples_weights_border.reaction.txt \
-              draw_kos_samples_genes_border.reaction.txt draw_kos_weights_status.reaction.txt
+              draw_kos_samples_genes_border.reaction.txt draw_kos_weights_status.reaction.txt \
+              draw_kos_status_empty_cell.reaction.txt
 do
     if [ ! -s $fixture ]
     then
@@ -1468,7 +1472,7 @@ then
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
-    --reaction-color "#ffffffff" \
+    --reaction-color "#FFFFFF" \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: another spelling of a reserved color should have failed but did not."
@@ -4262,6 +4266,242 @@ if ! tr -d ' \n' < draw_txt_border_slices_weight_aggregation_genes.log \
     | grep -q "With'--reaction-slice-bygene'and'--reaction-border-slice-bygene',eachgene"
 then
     echo "ERROR: a weight aggregation with everything sliced by gene named the wrong options."
+    exit 1
+fi
+
+# '--reaction-color none' leaves the fills of a file without a value column uncolored, so that its
+# boxes show only their rings. Its entries do not count as data, so a map is drawn only where a ring
+# shows. The overview map 01200 shows no rings of reactions, so it is not drawn. A KO whose border
+# cell is empty shows nothing, as if it were not in the file, and the run counts such rows.
+INFO "Testing a reaction layer of rings alone, with an empty border cell"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_status_empty_cell.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-color none \
+    --output-dir draw_txt_rings_alone_empty_cell --pathway-numbers $pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_rings_alone_empty_cell.log
+if ! tr '\n' ' ' < draw_txt_rings_alone_empty_cell.log \
+    | grep -q "Reaction rows without a border value \.*: 1 "
+then
+    echo "ERROR: the row without a border value of a layer of rings alone was not counted."
+    exit 1
+fi
+if [ ! -s draw_txt_rings_alone_empty_cell/unified/ko00010.pdf ]
+then
+    echo "ERROR: a map with rings and no colored fills should have been drawn."
+    exit 1
+fi
+if [ -e draw_txt_rings_alone_empty_cell/unified/ko01200.pdf ]
+then
+    echo "ERROR: a map that shows no ring of a layer of rings alone should not have been drawn."
+    exit 1
+fi
+
+# Compounds take fills from reactions only where a reaction layer colors fills. A compound layer of
+# rings alone without a reaction layer draws white circles with rings, on the overview map 01200 as
+# on the standard map 00010.
+INFO "Testing a compound layer of rings alone, without a reaction layer"
+anvi-draw-kegg-pathways --compound-txt draw_compounds.compound.txt \
+    --compound-border-column value --compound-color none \
+    --output-dir draw_txt_compound_rings_alone --pathway-numbers $pathway_numbers \
+    --no-progress
+if [ ! -s draw_txt_compound_rings_alone/unified/ko01200.pdf ]
+then
+    echo "ERROR: an overview map with compound rings and no reaction layer should have been drawn."
+    exit 1
+fi
+if [ -e draw_txt_compound_rings_alone/colorbar_compounds.pdf ] \
+    || [ ! -s draw_txt_compound_rings_alone/colorbar_compounds_border.pdf ]
+then
+    echo "ERROR: a compound layer of rings alone should have keyed its rings and not its fills."
+    exit 1
+fi
+
+# With a static color, the map of each group counts the samples of the group and takes a key of the
+# counts. A layer of rings alone counts nothing there, so neither the maps of the groups nor their
+# panels in the grid take a key of counts. The run needs no '--group-threshold'.
+INFO "Testing the maps of groups of a layer of rings alone"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-color none --groups-txt draw-sample-group-information.txt \
+    --reaction-border-sample-summary plurality_order \
+    --reaction-border-group-summary plurality_order \
+    --output-dir draw_txt_groups_rings_alone --pathway-numbers $pathway_numbers \
+    --draw-individual-files --draw-grid \
+    --no-progress
+for group in G1 G2
+do
+    if [ -e draw_txt_groups_rings_alone/individual/$group/colorbar.pdf ] \
+        || [ -e draw_txt_groups_rings_alone/grid/colorbar_$group.pdf ]
+    then
+        echo "ERROR: the maps of group $group took a key of counts for a layer of rings alone."
+        exit 1
+    fi
+    if [ ! -s draw_txt_groups_rings_alone/individual/$group/ko00010.pdf ]
+    then
+        echo "ERROR: the map of group $group should have been drawn for its rings."
+        exit 1
+    fi
+done
+
+# Without a border sample summary, the 'unified' map shows no ring, and a layer of rings alone shows
+# nothing there. The maps of the samples show their rings.
+INFO "Testing the warning that the 'unified' map shows nothing of a layer of rings alone"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-color none \
+    --output-dir draw_txt_rings_alone_no_summary --pathway-numbers $pathway_numbers \
+    --draw-individual-files \
+    --no-progress 2>&1 | tee draw_txt_rings_alone_no_summary.log
+if ! tr '\n' ' ' < draw_txt_rings_alone_no_summary.log \
+    | grep -q "The 'unified' map shows nothing of the reaction layer"
+then
+    echo "ERROR: a 'unified' map that shows nothing of a layer of rings alone was not reported."
+    exit 1
+fi
+
+INFO "Testing that the colors of layers are refused unless they are hex codes or 'none'"
+# '--reaction-color' and '--compound-color' take a six-digit color hex code, as the colors files do.
+# A color name, such as 'orange', is refused for every input.
+for color_option in "--reaction-txt draw_kos.reaction.txt --reaction-color" \
+                    "--compound-txt draw_compounds_presence.compound.txt --compound-color"
+do
+    if anvi-draw-kegg-pathways $color_option orange --pathway-numbers $pathway_numbers \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_color_name.log 2>&1
+    then
+        echo "ERROR: '$color_option orange' should have failed but did not."
+        exit 1
+    fi
+    if ! tr '\n' ' ' < draw_txt_color_name.log | grep -q "It takes a six-digit color hex code"
+    then
+        echo "ERROR: '$color_option orange' was refused for another reason."
+        exit 1
+    fi
+done
+for color_input in "--reaction-network-json pan-network.json" \
+                   "--contigs-dbs E_faecalis_6240.db" \
+                   "--external-genomes external-genomes.txt" \
+                   "--pan-db TEST-PAN.db --genomes-storage TEST-GENOMES.db"
+do
+    if anvi-draw-kegg-pathways $color_input --reaction-color orange \
+        --pathway-numbers $pathway_numbers \
+        --output-dir draw_db_bad --overwrite-output-destinations \
+        --no-progress > draw_db_color_name.log 2>&1
+    then
+        echo "ERROR: '--reaction-color orange' with '$color_input' should have failed but did not."
+        exit 1
+    fi
+    if ! tr '\n' ' ' < draw_db_color_name.log | grep -q "It takes a six-digit color hex code"
+    then
+        echo "ERROR: '--reaction-color orange' with '$color_input' was refused for another reason."
+        exit 1
+    fi
+done
+
+# The mapper takes 'original' as its way of asking for the colors of the reference map. Every input
+# refuses it as a color, in favor of '--original-color'.
+if anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db --reaction-color original \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_db_bad --overwrite-output-destinations \
+    --no-progress > draw_db_color_original.log 2>&1
+then
+    echo "ERROR: '--reaction-color original' on a contigs database run should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_db_color_original.log | grep -q "use the '--original-color' flag instead"
+then
+    echo "ERROR: '--reaction-color original' on a contigs database run failed for another reason."
+    exit 1
+fi
+
+INFO "Testing that rings alone are refused where they cannot apply"
+# Only a text file has a border column, so only a text file can draw rings alone.
+if anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db --reaction-color none \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_db_bad --overwrite-output-destinations \
+    --no-progress > draw_db_color_none.log 2>&1
+then
+    echo "ERROR: '--reaction-color none' on a contigs database run should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_db_color_none.log | grep -q "Only a text file given with"
+then
+    echo "ERROR: '--reaction-color none' on a contigs database run was refused for another reason."
+    exit 1
+fi
+
+# Without a border column, a layer of rings alone would draw nothing.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt --reaction-color none \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_color_none_no_border.log 2>&1
+then
+    echo "ERROR: '--reaction-color none' without a border column should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_color_none_no_border.log | grep -q "so the layer would draw nothing"
+then
+    echo "ERROR: '--reaction-color none' without a border column was refused for another reason."
+    exit 1
+fi
+
+# The options that color fills have no fills to color. A summary of presence colors the fills of the
+# 'unified' map, and the rings take summaries of their own. Slices of the fill need values, and the
+# rings can still be sliced with '--reaction-border-slice-by'. '--reaction-reverse-overlay' changes
+# only the drawing order of the fills.
+for fill_option in "--reaction-sample-summary count" "--reaction-slice-by accession" \
+                   "--reaction-reverse-overlay"
+do
+    if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+        --reaction-border-column status --reaction-border-value-type categorical \
+        --reaction-color none $fill_option --pathway-numbers $pathway_numbers \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_color_none_fill_option.log 2>&1
+    then
+        echo "ERROR: '$fill_option' for rings alone should have failed but did not."
+        exit 1
+    fi
+    if ! tr '\n' ' ' < draw_txt_color_none_fill_option.log \
+        | grep -q "These options color the fills of the reaction layer"
+    then
+        echo "ERROR: '$fill_option' for rings alone was refused for another reason."
+        exit 1
+    fi
+done
+
+# Global maps draw no rings, so a run of rings alone that draws only global maps would draw nothing.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_status_empty_cell.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-color none --pathway-numbers 01100 \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_color_none_global.log 2>&1
+then
+    echo "ERROR: rings alone on the global map alone should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_color_none_global.log | grep -q "This run draws no such map"
+then
+    echo "ERROR: rings alone on the global map alone were refused for another reason."
+    exit 1
+fi
+
+# The group options style the counts on the maps of groups. A layer of rings alone counts nothing
+# there, and no other layer is drawn.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-color none --groups-txt draw-sample-group-information.txt \
+    --reaction-border-sample-summary plurality_order --group-colormap viridis \
+    --draw-individual-files --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_color_none_group_colormap.log 2>&1
+then
+    echo "ERROR: '--group-colormap' for a grouped layer of rings alone should have failed."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_color_none_group_colormap.log \
+    | grep -q "countnothingforthereactionlayer,since'--reaction-colornone'"
+then
+    echo "ERROR: '--group-colormap' for a grouped layer of rings alone failed for another reason."
     exit 1
 fi
 
