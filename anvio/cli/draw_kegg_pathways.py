@@ -49,7 +49,8 @@ from anvio.keggmapping import (
     AGGREGATION_FUNCTIONS, CATEGORICAL_RULES, CATEGORICAL_RULES_PHRASE, DEFAULT_CATEGORICAL_SEED,
     DEFAULT_CENTERED_COLORMAP, DEFAULT_GROUP_TINT_SPAN, DEFAULT_VALUE_COLORS,
     ELEMENT_NORMALIZATION_PHRASE, GROUP_COLORMAP_TINT, GROUP_SCHEME_OPTIONS,
-    MAX_DISCRETE_COUNT_BANDS, MIN_ANGULAR_DEVIATION_VALUES, SUMMARY_PRESENCE_PHRASE,
+    MAX_DISCRETE_COUNT_BANDS, MIN_ANGULAR_DEVIATION_VALUES, MIN_BOX_SLICE_WIDTH,
+    SLICE_SHARE_SUMMARIES, SLICE_UNITS, SLICE_WEIGHT_AGGREGATIONS, SUMMARY_PRESENCE_PHRASE,
     SUMMARY_PRESENCE_SCHEMES, VALUE_TYPES, Mapper
 )
 
@@ -62,7 +63,7 @@ __requires__ = ['kegg-data']
 __can_use__ = ['contigs-db', 'external-genomes', 'pan-db', 'genomes-storage-db',
                'reaction-network-json', 'kegg-reaction-txt', 'kegg-compound-txt',
                'kegg-membership-colors-txt', 'kegg-value-colors-txt']
-__provides__ = ['kegg-pathway-map']
+__provides__ = ['kegg-pathway-map', 'kegg-slice-key-txt']
 __description__ = DESCRIPTION
 
 # Default presence/absence colors, matching the Mapper method defaults. Used as the
@@ -122,13 +123,16 @@ def get_args() -> Namespace:
         "Path to a tab-delimited kegg-reaction-txt file coloring the reaction elements of maps. It "
         "must have an 'accession' column whose values are ALL KO IDs ('K' followed by digits) or "
         "ALL KEGG reaction IDs ('R' followed by digits): the two cannot be mixed in one file. An "
-        "optional 'gene_id' column can label the gene a value comes from (it does not affect "
-        "coloring; a value is aggregated per accession across rows). An optional 'sample' column "
-        "assigns each row to a sample of origin, enabling comparison across samples (and, with "
-        "'--groups-txt', groups of samples) as when using multiple contigs databases. The single "
-        "column that is not 'accession', 'gene_id', or 'sample' is auto-detected as the value "
-        "column: with it, reactions are colored by value; without it, by presence. Its values are "
-        "numbers, or categorical values with '--reaction-value-type categorical'."
+        "optional 'gene_id' column names the gene that a row comes from. Gene IDs affect coloring "
+        "only with '--reaction-slice-by gene', which draws each gene as a slice. Otherwise, the "
+        "values of the genes of an accession are reduced to one value "
+        "('--reaction-gene-aggregation'). An optional 'sample' column assigns each row to a sample "
+        "of origin, enabling comparison across samples (and, with '--groups-txt', groups of "
+        "samples) as when using multiple contigs databases. The single column that is not "
+        "'accession', 'gene_id', 'sample', or a column of weights ('--reaction-slice-weights') is "
+        "auto-detected as the value column. With it, reactions are colored by value, and without "
+        "it, by presence. Its values are numbers, or categorical values with "
+        "'--reaction-value-type categorical'."
     )
     groupTXT.add_argument(
         '--compound-txt', type=str, metavar='FILE', help=
@@ -155,7 +159,8 @@ def get_args() -> Namespace:
         f"were affected. With '--reaction-value-period', the default is 'circular_mean', and no "
         f"other name is accepted. With '--reaction-value-type categorical', this takes a rule that "
         f"chooses one value among the genes instead: {CATEGORICAL_RULES_PHRASE}. The default is "
-        f"'plurality_order' (see '--reaction-value-type')."
+        f"'plurality_order' (see '--reaction-value-type'). With '--reaction-slice-by gene', each "
+        f"gene is a slice of its own, so this option is refused."
     )
     groupTXT.add_argument(
         '--reaction-accession-aggregation', metavar='NAME', help=
@@ -168,7 +173,12 @@ def get_args() -> Namespace:
         "With '--reaction-value-period', the default is 'circular_mean', and no other name is "
         "accepted. With '--reaction-value-type categorical', this takes a rule that chooses one "
         "value among the accessions of a map element instead, with the same names and default as "
-        "'--reaction-gene-aggregation'."
+        "'--reaction-gene-aggregation'. With '--reaction-slice-by gene', this reduces the rows of "
+        "one gene for the accessions of an element, and its default for numbers is 'mean' rather "
+        "than 'sum'. A gene with one such row shows the value of that row, so a name that does not "
+        "return a single value unchanged, such as 'std' or 'count', is refused. With "
+        "'--reaction-slice-by accession', it is refused for numbers, since each slice shows the "
+        "value of one accession."
     )
     groupTXT.add_argument(
         '--compound-accession-aggregation', metavar='NAME', help=
@@ -266,6 +276,84 @@ def get_args() -> Namespace:
         f"chosen for, such as the KOs of a map element in one sample. A map element therefore gets "
         f"the same value on every map, and in every run with the same seed. This option is refused "
         f"where no rule chooses at random."
+    )
+    groupTXT.add_argument(
+        '--reaction-slice-by', choices=list(SLICE_UNITS), help=
+        f"Draw each reaction element in slices, one for each of its accessions or genes with a "
+        f"value on the map. Each slice takes the color of its own value. This needs a "
+        f"'--reaction-txt' file with a value column. Maps that show values are sliced, but maps "
+        f"that show presence are drawn whole. With 'accession', a KO file is sliced by KO, and a "
+        f"reaction file by KEGG reaction. Slices follow the order of the accessions in the map's "
+        f"KGML file. With 'gene', an element is sliced by the genes of a 'gene_id' column, and "
+        f"every row needs a gene ID. A gene with rows for two or more accessions of an element is "
+        f"one slice. In each sample, the values of these rows are reduced to their mean, or to "
+        f"their circular mean with '--reaction-value-period'. Without a period, "
+        f"'--reaction-accession-aggregation' can name another aggregation that returns a single "
+        f"value unchanged, such as 'sum' or 'max'. For categorical values, its rule chooses among "
+        f"the rows. Slices of genes are ordered by the first of their accessions in the KGML file, "
+        f"and then by gene ID, with digits compared as numbers. A gene ID must name the same gene "
+        f"in every sample, since the maps of groups and the 'unified' map pool the values of each "
+        f"gene across samples. Gene caller IDs start at 0 in every contigs database, so IDs from "
+        f"separate assemblies must be made unique, for example with a sample prefix. A warning "
+        f"names the gene IDs that have no accession in common between their rows in two samples of "
+        f"a map that pools samples. Such an ID likely names two genes. Another warning names the "
+        f"maps that pool samples where no gene ID occurs in two or more samples. Each gene is a "
+        f"slice of its own, so '--reaction-gene-aggregation' and "
+        f"'--reaction-slice-weight-aggregation' are refused. A box is cut into columns from left "
+        f"to right, and a line into repeating dashes. The dashes fill the part of the line that "
+        f"compound circles leave visible. The slices of an element are equal unless "
+        f"'--reaction-slice-weights' names a column of weights. A box is drawn whole where an "
+        f"equal slice would be narrower than {MIN_BOX_SLICE_WIDTH} points, and a line where an "
+        f"equal slice of its visible part would be shorter than the line is wide. An element drawn "
+        f"whole takes the mean of its slice values, weighted by their shares. With "
+        f"'--reaction-value-period', this is a circular mean. With '--reaction-value-type "
+        f"categorical', the element takes the value that '--reaction-accession-aggregation' "
+        f"chooses among the accessions or genes of its slices. Each slice shows the value of one "
+        f"accession or gene, so the color scales span the values of single accessions or genes. "
+        f"When numbers are sliced by accession, the weighted mean takes the place of "
+        f"'--reaction-accession-aggregation', which is refused. An element keeps its usual label, "
+        f"and its slices are not labeled. The file 'slice_key_reactions.txt' in the output "
+        f"directory lists each slice on each map, and each element drawn whole."
+    )
+    groupTXT.add_argument(
+        '--reaction-slice-weights', metavar='COLUMN', help=
+        "The column of the reaction file that holds the weights of slices ('--reaction-slice-by'). "
+        "Without this option, the slices of an element are equal. This column is never taken for "
+        "the value column. Every row needs a weight, which is a number of 0 or more. Where a map "
+        "shows one sample, or the file has no 'sample' column, the share of a slice is its weight "
+        "divided by the total weight of the slices drawn. An accession or gene with a weight of 0 "
+        "gets no slice. When slicing by accession with a 'gene_id' column, the weights of the "
+        "genes of an accession are added up ('--reaction-slice-weight-aggregation'). When slicing "
+        "by gene, a gene takes the mean weight of its rows for the accessions of an element, so a "
+        "gene with two KOs does not take twice the space. Group maps and the 'unified' map pool "
+        "the shares of their samples ('--reaction-slice-share-summary'). The width of a slice in a "
+        "box, or its length on a line, shows its share of the element, not its weight. The weights "
+        "do not change the colors of slices."
+    )
+    groupTXT.add_argument(
+        '--reaction-slice-weight-aggregation', choices=list(SLICE_WEIGHT_AGGREGATIONS), help=
+        "How to reduce the weights of the genes annotated with one accession to the weight of that "
+        "accession. This needs '--reaction-slice-by accession', '--reaction-slice-weights', and a "
+        "'gene_id' column. 'sum', the default, suits amounts that add up over genes, such as "
+        "counts and coverage. 'mean' suits rates and scores of single genes. With 'mean', a KO "
+        "with ten genes takes the same share as a KO with one gene, if all of their genes have the "
+        "same weight."
+    )
+    groupTXT.add_argument(
+        '--reaction-slice-share-summary', choices=list(SLICE_SHARE_SUMMARIES), help=
+        "How group maps and the 'unified' map pool the shares of weighted slices across samples "
+        "('--reaction-slice-weights'). The map of a single sample takes its shares from the "
+        "weights of that sample. 'share_mean', the default, finds the share of each accession in "
+        "each sample and averages these shares over the samples in which the element has weight. "
+        "An accession absent from a sample has a share of 0 there. Each sample counts once, so the "
+        "weights need to be comparable only within a sample. 'pooled_sum' adds up the weights of "
+        "each accession over the samples and divides each sum by the total over the accessions of "
+        "the element. A sample with more weight counts for more, so use it where the weights are "
+        "in the same units in every sample, such as counts at comparable sequencing depth. Slices "
+        "of genes are pooled by the same rules, with genes in place of accessions. With "
+        "'--groups-txt', the map of each group pools its samples, and the 'unified' map pools the "
+        "groups by the same rule. Under 'share_mean', each group counts once. This option needs "
+        "'--reaction-slice-weights', since slices without weights are equal on every map."
     )
 
     groupJSON = parser.add_argument_group(
@@ -825,7 +913,8 @@ def get_args() -> Namespace:
         "'--reaction-accession-aggregation'), so with the default of 'sum' at the accession level, "
         "a single element standing for a dozen KOs may sit well past any one value in the file. "
         "With a 'sample' column, the 'unified' map shows a summary of these element values across "
-        "the samples or groups."
+        "the samples or groups. With '--reaction-slice-by', the limits are read in the values of "
+        "slices instead. Each slice shows the value of one accession or gene."
     )
     groupCOLOR.add_argument(
         '--reaction-individual-value-limits', nargs=2, metavar='LIMIT', help=
@@ -1124,35 +1213,46 @@ def map_json_network_ko_data(args: Namespace, mapper: Mapper) -> None:
         draw_maps_lacking_data=args.draw_bare_maps
     )
 
-def _detect_txt_layer(path: str, value_type: str = None) -> dict:
+def _detect_txt_layer(path: str, value_type: str = None, weight_column: str = None) -> dict:
     """Light structural peek at a per-layer text file for CLI flag validation.
 
-    Returns {'mode': 'quantitative'|'categorical'|'membership'|'single'|None, 'has_sample': bool}.
-    'mode' is None when the file is malformed in a way the reader ('Mapper._read_element_txt')
-    should report (no 'accession' column, or an ambiguous >1 value column); the caller then skips
-    flag guards and lets the reader raise the definitive error. A value column is 'categorical'
-    where 'value_type' says so, and 'quantitative' otherwise.
+    Returns {'mode': 'quantitative'|'categorical'|'membership'|'single'|None, 'has_sample': bool,
+    'has_gene_id': bool, 'has_weights': bool}. 'mode' is None when the file is malformed in a way
+    the reader ('Mapper._read_element_txt') should report (no 'accession' column, an ambiguous >1
+    value column, a column name given twice, or a name starting with '__'); the caller then skips
+    flag guards and lets the reader raise the definitive error. The names are read as the reader
+    reads them, with quotes left as text ('Mapper._read_txt_header'). A value column is
+    'categorical' where 'value_type' says so, and 'quantitative' otherwise. 'weight_column' names
+    the column of slice weights ('--reaction-slice-weights'). It is left out of value detection,
+    and 'has_weights' says whether the file has it.
     """
     filesnpaths.is_file_exists(path)
-    try:
-        columns = list(pd.read_csv(path, sep='\t', nrows=0).columns)
-    except pd.errors.EmptyDataError:
+    columns = Mapper._read_txt_header(path)
+    if not columns:
         # An empty file has no columns to detect, so defer to the reader for the definitive error.
-        return {'mode': None, 'has_sample': False, 'has_gene_id': False}
+        return {'mode': None, 'has_sample': False, 'has_gene_id': False, 'has_weights': False}
     has_sample = 'sample' in columns
     has_gene_id = 'gene_id' in columns
-    if 'accession' not in columns:
-        return {'mode': None, 'has_sample': has_sample, 'has_gene_id': has_gene_id}
-    value_columns = [c for c in columns if c not in ('accession', 'gene_id', 'sample')]
+    has_weights = weight_column is not None and weight_column in columns
+    structure = {'has_sample': has_sample, 'has_gene_id': has_gene_id, 'has_weights': has_weights}
+    # Pandas names each blank column itself, such as 'Unnamed: 2', so blank names are not compared.
+    named = [column for column in columns if column]
+    repeated = len(set(named)) < len(named)
+    reserved = any(column.startswith('__') for column in columns)
+    if 'accession' not in columns or repeated or reserved:
+        return {'mode': None, **structure}
+    value_columns = [
+        c for c in columns if c not in ('accession', 'gene_id', 'sample', weight_column)
+    ]
     if len(value_columns) > 1:
-        return {'mode': None, 'has_sample': has_sample, 'has_gene_id': has_gene_id}
+        return {'mode': None, **structure}
     if len(value_columns) == 1:
         mode = 'categorical' if value_type == 'categorical' else 'quantitative'
     elif has_sample:
         mode = 'membership'
     else:
         mode = 'single'
-    return {'mode': mode, 'has_sample': has_sample, 'has_gene_id': has_gene_id}
+    return {'mode': mode, **structure}
 
 
 def map_txt_data(args: Namespace, mapper: Mapper) -> None:
@@ -1239,9 +1339,9 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
     # the reader). A layer is 'quantitative' (a value column of numbers), 'categorical' (a value
     # column of categorical values), 'membership' (presence + a 'sample' column), or 'single'
     # (presence, no samples). This says what the file provides. The mapper uses it to choose how the
-    # layer colors each map context.
+    # layer colors each map context. A column of slice weights is not a value column.
     reaction = _detect_txt_layer(
-        args.reaction_txt, args.reaction_value_type
+        args.reaction_txt, args.reaction_value_type, args.reaction_slice_weights
     ) if args.reaction_txt is not None else None
     compound = _detect_txt_layer(
         args.compound_txt, args.compound_value_type
@@ -1288,6 +1388,104 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
     # Skip the flag guards if a provided file is malformed/ambiguous, so the reader raises the
     # definitive file error rather than a guard reporting a misleading secondary problem.
     if not any(layer['mode'] is None for layer in present):
+        # Slicing draws reaction elements in slices, so every slicing option needs the reaction
+        # file. The options that size slices also need '--reaction-slice-by'. A column of weights is
+        # left out when the value column is detected. Its checks come first, so that a mistake in
+        # naming it is not reported as a missing value column.
+        for setting, flag, does in (
+            (args.reaction_slice_by, '--reaction-slice-by',
+             "draws each accession or gene of a reaction element as a slice"),
+            (args.reaction_slice_weights, '--reaction-slice-weights',
+             "sizes the slices of reaction elements by a column of weights"),
+            (args.reaction_slice_weight_aggregation, '--reaction-slice-weight-aggregation',
+             "reduces the weights of the genes of an accession to one weight"),
+            (args.reaction_slice_share_summary, '--reaction-slice-share-summary',
+             "pools the shares of slices across samples or groups")
+        ):
+            if setting is None:
+                continue
+            if reaction is None:
+                raise ConfigError(
+                    f"'{flag}' {does}, but no reaction file ('--reaction-txt') was provided."
+                )
+            if args.reaction_slice_by is None:
+                # Weights of genes are reduced to an accession only when slicing by accession.
+                units = (
+                    "'--reaction-slice-by accession'"
+                    if args.reaction_slice_weight_aggregation is not None
+                    else "'--reaction-slice-by accession' or '--reaction-slice-by gene'"
+                )
+                raise ConfigError(
+                    f"'{flag}' {does}. '--reaction-slice-by' was not given, so no element is "
+                    f"sliced. To slice elements, give {units}. Otherwise, drop '{flag}'."
+                )
+        # Slices by gene need the genes of a 'gene_id' column. A file without a value column skips
+        # this check, so that the refusal of slices of presence below comes first.
+        if (
+            args.reaction_slice_by == 'gene' and reaction['mode'] in VALUE_MODES
+            and not reaction['has_gene_id']
+        ):
+            raise ConfigError(
+                "'--reaction-slice-by gene' draws each gene of a reaction element as a slice, but "
+                "the reaction file has no 'gene_id' column naming genes. Add a 'gene_id' column, "
+                "or give '--reaction-slice-by accession' to slice elements by their accessions."
+            )
+        weight_column = args.reaction_slice_weights
+        if weight_column is not None:
+            if weight_column in ('accession', 'gene_id', 'sample'):
+                raise ConfigError(
+                    f"'--reaction-slice-weights' names the column '{weight_column}' as the weights "
+                    f"of slices. That column is one of the columns that identify a row "
+                    f"('accession', 'gene_id', and 'sample'), so it cannot hold weights. Name the "
+                    f"column of weights instead."
+                )
+            if not reaction['has_weights']:
+                raise ConfigError(
+                    f"'--reaction-slice-weights' names the column '{weight_column}' as the weights "
+                    f"of slices, but the reaction file has no column with that header."
+                )
+            if reaction['mode'] not in VALUE_MODES:
+                raise ConfigError(
+                    f"'--reaction-slice-weights' names the column '{weight_column}' as the weights "
+                    f"of slices. It is the only column of the reaction file besides 'accession', "
+                    f"'gene_id', and 'sample', so it would otherwise be the value column. Slices "
+                    f"need a value column for their colors and a separate column for their "
+                    f"weights. Add a value column, or drop '--reaction-slice-weights' to color "
+                    f"equal slices by '{weight_column}'."
+                )
+        if args.reaction_slice_weight_aggregation is not None:
+            if args.reaction_slice_by == 'gene':
+                raise ConfigError(
+                    "'--reaction-slice-weight-aggregation' reduces the weights of the genes of an "
+                    "accession to one weight. With '--reaction-slice-by gene', each gene is a "
+                    "slice of its own, so no weights are reduced to an accession. A gene with rows "
+                    "for two or more accessions of an element takes the mean weight of these rows. "
+                    "Please drop '--reaction-slice-weight-aggregation'."
+                )
+            if weight_column is None:
+                raise ConfigError(
+                    "'--reaction-slice-weight-aggregation' reduces the weights of the genes of an "
+                    "accession to one weight, but no column of weights was named with "
+                    "'--reaction-slice-weights'. Without weights, the slices of an element are "
+                    "equal. Name the column, or drop '--reaction-slice-weight-aggregation'."
+                )
+            if not reaction['has_gene_id']:
+                raise ConfigError(
+                    "'--reaction-slice-weight-aggregation' reduces the weights of the genes of an "
+                    "accession to one weight, but the reaction file has no 'gene_id' column naming "
+                    "genes. Each accession there already has a single weight per sample, since "
+                    "rows repeating an accession are refused. Please drop "
+                    "'--reaction-slice-weight-aggregation'."
+                )
+        if args.reaction_slice_share_summary is not None and weight_column is None:
+            raise ConfigError(
+                "'--reaction-slice-share-summary' pools the shares of weighted slices across "
+                "samples or groups, but no column of weights was named with "
+                "'--reaction-slice-weights'. Without weights, the slices of an element are equal "
+                "on every map, so there are no shares to pool. Name the column, or drop "
+                "'--reaction-slice-share-summary'."
+            )
+
         # A value type says what a layer's value column holds, so it needs that layer's file and its
         # value column. Colors given per categorical value need categorical values, and a map that
         # shows them. With groups, only a rule among each group's samples puts the values on a map.
@@ -1373,7 +1571,12 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 (args.reaction_reverse_overlay, '--reaction-reverse-overlay'),
                 (args.reaction_sample_summary is not None, '--reaction-sample-summary'),
                 (args.reaction_group_summary is not None, '--reaction-group-summary'),
-                (args.group_threshold is not None, '--group-threshold')
+                (args.group_threshold is not None, '--group-threshold'),
+                (args.reaction_slice_by is not None, '--reaction-slice-by'),
+                (args.reaction_slice_weights is not None, '--reaction-slice-weights'),
+                (args.reaction_slice_weight_aggregation is not None,
+                 '--reaction-slice-weight-aggregation'),
+                (args.reaction_slice_share_summary is not None, '--reaction-slice-share-summary')
             ) if present_flag]
             if original_flags:
                 message = ', '.join(f"'{flag}'" for flag in original_flags)
@@ -1995,6 +2198,144 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 f"those values."
             )
 
+        # Each slice takes the color of its own value, so slicing needs a reaction layer of values
+        # and a drawn map that shows them. Without a 'sample' column, every map shows the values.
+        # With one, the map of each sample shows them. The map of a group and the 'unified' map show
+        # them only where their summary pools values or chooses a value with a rule. Maps that show
+        # presence are drawn whole. The mapper repeats these checks for programmatic callers.
+        if args.reaction_slice_by is not None:
+            if reaction['mode'] not in VALUE_MODES:
+                raise ConfigError(
+                    "'--reaction-slice-by' gives each slice the color of its own value, but the "
+                    "reaction file has no value column. Its layer is colored by presence, and "
+                    "slices of presence are not supported yet. Add a value column, or drop "
+                    "'--reaction-slice-by'."
+                )
+            if args.reaction_element_normalization is not None:
+                raise ConfigError(
+                    "'--reaction-slice-by' cannot be combined with "
+                    "'--reaction-element-normalization' yet. Rescaling each slice on its own is "
+                    "not supported. Please use only one."
+                )
+            # When slicing by gene, the accession aggregation reduces the rows of one gene for the
+            # accessions of an element. It is refused for numbers only when slicing by accession.
+            if (
+                args.reaction_accession_aggregation is not None
+                and args.reaction_slice_by == 'accession'
+                and reaction['mode'] == 'quantitative'
+            ):
+                raise ConfigError(
+                    "'--reaction-accession-aggregation' reduces the values of the accessions of a "
+                    "map element to one value. With '--reaction-slice-by accession', each slice "
+                    "shows the value of one accession. An element drawn whole takes the mean of "
+                    "its slice values, weighted by their shares, in place of this reduction. "
+                    "Please drop '--reaction-accession-aggregation'."
+                )
+            if args.reaction_gene_aggregation is not None and args.reaction_slice_by == 'gene':
+                raise ConfigError(
+                    "'--reaction-gene-aggregation' reduces the values of the genes annotated with "
+                    "one accession to one value. With '--reaction-slice-by gene', each gene is a "
+                    "slice of its own, so no values of genes are reduced to an accession. "
+                    "'--reaction-accession-aggregation' reduces the rows of a gene for two or more "
+                    "accessions of an element. Please drop '--reaction-gene-aggregation', or give "
+                    "'--reaction-slice-by accession' to slice elements by their accessions."
+                )
+
+            has_sample = reaction['has_sample']
+            grouped = has_sample and args.groups_txt is not None
+            sample_summary = args.reaction_sample_summary
+            unified_summary = args.reaction_group_summary if grouped else sample_summary
+            group_values = sample_summary is not None and sample_summary not in PRESENCE_SUMMARIES
+            individual_values = draw_individual_maps and (not grouped or group_values)
+            unified_values = not args.skip_unified_maps and (
+                not has_sample
+                or (unified_summary is not None and unified_summary not in PRESENCE_SUMMARIES)
+            )
+            if reaction['mode'] == 'categorical':
+                value_summary = "a rule such as 'plurality_order'"
+            elif args.reaction_value_period is not None:
+                # With a period, 'circular_mean' is the only average that the summaries accept.
+                value_summary = "an aggregation such as 'circular_mean'"
+            else:
+                value_summary = "an aggregation such as 'mean'"
+            draw_flags = "'--draw-individual-files' or '--draw-grid'"
+            if not individual_values and not unified_values:
+                if not grouped:
+                    reason = (
+                        "The 'unified' map shows presence, since '--reaction-sample-summary' "
+                        "summarizes presence. The map of each sample shows values, but none were "
+                        "asked for."
+                    )
+                    alternative = (
+                        f"Add {draw_flags}, or give '--reaction-sample-summary' {value_summary}."
+                    )
+                elif group_values:
+                    reason = (
+                        "The 'unified' map shows presence, since '--reaction-group-summary' "
+                        "summarizes presence. The map of each group shows values, but none were "
+                        "asked for."
+                    )
+                    alternative = (
+                        f"Add {draw_flags}, or give '--reaction-group-summary' {value_summary}."
+                    )
+                else:
+                    reason = (
+                        "The map of each group counts its samples, since "
+                        "'--reaction-sample-summary' summarizes presence. The 'unified' map then "
+                        "shows presence across the groups."
+                    )
+                    alternative = (
+                        f"To show values on the map of each group, give "
+                        f"'--reaction-sample-summary' {value_summary}."
+                    )
+                    if not draw_individual_maps:
+                        alternative += (
+                            f" Then either draw those maps with {draw_flags}, or also give "
+                            f"'--reaction-group-summary' {value_summary} to show values on the "
+                            f"'unified' map."
+                        )
+                raise ConfigError(
+                    f"'--reaction-slice-by' slices the reaction elements of maps that show values. "
+                    f"Maps that show presence are drawn whole. Here no drawn map of the reaction "
+                    f"layer shows values. {reason} {alternative}"
+                )
+
+            # Group maps and the 'unified' map of a layer with samples pool the shares of slices.
+            # The map of one sample, and the one map of a file without samples, take their shares
+            # from the weights directly. In a grouped run every map pools samples, so the check
+            # above already found one that shows values.
+            pooled_values = (grouped and individual_values) or (has_sample and unified_values)
+            if args.reaction_slice_share_summary is not None and not pooled_values:
+                if not has_sample:
+                    reason = (
+                        "The reaction file has no 'sample' column, so no map pools samples. Each "
+                        "map takes its shares from the weights in the file."
+                    )
+                    alternative = "Please drop '--reaction-slice-share-summary'."
+                elif args.skip_unified_maps:
+                    reason = (
+                        "Without groups, only the 'unified' map pools the samples, and "
+                        "'--skip-unified-maps' draws no 'unified' map. The map of each sample "
+                        "takes its shares from the weights of that sample."
+                    )
+                    alternative = "Please drop '--reaction-slice-share-summary'."
+                else:
+                    reason = (
+                        "Without groups, only the 'unified' map pools the samples. It shows "
+                        "presence, since '--reaction-sample-summary' summarizes presence. Its "
+                        "elements are therefore drawn whole. The map of each sample takes its "
+                        "shares from the weights of that sample."
+                    )
+                    alternative = (
+                        f"Give '--reaction-sample-summary' {value_summary} to show values on the "
+                        f"'unified' map, or drop '--reaction-slice-share-summary'."
+                    )
+                raise ConfigError(
+                    f"'--reaction-slice-share-summary' says how the maps of groups and the "
+                    f"'unified' map pool the shares of slices across samples. Here no such map is "
+                    f"drawn with values. {reason} {alternative}"
+                )
+
     reaction_colormap, reaction_colormap_limits = _resolve_colormap(
         args.reaction_colormap, '--reaction-colormap'
     )
@@ -2125,6 +2466,16 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
             kwargs[f'{element_type}_value_colors'] = value_colors
     if args.seed is not None:
         kwargs['seed'] = args.seed
+
+    # The slicing options go to the mapper only where given. The mapper resolves their defaults.
+    for setting, key in (
+        (args.reaction_slice_by, 'reaction_slice_by'),
+        (args.reaction_slice_weights, 'reaction_slice_weights'),
+        (args.reaction_slice_weight_aggregation, 'reaction_slice_weight_aggregation'),
+        (args.reaction_slice_share_summary, 'reaction_slice_share_summary')
+    ):
+        if setting is not None:
+            kwargs[key] = setting
 
     kwargs['count_scale_max'] = args.count_scale_max
 
@@ -2522,7 +2873,8 @@ def main() -> None:
         # nothing to act on without it. The same goes for the sample and group summaries and the
         # value limits, which only the text engine reads: a value column is what puts elements on a
         # continuous scale, and only a text file has one. The options for categorical values and the
-        # seed of their random choices need a value column too.
+        # seed of their random choices need a value column too, as do the options that slice
+        # reaction elements.
         if not is_txt_run:
             compound_only_flags = [flag for present_flag, flag in (
                 (args.compound_color is not None, '--compound-color'),
@@ -2562,7 +2914,12 @@ def main() -> None:
                 (args.compound_value_type is not None, '--compound-value-type'),
                 (args.reaction_value_colors is not None, '--reaction-value-colors'),
                 (args.compound_value_colors is not None, '--compound-value-colors'),
-                (args.seed is not None, '--seed')
+                (args.seed is not None, '--seed'),
+                (args.reaction_slice_by is not None, '--reaction-slice-by'),
+                (args.reaction_slice_weights is not None, '--reaction-slice-weights'),
+                (args.reaction_slice_weight_aggregation is not None,
+                 '--reaction-slice-weight-aggregation'),
+                (args.reaction_slice_share_summary is not None, '--reaction-slice-share-summary')
             ) if present_flag]
             if compound_only_flags:
                 message = ', '.join(f"'{flag}'" for flag in compound_only_flags)
