@@ -843,9 +843,13 @@ class Mapper:
         if present, must be filled in every row.
 
         A value column can hold categorical values instead of numbers ('VALUE_TYPES'). Such values
-        are names. They are read as text, so 'NA' is a name like any other. A pair of double quotes
-        enclosing a whole field is dropped, as R writes them ('_unquote'). Other quotes are kept as
-        part of a name. Every row needs one.
+        are names. They are read as text, so 'NA' is a name like any other. Every row needs one.
+
+        Every file is read with quotes left as text. A pair of double quotes enclosing a whole field
+        or column name is dropped, as R writes them ('_unquote'). Other quotes are kept, so a number
+        or a weight that holds one is refused, and a name keeps it. Each column name may appear only
+        once in the header line ('_read_txt_header'). A name cannot start with '__', which marks the
+        columns that this method adds.
 
         A column of slice weights is named, not detected ('--reaction-slice-weights'). It is left
         out of the search for the value column. It cannot be a key column, and the file still needs
@@ -907,15 +911,15 @@ class Mapper:
         # An empty file has no header row for pandas to find, which it reports as an exception
         # rather than as an empty table. Pandas reads text such as 'NA' as a missing value by
         # default. Categorical values keep such text as a name. Pandas also takes a double quote to
-        # start a quoted field, which can hold tabs and line breaks. Categorical files are read with
-        # quotes left as text, so a stray quote cannot merge the rows after it into one value. Then
-        # only a pair of quotes enclosing a whole field is dropped, as in a colors file
-        # ('_read_value_colors_txt').
+        # start a quoted field, which can hold tabs and line breaks, so a stray quote would merge the
+        # rows after it into one field. Every file is read with quotes left as text instead. Then
+        # only a pair of quotes enclosing a whole field is dropped, as R writes it and as in a colors
+        # file ('_read_value_colors_txt'). Any other quote stays in its field, where a number or a
+        # weight that holds it is refused. A missing value in a file of numbers is left missing.
         categorical = value_type == 'categorical'
         try:
             df = pd.read_csv(
-                path, sep='\t', dtype=str, keep_default_na=not categorical,
-                quoting=csv.QUOTE_NONE if categorical else csv.QUOTE_MINIMAL
+                path, sep='\t', dtype=str, keep_default_na=not categorical, quoting=csv.QUOTE_NONE
             )
         except pd.errors.EmptyDataError:
             self.progress.end()
@@ -923,9 +927,36 @@ class Mapper:
                 f"The kegg-{element_type}-txt file at '{path}' is empty. It needs a header row with "
                 f"an 'accession' column, and a row for each accession to color."
             )
-        if categorical:
-            df.columns = [self._unquote(column) for column in df.columns]
-            df = df.applymap(self._unquote)
+        df.columns = [self._unquote(column) for column in df.columns]
+        df = df.applymap(lambda cell: cell if pd.isna(cell) else self._unquote(cell))
+        # Quotes around nothing, as pandas writes a missing value when it quotes every field, leave
+        # empty text. Outside a file of categorical values, such a cell is missing.
+        if not categorical:
+            df = df.replace('', np.nan)
+
+        # Pandas renames a repeated column name, so a second 'coverage' column would be read as
+        # 'coverage.1', and it could be taken for the value column without a word. The header line
+        # is read as it is written to find such names. Blank names are left out, since pandas names
+        # each blank column itself, such as 'Unnamed: 2'. A name that starts with '__' could clash
+        # with a column that this method adds, such as '__accession'.
+        names = self._read_txt_header(path)
+        repeated = [name for name in dict.fromkeys(names) if name and names.count(name) > 1]
+        if repeated:
+            self.progress.end()
+            raise ConfigError(
+                f"The header line of the kegg-{element_type}-txt file at '{path}' names these "
+                f"columns more than once: {', '.join(repr(name) for name in repeated)}. A name may "
+                f"appear only once."
+            )
+        reserved = [name for name in names if name.startswith('__')]
+        if reserved:
+            self.progress.end()
+            raise ConfigError(
+                f"The header line of the kegg-{element_type}-txt file at '{path}' has these names "
+                f"that start with '__': {', '.join(repr(name) for name in reserved)}. Names that "
+                f"start with '__' are kept for anvi'o's own columns, such as '__accession'. Please "
+                f"rename these columns."
+            )
         original_columns = list(df.columns)
 
         if 'accession' not in df.columns:
@@ -2539,6 +2570,35 @@ class Mapper:
         if len(text) >= 2 and text[0] == text[-1] == '"':
             return text[1:-1].replace('""', '"')
         return text
+
+    @staticmethod
+    def _read_txt_header(path: str) -> List[str]:
+        """
+        Read the column names of a tab-delimited text file as they are written.
+
+        A normal read cannot keep a repeated name, since pandas renames the second copy, so
+        'coverage' becomes 'coverage.1'. The header line is therefore read as a row of text. Quotes
+        are read as text, as the file itself is read ('_read_element_txt'), and a pair of quotes
+        enclosing a whole name is dropped ('_unquote').
+
+        Parameters
+        ==========
+        path : str
+            The path to the file.
+
+        Returns
+        =======
+        List[str]
+            The names in the order of the file, or an empty list for an empty file.
+        """
+        try:
+            header = pd.read_csv(
+                path, sep='\t', header=None, nrows=1, dtype=str, keep_default_na=False,
+                quoting=csv.QUOTE_NONE
+            )
+        except pd.errors.EmptyDataError:
+            return []
+        return [Mapper._unquote(name) for name in header.iloc[0]]
 
     def _read_value_colors_txt(self, path: str, flag: str) -> Dict[str, str]:
         """

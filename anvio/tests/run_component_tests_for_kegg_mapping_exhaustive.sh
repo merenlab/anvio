@@ -102,6 +102,14 @@ printf 'accession\tgene_id\tcoverage\nK00844\tgene_1\t10\nK00844\tgene_1\t30\n' 
 printf 'accession\tcol_a\tcol_b\nK00844\t1\t2\n' > draw_bad_two_values.reaction.txt
 printf 'accession\tgene_id\nC00031\tgene_1\n' > draw_bad_compound_gene_id.compound.txt
 printf 'accession\tconcentration\nC00031\t10\nC00031\t30\n' > draw_bad_repeated_compounds.compound.txt
+# Two columns of one name, which pandas would read as 'coverage' and 'coverage.1', or as 'sample'
+# and 'sample.1'. A column name that starts with '__', like the columns that anvi'o adds as it reads
+# a file.
+printf 'accession\tcoverage\tcoverage\nK00844\t1\t10\nK01810\t2\t20\n' > draw_bad_repeated_weights.reaction.txt
+printf 'accession\tsample\tsample\nK00844\tS1\tup\nK01810\tS2\tdown\n' > draw_bad_repeated_sample.reaction.txt
+printf 'accession\t__accession\nK00844\t5\nK01810\t7\n' > draw_bad_reserved_header.reaction.txt
+# A number with a stray opening quote.
+printf 'accession\tcoverage\nK00844\t"10\nK01810\t20\n' > draw_bad_stray_quote_number.reaction.txt
 # Categorical values without a 'sample' column, so that one map shows them. Each row cycles through
 # three classes, so the genes of an accession and the KOs of an element often differ.
 awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","class"} NR>1{split("alpha beta gamma", c, " "); print $1,$2,c[((NR-2)%3)+1]}' \
@@ -137,6 +145,9 @@ printf 'accession\tstatus\nK00844\t"high\nK01810\tlow"\nK00850\tmid\n' > draw_ko
 printf 'status\tcolor\n"high\t#d62728\nlow"\t#1f77b4\nmid\t#bcbd22\n' > draw-stray-quote-colors.txt
 # Every field in double quotes, as R's write.table writes a file by default.
 printf '"accession"\t"status"\n"K00844"\t"up"\n"K01810"\t"down"\n' > draw_kos_quoted_fields.reaction.txt
+# A stray opening quote in the name of a column of categorical values and of a column of numbers.
+printf 'accession\t"status\nK00844\tup\nK01810\tdown\n' > draw_kos_header_quote_status.reaction.txt
+printf 'accession\t"coverage\nK00844\t10\nK01810\t20\n' > draw_kos_header_quote_coverage.reaction.txt
 # Weights without a 'sample' column. Element 18 of map 00010 is sliced between K01624 and K01622,
 # since K16306 has a weight of 0. Both KOs of element 154 have a weight of 0, so that element is
 # left uncolored.
@@ -170,6 +181,8 @@ for fixture in contigs-db-group-information.txt draw_kos_samples300.reaction.txt
               draw_bad_mixed_kr.reaction.txt draw_bad_repeated_rows.reaction.txt \
               draw_bad_two_values.reaction.txt draw_bad_compound_gene_id.compound.txt \
               draw_bad_repeated_compounds.compound.txt draw_kos_class.reaction.txt \
+              draw_bad_repeated_weights.reaction.txt draw_bad_repeated_sample.reaction.txt \
+              draw_bad_reserved_header.reaction.txt draw_bad_stray_quote_number.reaction.txt \
               draw_compounds_samples_status.compound.txt draw_kos_class19.reaction.txt \
               draw-status-colors-incomplete.txt draw-status-colors-shared.txt \
               draw_bad_blank_status.reaction.txt draw_kos_tie.reaction.txt \
@@ -177,6 +190,8 @@ for fixture in contigs-db-group-information.txt draw_kos_samples300.reaction.txt
               draw_bad_repeated_status.reaction.txt draw_kos_header_only_status.reaction.txt \
               draw_kos_gene_votes.reaction.txt draw_kos_stray_quote.reaction.txt \
               draw-stray-quote-colors.txt draw_kos_quoted_fields.reaction.txt \
+              draw_kos_header_quote_status.reaction.txt \
+              draw_kos_header_quote_coverage.reaction.txt \
               draw_kos_weights.reaction.txt draw_kos_global_slices.reaction.txt \
               draw_bad_negative_weight.reaction.txt draw_bad_blank_gene_id.reaction.txt \
               draw_kos_gene_id_collision.reaction.txt draw_kos_genes_coverage.reaction.txt \
@@ -935,6 +950,37 @@ if anvi-draw-kegg-pathways --reaction-txt draw_bad_two_values.reaction.txt \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: a file with two candidate value columns should have failed but did not."
+    exit 1
+fi
+
+# A column name that starts with '__' could clash with a column that anvi'o adds as it reads the
+# file, such as '__accession'.
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_reserved_header.reaction.txt \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_reserved_header.log 2>&1
+then
+    echo "ERROR: a column named '__accession' should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_reserved_header.log \
+    | grep -q "Names that start with '__' are kept for"
+then
+    echo "ERROR: a column named '__accession' was refused for another reason."
+    exit 1
+fi
+
+# A stray quote stays in its field, so a number that holds one is refused. The quote does not join
+# the rows up to the next quote into one field.
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_stray_quote_number.reaction.txt \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_stray_quote_number.log 2>&1
+then
+    echo "ERROR: a number with a stray quote should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_stray_quote_number.log | grep -q "must contain a finite number"
+then
+    echo "ERROR: a number with a stray quote was refused for another reason."
     exit 1
 fi
 
@@ -2018,6 +2064,21 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_quoted_fields.reaction.txt \
     --pathway-numbers $pathway_numbers \
     --no-progress
 
+# A stray quote in a column name is part of the name, so it does not join the rows up to the next
+# quote into the header line. This holds for a column of categorical values and of numbers.
+INFO "Testing a stray quote in the name of a column of categorical values"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_header_quote_status.reaction.txt \
+    --reaction-value-type categorical \
+    --output-dir draw_txt_kos_categorical_header_quote \
+    --pathway-numbers $pathway_numbers \
+    --no-progress
+
+INFO "Testing a stray quote in the name of a column of numbers"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_header_quote_coverage.reaction.txt \
+    --output-dir draw_txt_kos_header_quote \
+    --pathway-numbers $pathway_numbers \
+    --no-progress
+
 # A file of categorical values with a header and no rows has nothing to color, and the run says so.
 INFO "Testing a file of categorical values with a header and no rows"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_header_only_status.reaction.txt \
@@ -2368,6 +2429,22 @@ if anvi-draw-kegg-pathways --reaction-txt draw_bad_repeated_status.reaction.txt 
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: two categorical values for one accession and gene should have failed but did not."
+    exit 1
+fi
+
+# Pandas would read a second 'sample' column as 'sample.1' and take it for the value column.
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_repeated_sample.reaction.txt \
+    --reaction-value-type categorical \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_repeated_sample.log 2>&1
+then
+    echo "ERROR: two columns named 'sample' should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_repeated_sample.log | grep -q "A name may appear only once"
+then
+    echo "ERROR: two columns named 'sample' were refused for another reason."
     exit 1
 fi
 
@@ -2892,6 +2969,23 @@ if ! tr '\n' ' ' < draw_txt_slice_negative_weight.log \
     | grep -q "A weight is a finite number of 0 or more"
 then
     echo "ERROR: a negative weight was refused for another reason."
+    exit 1
+fi
+
+# Pandas would read a second 'coverage' column as 'coverage.1'. The weights would then come from the
+# first column and the values from the second.
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_repeated_weights.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights coverage \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_repeated_weights.log 2>&1
+then
+    echo "ERROR: two columns named 'coverage' should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_repeated_weights.log | grep -q "A name may appear only once"
+then
+    echo "ERROR: two columns named 'coverage' were refused for another reason."
     exit 1
 fi
 

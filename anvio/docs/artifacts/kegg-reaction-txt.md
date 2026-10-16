@@ -6,6 +6,8 @@ The "reaction layer" contains reaction lines in global and overview maps and box
 
 The file must have a header line with a required `accession` column; the other columns are optional.
 
+Each column name may appear only once, and names that start with `__` are reserved for anvi'o's own columns. Double quotes around a whole field or name, as R writes them, are dropped. Any other quote is kept as text, so a number that holds one is refused.
+
 |Column|Required|Description|
 |:--|:--|:--|
 |`accession`|YES|A KEGG ID. Accessions in the file must **all** be **KEGG Ortholog (KO) IDs** (`K#####`) or **KEGG reaction IDs** (`R#####`) — a single file cannot mix the two. Both KOs and Reactions address the reaction layer, so combining them can clash with two scales on the same map elements.|

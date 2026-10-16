@@ -1218,23 +1218,28 @@ def _detect_txt_layer(path: str, value_type: str = None, weight_column: str = No
 
     Returns {'mode': 'quantitative'|'categorical'|'membership'|'single'|None, 'has_sample': bool,
     'has_gene_id': bool, 'has_weights': bool}. 'mode' is None when the file is malformed in a way
-    the reader ('Mapper._read_element_txt') should report (no 'accession' column, or an ambiguous >1
-    value column); the caller then skips flag guards and lets the reader raise the definitive error.
-    A value column is 'categorical' where 'value_type' says so, and 'quantitative' otherwise.
-    'weight_column' names the column of slice weights ('--reaction-slice-weights'). It is left out
-    of value detection, and 'has_weights' says whether the file has it.
+    the reader ('Mapper._read_element_txt') should report (no 'accession' column, an ambiguous >1
+    value column, a column name given twice, or a name starting with '__'); the caller then skips
+    flag guards and lets the reader raise the definitive error. The names are read as the reader
+    reads them, with quotes left as text ('Mapper._read_txt_header'). A value column is
+    'categorical' where 'value_type' says so, and 'quantitative' otherwise. 'weight_column' names
+    the column of slice weights ('--reaction-slice-weights'). It is left out of value detection,
+    and 'has_weights' says whether the file has it.
     """
     filesnpaths.is_file_exists(path)
-    try:
-        columns = list(pd.read_csv(path, sep='\t', nrows=0).columns)
-    except pd.errors.EmptyDataError:
+    columns = Mapper._read_txt_header(path)
+    if not columns:
         # An empty file has no columns to detect, so defer to the reader for the definitive error.
         return {'mode': None, 'has_sample': False, 'has_gene_id': False, 'has_weights': False}
     has_sample = 'sample' in columns
     has_gene_id = 'gene_id' in columns
     has_weights = weight_column is not None and weight_column in columns
     structure = {'has_sample': has_sample, 'has_gene_id': has_gene_id, 'has_weights': has_weights}
-    if 'accession' not in columns:
+    # Pandas names each blank column itself, such as 'Unnamed: 2', so blank names are not compared.
+    named = [column for column in columns if column]
+    repeated = len(set(named)) < len(named)
+    reserved = any(column.startswith('__') for column in columns)
+    if 'accession' not in columns or repeated or reserved:
         return {'mode': None, **structure}
     value_columns = [
         c for c in columns if c not in ('accession', 'gene_id', 'sample', weight_column)
