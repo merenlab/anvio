@@ -174,13 +174,14 @@ CIRCULAR_AGGREGATIONS: Tuple[str, ...] = (
 # 'CIRCULAR_AGGREGATIONS' do. A spread is a plain number, not a point in the period. Only the
 # summary that colors the 'unified' map ('--*-sample-summary' without groups or '--*-group-summary'
 # with groups) takes these names. The two kinds of map then differ ('_build_txt_model'). Each
-# individual map shows a point in the period for each element, its circular mean in one sample
-# or group. Its scale runs from 0 to the period, with the cyclic 'clocktime' by default, and its
+# individual map shows a point in the period for each element, its circular mean in one sample or
+# group. Its scale runs from 0 to the period, with the cyclic 'clocktime' by default, and its
 # colorbar is labeled with the value column's name. The 'unified' map shows the spread of those
 # points. Its scale runs from 0 to the largest spread there can be, 5.40 with a period of 24. It
-# takes a colormap that is not cyclic, 'plasma_r' by default, since the smallest and the largest
-# spread are not the same point. Its colorbar is labeled '{value} angular deviation'. On global and
-# overview maps, its compound colors are averaged as plain numbers, not on a circle.
+# takes a colormap that is not cyclic, since the smallest and the largest spread are not the same
+# point. By default this is 'plasma_r' for the fill and 'viridis' for a border ('_txt_channel'). Its
+# colorbar is labeled '{value} angular deviation'. On global and overview maps, its compound colors
+# are averaged as plain numbers, not on a circle.
 CIRCULAR_SPREADS: Tuple[str, ...] = (
     'angular_deviation',
 )
@@ -340,6 +341,21 @@ DEFAULT_VALUE_COLORS: Tuple[str, ...] = (
     '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5', '#c49c94', '#f7b6d2', '#dbdb8d',
     '#9edae5'
 )
+
+# The colors that categorical border values take when no colors file gives them ('_txt_channel').
+# These are the colors of Matplotlib's 'Dark2' without its gray. They differ from the colors of the
+# fill, so that a color means a value of one column only. The last two are close to the default
+# compound and reaction colors, so they come last.
+DEFAULT_BORDER_VALUE_COLORS: Tuple[str, ...] = (
+    '#d95f02', '#7570b3', '#e6ab02', '#a6761d', '#1b9e77', '#e7298a', '#66a61e'
+)
+
+# The colormap of numeric border values when no colormap is named for them, and the part of it that
+# is used. A border lies between two black lines. 'viridis' is nearly black below 0.2, where a
+# border would merge with those lines. The fill takes 'plasma_r' instead, so that a color means a
+# value of one column only.
+DEFAULT_BORDER_COLORMAP = 'viridis'
+DEFAULT_BORDER_COLORMAP_LIMITS: Tuple[float, float] = (0.2, 1.0)
 
 # The rules that choose one categorical value where several meet ('_choose_categorical_value').
 # Values meet among the genes of one accession ('--reaction-gene-aggregation'), among the accessions
@@ -1229,6 +1245,7 @@ class Mapper:
     def _resolve_aggregation(
         aggregation: str,
         flag: str,
+        channel: dict,
         period: Union[float, None] = None,
         period_flag: Union[str, None] = None
     ) -> Callable:
@@ -1258,6 +1275,10 @@ class Mapper:
         flag : str
             The command-line flag the name comes from, used in an error message.
 
+        channel : dict
+            The channel of the values ('_txt_channel'). It names the column and the flag of the
+            value type in an error message.
+
         period : Union[float, None], None
             The period after which the layer's values repeat, or None if they do not repeat.
 
@@ -1270,15 +1291,13 @@ class Mapper:
             Reduces a sequence of values to a single value.
         """
         # A categorical rule chooses among names rather than reducing numbers. A layer of
-        # categorical values resolves its rules elsewhere ('_resolve_categorical_rule'). The flags
-        # of a layer start with its element type.
+        # categorical values resolves its rules elsewhere ('_resolve_categorical_rule').
         if aggregation in CATEGORICAL_RULES:
-            element_type = flag.split('-')[2]
             raise ConfigError(
                 f"'{flag}' was given as '{aggregation}', which chooses one categorical value among "
                 f"several. The values here are numbers, so they are reduced with an aggregation, "
-                f"such as 'sum' or 'mean'. To read the value column as categorical values, give "
-                f"'--{element_type}-value-type categorical'."
+                f"such as 'sum' or 'mean'. To read the {channel['column']} as categorical values, "
+                f"give '--{channel['flag_stem']}-value-type categorical'."
             )
         if aggregation in CIRCULAR_AGGREGATIONS + CIRCULAR_SPREADS:
             if period is None:
@@ -1553,7 +1572,7 @@ class Mapper:
     def _resolve_element_normalization(
         normalization: str,
         flag: str,
-        element_type: str,
+        channel: dict,
         period: Union[float, None] = None,
         period_flag: Union[str, None] = None
     ) -> Tuple[Callable, str, bool]:
@@ -1589,8 +1608,9 @@ class Mapper:
         flag : str
             The command-line flag the name comes from, used in error messages.
 
-        element_type : str
-            'reaction' or 'compound', naming the layer in error messages.
+        channel : dict
+            The channel of the values ('_txt_channel'). It names the flag of the sample summary in
+            an error message.
 
         period : Union[float, None], None
             The period after which the layer's values repeat, or None if they do not repeat. Values
@@ -1639,8 +1659,8 @@ class Mapper:
                 f"anvi'o's normalizations ({ELEMENT_NORMALIZATION_PHRASE}), or the name of any "
                 f"pandas Series method that transforms the values it is given into one new value "
                 f"each, such as 'abs'. A name that reduces a set of values to a single number, "
-                f"such as 'mean', belongs to '--{element_type}-sample-summary' instead, which is "
-                f"what summarizes samples."
+                f"such as 'mean', belongs to '--{channel['flag_stem']}-sample-summary' instead, "
+                f"which is what summarizes samples."
             )
 
         if not hasattr(pd.Series(dtype=float), normalization):
@@ -1789,7 +1809,13 @@ class Mapper:
             accession: value for accession, value in values.items() if accession not in dropped
         }
 
-    def _warn_undefined_values(self, undefined: Set[str], aggregation: str, path: str) -> None:
+    def _warn_undefined_values(
+        self,
+        undefined: Set[str],
+        aggregation: str,
+        path: str,
+        channel: dict
+    ) -> None:
         """
         Report the accessions of one layer whose aggregated value was undefined.
 
@@ -1803,15 +1829,18 @@ class Mapper:
 
         path : str
             Path to the layer's text file, for the message.
+
+        channel : dict
+            The channel of the values ('_txt_channel'), for the message.
         """
         if not undefined:
             return
         examples = ', '.join(sorted(undefined)[:5])
         self.run.warning(
-            f"Reducing the values of the text file at '{path}' with '{aggregation}' was undefined "
-            f"for {len(undefined)} accession(s), including these: {examples}. "
+            f"Reducing the {channel['values']} of the text file at '{path}' with '{aggregation}' "
+            f"was undefined for {len(undefined)} accession(s), including these: {examples}. "
             f"{Mapper._undefined_cause(aggregation)} These accessions are treated as having no "
-            f"value, so the map elements that depend on them are left uncolored."
+            f"value, so the map elements that depend on them {channel['consequence_plural']}."
         )
 
     @staticmethod
@@ -1876,7 +1905,8 @@ class Mapper:
         draw_individual_maps : bool
             True if the maps of the individual samples or groups are drawn.
         """
-        element_type = layer['element_type']
+        channel = layer['channel']
+        flag_stem = channel['flag_stem']
         grouped = layer['group_samples'] is not None
         # A sliced layer summarizes each accession or gene of an element on its own
         # ('_slice_result'). A slice whose summary is undefined is not drawn. The other slices of
@@ -1888,19 +1918,19 @@ class Mapper:
             if draw_individual_maps:
                 consequences.append(
                     "It is not drawn on that group's map." if sliced
-                    else "It is left uncolored on that group's map."
+                    else f"It {channel['consequence']} on that group's map."
                 )
             if draw_unified_maps and layer['group_aggregate'] is not None:
                 consequences.append(
                     "The 'unified' map pools only the groups where the slice has a value." if sliced
                     else (
-                        "The 'unified' map pools only the groups where the element has a value. An "
-                        "element with no value in any group is left uncolored there."
+                        f"The 'unified' map pools only the groups where the element has a value. "
+                        f"An element with no value in any group {channel['consequence']} there."
                     )
                 )
             if consequences:
                 reports.append((
-                    layer['_undefined_individual'], f'--{element_type}-sample-summary',
+                    layer['_undefined_individual'], f'--{flag_stem}-sample-summary',
                     layer['sample_summary'], ' in at least one group',
                     ' '.join(
                         [
@@ -1914,10 +1944,10 @@ class Mapper:
         if draw_unified_maps:
             reports.append((
                 layer['_undefined_unified'],
-                f"--{element_type}-{'group' if grouped else 'sample'}-summary",
+                f"--{flag_stem}-{'group' if grouped else 'sample'}-summary",
                 layer['group_summary'] if grouped else layer['sample_summary'], '',
                 "These slices are not drawn on the 'unified' map." if sliced
-                else "These elements are left uncolored on the 'unified' map."
+                else f"These elements {channel['consequence_plural']} on the 'unified' map."
             ))
         for undefined, flag, summary, where, consequence in reports:
             if not undefined:
@@ -2022,7 +2052,7 @@ class Mapper:
                 or (draw_unified_maps and layer['unified_mode'] == 'categorical')
             ):
                 continue
-            element_type = layer['element_type']
+            channel = layer['channel']
             has_samples = layer['sample_values'] is not None
             grouped = layer['group_samples'] is not None
             in_sample = ' in a sample' if has_samples else ''
@@ -2249,7 +2279,7 @@ class Mapper:
                 rule = layer[rule_key]
                 made = ', '.join(f"{counts[how]} {phrase}" for how, phrase in ways if counts[how])
                 self.run.info(
-                    f"Choices of a {element_type} value among {voters}",
+                    f"Choices of a {channel['noun']} value among {voters}",
                     f"{total} with '{rule}' ({made})"
                 )
                 if not counts['none']:
@@ -2259,9 +2289,9 @@ class Mapper:
                     "two or more values tied for the most votes"
                 )
                 self.run.warning(
-                    f"'--{element_type}-{flag_suffix} {rule}' gave no value to {counts['none']} "
-                    f"{what}, since {reason}. {consequence} To give every one of them a value, "
-                    f"choose 'plurality_order' or 'plurality_random' instead."
+                    f"'--{channel['flag_stem']}-{flag_suffix} {rule}' gave no value to "
+                    f"{counts['none']} {what}, since {reason}. {consequence} To give every one of "
+                    f"them a value, choose 'plurality_order' or 'plurality_random' instead."
                 )
 
     def _aggregate_accession_quantities(
@@ -2270,7 +2300,7 @@ class Mapper:
         value_column: str,
         aggregation: Union[str, Callable],
         path: str,
-        element_type: str,
+        channel: dict,
         undefined: Set[str] = None
     ) -> Dict[str, float]:
         """
@@ -2299,8 +2329,9 @@ class Mapper:
         path : str
             Path to the layer's text file, used in error messages.
 
-        element_type : str
-            'reaction' or 'compound', used in an error message.
+        channel : dict
+            The channel of the values ('_txt_channel'). It names the column and the flag of the
+            value type in an error message.
 
         undefined : Set[str], None
             Accessions whose aggregated value is undefined are added to this set.
@@ -2321,14 +2352,14 @@ class Mapper:
             text = rows_df.loc[invalid & numeric_values.isna(), value_column].dropna()
             categorical_clause = (
                 f" If the column holds categorical values, such as names, read it as such with "
-                f"'--{element_type}-value-type categorical'."
+                f"'--{channel['flag_stem']}-value-type categorical'."
             ) if not text.empty else ""
             self.progress.end()
             raise ConfigError(
-                f"The '{value_column}' value column of the text file at '{path}' must contain a "
-                f"finite number in every row for elements to be colored quantitatively. However, "
-                f"{int(invalid.sum())} {'rows have' if invalid.sum() > 1 else 'row has'} a blank, "
-                f"non-numeric, or infinite value, including these accessions: "
+                f"The '{value_column}' {channel['column']} of the text file at '{path}' must "
+                f"contain a finite number in every row for elements to be colored quantitatively. "
+                f"However, {int(invalid.sum())} {'rows have' if invalid.sum() > 1 else 'row has'} "
+                f"a blank, non-numeric, or infinite value, including these accessions: "
                 f"{', '.join(bad_accessions[:5])}.{categorical_clause}"
             )
         valued_df = rows_df.assign(__quantitative_value=numeric_values)
@@ -2430,6 +2461,7 @@ class Mapper:
         value_column: Union[str, None],
         flag: str,
         path: str,
+        channel: dict,
         period: Union[float, None] = None,
         period_flag: Union[str, None] = None
     ) -> Tuple[Literal['value', 'presence'], Union[Callable, None], Union[str, None]]:
@@ -2461,6 +2493,10 @@ class Mapper:
         path : str
             Path to the layer's text file, used in an error message.
 
+        channel : dict
+            The channel of the values ('_txt_channel'). It names the flag of the value type in an
+            error message.
+
         period : Union[float, None], None
             The period after which the layer's values repeat, or None ('_resolve_aggregation').
 
@@ -2479,10 +2515,8 @@ class Mapper:
             return 'presence', None, SUMMARY_PRESENCE_SCHEMES[summary]
         # A layer of categorical values resolves its summary elsewhere
         # ('_build_categorical_txt_model'), so a categorical rule here is given to a layer without
-        # categorical values. The message names what the user can do, which depends on the file. The
-        # flags of a layer start with its element type.
+        # categorical values. The message names what the user can do, which depends on the file.
         if summary in CATEGORICAL_RULES:
-            element_type = flag.split('-')[2]
             voters = 'groups' if flag.endswith('-group-summary') else 'samples'
             if value_column is None:
                 raise ConfigError(
@@ -2493,8 +2527,9 @@ class Mapper:
                 )
             raise ConfigError(
                 f"'{flag}' was given as '{summary}', which chooses one categorical value across "
-                f"the {voters}. The values of the text file at '{path}' are numbers. To read them "
-                f"as categorical values, give '--{element_type}-value-type categorical'."
+                f"the {voters}. The {channel['values']} of the text file at '{path}' are numbers. "
+                f"To read them as categorical values, give '--{channel['flag_stem']}-value-type "
+                f"categorical'."
             )
         if value_column is None:
             raise ConfigError(
@@ -2503,7 +2538,8 @@ class Mapper:
                 f"values to pool. Summarize presence with {SUMMARY_PRESENCE_PHRASE} instead, or "
                 f"add a value column to the file."
             )
-        return 'value', Mapper._resolve_aggregation(summary, flag, period, period_flag), None
+        aggregate = Mapper._resolve_aggregation(summary, flag, channel, period, period_flag)
+        return 'value', aggregate, None
 
     @staticmethod
     def _sort_values(values: Iterable[str]) -> List[str]:
@@ -2672,15 +2708,16 @@ class Mapper:
         self,
         values: Iterable[str],
         value_colors_txt: Union[str, None],
-        element_type: str,
+        channel: dict,
         path: str
     ) -> Dict[str, str]:
         """
         Put the categorical values of a layer in order, and give each value a color.
 
         The order sets where each value sits in the legend. It breaks ties under 'plurality_order',
-        and it decides every choice under 'order' ('CATEGORICAL_RULES'). It also sets which value is
-        drawn on top where map elements overlap.
+        and it decides every choice under 'order' ('CATEGORICAL_RULES'). For the fill, it also sets
+        which value is drawn on top where map elements overlap. A border does not change which
+        element is drawn on top.
 
         With a colors file, the order is the order of its rows. Every value of the layer needs a
         row. Rows that name values the layer does not have are reported and ignored, so one file can
@@ -2688,8 +2725,9 @@ class Mapper:
         tell them apart.
 
         Without a colors file, the values are sorted, with the numbers in them compared as numbers
-        ('_sort_values'). They then take 'DEFAULT_VALUE_COLORS' in order. There are 18 of these, so
-        more values than that need a colors file.
+        ('_sort_values'). They then take the default colors of the channel in order. These are the
+        18 colors of 'DEFAULT_VALUE_COLORS' for the fill, and the 7 colors of
+        'DEFAULT_BORDER_VALUE_COLORS' for the border. More values than that need a colors file.
 
         Parameters
         ==========
@@ -2699,8 +2737,9 @@ class Mapper:
         value_colors_txt : Union[str, None]
             Path to a colors file ('_read_value_colors_txt'), or None for the default colors.
 
-        element_type : str
-            'reaction' or 'compound', for messages.
+        channel : dict
+            The channel of the values ('_txt_channel'). It gives the default colors and names the
+            flag of the colors file.
 
         path : str
             Path to the layer's text file, for messages.
@@ -2710,17 +2749,23 @@ class Mapper:
         Dict[str, str]
             Maps each value to its color hex code, in the order of the values.
         """
-        flag = f'--{element_type}-value-colors'
+        flag = f"--{channel['flag_stem']}-value-colors"
+        element_type = channel['element_type']
+        # A message about border values names the border column.
+        file_values = f"the {element_type} file at '{path}'"
+        if channel['role'] == 'border':
+            file_values = f"the border column of {file_values}"
+        default_colors = channel['default_value_colors']
         values = set(values)
         if value_colors_txt is None:
             ordered = self._sort_values(values)
-            if len(ordered) > len(DEFAULT_VALUE_COLORS):
+            if len(ordered) > len(default_colors):
                 raise ConfigError(
                     f"The {element_type} file at '{path}' has {len(ordered)} different categorical "
-                    f"values. Anvi'o has {len(DEFAULT_VALUE_COLORS)} default colors for them. "
-                    f"Please give each value a color of your choosing with '{flag}'."
+                    f"{channel['values']}. Anvi'o has {len(default_colors)} default colors for "
+                    f"them. Please give each value a color of your choosing with '{flag}'."
                 )
-            return dict(zip(ordered, DEFAULT_VALUE_COLORS))
+            return dict(zip(ordered, default_colors))
 
         def _listed(names: List[str]) -> str:
             # A long list is cut at 10 values.
@@ -2734,17 +2779,17 @@ class Mapper:
         if missing:
             raise ConfigError(
                 f"The colors file given to '{flag}', at '{value_colors_txt}', has no color for "
-                f"{len(missing)} of the categorical values of the {element_type} file at '{path}'. "
-                f"{_listed(missing)} Every value needs a color. Anvi'o does not fill in missing "
-                f"colors, since chosen colors and default colors would then share one legend."
+                f"{len(missing)} of the categorical {channel['values']} of the {element_type} file "
+                f"at '{path}'. {_listed(missing)} Every value needs a color. Anvi'o does not fill "
+                f"in missing colors, since chosen colors and default colors would then share one "
+                f"legend."
             )
         extra = [value for value in file_colors if value not in values]
         if extra:
             self.run.warning(
                 f"The colors file given to '{flag}', at '{value_colors_txt}', names {len(extra)} "
-                f"{'value' if len(extra) == 1 else 'values'} that the {element_type} file at "
-                f"'{path}' does not have. {_listed(extra)} "
-                f"{'It is' if len(extra) == 1 else 'They are'} ignored."
+                f"{'value' if len(extra) == 1 else 'values'} that {file_values} does not have. "
+                f"{_listed(extra)} {'It is' if len(extra) == 1 else 'They are'} ignored."
             )
         value_colors = {value: color for value, color in file_colors.items() if value in values}
         values_by_color: Dict[str, List[str]] = {}
@@ -2762,7 +2807,7 @@ class Mapper:
         return value_colors
 
     @staticmethod
-    def _resolve_categorical_rule(rule: Union[str, None], flag: str, element_type: str) -> str:
+    def _resolve_categorical_rule(rule: Union[str, None], flag: str, channel: dict) -> str:
         """
         Check the rule that chooses one categorical value where several meet.
 
@@ -2774,8 +2819,8 @@ class Mapper:
         flag : str
             The command-line flag the rule comes from, used in an error message.
 
-        element_type : str
-            'reaction' or 'compound', for the error message.
+        channel : dict
+            The channel of the values ('_txt_channel'), for the error message.
 
         Returns
         =======
@@ -2787,10 +2832,10 @@ class Mapper:
         if rule in CATEGORICAL_RULES:
             return rule
         raise ConfigError(
-            f"'{flag}' was given as '{rule}'. The values of the {element_type} layer are "
-            f"categorical ('--{element_type}-value-type categorical'). Categorical values cannot "
-            f"be added up or averaged. One of them is chosen instead. These are the rules that "
-            f"choose: {CATEGORICAL_RULES_PHRASE}."
+            f"'{flag}' was given as '{rule}'. The values of the {channel['noun']} layer are "
+            f"categorical ('--{channel['flag_stem']}-value-type categorical'). Categorical values "
+            f"cannot be added up or averaged. One of them is chosen instead. These are the rules "
+            f"that choose: {CATEGORICAL_RULES_PHRASE}."
         )
 
     @staticmethod
@@ -2863,7 +2908,8 @@ class Mapper:
         order: Dict[str, int],
         seed: int,
         sample: str,
-        choices: Counter
+        choices: Counter,
+        salt: Tuple[str, ...] = ()
     ) -> Dict[str, str]:
         """
         Give each accession one categorical value, chosen among the values of its genes.
@@ -2895,6 +2941,9 @@ class Mapper:
         choices : collections.Counter
             Counts how each choice among different values was made. It is updated here.
 
+        salt : Tuple[str, ...], ()
+            What starts the key of a random choice ('_txt_channel'). The fill has none.
+
         Returns
         =======
         Dict[str, str]
@@ -2904,7 +2953,7 @@ class Mapper:
         values: Dict[str, str] = {}
         for accession, votes in rows_df.groupby('__accession')['__value'].agg(list).items():
             value, how = self._choose_categorical_value(
-                votes, rule, order, seed, ('gene', sample, accession)
+                votes, rule, order, seed, salt + ('gene', sample, accession)
             )
             if how is not None:
                 choices[how] += 1
@@ -3300,12 +3349,107 @@ class Mapper:
                 f"color where the centered value is."
             )
 
+    @staticmethod
+    def _txt_channel(
+        element_type: Literal['reaction', 'compound'],
+        role: Literal['fill', 'border'] = 'fill'
+    ) -> dict:
+        """
+        Describe one channel of a layer from a text file: its fill or its border.
+
+        The value column of a file colors the fill of each map element. A border column colors the
+        border of the element instead ('--reaction-border-column', '--compound-border-column'). The
+        two channels are built by the same methods ('_build_txt_model'). The channel names the
+        options of its values in messages, and it gives their defaults. The two channels have
+        different defaults, so that a color means a value of one column only.
+
+        Parameters
+        ==========
+        element_type : Literal['reaction', 'compound']
+            The layer of the channel.
+
+        role : Literal['fill', 'border'], 'fill'
+            The channel.
+
+        Returns
+        =======
+        dict
+            The channel, with these keys:
+            - 'role': the 'role' argument.
+            - 'element_type': the 'element_type' argument.
+            - 'flag_stem': what the options of the channel's values start with after '--', such as
+              'reaction' in '--reaction-colormap' or 'reaction-border' in
+              '--reaction-border-colormap'.
+            - 'noun': what messages call the values, as in "a reaction value" or "the reaction
+              border layer".
+            - 'plural': what the channel colors, for messages about its colormaps.
+            - 'name': the stem of the channel's key files, such as 'reactions' in
+              'colorbar_reactions.pdf' or 'reactions_border' in 'colorbar_reactions_border.pdf'.
+            - 'column': what messages call the column of the values.
+            - 'values': what messages call the values of that column.
+            - 'presence': whether the channel can show presence. A border shows only values.
+            - 'default_aggregation': how numbers are reduced where no aggregation is given and the
+              values have no period. A border value given once per accession and repeated in the
+              rows of its genes keeps its size under 'mean', but 'sum' would multiply it.
+            - 'default_colormap': the colormap of numbers where none is given and the values have no
+              period.
+            - 'default_colormap_limits': the part of that colormap that is used, or None for all of
+              it.
+            - 'default_centered_colormap': the colormap of a scale that a normalization centers.
+            - 'default_value_colors': the colors of categorical values where no file gives them.
+            - 'choice_salt': what starts the key of each random choice among categorical values
+              ('_choose_categorical_value'). The fill and the border then choose independently, and
+              the keys of the fill stay as they were before borders existed.
+            - 'consequence' and 'consequence_plural': what happens to an element without a value, as
+              in "an element is left uncolored" or "elements show no border".
+        """
+        if role == 'fill':
+            return {
+                'role': role,
+                'element_type': element_type,
+                'flag_stem': element_type,
+                'noun': element_type,
+                'plural': f'{element_type}s',
+                'name': f'{element_type}s',
+                'column': 'value column',
+                'values': 'values',
+                'presence': True,
+                'default_aggregation': 'sum',
+                'default_colormap': 'plasma_r',
+                'default_colormap_limits': None,
+                'default_centered_colormap': DEFAULT_CENTERED_COLORMAP,
+                'default_value_colors': DEFAULT_VALUE_COLORS,
+                'choice_salt': (),
+                'consequence': 'is left uncolored',
+                'consequence_plural': 'are left uncolored'
+            }
+        return {
+            'role': role,
+            'element_type': element_type,
+            'flag_stem': f'{element_type}-border',
+            'noun': f'{element_type} border',
+            'plural': f'{element_type} borders',
+            'name': f'{element_type}s_border',
+            'column': 'border column',
+            'values': 'border values',
+            'presence': False,
+            'default_aggregation': 'mean',
+            'default_colormap': DEFAULT_BORDER_COLORMAP,
+            'default_colormap_limits': DEFAULT_BORDER_COLORMAP_LIMITS,
+            'default_centered_colormap': DEFAULT_CENTERED_COLORMAP,
+            'default_value_colors': DEFAULT_BORDER_VALUE_COLORS,
+            'choice_salt': ('border',),
+            'consequence': 'shows no border',
+            'consequence_plural': 'show no border'
+        }
+
     def _txt_model_common(
         self,
         name: str,
         data: dict,
         path: str,
-        membership_colors_txt: Union[str, None]
+        membership_colors_txt: Union[str, None],
+        channel: dict
     ) -> dict:
         """
         Build the keys that every layer model from a text file has ('_map_elements').
@@ -3324,10 +3468,14 @@ class Mapper:
         membership_colors_txt : Union[str, None]
             Path to a kegg-membership-colors-txt file for the layer, or None.
 
+        channel : dict
+            The channel of the values ('_txt_channel').
+
         Returns
         =======
         dict
-            The keys shared by every layer model.
+            The keys shared by every layer model. These include 'channel' and 'value_column', the
+            header of the column of the values or None. Messages name the column by its header.
         """
         element_type = data['element_type']
         membership_colors_flag = f'--{element_type}-membership-colors'
@@ -3335,6 +3483,8 @@ class Mapper:
             'name': name,
             'path': path,
             'element_type': element_type,
+            'channel': channel,
+            'value_column': data['value_column'],
             'use_reaction_attribute': data['reaction_source'] == 'Reaction',
             'accessions': set(data['df']['__accession']),
             'membership_colors_flag': membership_colors_flag
@@ -3380,7 +3530,8 @@ class Mapper:
         value_period: Union[float, str, None] = None,
         value_colors_txt: Union[str, None] = None,
         seed: int = DEFAULT_CATEGORICAL_SEED,
-        slice_by: Union[str, None] = None
+        slice_by: Union[str, None] = None,
+        channel: Union[dict, None] = None
     ) -> dict:
         """
         Build one layer's coloring model for '_map_elements' from a per-layer reader result.
@@ -3462,32 +3613,41 @@ class Mapper:
         Slices of genes take their values from the rows of each gene ('_build_slice_model'). The
         values of the accessions are then not drawn, so an accession whose genes reduce to an
         undefined value is not reported.
+
+        'channel' is the channel that the values color ('_txt_channel'), or None for the fill.
+        Messages name the options of the channel, which start with its 'flag_stem'. An option left
+        as None takes the channel's default. An aggregation left as None is then 'mean' for a border
+        without a period.
         """
+        if channel is None:
+            channel = self._txt_channel(data['element_type'])
+        flag_stem = channel['flag_stem']
         if data['value_type'] == 'categorical':
             return self._build_categorical_txt_model(
                 name, data, path, gene_aggregation, accession_aggregation, color, colormap,
                 colormap_limits, membership_colors_txt, reverse_overlay, all_sample_names,
                 group_samples, sample_summary, group_summary, value_colors_txt, seed, {
-                    f"--{data['element_type']}-value-limits": value_limits,
-                    f"--{data['element_type']}-individual-value-limits": individual_value_limits,
-                    f"--{data['element_type']}-value-center": value_center,
-                    f"--{data['element_type']}-individual-value-center": individual_value_center,
-                    f"--{data['element_type']}-element-normalization": (
+                    f"--{flag_stem}-value-limits": value_limits,
+                    f"--{flag_stem}-individual-value-limits": individual_value_limits,
+                    f"--{flag_stem}-value-center": value_center,
+                    f"--{flag_stem}-individual-value-center": individual_value_center,
+                    f"--{flag_stem}-element-normalization": (
                         element_normalization if element_normalization is not None
                         else element_normalization_label
                     ),
-                    f"--{data['element_type']}-value-period": value_period,
-                    f"--{data['element_type']}-individual-colormap": individual_colormap
-                }
+                    f"--{flag_stem}-value-period": value_period,
+                    f"--{flag_stem}-individual-colormap": individual_colormap
+                }, channel
             )
         element_type = data['element_type']
+        noun = channel['noun']
         use_reaction_attribute = data['reaction_source'] == 'Reaction'
         df = data['df']
         value_column = data['value_column']
         has_sample = data['sample_names'] is not None
         accessions = set(df['__accession'])
         membership_colors_flag = f'--{element_type}-membership-colors'
-        common = self._txt_model_common(name, data, path, membership_colors_txt)
+        common = self._txt_model_common(name, data, path, membership_colors_txt, channel)
 
         # Limits and centers are checked before any value is read, so that a pair or a center anvi'o
         # cannot make sense of is reported as the configuration error it is rather than surfacing
@@ -3495,17 +3655,17 @@ class Mapper:
         # actually colored by value is not known until the summaries below have chosen the modes.
         # The centers are resolved against the limits, which is where a center placed out of a
         # limited scale's reach is caught, so the limits are resolved first.
-        value_limits_flag = f'--{element_type}-value-limits'
-        individual_value_limits_flag = f'--{element_type}-individual-value-limits'
-        value_center_flag = f'--{element_type}-value-center'
-        individual_value_center_flag = f'--{element_type}-individual-value-center'
+        value_limits_flag = f'--{flag_stem}-value-limits'
+        individual_value_limits_flag = f'--{flag_stem}-individual-value-limits'
+        value_center_flag = f'--{flag_stem}-value-center'
+        individual_value_center_flag = f'--{flag_stem}-individual-value-center'
         value_limits = self._resolve_value_limits(value_limits, value_limits_flag)
         individual_value_limits = self._resolve_value_limits(
             individual_value_limits, individual_value_limits_flag
         )
         # A period says that the values repeat, as clock times do every 24 hours. It is resolved
         # before the normalization, which it rules out.
-        value_period_flag = f'--{element_type}-value-period'
+        value_period_flag = f'--{flag_stem}-value-period'
         value_period = self._resolve_value_period(value_period, value_period_flag)
 
         # The normalization is settled before the centers are, since one whose neutral value is zero
@@ -3513,7 +3673,7 @@ class Mapper:
         # default has to be validated against the limits on that scale like any other center. It
         # rescales the value of each sample or group against the element's values across all samples
         # or groups, so it needs both a value column to rescale and samples.
-        element_normalization_flag = f'--{element_type}-element-normalization'
+        element_normalization_flag = f'--{flag_stem}-element-normalization'
         element_normalize = None
         element_normalization_label_template = None
         # Whether the center of the per-sample/per-group scale came from a normalization rather than
@@ -3524,23 +3684,23 @@ class Mapper:
         if element_normalization is None and element_normalization_label is not None:
             raise ConfigError(
                 f"A label was given for what '{element_normalization_flag}' would put on the "
-                f"colorbar of the {element_type} layer, but no normalization was given for it to "
-                f"label. That colorbar is labeled by the value column of the file at '{path}' when "
+                f"colorbar of the {noun} layer, but no normalization was given for it to label. "
+                f"That colorbar is labeled by the {channel['column']} of the file at '{path}' when "
                 f"nothing rescales it."
             )
         if element_normalization_label is not None and not element_normalization_label.strip():
             raise ConfigError(
-                f"The label given to '{element_normalization_flag}' for the colorbar of the "
-                f"{element_type} layer's rescaled scale is blank, so nothing would say what that "
-                f"scale shows. Give the option a label with something in it, or give it the "
-                f"normalization alone and let anvi'o compose one."
+                f"The label given to '{element_normalization_flag}' for the colorbar of the {noun} "
+                f"layer's rescaled scale is blank, so nothing would say what that scale shows. "
+                f"Give the option a label with something in it, or give it the normalization alone "
+                f"and let anvi'o compose one."
             )
         if element_normalization is not None:
             if value_column is None:
                 raise ConfigError(
-                    f"'{element_normalization_flag}' rescales the values of the {element_type} "
-                    f"layer, but the file at '{path}' has no value column, so that layer is "
-                    f"colored by presence and has no values to rescale."
+                    f"'{element_normalization_flag}' rescales the values of the {noun} layer, but "
+                    f"the file at '{path}' has no value column, so that layer is colored by "
+                    f"presence and has no values to rescale."
                 )
             if not has_sample:
                 raise ConfigError(
@@ -3551,7 +3711,7 @@ class Mapper:
                 )
             element_normalize, element_normalization_label_template, centered = (
                 self._resolve_element_normalization(
-                    element_normalization, element_normalization_flag, element_type, value_period,
+                    element_normalization, element_normalization_flag, channel, value_period,
                     value_period_flag
                 )
             )
@@ -3567,7 +3727,7 @@ class Mapper:
                     individual_value_center = 0.0
                     center_from_normalization = True
                 if individual_colormap is None and centered:
-                    individual_colormap = DEFAULT_CENTERED_COLORMAP
+                    individual_colormap = channel['default_centered_colormap']
 
         value_center = self._resolve_value_center(
             value_center, value_center_flag, value_limits, value_limits_flag
@@ -3592,15 +3752,15 @@ class Mapper:
             ):
                 if setting is not None:
                     raise ConfigError(
-                        f"'{flag}' {verb}s the color scale spanning the values of the "
-                        f"{element_type} layer, but the file at '{path}' has no value column, so "
-                        f"that layer is colored by presence and has no scale of values to {verb}."
+                        f"'{flag}' {verb}s the color scale spanning the values of the {noun} "
+                        f"layer, but the file at '{path}' has no value column, so that layer is "
+                        f"colored by presence and has no scale of values to {verb}."
                     )
             if value_period is not None:
                 raise ConfigError(
-                    f"'{value_period_flag}' says how far the values of the {element_type} layer "
-                    f"go before they repeat, but the file at '{path}' has no value column, so that "
-                    f"layer is colored by presence and has no values."
+                    f"'{value_period_flag}' says how far the values of the {noun} layer go before "
+                    f"they repeat, but the file at '{path}' has no value column, so that layer is "
+                    f"colored by presence and has no values."
                 )
         if not has_sample:
             for setting, flag, single_scale_flag, verb in (
@@ -3610,15 +3770,15 @@ class Mapper:
                 if setting is not None:
                     raise ConfigError(
                         f"'{flag}' {verb}s the color scale shared by the maps of the individual "
-                        f"samples or groups of the {element_type} layer, but the file at '{path}' "
-                        f"has no 'sample' column, so it draws no such maps and its values take a "
-                        f"single scale. {verb.capitalize()} that one with '{single_scale_flag}'."
+                        f"samples or groups of the {noun} layer, but the file at '{path}' has no "
+                        f"'sample' column, so it draws no such maps and its values take a single "
+                        f"scale. {verb.capitalize()} that one with '{single_scale_flag}'."
                     )
         # The summary that colors the 'unified' map is the group summary with groups, and the sample
         # summary without them. A spread there ('CIRCULAR_SPREADS') gives that map a scale, a
         # colormap, and a label of its own.
         unified_summary_flag = (
-            f"--{element_type}-{'group' if group_samples is not None else 'sample'}-summary"
+            f"--{flag_stem}-{'group' if group_samples is not None else 'sample'}-summary"
         )
         unified_summary = group_summary if group_samples is not None else sample_summary
         unified_spread = has_sample and unified_summary in CIRCULAR_SPREADS
@@ -3662,14 +3822,14 @@ class Mapper:
                 if setting is not None and offsets and flag == individual_value_center_flag:
                     raise ConfigError(
                         f"'{flag}' centers the color scale of the maps of the individual samples "
-                        f"or groups of the {element_type} layer, but '{element_normalization_flag} "
+                        f"or groups of the {noun} layer, but '{element_normalization_flag} "
                         f"{element_normalization}' already puts 0 at the middle of that scale. It "
                         f"runs from {individual_limits[0]:g} to {individual_limits[1]:g}. Please "
                         f"drop '{flag}'."
                     )
                 if setting is not None:
                     raise ConfigError(
-                        f"'{flag}' centers a color scale of the {element_type} layer, but "
+                        f"'{flag}' centers a color scale of the {noun} layer, but "
                         f"'{value_period_flag}' fixes each such scale to run from 0 to "
                         f"{value_period:g}. Values that repeat have no middle to read the others "
                         f"against. Please use only one of the two options."
@@ -3678,22 +3838,22 @@ class Mapper:
         # The colormap of the per-sample/per-group scale is settled on the same footing as the limits
         # on it: what it can color at all is checked here, before any value is read, while whether
         # that context is colored by value at all waits on the summaries below.
-        individual_colormap_flag = f'--{element_type}-individual-colormap'
-        colormap_flag = f'--{element_type}-colormap'
+        individual_colormap_flag = f'--{flag_stem}-individual-colormap'
+        colormap_flag = f'--{flag_stem}-colormap'
         if individual_colormap is not None:
             if value_column is None:
                 raise ConfigError(
                     f"'{individual_colormap_flag}' colors the maps of the individual samples or "
-                    f"groups of the {element_type} layer by value, but the file at '{path}' has no "
-                    f"value column, so that layer is colored by presence rather than along a scale "
-                    f"of values. '{colormap_flag}' is what colors a presence scale."
+                    f"groups of the {noun} layer by value, but the file at '{path}' has no value "
+                    f"column, so that layer is colored by presence rather than along a scale of "
+                    f"values. '{colormap_flag}' is what colors a presence scale."
                 )
             if not has_sample:
                 raise ConfigError(
                     f"'{individual_colormap_flag}' colors the maps of the individual samples or "
-                    f"groups of the {element_type} layer, but the file at '{path}' has no 'sample' "
-                    f"column, so it draws no such maps and its values take a single scale. Color "
-                    f"that one with '{colormap_flag}'."
+                    f"groups of the {noun} layer, but the file at '{path}' has no 'sample' column, "
+                    f"so it draws no such maps and its values take a single scale. Color that one "
+                    f"with '{colormap_flag}'."
                 )
 
         if color == 'original':
@@ -3775,10 +3935,10 @@ class Mapper:
         # the period. With groups, the sample summary colors each group's map, and the group summary
         # then pools those values.
         for name, flag in (
-            (gene_aggregation, f'--{element_type}-gene-aggregation'),
-            (accession_aggregation, f'--{element_type}-accession-aggregation'),
+            (gene_aggregation, f'--{flag_stem}-gene-aggregation'),
+            (accession_aggregation, f'--{flag_stem}-accession-aggregation'),
             (sample_summary if group_samples is not None else None,
-             f'--{element_type}-sample-summary')
+             f'--{flag_stem}-sample-summary')
         ):
             if name in CIRCULAR_SPREADS:
                 raise ConfigError(
@@ -3787,12 +3947,28 @@ class Mapper:
                     f"summarize the {'groups' if group_samples is not None else 'samples'} for the "
                     f"'unified' map, with '{unified_summary_flag}'."
                 )
-        # An aggregation left unset is 'circular_mean' for values with a period, and 'sum'
-        # otherwise. A colormap of values left unset is cyclic for values with a period.
-        default_aggregation = 'circular_mean' if value_period is not None else 'sum'
+        # An aggregation left unset is 'circular_mean' for values with a period. Otherwise it is
+        # 'sum' for the fill and 'mean' for the border ('_txt_channel'). A colormap of values left
+        # unset is cyclic for values with a period. Otherwise it is the channel's default, of which
+        # only a part may be used.
+        default_aggregation = (
+            'circular_mean' if value_period is not None else channel['default_aggregation']
+        )
         # Messages that suggest a summary of values name one that the period accepts.
         suggested_summary = 'circular_mean' if value_period is not None else 'mean'
-        default_colormap = DEFAULT_PERIOD_COLORMAP if value_period is not None else 'plasma_r'
+        default_colormap = (
+            DEFAULT_PERIOD_COLORMAP if value_period is not None else channel['default_colormap']
+        )
+        default_colormap_limits = (
+            None if value_period is not None else channel['default_colormap_limits']
+        )
+
+        def _limits(default_limits):
+            # Limits given without a colormap apply to the default colormap. Where neither is given,
+            # the default colormap takes its default limits.
+            if colormap is None and colormap_limits is None:
+                return default_limits
+            return colormap_limits
         if gene_aggregation is None:
             gene_aggregation = default_aggregation
         if accession_aggregation is None:
@@ -3803,7 +3979,7 @@ class Mapper:
         # element's several accessions, which is the level the drawing colorers work at; the gene
         # aggregation is applied only where the per-accession values are built.
         aggregate = self._resolve_aggregation(
-            accession_aggregation, f'--{element_type}-accession-aggregation', value_period,
+            accession_aggregation, f'--{flag_stem}-accession-aggregation', channel, value_period,
             value_period_flag
         ) if value_column is not None else None
         # A circular aggregation is not a pandas name, so its function reduces a gene's rows. A
@@ -3811,7 +3987,7 @@ class Mapper:
         gene_reduction = gene_aggregation
         if value_column is not None:
             gene_aggregate = self._resolve_aggregation(
-                gene_aggregation, f'--{element_type}-gene-aggregation', value_period,
+                gene_aggregation, f'--{flag_stem}-gene-aggregation', channel, value_period,
                 value_period_flag
             )
             if gene_aggregation in CIRCULAR_AGGREGATIONS:
@@ -3829,17 +4005,18 @@ class Mapper:
                     'color_hexcode': color
                 }
             unified_values = self._aggregate_accession_quantities(
-                df, value_column, gene_reduction, path, element_type, undefined
+                df, value_column, gene_reduction, path, channel, undefined
             )
             if slice_by != 'gene':
-                self._warn_undefined_values(undefined, gene_aggregation, path)
+                self._warn_undefined_values(undefined, gene_aggregation, path, channel)
+            limits = _limits(default_colormap_limits)
             cmap = self._resolve_sequential_colormap(
-                colormap if colormap is not None else default_colormap, colormap_limits,
-                subject=f'{element_type}s'
+                colormap if colormap is not None else default_colormap, limits,
+                subject=channel['plural']
             )
             self._check_centered_colormap(
-                cmap, colormap_limits, value_center, value_center_flag, colormap_flag,
-                subject=f'{element_type}s'
+                cmap, limits, value_center, value_center_flag, colormap_flag,
+                subject=channel['plural']
             )
             return {
                 **common,
@@ -3870,21 +4047,21 @@ class Mapper:
         # magnitude with a value column and its presence without one.
         grouped = group_samples is not None
         sample_kind, sample_aggregate, sample_scheme = self._resolve_summary(
-            sample_summary, value_column, f'--{element_type}-sample-summary', path, value_period,
-            value_period_flag
+            sample_summary, value_column, f'--{flag_stem}-sample-summary', path, channel,
+            value_period, value_period_flag
         )
         if grouped:
             group_kind, group_aggregate, group_scheme = self._resolve_summary(
-                group_summary, value_column, f'--{element_type}-group-summary', path,
+                group_summary, value_column, f'--{flag_stem}-group-summary', path, channel,
                 value_period, value_period_flag
             )
             if group_kind == 'value' and sample_kind != 'value':
                 raise ConfigError(
-                    f"'--{element_type}-group-summary' was given as '{group_summary}', which pools "
-                    f"the values of the sample groups, but '--{element_type}-sample-summary' "
+                    f"'--{flag_stem}-group-summary' was given as '{group_summary}', which pools "
+                    f"the values of the sample groups, but '--{flag_stem}-sample-summary' "
                     f"summarizes each group's samples by presence rather than by value, so the "
                     f"groups have no values to pool. Please also set "
-                    f"'--{element_type}-sample-summary' to an aggregation such as "
+                    f"'--{flag_stem}-sample-summary' to an aggregation such as "
                     f"'{suggested_summary}'."
                 )
             unified_kind, unified_scheme = group_kind, group_scheme
@@ -3910,7 +4087,7 @@ class Mapper:
         # scheme names the option that can change it rather than the one this input refuses: the
         # group summary colors the 'unified' map of a grouped run, and the sample summary colors it
         # otherwise, exactly as 'unified_scheme' was taken above.
-        summary_flag = f"--{element_type}-{'group' if grouped else 'sample'}-summary"
+        summary_flag = f"--{flag_stem}-{'group' if grouped else 'sample'}-summary"
 
         model = {
             **common,
@@ -3951,7 +4128,7 @@ class Mapper:
             raise ConfigError(
                 f"'{element_normalization_flag}' rescales the values that color the maps of the "
                 f"individual groups, but those maps are not colored by value here: "
-                f"'--{element_type}-sample-summary' summarizes each group's samples by presence "
+                f"'--{flag_stem}-sample-summary' summarizes each group's samples by presence "
                 f"rather than by pooling their values, so each map shows how many of a group's "
                 f"samples contain an element rather than how much of it there is. Set the sample "
                 f"summary to an aggregation such as '{suggested_summary}' to color the group maps "
@@ -3986,16 +4163,16 @@ class Mapper:
                 raise ConfigError(
                     f"'{flag}' {verb}s the color scale shared by the maps of the individual "
                     f"groups, but those maps are not colored by value here: "
-                    f"'--{element_type}-sample-summary' summarizes each group's samples by "
-                    f"presence rather than by pooling their values. Set it to an aggregation such "
-                    f"as '{suggested_summary}' to color the group maps by value, or {verb} the "
+                    f"'--{flag_stem}-sample-summary' summarizes each group's samples by presence "
+                    f"rather than by pooling their values. Set it to an aggregation such as "
+                    f"'{suggested_summary}' to color the group maps by value, or {verb} the "
                     f"'unified' map's own scale with '{other_flag}'."
                 )
         if individual_colormap is not None and model['individual_mode'] != 'quantitative':
             raise ConfigError(
                 f"'{individual_colormap_flag}' colors the scale shared by the maps of the "
                 f"individual groups, but those maps are not colored along a scale of values here: "
-                f"'--{element_type}-sample-summary' summarizes each group's samples by presence "
+                f"'--{flag_stem}-sample-summary' summarizes each group's samples by presence "
                 f"rather than by pooling their values, and presence there is colored by "
                 f"'--group-colormap'. Set the sample summary to an aggregation such as "
                 f"'{suggested_summary}' to color the group maps by value, or color the 'unified' "
@@ -4021,12 +4198,12 @@ class Mapper:
                 given_flag, other_flag = value_limits_flag, individual_value_limits_flag
                 other_subject = f"the maps of the individual {'groups' if grouped else 'samples'}"
             self.run.warning(
-                f"'{given_flag}' bounds the color scale of the {element_type} layer, but "
-                f"'{other_flag}' was not given, so the scale of {other_subject} still spans "
-                f"whatever its own values happen to reach. The two are bounded separately because "
-                f"they can differ a great deal -- a summary such as a mean across samples spans "
-                f"less than the samples themselves do -- so this may well be what you intend. If "
-                f"it is not, give '{other_flag}' limits of its own."
+                f"'{given_flag}' bounds the color scale of the {noun} layer, but '{other_flag}' "
+                f"was not given, so the scale of {other_subject} still spans whatever its own "
+                f"values happen to reach. The two are bounded separately because they can differ a "
+                f"great deal -- a summary such as a mean across samples spans less than the "
+                f"samples themselves do -- so this may well be what you intend. If it is not, give "
+                f"'{other_flag}' limits of its own."
             )
 
         # Centering only one of the two scales also warns, for the same reason as the limits above.
@@ -4049,14 +4226,14 @@ class Mapper:
                 given_center = value_center
                 other_subject = f"the maps of the individual {'groups' if grouped else 'samples'}"
             self.run.warning(
-                f"'{given_flag}' centers the color scale of the {element_type} layer on "
-                f"{given_center:g}, but '{other_flag}' was not given, so the scale of "
-                f"{other_subject} is not centered. Unless '{individual_colormap_flag}' gives the "
-                f"two scales different colormaps, they use the same colormap. Its middle color "
-                f"then means {given_center:g} on one map, and a different value on the other. The "
-                f"two scales are centered separately because a summary can span much less than the "
-                f"values it summarizes. Leaving one of them uncentered may be what you intend. If "
-                f"it is not, center the other scale with '{other_flag}'."
+                f"'{given_flag}' centers the color scale of the {noun} layer on {given_center:g}, "
+                f"but '{other_flag}' was not given, so the scale of {other_subject} is not "
+                f"centered. Unless '{individual_colormap_flag}' gives the two scales different "
+                f"colormaps, they use the same colormap. Its middle color then means "
+                f"{given_center:g} on one map, and a different value on the other. The two scales "
+                f"are centered separately because a summary can span much less than the values it "
+                f"summarizes. Leaving one of them uncentered may be what you intend. If it is not, "
+                f"center the other scale with '{other_flag}'."
             )
 
         # Per-sample values: each sample's rows reduced to one value per accession by the
@@ -4065,10 +4242,10 @@ class Mapper:
         sample_values: Dict[str, Dict[str, float]] = {s: {} for s in all_sample_names}
         for sample_name, sample_rows in df.groupby('__sample'):
             sample_values[sample_name] = self._aggregate_accession_quantities(
-                sample_rows, value_column, gene_reduction, path, element_type, undefined
+                sample_rows, value_column, gene_reduction, path, channel, undefined
             )
         if slice_by != 'gene':
-            self._warn_undefined_values(undefined, gene_aggregation, path)
+            self._warn_undefined_values(undefined, gene_aggregation, path, channel)
 
         if 'quantitative' not in (model['unified_mode'], model['individual_mode']):
             # Both summaries color presence, which only happens with groups (the per-sample maps of
@@ -4077,9 +4254,9 @@ class Mapper:
             self.run.warning(
                 f"The layer from the text file at '{path}' has a value column, '{value_column}', "
                 f"but nothing on the maps is colored by it: with sample groups, the per-group maps "
-                f"are colored by '--{element_type}-sample-summary' and the 'unified' map by "
-                f"'--{element_type}-group-summary', and both of these summarize presence rather "
-                f"than value. Set '--{element_type}-sample-summary' to an aggregation, such as "
+                f"are colored by '--{flag_stem}-sample-summary' and the 'unified' map by "
+                f"'--{flag_stem}-group-summary', and both of these summarize presence rather than "
+                f"value. Set '--{flag_stem}-sample-summary' to an aggregation, such as "
                 f"'{suggested_summary}', to color the group maps by value."
             )
             return model
@@ -4101,10 +4278,15 @@ class Mapper:
         # A spread on the 'unified' map does not repeat. Its scale takes a sequential colormap. A
         # cyclic one would give the smallest and the largest spread the same color.
         model['unified_spread'] = unified_spread
-        unified_default_colormap = 'plasma_r' if unified_spread else default_colormap
+        unified_default_colormap = (
+            channel['default_colormap'] if unified_spread else default_colormap
+        )
+        unified_limits = _limits(
+            channel['default_colormap_limits'] if unified_spread else default_colormap_limits
+        )
         model['cmap'] = self._resolve_sequential_colormap(
-            colormap if colormap is not None else unified_default_colormap, colormap_limits,
-            subject=f'{element_type}s'
+            colormap if colormap is not None else unified_default_colormap, unified_limits,
+            subject=channel['plural']
         )
         if unified_spread and self._is_cyclic_colormap(model['cmap']):
             raise ConfigError(
@@ -4112,7 +4294,7 @@ class Mapper:
                 f"'{unified_summary_flag} {unified_summary}' colors the 'unified' map by how far "
                 f"the values are spread apart. A spread does not repeat. A cyclic colormap would "
                 f"give the smallest and the largest spread the same color. Please give a "
-                f"sequential colormap, such as 'plasma_r'."
+                f"sequential colormap, such as '{channel['default_colormap']}'."
             )
         # The maps of the individual samples or groups take a colormap of their own where one was
         # given, so that a 'unified' map showing a summary of another kind than the values behind it
@@ -4122,7 +4304,7 @@ class Mapper:
         # of the individual samples or groups then show points in the period. Left unset, their
         # colormap is the cyclic default.
         individual_subject = (
-            f"{element_type}s on the maps of the individual "
+            f"{channel['plural']} on the maps of the individual "
             f"{'groups' if grouped else 'samples'}"
         )
         if individual_colormap is not None:
@@ -4141,13 +4323,13 @@ class Mapper:
         # was not centered has nothing to ask.
         if model['unified_mode'] == 'quantitative':
             self._check_centered_colormap(
-                model['cmap'], colormap_limits, value_center, value_center_flag, colormap_flag,
-                subject=f"{element_type}s on the 'unified' map"
+                model['cmap'], unified_limits, value_center, value_center_flag, colormap_flag,
+                subject=f"{channel['plural']} on the 'unified' map"
             )
         if model['individual_mode'] == 'quantitative':
             self._check_centered_colormap(
                 model['individual_cmap'],
-                colormap_limits if individual_colormap is None else individual_colormap_limits,
+                unified_limits if individual_colormap is None else individual_colormap_limits,
                 individual_value_center, individual_value_center_flag,
                 colormap_flag if individual_colormap is None else individual_colormap_flag,
                 subject=individual_subject
@@ -4188,7 +4370,8 @@ class Mapper:
         group_summary: Union[str, None],
         value_colors_txt: Union[str, None],
         seed: int,
-        numeric_settings: Dict[str, object]
+        numeric_settings: Dict[str, object],
+        channel: dict
     ) -> dict:
         """
         Build the coloring model of a layer whose values are categorical ('VALUE_TYPES').
@@ -4231,11 +4414,15 @@ class Mapper:
         numeric_settings : Dict[str, object]
             The options that apply only to numeric values, keyed by flag. Each must be None.
 
+        channel : dict
+            The channel that the values color ('_txt_channel').
+
         Notes
         =====
         The other parameters are those of '_build_txt_model'. 'value_colors_txt' is a
-        kegg-value-colors-txt file, or None for the default colors. 'seed' is the seed of random
-        choices ('_choose_categorical_value').
+        kegg-value-colors-txt file, or None for the default colors of the channel. 'seed' is the
+        seed of random choices ('_choose_categorical_value'). Their keys start with the salt of the
+        channel.
 
         Returns
         =======
@@ -4243,19 +4430,21 @@ class Mapper:
             The layer model that '_map_elements' consumes.
         """
         element_type = data['element_type']
+        flag_stem = channel['flag_stem']
+        noun = channel['noun']
         df = data['df']
         has_sample = data['sample_names'] is not None
-        type_flag = f'--{element_type}-value-type'
-        colormap_flag = f'--{element_type}-colormap'
-        sample_summary_flag = f'--{element_type}-sample-summary'
-        common = self._txt_model_common(name, data, path, membership_colors_txt)
+        type_flag = f'--{flag_stem}-value-type'
+        colormap_flag = f'--{flag_stem}-colormap'
+        sample_summary_flag = f'--{flag_stem}-sample-summary'
+        common = self._txt_model_common(name, data, path, membership_colors_txt, channel)
 
         # Categorical values take colors of their own, not colors from a scale, so the options that
         # shape a scale of numbers have nothing to act on.
         for flag, setting in numeric_settings.items():
             if setting is not None:
                 raise ConfigError(
-                    f"'{flag}' works on numeric values. The values of the {element_type} layer are "
+                    f"'{flag}' works on numeric values. The values of the {noun} layer are "
                     f"categorical ('{type_flag} categorical'). They are names, and each takes a "
                     f"color of its own. Please drop '{flag}'."
                 )
@@ -4265,7 +4454,7 @@ class Mapper:
         # across the samples or groups. A rule says that a value means the same thing in each of
         # them. Presence on a group's map is always the count of its samples ('_group_map_colors').
         grouped = has_sample and group_samples is not None
-        group_summary_flag = f'--{element_type}-group-summary'
+        group_summary_flag = f'--{flag_stem}-group-summary'
 
         def _resolve_categorical_summary(summary, flag, voters):
             if summary is None:
@@ -4275,7 +4464,7 @@ class Mapper:
             if summary in SUMMARY_PRESENCE_SCHEMES:
                 return None, SUMMARY_PRESENCE_SCHEMES[summary]
             raise ConfigError(
-                f"'{flag}' was given as '{summary}'. The values of the {element_type} layer are "
+                f"'{flag}' was given as '{summary}'. The values of the {noun} layer are "
                 f"categorical ('{type_flag} categorical'). They cannot be added up or averaged "
                 f"across the {voters}. Summarize presence across the {voters} with "
                 f"{SUMMARY_PRESENCE_PHRASE}. Or choose one value across the {voters} with one of "
@@ -4301,9 +4490,9 @@ class Mapper:
         # one, a colors file of values would color nothing.
         if grouped and sample_rule is None and value_colors_txt is not None:
             raise ConfigError(
-                f"'--{element_type}-value-colors' gives a color to each categorical value. Here "
-                f"the samples are grouped, and '{sample_summary_flag}' gives no rule. Each group's "
-                f"map therefore counts the group's samples, and no map shows the values. Give "
+                f"'--{flag_stem}-value-colors' gives a color to each categorical value. Here the "
+                f"samples are grouped, and '{sample_summary_flag}' gives no rule. Each group's map "
+                f"therefore counts the group's samples, and no map shows the values. Give "
                 f"'{sample_summary_flag}' a rule, such as 'plurality_order', to color each group's "
                 f"map by a value chosen among its samples. Or drop the colors file."
             )
@@ -4320,17 +4509,16 @@ class Mapper:
             )
             option = colormap_flag if colormap is not False else f'--{element_type}-color'
             raise ConfigError(
-                f"'{option}' colors presence on the 'unified' map. Here no map of the "
-                f"{element_type} layer is colored by presence. {reason} Categorical values take "
-                f"their colors from '--{element_type}-value-colors', or from anvi'o's default "
-                f"colors."
+                f"'{option}' colors presence on the 'unified' map. Here no map of the {noun} layer "
+                f"is colored by presence. {reason} Categorical values take their colors from "
+                f"'--{flag_stem}-value-colors', or from anvi'o's default colors."
             )
 
         gene_rule = self._resolve_categorical_rule(
-            gene_aggregation, f'--{element_type}-gene-aggregation', element_type
+            gene_aggregation, f'--{flag_stem}-gene-aggregation', channel
         )
         accession_rule = self._resolve_categorical_rule(
-            accession_aggregation, f'--{element_type}-accession-aggregation', element_type
+            accession_aggregation, f'--{flag_stem}-accession-aggregation', channel
         )
 
         # The order of the values sets their colors, their place in the legend, and their drawing
@@ -4348,7 +4536,7 @@ class Mapper:
             }
         else:
             value_colors = self._resolve_value_colors(
-                df['__value'], value_colors_txt, element_type, path
+                df['__value'], value_colors_txt, channel, path
             )
             value_order = {value: position for position, value in enumerate(value_colors)}
             value_count = len(value_colors)
@@ -4372,7 +4560,8 @@ class Mapper:
             sample_values: Dict[str, Dict[str, str]] = {sample: {} for sample in all_sample_names}
             for sample, sample_rows in df.groupby('__sample'):
                 sample_values[sample] = self._select_accession_values(
-                    sample_rows, gene_rule, value_order, seed, sample, choices['gene']
+                    sample_rows, gene_rule, value_order, seed, sample, choices['gene'],
+                    channel['choice_salt']
                 )
             membership, source_accessions = self._relate_accessions_to_samples(
                 df, all_sample_names
@@ -4380,7 +4569,7 @@ class Mapper:
         else:
             sample_values = None
             unified_values = self._select_accession_values(
-                df, gene_rule, value_order, seed, '', choices['gene']
+                df, gene_rule, value_order, seed, '', choices['gene'], channel['choice_salt']
             )
             membership, source_accessions = {}, {}
 
@@ -4422,6 +4611,7 @@ class Mapper:
             'sample_rule': sample_rule,
             'group_rule': group_rule,
             'seed': seed,
+            'choice_salt': channel['choice_salt'],
             'colorbar_label': data['value_column'],
             '_element_cache': {},
             '_choices': choices
@@ -4907,10 +5097,12 @@ class Mapper:
             keys['gene_aggregate'] = None
             return keys
         period = model['value_period']
+        flag_stem = model['channel']['flag_stem']
         aggregate = model['aggregate'] if accession_aggregation is not None else (
             self._resolve_aggregation(
                 'circular_mean' if period is not None else 'mean',
-                '--reaction-accession-aggregation', period, '--reaction-value-period'
+                f'--{flag_stem}-accession-aggregation', model['channel'], period,
+                f'--{flag_stem}-value-period'
             )
         )
 
@@ -7208,6 +7400,8 @@ class Mapper:
             return _count_used(cache[element_key])
         order = layer['value_order']
         seed = layer['seed']
+        # The key of a random choice starts with the salt of the channel ('_txt_channel').
+        salt = layer['choice_salt']
         # How each choice among different values was made, keyed by its level and by the sample or
         # group it was made for. The key holds '' instead for a choice on the 'unified' map, and for
         # a choice in a layer without samples.
@@ -7218,7 +7412,8 @@ class Mapper:
             if not votes:
                 return None
             value, how = Mapper._choose_categorical_value(
-                votes, layer['accession_rule'], order, seed, ('accession', sample) + element_key
+                votes, layer['accession_rule'], order, seed,
+                salt + ('accession', sample) + element_key
             )
             if how is not None:
                 uncounted[('element', sample)] = how
@@ -7237,7 +7432,7 @@ class Mapper:
         def _choose_across(
             votes: List[str], rule: str, level: str, voter: str, key: Tuple[str, ...]
         ) -> Union[str, None]:
-            value, how = Mapper._choose_categorical_value(votes, rule, order, seed, key)
+            value, how = Mapper._choose_categorical_value(votes, rule, order, seed, salt + key)
             if how is not None:
                 uncounted[(level, voter)] = how
             return value
@@ -7433,7 +7628,8 @@ class Mapper:
         '_summarize_element_values' and '_summarize_element_individuals' read the values of
         accessions from a layer. The view gives them the values of members instead
         ('_gene_members'). A slice of a gene is then summarized as an element whose accessions are
-        its members. The view shares the rules, summaries, choices, and undefined sets of the layer.
+        its members. The view shares the rules, summaries, seed, salt, choices, and undefined sets
+        of the layer.
 
         Parameters
         ==========
@@ -7451,8 +7647,8 @@ class Mapper:
         view = {
             key: layer[key] for key in (
                 'group_samples', 'sample_aggregate', 'group_aggregate', 'value_order', 'seed',
-                'accession_rule', 'sample_rule', 'group_rule', '_choices', '_undefined_individual',
-                '_undefined_unified'
+                'choice_salt', 'accession_rule', 'sample_rule', 'group_rule', '_choices',
+                '_undefined_individual', '_undefined_unified'
             ) if key in layer
         }
         view['sample_values'] = layer['gene_sample_values']
@@ -7568,7 +7764,7 @@ class Mapper:
                         continue
                     value, _ = Mapper._choose_categorical_value(
                         votes, layer['accession_rule'], layer['value_order'], layer['seed'],
-                        ('accession', sample) + members
+                        layer['choice_salt'] + ('accession', sample) + members
                     )
                     if value is not None:
                         chosen[name] = value
@@ -8131,6 +8327,9 @@ class Mapper:
             - 'cmap': the colormap.
             - 'reverse_overlay': True to draw lower values on top of higher ones.
             - 'colorbar_label': the label of the colorbar.
+            - 'value_column': the header of the column of the values, which messages name.
+            - 'channel': the channel that the values color, the fill or the border ('_txt_channel').
+              Messages name its options.
 
             A 'quantitative' layer can also have these keys:
             - 'individual_cmap': the colormap of the individual maps. It defaults to 'cmap'.
@@ -8162,13 +8361,14 @@ class Mapper:
 
             A 'categorical' layer comes from '_build_categorical_txt_model'. It needs these keys:
             - 'value_type': 'categorical'.
-            - 'accessions', 'sample_values', 'unified_values', 'group_samples' and 'colorbar_label',
-              as for a 'quantitative' layer. The values are names.
+            - 'accessions', 'sample_values', 'unified_values', 'group_samples', 'colorbar_label',
+              'value_column', and 'channel', as for a 'quantitative' layer. The values are names.
             - 'value_color_priorities': the color and priority of each value, in the order of the
               values. It is None where no map shows the values.
-            - 'value_order', 'gene_rule', 'accession_rule', 'sample_rule', 'group_rule' and 'seed',
-              which choose one value where several meet ('_summarize_entry_individuals').
-              'sample_rule' and 'group_rule' are None where no rule was given.
+            - 'value_order', 'gene_rule', 'accession_rule', 'sample_rule', 'group_rule', 'seed', and
+              'choice_salt', which choose one value where several meet
+              ('_summarize_entry_individuals'). 'sample_rule' and 'group_rule' are None where no
+              rule was given.
             - '_element_cache' and '_choices', which keep and count those choices.
 
             A 'membership' layer needs these keys:
@@ -8652,7 +8852,7 @@ class Mapper:
                     self.run.warning(
                         f"Nothing on the maps of the individual {individual_noun}s could be "
                         f"colored by '--{layer['element_type']}-element-normalization', so those "
-                        f"maps carry no colors from the '{layer['colorbar_label']}' column of the "
+                        f"maps carry no colors from the '{layer['value_column']}' column of the "
                         f"{layer['element_type']} layer and no scale was drawn for them. Either "
                         f"none of the drawn maps contains its accessions, or the normalization is "
                         f"undefined for every map element. {cause}{unaffected_clause}"
@@ -8682,7 +8882,7 @@ class Mapper:
                 elif not layer['_unified_vals'] and not layer['_individual_vals']:
                     self.run.warning(
                         f"Nothing on the maps could be colored by the values of the "
-                        f"'{layer['colorbar_label']}' column of the {layer['element_type']} layer, "
+                        f"'{layer['value_column']}' column of the {layer['element_type']} layer, "
                         f"so no color scale was drawn for it. Either none of the drawn maps "
                         f"contains its accessions, or the aggregation reducing them is undefined "
                         f"for every map element — the standard deviation of a single value, for "
@@ -9167,7 +9367,7 @@ class Mapper:
                 )
                 self.run.warning(
                     f"The {element_type} layer from the text file at '{layer['path']}' has "
-                    f"categorical values in its '{layer['colorbar_label']}' column, but nothing on "
+                    f"categorical values in its '{layer['value_column']}' column, but nothing on "
                     f"the maps is colored by them. With groups of samples, each group's map counts "
                     f"the group's samples.{unified_clause} Give '--{element_type}-sample-summary' "
                     f"a rule, such as 'plurality_order', to color each group's map by a value "
@@ -9192,9 +9392,9 @@ class Mapper:
             )
             self.run.warning(
                 f"The {element_type} layer from the text file at '{layer['path']}' has a value "
-                f"column, '{layer['colorbar_label']}', but nothing on the maps is colored by it. "
-                f"The 'unified' map shows presence across the {noun}. The values color only the "
-                f"maps of the individual {noun}, and none are drawn here. Draw them with "
+                f"column, '{layer['value_column']}', but nothing on the maps is colored by it. The "
+                f"'unified' map shows presence across the {noun}. The values color only the maps "
+                f"of the individual {noun}, and none are drawn here. Draw them with "
                 f"'--draw-individual-files' or '--draw-grid'. Or {remedy}"
             )
         self._warn_gene_ids(layers, draw_unified_maps, draw_individuals)
@@ -9995,7 +10195,7 @@ class Mapper:
                     pathway_number if drawing is None else f"{pathway_number}, {drawing}"
                 )
                 pathway = self._get_pathway(pathway_number)
-                color_priority, _ = self._stage_map_elements(pathway_number, pathway, specs)
+                color_priority, _, _ = self._stage_map_elements(pathway_number, pathway, specs)
                 # These are the steps 'kgml.Pathway.set_color_priority' takes to derive compound
                 # colors, short of the last one. That step recolors the compounds left without a
                 # color. It is where 'kgml' refuses a derived color that is reserved.
@@ -11919,7 +12119,7 @@ class Mapper:
         pathway = self._get_pathway(pathway_number)
 
         slice_records: list = []
-        color_priority, found_entries = self._stage_map_elements(
+        color_priority, found_entries, _ = self._stage_map_elements(
             pathway_number, pathway, layer_specs, slice_records=slice_records
         )
 
@@ -11973,7 +12173,7 @@ class Mapper:
         pathway: kgml.Pathway,
         layer_specs: List[dict],
         slice_records: Union[list, None] = None
-    ) -> Tuple[dict, bool]:
+    ) -> Tuple[dict, bool, dict]:
         """
         Stage the colors of every layer on one map, without applying them.
 
@@ -12000,15 +12200,17 @@ class Mapper:
 
         Returns
         =======
-        Tuple[dict, bool]
-            Two values:
+        Tuple[dict, bool, dict]
+            Three values:
             - The '{entry_type: {graphics_type: {(fg, bg): priority}}}' dictionary, to be passed to
               'kgml.Pathway.set_color_priority'.
             - Whether any layer matched an entry of the map. A layer with 'require_color' matches
               only where it colors an entry.
+            - The borders staged on the map. Nothing stages a border yet, so this is empty.
         """
         color_priority: dict = {}
         found_entries = False
+        borders: dict = {}
         # A global or overview map without a compound layer colors compounds from the reactions that
         # touch them. A sliced entry then casts the vote of its stand-in value, or no vote where
         # that is undefined.
@@ -12042,7 +12244,7 @@ class Mapper:
                     pathway, entry, spec['element_type'], color_hexcode, priority, color_priority,
                     keep_highest_priority=spec.get('keep_highest_priority', False)
                 )
-        return color_priority, found_entries
+        return color_priority, found_entries, borders
 
     def _draw_map_element_presence(
         self,
