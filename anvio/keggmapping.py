@@ -16,6 +16,8 @@ import matplotlib.colors as mcolors
 from argparse import Namespace
 from collections import Counter
 from itertools import combinations
+# The text that pandas reads as a missing value by default, such as 'NA' and 'NaN'.
+from pandas._libs.parsers import STR_NA_VALUES
 from typing import Callable, Dict, Iterable, List, Literal, Set, Tuple, Union
 # Colorbars are drawn with Matplotlib's object-oriented API rather than 'pyplot'. Importing
 # 'pyplot' selects a backend, and with the pinned Matplotlib that happens at import time: on Linux
@@ -124,11 +126,12 @@ ANVIO_COLORMAPS: Dict[str, Tuple[str, ...]] = {
 }
 
 # Colormaps for values that repeat, such as clock times. Each has the same color at both ends. On a
-# global or overview map drawn from reactions alone, each compound takes a color from the reaction
-# lines that touch it. With one of these colormaps, the values of those lines are averaged on a
-# circle. A layer with a period ('--reaction-value-period') averages them on a circle with any
-# colormap. '_is_cyclic_colormap' matches colormap names against this list. Matplotlib's cyclic
-# colormaps are not listed. People often use one of them, 'hsv', for values that do not repeat.
+# global or overview map where no compound layer colors the fills, each compound takes a color from
+# the reaction lines that touch it. With one of these colormaps, the values of those lines are
+# averaged on a circle. A layer with a period ('--reaction-value-period') averages them on a circle
+# with any colormap. '_is_cyclic_colormap' matches colormap names against this list. Matplotlib's
+# cyclic colormaps are not listed. People often use one of them, 'hsv', for values that do not
+# repeat.
 CYCLIC_COLORMAPS: Tuple[str, ...] = (
     'clocktime',
 )
@@ -174,13 +177,14 @@ CIRCULAR_AGGREGATIONS: Tuple[str, ...] = (
 # 'CIRCULAR_AGGREGATIONS' do. A spread is a plain number, not a point in the period. Only the
 # summary that colors the 'unified' map ('--*-sample-summary' without groups or '--*-group-summary'
 # with groups) takes these names. The two kinds of map then differ ('_build_txt_model'). Each
-# individual map shows a point in the period for each element, its circular mean in one sample
-# or group. Its scale runs from 0 to the period, with the cyclic 'clocktime' by default, and its
+# individual map shows a point in the period for each element, its circular mean in one sample or
+# group. Its scale runs from 0 to the period, with the cyclic 'clocktime' by default, and its
 # colorbar is labeled with the value column's name. The 'unified' map shows the spread of those
 # points. Its scale runs from 0 to the largest spread there can be, 5.40 with a period of 24. It
-# takes a colormap that is not cyclic, 'plasma_r' by default, since the smallest and the largest
-# spread are not the same point. Its colorbar is labeled '{value} angular deviation'. On global and
-# overview maps, its compound colors are averaged as plain numbers, not on a circle.
+# takes a colormap that is not cyclic, since the smallest and the largest spread are not the same
+# point. By default this is 'plasma_r' for the fill and 'viridis' for a border ('_txt_channel'). Its
+# colorbar is labeled '{value} angular deviation'. On global and overview maps, its compound colors
+# are averaged as plain numbers, not on a circle.
 CIRCULAR_SPREADS: Tuple[str, ...] = (
     'angular_deviation',
 )
@@ -341,14 +345,29 @@ DEFAULT_VALUE_COLORS: Tuple[str, ...] = (
     '#9edae5'
 )
 
+# The colors that categorical border values take when no colors file gives them ('_txt_channel').
+# These are the colors of Matplotlib's 'Dark2' without its gray. They differ from the colors of the
+# fill, so that a color means a value of one column only. The last two are close to the default
+# compound and reaction colors, so they come last.
+DEFAULT_BORDER_VALUE_COLORS: Tuple[str, ...] = (
+    '#d95f02', '#7570b3', '#e6ab02', '#a6761d', '#1b9e77', '#e7298a', '#66a61e'
+)
+
+# The colormap of numeric border values when no colormap is named for them, and the part of it that
+# is used. A border lies between two black lines. 'viridis' is nearly black below 0.2, where a
+# border would merge with those lines. The fill takes 'plasma_r' instead, so that a color means a
+# value of one column only.
+DEFAULT_BORDER_COLORMAP = 'viridis'
+DEFAULT_BORDER_COLORMAP_LIMITS: Tuple[float, float] = (0.2, 1.0)
+
 # The rules that choose one categorical value where several meet ('_choose_categorical_value').
 # Values meet among the genes of one accession ('--reaction-gene-aggregation'), among the accessions
 # of one map element ('--*-accession-aggregation'), and among the samples on the 'unified' map
 # ('--*-sample-summary'). With groups, they meet among the samples of each group
 # ('--*-sample-summary'), and then among the groups on the 'unified' map ('--*-group-summary'). On
-# global and overview maps drawn from reactions alone, they meet among the reactions that touch a
-# compound, where the accession rule chooses. Each gene, accession, sample, group, or reaction with
-# a value gives one vote. These are the rules:
+# global and overview maps where no compound layer colors the fills, they meet among the reactions
+# that touch a compound, where the accession rule chooses. Each gene, accession, sample, group, or
+# reaction with a value gives one vote. These are the rules:
 # - 'plurality_order' takes the most common value, even with less than half of the votes. A tie
 #   goes to the value that comes first in the order of the values. That order is the row order of
 #   the colors file, or else sorted order ('_resolve_value_colors').
@@ -392,10 +411,36 @@ SLICE_SHARE_SUMMARIES: Tuple[str, ...] = ('share_mean', 'pooled_sum')
 # sample ('--reaction-slice-weight-aggregation'). 'sum' is the default.
 SLICE_WEIGHT_AGGREGATIONS: Tuple[str, ...] = ('sum', 'mean')
 
+# The options of the border of a layer ('map_kegg_pathways_txt'). 'column' names the border column
+# of the layer's text file ('--reaction-border-column', '--compound-border-column'). Every other key
+# is the border version of an option of the fill, such as 'colormap' for
+# '--reaction-border-colormap'. 'colormap_limits' and 'individual_colormap_limits' come with their
+# colormaps, and 'element_normalization_label' comes with its normalization. 'slice_by' divides the
+# rings of boxes among accessions or genes ('--reaction-border-slice-by'). A compound file has no
+# genes, so a compound border takes no 'gene_aggregation'. Compounds are never sliced, so it takes
+# no 'slice_by' either.
+BORDER_OPTIONS: Tuple[str, ...] = (
+    'column', 'value_type', 'value_colors', 'value_period', 'gene_aggregation',
+    'accession_aggregation', 'sample_summary', 'group_summary', 'colormap', 'colormap_limits',
+    'individual_colormap', 'individual_colormap_limits', 'value_limits', 'individual_value_limits',
+    'value_center', 'individual_value_center', 'element_normalization',
+    'element_normalization_label', 'slice_by'
+)
+
+# The options of a border that only the reaction layer has.
+REACTION_BORDER_OPTIONS: Tuple[str, ...] = ('gene_aggregation', 'slice_by')
+
 # The narrowest that a slice of a box may be, in points, where every slice takes the same share. A
 # box with more slices than that allows is drawn whole in one color ('_slice_cap'). Boxes on
-# standard maps are 92 points wide, so they hold up to 11 slices.
+# standard maps are 92 points wide, so they hold up to 11 slices. In a layer with a border column,
+# slices fit inside the ring, in 85 points, so a box holds up to 10 slices.
 MIN_BOX_SLICE_WIDTH = 8
+
+# The most slices that the ring of a box can be divided into where the ring is sliced on its own
+# ('--reaction-border-slice-by'). A ring with more slices is drawn whole in one color. The middle
+# line of a ring around a box of 92 by 34 points is about 238 points long, so each of 11 equal
+# slices is about 21.6 points long.
+MAX_RING_SLICES = 11
 
 # The columns of the key table that lists the slices of a layer ('_write_slice_keys'). A slice of a
 # gene lists the gene's accessions in the element, joined by commas. 'gene_id' is empty for a slice
@@ -827,7 +872,10 @@ class Mapper:
         element_type: Literal['reaction', 'compound'],
         value_type: Literal['numeric', 'categorical'] = 'numeric',
         slice_weights: Union[str, None] = None,
-        slice_by: Union[str, None] = None
+        slice_by: Union[str, None] = None,
+        border_column: Union[str, None] = None,
+        border_value_type: Literal['numeric', 'categorical'] = 'numeric',
+        border_slice_by: Union[str, None] = None
     ) -> dict:
         """
         Read and validate a per-layer draw-kegg-pathways text file into a map-layer table.
@@ -853,13 +901,26 @@ class Mapper:
 
         A column of slice weights is named, not detected ('--reaction-slice-weights'). It is left
         out of the search for the value column. It cannot be a key column, and the file still needs
-        a value column besides it. Every row needs a weight, a finite number of 0 or more. The
+        a value column besides it, unless the rings of a border column are sliced
+        ('--reaction-border-slice-by'). Every row needs a weight, a finite number of 0 or more. The
         weights are read as text first, as every column is, and then converted to numbers.
 
         Slices of genes ('--reaction-slice-by gene') need a 'gene_id' column. Every row then needs a
         gene ID. The spaces around each ID are dropped before repeated rows are looked for. Without
         slices of genes, the 'gene_id' column is read as it is. A file without a value column is not
-        checked for gene IDs, since slices of presence are refused ('_build_slice_model').
+        checked for gene IDs, since slices of presence are refused ('_build_slice_model'). Rings
+        sliced by gene ('--reaction-border-slice-by gene') need gene IDs in the same way, even in a
+        file without a value column.
+
+        A border column is named, not detected ('--reaction-border-column',
+        '--compound-border-column'). Its values color the borders of map elements, and the value
+        column still colors their fills. It is left out of the search for the value column, so a
+        file with a border column and no other value column colors its fills by presence. It cannot
+        be a key column or the column of slice weights. A row can leave its border cell empty. That
+        row has no border value, but its other columns are read as usual. A column with no border
+        value at all is refused. A file with a border column is read as text, so 'NA' is a name in
+        every column, as in a file of categorical values. A numeric border value must be a finite
+        number.
 
         Parameters
         ==========
@@ -878,6 +939,16 @@ class Mapper:
         slice_by : Union[str, None], None
             What the elements are sliced by ('SLICE_UNITS'), or None where they are not sliced.
 
+        border_column : Union[str, None], None
+            The name of the border column, or None for a file without one.
+
+        border_value_type : Literal['numeric', 'categorical'], 'numeric'
+            What the border column holds.
+
+        border_slice_by : Union[str, None], None
+            What the rings of the border are sliced by ('SLICE_UNITS'), or None where they are not
+            sliced.
+
         Returns
         =======
         dict
@@ -891,7 +962,8 @@ class Mapper:
               file of categorical values also gets a '__value' column, made the same way from the
               value column. Every column is read as text. Numbers are converted later
               ('_aggregate_accession_quantities'). With slices of genes, a file with a value column
-              also gets a '__gene_id' column, which holds each row's gene ID, made the same way.
+              also gets a '__gene_id' column, which holds each row's gene ID, made the same way. A
+              file whose rings are sliced by gene gets it too.
             - 'value_column': the name of the value column. It is None for a file without one,
               whose layer is colored by presence.
             - 'value_type': the 'value_type' argument.
@@ -899,6 +971,11 @@ class Mapper:
               None for a file without a 'sample' column.
             - 'slice_weights': the 'slice_weights' argument. A file with a column of weights also
               gets a '__slice_weight' column in 'df', which holds each row's weight as a number.
+            - 'border_column' and 'border_value_type': the arguments. A file with a border column
+              also gets a '__border_value' column in 'df'. It holds each row's border value, as a
+              number or as text without the spaces around it, and is missing where the row has none
+              ('_border_view').
+            - 'border_empty': the number of rows without a border value.
         """
         # A single-column presence file (just 'accession') is valid, so 'is_file_tab_delimited'
         # (which rejects a line with no tab) is too strict here; the 'accession'-column check below
@@ -915,11 +992,14 @@ class Mapper:
         # rows after it into one field. Every file is read with quotes left as text instead. Then
         # only a pair of quotes enclosing a whole field is dropped, as R writes it and as in a colors
         # file ('_read_value_colors_txt'). Any other quote stays in its field, where a number or a
-        # weight that holds it is refused. A missing value in a file of numbers is left missing.
+        # weight that holds it is refused. A missing value in a file of numbers is left missing. A
+        # file with a border column is read as text too, so that a border value such as 'NA' is
+        # kept.
         categorical = value_type == 'categorical'
         try:
             df = pd.read_csv(
-                path, sep='\t', dtype=str, keep_default_na=not categorical, quoting=csv.QUOTE_NONE
+                path, sep='\t', dtype=str,
+                keep_default_na=not categorical and border_column is None, quoting=csv.QUOTE_NONE
             )
         except pd.errors.EmptyDataError:
             self.progress.end()
@@ -1046,51 +1126,98 @@ class Mapper:
                     f"column. Its columns are: {', '.join(original_columns)}."
                 )
 
+        # A border column is named by an option, as the column of weights is. It must be a column of
+        # the file. It cannot be a key column, and it cannot hold the weights too.
+        border_flag = f'--{element_type}-border-column'
+        if border_column is not None:
+            if border_column in ('accession', 'gene_id', 'sample'):
+                self.progress.end()
+                raise ConfigError(
+                    f"'{border_flag}' names the '{border_column}' column of the "
+                    f"kegg-{element_type}-txt file at '{path}' as the border column. That is a key "
+                    f"column, which cannot hold border values. Name a column of values instead."
+                )
+            if border_column not in original_columns:
+                self.progress.end()
+                raise ConfigError(
+                    f"'{border_flag}' names the '{border_column}' column as the border column, but "
+                    f"the kegg-{element_type}-txt file at '{path}' has no such column. Its columns "
+                    f"are: {', '.join(original_columns)}."
+                )
+            if border_column == slice_weights:
+                self.progress.end()
+                raise ConfigError(
+                    f"'{border_flag}' and '{weights_flag}' both name the '{border_column}' column "
+                    f"of the kegg-{element_type}-txt file at '{path}'. A column can either color "
+                    f"borders or hold the weights of slices, not both. Please name another column "
+                    f"for one of them."
+                )
+
         # Auto-detect the value column: the single column that is not a key column ('accession',
         # 'gene_id' for reactions, or 'sample'). None means presence coloring; one means
         # quantitative coloring by that column (its header labels the colorbar); two or more is
-        # ambiguous. A column of slice weights is left out of the search.
-        key_columns = {'accession', 'gene_id', 'sample', slice_weights} - {None}
+        # ambiguous. A column of slice weights and a border column are left out of the search.
+        key_columns = {'accession', 'gene_id', 'sample', slice_weights, border_column} - {None}
         value_columns = [column for column in original_columns if column not in key_columns]
         if len(value_columns) > 1:
             self.progress.end()
-            # A column of weights not named by the option is the likely cause in a reaction file.
+            # A column of weights or a border column not named by its option is a likely cause.
             hint = (
                 f" If one of these columns holds the weights of slices, name it with "
                 f"'{weights_flag}'." if element_type == 'reaction' and slice_weights is None else ""
             )
+            if border_column is None:
+                hint += f" If one of them holds border values, name it with '{border_flag}'."
             raise ConfigError(
                 f"The kegg-{element_type}-txt file at '{path}' has more than one candidate value "
                 f"column, so it is ambiguous which to color elements by: "
                 f"{', '.join(value_columns)}. A file may have at most one value column (any column "
                 f"that is not a key column): include zero to color by presence/absence, or one to "
-                f"color by that numeric value.{hint}"
+                f"color by that value.{hint}"
             )
         value_column = value_columns[0] if value_columns else None
-        # Slices are colored by their values, so a file with weights needs a value column too.
-        if slice_weights is not None and value_column is None:
+        # Slices are colored by their values, so a file with weights needs a value column too. The
+        # weights can instead size the slices of the rings of a border column.
+        sliced_border = border_column is not None and border_slice_by is not None
+        if slice_weights is not None and value_column is None and not sliced_border:
+            others = 'its key columns, its border column,' if border_column is not None else (
+                'its key columns'
+            )
+            remedy = f"Add a value column, or drop '{weights_flag}'" if border_column is None else (
+                f"Add a value column, slice only the rings of the border column with "
+                f"'--{element_type}-border-slice-by' in place of '--{element_type}-slice-by', or "
+                f"drop '{weights_flag}'"
+            )
             self.progress.end()
             raise ConfigError(
                 f"'{weights_flag}' names the '{slice_weights}' column of the "
                 f"kegg-{element_type}-txt file at '{path}' as the column of slice weights. The "
-                f"file has no column besides its key columns and this one, so it has no values to "
-                f"color the slices by. Add a value column, or drop '{weights_flag}' to color equal "
-                f"slices by '{slice_weights}'."
+                f"file has no column besides {others} and this one, so it has no values to color "
+                f"the slices by. {remedy} to color equal slices by '{slice_weights}'."
             )
 
         # Slices of genes are named by the 'gene_id' column, so every row needs a gene ID. Blanks
         # around an ID are dropped. Without slices of genes, the column is read as it is. A file
         # without a value column is not checked here. Its layer shows presence, and slicing it is
-        # refused for that reason first ('_build_slice_model').
-        if slice_by == 'gene' and value_column is not None:
+        # refused for that reason first ('_build_slice_model'). Rings sliced by gene need gene IDs
+        # too, even in a file without a value column. The messages name the option of the rings only
+        # where the fill is not sliced by gene.
+        fill_genes = slice_by == 'gene' and value_column is not None
+        ring_genes = sliced_border and border_slice_by == 'gene'
+        if fill_genes or ring_genes:
+            if fill_genes:
+                gene_flag = f'--{element_type}-slice-by'
+                gives = "gives each gene a slice of its own"
+            else:
+                gene_flag = f'--{element_type}-border-slice-by'
+                gives = "gives each gene its own slice of a ring"
             if 'gene_id' not in df.columns:
                 self.progress.end()
                 raise ConfigError(
-                    f"'--{element_type}-slice-by gene' gives each gene a slice of its own, but the "
-                    f"kegg-{element_type}-txt file at '{path}' has no 'gene_id' column. Its "
-                    f"columns are: {', '.join(original_columns)}. Add a 'gene_id' column that "
-                    f"names the gene of each row, or give '--{element_type}-slice-by accession' "
-                    f"instead."
+                    f"'{gene_flag} gene' {gives}, but the kegg-{element_type}-txt file at '{path}' "
+                    f"has no 'gene_id' column. Its columns are: {', '.join(original_columns)}. Add "
+                    f"a 'gene_id' column that names the gene of each row, or give '{gene_flag} "
+                    f"accession' instead."
                 )
             gene_id = df['gene_id'].fillna('').astype(str).str.strip()
             blank = gene_id == ''
@@ -1098,9 +1225,8 @@ class Mapper:
                 bad = sorted(set(df.loc[blank, '__accession']))[:5]
                 self.progress.end()
                 raise ConfigError(
-                    f"'--{element_type}-slice-by gene' gives each gene a slice of its own, so "
-                    f"every row of the kegg-{element_type}-txt file at '{path}' needs a gene ID in "
-                    f"its 'gene_id' column. {int(blank.sum())} "
+                    f"'{gene_flag} gene' {gives}, so every row of the kegg-{element_type}-txt file "
+                    f"at '{path}' needs a gene ID in its 'gene_id' column. {int(blank.sum())} "
                     f"{'rows have' if blank.sum() > 1 else 'row has'} none. The accessions with "
                     f"such rows include these: {', '.join(bad)}."
                 )
@@ -1149,6 +1275,42 @@ class Mapper:
                 )
             df = df.assign(__slice_weight=weights.astype(float))
 
+        # A row can leave its border cell empty. It then has no border value, and its other columns
+        # are read as usual. An empty cell is read as missing, or as empty text in a file of
+        # categorical values. A numeric border value must be a finite number. A border column with
+        # no value at all colors nothing, so it is refused.
+        border_empty = 0
+        if border_column is not None:
+            border_text = df[border_column].fillna('').astype(str).str.strip()
+            has_border = border_text != ''
+            if not has_border.any():
+                self.progress.end()
+                raise ConfigError(
+                    f"The border column '{border_column}' of the kegg-{element_type}-txt file at "
+                    f"'{path}' ('{border_flag}') has no values. Every cell of it is empty, so it "
+                    f"would color no border. Name a column that holds border values."
+                )
+            border_empty = int((~has_border).sum())
+            if border_value_type == 'categorical':
+                border_values = border_text.where(has_border, np.nan)
+            else:
+                border_values = pd.to_numeric(border_text.where(has_border, ''), errors='coerce')
+                invalid = has_border & ~np.isfinite(border_values)
+                if invalid.any():
+                    bad = sorted(set(df.loc[invalid, '__accession']))[:5]
+                    self.progress.end()
+                    raise ConfigError(
+                        f"The border column '{border_column}' of the kegg-{element_type}-txt file "
+                        f"at '{path}' holds numbers, so each of its values must be a finite "
+                        f"number. {int(invalid.sum())} "
+                        f"{'rows have' if invalid.sum() > 1 else 'row has'} something else, such "
+                        f"as text or 'NA'. Their accessions include these: {', '.join(bad)}. A row "
+                        f"without a border value can leave its cell empty. If the column holds "
+                        f"categorical values, such as names, read it as such with "
+                        f"'--{element_type}-border-value-type categorical'."
+                    )
+            df = df.assign(__border_value=border_values)
+
         # An optional 'sample' column, if present, must be filled in every row, since the sample is
         # the origin used to color elements across samples.
         sample_names = None
@@ -1170,9 +1332,10 @@ class Mapper:
         # refused rather than combined by a rule the user did not choose. What counts as "the same
         # thing" is the file's own key: a reaction file naming genes describes one gene's value for
         # one accession, so several genes carrying one accession are not repeats and remain the
-        # ordinary case. Slices of genes read the gene IDs without the spaces around them.
-        if value_column is not None:
-            gene_column = '__gene_id' if slice_by == 'gene' else 'gene_id'
+        # ordinary case. Slices of genes read the gene IDs without the spaces around them. The rule
+        # also applies to a file with a border column, even one that colors its fills by presence.
+        if value_column is not None or border_column is not None:
+            gene_column = '__gene_id' if '__gene_id' in df.columns else 'gene_id'
             key_columns = [
                 column for column in ('__accession', gene_column, '__sample')
                 if column in df.columns
@@ -1190,9 +1353,19 @@ class Mapper:
                 # Rows that differ only in the spaces around their gene IDs look different in the
                 # file, so the message says why they repeat.
                 stripped = (
-                    f" With '--{element_type}-slice-by gene', the spaces around gene IDs are "
-                    f"dropped before rows are compared." if slice_by == 'gene' else ''
+                    f" With '{gene_flag} gene', the spaces around gene IDs are dropped before rows "
+                    f"are compared." if gene_column == '__gene_id' else ''
                 )
+                if value_column is None:
+                    raise ConfigError(
+                        f"Each row of the kegg-{element_type}-txt file at '{path}' can have a "
+                        f"border value in the '{border_column}' column, so every row must describe "
+                        f"a different thing. {int(duplicated.sum())} rows repeat a combination of "
+                        f"{described}. The first repeated "
+                        f"{'combinations are' if len(key_columns) > 1 else 'accessions are'}: "
+                        f"{shown}. Each of these can have only one border value. Please keep one "
+                        f"row for each.{stripped}"
+                    )
                 if value_type == 'categorical':
                     raise ConfigError(
                         f"Every row of the kegg-{element_type}-txt file at '{path}' must describe "
@@ -1222,13 +1395,50 @@ class Mapper:
             'value_column': value_column,
             'value_type': value_type,
             'sample_names': sample_names,
-            'slice_weights': slice_weights
+            'slice_weights': slice_weights,
+            'border_column': border_column,
+            'border_value_type': border_value_type,
+            'border_empty': border_empty
+        }
+
+    @staticmethod
+    def _border_view(data: dict) -> dict:
+        """
+        Make a reader result whose values are the border values of a file with a border column.
+
+        The model of the border is built from this view by the same method as the model of the fill
+        ('_build_txt_model'). The view holds only the rows with a border value. In these rows, the
+        border column holds the border value, and so does '__value', as text for categorical values.
+        The view names the border column as its value column.
+
+        Parameters
+        ==========
+        data : dict
+            The '_read_element_txt' result of a file with a border column.
+
+        Returns
+        =======
+        dict
+            A reader result of the same form, with the border values in place of the fill values.
+            The names of the samples are those of the whole file.
+        """
+        border_column = data['border_column']
+        df = data['df']
+        rows = df[df['__border_value'].notna()]
+        values = rows['__border_value']
+        rows = rows.assign(**{border_column: values, '__value': values.astype(str)})
+        return {
+            **data,
+            'df': rows,
+            'value_column': border_column,
+            'value_type': data['border_value_type']
         }
 
     @staticmethod
     def _resolve_aggregation(
         aggregation: str,
         flag: str,
+        channel: dict,
         period: Union[float, None] = None,
         period_flag: Union[str, None] = None
     ) -> Callable:
@@ -1258,6 +1468,10 @@ class Mapper:
         flag : str
             The command-line flag the name comes from, used in an error message.
 
+        channel : dict
+            The channel of the values ('_txt_channel'). It names the column and the flag of the
+            value type in an error message.
+
         period : Union[float, None], None
             The period after which the layer's values repeat, or None if they do not repeat.
 
@@ -1270,15 +1484,13 @@ class Mapper:
             Reduces a sequence of values to a single value.
         """
         # A categorical rule chooses among names rather than reducing numbers. A layer of
-        # categorical values resolves its rules elsewhere ('_resolve_categorical_rule'). The flags
-        # of a layer start with its element type.
+        # categorical values resolves its rules elsewhere ('_resolve_categorical_rule').
         if aggregation in CATEGORICAL_RULES:
-            element_type = flag.split('-')[2]
             raise ConfigError(
                 f"'{flag}' was given as '{aggregation}', which chooses one categorical value among "
                 f"several. The values here are numbers, so they are reduced with an aggregation, "
-                f"such as 'sum' or 'mean'. To read the value column as categorical values, give "
-                f"'--{element_type}-value-type categorical'."
+                f"such as 'sum' or 'mean'. To read the {channel['column']} as categorical values, "
+                f"give '--{channel['flag_stem']}-value-type categorical'."
             )
         if aggregation in CIRCULAR_AGGREGATIONS + CIRCULAR_SPREADS:
             if period is None:
@@ -1336,6 +1548,11 @@ class Mapper:
         if probe is None or not np.isfinite(probe) or not np.isclose(
             probe, grouped_probe, rtol=1e-12, atol=0
         ):
+            # A border takes no presence summaries ('_resolve_summary'), so its message names none.
+            presence_note = (
+                f" Note that the sample and group summary options additionally take "
+                f"{SUMMARY_PRESENCE_PHRASE} to summarize presence rather than value."
+            ) if channel['presence'] else ""
             raise ConfigError(
                 f"'{flag}' was given as '{aggregation}', which either does not reduce values to a "
                 f"single number or does not reduce them the same way at every level. Proven "
@@ -1344,9 +1561,8 @@ class Mapper:
                 f"aggregation that reduces a series to one number, such as 'var' or 'sem', also "
                 f"works. Names that transform rather than reduce, like 'cumsum', cannot be used; "
                 f"neither can names offered only by a grouping, like 'first', nor names meaning "
-                f"different things for a list of values and for a table, like 'idxmax'. Note that "
-                f"the sample and group summary options additionally take "
-                f"{SUMMARY_PRESENCE_PHRASE} to summarize presence rather than value."
+                f"different things for a list of values and for a table, like 'idxmax'."
+                f"{presence_note}"
             )
         return aggregate
 
@@ -1553,7 +1769,7 @@ class Mapper:
     def _resolve_element_normalization(
         normalization: str,
         flag: str,
-        element_type: str,
+        channel: dict,
         period: Union[float, None] = None,
         period_flag: Union[str, None] = None
     ) -> Tuple[Callable, str, bool]:
@@ -1589,8 +1805,9 @@ class Mapper:
         flag : str
             The command-line flag the name comes from, used in error messages.
 
-        element_type : str
-            'reaction' or 'compound', naming the layer in error messages.
+        channel : dict
+            The channel of the values ('_txt_channel'). It names the flag of the sample summary in
+            an error message.
 
         period : Union[float, None], None
             The period after which the layer's values repeat, or None if they do not repeat. Values
@@ -1639,8 +1856,8 @@ class Mapper:
                 f"anvi'o's normalizations ({ELEMENT_NORMALIZATION_PHRASE}), or the name of any "
                 f"pandas Series method that transforms the values it is given into one new value "
                 f"each, such as 'abs'. A name that reduces a set of values to a single number, "
-                f"such as 'mean', belongs to '--{element_type}-sample-summary' instead, which is "
-                f"what summarizes samples."
+                f"such as 'mean', belongs to '--{channel['flag_stem']}-sample-summary' instead, "
+                f"which is what summarizes samples."
             )
 
         if not hasattr(pd.Series(dtype=float), normalization):
@@ -1789,7 +2006,13 @@ class Mapper:
             accession: value for accession, value in values.items() if accession not in dropped
         }
 
-    def _warn_undefined_values(self, undefined: Set[str], aggregation: str, path: str) -> None:
+    def _warn_undefined_values(
+        self,
+        undefined: Set[str],
+        aggregation: str,
+        path: str,
+        channel: dict
+    ) -> None:
         """
         Report the accessions of one layer whose aggregated value was undefined.
 
@@ -1803,15 +2026,18 @@ class Mapper:
 
         path : str
             Path to the layer's text file, for the message.
+
+        channel : dict
+            The channel of the values ('_txt_channel'), for the message.
         """
         if not undefined:
             return
         examples = ', '.join(sorted(undefined)[:5])
         self.run.warning(
-            f"Reducing the values of the text file at '{path}' with '{aggregation}' was undefined "
-            f"for {len(undefined)} accession(s), including these: {examples}. "
+            f"Reducing the {channel['values']} of the text file at '{path}' with '{aggregation}' "
+            f"was undefined for {len(undefined)} accession(s), including these: {examples}. "
             f"{Mapper._undefined_cause(aggregation)} These accessions are treated as having no "
-            f"value, so the map elements that depend on them are left uncolored."
+            f"value, so the map elements that depend on them {channel['consequence_plural']}."
         )
 
     @staticmethod
@@ -1863,7 +2089,8 @@ class Mapper:
         is undefined in a group also changes the 'unified' map where the group summary pools values.
         A layer sliced by accession is summarized one accession at a time, so its report counts
         accessions. A layer sliced by gene is summarized one slice of a gene at a time. Its report
-        counts these slices, and a gene with the same rows in two elements counts once.
+        counts these slices, and a gene with the same rows in two elements counts once. A border
+        with sliced rings is reported in the same way, in terms of its rings.
 
         Parameters
         ==========
@@ -1876,36 +2103,58 @@ class Mapper:
         draw_individual_maps : bool
             True if the maps of the individual samples or groups are drawn.
         """
-        element_type = layer['element_type']
+        channel = layer['channel']
+        flag_stem = channel['flag_stem']
         grouped = layer['group_samples'] is not None
         # A sliced layer summarizes each accession or gene of an element on its own
         # ('_slice_result'). A slice whose summary is undefined is not drawn. The other slices of
-        # the element then take its whole width or length.
+        # the element then take its whole width or length. A slice of a ring without a value takes
+        # no bands where the rings are aligned with the fill. The other slices of a ring sliced on
+        # its own take its length.
         sliced = layer.get('slice_by') is not None
+        slice_noun, value_noun = 'slice', 'value'
+        group_effect = "It is not drawn on that group's map."
+        unified_effect = "These slices are not drawn on the 'unified' map."
+        others = " The other slices of an element take its whole width or length."
+        if channel['role'] == 'border' and layer.get('slice_layout') == 'aligned':
+            slice_noun, value_noun = 'slice of a ring', 'border value'
+            group_effect = (
+                "On that group's map, its column takes no bands, or it does not count toward a "
+                "ring drawn whole."
+            )
+            unified_effect = (
+                "On the 'unified' map, their columns take no bands, or they do not count toward "
+                "rings drawn whole."
+            )
+            others = ""
+        elif channel['role'] == 'border':
+            slice_noun, value_noun = 'slice of a ring', 'border value'
+            unified_effect = "These slices of rings are not drawn on the 'unified' map."
+            others = " The other slices of a ring take its length."
         reports = []
         if grouped:
             consequences = []
             if draw_individual_maps:
                 consequences.append(
-                    "It is not drawn on that group's map." if sliced
-                    else "It is left uncolored on that group's map."
+                    group_effect if sliced
+                    else f"It {channel['consequence']} on that group's map."
                 )
             if draw_unified_maps and layer['group_aggregate'] is not None:
                 consequences.append(
-                    "The 'unified' map pools only the groups where the slice has a value." if sliced
-                    else (
-                        "The 'unified' map pools only the groups where the element has a value. An "
-                        "element with no value in any group is left uncolored there."
+                    f"The 'unified' map pools only the groups where the {slice_noun} has a "
+                    f"{value_noun}." if sliced else (
+                        f"The 'unified' map pools only the groups where the element has a value. "
+                        f"An element with no value in any group {channel['consequence']} there."
                     )
                 )
             if consequences:
                 reports.append((
-                    layer['_undefined_individual'], f'--{element_type}-sample-summary',
+                    layer['_undefined_individual'], f'--{flag_stem}-sample-summary',
                     layer['sample_summary'], ' in at least one group',
                     ' '.join(
                         [
-                            "A slice has no value in a group where its summary is undefined."
-                            if sliced else
+                            f"A {slice_noun} has no {value_noun} in a group where its summary is "
+                            f"undefined." if sliced else
                             "An element has no value in a group where its summary is undefined."
                         ]
                         + consequences
@@ -1914,10 +2163,10 @@ class Mapper:
         if draw_unified_maps:
             reports.append((
                 layer['_undefined_unified'],
-                f"--{element_type}-{'group' if grouped else 'sample'}-summary",
+                f"--{flag_stem}-{'group' if grouped else 'sample'}-summary",
                 layer['group_summary'] if grouped else layer['sample_summary'], '',
-                "These slices are not drawn on the 'unified' map." if sliced
-                else "These elements are left uncolored on the 'unified' map."
+                unified_effect if sliced
+                else f"These elements {channel['consequence_plural']} on the 'unified' map."
             ))
         for undefined, flag, summary, where, consequence in reports:
             if not undefined:
@@ -1931,8 +2180,7 @@ class Mapper:
                 self.run.warning(
                     f"The summary '{flag} {summary}' was undefined{where} for {len(undefined)} "
                     f"slice(s) of genes. Their genes include these: {', '.join(genes[:5])}. "
-                    f"{Mapper._undefined_cause(summary, 'a summary')} {consequence} The other "
-                    f"slices of an element take its whole width or length."
+                    f"{Mapper._undefined_cause(summary, 'a summary')} {consequence}{others}"
                 )
                 continue
             examples = ', '.join(sorted({
@@ -1942,8 +2190,7 @@ class Mapper:
                 self.run.warning(
                     f"The summary '{flag} {summary}' was undefined{where} for {len(undefined)} "
                     f"accession(s), which include these: {examples}. "
-                    f"{Mapper._undefined_cause(summary, 'a summary')} {consequence} The other "
-                    f"slices of an element take its whole width or length."
+                    f"{Mapper._undefined_cause(summary, 'a summary')} {consequence}{others}"
                 )
                 continue
             self.run.warning(
@@ -1982,8 +2229,9 @@ class Mapper:
         ('_slicer'), and a choice without a value can leave a slice undrawn. With slices of genes,
         it also chooses the value of a gene among its rows for the accessions of an element. The
         genes of an accession are then never reduced, so the choices among them are not reported.
-        These choices are also reported in a warning that says what they change in this run. A layer
-        whose values color no drawn map is not reported.
+        The same holds for the slices of rings of a border ('_ring_result'). These choices are also
+        reported in a warning that says what they change in this run. A layer whose values color no
+        drawn map is not reported.
 
         Parameters
         ==========
@@ -2022,7 +2270,7 @@ class Mapper:
                 or (draw_unified_maps and layer['unified_mode'] == 'categorical')
             ):
                 continue
-            element_type = layer['element_type']
+            channel = layer['channel']
             has_samples = layer['sample_values'] is not None
             grouped = layer['group_samples'] is not None
             in_sample = ' in a sample' if has_samples else ''
@@ -2167,7 +2415,96 @@ class Mapper:
                         " It does not vote across the samples. An element is left uncolored on the "
                         "'unified' map if it has no value in any sample."
                     )
-            if sliced:
+            if channel['role'] == 'border' and sliced:
+                # With sliced rings, the rules choose the border values of the slices of rings, and
+                # the stand-in values of rings drawn whole ('_ring_result'). A slice without a value
+                # shows no border. A ring drawn whole without a stand-in value shows none either.
+                in_that_sample = ' in that sample' if has_samples else ''
+                if layer.get('slice_layout') == 'aligned':
+                    slice_effect = "the column of such a slice shows no bands"
+                else:
+                    slice_effect = (
+                        "such a slice of a ring is not drawn, and the other slices of its ring "
+                        "take its length"
+                    )
+                ring_effect = "shows no border where its ring is drawn whole"
+                gene_consequence = (
+                    f"Such an accession has no border value{in_that_sample}. Its slice of a ring "
+                    f"shows no border, and it does not vote for the stand-in value of a ring."
+                )
+                if gene_sliced:
+                    element_consequence = (
+                        "With rings sliced by gene, this rule chooses the border value of a gene "
+                        "with rows for two or more accessions of an element, and the stand-in "
+                        "value of a ring."
+                    )
+                    subject = 'a gene or element'
+                    gene_effect = "the slice of such a gene shows no border"
+                else:
+                    element_consequence = (
+                        "With sliced rings, this rule chooses only the stand-in value of a ring."
+                    )
+                    subject = 'an element'
+                    gene_effect = None
+                if not has_samples:
+                    element_consequence += (
+                        f" {gene_effect.capitalize()}." if gene_effect else ""
+                    ) + f" Such an element {ring_effect}."
+                elif grouped:
+                    element_consequence += (
+                        f" Such {subject} has no border value in that sample. It does not vote "
+                        f"among the samples of its group."
+                    )
+                else:
+                    element_consequence += f" Such {subject} has no border value in that sample."
+                    if draw_individual_maps:
+                        element_consequence += (
+                            f" On the map of that sample{if_drawn}, "
+                            f"{gene_effect + ', and such an element' if gene_effect else 'it'} "
+                            f"{ring_effect}."
+                        )
+                    if unified_votes:
+                        element_consequence += " It does not vote across the samples."
+                group_consequence = (
+                    "Such a slice of a ring or map element has no border value in that group."
+                )
+                if draw_individual_maps:
+                    group_consequence += (
+                        f" On the map of that group{if_drawn}, {slice_effect}. Such an element "
+                        f"{ring_effect}."
+                    )
+                if unified_votes:
+                    group_consequence += " It does not vote across the groups."
+                unified_consequence = f"On that map, {slice_effect}. Such an element {ring_effect}."
+                pooled_what = 'slice(s) of rings or map element(s)'
+            elif channel['role'] == 'border':
+                # A border shows values only, so an element without a border value shows no border.
+                # Its fill does not change.
+                in_that_sample = ' in that sample' if has_samples else ''
+                gene_consequence = (
+                    f"Such an accession has no border value{in_that_sample}. It does not vote in "
+                    f"its map elements. An element without votes shows no border."
+                )
+                if not has_samples:
+                    element_consequence = "Such an element shows no border on its map."
+                else:
+                    element_consequence = "Such an element has no border value in that sample."
+                    if grouped:
+                        element_consequence += " It does not vote among the samples of its group."
+                    elif draw_individual_maps:
+                        element_consequence += (
+                            f" It shows no border on the map of that sample{if_drawn}."
+                        )
+                    if not grouped and unified_votes:
+                        element_consequence += " It does not vote across the samples."
+                group_consequence = "Such an element has no border value in that group."
+                if draw_individual_maps:
+                    group_consequence += f" It shows no border on the map of that group{if_drawn}."
+                if unified_votes:
+                    group_consequence += " It does not vote across the groups."
+                unified_consequence = "Such an element shows no border on the 'unified' map."
+                pooled_what = 'map element(s)'
+            elif sliced:
                 # The samples and groups choose the values of slices, and the stand-in values of
                 # elements.
                 group_consequence = "Such a slice or map element has no value in that group."
@@ -2249,7 +2586,7 @@ class Mapper:
                 rule = layer[rule_key]
                 made = ', '.join(f"{counts[how]} {phrase}" for how, phrase in ways if counts[how])
                 self.run.info(
-                    f"Choices of a {element_type} value among {voters}",
+                    f"Choices of a {channel['noun']} value among {voters}",
                     f"{total} with '{rule}' ({made})"
                 )
                 if not counts['none']:
@@ -2259,9 +2596,9 @@ class Mapper:
                     "two or more values tied for the most votes"
                 )
                 self.run.warning(
-                    f"'--{element_type}-{flag_suffix} {rule}' gave no value to {counts['none']} "
-                    f"{what}, since {reason}. {consequence} To give every one of them a value, "
-                    f"choose 'plurality_order' or 'plurality_random' instead."
+                    f"'--{channel['flag_stem']}-{flag_suffix} {rule}' gave no value to "
+                    f"{counts['none']} {what}, since {reason}. {consequence} To give every one of "
+                    f"them a value, choose 'plurality_order' or 'plurality_random' instead."
                 )
 
     def _aggregate_accession_quantities(
@@ -2270,7 +2607,7 @@ class Mapper:
         value_column: str,
         aggregation: Union[str, Callable],
         path: str,
-        element_type: str,
+        channel: dict,
         undefined: Set[str] = None
     ) -> Dict[str, float]:
         """
@@ -2299,8 +2636,9 @@ class Mapper:
         path : str
             Path to the layer's text file, used in error messages.
 
-        element_type : str
-            'reaction' or 'compound', used in an error message.
+        channel : dict
+            The channel of the values ('_txt_channel'). It names the column and the flag of the
+            value type in an error message.
 
         undefined : Set[str], None
             Accessions whose aggregated value is undefined are added to this set.
@@ -2317,18 +2655,22 @@ class Mapper:
         if invalid.any():
             bad_accessions = sorted(set(rows_df.loc[invalid, '__accession']))
             # A column of names is likelier a column of categorical values than a column of numbers
-            # with typos in it. Pandas reads a blank cell as a missing value, not as text.
+            # with typos in it. Pandas reads a blank cell, and text such as 'NA', as a missing
+            # value, not as text. A file with a border column is read as text ('_read_element_txt').
+            # Such text then names no category either.
             text = rows_df.loc[invalid & numeric_values.isna(), value_column].dropna()
+            if '__border_value' in rows_df.columns:
+                text = text[~text.isin(STR_NA_VALUES)]
             categorical_clause = (
                 f" If the column holds categorical values, such as names, read it as such with "
-                f"'--{element_type}-value-type categorical'."
+                f"'--{channel['flag_stem']}-value-type categorical'."
             ) if not text.empty else ""
             self.progress.end()
             raise ConfigError(
-                f"The '{value_column}' value column of the text file at '{path}' must contain a "
-                f"finite number in every row for elements to be colored quantitatively. However, "
-                f"{int(invalid.sum())} {'rows have' if invalid.sum() > 1 else 'row has'} a blank, "
-                f"non-numeric, or infinite value, including these accessions: "
+                f"The '{value_column}' {channel['column']} of the text file at '{path}' must "
+                f"contain a finite number in every row for elements to be colored quantitatively. "
+                f"However, {int(invalid.sum())} {'rows have' if invalid.sum() > 1 else 'row has'} "
+                f"a blank, non-numeric, or infinite value, including these accessions: "
                 f"{', '.join(bad_accessions[:5])}.{categorical_clause}"
             )
         valued_df = rows_df.assign(__quantitative_value=numeric_values)
@@ -2430,6 +2772,7 @@ class Mapper:
         value_column: Union[str, None],
         flag: str,
         path: str,
+        channel: dict,
         period: Union[float, None] = None,
         period_flag: Union[str, None] = None
     ) -> Tuple[Literal['value', 'presence'], Union[Callable, None], Union[str, None]]:
@@ -2461,6 +2804,10 @@ class Mapper:
         path : str
             Path to the layer's text file, used in an error message.
 
+        channel : dict
+            The channel of the values ('_txt_channel'). It names the flag of the value type in an
+            error message.
+
         period : Union[float, None], None
             The period after which the layer's values repeat, or None ('_resolve_aggregation').
 
@@ -2475,15 +2822,21 @@ class Mapper:
         """
         if summary is None:
             return 'presence', None, None
+        voters = 'groups' if flag.endswith('-group-summary') else 'samples'
+        # A border shows values only. Its fill already shows presence.
+        if summary in SUMMARY_PRESENCE_SCHEMES and not channel['presence']:
+            raise ConfigError(
+                f"'{flag}' was given as '{summary}', which summarizes presence across the "
+                f"{voters}. A border shows values only, and the fill already shows presence. Give "
+                f"an aggregation, such as '{'mean' if period is None else 'circular_mean'}', to "
+                f"pool the border values, or drop '{flag}'."
+            )
         if summary in SUMMARY_PRESENCE_SCHEMES:
             return 'presence', None, SUMMARY_PRESENCE_SCHEMES[summary]
         # A layer of categorical values resolves its summary elsewhere
         # ('_build_categorical_txt_model'), so a categorical rule here is given to a layer without
-        # categorical values. The message names what the user can do, which depends on the file. The
-        # flags of a layer start with its element type.
+        # categorical values. The message names what the user can do, which depends on the file.
         if summary in CATEGORICAL_RULES:
-            element_type = flag.split('-')[2]
-            voters = 'groups' if flag.endswith('-group-summary') else 'samples'
             if value_column is None:
                 raise ConfigError(
                     f"'{flag}' was given as '{summary}', which chooses one categorical value "
@@ -2493,8 +2846,9 @@ class Mapper:
                 )
             raise ConfigError(
                 f"'{flag}' was given as '{summary}', which chooses one categorical value across "
-                f"the {voters}. The values of the text file at '{path}' are numbers. To read them "
-                f"as categorical values, give '--{element_type}-value-type categorical'."
+                f"the {voters}. The {channel['values']} of the text file at '{path}' are numbers. "
+                f"To read them as categorical values, give '--{channel['flag_stem']}-value-type "
+                f"categorical'."
             )
         if value_column is None:
             raise ConfigError(
@@ -2503,7 +2857,8 @@ class Mapper:
                 f"values to pool. Summarize presence with {SUMMARY_PRESENCE_PHRASE} instead, or "
                 f"add a value column to the file."
             )
-        return 'value', Mapper._resolve_aggregation(summary, flag, period, period_flag), None
+        aggregate = Mapper._resolve_aggregation(summary, flag, channel, period, period_flag)
+        return 'value', aggregate, None
 
     @staticmethod
     def _sort_values(values: Iterable[str]) -> List[str]:
@@ -2672,15 +3027,16 @@ class Mapper:
         self,
         values: Iterable[str],
         value_colors_txt: Union[str, None],
-        element_type: str,
+        channel: dict,
         path: str
     ) -> Dict[str, str]:
         """
         Put the categorical values of a layer in order, and give each value a color.
 
         The order sets where each value sits in the legend. It breaks ties under 'plurality_order',
-        and it decides every choice under 'order' ('CATEGORICAL_RULES'). It also sets which value is
-        drawn on top where map elements overlap.
+        and it decides every choice under 'order' ('CATEGORICAL_RULES'). For the fill, it also sets
+        which value is drawn on top where map elements overlap. A border does not change which
+        element is drawn on top.
 
         With a colors file, the order is the order of its rows. Every value of the layer needs a
         row. Rows that name values the layer does not have are reported and ignored, so one file can
@@ -2688,8 +3044,9 @@ class Mapper:
         tell them apart.
 
         Without a colors file, the values are sorted, with the numbers in them compared as numbers
-        ('_sort_values'). They then take 'DEFAULT_VALUE_COLORS' in order. There are 18 of these, so
-        more values than that need a colors file.
+        ('_sort_values'). They then take the default colors of the channel in order. These are the
+        18 colors of 'DEFAULT_VALUE_COLORS' for the fill, and the 7 colors of
+        'DEFAULT_BORDER_VALUE_COLORS' for the border. More values than that need a colors file.
 
         Parameters
         ==========
@@ -2699,8 +3056,9 @@ class Mapper:
         value_colors_txt : Union[str, None]
             Path to a colors file ('_read_value_colors_txt'), or None for the default colors.
 
-        element_type : str
-            'reaction' or 'compound', for messages.
+        channel : dict
+            The channel of the values ('_txt_channel'). It gives the default colors and names the
+            flag of the colors file.
 
         path : str
             Path to the layer's text file, for messages.
@@ -2710,17 +3068,23 @@ class Mapper:
         Dict[str, str]
             Maps each value to its color hex code, in the order of the values.
         """
-        flag = f'--{element_type}-value-colors'
+        flag = f"--{channel['flag_stem']}-value-colors"
+        element_type = channel['element_type']
+        # A message about border values names the border column.
+        file_values = f"the {element_type} file at '{path}'"
+        if channel['role'] == 'border':
+            file_values = f"the border column of {file_values}"
+        default_colors = channel['default_value_colors']
         values = set(values)
         if value_colors_txt is None:
             ordered = self._sort_values(values)
-            if len(ordered) > len(DEFAULT_VALUE_COLORS):
+            if len(ordered) > len(default_colors):
                 raise ConfigError(
                     f"The {element_type} file at '{path}' has {len(ordered)} different categorical "
-                    f"values. Anvi'o has {len(DEFAULT_VALUE_COLORS)} default colors for them. "
-                    f"Please give each value a color of your choosing with '{flag}'."
+                    f"{channel['values']}. Anvi'o has {len(default_colors)} default colors for "
+                    f"them. Please give each value a color of your choosing with '{flag}'."
                 )
-            return dict(zip(ordered, DEFAULT_VALUE_COLORS))
+            return dict(zip(ordered, default_colors))
 
         def _listed(names: List[str]) -> str:
             # A long list is cut at 10 values.
@@ -2734,17 +3098,17 @@ class Mapper:
         if missing:
             raise ConfigError(
                 f"The colors file given to '{flag}', at '{value_colors_txt}', has no color for "
-                f"{len(missing)} of the categorical values of the {element_type} file at '{path}'. "
-                f"{_listed(missing)} Every value needs a color. Anvi'o does not fill in missing "
-                f"colors, since chosen colors and default colors would then share one legend."
+                f"{len(missing)} of the categorical {channel['values']} of the {element_type} file "
+                f"at '{path}'. {_listed(missing)} Every value needs a color. Anvi'o does not fill "
+                f"in missing colors, since chosen colors and default colors would then share one "
+                f"legend."
             )
         extra = [value for value in file_colors if value not in values]
         if extra:
             self.run.warning(
                 f"The colors file given to '{flag}', at '{value_colors_txt}', names {len(extra)} "
-                f"{'value' if len(extra) == 1 else 'values'} that the {element_type} file at "
-                f"'{path}' does not have. {_listed(extra)} "
-                f"{'It is' if len(extra) == 1 else 'They are'} ignored."
+                f"{'value' if len(extra) == 1 else 'values'} that {file_values} does not have. "
+                f"{_listed(extra)} {'It is' if len(extra) == 1 else 'They are'} ignored."
             )
         value_colors = {value: color for value, color in file_colors.items() if value in values}
         values_by_color: Dict[str, List[str]] = {}
@@ -2762,7 +3126,7 @@ class Mapper:
         return value_colors
 
     @staticmethod
-    def _resolve_categorical_rule(rule: Union[str, None], flag: str, element_type: str) -> str:
+    def _resolve_categorical_rule(rule: Union[str, None], flag: str, channel: dict) -> str:
         """
         Check the rule that chooses one categorical value where several meet.
 
@@ -2774,8 +3138,8 @@ class Mapper:
         flag : str
             The command-line flag the rule comes from, used in an error message.
 
-        element_type : str
-            'reaction' or 'compound', for the error message.
+        channel : dict
+            The channel of the values ('_txt_channel'), for the error message.
 
         Returns
         =======
@@ -2787,10 +3151,10 @@ class Mapper:
         if rule in CATEGORICAL_RULES:
             return rule
         raise ConfigError(
-            f"'{flag}' was given as '{rule}'. The values of the {element_type} layer are "
-            f"categorical ('--{element_type}-value-type categorical'). Categorical values cannot "
-            f"be added up or averaged. One of them is chosen instead. These are the rules that "
-            f"choose: {CATEGORICAL_RULES_PHRASE}."
+            f"'{flag}' was given as '{rule}'. The values of the {channel['noun']} layer are "
+            f"categorical ('--{channel['flag_stem']}-value-type categorical'). Categorical values "
+            f"cannot be added up or averaged. One of them is chosen instead. These are the rules "
+            f"that choose: {CATEGORICAL_RULES_PHRASE}."
         )
 
     @staticmethod
@@ -2863,7 +3227,8 @@ class Mapper:
         order: Dict[str, int],
         seed: int,
         sample: str,
-        choices: Counter
+        choices: Counter,
+        salt: Tuple[str, ...] = ()
     ) -> Dict[str, str]:
         """
         Give each accession one categorical value, chosen among the values of its genes.
@@ -2895,6 +3260,9 @@ class Mapper:
         choices : collections.Counter
             Counts how each choice among different values was made. It is updated here.
 
+        salt : Tuple[str, ...], ()
+            What starts the key of a random choice ('_txt_channel'). The fill has none.
+
         Returns
         =======
         Dict[str, str]
@@ -2904,7 +3272,7 @@ class Mapper:
         values: Dict[str, str] = {}
         for accession, votes in rows_df.groupby('__accession')['__value'].agg(list).items():
             value, how = self._choose_categorical_value(
-                votes, rule, order, seed, ('gene', sample, accession)
+                votes, rule, order, seed, salt + ('gene', sample, accession)
             )
             if how is not None:
                 choices[how] += 1
@@ -3300,12 +3668,107 @@ class Mapper:
                 f"color where the centered value is."
             )
 
+    @staticmethod
+    def _txt_channel(
+        element_type: Literal['reaction', 'compound'],
+        role: Literal['fill', 'border'] = 'fill'
+    ) -> dict:
+        """
+        Describe one channel of a layer from a text file: its fill or its border.
+
+        The value column of a file colors the fill of each map element. A border column colors the
+        border of the element instead ('--reaction-border-column', '--compound-border-column'). The
+        two channels are built by the same methods ('_build_txt_model'). The channel names the
+        options of its values in messages, and it gives their defaults. The two channels have
+        different defaults, so that a color means a value of one column only.
+
+        Parameters
+        ==========
+        element_type : Literal['reaction', 'compound']
+            The layer of the channel.
+
+        role : Literal['fill', 'border'], 'fill'
+            The channel.
+
+        Returns
+        =======
+        dict
+            The channel, with these keys:
+            - 'role': the 'role' argument.
+            - 'element_type': the 'element_type' argument.
+            - 'flag_stem': what the options of the channel's values start with after '--', such as
+              'reaction' in '--reaction-colormap' or 'reaction-border' in
+              '--reaction-border-colormap'.
+            - 'noun': what messages call the values, as in "a reaction value" or "the reaction
+              border layer".
+            - 'plural': what the channel colors, for messages about its colormaps.
+            - 'name': the stem of the channel's key files, such as 'reactions' in
+              'colorbar_reactions.pdf' or 'reactions_border' in 'colorbar_reactions_border.pdf'.
+            - 'column': what messages call the column of the values.
+            - 'values': what messages call the values of that column.
+            - 'presence': whether the channel can show presence. A border shows only values.
+            - 'default_aggregation': how numbers are reduced where no aggregation is given and the
+              values have no period. A border value given once per accession and repeated in the
+              rows of its genes keeps its size under 'mean', but 'sum' would multiply it.
+            - 'default_colormap': the colormap of numbers where none is given and the values have no
+              period.
+            - 'default_colormap_limits': the part of that colormap that is used, or None for all of
+              it.
+            - 'default_centered_colormap': the colormap of a scale that a normalization centers.
+            - 'default_value_colors': the colors of categorical values where no file gives them.
+            - 'choice_salt': what starts the key of each random choice among categorical values
+              ('_choose_categorical_value'). The fill and the border then choose independently, and
+              the keys of the fill stay as they were before borders existed.
+            - 'consequence' and 'consequence_plural': what happens to an element without a value, as
+              in "an element is left uncolored" or "elements show no border".
+        """
+        if role == 'fill':
+            return {
+                'role': role,
+                'element_type': element_type,
+                'flag_stem': element_type,
+                'noun': element_type,
+                'plural': f'{element_type}s',
+                'name': f'{element_type}s',
+                'column': 'value column',
+                'values': 'values',
+                'presence': True,
+                'default_aggregation': 'sum',
+                'default_colormap': 'plasma_r',
+                'default_colormap_limits': None,
+                'default_centered_colormap': DEFAULT_CENTERED_COLORMAP,
+                'default_value_colors': DEFAULT_VALUE_COLORS,
+                'choice_salt': (),
+                'consequence': 'is left uncolored',
+                'consequence_plural': 'are left uncolored'
+            }
+        return {
+            'role': role,
+            'element_type': element_type,
+            'flag_stem': f'{element_type}-border',
+            'noun': f'{element_type} border',
+            'plural': f'{element_type} borders',
+            'name': f'{element_type}s_border',
+            'column': 'border column',
+            'values': 'border values',
+            'presence': False,
+            'default_aggregation': 'mean',
+            'default_colormap': DEFAULT_BORDER_COLORMAP,
+            'default_colormap_limits': DEFAULT_BORDER_COLORMAP_LIMITS,
+            'default_centered_colormap': DEFAULT_CENTERED_COLORMAP,
+            'default_value_colors': DEFAULT_BORDER_VALUE_COLORS,
+            'choice_salt': ('border',),
+            'consequence': 'shows no border',
+            'consequence_plural': 'show no border'
+        }
+
     def _txt_model_common(
         self,
         name: str,
         data: dict,
         path: str,
-        membership_colors_txt: Union[str, None]
+        membership_colors_txt: Union[str, None],
+        channel: dict
     ) -> dict:
         """
         Build the keys that every layer model from a text file has ('_map_elements').
@@ -3324,10 +3787,14 @@ class Mapper:
         membership_colors_txt : Union[str, None]
             Path to a kegg-membership-colors-txt file for the layer, or None.
 
+        channel : dict
+            The channel of the values ('_txt_channel').
+
         Returns
         =======
         dict
-            The keys shared by every layer model.
+            The keys shared by every layer model. These include 'channel' and 'value_column', the
+            header of the column of the values or None. Messages name the column by its header.
         """
         element_type = data['element_type']
         membership_colors_flag = f'--{element_type}-membership-colors'
@@ -3335,6 +3802,8 @@ class Mapper:
             'name': name,
             'path': path,
             'element_type': element_type,
+            'channel': channel,
+            'value_column': data['value_column'],
             'use_reaction_attribute': data['reaction_source'] == 'Reaction',
             'accessions': set(data['df']['__accession']),
             'membership_colors_flag': membership_colors_flag
@@ -3380,7 +3849,8 @@ class Mapper:
         value_period: Union[float, str, None] = None,
         value_colors_txt: Union[str, None] = None,
         seed: int = DEFAULT_CATEGORICAL_SEED,
-        slice_by: Union[str, None] = None
+        slice_by: Union[str, None] = None,
+        channel: Union[dict, None] = None
     ) -> dict:
         """
         Build one layer's coloring model for '_map_elements' from a per-layer reader result.
@@ -3390,7 +3860,9 @@ class Mapper:
         column there is nothing to summarize, so the two agree: 'quantitative' with a value column
         ('_read_element_txt'), or 'single' (one fixed presence color) without one. An
         '--original-color' layer is the exception. It always pairs a 'unified_mode' of 'original'
-        with an 'individual_mode' of 'membership'. The reason is given where it is built.
+        with an 'individual_mode' of 'membership'. The reason is given where it is built. A 'color'
+        of 'none' gives a layer without values the mode 'none' in both contexts, with or without
+        samples. Its fills are left uncolored, and it draws only the rings of its border column.
 
         With a 'sample' column the two contexts can differ, since the value column only colors a
         single sample's magnitude while the summaries independently choose what the views across
@@ -3462,32 +3934,94 @@ class Mapper:
         Slices of genes take their values from the rows of each gene ('_build_slice_model'). The
         values of the accessions are then not drawn, so an accession whose genes reduce to an
         undefined value is not reported.
+
+        'channel' is the channel that the values color ('_txt_channel'), or None for the fill.
+        Messages name the options of the channel, which start with its 'flag_stem'. An option left
+        as None takes the channel's default. An aggregation left as None is then 'mean' for a border
+        without a period.
         """
+        if channel is None:
+            channel = self._txt_channel(data['element_type'])
+        flag_stem = channel['flag_stem']
+        # A color of 'none' leaves the fills of a layer without values uncolored, so that the layer
+        # draws only the rings of its border column. The layer takes the fill mode 'none' on every
+        # map. Every option of the fill is refused, since it would have nothing to act on. The CLI
+        # makes these checks too.
+        if color == 'none':
+            element_type = data['element_type']
+            none_flag = f"--{element_type}-color none"
+            unfilled = (
+                f"'{none_flag}' leaves the fills of the {element_type} layer uncolored, so that "
+                f"only the rings of its border column are drawn."
+            )
+            if data['border_column'] is None:
+                raise ConfigError(
+                    f"{unfilled} No border column was named with '--{element_type}-border-column', "
+                    f"so the layer would draw nothing. Name the column whose values color the "
+                    f"rings, or give a color hex code."
+                )
+            if data['value_column'] is not None:
+                raise ConfigError(
+                    f"{unfilled} The file at '{path}' has a fill value column, "
+                    f"'{data['value_column']}'. Please drop '{none_flag}' to color the fills by it."
+                )
+            fill_flags = list(dict.fromkeys(f"'--{element_type}-{option}'" for option, given in (
+                ('gene-aggregation', gene_aggregation is not None),
+                ('accession-aggregation', accession_aggregation is not None),
+                ('colormap', colormap is not None and colormap is not False),
+                ('colormap', colormap_limits is not None),
+                ('individual-colormap', individual_colormap is not None),
+                ('individual-colormap', individual_colormap_limits is not None),
+                ('membership-colors', membership_colors_txt is not None),
+                ('reverse-overlay', reverse_overlay),
+                ('sample-summary', sample_summary is not None),
+                ('group-summary', group_summary is not None),
+                ('value-limits', value_limits is not None),
+                ('individual-value-limits', individual_value_limits is not None),
+                ('value-center', value_center is not None),
+                ('individual-value-center', individual_value_center is not None),
+                ('element-normalization', element_normalization is not None),
+                ('element-normalization', element_normalization_label is not None),
+                ('value-period', value_period is not None),
+                ('slice-by', slice_by is not None)
+            ) if given))
+            if fill_flags:
+                raise ConfigError(
+                    f"These options color the fills of the {element_type} layer: "
+                    f"{', '.join(fill_flags)}. {unfilled} Please drop these options. The options "
+                    f"of the rings start with '--{element_type}-border-'."
+                )
+            return {
+                **self._txt_model_common(name, data, path, None, channel),
+                'unified_mode': 'none',
+                'individual_mode': 'none'
+            }
         if data['value_type'] == 'categorical':
             return self._build_categorical_txt_model(
                 name, data, path, gene_aggregation, accession_aggregation, color, colormap,
                 colormap_limits, membership_colors_txt, reverse_overlay, all_sample_names,
                 group_samples, sample_summary, group_summary, value_colors_txt, seed, {
-                    f"--{data['element_type']}-value-limits": value_limits,
-                    f"--{data['element_type']}-individual-value-limits": individual_value_limits,
-                    f"--{data['element_type']}-value-center": value_center,
-                    f"--{data['element_type']}-individual-value-center": individual_value_center,
-                    f"--{data['element_type']}-element-normalization": (
+                    f"--{flag_stem}-value-limits": value_limits,
+                    f"--{flag_stem}-individual-value-limits": individual_value_limits,
+                    f"--{flag_stem}-value-center": value_center,
+                    f"--{flag_stem}-individual-value-center": individual_value_center,
+                    f"--{flag_stem}-element-normalization": (
                         element_normalization if element_normalization is not None
                         else element_normalization_label
                     ),
-                    f"--{data['element_type']}-value-period": value_period,
-                    f"--{data['element_type']}-individual-colormap": individual_colormap
-                }
+                    f"--{flag_stem}-value-period": value_period,
+                    f"--{flag_stem}-individual-colormap": individual_colormap
+                }, channel
             )
         element_type = data['element_type']
+        noun = channel['noun']
         use_reaction_attribute = data['reaction_source'] == 'Reaction'
         df = data['df']
         value_column = data['value_column']
         has_sample = data['sample_names'] is not None
         accessions = set(df['__accession'])
         membership_colors_flag = f'--{element_type}-membership-colors'
-        common = self._txt_model_common(name, data, path, membership_colors_txt)
+        common = self._txt_model_common(name, data, path, membership_colors_txt, channel)
 
         # Limits and centers are checked before any value is read, so that a pair or a center anvi'o
         # cannot make sense of is reported as the configuration error it is rather than surfacing
@@ -3495,17 +4029,17 @@ class Mapper:
         # actually colored by value is not known until the summaries below have chosen the modes.
         # The centers are resolved against the limits, which is where a center placed out of a
         # limited scale's reach is caught, so the limits are resolved first.
-        value_limits_flag = f'--{element_type}-value-limits'
-        individual_value_limits_flag = f'--{element_type}-individual-value-limits'
-        value_center_flag = f'--{element_type}-value-center'
-        individual_value_center_flag = f'--{element_type}-individual-value-center'
+        value_limits_flag = f'--{flag_stem}-value-limits'
+        individual_value_limits_flag = f'--{flag_stem}-individual-value-limits'
+        value_center_flag = f'--{flag_stem}-value-center'
+        individual_value_center_flag = f'--{flag_stem}-individual-value-center'
         value_limits = self._resolve_value_limits(value_limits, value_limits_flag)
         individual_value_limits = self._resolve_value_limits(
             individual_value_limits, individual_value_limits_flag
         )
         # A period says that the values repeat, as clock times do every 24 hours. It is resolved
         # before the normalization, which it rules out.
-        value_period_flag = f'--{element_type}-value-period'
+        value_period_flag = f'--{flag_stem}-value-period'
         value_period = self._resolve_value_period(value_period, value_period_flag)
 
         # The normalization is settled before the centers are, since one whose neutral value is zero
@@ -3513,7 +4047,7 @@ class Mapper:
         # default has to be validated against the limits on that scale like any other center. It
         # rescales the value of each sample or group against the element's values across all samples
         # or groups, so it needs both a value column to rescale and samples.
-        element_normalization_flag = f'--{element_type}-element-normalization'
+        element_normalization_flag = f'--{flag_stem}-element-normalization'
         element_normalize = None
         element_normalization_label_template = None
         # Whether the center of the per-sample/per-group scale came from a normalization rather than
@@ -3524,23 +4058,23 @@ class Mapper:
         if element_normalization is None and element_normalization_label is not None:
             raise ConfigError(
                 f"A label was given for what '{element_normalization_flag}' would put on the "
-                f"colorbar of the {element_type} layer, but no normalization was given for it to "
-                f"label. That colorbar is labeled by the value column of the file at '{path}' when "
+                f"colorbar of the {noun} layer, but no normalization was given for it to label. "
+                f"That colorbar is labeled by the {channel['column']} of the file at '{path}' when "
                 f"nothing rescales it."
             )
         if element_normalization_label is not None and not element_normalization_label.strip():
             raise ConfigError(
-                f"The label given to '{element_normalization_flag}' for the colorbar of the "
-                f"{element_type} layer's rescaled scale is blank, so nothing would say what that "
-                f"scale shows. Give the option a label with something in it, or give it the "
-                f"normalization alone and let anvi'o compose one."
+                f"The label given to '{element_normalization_flag}' for the colorbar of the {noun} "
+                f"layer's rescaled scale is blank, so nothing would say what that scale shows. "
+                f"Give the option a label with something in it, or give it the normalization alone "
+                f"and let anvi'o compose one."
             )
         if element_normalization is not None:
             if value_column is None:
                 raise ConfigError(
-                    f"'{element_normalization_flag}' rescales the values of the {element_type} "
-                    f"layer, but the file at '{path}' has no value column, so that layer is "
-                    f"colored by presence and has no values to rescale."
+                    f"'{element_normalization_flag}' rescales the values of the {noun} layer, but "
+                    f"the file at '{path}' has no value column, so that layer is colored by "
+                    f"presence and has no values to rescale."
                 )
             if not has_sample:
                 raise ConfigError(
@@ -3551,7 +4085,7 @@ class Mapper:
                 )
             element_normalize, element_normalization_label_template, centered = (
                 self._resolve_element_normalization(
-                    element_normalization, element_normalization_flag, element_type, value_period,
+                    element_normalization, element_normalization_flag, channel, value_period,
                     value_period_flag
                 )
             )
@@ -3567,7 +4101,7 @@ class Mapper:
                     individual_value_center = 0.0
                     center_from_normalization = True
                 if individual_colormap is None and centered:
-                    individual_colormap = DEFAULT_CENTERED_COLORMAP
+                    individual_colormap = channel['default_centered_colormap']
 
         value_center = self._resolve_value_center(
             value_center, value_center_flag, value_limits, value_limits_flag
@@ -3592,15 +4126,15 @@ class Mapper:
             ):
                 if setting is not None:
                     raise ConfigError(
-                        f"'{flag}' {verb}s the color scale spanning the values of the "
-                        f"{element_type} layer, but the file at '{path}' has no value column, so "
-                        f"that layer is colored by presence and has no scale of values to {verb}."
+                        f"'{flag}' {verb}s the color scale spanning the values of the {noun} "
+                        f"layer, but the file at '{path}' has no value column, so that layer is "
+                        f"colored by presence and has no scale of values to {verb}."
                     )
             if value_period is not None:
                 raise ConfigError(
-                    f"'{value_period_flag}' says how far the values of the {element_type} layer "
-                    f"go before they repeat, but the file at '{path}' has no value column, so that "
-                    f"layer is colored by presence and has no values."
+                    f"'{value_period_flag}' says how far the values of the {noun} layer go before "
+                    f"they repeat, but the file at '{path}' has no value column, so that layer is "
+                    f"colored by presence and has no values."
                 )
         if not has_sample:
             for setting, flag, single_scale_flag, verb in (
@@ -3610,15 +4144,15 @@ class Mapper:
                 if setting is not None:
                     raise ConfigError(
                         f"'{flag}' {verb}s the color scale shared by the maps of the individual "
-                        f"samples or groups of the {element_type} layer, but the file at '{path}' "
-                        f"has no 'sample' column, so it draws no such maps and its values take a "
-                        f"single scale. {verb.capitalize()} that one with '{single_scale_flag}'."
+                        f"samples or groups of the {noun} layer, but the file at '{path}' has no "
+                        f"'sample' column, so it draws no such maps and its values take a single "
+                        f"scale. {verb.capitalize()} that one with '{single_scale_flag}'."
                     )
         # The summary that colors the 'unified' map is the group summary with groups, and the sample
         # summary without them. A spread there ('CIRCULAR_SPREADS') gives that map a scale, a
         # colormap, and a label of its own.
         unified_summary_flag = (
-            f"--{element_type}-{'group' if group_samples is not None else 'sample'}-summary"
+            f"--{flag_stem}-{'group' if group_samples is not None else 'sample'}-summary"
         )
         unified_summary = group_summary if group_samples is not None else sample_summary
         unified_spread = has_sample and unified_summary in CIRCULAR_SPREADS
@@ -3662,14 +4196,14 @@ class Mapper:
                 if setting is not None and offsets and flag == individual_value_center_flag:
                     raise ConfigError(
                         f"'{flag}' centers the color scale of the maps of the individual samples "
-                        f"or groups of the {element_type} layer, but '{element_normalization_flag} "
+                        f"or groups of the {noun} layer, but '{element_normalization_flag} "
                         f"{element_normalization}' already puts 0 at the middle of that scale. It "
                         f"runs from {individual_limits[0]:g} to {individual_limits[1]:g}. Please "
                         f"drop '{flag}'."
                     )
                 if setting is not None:
                     raise ConfigError(
-                        f"'{flag}' centers a color scale of the {element_type} layer, but "
+                        f"'{flag}' centers a color scale of the {noun} layer, but "
                         f"'{value_period_flag}' fixes each such scale to run from 0 to "
                         f"{value_period:g}. Values that repeat have no middle to read the others "
                         f"against. Please use only one of the two options."
@@ -3678,22 +4212,22 @@ class Mapper:
         # The colormap of the per-sample/per-group scale is settled on the same footing as the limits
         # on it: what it can color at all is checked here, before any value is read, while whether
         # that context is colored by value at all waits on the summaries below.
-        individual_colormap_flag = f'--{element_type}-individual-colormap'
-        colormap_flag = f'--{element_type}-colormap'
+        individual_colormap_flag = f'--{flag_stem}-individual-colormap'
+        colormap_flag = f'--{flag_stem}-colormap'
         if individual_colormap is not None:
             if value_column is None:
                 raise ConfigError(
                     f"'{individual_colormap_flag}' colors the maps of the individual samples or "
-                    f"groups of the {element_type} layer by value, but the file at '{path}' has no "
-                    f"value column, so that layer is colored by presence rather than along a scale "
-                    f"of values. '{colormap_flag}' is what colors a presence scale."
+                    f"groups of the {noun} layer by value, but the file at '{path}' has no value "
+                    f"column, so that layer is colored by presence rather than along a scale of "
+                    f"values. '{colormap_flag}' is what colors a presence scale."
                 )
             if not has_sample:
                 raise ConfigError(
                     f"'{individual_colormap_flag}' colors the maps of the individual samples or "
-                    f"groups of the {element_type} layer, but the file at '{path}' has no 'sample' "
-                    f"column, so it draws no such maps and its values take a single scale. Color "
-                    f"that one with '{colormap_flag}'."
+                    f"groups of the {noun} layer, but the file at '{path}' has no 'sample' column, "
+                    f"so it draws no such maps and its values take a single scale. Color that one "
+                    f"with '{colormap_flag}'."
                 )
 
         if color == 'original':
@@ -3775,10 +4309,10 @@ class Mapper:
         # the period. With groups, the sample summary colors each group's map, and the group summary
         # then pools those values.
         for name, flag in (
-            (gene_aggregation, f'--{element_type}-gene-aggregation'),
-            (accession_aggregation, f'--{element_type}-accession-aggregation'),
+            (gene_aggregation, f'--{flag_stem}-gene-aggregation'),
+            (accession_aggregation, f'--{flag_stem}-accession-aggregation'),
             (sample_summary if group_samples is not None else None,
-             f'--{element_type}-sample-summary')
+             f'--{flag_stem}-sample-summary')
         ):
             if name in CIRCULAR_SPREADS:
                 raise ConfigError(
@@ -3787,23 +4321,41 @@ class Mapper:
                     f"summarize the {'groups' if group_samples is not None else 'samples'} for the "
                     f"'unified' map, with '{unified_summary_flag}'."
                 )
-        # An aggregation left unset is 'circular_mean' for values with a period, and 'sum'
-        # otherwise. A colormap of values left unset is cyclic for values with a period.
-        default_aggregation = 'circular_mean' if value_period is not None else 'sum'
+        # An aggregation left unset is 'circular_mean' for values with a period. Otherwise it is
+        # 'sum' for the fill and 'mean' for the border ('_txt_channel'). A colormap of values left
+        # unset is cyclic for values with a period. Otherwise it is the channel's default, of which
+        # only a part may be used.
+        default_aggregation = (
+            'circular_mean' if value_period is not None else channel['default_aggregation']
+        )
         # Messages that suggest a summary of values name one that the period accepts.
         suggested_summary = 'circular_mean' if value_period is not None else 'mean'
-        default_colormap = DEFAULT_PERIOD_COLORMAP if value_period is not None else 'plasma_r'
+        default_colormap = (
+            DEFAULT_PERIOD_COLORMAP if value_period is not None else channel['default_colormap']
+        )
+        default_colormap_limits = (
+            None if value_period is not None else channel['default_colormap_limits']
+        )
+
+        def _limits(default_limits):
+            # Limits given without a colormap apply to the default colormap. Where neither is given,
+            # the default colormap takes its default limits.
+            if colormap is None and colormap_limits is None:
+                return default_limits
+            return colormap_limits
         if gene_aggregation is None:
             gene_aggregation = default_aggregation
         if accession_aggregation is None:
             accession_aggregation = default_aggregation
+        # The run reports the aggregations of a layer with a border ('map_kegg_pathways_txt').
+        common['aggregations'] = {'gene': gene_aggregation, 'accession': accession_aggregation}
         # Resolved here, before any values are aggregated, so that an unusable aggregation name is
         # reported as a configuration error rather than reaching pandas: the per-accession values
         # below are computed by passing the name itself to a groupby. 'aggregate' reduces a map
         # element's several accessions, which is the level the drawing colorers work at; the gene
         # aggregation is applied only where the per-accession values are built.
         aggregate = self._resolve_aggregation(
-            accession_aggregation, f'--{element_type}-accession-aggregation', value_period,
+            accession_aggregation, f'--{flag_stem}-accession-aggregation', channel, value_period,
             value_period_flag
         ) if value_column is not None else None
         # A circular aggregation is not a pandas name, so its function reduces a gene's rows. A
@@ -3811,7 +4363,7 @@ class Mapper:
         gene_reduction = gene_aggregation
         if value_column is not None:
             gene_aggregate = self._resolve_aggregation(
-                gene_aggregation, f'--{element_type}-gene-aggregation', value_period,
+                gene_aggregation, f'--{flag_stem}-gene-aggregation', channel, value_period,
                 value_period_flag
             )
             if gene_aggregation in CIRCULAR_AGGREGATIONS:
@@ -3829,17 +4381,18 @@ class Mapper:
                     'color_hexcode': color
                 }
             unified_values = self._aggregate_accession_quantities(
-                df, value_column, gene_reduction, path, element_type, undefined
+                df, value_column, gene_reduction, path, channel, undefined
             )
             if slice_by != 'gene':
-                self._warn_undefined_values(undefined, gene_aggregation, path)
+                self._warn_undefined_values(undefined, gene_aggregation, path, channel)
+            limits = _limits(default_colormap_limits)
             cmap = self._resolve_sequential_colormap(
-                colormap if colormap is not None else default_colormap, colormap_limits,
-                subject=f'{element_type}s'
+                colormap if colormap is not None else default_colormap, limits,
+                subject=channel['plural']
             )
             self._check_centered_colormap(
-                cmap, colormap_limits, value_center, value_center_flag, colormap_flag,
-                subject=f'{element_type}s'
+                cmap, limits, value_center, value_center_flag, colormap_flag,
+                subject=channel['plural']
             )
             return {
                 **common,
@@ -3870,21 +4423,21 @@ class Mapper:
         # magnitude with a value column and its presence without one.
         grouped = group_samples is not None
         sample_kind, sample_aggregate, sample_scheme = self._resolve_summary(
-            sample_summary, value_column, f'--{element_type}-sample-summary', path, value_period,
-            value_period_flag
+            sample_summary, value_column, f'--{flag_stem}-sample-summary', path, channel,
+            value_period, value_period_flag
         )
         if grouped:
             group_kind, group_aggregate, group_scheme = self._resolve_summary(
-                group_summary, value_column, f'--{element_type}-group-summary', path,
+                group_summary, value_column, f'--{flag_stem}-group-summary', path, channel,
                 value_period, value_period_flag
             )
             if group_kind == 'value' and sample_kind != 'value':
                 raise ConfigError(
-                    f"'--{element_type}-group-summary' was given as '{group_summary}', which pools "
-                    f"the values of the sample groups, but '--{element_type}-sample-summary' "
+                    f"'--{flag_stem}-group-summary' was given as '{group_summary}', which pools "
+                    f"the values of the sample groups, but '--{flag_stem}-sample-summary' "
                     f"summarizes each group's samples by presence rather than by value, so the "
                     f"groups have no values to pool. Please also set "
-                    f"'--{element_type}-sample-summary' to an aggregation such as "
+                    f"'--{flag_stem}-sample-summary' to an aggregation such as "
                     f"'{suggested_summary}'."
                 )
             unified_kind, unified_scheme = group_kind, group_scheme
@@ -3905,17 +4458,25 @@ class Mapper:
         unified_mode = 'static' if static_color else (
             'quantitative' if unified_kind == 'value' else 'membership'
         )
+        # A border shows values only. A map that a summary would color by presence shows no border,
+        # which the mode None says ('_txt_channel'). Its summaries take no presence names
+        # ('_resolve_summary'), so such a map is one without a summary.
+        border = channel['role'] == 'border'
+        individual_mode = 'quantitative' if individual_kind == 'value' else 'membership'
+        if border:
+            unified_mode = 'quantitative' if unified_kind == 'value' else None
+            individual_mode = 'quantitative' if individual_kind == 'value' else None
 
         # The option that chose the 'unified' map's presence scheme, so that a message about that
         # scheme names the option that can change it rather than the one this input refuses: the
         # group summary colors the 'unified' map of a grouped run, and the sample summary colors it
         # otherwise, exactly as 'unified_scheme' was taken above.
-        summary_flag = f"--{element_type}-{'group' if grouped else 'sample'}-summary"
+        summary_flag = f"--{flag_stem}-{'group' if grouped else 'sample'}-summary"
 
         model = {
             **common,
             'unified_mode': unified_mode,
-            'individual_mode': 'quantitative' if individual_kind == 'value' else 'membership',
+            'individual_mode': individual_mode,
             'membership': membership,
             'source_accessions': source_accessions,
             'color_hexcode': color,
@@ -3947,11 +4508,23 @@ class Mapper:
         # group's samples contain an element rather than how much of it there is. This is checked
         # before the limits and the center below, since a centered normalization supplies a center
         # of its own and their messages would name that center rather than what put it there.
+        # A border shows no ring on a map without a summary, as its summaries take no presence
+        # names. The messages of the border say so.
+        no_border = (
+            f"Those maps show no border here, since '--{flag_stem}-sample-summary' was not given. "
+            f"Give it an aggregation, such as '{suggested_summary}', to show border values on the "
+            f"group maps"
+        )
         if element_normalization is not None and model['individual_mode'] != 'quantitative':
+            if border:
+                raise ConfigError(
+                    f"'{element_normalization_flag}' rescales the border values of the maps of the "
+                    f"individual groups. {no_border}."
+                )
             raise ConfigError(
                 f"'{element_normalization_flag}' rescales the values that color the maps of the "
                 f"individual groups, but those maps are not colored by value here: "
-                f"'--{element_type}-sample-summary' summarizes each group's samples by presence "
+                f"'--{flag_stem}-sample-summary' summarizes each group's samples by presence "
                 f"rather than by pooling their values, so each map shows how many of a group's "
                 f"samples contain an element rather than how much of it there is. Set the sample "
                 f"summary to an aggregation such as '{suggested_summary}' to color the group maps "
@@ -3966,6 +4539,13 @@ class Mapper:
             (value_limits, value_limits_flag, individual_value_limits_flag, 'bound'),
             (value_center, value_center_flag, individual_value_center_flag, 'center')
         ):
+            if setting is not None and model['unified_mode'] != 'quantitative' and border:
+                raise ConfigError(
+                    f"'{flag}' {verb}s the color scale of border values on the 'unified' map. That "
+                    f"map shows no border here, since '{summary_flag}' was not given. Give it an "
+                    f"aggregation, such as '{suggested_summary}', or {verb} the scale of the maps "
+                    f"of the individual samples or groups with '{other_flag}' instead."
+                )
             if setting is not None and model['unified_mode'] != 'quantitative':
                 reason = (
                     f"a single static color was chosen for it with '--{element_type}-color'"
@@ -3982,20 +4562,35 @@ class Mapper:
             (individual_value_limits, individual_value_limits_flag, value_limits_flag, 'bound'),
             (individual_value_center, individual_value_center_flag, value_center_flag, 'center')
         ):
+            if setting is not None and model['individual_mode'] != 'quantitative' and border:
+                raise ConfigError(
+                    f"'{flag}' {verb}s the color scale shared by the maps of the individual "
+                    f"groups. {no_border}, or {verb} the 'unified' map's own scale with "
+                    f"'{other_flag}'."
+                )
             if setting is not None and model['individual_mode'] != 'quantitative':
                 raise ConfigError(
                     f"'{flag}' {verb}s the color scale shared by the maps of the individual "
                     f"groups, but those maps are not colored by value here: "
-                    f"'--{element_type}-sample-summary' summarizes each group's samples by "
-                    f"presence rather than by pooling their values. Set it to an aggregation such "
-                    f"as '{suggested_summary}' to color the group maps by value, or {verb} the "
+                    f"'--{flag_stem}-sample-summary' summarizes each group's samples by presence "
+                    f"rather than by pooling their values. Set it to an aggregation such as "
+                    f"'{suggested_summary}' to color the group maps by value, or {verb} the "
                     f"'unified' map's own scale with '{other_flag}'."
                 )
+        if (
+            individual_colormap is not None and model['individual_mode'] != 'quantitative'
+            and border
+        ):
+            raise ConfigError(
+                f"'{individual_colormap_flag}' colors the scale shared by the maps of the "
+                f"individual groups. {no_border}, or color the 'unified' map's own scale with "
+                f"'{colormap_flag}'."
+            )
         if individual_colormap is not None and model['individual_mode'] != 'quantitative':
             raise ConfigError(
                 f"'{individual_colormap_flag}' colors the scale shared by the maps of the "
                 f"individual groups, but those maps are not colored along a scale of values here: "
-                f"'--{element_type}-sample-summary' summarizes each group's samples by presence "
+                f"'--{flag_stem}-sample-summary' summarizes each group's samples by presence "
                 f"rather than by pooling their values, and presence there is colored by "
                 f"'--group-colormap'. Set the sample summary to an aggregation such as "
                 f"'{suggested_summary}' to color the group maps by value, or color the 'unified' "
@@ -4021,12 +4616,12 @@ class Mapper:
                 given_flag, other_flag = value_limits_flag, individual_value_limits_flag
                 other_subject = f"the maps of the individual {'groups' if grouped else 'samples'}"
             self.run.warning(
-                f"'{given_flag}' bounds the color scale of the {element_type} layer, but "
-                f"'{other_flag}' was not given, so the scale of {other_subject} still spans "
-                f"whatever its own values happen to reach. The two are bounded separately because "
-                f"they can differ a great deal -- a summary such as a mean across samples spans "
-                f"less than the samples themselves do -- so this may well be what you intend. If "
-                f"it is not, give '{other_flag}' limits of its own."
+                f"'{given_flag}' bounds the color scale of the {noun} layer, but '{other_flag}' "
+                f"was not given, so the scale of {other_subject} still spans whatever its own "
+                f"values happen to reach. The two are bounded separately because they can differ a "
+                f"great deal -- a summary such as a mean across samples spans less than the "
+                f"samples themselves do -- so this may well be what you intend. If it is not, give "
+                f"'{other_flag}' limits of its own."
             )
 
         # Centering only one of the two scales also warns, for the same reason as the limits above.
@@ -4049,14 +4644,14 @@ class Mapper:
                 given_center = value_center
                 other_subject = f"the maps of the individual {'groups' if grouped else 'samples'}"
             self.run.warning(
-                f"'{given_flag}' centers the color scale of the {element_type} layer on "
-                f"{given_center:g}, but '{other_flag}' was not given, so the scale of "
-                f"{other_subject} is not centered. Unless '{individual_colormap_flag}' gives the "
-                f"two scales different colormaps, they use the same colormap. Its middle color "
-                f"then means {given_center:g} on one map, and a different value on the other. The "
-                f"two scales are centered separately because a summary can span much less than the "
-                f"values it summarizes. Leaving one of them uncentered may be what you intend. If "
-                f"it is not, center the other scale with '{other_flag}'."
+                f"'{given_flag}' centers the color scale of the {noun} layer on {given_center:g}, "
+                f"but '{other_flag}' was not given, so the scale of {other_subject} is not "
+                f"centered. Unless '{individual_colormap_flag}' gives the two scales different "
+                f"colormaps, they use the same colormap. Its middle color then means "
+                f"{given_center:g} on one map, and a different value on the other. The two scales "
+                f"are centered separately because a summary can span much less than the values it "
+                f"summarizes. Leaving one of them uncentered may be what you intend. If it is not, "
+                f"center the other scale with '{other_flag}'."
             )
 
         # Per-sample values: each sample's rows reduced to one value per accession by the
@@ -4065,11 +4660,16 @@ class Mapper:
         sample_values: Dict[str, Dict[str, float]] = {s: {} for s in all_sample_names}
         for sample_name, sample_rows in df.groupby('__sample'):
             sample_values[sample_name] = self._aggregate_accession_quantities(
-                sample_rows, value_column, gene_reduction, path, element_type, undefined
+                sample_rows, value_column, gene_reduction, path, channel, undefined
             )
         if slice_by != 'gene':
-            self._warn_undefined_values(undefined, gene_aggregation, path)
+            self._warn_undefined_values(undefined, gene_aggregation, path, channel)
 
+        if 'quantitative' not in (model['unified_mode'], model['individual_mode']) and border:
+            # A border that no map shows is refused once the maps of the run are known
+            # ('_check_border_maps'). The refusal says whether the samples are grouped.
+            model['group_samples'] = group_samples
+            return model
         if 'quantitative' not in (model['unified_mode'], model['individual_mode']):
             # Both summaries color presence, which only happens with groups (the per-sample maps of
             # an ungrouped run always show a value column's magnitude), so nothing is colored by
@@ -4077,9 +4677,9 @@ class Mapper:
             self.run.warning(
                 f"The layer from the text file at '{path}' has a value column, '{value_column}', "
                 f"but nothing on the maps is colored by it: with sample groups, the per-group maps "
-                f"are colored by '--{element_type}-sample-summary' and the 'unified' map by "
-                f"'--{element_type}-group-summary', and both of these summarize presence rather "
-                f"than value. Set '--{element_type}-sample-summary' to an aggregation, such as "
+                f"are colored by '--{flag_stem}-sample-summary' and the 'unified' map by "
+                f"'--{flag_stem}-group-summary', and both of these summarize presence rather than "
+                f"value. Set '--{flag_stem}-sample-summary' to an aggregation, such as "
                 f"'{suggested_summary}', to color the group maps by value."
             )
             return model
@@ -4101,10 +4701,15 @@ class Mapper:
         # A spread on the 'unified' map does not repeat. Its scale takes a sequential colormap. A
         # cyclic one would give the smallest and the largest spread the same color.
         model['unified_spread'] = unified_spread
-        unified_default_colormap = 'plasma_r' if unified_spread else default_colormap
+        unified_default_colormap = (
+            channel['default_colormap'] if unified_spread else default_colormap
+        )
+        unified_limits = _limits(
+            channel['default_colormap_limits'] if unified_spread else default_colormap_limits
+        )
         model['cmap'] = self._resolve_sequential_colormap(
-            colormap if colormap is not None else unified_default_colormap, colormap_limits,
-            subject=f'{element_type}s'
+            colormap if colormap is not None else unified_default_colormap, unified_limits,
+            subject=channel['plural']
         )
         if unified_spread and self._is_cyclic_colormap(model['cmap']):
             raise ConfigError(
@@ -4112,7 +4717,7 @@ class Mapper:
                 f"'{unified_summary_flag} {unified_summary}' colors the 'unified' map by how far "
                 f"the values are spread apart. A spread does not repeat. A cyclic colormap would "
                 f"give the smallest and the largest spread the same color. Please give a "
-                f"sequential colormap, such as 'plasma_r'."
+                f"sequential colormap, such as '{channel['default_colormap']}'."
             )
         # The maps of the individual samples or groups take a colormap of their own where one was
         # given, so that a 'unified' map showing a summary of another kind than the values behind it
@@ -4122,7 +4727,7 @@ class Mapper:
         # of the individual samples or groups then show points in the period. Left unset, their
         # colormap is the cyclic default.
         individual_subject = (
-            f"{element_type}s on the maps of the individual "
+            f"{channel['plural']} on the maps of the individual "
             f"{'groups' if grouped else 'samples'}"
         )
         if individual_colormap is not None:
@@ -4141,13 +4746,13 @@ class Mapper:
         # was not centered has nothing to ask.
         if model['unified_mode'] == 'quantitative':
             self._check_centered_colormap(
-                model['cmap'], colormap_limits, value_center, value_center_flag, colormap_flag,
-                subject=f"{element_type}s on the 'unified' map"
+                model['cmap'], unified_limits, value_center, value_center_flag, colormap_flag,
+                subject=f"{channel['plural']} on the 'unified' map"
             )
         if model['individual_mode'] == 'quantitative':
             self._check_centered_colormap(
                 model['individual_cmap'],
-                colormap_limits if individual_colormap is None else individual_colormap_limits,
+                unified_limits if individual_colormap is None else individual_colormap_limits,
                 individual_value_center, individual_value_center_flag,
                 colormap_flag if individual_colormap is None else individual_colormap_flag,
                 subject=individual_subject
@@ -4168,6 +4773,8 @@ class Mapper:
         )
         if element_normalization_label is not None:
             model['individual_colorbar_label'] = element_normalization_label
+            # A border's keys add ' (border)' to their labels, but not to a label given here.
+            model['individual_colorbar_label_given'] = True
         return model
 
     def _build_categorical_txt_model(
@@ -4188,7 +4795,8 @@ class Mapper:
         group_summary: Union[str, None],
         value_colors_txt: Union[str, None],
         seed: int,
-        numeric_settings: Dict[str, object]
+        numeric_settings: Dict[str, object],
+        channel: dict
     ) -> dict:
         """
         Build the coloring model of a layer whose values are categorical ('VALUE_TYPES').
@@ -4231,11 +4839,15 @@ class Mapper:
         numeric_settings : Dict[str, object]
             The options that apply only to numeric values, keyed by flag. Each must be None.
 
+        channel : dict
+            The channel that the values color ('_txt_channel').
+
         Notes
         =====
         The other parameters are those of '_build_txt_model'. 'value_colors_txt' is a
-        kegg-value-colors-txt file, or None for the default colors. 'seed' is the seed of random
-        choices ('_choose_categorical_value').
+        kegg-value-colors-txt file, or None for the default colors of the channel. 'seed' is the
+        seed of random choices ('_choose_categorical_value'). Their keys start with the salt of the
+        channel.
 
         Returns
         =======
@@ -4243,19 +4855,21 @@ class Mapper:
             The layer model that '_map_elements' consumes.
         """
         element_type = data['element_type']
+        flag_stem = channel['flag_stem']
+        noun = channel['noun']
         df = data['df']
         has_sample = data['sample_names'] is not None
-        type_flag = f'--{element_type}-value-type'
-        colormap_flag = f'--{element_type}-colormap'
-        sample_summary_flag = f'--{element_type}-sample-summary'
-        common = self._txt_model_common(name, data, path, membership_colors_txt)
+        type_flag = f'--{flag_stem}-value-type'
+        colormap_flag = f'--{flag_stem}-colormap'
+        sample_summary_flag = f'--{flag_stem}-sample-summary'
+        common = self._txt_model_common(name, data, path, membership_colors_txt, channel)
 
         # Categorical values take colors of their own, not colors from a scale, so the options that
         # shape a scale of numbers have nothing to act on.
         for flag, setting in numeric_settings.items():
             if setting is not None:
                 raise ConfigError(
-                    f"'{flag}' works on numeric values. The values of the {element_type} layer are "
+                    f"'{flag}' works on numeric values. The values of the {noun} layer are "
                     f"categorical ('{type_flag} categorical'). They are names, and each takes a "
                     f"color of its own. Please drop '{flag}'."
                 )
@@ -4265,22 +4879,35 @@ class Mapper:
         # across the samples or groups. A rule says that a value means the same thing in each of
         # them. Presence on a group's map is always the count of its samples ('_group_map_colors').
         grouped = has_sample and group_samples is not None
-        group_summary_flag = f'--{element_type}-group-summary'
+        group_summary_flag = f'--{flag_stem}-group-summary'
+
+        border = channel['role'] == 'border'
 
         def _resolve_categorical_summary(summary, flag, voters):
             if summary is None:
                 return None, None
             if summary in CATEGORICAL_RULES:
                 return summary, None
+            # A border shows values only. Its fill already shows presence.
+            if summary in SUMMARY_PRESENCE_SCHEMES and border:
+                raise ConfigError(
+                    f"'{flag}' was given as '{summary}', which summarizes presence across the "
+                    f"{voters}. A border shows values only, and the fill already shows presence. "
+                    f"Choose one border value across the {voters} with one of "
+                    f"{CATEGORICAL_RULES_PHRASE}, or drop '{flag}'."
+                )
             if summary in SUMMARY_PRESENCE_SCHEMES:
                 return None, SUMMARY_PRESENCE_SCHEMES[summary]
+            # A border takes no presence names, so its message suggests none.
+            presence = "" if border else (
+                f"Summarize presence across the {voters} with {SUMMARY_PRESENCE_PHRASE}. Or "
+            )
             raise ConfigError(
-                f"'{flag}' was given as '{summary}'. The values of the {element_type} layer are "
+                f"'{flag}' was given as '{summary}'. The values of the {noun} layer are "
                 f"categorical ('{type_flag} categorical'). They cannot be added up or averaged "
-                f"across the {voters}. Summarize presence across the {voters} with "
-                f"{SUMMARY_PRESENCE_PHRASE}. Or choose one value across the {voters} with one of "
-                f"{CATEGORICAL_RULES_PHRASE}. Choosing assumes that a value means the same thing "
-                f"in every one of them."
+                f"across the {voters}. {presence}{'choose' if presence else 'Choose'} one value "
+                f"across the {voters} with one of {CATEGORICAL_RULES_PHRASE}. Choosing assumes "
+                f"that a value means the same thing in every one of them."
             )
 
         sample_rule, sample_scheme = _resolve_categorical_summary(
@@ -4299,11 +4926,19 @@ class Mapper:
             )
         # Grouped, the values reach a map only through a rule among each group's samples. Without
         # one, a colors file of values would color nothing.
+        if grouped and sample_rule is None and value_colors_txt is not None and border:
+            raise ConfigError(
+                f"'--{flag_stem}-value-colors' gives a color to each categorical border value. "
+                f"Here the samples are grouped, and '{sample_summary_flag}' gives no rule. The "
+                f"maps of the groups and the 'unified' map then show no border. Give "
+                f"'{sample_summary_flag}' a rule, such as 'plurality_order', or drop the colors "
+                f"file."
+            )
         if grouped and sample_rule is None and value_colors_txt is not None:
             raise ConfigError(
-                f"'--{element_type}-value-colors' gives a color to each categorical value. Here "
-                f"the samples are grouped, and '{sample_summary_flag}' gives no rule. Each group's "
-                f"map therefore counts the group's samples, and no map shows the values. Give "
+                f"'--{flag_stem}-value-colors' gives a color to each categorical value. Here the "
+                f"samples are grouped, and '{sample_summary_flag}' gives no rule. Each group's map "
+                f"therefore counts the group's samples, and no map shows the values. Give "
                 f"'{sample_summary_flag}' a rule, such as 'plurality_order', to color each group's "
                 f"map by a value chosen among its samples. Or drop the colors file."
             )
@@ -4311,6 +4946,14 @@ class Mapper:
         unified_scheme = group_scheme if grouped else sample_scheme
         unified_summary_flag = group_summary_flag if grouped else sample_summary_flag
         presence_unified = has_sample and unified_rule is None
+        # The colormap of a border colors numbers only. A border shows no presence for it to color.
+        if border and colormap is not None:
+            raise ConfigError(
+                f"'{colormap_flag}' colors numeric border values. The border values of the "
+                f"{element_type} layer are categorical ('{type_flag} categorical'). Each takes a "
+                f"color of its own, from '--{flag_stem}-value-colors' or from anvi'o's default "
+                f"border colors. Please drop '{colormap_flag}'."
+            )
         if not presence_unified and colormap is not None:
             reason = (
                 f"'{unified_summary_flag} {unified_rule}' colors the 'unified' map by the values "
@@ -4320,17 +4963,16 @@ class Mapper:
             )
             option = colormap_flag if colormap is not False else f'--{element_type}-color'
             raise ConfigError(
-                f"'{option}' colors presence on the 'unified' map. Here no map of the "
-                f"{element_type} layer is colored by presence. {reason} Categorical values take "
-                f"their colors from '--{element_type}-value-colors', or from anvi'o's default "
-                f"colors."
+                f"'{option}' colors presence on the 'unified' map. Here no map of the {noun} layer "
+                f"is colored by presence. {reason} Categorical values take their colors from "
+                f"'--{flag_stem}-value-colors', or from anvi'o's default colors."
             )
 
         gene_rule = self._resolve_categorical_rule(
-            gene_aggregation, f'--{element_type}-gene-aggregation', element_type
+            gene_aggregation, f'--{flag_stem}-gene-aggregation', channel
         )
         accession_rule = self._resolve_categorical_rule(
-            accession_aggregation, f'--{element_type}-accession-aggregation', element_type
+            accession_aggregation, f'--{flag_stem}-accession-aggregation', channel
         )
 
         # The order of the values sets their colors, their place in the legend, and their drawing
@@ -4348,7 +4990,7 @@ class Mapper:
             }
         else:
             value_colors = self._resolve_value_colors(
-                df['__value'], value_colors_txt, element_type, path
+                df['__value'], value_colors_txt, channel, path
             )
             value_order = {value: position for position, value in enumerate(value_colors)}
             value_count = len(value_colors)
@@ -4372,7 +5014,8 @@ class Mapper:
             sample_values: Dict[str, Dict[str, str]] = {sample: {} for sample in all_sample_names}
             for sample, sample_rows in df.groupby('__sample'):
                 sample_values[sample] = self._select_accession_values(
-                    sample_rows, gene_rule, value_order, seed, sample, choices['gene']
+                    sample_rows, gene_rule, value_order, seed, sample, choices['gene'],
+                    channel['choice_salt']
                 )
             membership, source_accessions = self._relate_accessions_to_samples(
                 df, all_sample_names
@@ -4380,7 +5023,7 @@ class Mapper:
         else:
             sample_values = None
             unified_values = self._select_accession_values(
-                df, gene_rule, value_order, seed, '', choices['gene']
+                df, gene_rule, value_order, seed, '', choices['gene'], channel['choice_salt']
             )
             membership, source_accessions = {}, {}
 
@@ -4390,13 +5033,19 @@ class Mapper:
             unified_mode = 'static'
         else:
             unified_mode = 'membership'
+        # A group's map shows a value only where a rule chooses one among the group's samples.
+        # Otherwise it counts the group's samples. A border shows no presence, so a map that the
+        # fill would color by presence shows no border, which the mode None says.
+        individual_mode = 'membership' if grouped and sample_rule is None else 'categorical'
+        if border:
+            unified_mode = None if presence_unified else unified_mode
+            individual_mode = None if individual_mode == 'membership' else individual_mode
         model = {
             **common,
+            'aggregations': {'gene': gene_rule, 'accession': accession_rule},
             'value_type': 'categorical',
             'unified_mode': unified_mode,
-            # A group's map shows a value only where a rule chooses one among the group's samples.
-            # Otherwise it counts the group's samples.
-            'individual_mode': 'membership' if grouped and sample_rule is None else 'categorical',
+            'individual_mode': individual_mode,
             'membership': membership,
             'source_accessions': source_accessions,
             'colormap': True if colormap is None else colormap,
@@ -4422,6 +5071,7 @@ class Mapper:
             'sample_rule': sample_rule,
             'group_rule': group_rule,
             'seed': seed,
+            'choice_salt': channel['choice_salt'],
             'colorbar_label': data['value_column'],
             '_element_cache': {},
             '_choices': choices
@@ -4433,6 +5083,151 @@ class Mapper:
         return model
 
     @staticmethod
+    def _border_flag(element_type: str, option: str) -> str:
+        """
+        Name the command-line flag of an option of the border of a layer ('BORDER_OPTIONS').
+
+        Parameters
+        ==========
+        element_type : str
+            'reaction' or 'compound'.
+
+        option : str
+            A key of 'BORDER_OPTIONS'.
+
+        Returns
+        =======
+        str
+            The flag, such as '--reaction-border-colormap'. Limits of a colormap and the label of a
+            normalization are given with the flag of their colormap or normalization.
+        """
+        option = {
+            'colormap_limits': 'colormap',
+            'individual_colormap_limits': 'individual_colormap',
+            'element_normalization_label': 'element_normalization'
+        }.get(option, option)
+        return f"--{element_type}-border-{option.replace('_', '-')}"
+
+    @staticmethod
+    def _check_border_options(
+        reaction_txt: Union[str, None],
+        compound_txt: Union[str, None],
+        reaction_border: Union[Dict[str, object], None],
+        compound_border: Union[Dict[str, object], None],
+        reaction_color: Union[str, None]
+    ) -> None:
+        """
+        Check the options of the borders of the two layers, as far as that can be done without the
+        files.
+
+        Every option of a border needs the border column of its layer, and that column needs the
+        layer's file. The builder of the border's model checks the rest ('_build_txt_model'). The
+        command line makes these checks too, and these repeat them for programmatic callers. Where a
+        border column is named, the private methods of Biopython that draw rings are checked too
+        ('kgml.SlicedKGMLCanvas.check_biopython').
+
+        Parameters
+        ==========
+        reaction_txt, compound_txt : Union[str, None]
+            Paths to the two files, or None.
+
+        reaction_border, compound_border : Union[Dict[str, object], None]
+            The options of the two borders, keyed by 'BORDER_OPTIONS', or None.
+
+        reaction_color : Union[str, None]
+            The presence color of the reaction layer. It is 'original' for '--original-color'.
+        """
+        bordered = False
+        for element_type, txt, border in (
+            ('reaction', reaction_txt, reaction_border), ('compound', compound_txt, compound_border)
+        ):
+            if not border:
+                continue
+            allowed = [
+                option for option in BORDER_OPTIONS
+                if element_type == 'reaction' or option not in REACTION_BORDER_OPTIONS
+            ]
+            unknown = [option for option in border if option not in allowed]
+            if unknown:
+                raise ConfigError(
+                    f"The options of the {element_type} border include "
+                    f"{', '.join(repr(option) for option in unknown)}, which "
+                    f"{'is not an option' if len(unknown) == 1 else 'are not options'} of a "
+                    f"{element_type} border. It takes these: "
+                    f"{', '.join(repr(option) for option in allowed)}."
+                )
+            column_flag = Mapper._border_flag(element_type, 'column')
+            # A colormap and its limits, or a normalization and its label, come with one flag.
+            given = list(dict.fromkeys(
+                Mapper._border_flag(element_type, option) for option in BORDER_OPTIONS
+                if option != 'column' and border.get(option) is not None
+            ))
+            if border.get('column') is None:
+                if given:
+                    listed = ', '.join(f"'{flag}'" for flag in given)
+                    raise ConfigError(
+                        f"{listed} {'apply' if len(given) > 1 else 'applies'} to the borders of "
+                        f"the {element_type} layer, but no border column was named with "
+                        f"'{column_flag}'. Name the column whose values color the borders."
+                    )
+                continue
+            bordered = True
+            if txt is None:
+                raise ConfigError(
+                    f"'{column_flag}' names the border column of the {element_type} file, but no "
+                    f"{element_type} file ('--{element_type}-txt') was provided."
+                )
+            value_type = border.get('value_type')
+            type_flag = Mapper._border_flag(element_type, 'value_type')
+            if value_type is not None and value_type not in VALUE_TYPES:
+                raise ConfigError(
+                    f"'{type_flag}' was given as '{value_type}'. It can be "
+                    f"{' or '.join(repr(name) for name in VALUE_TYPES)}."
+                )
+            if border.get('value_colors') is not None and value_type != 'categorical':
+                raise ConfigError(
+                    f"'{Mapper._border_flag(element_type, 'value_colors')}' gives a color to each "
+                    f"categorical border value of the {element_type} layer. The border values of "
+                    f"that layer are numeric. To read them as categorical values, give "
+                    f"'{type_flag} categorical'."
+                )
+            # A ring sliced by gene gives each gene a slice of its own, so no genes are reduced to
+            # an accession. Slices of rings are not normalized, as slices of fills are not.
+            slice_by = border.get('slice_by')
+            slice_flag = Mapper._border_flag(element_type, 'slice_by')
+            if slice_by is not None and slice_by not in SLICE_UNITS:
+                raise ConfigError(
+                    f"'{slice_flag}' was given as '{slice_by}'. It can be "
+                    f"{' or '.join(repr(unit) for unit in SLICE_UNITS)}."
+                )
+            if slice_by == 'gene' and border.get('gene_aggregation') is not None:
+                gene_flag = Mapper._border_flag(element_type, 'gene_aggregation')
+                raise ConfigError(
+                    f"'{gene_flag}' reduces the border values of the genes of an accession to one "
+                    f"value. '{slice_flag} gene' gives each gene its own slice of a ring, so the "
+                    f"genes of an accession are never reduced. Please drop '{gene_flag}'."
+                )
+            if slice_by is not None and border.get('element_normalization') is not None:
+                raise ConfigError(
+                    f"'{slice_flag}' cannot yet be used with "
+                    f"'{Mapper._border_flag(element_type, 'element_normalization')}'. The border "
+                    f"values of slices cannot be normalized in this version. Please use only one "
+                    f"of the two options."
+                )
+            # The reference map's colors are drawn without rings.
+            if reaction_color == 'original':
+                raise ConfigError(
+                    f"'{column_flag}' colors the borders of {element_type} elements by a column of "
+                    f"values, but '--original-color' takes both the colors and the drawing order "
+                    f"of the reactions from the reference map, and it draws no borders. Please use "
+                    f"only one of them."
+                )
+        # Rings are drawn with private methods of Biopython, which a release can rename. This is
+        # checked before anything is written.
+        if bordered:
+            kgml.SlicedKGMLCanvas.check_biopython()
+
+    @staticmethod
     def _check_slice_options(
         reaction_txt: Union[str, None],
         slice_by: Union[str, None],
@@ -4442,7 +5237,9 @@ class Mapper:
         element_normalization: Union[str, None],
         color: str,
         colormap: Union[bool, str, mcolors.Colormap, None],
-        gene_aggregation: Union[str, None] = None
+        gene_aggregation: Union[str, None] = None,
+        border_column: Union[str, None] = None,
+        border_slice_by: Union[str, None] = None
     ) -> None:
         """
         Check the options that slice reaction elements, as far as that can be done without the file.
@@ -4453,16 +5250,27 @@ class Mapper:
         slicing is on, the private methods of Biopython that draw slices are checked too
         ('kgml.SlicedKGMLCanvas.check_biopython').
 
+        The weights size the slices of elements and the slices of rings that are sliced on their own
+        ('--reaction-border-slice-by'). The options of weights therefore need either kind of
+        slicing. Their aggregation needs a kind that slices by accession.
+
         Parameters
         ==========
         reaction_txt : Union[str, None]
             Path to the reaction file, or None.
 
+        border_column : Union[str, None], None
+            The border column of the reaction file, or None.
+
+        border_slice_by : Union[str, None], None
+            What the rings of the reaction border are sliced by, or None.
+
         Notes
         =====
         The other parameters are the arguments of 'map_kegg_pathways_txt' of the same names, without
-        the 'reaction_' prefix. 'color' is 'original' for '--original-color', and 'colormap' is
-        False where a single color was chosen with '--reaction-color'.
+        the 'reaction_' prefix. 'color' is 'original' for '--original-color', and 'none' where the
+        fills are left uncolored. 'colormap' is False where a color was chosen with
+        '--reaction-color'.
         """
         given = [
             flag for flag, setting in (
@@ -4481,15 +5289,24 @@ class Mapper:
                 f"{listed} {'apply' if plural else 'applies'} to the slices of reaction elements, "
                 f"but no reaction file ('--reaction-txt') was provided."
             )
-        if slice_by is None:
+        if slice_by is None and border_slice_by is None:
             # Weights of genes are reduced to an accession only when slicing by accession.
             units = ('accession',) if weight_aggregation is not None else SLICE_UNITS
             suggestion = ' or '.join(f"'--reaction-slice-by {unit}'" for unit in units)
+            drop = 'these options' if plural else 'it'
+            if border_column is None:
+                raise ConfigError(
+                    f"{listed} {'apply' if plural else 'applies'} to the slices of reaction "
+                    f"elements. No element is sliced here, because '--reaction-slice-by' was not "
+                    f"given. To slice elements, give {suggestion}. Otherwise, drop {drop}."
+                )
+            ring_suggestion = ' or '.join(f"'--reaction-border-slice-by {unit}'" for unit in units)
             raise ConfigError(
-                f"{listed} {'apply' if plural else 'applies'} to the slices of reaction elements. "
-                f"No element is sliced here, because '--reaction-slice-by' was not given. To slice "
-                f"elements, give {suggestion}. Otherwise, drop "
-                f"{'these options' if plural else 'it'}."
+                f"{listed} {'apply' if plural else 'applies'} to the slices of reaction elements "
+                f"and of their rings. Nothing is sliced here, because neither "
+                f"'--reaction-slice-by' nor '--reaction-border-slice-by' was given. To slice "
+                f"elements, give {suggestion}. To slice the rings of the border column "
+                f"'{border_column}', give {ring_suggestion}. Otherwise, drop {drop}."
             )
         for flag, setting, choices in (
             ('--reaction-slice-by', slice_by, SLICE_UNITS),
@@ -4501,24 +5318,29 @@ class Mapper:
                     f"'{flag}' was given as '{setting}'. It can be "
                     f"{' or '.join(repr(choice) for choice in choices)}."
                 )
-        # Each gene is a slice of its own, so no genes are reduced to an accession.
-        if slice_by == 'gene':
-            for flag, setting, action in (
-                (
-                    '--reaction-gene-aggregation', gene_aggregation,
-                    "reduces the values of the genes of an accession to one value"
-                ),
-                (
-                    '--reaction-slice-weight-aggregation', weight_aggregation,
-                    "reduces the weights of the genes of an accession to one weight"
-                )
-            ):
-                if setting is not None:
-                    raise ConfigError(
-                        f"'{flag}' {action}. '--reaction-slice-by gene' gives each gene a slice of "
-                        f"its own, so the genes of an accession are never reduced. Please drop "
-                        f"'{flag}'."
-                    )
+        # Each gene is a slice of its own, so no genes are reduced to an accession. The weights of
+        # genes are reduced where the elements or the rings are sliced by accession.
+        if slice_by == 'gene' and gene_aggregation is not None:
+            raise ConfigError(
+                "'--reaction-gene-aggregation' reduces the values of the genes of an accession to "
+                "one value. '--reaction-slice-by gene' gives each gene a slice of its own, so the "
+                "genes of an accession are never reduced. Please drop "
+                "'--reaction-gene-aggregation'."
+            )
+        if weight_aggregation is not None and 'accession' not in (slice_by, border_slice_by):
+            by_gene = [
+                f"'{flag} gene'" for flag, unit in (
+                    ('--reaction-slice-by', slice_by),
+                    ('--reaction-border-slice-by', border_slice_by)
+                ) if unit == 'gene'
+            ]
+            raise ConfigError(
+                f"'--reaction-slice-weight-aggregation' reduces the weights of the genes of an "
+                f"accession to one weight. {' and '.join(by_gene)} "
+                f"{'give' if len(by_gene) > 1 else 'gives'} each gene a slice of its own, so the "
+                f"genes of an accession are never reduced. Please drop "
+                f"'--reaction-slice-weight-aggregation'."
+            )
         if weights is None:
             for flag, setting, action in (
                 (
@@ -4537,6 +5359,10 @@ class Mapper:
                         f"share. To size slices by weights, name their column. Otherwise, drop "
                         f"'{flag}'."
                     )
+        # The rest concerns the slices of elements. Rings sliced on their own need none of it.
+        if slice_by is None:
+            kgml.SlicedKGMLCanvas.check_biopython()
+            return
         if element_normalization is not None:
             raise ConfigError(
                 "'--reaction-slice-by' cannot yet be used with '--reaction-element-normalization'. "
@@ -4548,6 +5374,13 @@ class Mapper:
                 "'--reaction-slice-by' colors each slice of a reaction element by its own value, "
                 "but '--original-color' takes the colors of the reactions from the reference map. "
                 "Please use only one of them."
+            )
+        if color == 'none':
+            raise ConfigError(
+                "'--reaction-slice-by' colors each slice of a reaction element by its own value, "
+                "but '--reaction-color none' leaves the fills of the reaction layer uncolored. To "
+                "slice the rings of the border column, give '--reaction-border-slice-by' in place "
+                "of '--reaction-slice-by'."
             )
         if colormap is False:
             raise ConfigError(
@@ -4570,30 +5403,44 @@ class Mapper:
         all_sample_names: Union[List[str], None],
         group_samples: Union[Dict[str, List[str]], None],
         draw_unified_maps: bool,
-        draw_individual_maps: bool
+        draw_individual_maps: bool,
+        fill: Union[dict, None] = None
     ) -> dict:
         """
         Check that a reaction layer can be sliced, and build the keys of its model for slicing.
 
         Slices are drawn only on the maps that show the values of the layer, which are those whose
         mode is 'quantitative' or 'categorical'. Slicing is refused where no drawn map shows the
-        values. A summary of shares is refused where no drawn map pools the samples and shows the
-        values. Such maps are the maps of groups and the 'unified' map of a layer with samples. An
-        aggregation of the accessions of an element is refused for numeric values sliced by
-        accession. For numeric values sliced by gene, it is refused if it does not return a single
-        value unchanged.
+        values. An aggregation of the accessions of an element is refused for numeric values sliced
+        by accession. For numeric values sliced by gene, it is refused if it does not return a
+        single value unchanged. A summary of shares needs a drawn map that pools the samples and
+        shows slices. Such maps are the maps of groups and the 'unified' map of a layer with
+        samples. Whether one exists is checked once the fill and the border are both built
+        ('map_kegg_pathways_txt').
 
         With slices of accessions, the weights of the genes of an accession are reduced to one
         weight per accession and sample, or per accession for a layer without samples. Slices of
         genes keep the values and weights of each row ('_build_gene_slice_keys').
 
+        The rings of the border of a layer are sliced by this method too
+        ('--reaction-border-slice-by'). The model of the border is built from the rows with a border
+        value ('_border_view'), and the messages name the options of the border. A border that no
+        drawn map shows is refused with the maps of the run ('_check_border_maps'). Where the fill
+        is sliced by the same unit, the rings are aligned with its columns. The fill then gives the
+        slices and their shares ('_ring_result'), so the border takes no weights. With slices of
+        genes, it takes the genes of the fill, so that both find the same slices. Otherwise, the
+        rings are sliced on their own. Their shares then come from the weights of the rows with a
+        border value.
+
         Parameters
         ==========
         model : dict
-            The layer model built from the reaction file ('_build_txt_model').
+            The layer model built from the reaction file, or the model of its border
+            ('_build_txt_model').
 
         data : dict
-            The '_read_element_txt' result for the reaction file.
+            The '_read_element_txt' result for the reaction file, or its border view
+            ('_border_view').
 
         slice_by : str
             One of 'SLICE_UNITS'.
@@ -4619,25 +5466,38 @@ class Mapper:
         draw_individual_maps : bool
             True if the maps of individual samples or groups are drawn.
 
+        fill : Union[dict, None], None
+            The sliced model of the fill, for a border whose rings are aligned with it. It is None
+            for the fill, and for a border whose rings are sliced on their own.
+
         Returns
         =======
         dict
             The keys that '_map_elements' reads for slicing:
             - 'slice_by': the 'slice_by' argument.
-            - 'slice_weights': True if the file has a column of weights.
+            - 'slice_weights': True if the shares of slices come from a column of weights.
             - 'slice_share_summary': how shares are pooled, or None without weights.
             - 'unified_weights': the weight of each accession, for a layer without samples. It is
               None otherwise.
             - 'sample_weights': the weight of each accession in each sample, for a layer with
               samples. It is None otherwise.
+            - 'slice_pooled': True if a drawn map pools samples and shows the values.
             - '_slice_cache': the numeric values of slices ('_slice_values').
             - '_slice_results': the slices of each element on each map ('_slice_result').
             - '_slice_key' and '_slice_uncolored': what the drawn maps record for the key table
               and the warnings ('_write_slice_keys').
-            Slices of genes add the keys of '_build_gene_slice_keys'.
+            A border adds 'slice_layout', which is 'aligned' or 'independent', and '_slice_unshown',
+            where the drawn maps record the units with border values that no column of the fill
+            shows. Slices of genes add the keys of '_build_gene_slice_keys'.
         """
         path = model['path']
         df = data['df']
+        channel = model['channel']
+        border = channel['role'] == 'border'
+        flag_stem = channel['flag_stem']
+        slice_flag = f'--{flag_stem}-slice-by'
+        aggregation_flag = f'--{flag_stem}-accession-aggregation'
+        # The view of a border always names its border column as its value column.
         if data['value_column'] is None:
             raise ConfigError(
                 f"'--reaction-slice-by' colors each slice of a reaction element by its own value, "
@@ -4645,6 +5505,10 @@ class Mapper:
                 f"presence, and slices of presence are not supported yet. Add a value column to "
                 f"the file, or drop '--reaction-slice-by'."
             )
+        if border:
+            each_slice, value, whole = 'each slice of a ring', 'border value', 'A ring drawn whole'
+        else:
+            each_slice, value, whole = 'each slice', 'value', 'An element drawn whole'
         # A slice of a gene can stand for rows of several accessions of an element. The accession
         # aggregation reduces these rows, so it is accepted there.
         if (
@@ -4652,11 +5516,10 @@ class Mapper:
             and slice_by == 'accession'
         ):
             raise ConfigError(
-                "'--reaction-accession-aggregation' reduces the values of the accessions of a map "
-                "element to one value. With '--reaction-slice-by accession', each slice shows the "
-                "value of one accession. An element drawn whole takes the mean of its slice "
-                "values, weighted by their shares, in place of this reduction. Please drop "
-                "'--reaction-accession-aggregation'."
+                f"'{aggregation_flag}' reduces the {channel['values']} of the accessions of a map "
+                f"element to one value. With '{slice_flag} accession', {each_slice} shows the "
+                f"{value} of one accession. {whole} takes the mean of its slice values, weighted "
+                f"by their shares, in place of this reduction. Please drop '{aggregation_flag}'."
             )
         # A gene with one row for an element shows the value of that row ('_build_gene_slice_keys').
         # An aggregation that does not return a single value unchanged, such as 'std' or 'count',
@@ -4672,15 +5535,20 @@ class Mapper:
                 single = float('nan')
             if not (np.isfinite(single) and abs(single - 3.0) < 1e-9):
                 raise ConfigError(
-                    f"'--reaction-accession-aggregation' was given as '{accession_aggregation}'. "
-                    f"With '--reaction-slice-by gene', it reduces the rows of a gene for the "
-                    f"accessions of an element to one value. A gene with one such row shows the "
-                    f"value of that row. '{accession_aggregation}' does not return a single value "
-                    f"unchanged, so genes with several rows would show another kind of value on "
-                    f"the same color scale. Please give 'mean', 'sum', 'max', 'min', or 'median' "
-                    f"instead."
+                    f"'{aggregation_flag}' was given as '{accession_aggregation}'. With "
+                    f"'{slice_flag} gene', it reduces the rows of a gene for the accessions of an "
+                    f"element to one value. A gene with one such row shows the {value} of that "
+                    f"row. '{accession_aggregation}' does not return a single value unchanged, so "
+                    f"genes with several rows would show another kind of value on the same color "
+                    f"scale. Please give 'mean', 'sum', 'max', 'min', or 'median' instead."
                 )
-        if weight_aggregation is not None and 'gene_id' not in df.columns:
+        # Rings aligned with the fill take the shares of the fill, so only the fill reads weights
+        # then. The weights of genes are reduced only for slices of accessions.
+        weighted = data['slice_weights'] is not None and fill is None
+        if (
+            weight_aggregation is not None and weighted and slice_by == 'accession'
+            and 'gene_id' not in df.columns
+        ):
             raise ConfigError(
                 f"'--reaction-slice-weight-aggregation' reduces the weights of the genes of an "
                 f"accession to one weight. The reaction file at '{path}' has no 'gene_id' column, "
@@ -4693,7 +5561,7 @@ class Mapper:
         grouped = has_sample and group_samples is not None
         unified_values = draw_unified_maps and model['unified_mode'] in value_modes
         individual_values = draw_individual_maps and model['individual_mode'] in value_modes
-        if not (unified_values or individual_values):
+        if not border and not (unified_values or individual_values):
             noun = 'groups' if grouped else 'samples'
             suggestion = (
                 "a rule, such as 'plurality_order'" if model.get('value_type') == 'categorical'
@@ -4729,35 +5597,35 @@ class Mapper:
                 f"'--reaction-slice-by' slices the reaction elements of the maps that show the "
                 f"values of the reaction layer. No drawn map shows them here. {' '.join(parts)}"
             )
-        pooled = has_sample and (unified_values or (grouped and individual_values))
-        if share_summary is not None and not pooled:
-            raise ConfigError(
-                "'--reaction-slice-share-summary' pools the shares of slices on the maps that "
-                "summarize several samples, which are the maps of groups and the 'unified' map. "
-                "Here no drawn map of this kind shows the values of the reaction layer, so no "
-                "shares are pooled. Please drop '--reaction-slice-share-summary'."
-            )
 
-        weighted = data['slice_weights'] is not None
         keys = {
             'slice_by': slice_by,
             'slice_weights': weighted,
             'slice_share_summary': None,
             'unified_weights': None,
             'sample_weights': None,
+            'slice_pooled': has_sample and (unified_values or (grouped and individual_values)),
             '_slice_cache': {},
             '_slice_results': {},
             '_slice_key': {},
             '_slice_uncolored': {}
         }
+        if border:
+            keys['slice_layout'] = 'independent' if fill is None else 'aligned'
+            keys['_slice_unshown'] = {}
         if weighted:
             keys['slice_share_summary'] = (
                 SLICE_SHARE_SUMMARIES[0] if share_summary is None else share_summary
             )
         if slice_by == 'gene':
             keys.update(self._build_gene_slice_keys(
-                model, data, accession_aggregation, all_sample_names
+                model, data if weighted else {**data, 'slice_weights': None},
+                accession_aggregation, all_sample_names
             ))
+            # Aligned rings find the genes of each element as the fill does. Each slice of a gene
+            # then takes its border value from the rows of the gene that have one.
+            if fill is not None:
+                keys['accession_genes'] = fill['accession_genes']
             return keys
         if not weighted:
             return keys
@@ -4907,10 +5775,12 @@ class Mapper:
             keys['gene_aggregate'] = None
             return keys
         period = model['value_period']
+        flag_stem = model['channel']['flag_stem']
         aggregate = model['aggregate'] if accession_aggregation is not None else (
             self._resolve_aggregation(
                 'circular_mean' if period is not None else 'mean',
-                '--reaction-accession-aggregation', period, '--reaction-value-period'
+                f'--{flag_stem}-accession-aggregation', model['channel'], period,
+                f'--{flag_stem}-value-period'
             )
         )
 
@@ -4978,7 +5848,9 @@ class Mapper:
         compound_individual_value_center: Union[float, None] = None,
         compound_element_normalization: Union[str, None] = None,
         compound_element_normalization_label: Union[str, None] = None,
-        group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
+        reaction_border: Union[Dict[str, object], None] = None,
+        compound_border: Union[Dict[str, object], None] = None,
+        group_colormap: Union[str, mcolors.Colormap, None] = None,
         group_colormap_limits: Tuple[float, float] = None,
         group_reverse_overlay: bool = False,
         group_colormap_scheme: Literal['by_count', 'by_count_continuous'] = None,
@@ -5168,26 +6040,29 @@ class Mapper:
             gene ID names the same gene in every sample. For numeric values sliced by gene,
             'reaction_accession_aggregation' reduces the rows of a gene for the accessions of an
             element. It is refused if it does not return a single value unchanged.
-            'reaction_gene_aggregation' and 'reaction_slice_weight_aggregation' are refused, since
-            no genes are reduced to an accession. 'reaction_element_normalization' is not supported
-            with slices yet. The slices drawn are listed in a key table, 'slice_key_reactions.txt',
-            in the output directory. The default of None draws every element whole.
+            'reaction_gene_aggregation' is refused, since no genes are reduced to an accession.
+            'reaction_slice_weight_aggregation' is refused too, unless the rings of the border are
+            sliced by accession. 'reaction_element_normalization' is not supported with slices yet.
+            The slices drawn are listed in a key table, 'slice_key_reactions.txt', in the output
+            directory. The default of None draws every element whole.
 
         reaction_slice_weights : str, None
             The column of the reaction file that weighs the slices. The shares of the slices of an
             element then follow the weights. A slice of a gene weighs the mean of the weights of its
-            rows for the element's accessions. The default of None gives every slice on a map the
-            same share.
+            rows for the element's accessions. The weights also size the slices of rings that are
+            sliced on their own ('reaction_border'). It needs 'reaction_slice_by' or the 'slice_by'
+            of the reaction border. The default of None gives every slice on a map the same share.
 
         reaction_slice_weight_aggregation : str, None
             How the weights of the genes of an accession are reduced to the accession's weight, for
-            a reaction file with a 'gene_id' column sliced by accession
-            ('SLICE_WEIGHT_AGGREGATIONS'). The default of None is 'sum'.
+            a reaction file with a 'gene_id' column ('SLICE_WEIGHT_AGGREGATIONS'). It needs elements
+            or rings sliced by accession. The default of None is 'sum'.
 
         reaction_slice_share_summary : str, None
             How the shares of slices are pooled on the maps of groups and on the 'unified' map,
-            which summarize several samples ('SLICE_SHARE_SUMMARIES'). It needs a column of weights.
-            The default of None is 'share_mean'.
+            which summarize several samples ('SLICE_SHARE_SUMMARIES'). It needs a column of weights,
+            and such a drawn map that shows slices of elements or of rings sliced on their own. The
+            default of None is 'share_mean'.
 
         compound_element_normalization : Union[str, None], None
             The same normalization for the compound layer.
@@ -5195,15 +6070,39 @@ class Mapper:
         compound_element_normalization_label : Union[str, None], None
             The same colorbar label for the compound layer's rescaled scale.
 
+        reaction_border : Union[Dict[str, object], None], None
+            The options of the border of the reaction layer, keyed by 'BORDER_OPTIONS', or None for
+            no border. 'column' names the border column of the reaction file. Its values color a
+            ring inside the outline of each box on standard maps ('kgml.SlicedKGMLCanvas'). The
+            other keys are the border versions of the options of the fill. Each takes the values
+            that its fill option takes, except these. A border shows values only, so its summaries
+            take no presence names. Without a summary, the 'unified' map of a file with samples
+            shows no border. The aggregations default to 'mean' for numbers. The colormap of numbers
+            defaults to 'viridis' from 0.2 to 1. The categorical values take the colors of
+            'DEFAULT_BORDER_VALUE_COLORS'. The border is built by the builder of the fill
+            ('_build_txt_model', '_txt_channel'). Options left out are None. 'slice_by' divides the
+            ring of each box among its accessions or genes with border values ('SLICE_UNITS'). Where
+            'reaction_slice_by' names the same unit, the rings are aligned with the slices of the
+            fill. Each column of the fill then takes the border value of its own unit, as bands
+            above and below it. Otherwise, each ring is divided on its own, clockwise from the top
+            left corner, in equal shares or in shares from 'reaction_slice_weights'
+            ('_ring_result'). The slices of rings are listed in 'slice_key_reactions_border.txt'.
+
+        compound_border : Union[Dict[str, object], None], None
+            The same for the compound layer, whose rings are drawn inside compound circles on
+            standard and overview maps. It takes no 'gene_aggregation' and no 'slice_by'.
+
         Notes
         =====
         The remaining parameters carry the shared groups, per-layer colors/colormaps, and drawing
         options; see the CLI help and '_map_elements'. 'group_colormap' may be 'GROUP_COLORMAP_TINT'
         to color each group's own maps by a ramp running to that group's own color instead of by a
         named colormap, in which case 'group_colormap_limits' is how far from white that ramp runs
-        ('_group_map_colors'). 'group_colormap_scheme' draws the count scale of every group's maps
-        in discrete bands ('by_count') or as a gradient ('by_count_continuous'), and by default
-        keeps the bands while the colors can be told apart.
+        ('_group_map_colors'). A 'group_colormap' of None is 'plasma_r'. 'group_colormap_scheme'
+        draws the count scale of every group's maps in discrete bands ('by_count') or as a gradient
+        ('by_count_continuous'), and by default keeps the bands while the colors can be told apart.
+        A layer whose 'reaction_color' or 'compound_color' is 'none' uses none of the group options.
+        They are refused where no other layer uses them.
 
         Returns
         =======
@@ -5228,13 +6127,21 @@ class Mapper:
                     f"the {element_type} layer. The values of that layer are numeric. To read them "
                     f"as categorical values, give '--{element_type}-value-type categorical'."
                 )
+        # The options of borders are checked as far as they can be before the files are read.
+        reaction_border = dict(reaction_border or {})
+        compound_border = dict(compound_border or {})
+        self._check_border_options(
+            reaction_txt, compound_txt, reaction_border, compound_border, reaction_color
+        )
         # The options that slice reaction elements are checked as far as they can be before the file
         # is read.
         self._check_slice_options(
             reaction_txt, reaction_slice_by, reaction_slice_weights,
             reaction_slice_weight_aggregation, reaction_slice_share_summary,
             reaction_element_normalization, reaction_color, reaction_colormap,
-            gene_aggregation=reaction_gene_aggregation
+            gene_aggregation=reaction_gene_aggregation,
+            border_column=reaction_border.get('column'),
+            border_slice_by=reaction_border.get('slice_by')
         )
 
         raw_layers: List[dict] = []
@@ -5244,8 +6151,12 @@ class Mapper:
                 'path': reaction_txt,
                 'data': self._read_element_txt(
                     reaction_txt, 'reaction', reaction_value_type,
-                    slice_weights=reaction_slice_weights, slice_by=reaction_slice_by
+                    slice_weights=reaction_slice_weights, slice_by=reaction_slice_by,
+                    border_column=reaction_border.get('column'),
+                    border_value_type=reaction_border.get('value_type') or 'numeric',
+                    border_slice_by=reaction_border.get('slice_by')
                 ),
+                'border': reaction_border,
                 'slice_by': reaction_slice_by,
                 'gene_aggregation': reaction_gene_aggregation,
                 'accession_aggregation': reaction_accession_aggregation,
@@ -5271,7 +6182,12 @@ class Mapper:
             raw_layers.append({
                 'name': 'compounds',
                 'path': compound_txt,
-                'data': self._read_element_txt(compound_txt, 'compound', compound_value_type),
+                'data': self._read_element_txt(
+                    compound_txt, 'compound', compound_value_type,
+                    border_column=compound_border.get('column'),
+                    border_value_type=compound_border.get('value_type') or 'numeric'
+                ),
+                'border': compound_border,
                 # A compound file has one row per accession per sample, so the gene level is a
                 # reduction over a single value. Left unset, it takes the layer's default. A period
                 # makes that default circular, and a period would refuse a 'sum' here.
@@ -5344,7 +6260,12 @@ class Mapper:
             rule for layer in raw_layers
             for rule in (
                 layer['gene_aggregation'], layer['accession_aggregation'], layer['sample_summary'],
-                layer['group_summary']
+                layer['group_summary'], *(
+                    layer['border'].get(option) for option in (
+                        'gene_aggregation', 'accession_aggregation', 'sample_summary',
+                        'group_summary'
+                    )
+                )
             ) if rule in RANDOM_CATEGORICAL_RULES
         ]
         if seed is not None and not random_rules:
@@ -5355,24 +6276,153 @@ class Mapper:
                 f"'--seed', or choose with one of those rules."
             )
 
+        seed = DEFAULT_CATEGORICAL_SEED if seed is None else seed
         models = [
             self._build_txt_model(
-                **layer, all_sample_names=all_sample_names, group_samples=group_samples,
-                seed=DEFAULT_CATEGORICAL_SEED if seed is None else seed
+                **{key: value for key, value in layer.items() if key != 'border'},
+                all_sample_names=all_sample_names, group_samples=group_samples, seed=seed
             )
             for layer in raw_layers
         ]
 
+        # The aggregations that reduce the values of a channel, for the run's report. A channel
+        # sliced by accession shows the value of each accession, so the report leaves out its
+        # accession aggregation. A channel sliced by gene leaves out its gene aggregation too. These
+        # options can still choose stand-in values, or reduce the rows of a gene.
+        def _used(aggregations: Union[dict, None], slice_by: Union[str, None]) -> dict:
+            aggregations = dict(aggregations or {})
+            if slice_by is not None:
+                aggregations.pop('accession', None)
+            if slice_by == 'gene':
+                aggregations.pop('gene', None)
+            return aggregations
+
+        # The border of a layer is built from its border column by the builder of the fill. Its
+        # channel names its options and gives its defaults. Its options left out are None.
+        for layer, model in zip(raw_layers, models):
+            data = layer['data']
+            model['border'] = None
+            if data['border_column'] is None:
+                continue
+            element_type = data['element_type']
+            border = {option: layer['border'].get(option) for option in BORDER_OPTIONS}
+            channel = self._txt_channel(element_type, 'border')
+            model['border'] = self._build_txt_model(
+                channel['name'], self._border_view(data), layer['path'],
+                border['gene_aggregation'], border['accession_aggregation'], None,
+                border['colormap'], border['colormap_limits'], border['individual_colormap'],
+                border['individual_colormap_limits'], None, False, all_sample_names, group_samples,
+                border['sample_summary'], border['group_summary'],
+                value_limits=border['value_limits'],
+                individual_value_limits=border['individual_value_limits'],
+                value_center=border['value_center'],
+                individual_value_center=border['individual_value_center'],
+                element_normalization=border['element_normalization'],
+                element_normalization_label=border['element_normalization_label'],
+                value_period=border['value_period'], value_colors_txt=border['value_colors'],
+                seed=seed, slice_by=border['slice_by'], channel=channel
+            )
+            # Each column and the aggregations that reduce its values are reported. The two channels
+            # reduce values by different defaults, so the same column can give an element different
+            # values as its fill and as its border. A layer in the fill mode 'none' colors no fills.
+            # Its rows without a border value then show nothing.
+            label = element_type.capitalize()
+            no_column = (
+                f"none, and '--{element_type}-color none' leaves the fills uncolored"
+                if model['unified_mode'] == 'none' else "none, so the fills show presence"
+            )
+            for name, column, value_type, aggregations in (
+                ('value', data['value_column'], data['value_type'],
+                 _used(model.get('aggregations'), layer.get('slice_by'))),
+                ('border', data['border_column'], data['border_value_type'],
+                 _used(model['border'].get('aggregations'), border['slice_by']))
+            ):
+                self.run.info(
+                    f"{label} {name} column",
+                    f"{column} ({value_type})" if column is not None else no_column
+                )
+                for level, aggregation in (aggregations or {}).items():
+                    if column is None or level == 'gene' and 'gene_id' not in data['df'].columns:
+                        continue
+                    self.run.info(f"{label} {name} {level} aggregation", aggregation)
+            self.run.info(f"{label} rows without a border value", data['border_empty'])
+            if border['slice_by'] is not None:
+                self.run.info(
+                    f"{label} border slices",
+                    f"by {border['slice_by']}, " + (
+                        "aligned with the fill" if border['slice_by'] == layer.get('slice_by')
+                        else "independent of the fill"
+                    )
+                )
+
         # The reaction layer comes first. Slicing it needs a drawn map that shows its values.
+        draw_individual_maps = all_sample_names is not None and (
+            draw_individual_files is not False or draw_grid is not False
+        )
         if reaction_slice_by is not None:
             models[0].update(self._build_slice_model(
                 models[0], raw_layers[0]['data'], reaction_slice_by,
                 reaction_slice_weight_aggregation, reaction_slice_share_summary,
                 reaction_accession_aggregation, all_sample_names, group_samples, draw_unified_maps,
-                all_sample_names is not None and (
-                    draw_individual_files is not False or draw_grid is not False
-                )
+                draw_individual_maps
             ))
+        # The rings of the reaction border are sliced from the rows with a border value. Where the
+        # fill is sliced by the same unit, the rings are aligned with its columns.
+        border_slice_by = reaction_border.get('slice_by')
+        if border_slice_by is not None:
+            fill = models[0]
+            fill['border'].update(self._build_slice_model(
+                fill['border'], self._border_view(raw_layers[0]['data']), border_slice_by,
+                reaction_slice_weight_aggregation, reaction_slice_share_summary,
+                reaction_border.get('accession_aggregation'), all_sample_names, group_samples,
+                draw_unified_maps, draw_individual_maps,
+                fill=fill if border_slice_by == reaction_slice_by else None
+            ))
+        # Shares are pooled on the maps that summarize several samples. A summary of shares needs
+        # such a map that shows the slices of the fill, or rings that are sliced on their own.
+        if reaction_slice_share_summary is not None:
+            fill = models[0]
+            ring = fill['border'] if border_slice_by is not None else None
+            if not (fill.get('slice_pooled') or (
+                ring is not None and ring['slice_layout'] == 'independent' and ring['slice_pooled']
+            )):
+                shown = "the values of the reaction layer" if ring is None else (
+                    "the values of the reaction layer or the slices of its rings"
+                )
+                raise ConfigError(
+                    f"'--reaction-slice-share-summary' pools the shares of slices on the maps that "
+                    f"summarize several samples, which are the maps of groups and the 'unified' "
+                    f"map. Here no drawn map of this kind shows {shown}, so no shares are pooled. "
+                    f"Please drop '--reaction-slice-share-summary'."
+                )
+
+        # A layer in the fill mode 'none' colors no fills, so it neither summarizes the groups by
+        # presence nor counts the samples of a group on the group's map. The group options that do
+        # these things are refused where no other layer uses them. The CLI makes this check too.
+        unfilled = [model for model in models if model['unified_mode'] == 'none']
+        if unfilled and group_samples is not None:
+            others = [model for model in models if model['unified_mode'] != 'none']
+            threshold_used = any(model['unified_mode'] == 'membership' for model in others)
+            counts_used = any(model['individual_mode'] == 'membership' for model in others)
+            idle = [f"'{flag}'" for flag, given, used in (
+                ('--group-threshold', group_threshold is not None, threshold_used),
+                (
+                    '--group-colormap',
+                    group_colormap is not None or group_colormap_limits is not None, counts_used
+                ),
+                ('--group-colormap-scheme', group_colormap_scheme is not None, counts_used),
+                ('--group-reverse-overlay', group_reverse_overlay, counts_used)
+            ) if given and not used]
+            if idle:
+                unfilled_clauses = ' '.join(
+                    f"'--{model['element_type']}-color none' leaves the fills of the "
+                    f"{model['element_type']} layer uncolored." for model in unfilled
+                )
+                raise ConfigError(
+                    f"These options shape how the fills of a layer show groups of samples: "
+                    f"{', '.join(idle)}. No layer here uses them. {unfilled_clauses} Such a layer "
+                    f"draws only the rings of its border column. Please drop these options."
+                )
 
         # Groups are carried through whenever they are defined: they set which samples each group's
         # map summarizes, and, for a group summary of presence, which groups the 'unified' map shows
@@ -5383,7 +6433,7 @@ class Mapper:
                 'source_group': sample_group,
                 'group_sources': group_samples,
                 'group_threshold': group_threshold,
-                'group_colormap': group_colormap,
+                'group_colormap': 'plasma_r' if group_colormap is None else group_colormap,
                 'group_colormap_limits': group_colormap_limits,
                 'group_reverse_overlay': group_reverse_overlay,
                 'group_colormap_scheme': group_colormap_scheme
@@ -7104,7 +8154,8 @@ class Mapper:
     def _summarize_entry_individuals(
         entry: kgml.Entry,
         layer: dict,
-        individual: Union[str, None] = None
+        individual: Union[str, None] = None,
+        count_choices: bool = True
     ) -> Tuple[Dict[str, str], Union[str, None]]:
         """
         Find an Entry's categorical value in each sample or group, and on the 'unified' map.
@@ -7124,6 +8175,10 @@ class Mapper:
             The sample or group whose map asks for the values, or None for the 'unified' map
             ('_summarize_element_individuals').
 
+        count_choices : bool, True
+            False to find the values without counting the choices made for them
+            ('_summarize_element_individuals').
+
         Returns
         =======
         Tuple[Dict[str, str], Union[str, None]]
@@ -7132,13 +8187,14 @@ class Mapper:
             without samples, and for a grouped layer without a rule for its samples.
         """
         accessions = tuple(Mapper._get_entry_kegg_ids(entry, layer['use_reaction_attribute']))
-        return Mapper._summarize_element_individuals(accessions, layer, individual)
+        return Mapper._summarize_element_individuals(accessions, layer, individual, count_choices)
 
     @staticmethod
     def _summarize_element_individuals(
         accessions: Tuple[str, ...],
         layer: dict,
-        individual: Union[str, None] = None
+        individual: Union[str, None] = None,
+        count_choices: bool = True
     ) -> Tuple[Dict[str, str], Union[str, None]]:
         """
         Find a map element's categorical value in each sample or group, and on the 'unified' map.
@@ -7173,6 +8229,10 @@ class Mapper:
             The sample or group whose map asks for the values, or None for the 'unified' map. It
             sets which choices are counted. The values returned do not depend on it.
 
+        count_choices : bool, True
+            False to count no choice. The range of a border asks for values this way, since no map
+            is drawn then ('_map_elements').
+
         Returns
         =======
         Tuple[Dict[str, str], Union[str, None]]
@@ -7191,6 +8251,8 @@ class Mapper:
             # Count the choices that the asking map uses. A counted choice is dropped, so no choice
             # is counted twice.
             individual_values, unified_value, uncounted = result
+            if not count_choices:
+                return individual_values, unified_value
             if individual is None or layer['sample_values'] is None:
                 used = list(uncounted)
             elif layer['group_samples'] is None:
@@ -7208,6 +8270,8 @@ class Mapper:
             return _count_used(cache[element_key])
         order = layer['value_order']
         seed = layer['seed']
+        # The key of a random choice starts with the salt of the channel ('_txt_channel').
+        salt = layer['choice_salt']
         # How each choice among different values was made, keyed by its level and by the sample or
         # group it was made for. The key holds '' instead for a choice on the 'unified' map, and for
         # a choice in a layer without samples.
@@ -7218,7 +8282,8 @@ class Mapper:
             if not votes:
                 return None
             value, how = Mapper._choose_categorical_value(
-                votes, layer['accession_rule'], order, seed, ('accession', sample) + element_key
+                votes, layer['accession_rule'], order, seed,
+                salt + ('accession', sample) + element_key
             )
             if how is not None:
                 uncounted[('element', sample)] = how
@@ -7237,7 +8302,7 @@ class Mapper:
         def _choose_across(
             votes: List[str], rule: str, level: str, voter: str, key: Tuple[str, ...]
         ) -> Union[str, None]:
-            value, how = Mapper._choose_categorical_value(votes, rule, order, seed, key)
+            value, how = Mapper._choose_categorical_value(votes, rule, order, seed, salt + key)
             if how is not None:
                 uncounted[(level, voter)] = how
             return value
@@ -7433,7 +8498,8 @@ class Mapper:
         '_summarize_element_values' and '_summarize_element_individuals' read the values of
         accessions from a layer. The view gives them the values of members instead
         ('_gene_members'). A slice of a gene is then summarized as an element whose accessions are
-        its members. The view shares the rules, summaries, choices, and undefined sets of the layer.
+        its members. The view shares the rules, summaries, seed, salt, choices, and undefined sets
+        of the layer.
 
         Parameters
         ==========
@@ -7451,8 +8517,8 @@ class Mapper:
         view = {
             key: layer[key] for key in (
                 'group_samples', 'sample_aggregate', 'group_aggregate', 'value_order', 'seed',
-                'accession_rule', 'sample_rule', 'group_rule', '_choices', '_undefined_individual',
-                '_undefined_unified'
+                'choice_salt', 'accession_rule', 'sample_rule', 'group_rule', '_choices',
+                '_undefined_individual', '_undefined_unified'
             ) if key in layer
         }
         view['sample_values'] = layer['gene_sample_values']
@@ -7524,7 +8590,8 @@ class Mapper:
     def _gene_standin_individuals(
         units: Tuple[Tuple[str, Tuple[str, ...]], ...],
         layer: dict,
-        individual: Union[str, None]
+        individual: Union[str, None],
+        count_choices: bool = True
     ) -> Tuple[Dict[str, str], Union[str, None]]:
         """
         Find the categorical stand-in value of an element sliced by gene.
@@ -7547,6 +8614,9 @@ class Mapper:
         individual : Union[str, None]
             The sample or group whose map asks for the value, or None for the 'unified' map.
 
+        count_choices : bool, True
+            False to count no choice ('_summarize_element_individuals').
+
         Returns
         =======
         Tuple[Dict[str, str], Union[str, None]]
@@ -7568,7 +8638,7 @@ class Mapper:
                         continue
                     value, _ = Mapper._choose_categorical_value(
                         votes, layer['accession_rule'], layer['value_order'], layer['seed'],
-                        ('accession', sample) + members
+                        layer['choice_salt'] + ('accession', sample) + members
                     )
                     if value is not None:
                         chosen[name] = value
@@ -7580,13 +8650,14 @@ class Mapper:
                     sample: _gene_values(values, sample)
                     for sample, values in view['sample_values'].items()
                 }
-        return Mapper._summarize_element_individuals(tuple(names), view, individual)
+        return Mapper._summarize_element_individuals(tuple(names), view, individual, count_choices)
 
     @staticmethod
     def _slice_values(
         accessions: Tuple[str, ...],
         layer: dict,
-        context: Union[str, None]
+        context: Union[str, None],
+        count_choices: bool = True
     ) -> Dict[Union[str, Tuple[str, Tuple[str, ...]]], Union[float, str]]:
         """
         Find the value of each slice of a map element on one map.
@@ -7623,6 +8694,9 @@ class Mapper:
             The sample or group whose map is drawn, or None for the 'unified' map. A layer without
             samples shows the same values on every map. It takes None for every map.
 
+        count_choices : bool, True
+            False to count no choice among categorical values ('_summarize_element_individuals').
+
         Returns
         =======
         Dict[Union[str, Tuple[str, Tuple[str, ...]]], Union[float, str]]
@@ -7639,7 +8713,7 @@ class Mapper:
                 members = Mapper._gene_members(unit)
                 if categorical:
                     individual_values, unified_value = Mapper._summarize_element_individuals(
-                        members, view, context
+                        members, view, context, count_choices
                     )
                 else:
                     individual_values, unified_value = Mapper._summarize_element_values(
@@ -7654,7 +8728,7 @@ class Mapper:
                 continue
             if categorical:
                 individual_values, unified_value = Mapper._summarize_element_individuals(
-                    (accession,), layer, context
+                    (accession,), layer, context, count_choices
                 )
             else:
                 individual_values, unified_value = Mapper._summarize_element_values(
@@ -7771,7 +8845,8 @@ class Mapper:
     def _slice_result(
         accessions: Tuple[str, ...],
         layer: dict,
-        context: Union[str, None]
+        context: Union[str, None],
+        count_choices: bool = True
     ) -> Union[List[Tuple[str, Union[float, str], float]], None]:
         """
         Find the slices of a map element on one map.
@@ -7780,7 +8855,9 @@ class Mapper:
         share above 0 ('_slice_shares'). The shares of these slices are then scaled to sum to 1.
         Slices of accessions follow the order of the accessions in the KGML entry. Slices of genes
         follow the order of '_gene_element'. Results are kept in the layer's '_slice_results'. The
-        range of values is found from them, and the maps are drawn from them.
+        range of values is found from them, and the maps are drawn from them. A result found without
+        counting the choices among categorical values is not kept, so that the map that draws it
+        still counts them.
 
         Parameters
         ==========
@@ -7794,6 +8871,9 @@ class Mapper:
             The sample or group whose map is drawn, or None for the 'unified' map, as in
             '_slice_values'.
 
+        count_choices : bool, True
+            False to count no choice among categorical values, as in '_slice_values'.
+
         Returns
         =======
         Union[List[Tuple[str, Union[float, str], float]], None]
@@ -7806,7 +8886,9 @@ class Mapper:
         cache = layer['_slice_results']
         if key in cache:
             return cache[key]
-        values = Mapper._slice_values(accessions, layer, context)
+        if not count_choices and layer.get('value_type') == 'categorical':
+            cache = {}
+        values = Mapper._slice_values(accessions, layer, context, count_choices)
         if not values:
             cache[key] = None
             return None
@@ -7982,6 +9064,316 @@ class Mapper:
             return {'accessions': accessions, 'slices': slices, 'standin': standin}
         return slicer
 
+    def _ring_result(
+        self,
+        pathway: kgml.Pathway,
+        entry: kgml.Entry,
+        layer: dict,
+        individual: Union[str, None],
+        count_choices: bool = True
+    ) -> Union[dict, None]:
+        """
+        Find what the sliced ring of a box shows on one map ('--reaction-border-slice-by').
+
+        The range of the border scale and the staging of rings both ask this, so that the scale
+        spans the values that the rings show. The rings of a layer are aligned with the fill or
+        sliced on their own ('slice_layout').
+
+        Aligned with the fill, a ring follows the fill of its box on the map. Where the fill is
+        drawn in slices, each column takes the border value of its own accession or gene, as bands
+        above and below it ('kgml.SlicedKGMLCanvas'). A column whose unit has no border value takes
+        no bands. Where the fill has one slice, the ring is whole in the border value of that slice.
+        Where the fill has more slices than fit ('_slice_cap'), the ring is whole in the color of a
+        stand-in value. That value stands for the units with both a slice of the fill and a border
+        value, with the shares of the fill. Where the fill is not sliced, since the map shows
+        presence or the box has no fill value there, the ring is whole in the color of a stand-in
+        value. That value stands for every unit with a border value, with equal shares. A unit with
+        a border value but no slice of the fill is not shown.
+
+        Sliced on its own, a ring is divided among the units with a border value and a share above
+        0, in the order of their slices ('_slice_result'). Each unit takes one segment, clockwise
+        from the top left corner. A ring with one slice is whole in the color of that slice. A ring
+        with more than 'MAX_RING_SLICES' slices is whole in the color of the stand-in value of all
+        of them.
+
+        A stand-in value is found as for a fill drawn whole ('_slice_standin_value',
+        '_summarize_element_individuals', '_gene_standin_individuals'). A ring whose stand-in value
+        is undefined is not drawn. The choices among categorical values are counted for the slices
+        that a ring shows or lists in the key table, and for its stand-in. A unit that the ring
+        leaves out, by a share of 0 or for want of a column of the fill, counts no choice.
+
+        Parameters
+        ==========
+        pathway : kgml.Pathway
+            The map.
+
+        entry : kgml.Entry
+            An ortholog Entry of the map with a box that shows rings ('_shows_border').
+
+        layer : dict
+            The model of the fill of a reaction layer. Its 'border' holds the sliced model of its
+            border ('_build_slice_model').
+
+        individual : Union[str, None]
+            The sample or group whose map is drawn, or None for the 'unified' map. The border shows
+            its values on that map.
+
+        count_choices : bool, True
+            False to count no choice among categorical values. The range of a border asks this way,
+            since no map is drawn then.
+
+        Returns
+        =======
+        Union[dict, None]
+            None where the box has no value to show in its ring. Otherwise a dictionary with these
+            keys:
+            - 'kind': 'bands', 'whole', or 'segments'. It is 'uncolored' where every slice with a
+              value has a share of 0, and 'none' where only units that are not shown have border
+              values. The ring is not drawn in these two cases.
+            - 'slices': the rows of the key table, as (position, unit, value, share) tuples. The
+              position counts from 1. It is None in a ring drawn whole for a reason.
+            - 'values': the border value of each column of the fill, or None for a column without
+              bands. Only bands have this key.
+            - 'value': the value of a whole ring. Only a whole ring has this key.
+            - 'reason': why a ring is drawn whole, such as 'over the cap' or 'fill not sliced', or
+              None.
+            - 'unshown': the units with a border value but no slice of the fill.
+            - 'accessions': the accessions of the Entry.
+            A result of the kind 'uncolored' or 'none' has only 'kind', 'unshown', and
+            'accessions'.
+        """
+        border = layer['border']
+        context = None if border['sample_values'] is None else individual
+        accessions = tuple(self._get_entry_kegg_ids(entry, border['use_reaction_attribute']))
+        categorical = border.get('value_type') == 'categorical'
+        period = self._slice_period(border, individual is None)
+
+        def _standin(slices) -> Union[float, str, None]:
+            # The value that stands in for the slices of a ring drawn whole. Only the units of these
+            # slices vote, as for a fill drawn whole ('_slicer').
+            if categorical:
+                units = tuple(unit for unit, _, _ in slices)
+                individual_values, unified_value = (
+                    self._gene_standin_individuals(units, border, context, count_choices)
+                    if border['slice_by'] == 'gene' else
+                    self._summarize_element_individuals(units, border, context, count_choices)
+                )
+                return unified_value if context is None else individual_values.get(context)
+            return self._slice_standin_value(
+                [value for _, value, _ in slices], [share for _, _, share in slices], period
+            )
+
+        def _whole(slices, reason, unshown=()) -> Union[dict, None]:
+            # A ring of one slice takes the value of that slice. Any other ring takes a stand-in.
+            value = slices[0][1] if len(slices) == 1 else _standin(slices)
+            if value is None:
+                return None
+            return {
+                'kind': 'whole', 'value': value, 'reason': reason, 'unshown': list(unshown),
+                'accessions': accessions,
+                'slices': [
+                    (None if reason else position, unit, slice_value, share)
+                    for position, (unit, slice_value, share) in enumerate(slices, 1)
+                ]
+            }
+
+        # The choices among categorical values are counted only for the slices that a ring shows,
+        # once they are known ('_count_slice_choices').
+        if border['slice_layout'] == 'independent':
+            slices = self._slice_result(accessions, border, context, count_choices=False)
+            if slices is None:
+                return None
+            if not slices:
+                return {'kind': 'uncolored', 'unshown': [], 'accessions': accessions}
+            if count_choices:
+                self._count_slice_choices([unit for unit, _, _ in slices], border, context)
+            if len(slices) > MAX_RING_SLICES:
+                return _whole(slices, 'over the cap')
+            if len(slices) == 1:
+                return _whole(slices, None)
+            return {
+                'kind': 'segments', 'reason': None, 'unshown': [], 'accessions': accessions,
+                'slices': [
+                    (position, unit, value, share)
+                    for position, (unit, value, share) in enumerate(slices, 1)
+                ]
+            }
+
+        # Aligned rings follow the fill of the box on this map. The fill is sliced only on the maps
+        # that show its values ('_sliced').
+        mode = layer['unified_mode'] if individual is None else layer['individual_mode']
+        fill_slices = None
+        if mode in ('quantitative', 'categorical'):
+            fill_slices = self._slice_result(accessions, layer, context, count_choices)
+        border_values = self._slice_values(accessions, border, context, count_choices=False)
+        if not border_values:
+            return None
+        if fill_slices is not None and not fill_slices:
+            return {'kind': 'uncolored', 'unshown': [], 'accessions': accessions}
+        if fill_slices is None:
+            if count_choices:
+                self._count_slice_choices(list(border_values), border, context)
+            share = 1.0 / len(border_values)
+            return _whole(
+                [(unit, value, share) for unit, value in border_values.items()], 'fill not sliced'
+            )
+        units = [unit for unit, _, _ in fill_slices]
+        unshown = [unit for unit in border_values if unit not in units]
+        shown = [
+            (position, unit, border_values[unit], share)
+            for position, (unit, _, share) in enumerate(fill_slices, 1) if unit in border_values
+        ]
+        if not shown:
+            return {'kind': 'none', 'unshown': unshown, 'accessions': accessions}
+        if count_choices:
+            self._count_slice_choices([unit for _, unit, _, _ in shown], border, context)
+        reason = self._slice_cap(
+            pathway, entry, len(fill_slices), ringed=True
+        ) if len(fill_slices) > 1 else None
+        if len(fill_slices) > 1 and reason is None:
+            return {
+                'kind': 'bands', 'reason': None, 'unshown': unshown, 'accessions': accessions,
+                'values': [border_values.get(unit) for unit in units], 'slices': shown
+            }
+        return _whole([(unit, value, share) for _, unit, value, share in shown], reason, unshown)
+
+    @staticmethod
+    def _count_slice_choices(
+        units: List[Union[str, Tuple[str, Tuple[str, ...]]]],
+        layer: dict,
+        context: Union[str, None]
+    ) -> None:
+        """
+        Count the choices among categorical values that some slices use on one map.
+
+        The values of the slices were found without counting their choices ('_slice_values'). They
+        are kept in the caches of the layer, so asking for them again only counts the choices
+        ('_summarize_element_individuals'). Nothing is counted for numeric values.
+
+        Parameters
+        ==========
+        units : List[Union[str, Tuple[str, Tuple[str, ...]]]]
+            The units of the slices, as in '_slice_values'.
+
+        layer : dict
+            A sliced layer model ('_build_slice_model').
+
+        context : Union[str, None]
+            The sample or group whose map is drawn, or None for the 'unified' map, as in
+            '_slice_values'.
+        """
+        if layer.get('value_type') != 'categorical':
+            return
+        if layer['slice_by'] == 'gene':
+            view = Mapper._gene_view(layer, layer['_gene_cache'])
+            for unit in units:
+                Mapper._summarize_element_individuals(Mapper._gene_members(unit), view, context)
+            return
+        for unit in units:
+            Mapper._summarize_element_individuals((unit,), layer, context)
+
+    def _ring_values(
+        self,
+        pathway: kgml.Pathway,
+        entry: kgml.Entry,
+        layer: dict,
+        individual: Union[str, None]
+    ) -> List[Union[float, str]]:
+        """
+        List the values that the sliced ring of a box shows on one map, without counting choices.
+
+        Parameters
+        ==========
+        pathway, entry, layer, individual
+            As in '_ring_result'.
+
+        Returns
+        =======
+        List[Union[float, str]]
+            The value of each band or segment, or the one value of a whole ring. The list is empty
+            where the box shows no ring.
+        """
+        ring = self._ring_result(pathway, entry, layer, individual, count_choices=False)
+        if ring is None:
+            return []
+        if ring['kind'] == 'bands':
+            return [value for value in ring['values'] if value is not None]
+        if ring['kind'] == 'segments':
+            return [value for _, _, value, _ in ring['slices']]
+        if ring['kind'] == 'whole':
+            return [ring['value']]
+        return []
+
+    def _ringer(
+        self,
+        layer: dict,
+        individual: Union[str, None] = None
+    ) -> Callable[[kgml.Pathway, kgml.Entry], Union[dict, None]]:
+        """
+        Build the function that finds the sliced rings of one layer on one kind of map.
+
+        A numeric value takes the color of its value on the border scale of the map
+        ('_quantitative_color_priority'). A categorical value takes the color of its value
+        ('value_color_priorities').
+
+        Parameters
+        ==========
+        layer : dict
+            The model of the fill of a reaction layer whose border is sliced ('_ring_result').
+
+        individual : Union[str, None], None
+            The sample or group whose map is drawn, or None for the 'unified' map.
+
+        Returns
+        =======
+        Callable[[kgml.Pathway, kgml.Entry], Union[dict, None]]
+            The function. It takes the map and an ortholog Entry with a box that shows rings. It
+            returns what '_ring_result' returns. A ring that is drawn also gets these keys:
+            - 'border': the ring, as 'Graphics.border' takes it.
+            - 'colors': the color of each row of 'slices'. The rows of a ring drawn whole all take
+              the color of the ring.
+        """
+        border = layer['border']
+        if border.get('value_type') == 'categorical':
+            value_color_priorities = border['value_color_priorities']
+
+            def color(value) -> str:
+                return value_color_priorities[value][0]
+        else:
+            norm, cmap, center = (
+                (border['_unified_norm'], border['cmap'], border['_unified_center'])
+                if individual is None else (
+                    border['_individual_norm'], border['individual_cmap'],
+                    border['_individual_center']
+                )
+            )
+
+            def color(value) -> str:
+                return Mapper._quantitative_color_priority(
+                    value, norm, cmap, border['reverse_overlay'], center
+                )[0]
+
+        def ringer(pathway: kgml.Pathway, entry: kgml.Entry) -> Union[dict, None]:
+            ring = self._ring_result(pathway, entry, layer, individual)
+            if ring is None or ring['kind'] in ('uncolored', 'none'):
+                return ring
+            if ring['kind'] == 'whole':
+                ring['border'] = color(ring['value'])
+                ring['colors'] = [ring['border']] * len(ring['slices'])
+                return ring
+            ring['colors'] = [color(value) for _, _, value, _ in ring['slices']]
+            if ring['kind'] == 'bands':
+                ring['border'] = (
+                    'bands', [None if value is None else color(value) for value in ring['values']]
+                )
+            else:
+                ring['border'] = ('segments', [
+                    (hexcode, share)
+                    for hexcode, (_, _, _, share) in zip(ring['colors'], ring['slices'])
+                ])
+            return ring
+        return ringer
+
     def _draw_quantitative_colorbar(
         self,
         cmap: mcolors.Colormap,
@@ -8085,9 +9477,10 @@ class Mapper:
         A layer's mode sets how it colors its elements: 'quantitative' (continuous value),
         'categorical' (a color per categorical value), 'membership' (by the sources/groups
         containing an element, or their count), 'single' (one fixed presence/absence color),
-        'static' (one fixed color pooled across sources, for the db/pan single-color path), or
-        'original' (preserve the reference map's colors, drawn by a separate drawer). The mode can
-        differ between the two map contexts, given as 'unified_mode' for the 'unified' map and
+        'static' (one fixed color pooled across sources, for the db/pan single-color path),
+        'original' (preserve the reference map's colors, drawn by a separate drawer), or 'none' (no
+        fill, so that a text layer draws only the rings of its border column). The mode can differ
+        between the two map contexts, given as 'unified_mode' for the 'unified' map and
         'individual_mode' for the individual sample/source/group maps: a text layer with a value
         column and a 'sample' column, for instance, colors per-sample magnitude continuously while
         summarizing the samples or groups by presence on the 'unified' map. Note that 'original' is
@@ -8131,6 +9524,9 @@ class Mapper:
             - 'cmap': the colormap.
             - 'reverse_overlay': True to draw lower values on top of higher ones.
             - 'colorbar_label': the label of the colorbar.
+            - 'value_column': the header of the column of the values, which messages name.
+            - 'channel': the channel that the values color, the fill or the border ('_txt_channel').
+              Messages name its options.
 
             A 'quantitative' layer can also have these keys:
             - 'individual_cmap': the colormap of the individual maps. It defaults to 'cmap'.
@@ -8162,13 +9558,14 @@ class Mapper:
 
             A 'categorical' layer comes from '_build_categorical_txt_model'. It needs these keys:
             - 'value_type': 'categorical'.
-            - 'accessions', 'sample_values', 'unified_values', 'group_samples' and 'colorbar_label',
-              as for a 'quantitative' layer. The values are names.
+            - 'accessions', 'sample_values', 'unified_values', 'group_samples', 'colorbar_label',
+              'value_column', and 'channel', as for a 'quantitative' layer. The values are names.
             - 'value_color_priorities': the color and priority of each value, in the order of the
               values. It is None where no map shows the values.
-            - 'value_order', 'gene_rule', 'accession_rule', 'sample_rule', 'group_rule' and 'seed',
-              which choose one value where several meet ('_summarize_entry_individuals').
-              'sample_rule' and 'group_rule' are None where no rule was given.
+            - 'value_order', 'gene_rule', 'accession_rule', 'sample_rule', 'group_rule', 'seed', and
+              'choice_salt', which choose one value where several meet
+              ('_summarize_entry_individuals'). 'sample_rule' and 'group_rule' are None where no
+              rule was given.
             - '_element_cache' and '_choices', which keep and count those choices.
 
             A 'membership' layer needs these keys:
@@ -8200,13 +9597,17 @@ class Mapper:
 
             A 'single' layer needs 'accessions' and 'color_hexcode'.
 
+            A 'none' layer needs 'accessions' and a 'border'. It is 'none' in both contexts. Its
+            matched entries do not count as data, so a map is drawn for it only where a ring shows.
+
             A layer that is 'quantitative' in one context and 'membership' in the other has the keys
             of both.
 
             A sliced reaction layer has the keys that '_build_slice_model' returns. Every drawn map
             that shows its values ('quantitative' or 'categorical') is sliced ('_slicer'). The range
             of each scale is found from the values of the slices drawn. The slices drawn are listed
-            in a key table ('_write_slice_keys').
+            in a key table ('_write_slice_keys'). A border with sliced rings has these keys too. Its
+            rings are found from the fill of its layer ('_ring_result').
 
         output_dir : str
             Path to the output directory in which pathway map and colorbar PDF files are drawn.
@@ -8246,6 +9647,24 @@ class Mapper:
             # two contexts are colored from the layer's single 'cmap'.
             if layer['individual_mode'] == 'quantitative' and 'individual_cmap' not in layer:
                 layer['individual_cmap'] = layer['cmap']
+
+        # The border of a text layer is a model of its own, built from its border column
+        # ('map_kegg_pathways_txt'). It has the keys of a 'quantitative' or 'categorical' layer. Its
+        # mode is None on a map that shows no border. The steps that find, check, and key a scale
+        # take the borders with the layers. The checks of reserved colors and of derived compound
+        # colors do not, since a border is never part of the colors of an element.
+        borders = [layer['border'] for layer in layers if layer.get('border') is not None]
+        models = layers + borders
+
+        def _stem(layer: dict) -> str:
+            # The options of a layer from a text file start with the stem of its channel.
+            return layer['channel']['flag_stem'] if 'channel' in layer else layer['element_type']
+
+        def _noun(layer: dict) -> str:
+            return layer['channel']['noun'] if 'channel' in layer else layer['element_type']
+
+        def _is_border(layer: dict) -> bool:
+            return 'channel' in layer and layer['channel']['role'] == 'border'
 
         original_run = any(layer['unified_mode'] == 'original' for layer in layers)
         static = any(layer['unified_mode'] in ('static', 'original') for layer in layers)
@@ -8347,12 +9766,11 @@ class Mapper:
             # A normalization is checked before the limits and the center are, since one centered on
             # zero supplies a center of its own.
             normalized_layers = [
-                layer for layer in layers if layer.get('element_normalize') is not None
+                layer for layer in models if layer.get('element_normalize') is not None
             ]
             if normalized_layers:
                 flags = ', '.join(
-                    f"'--{layer['element_type']}-element-normalization'"
-                    for layer in normalized_layers
+                    f"'--{_stem(layer)}-element-normalization'" for layer in normalized_layers
                 )
                 raise ConfigError(
                     f"A normalization was given for the values of the individual samples or groups "
@@ -8374,21 +9792,26 @@ class Mapper:
                 )
             ):
                 affected_layers = [
-                    layer for layer in layers if layer.get(model_key) is not None
+                    layer for layer in models if layer.get(model_key) is not None
                 ]
                 if not affected_layers:
                     continue
                 flags = ', '.join(
-                    f"'--{layer['element_type']}-{flag_suffix}'" for layer in affected_layers
+                    f"'--{_stem(layer)}-{flag_suffix}'" for layer in affected_layers
+                )
+                unified_suffix = flag_suffix.replace('individual-', '')
+                unified_flags = (
+                    f"'--reaction-{unified_suffix}'/'--compound-{unified_suffix}'"
+                    if not any(_is_border(layer) for layer in affected_layers) else ', '.join(
+                        f"'--{_stem(layer)}-{unified_suffix}'" for layer in affected_layers
+                    )
                 )
                 raise ConfigError(
                     f"{subject_phrase} the color scale shared by the maps of the individual "
                     f"samples or groups ({flags}), but this run draws no such maps, so that scale "
                     f"is never drawn and this would go nowhere. Ask for those maps with "
                     f"'--draw-individual-files' and/or '--draw-grid', or {remedy_phrase} the scale "
-                    f"of the 'unified' map instead, with "
-                    f"'--reaction-{flag_suffix.replace('individual-', '')}'/"
-                    f"'--compound-{flag_suffix.replace('individual-', '')}'."
+                    f"of the 'unified' map instead, with {unified_flags}."
                 )
 
         # The options bounding and centering the 'unified' map's own scale are the mirror case. A
@@ -8400,20 +9823,25 @@ class Mapper:
                 ('value_center', 'value-center', 'A center was given for', 'Center')
             ):
                 affected_layers = [
-                    layer for layer in layers
+                    layer for layer in models
                     if layer.get(model_key) is not None and not _unified_scale_drawn(layer)
                 ]
                 if not affected_layers:
                     continue
                 flags = ', '.join(
-                    f"'--{layer['element_type']}-{flag_suffix}'" for layer in affected_layers
+                    f"'--{_stem(layer)}-{flag_suffix}'" for layer in affected_layers
+                )
+                individual_flags = (
+                    f"'--reaction-individual-{flag_suffix}'/'--compound-individual-{flag_suffix}'"
+                    if not any(_is_border(layer) for layer in affected_layers) else ', '.join(
+                        f"'--{_stem(layer)}-individual-{flag_suffix}'" for layer in affected_layers
+                    )
                 )
                 raise ConfigError(
                     f"{subject_phrase} the color scale of the 'unified' map ({flags}). That map is "
                     f"not drawn here, so its scale is never drawn either. {remedy_phrase} the "
                     f"scale shared by the maps of the individual {individual_noun}s instead, with "
-                    f"'--reaction-individual-{flag_suffix}'/'--compound-individual-{flag_suffix}', "
-                    f"or let the 'unified' map be drawn."
+                    f"{individual_flags}, or let the 'unified' map be drawn."
                 )
 
         # Before anything is drawn, the names in the membership colors file are checked against the
@@ -8509,11 +9937,16 @@ class Mapper:
                 )
             else:
                 group_map_clause = ""
+            # The static color is the fill's. A border keeps its own summaries.
+            border_clause = (
+                " The borders of such a layer are still colored by their own summaries."
+                if any(layer.get('border') is not None for layer in static_layers) else ""
+            )
             self.run.warning(
                 f"Groups were provided, but these will be ignored for the 'unified' map, since a "
                 f"static color (or the reference map's own colors) was set: dynamic coloring based "
                 f"on membership in groups is overridden by static coloring based on "
-                f"presence/absence in any {membership_singular}.{group_map_clause}"
+                f"presence/absence in any {membership_singular}.{group_map_clause}{border_clause}"
             )
 
         # The overwrite check looks at every directory this run writes map files into. Checking
@@ -8529,10 +9962,16 @@ class Mapper:
         if draw_grid is not False:
             check_dirs.append(os.path.join(output_dir, GRID_SUBDIR))
         pathway_numbers = self._find_maps(check_dirs, patterns=pathway_numbers)
+        # A border that no map of the run can show is refused before any output is written.
+        self._check_border_maps(
+            borders, pathway_numbers, draw_unified_maps, draw_individual_maps, individual_noun,
+            unfilled={layer['element_type'] for layer in layers if layer['unified_mode'] == 'none'}
+        )
         filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
         # The key table of a sliced layer is written once the maps are drawn. Whether it can be
-        # written is checked before anything is drawn.
-        for layer in layers:
+        # written is checked before anything is drawn. A border with sliced rings has a key table of
+        # its own.
+        for layer in models:
             if layer.get('slice_by') is not None:
                 filesnpaths.is_output_file_writable(
                     os.path.join(output_dir, f"slice_key_{layer['name']}.txt"),
@@ -8549,10 +9988,36 @@ class Mapper:
         # group. The values of all samples or groups are pooled for the one scale that their maps
         # share. The parse uses the same extraction and aggregation as drawing.
         norm_layers = [
-            layer for layer in layers
+            layer for layer in models
             if 'quantitative' in (layer['unified_mode'], layer['individual_mode'])
         ]
-        if norm_layers:
+        # A border scale spans only the rings that the maps show ('_shows_ring'). A categorical
+        # border is keyed only where some map shows one of its rings, so the pass records those maps
+        # for it. Every border records the reaction elements with border values that a standard map
+        # draws as lines, which show no ring. A border with sliced rings finds what its rings show
+        # from the fill of its layer ('_ring_result').
+        ring_layers = [
+            layer for layer in borders
+            if 'categorical' in (layer['unified_mode'], layer['individual_mode'])
+        ]
+        for layer in borders:
+            layer['_ring_maps'] = {'unified': set(), 'individual': set()}
+            layer['_line_entries'] = {}
+        fills = {id(layer['border']): layer for layer in layers if layer.get('border') is not None}
+
+        def _unfilled(border: dict) -> str:
+            # The rings of a layer in the fill mode 'none' are all that the layer draws, so the
+            # warnings about rings that no map shows end by saying so.
+            fill = fills[id(border)]
+            if fill['unified_mode'] != 'none':
+                return ""
+            element_type = fill['element_type']
+            return (
+                f" '--{element_type}-color none' leaves the fills of the {element_type} layer "
+                f"uncolored, so the layer shows nothing where it shows no border."
+            )
+
+        if norm_layers or ring_layers:
             self.progress.new("Computing the range of values across maps")
             for layer in norm_layers:
                 layer['_unified_vals'] = []
@@ -8587,16 +10052,24 @@ class Mapper:
                         and layer['sample_values'] is not None
                     )
                     normalize = layer.get('element_normalize')
-                    # A sliced layer finds the range of each scale from the slices it draws.
+                    # A sliced layer finds the range of each scale from the slices it draws, and a
+                    # border with sliced rings from the slices of its rings.
                     if layer.get('slice_by') is not None:
-                        self._find_slice_range(
-                            pathway_number, pathway, layer, unified_valued,
+                        find_range = (
+                            self._find_ring_range if _is_border(layer) else self._find_slice_range
+                        )
+                        find_range(
+                            pathway_number, pathway, fills.get(id(layer), layer), unified_valued,
                             individuals if per_individual and draw_individual_maps else []
                         )
                         continue
                     for entry in self._find_element_entries(
                         pathway, use_reaction, layer['accessions']
                     ):
+                        if _is_border(layer) and not self._shows_ring(
+                            pathway_number, pathway, layer, entry
+                        ):
+                            continue
                         individual_values, unified_value = self._summarize_entry_values(
                             entry, layer
                         )
@@ -8622,6 +10095,36 @@ class Mapper:
                                 individual_values[individual] for individual in individuals
                                 if individual in individual_values
                             )
+                for layer in ring_layers:
+                    unified_shown = layer['unified_mode'] == 'categorical' and (
+                        draw_unified_maps
+                        or (layer['sample_values'] is None and draw_individual_maps)
+                    )
+                    individual_shown = (
+                        draw_individual_maps and layer['individual_mode'] == 'categorical'
+                    )
+                    if layer.get('slice_by') is not None:
+                        self._find_ring_maps(
+                            pathway_number, pathway, fills[id(layer)], unified_shown,
+                            draw_individuals if individual_shown else []
+                        )
+                        continue
+                    for entry in self._find_element_entries(
+                        pathway, layer['use_reaction_attribute'], layer['accessions']
+                    ):
+                        if not self._shows_ring(pathway_number, pathway, layer, entry):
+                            continue
+                        individual_values, unified_value = self._summarize_entry_individuals(
+                            entry, layer, count_choices=False
+                        )
+                        if unified_shown and unified_value is not None:
+                            layer['_ring_maps']['unified'].add(pathway_number)
+                        # A border without samples shows its one value on every map.
+                        if individual_shown and (
+                            unified_value is not None if layer['sample_values'] is None
+                            else any(name in individual_values for name in draw_individuals)
+                        ):
+                            layer['_ring_maps']['individual'].add(pathway_number)
             self.progress.end()
             unaffected_clause = (
                 " The 'unified' map is unaffected, being drawn from the unnormalized values."
@@ -8649,14 +10152,26 @@ class Mapper:
                         f"positive number, and a z-score wherever an element is found in a single "
                         f"{individual_noun}."
                     )
-                    self.run.warning(
-                        f"Nothing on the maps of the individual {individual_noun}s could be "
-                        f"colored by '--{layer['element_type']}-element-normalization', so those "
-                        f"maps carry no colors from the '{layer['colorbar_label']}' column of the "
-                        f"{layer['element_type']} layer and no scale was drawn for them. Either "
-                        f"none of the drawn maps contains its accessions, or the normalization is "
-                        f"undefined for every map element. {cause}{unaffected_clause}"
-                    )
+                    if _is_border(layer):
+                        self.run.warning(
+                            f"'--{_stem(layer)}-element-normalization' gave no value to any border "
+                            f"on the maps of the individual {individual_noun}s, so no scale was "
+                            f"drawn for them. These maps show no border from the "
+                            f"'{layer['value_column']}' column of the {layer['element_type']} "
+                            f"layer. Either none of the drawn maps shows a border for its "
+                            f"accessions, or the normalization is undefined for every map element. "
+                            f"{cause}{unaffected_clause}{_unfilled(layer)}"
+                        )
+                    else:
+                        self.run.warning(
+                            f"Nothing on the maps of the individual {individual_noun}s could be "
+                            f"colored by '--{layer['element_type']}-element-normalization', so "
+                            f"those maps carry no colors from the '{layer['value_column']}' column "
+                            f"of the {layer['element_type']} layer and no scale was drawn for "
+                            f"them. Either none of the drawn maps contains its accessions, or the "
+                            f"normalization is undefined for every map element. "
+                            f"{cause}{unaffected_clause}"
+                        )
                 elif offsets:
                     # An element whose values cancel out has no circular mean to be offset from. It
                     # is left uncolored on the map of every sample or group that has it. That would
@@ -8671,18 +10186,31 @@ class Mapper:
                             kegg_id for key in undefined for kegg_id in key
                             if kegg_id in layer['accessions']
                         })[:5])
+                        consequence = (
+                            'show no border' if _is_border(layer) else 'are left uncolored'
+                        )
                         self.run.warning(
-                            f"'--{layer['element_type']}-element-normalization' was undefined for "
+                            f"'--{_stem(layer)}-element-normalization' was undefined for "
                             f"{len(undefined)} map element(s). Elements with the same accessions "
                             f"count once. Their accessions in the file include these: {examples}. "
                             f"{self._undefined_cause('circular_mean')} These elements have no "
-                            f"circular mean to be offset from. They are left uncolored on the maps "
-                            f"of the individual {individual_noun}s."
+                            f"circular mean to be offset from. They {consequence} on the maps of "
+                            f"the individual {individual_noun}s."
                         )
+                elif not layer['_unified_vals'] and not layer['_individual_vals'] and (
+                    _is_border(layer)
+                ):
+                    self.run.warning(
+                        f"No map shows a border from the '{layer['value_column']}' border column "
+                        f"of the {layer['element_type']} layer, so no color scale was drawn for "
+                        f"it. Either none of the drawn maps shows a border for its accessions, or "
+                        f"the aggregation reducing them is undefined for every map element, as the "
+                        f"standard deviation of a single value is.{_unfilled(layer)}"
+                    )
                 elif not layer['_unified_vals'] and not layer['_individual_vals']:
                     self.run.warning(
                         f"Nothing on the maps could be colored by the values of the "
-                        f"'{layer['colorbar_label']}' column of the {layer['element_type']} layer, "
+                        f"'{layer['value_column']}' column of the {layer['element_type']} layer, "
                         f"so no color scale was drawn for it. Either none of the drawn maps "
                         f"contains its accessions, or the aggregation reducing them is undefined "
                         f"for every map element — the standard deviation of a single value, for "
@@ -8711,13 +10239,12 @@ class Mapper:
                     individual_value_limits = (0.0, period)
                 if layer['unified_mode'] == 'quantitative' and _unified_scale_drawn(layer):
                     norm, vmin, vmax, clamped_low, clamped_high = self._make_quantitative_norm(
-                        layer['_unified_vals'], value_limits,
-                        f"--{layer['element_type']}-value-limits",
+                        layer['_unified_vals'], value_limits, f"--{_stem(layer)}-value-limits",
                         center=layer.get('value_center'),
-                        center_flag=f"--{layer['element_type']}-value-center",
+                        center_flag=f"--{_stem(layer)}-value-center",
                         subject=(
-                            f"the {layer['element_type']} layer of the 'unified' map"
-                            if has_individuals else f"the {layer['element_type']} layer"
+                            f"the {_noun(layer)} layer of the 'unified' map"
+                            if has_individuals else f"the {_noun(layer)} layer"
                         )
                     )
                     layer['_unified_norm'] = norm
@@ -8738,14 +10265,14 @@ class Mapper:
                 if has_individuals and layer['sample_values'] is not None:
                     norm, vmin, vmax, clamped_low, clamped_high = self._make_quantitative_norm(
                         layer['_individual_vals'], individual_value_limits,
-                        f"--{layer['element_type']}-individual-value-limits",
+                        f"--{_stem(layer)}-individual-value-limits",
                         center=individual_value_center,
                         center_flag=layer.get(
                             'individual_value_center_flag',
-                            f"--{layer['element_type']}-individual-value-center"
+                            f"--{_stem(layer)}-individual-value-center"
                         ),
                         subject=(
-                            f"the {layer['element_type']} layer of the maps of the individual "
+                            f"the {_noun(layer)} layer of the maps of the individual "
                             f"{individual_noun}s"
                         )
                     )
@@ -8763,6 +10290,35 @@ class Mapper:
                     layer['_individual_limited'] = layer['_unified_limited']
                     layer['_individual_clamped'] = layer['_unified_clamped']
                     layer['_individual_center'] = layer['_unified_center']
+            # A categorical border whose rings no map shows gets no legend. The data left every ring
+            # empty, since the options alone were checked before ('_check_border_maps').
+            for layer in ring_layers:
+                if not (layer['_ring_maps']['unified'] or layer['_ring_maps']['individual']):
+                    self.run.warning(
+                        f"No map shows a border from the '{layer['value_column']}' border column "
+                        f"of the {layer['element_type']} layer, so no legend was drawn for it. "
+                        f"Either none of the drawn maps shows a border for its accessions, or the "
+                        f"rules that choose among its values gave no value.{_unfilled(layer)}"
+                    )
+            # Lines show no ring, so a reaction element that a standard map draws as a line shows
+            # only its fill. Users may expect a ring there. A layer in the fill mode 'none' shows
+            # nothing there.
+            for layer in borders:
+                lines = layer['_line_entries']
+                if not lines:
+                    continue
+                count = sum(len(entries) for entries in lines.values())
+                shown = (
+                    "no border. '--reaction-color none' leaves their fills uncolored, so these "
+                    "elements show nothing" if fills[id(layer)]['unified_mode'] == 'none'
+                    else "no border, so these elements show only their fills"
+                )
+                self.run.warning(
+                    f"On {len(lines)} standard map(s), {count} reaction element(s) with border "
+                    f"values in the column '{layer['value_column']}' are drawn as lines. Lines "
+                    f"show {shown}. The maps are these: "
+                    f"{', '.join(sorted(lines)[:10])}{', and more' if len(lines) > 10 else ''}."
+                )
 
         # A context colored by membership needs its by-count/by-membership color scheme over the
         # samples, contigs databases, genomes, or groups. Only the 'unified' map draws such a scale,
@@ -8819,11 +10375,11 @@ class Mapper:
             )
 
         def _reaction_derived(layer, mode, cmap_key='cmap', spread=False):
-            # How a reaction layer derives compound colors on a reaction-only global/overview map.
-            # The derived colors come from the same scale as the reactions they are derived from, so
-            # the caller names the context's colormap: the two can differ ('individual_cmap'). The
-            # caller also says whether the context shows a spread, which is a plain number and so is
-            # averaged as one.
+            # How a reaction layer derives compound colors on a global or overview map where no
+            # compound layer stages fills ('_derives_compounds'). The derived colors come from the
+            # same scale as the reactions they are derived from, so the caller names the context's
+            # colormap: the two can differ ('individual_cmap'). The caller also says whether the
+            # context shows a spread, which is a plain number and so is averaged as one.
             if layer['element_type'] != 'reaction':
                 return None
             # Categorical values are chosen, not averaged, by the layer's accession rule. The
@@ -8863,8 +10419,22 @@ class Mapper:
                 accession for sample in samples for accession in layer['sample_values'][sample]
             )
 
+        def _unfilled_spec(layer):
+            # A layer in the fill mode 'none' colors no fill, so its spec has no colorer. Its
+            # entries do not count as data, and it stages only the rings of its border
+            # ('_with_border', '_stage_map_elements').
+            return {
+                'element_type': layer['element_type'],
+                'use_reaction_attribute': layer['use_reaction_attribute'],
+                'entry_keys': layer['accessions'],
+                'colorer': None,
+                'derived_compound': _reaction_derived(layer, 'none')
+            }
+
         def _unified_spec(layer):
             mode = layer['unified_mode']
+            if mode == 'none':
+                return _unfilled_spec(layer)
             if mode == 'quantitative':
                 def entry_value(entry):
                     return self._summarize_entry_values(entry, layer)[1]
@@ -8935,6 +10505,8 @@ class Mapper:
 
         def _individual_spec(layer, individual):
             mode = layer['individual_mode']
+            if mode == 'none':
+                return _unfilled_spec(layer)
             if mode == 'quantitative':
                 normalize = layer.get('element_normalize')
                 maps = None
@@ -9066,7 +10638,47 @@ class Mapper:
                 'slice_map': 'unified' if individual is None else individual,
                 'slice_rank': 0 if individual is None else slice_ranks[individual],
                 'slice_key': layer['_slice_key'],
-                'slice_uncolored': layer['_slice_uncolored']
+                'slice_uncolored': layer['_slice_uncolored'],
+                # In a layer with a border column, the columns of a box fit inside its ring, so the
+                # cap measures the width inside the ring ('_slice_cap').
+                'slice_ringed': layer.get('border') is not None
+            }
+
+        # A layer with a border adds the border's colorer to the spec of each map that shows the
+        # border. The border is staged after the fill, on the shapes that show rings
+        # ('_stage_entry_borders'). Its colorer comes from the spec the border model would have as a
+        # layer of its own. A border with sliced rings adds a ringer, which finds the slices of each
+        # ring ('_ringer'), and the keys of its own key table. Rings sliced by gene find their
+        # entries from the accessions with border rows, as the fill does ('_gene_entry_keys').
+        def _with_border(spec, layer, individual=None):
+            border = layer.get('border')
+            if border is None:
+                return spec
+            mode = border['unified_mode'] if individual is None else border['individual_mode']
+            if mode not in ('quantitative', 'categorical'):
+                return spec
+            border_spec = (
+                _unified_spec(border) if individual is None
+                else _individual_spec(border, individual)
+            )
+            spec = {
+                **spec,
+                'border_colorer': border_spec['colorer'],
+                'border_entry_keys': border_spec['entry_keys'],
+                'border_pathway_numbers': border_spec.get('pathway_numbers')
+            }
+            if border.get('slice_by') is None:
+                return spec
+            if border['slice_by'] == 'gene':
+                spec['border_entry_keys'] = _gene_entry_keys(border, individual)
+            return {
+                **spec,
+                'border_ringer': self._ringer(layer, individual),
+                'border_slice_map': 'unified' if individual is None else individual,
+                'border_slice_rank': 0 if individual is None else slice_ranks[individual],
+                'border_slice_key': border['_slice_key'],
+                'border_slice_uncolored': border['_slice_uncolored'],
+                'border_slice_unshown': border['_slice_unshown']
             }
 
         # For grouped membership individual maps, precompute each group's within-group membership,
@@ -9083,7 +10695,7 @@ class Mapper:
                         in_group = [s for s in sources if source_group.get(s) == group]
                         if in_group:
                             inner_membership[accession] = in_group
-                    specs.append({
+                    specs.append(_with_border({
                         'element_type': layer['element_type'],
                         'use_reaction_attribute': layer['use_reaction_attribute'],
                         'entry_keys': inner_membership,
@@ -9093,7 +10705,7 @@ class Mapper:
                         ),
                         'keep_highest_priority': True,
                         'derived_compound': _reaction_derived(layer, 'membership')
-                    })
+                    }, layer, group))
                 group_layer_membership[group] = (
                     specs, group_color_priorities[group], group_scale_tops[group]
                 )
@@ -9103,11 +10715,18 @@ class Mapper:
             # in its per-group context colors its own map and rides along on the same map.
             if grouped_presence:
                 return group_layer_membership[individual][0] + [
-                    _sliced(_individual_spec(layer, individual), layer, individual)
+                    _with_border(
+                        _sliced(_individual_spec(layer, individual), layer, individual), layer,
+                        individual
+                    )
                     for layer in layers if layer['individual_mode'] != 'membership'
                 ]
             return [
-                _sliced(_individual_spec(layer, individual), layer, individual) for layer in layers
+                _with_border(
+                    _sliced(_individual_spec(layer, individual), layer, individual), layer,
+                    individual
+                )
+                for layer in layers
             ]
 
         def _element_map_specs():
@@ -9117,7 +10736,7 @@ class Mapper:
             if draw_unified_maps and not original_run:
                 yield (
                     "the 'unified' map" if has_individuals else None, True,
-                    [_sliced(_unified_spec(layer), layer) for layer in layers]
+                    [_with_border(_sliced(_unified_spec(layer), layer), layer) for layer in layers]
                 )
             for individual in draw_individuals:
                 if grouped_presence or not original_run:
@@ -9142,6 +10761,24 @@ class Mapper:
         value_modes = ('quantitative', 'categorical')
         for layer in layers:
             element_type = layer['element_type']
+            # A layer in the fill mode 'none' draws only rings. Where its border shows no ring on
+            # the 'unified' map, that map shows nothing of the layer. A run in which no map can show
+            # the rings was refused ('_check_border_maps').
+            if layer['unified_mode'] == 'none':
+                border = layer['border']
+                if draw_unified_maps and border['unified_mode'] is None:
+                    grouped_layer = border.get('group_samples') is not None
+                    summary_flag = (
+                        f"--{element_type}-border-{'group' if grouped_layer else 'sample'}-summary"
+                    )
+                    self.run.warning(
+                        f"The 'unified' map shows nothing of the {element_type} layer. "
+                        f"'--{element_type}-color none' leaves its fills uncolored. Its border "
+                        f"shows no ring there, since '{summary_flag}' was not given. Give that "
+                        f"option an aggregation or a rule to show rings on the 'unified' map, or "
+                        f"leave that map out with '--skip-unified-maps'."
+                    )
+                continue
             # A file of categorical values with a header and no rows has no values to show. The
             # other warnings here tell the user how to show values, so they do not apply.
             if layer.get('value_type') == 'categorical' and not layer['value_order']:
@@ -9167,7 +10804,7 @@ class Mapper:
                 )
                 self.run.warning(
                     f"The {element_type} layer from the text file at '{layer['path']}' has "
-                    f"categorical values in its '{layer['colorbar_label']}' column, but nothing on "
+                    f"categorical values in its '{layer['value_column']}' column, but nothing on "
                     f"the maps is colored by them. With groups of samples, each group's map counts "
                     f"the group's samples.{unified_clause} Give '--{element_type}-sample-summary' "
                     f"a rule, such as 'plurality_order', to color each group's map by a value "
@@ -9192,12 +10829,12 @@ class Mapper:
             )
             self.run.warning(
                 f"The {element_type} layer from the text file at '{layer['path']}' has a value "
-                f"column, '{layer['colorbar_label']}', but nothing on the maps is colored by it. "
-                f"The 'unified' map shows presence across the {noun}. The values color only the "
-                f"maps of the individual {noun}, and none are drawn here. Draw them with "
+                f"column, '{layer['value_column']}', but nothing on the maps is colored by it. The "
+                f"'unified' map shows presence across the {noun}. The values color only the maps "
+                f"of the individual {noun}, and none are drawn here. Draw them with "
                 f"'--draw-individual-files' or '--draw-grid'. Or {remedy}"
             )
-        self._warn_gene_ids(layers, draw_unified_maps, draw_individuals)
+        self._warn_gene_ids(models, draw_unified_maps, draw_individuals)
 
         # Draw per-layer colorbars for the unified map. Their file names include the layer's name,
         # so the colorbars of two layers do not collide. Each layer colored quantitatively on the
@@ -9206,8 +10843,11 @@ class Mapper:
         # there. It also gets a continuous one for its individual maps. A run leaving out the
         # unified map draws neither of its bars. The exception is a layer without samples of its
         # own. Its individual maps take the unified scale, so that colorbar is drawn as the only key
-        # to their colors.
-        for layer in layers:
+        # to their colors. A border is keyed in files of its own, such as
+        # 'colorbar_reactions_border.pdf'. Its labels end in ' (border)', except a label that was
+        # given with its normalization.
+        for layer in models:
+            suffix = ' (border)' if _is_border(layer) else ''
             if layer['unified_mode'] == 'quantitative' and _unified_scale_drawn(layer):
                 vmin, vmax = layer['_unified_range']
                 if vmin is not None:
@@ -9216,7 +10856,7 @@ class Mapper:
                     self._draw_quantitative_colorbar(
                         layer['cmap'], vmin, vmax,
                         os.path.join(output_dir, f"colorbar_{layer['name']}.pdf"),
-                        layer.get('unified_colorbar_label', layer['colorbar_label']),
+                        layer.get('unified_colorbar_label', layer['colorbar_label']) + suffix,
                         limited_low=limited_low, limited_high=limited_high,
                         clamped_low=clamped_low, clamped_high=clamped_high,
                         center=layer['_unified_center']
@@ -9250,7 +10890,9 @@ class Mapper:
                     )
             # A categorical layer has no legend where no map shows its values, or where its file has
             # a header and no rows. It has no colors in the first case and no values in the second.
+            # A border has no legend where no map shows its rings.
             if layer.get('value_type') == 'categorical' and layer['value_color_priorities']:
+                ring_maps = layer.get('_ring_maps', {'unified': True, 'individual': True})
                 # One band per value, in the order of the values, with the first value at the top.
                 # This order does not depend on 'reverse_overlay'. A colorbar draws its first band
                 # at the bottom, so it is given the values in reverse. A layer without samples draws
@@ -9263,11 +10905,11 @@ class Mapper:
                 legend_paths = []
                 if layer['unified_mode'] == 'categorical' and (
                     draw_unified_maps or (layer['sample_values'] is None and draw_individual_maps)
-                ):
+                ) and ring_maps['unified']:
                     legend_paths.append(os.path.join(output_dir, f"colorbar_{layer['name']}.pdf"))
                 if (
                     draw_individual_maps and layer['sample_values'] is not None
-                    and layer['individual_mode'] == 'categorical'
+                    and layer['individual_mode'] == 'categorical' and ring_maps['individual']
                 ):
                     legend_paths.append(os.path.join(
                         output_dir, f"colorbar_{layer['name']}_{colorbar_individual_suffix}.pdf"
@@ -9275,7 +10917,7 @@ class Mapper:
                 for legend_path in legend_paths:
                     self.colorbar_drawer.draw_discrete(
                         legend_colors, legend_path, color_labels=legend_values,
-                        label=layer['colorbar_label']
+                        label=layer['colorbar_label'] + suffix
                     )
             if (
                 draw_individual_maps and layer['individual_mode'] == 'quantitative'
@@ -9285,12 +10927,17 @@ class Mapper:
                 if vmin is not None:
                     limited_low, limited_high = layer['_individual_limited']
                     clamped_low, clamped_high = layer['_individual_clamped']
+                    individual_label = layer.get(
+                        'individual_colorbar_label', layer['colorbar_label']
+                    )
+                    if not layer.get('individual_colorbar_label_given'):
+                        individual_label += suffix
                     self._draw_quantitative_colorbar(
                         layer['individual_cmap'], vmin, vmax,
                         os.path.join(
                             output_dir, f"colorbar_{layer['name']}_{colorbar_individual_suffix}.pdf"
                         ),
-                        layer.get('individual_colorbar_label', layer['colorbar_label']),
+                        individual_label,
                         limited_low=limited_low, limited_high=limited_high,
                         clamped_low=clamped_low, clamped_high=clamped_high,
                         center=layer['_individual_center']
@@ -9303,7 +10950,7 @@ class Mapper:
                 if has_individuals else "Drawing map"
             )
             unified_specs = None if original_run else [
-                _sliced(_unified_spec(layer), layer) for layer in layers
+                _with_border(_sliced(_unified_spec(layer), layer), layer) for layer in layers
             ]
             for pathway_number in pathway_numbers:
                 self.progress.update(pathway_number)
@@ -9320,9 +10967,9 @@ class Mapper:
             self.progress.end()
 
         if not draw_individuals:
-            self._write_slice_keys(layers, output_dir)
+            self._write_slice_keys(models, output_dir)
             self._report_categorical_choices(
-                layers, draw_unified_maps, draw_individuals,
+                models, draw_unified_maps, draw_individuals,
                 draw_maps_lacking_data=draw_maps_lacking_data
             )
             count = sum(drawn['unified'].values()) if drawn['unified'] else 0
@@ -9429,9 +11076,9 @@ class Mapper:
             collated_count = self._collate_maps_by_map(output_dir, draw_files_individuals)
             self.progress.end()
 
-        self._write_slice_keys(layers, output_dir)
+        self._write_slice_keys(models, output_dir)
         self._report_categorical_choices(
-            layers, draw_unified_maps, draw_individuals,
+            models, draw_unified_maps, draw_individuals,
             draw_maps_lacking_data=draw_maps_lacking_data, draw_grid=draw_grid is not False
         )
         if draw_unified_maps:
@@ -9453,6 +11100,195 @@ class Mapper:
         self.run.info("Number of map grids drawn", count)
 
         return drawn
+
+    @staticmethod
+    def _shows_border(pathway: kgml.Pathway, entry: kgml.Entry, graphics: kgml.Graphics) -> bool:
+        """
+        Say whether a shape of a map element shows a border ring.
+
+        A ring is drawn where a map draws an outline: around reaction boxes on standard maps, and
+        around compound circles on standard and overview maps. Global maps draw circles without an
+        outline, so they show no rings. No map draws a ring along a line. Both the range of a border
+        scale and the staging of rings ask this, so a scale never spans a ring that is not drawn.
+
+        Parameters
+        ==========
+        pathway : kgml.Pathway
+            The map.
+
+        entry : kgml.Entry
+            An ortholog or compound Entry of the map.
+
+        graphics : kgml.Graphics
+            A Graphics element of the Entry.
+
+        Returns
+        =======
+        bool
+            True if the shape shows a ring.
+        """
+        if pathway.is_global_map:
+            return False
+        if entry.type == 'compound':
+            return graphics.type == 'circle'
+        if entry.type == 'ortholog':
+            return graphics.type == 'rectangle' and not pathway.is_overview_map
+        return False
+
+    def _shows_ring(
+        self,
+        pathway_number: str,
+        pathway: kgml.Pathway,
+        border: dict,
+        entry: kgml.Entry
+    ) -> bool:
+        """
+        Say whether an Entry shows a ring on a map, and record the lines that show none.
+
+        Users may expect a ring on a reaction element that a standard map draws as a line, so such
+        an Entry is recorded in the border's '_line_entries', which a warning reads
+        ('_map_elements').
+
+        Parameters
+        ==========
+        pathway_number : str
+            Numeric ID of the map.
+
+        pathway : kgml.Pathway
+            The map.
+
+        border : dict
+            A border model with '_line_entries'.
+
+        entry : kgml.Entry
+            An ortholog or compound Entry of the map.
+
+        Returns
+        =======
+        bool
+            True if some shape of the Entry shows a ring ('_shows_border').
+        """
+        graphics = [pathway.uuid_element_lookup[uuid] for uuid in entry.children['graphics']]
+        if any(self._shows_border(pathway, entry, shape) for shape in graphics):
+            return True
+        if not (pathway.is_global_map or pathway.is_overview_map) and any(
+            shape.type == 'line' for shape in graphics
+        ):
+            border['_line_entries'].setdefault(pathway_number, set()).add(entry.id)
+        return False
+
+    def _check_border_maps(
+        self,
+        borders: List[dict],
+        pathway_numbers: List[str],
+        draw_unified_maps: bool,
+        draw_individual_maps: bool,
+        individual_noun: Union[str, None],
+        unfilled: Union[Set[str], None] = None
+    ) -> None:
+        """
+        Refuse a border that no map of a run can show, and count the maps that show none.
+
+        A reaction border needs a standard map, where reactions are boxes. A compound border needs a
+        standard or an overview map ('_shows_border'). A border also needs a drawn map that shows
+        its values. A border of samples shows none on the 'unified' map without a sample or group
+        summary, and none on the maps of groups without a sample summary. These refusals come from
+        the options alone. Where the data leave every ring empty, the run warns instead.
+
+        Parameters
+        ==========
+        borders : List[dict]
+            The border models of the run.
+
+        pathway_numbers : List[str]
+            The maps that the run draws.
+
+        draw_unified_maps : bool
+            True if the 'unified' map is drawn.
+
+        draw_individual_maps : bool
+            True if the maps of the individual samples or groups are drawn.
+
+        individual_noun : Union[str, None]
+            'sample' or 'group', or None for a run without samples.
+
+        unfilled : Union[Set[str], None], None
+            The element types of the layers in the fill mode 'none'. Their rings are all that they
+            draw, so a refusal does not suggest dropping their border columns.
+        """
+        def kind(number: str) -> str:
+            if re.match(GLOBAL_MAP_ID_PATTERN, number):
+                return 'global'
+            return 'overview' if re.match(OVERVIEW_MAP_ID_PATTERN, number) else 'standard'
+
+        value_modes = ('quantitative', 'categorical')
+        for border in borders:
+            element_type = border['element_type']
+            noun = border['channel']['noun']
+            column_flag = f"--{element_type}-border-column"
+            kinds = ('standard',) if element_type == 'reaction' else ('standard', 'overview')
+            showing = [number for number in pathway_numbers if kind(number) in kinds]
+            if not showing:
+                listed = ', '.join(pathway_numbers[:10])
+                more = (
+                    f", and {len(pathway_numbers) - 10} more" if len(pathway_numbers) > 10 else ''
+                )
+                if element_type == 'reaction':
+                    shapes = "reaction boxes, which only standard maps draw"
+                    others = (
+                        "Global maps draw no borders, and overview maps draw reactions as lines, "
+                        "which have no borders."
+                    )
+                else:
+                    shapes = "compound circles on standard and overview maps"
+                    others = "Global maps draw their circles without an outline, and no borders."
+                remedy = (
+                    f"Draw a map that shows borders. '--{element_type}-color none' leaves the "
+                    f"fills of the {element_type} layer uncolored, so its rings are all that it "
+                    f"draws." if element_type in (unfilled or set())
+                    else f"Draw a map that shows borders, or drop '{column_flag}'."
+                )
+                raise ConfigError(
+                    f"'{column_flag}' colors the borders of {shapes}. This run draws no such map. "
+                    f"Its maps are these: {listed}{more}. {others} {remedy}"
+                )
+            if len(showing) < len(pathway_numbers):
+                self.run.info(f"Maps that show no {noun}s", len(pathway_numbers) - len(showing))
+            unified = draw_unified_maps and border['unified_mode'] in value_modes
+            individual = draw_individual_maps and border['individual_mode'] in value_modes
+            if unified or individual:
+                continue
+            stem = border['channel']['flag_stem']
+            grouped = border.get('group_samples') is not None
+            unified_flag = f"--{stem}-{'group' if grouped else 'sample'}-summary"
+            sample_flag = f"--{stem}-sample-summary"
+            # The values of a group come from the sample summary. Without it, no map shows a border.
+            # Otherwise a map is missing or has no summary.
+            if grouped and border['individual_mode'] is None:
+                reason = (
+                    f"'{sample_flag}' was not given, so neither the maps of the groups nor the "
+                    f"'unified' map shows a border."
+                )
+                remedy = f"Give '{sample_flag}' an aggregation or a rule."
+            else:
+                unified_reason = (
+                    "No 'unified' map is drawn." if not draw_unified_maps else
+                    f"'{unified_flag}' was not given, so the 'unified' map shows no border."
+                )
+                reason = f"{unified_reason} No map of an individual {individual_noun} is drawn."
+                remedy = (
+                    f"Draw the maps of the individual {individual_noun}s with "
+                    f"'--draw-individual-files' or '--draw-grid'"
+                )
+                remedy += (
+                    f", or give '{unified_flag}' an aggregation or a rule." if draw_unified_maps
+                    else "."
+                )
+            raise ConfigError(
+                f"'{column_flag}' names the border column '{border['value_column']}' of the "
+                f"{element_type} layer, but no map of this run would show its borders. {reason} "
+                f"{remedy}"
+            )
 
     def _find_slice_range(
         self,
@@ -9499,7 +11335,9 @@ class Mapper:
 
         def _collect(entry, slices, values, period):
             # An element drawn whole shows only its stand-in, so only that value joins the scale.
-            if len(slices) > 1 and self._slice_cap(pathway, entry, len(slices)):
+            if len(slices) > 1 and self._slice_cap(
+                pathway, entry, len(slices), ringed=layer.get('border') is not None
+            ):
                 standin = self._slice_standin_value(
                     [value for _, value, _ in slices], [share for _, _, share in slices], period
                 )
@@ -9530,6 +11368,114 @@ class Mapper:
                 if individual in layer['_individual_maps']:
                     layer['_individual_maps'][individual].add(pathway_number)
 
+    def _find_ring_range(
+        self,
+        pathway_number: str,
+        pathway: kgml.Pathway,
+        layer: dict,
+        unified_valued: bool,
+        individuals: List[str]
+    ) -> None:
+        """
+        Collect the numeric values that the sliced rings of a layer's border show on one KEGG map.
+
+        This is the range-finding pass of '_map_elements' for a border with sliced rings, as
+        '_find_slice_range' is for a sliced fill. The scales span the values of the bands and
+        segments drawn, and the values of the rings drawn whole ('_ring_result'). A unit whose
+        border value no ring shows is left out. The maps where a ring is drawn are recorded in the
+        border's '_unified_maps' and '_individual_maps'.
+
+        Parameters
+        ==========
+        pathway_number : str
+            Numeric ID of the map.
+
+        pathway : kgml.Pathway
+            The map.
+
+        layer : dict
+            The model of the fill of a reaction layer whose border holds numbers and is sliced.
+
+        unified_valued : bool
+            True if the 'unified' border scale is worked out. The values of the 'unified' map are
+            then collected.
+
+        individuals : List[str]
+            The samples or groups whose values are collected for the border scale that their maps
+            share. It is empty where those maps show no border values, or none is drawn.
+        """
+        border = layer['border']
+        for entry in self._find_element_entries(
+            pathway, border['use_reaction_attribute'], border['accessions']
+        ):
+            if not self._shows_ring(pathway_number, pathway, border, entry):
+                continue
+            if unified_valued:
+                values = self._ring_values(pathway, entry, layer, None)
+                if values:
+                    border['_unified_maps'].add(pathway_number)
+                    border['_unified_vals'].extend(values)
+            # A border without samples draws the values of the 'unified' scale on every map.
+            if border['sample_values'] is None:
+                continue
+            for individual in individuals:
+                values = self._ring_values(pathway, entry, layer, individual)
+                if not values:
+                    continue
+                border['_individual_vals'].extend(values)
+                if individual in border['_individual_maps']:
+                    border['_individual_maps'][individual].add(pathway_number)
+
+    def _find_ring_maps(
+        self,
+        pathway_number: str,
+        pathway: kgml.Pathway,
+        layer: dict,
+        unified_shown: bool,
+        individuals: List[str]
+    ) -> None:
+        """
+        Record whether the sliced rings of a layer's categorical border show on one KEGG map.
+
+        A categorical border is keyed only where some map shows one of its rings ('_map_elements').
+        The choices among values are not counted here, since no map is drawn yet.
+
+        Parameters
+        ==========
+        pathway_number : str
+            Numeric ID of the map.
+
+        pathway : kgml.Pathway
+            The map.
+
+        layer : dict
+            The model of the fill of a reaction layer whose border holds categorical values and is
+            sliced.
+
+        unified_shown : bool
+            True if a map that shows the 'unified' border values is drawn.
+
+        individuals : List[str]
+            The samples or groups whose drawn maps show border values. It is empty where none does.
+        """
+        border = layer['border']
+        maps = border['_ring_maps']
+        for entry in self._find_element_entries(
+            pathway, border['use_reaction_attribute'], border['accessions']
+        ):
+            # Every Entry is asked, so that the lines of the map are all recorded.
+            if not self._shows_ring(pathway_number, pathway, border, entry):
+                continue
+            if (
+                unified_shown and pathway_number not in maps['unified']
+                and self._ring_values(pathway, entry, layer, None)
+            ):
+                maps['unified'].add(pathway_number)
+            if pathway_number not in maps['individual'] and any(
+                self._ring_values(pathway, entry, layer, individual) for individual in individuals
+            ):
+                maps['individual'].add(pathway_number)
+
     def _warn_gene_ids(
         self,
         layers: List[dict],
@@ -9556,10 +11502,14 @@ class Mapper:
         of a gene there shows the value of a single sample, and nothing is pooled. This is expected
         where the IDs of separate assemblies were made unique.
 
+        A border whose rings are sliced by gene pools the border values of its genes in the same
+        way, so its gene IDs are checked too. The gene IDs and maps that the fill of the same file
+        already reported are not reported again.
+
         Parameters
         ==========
         layers : List[dict]
-            The layer models. Only layers sliced by gene are read.
+            The layer models and border models. Only models sliced by gene are read.
 
         draw_unified_maps : bool
             True if the 'unified' map is drawn.
@@ -9574,6 +11524,8 @@ class Mapper:
             return (', ' if len(names) > 2 else ' ').join(names)
 
         value_modes = ('quantitative', 'categorical')
+        # The gene IDs and the maps already reported for each file.
+        reported: Dict[str, Tuple[Set[str], Set[Union[str, None]]]] = {}
         for layer in layers:
             if layer.get('slice_by') != 'gene' or layer['gene_sample_accessions'] is None:
                 continue
@@ -9615,6 +11567,13 @@ class Mapper:
 
             element_type = layer['element_type']
             path = layer['path']
+            reported_genes, reported_maps = reported.setdefault(path, (set(), set()))
+            colliding -= reported_genes
+            reported_genes.update(colliding)
+            unshared = [name for name in unshared if name not in reported_maps]
+            reported_maps.update(unshared)
+            # The rows of a border are those with a border value ('_border_view').
+            rows = 'rows' if layer['channel']['role'] == 'fill' else 'rows with border values'
             if colliding:
                 genes = self._sort_values(colliding)
                 several = len(genes) > 1
@@ -9626,7 +11585,7 @@ class Mapper:
                 self.run.warning(
                     f"{len(genes)} gene {'IDs' if several else 'ID'} of the {element_type} file at "
                     f"'{path}' {'have' if several else 'has'} no accession in common between "
-                    f"{'their' if several else 'its'} rows in two samples of a map that pools "
+                    f"{'their' if several else 'its'} {rows} in two samples of a map that pools "
                     f"samples. {listed} A gene of one contigs database is annotated once, so it "
                     f"has the same accessions in every sample. A sample can lack rows for some of "
                     f"them, but rows with no accession in common suggest that one ID names two "
@@ -9644,11 +11603,16 @@ class Mapper:
                 plural = 's' if len(groups) > 1 else ''
                 joined = join_names([f"'{group}'" for group in groups])
                 parts.append(f"the map{plural} of group{plural} {joined}")
+            if layer['channel']['role'] == 'fill':
+                ids = f"No gene ID of the {element_type} file at '{path}'"
+                shows = "Each slice of a gene there shows the value of a single sample"
+            else:
+                ids = f"No gene ID with border values in the {element_type} file at '{path}'"
+                shows = "Each slice of a ring there shows the border value of a single sample"
             self.run.warning(
-                f"No gene ID of the {element_type} file at '{path}' occurs in two or more samples "
-                f"of {' and '.join(parts)}. Each slice of a gene there shows the value of a single "
-                f"sample, and nothing is pooled. This is expected where the gene IDs of separate "
-                f"assemblies were made unique."
+                f"{ids} occurs in two or more samples of {' and '.join(parts)}. {shows}, and "
+                f"nothing is pooled. This is expected where the gene IDs of separate assemblies "
+                f"were made unique."
             )
 
     def _write_slice_keys(self, layers: List[dict], output_dir: str) -> None:
@@ -9668,10 +11632,18 @@ class Mapper:
         elements drawn whole by KEGG map. The other counts the elements left uncolored, since every
         slice with a value had a share of 0.
 
+        A border with sliced rings has a key table of the same form,
+        'slice_key_reactions_border.txt' ('_stage_entry_ring'). The positions of bands are those of
+        the columns of the fill. The positions of segments count clockwise from the top left corner.
+        A ring drawn whole for a reason has a row for each slice it stands for, and the reason is
+        'over the cap' or 'fill not sliced'. Its warnings count the rings drawn whole over the cap,
+        the rings left out by shares of 0, and the units with border values that no column of the
+        fill shows.
+
         Parameters
         ==========
         layers : List[dict]
-            The layer models. Only sliced layers are read.
+            The layer models and border models. Only sliced models are read.
 
         output_dir : str
             The output directory.
@@ -9680,38 +11652,62 @@ class Mapper:
             if layer.get('slice_by') is None:
                 continue
             element_type = layer['element_type']
+            border = layer['channel']['role'] == 'border'
             path = os.path.join(output_dir, f"slice_key_{layer['name']}.txt")
             with open(path, 'w') as key_file:
                 key_file.write('\t'.join(SLICE_KEY_COLUMNS) + '\n')
                 for key in sorted(layer['_slice_key']):
                     for row in layer['_slice_key'][key]:
                         key_file.write('\t'.join(row) + '\n')
-            self.run.info(f"Key table of the {element_type} slices", path)
+            self.run.info(f"Key table of the {layer['channel']['noun']} slices", path)
 
+            units = 'genes' if layer['slice_by'] == 'gene' else 'accessions'
+            if layer.get('value_type') == 'categorical':
+                standin = f"the value chosen among the {units} of its slices"
+            elif layer.get('value_period') is not None:
+                standin = "the circular mean of its slice values, weighted by their shares"
+            else:
+                standin = "the mean of its slice values, weighted by their shares"
+            reason_column = SLICE_KEY_COLUMNS.index('drawn_whole')
             whole = Counter(
                 key[0] for key, rows in layer['_slice_key'].items()
-                if rows[0][SLICE_KEY_COLUMNS.index('drawn_whole')]
+                if rows[0][reason_column] and rows[0][reason_column] != 'fill not sliced'
             )
-            if whole:
-                if layer.get('value_type') == 'categorical':
-                    standin = (
-                        f"the value chosen among the "
-                        f"{'genes' if layer['slice_by'] == 'gene' else 'accessions'} of its slices"
-                    )
-                elif layer.get('value_period') is not None:
-                    standin = "the circular mean of its slice values, weighted by their shares"
-                else:
-                    standin = "the mean of its slice values, weighted by their shares"
+            if whole and border:
                 by_map = ', '.join(f"{number} ({count})" for number, count in sorted(whole.items()))
+                if layer['slice_layout'] == 'aligned':
+                    why = (
+                        f"since the fill of each of their boxes had more slices than fit. Such a "
+                        f"ring takes the color of {standin}. Only the slices of the fill that have "
+                        f"border values count"
+                    )
+                else:
+                    why = (
+                        f"since each would have had more than {MAX_RING_SLICES} slices. Such a "
+                        f"ring takes the color of {standin}"
+                    )
+                self.run.warning(
+                    f"{sum(whole.values())} ring(s) of {element_type} elements were drawn whole in "
+                    f"one color, {why}. A ring is counted once on each drawn map. These are the "
+                    f"counts by KEGG map: {by_map}. The key table at '{path}' lists these rings "
+                    f"with the reason."
+                )
+            elif whole:
+                by_map = ', '.join(f"{number} ({count})" for number, count in sorted(whole.items()))
+                # In a layer with a border column, the slices of a box fit inside its ring.
+                inside = (
+                    " The slices of a box fit inside its ring, since the layer has a border column."
+                    if layer.get('border') is not None else ""
+                )
                 self.run.warning(
                     f"{sum(whole.values())} {element_type} element(s) had more slices than fit, so "
                     f"each was drawn whole in one color. A box is drawn whole where a slice of "
-                    f"equal width would be narrower than {MIN_BOX_SLICE_WIDTH} points. A line is "
-                    f"drawn whole where a slice of equal length would be shorter than the line is "
-                    f"wide. Only the part of the line that compound circles leave visible counts. "
-                    f"Such an element takes the color of {standin}. An element is counted once on "
-                    f"each drawn map. These are the counts by KEGG map: {by_map}. The key table at "
-                    f"'{path}' lists these elements with the reason."
+                    f"equal width would be narrower than {MIN_BOX_SLICE_WIDTH} points.{inside} A "
+                    f"line is drawn whole where a slice of equal length would be shorter than the "
+                    f"line is wide. Only the part of the line that compound circles leave visible "
+                    f"counts. Such an element takes the color of {standin}. An element is counted "
+                    f"once on each drawn map. These are the counts by KEGG map: {by_map}. The key "
+                    f"table at '{path}' lists these elements with the reason."
                 )
             uncolored = layer['_slice_uncolored']
             if uncolored:
@@ -9719,10 +11715,42 @@ class Mapper:
                     accession for accessions in uncolored.values() for accession in accessions
                     if accession in layer['accessions']
                 })[:5])
+                if border:
+                    every = 'slice of the fill' if layer['slice_layout'] == 'aligned' else (
+                        f"{units[:-1]} with a border value"
+                    )
+                    self.run.warning(
+                        f"{len(uncolored)} {element_type} element(s) show no border, since every "
+                        f"{every} had a weight of 0 on that map. An element is counted once on "
+                        f"each drawn map. Their accessions in the file include these: {examples}."
+                    )
+                else:
+                    self.run.warning(
+                        f"{len(uncolored)} {element_type} element(s) were left uncolored, since "
+                        f"every slice with a value had a weight of 0 on that map. An element is "
+                        f"counted once on each drawn map. Their accessions in the file include "
+                        f"these: {examples}."
+                    )
+            unshown = layer.get('_slice_unshown')
+            if unshown:
+                found = {unit for found_units in unshown.values() for unit in found_units}
+                examples = ', '.join(sorted({
+                    accession for unit in found for accession in (
+                        unit[1] if isinstance(unit, tuple) else (unit,)
+                    )
+                })[:5])
+                named = (
+                    "The accessions of these genes include these" if layer['slice_by'] == 'gene'
+                    else "They include these"
+                )
+                # A legend of categorical values lists every value, shown or not.
+                scale = " The border scale leaves these values out." if (
+                    layer.get('value_type') != 'categorical'
+                ) else ""
                 self.run.warning(
-                    f"{len(uncolored)} {element_type} element(s) were left uncolored, since every "
-                    f"slice with a value had a weight of 0 on that map. An element is counted once "
-                    f"on each drawn map. Their accessions in the file include these: {examples}."
+                    f"On {len(unshown)} drawn map element(s), some {units} with border values had "
+                    f"no slice of the fill, so no band shows their border values.{scale} An "
+                    f"element is counted once on each drawn map. {named}: {examples}."
                 )
 
     def _check_reserved_colors(
@@ -9908,14 +11936,14 @@ class Mapper:
         """
         Check that no compound is given a reserved color derived from the reactions it touches.
 
-        A global or overview map drawn without a compound layer colors each compound from the
-        reactions it touches ('kgml.Pathway.color_associated_compounds'). Where the reactions are
-        colored by value, a compound takes the color at the average position of its reactions on
-        the color scale. Otherwise it takes the color of its reaction drawn on top. That color can
-        be the one the map keeps for the compounds it does not highlight. This can happen even where
-        no reaction has that color. 'kgml' then refuses to draw the map. This check finds such a
-        clash before any map or colorbar is drawn. '_check_reserved_colors' does the same for the
-        colors of the layers themselves.
+        A global or overview map colors each compound from the reactions it touches
+        ('kgml.Pathway.color_associated_compounds'), where a reaction layer stages fills and no
+        compound layer does. Where the reactions are colored by value, a compound takes the color at
+        the average position of its reactions on the color scale. Otherwise it takes the color of
+        its reaction drawn on top. That color can be the one the map keeps for the compounds it does
+        not highlight. This can happen even where no reaction has that color. 'kgml' then refuses to
+        draw the map. This check finds such a clash before any map or colorbar is drawn.
+        '_check_reserved_colors' does the same for the colors of the layers themselves.
 
         The derived colors depend on which reactions touch each compound. Each map is therefore
         colored here without being drawn. That costs about as much as drawing the map, less the
@@ -9926,7 +11954,8 @@ class Mapper:
         Parameters
         ==========
         layers : List[dict]
-            The layer models. Compound colors are derived only where no layer is a compound layer.
+            The layer models. Compound colors are derived only where a reaction layer stages fills
+            and no compound layer does. A layer in the fill mode 'none' stages no fills.
 
         pathway_numbers : List[str]
             The maps about to be drawn. Only global and overview maps derive compound colors.
@@ -9942,8 +11971,12 @@ class Mapper:
             The colors of each group's individual maps ('_group_map_colors'). A compound on a
             group's map can take one of them.
         """
-        # A compound layer colors the compounds itself, so no compound color is derived.
-        if any(layer['element_type'] == 'compound' for layer in layers):
+        # Compound colors are derived from a reaction layer that stages fills. A compound layer that
+        # stages fills colors the compounds itself, so no compound color is derived then. A layer in
+        # the fill mode 'none' stages none. A compound layer in this mode draws only rings, so the
+        # compounds keep their derived fills ('_derives_compounds').
+        fills = {layer['element_type'] for layer in layers if layer['unified_mode'] != 'none'}
+        if 'reaction' not in fills or 'compound' in fills:
             return
         reserved: Dict[str, str] = {}
         for pathway_number in pathway_numbers:
@@ -9995,7 +12028,7 @@ class Mapper:
                     pathway_number if drawing is None else f"{pathway_number}, {drawing}"
                 )
                 pathway = self._get_pathway(pathway_number)
-                color_priority, _ = self._stage_map_elements(pathway_number, pathway, specs)
+                color_priority, _, _ = self._stage_map_elements(pathway_number, pathway, specs)
                 # These are the steps 'kgml.Pathway.set_color_priority' takes to derive compound
                 # colors, short of the last one. That step recolors the compounds left without a
                 # color. It is where 'kgml' refuses a derived color that is reserved.
@@ -10019,12 +12052,12 @@ class Mapper:
                     f"Some compounds would be colored {reserved_color} on pathway map "
                     f"{pathway_number}{drawn_for}. The map keeps this color for the compounds it "
                     f"does not highlight. They could not be told apart from those compounds. No "
-                    f"compound layer is drawn. The map therefore colors each compound from the "
-                    f"reactions it touches. Where the reactions are colored by value, a compound "
-                    f"takes the color at the average position of its reactions on the color scale. "
-                    f"Where they are colored by categorical values, a rule chooses one of their "
-                    f"values for it. Otherwise it takes the color of its reaction drawn on top. "
-                    f"{remedy}"
+                    f"compound layer colors the compounds. The map therefore colors each compound "
+                    f"from the reactions it touches. Where the reactions are colored by value, a "
+                    f"compound takes the color at the average position of its reactions on the "
+                    f"color scale. Where they are colored by categorical values, a rule chooses "
+                    f"one of their values for it. Otherwise it takes the color of its reaction "
+                    f"drawn on top. {remedy}"
                 )
         self.progress.end()
 
@@ -10044,7 +12077,8 @@ class Mapper:
         Parameters
         ==========
         layers : List[dict]
-            The layer models. The run has no compound layer, so its one reaction layer is here.
+            The layer models. No compound layer of the run stages fills, and its one reaction layer
+            is here.
 
         unified : bool
             True for the 'unified' map. False for the map of one sample, contigs database, genome,
@@ -11208,17 +13242,25 @@ class Mapper:
                     )
             _register('ortholog', graphics_type, colors)
 
-    def _slice_cap(self, pathway: kgml.Pathway, entry: kgml.Entry, count: int) -> Union[str, None]:
+    def _slice_cap(
+        self,
+        pathway: kgml.Pathway,
+        entry: kgml.Entry,
+        count: int,
+        ringed: bool = False
+    ) -> Union[str, None]:
         """
         Say whether the slices of a map element are too many to draw, and why.
 
         A box is drawn whole where a slice of equal width would be narrower than
-        'MIN_BOX_SLICE_WIDTH'. On global maps, compound circles cover the ends of almost every line,
-        and the slices of a line fill the part that the circles leave visible
-        ('kgml.SlicedKGMLCanvas'). A line is drawn whole where circles hide all of one of its
-        pieces, or where the visible part of a piece would give a slice of equal length shorter than
-        the line is wide. The cap counts slices only, so slices with small weights can still be
-        thin.
+        'MIN_BOX_SLICE_WIDTH'. In a layer with a border column, the columns of a box fit inside its
+        ring, so the cap measures the width inside the ring ('kgml.get_box_fill_width'). This holds
+        for every box of the layer, with or without a ring on the map, so a box is sliced the same
+        way on every map. On global maps, compound circles cover the ends of almost every line, and
+        the slices of a line fill the part that the circles leave visible ('kgml.SlicedKGMLCanvas').
+        A line is drawn whole where circles hide all of one of its pieces, or where the visible part
+        of a piece would give a slice of equal length shorter than the line is wide. The cap counts
+        slices only, so slices with small weights can still be thin.
 
         Parameters
         ==========
@@ -11231,6 +13273,9 @@ class Mapper:
         count : int
             The number of slices.
 
+        ringed : bool, False
+            True for a layer with a border column.
+
         Returns
         =======
         Union[str, None]
@@ -11239,7 +13284,8 @@ class Mapper:
         for index, uuid in enumerate(entry.children['graphics']):
             graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
             if graphics.type == 'rectangle':
-                if graphics.width / count < MIN_BOX_SLICE_WIDTH:
+                width = kgml.get_box_fill_width(graphics.width) if ringed else graphics.width
+                if width / count < MIN_BOX_SLICE_WIDTH:
                     return 'over the cap'
             elif graphics.type == 'line':
                 # Lines are drawn 5 points wide on overview and standard maps
@@ -11427,9 +13473,9 @@ class Mapper:
 
         slice_records : Union[list, None], None
             Where to record the rows of the key table, and an Entry left uncolored by shares of 0.
-            Each record is a tuple of the spec, the key of the Entry on this map, its rows (None for
-            an Entry left uncolored), and the accessions of an uncolored Entry. Nothing is recorded
-            with None.
+            Each record is a tuple of the dictionary of the layer that keeps it ('slice_key' or
+            'slice_uncolored'), the key of the Entry on this map, and the rows of the Entry or the
+            accessions of an uncolored Entry. Nothing is recorded with None.
 
         Returns
         =======
@@ -11441,6 +13487,7 @@ class Mapper:
         ]
         for graphics in graphics_elements:
             graphics.slices = None
+            graphics.border = None
         entry.compound_vote = None
         sliced = spec['slicer'](entry)
         if sliced is None:
@@ -11452,12 +13499,14 @@ class Mapper:
         )
         if not slices:
             if slice_records is not None:
-                slice_records.append((spec, key, None, sliced['accessions']))
+                slice_records.append((spec['slice_uncolored'], key, sliced['accessions']))
             return False
 
         element_type = spec['element_type']
         keep_highest_priority = spec.get('keep_highest_priority', False)
-        reason = self._slice_cap(pathway, entry, len(slices)) if len(slices) > 1 else None
+        reason = self._slice_cap(
+            pathway, entry, len(slices), ringed=spec.get('slice_ringed', False)
+        ) if len(slices) > 1 else None
         if len(slices) > 1 and reason is None:
             top = max(range(len(slices)), key=lambda i: (slices[i][4], -i))
             for i in [i for i in range(len(slices)) if i != top] + [top]:
@@ -11499,7 +13548,7 @@ class Mapper:
                 for position, ((unit, value, share, _, _), color)
                 in enumerate(zip(slices, colors))
             ]
-            slice_records.append((spec, key, rows, None))
+            slice_records.append((spec['slice_key'], key, rows))
         return True
 
     def _warn_unrenderable_compounds(
@@ -11646,13 +13695,13 @@ class Mapper:
         """
         Build the function that colors a compound by the categorical values of its reactions.
 
-        On a global or overview map drawn from reactions alone, each compound takes a color from the
-        reactions that touch it ('kgml.Pathway.color_associated_compounds'). Each touching reaction
-        gives one vote for its value. The layer's accession rule chooses among the votes, as it does
-        among the accessions of one map element ('_choose_categorical_value'). The key of a random
-        choice is the compound's name, so a compound with the same votes gets the same value on
-        every map. The choices are counted in the layer's '_choices', once per compound and set of
-        votes.
+        On a global or overview map where no compound layer colors the fills, each compound takes a
+        color from the reactions that touch it ('kgml.Pathway.color_associated_compounds'). Each
+        touching reaction gives one vote for its value. The layer's accession rule chooses among the
+        votes, as it does among the accessions of one map element ('_choose_categorical_value'). The
+        key of a random choice is the compound's name, so a compound with the same votes gets the
+        same value on every map. The choices are counted in the layer's '_choices', once per
+        compound and set of votes.
 
         Parameters
         ==========
@@ -11868,12 +13917,15 @@ class Mapper:
               accessions. A color keeps the priority of the last entry given it, so if the colorer
               can give a color more than one priority, this order must not change between runs.
             - 'colorer': a function that takes an Entry. It returns a '(color_hexcode, priority)'
-              pair, or None to leave the Entry uncolored.
+              pair, or None to leave the Entry uncolored. The colorer of a layer in the fill mode
+              'none' is None. Such a layer stages no fill, and its entries do not count as matching
+              the map.
             - 'derived_compound': how a reaction layer colors compounds by the reactions that touch
-              them. It is used only on a global or overview map without a compound layer. It is a
-              '(mode, colormap)' pair, such as ('average', cmap), ('circular_average', cmap) or
-              ('high', None). The mode is passed to 'kgml.Pathway.set_color_priority' as
-              'color_associated_compounds'. A compound layer has None here; it is not read.
+              them. It is used only on a global or overview map without a compound layer that stages
+              fills ('_derives_compounds'). It is a '(mode, colormap)' pair, such as ('average',
+              cmap), ('circular_average', cmap) or ('high', None). The mode is passed to
+              'kgml.Pathway.set_color_priority' as 'color_associated_compounds'. A compound layer
+              has None here; it is not read.
 
             A spec can also have these keys:
             - 'pathway_numbers': the maps on which the layer has a value to color. On any other map
@@ -11904,6 +13956,27 @@ class Mapper:
             - 'slice_key' and 'slice_uncolored': where the rows of the key table and the entries
               left uncolored by shares of 0 are kept, once the map is drawn. They belong to the
               layer.
+            - 'slice_ringed': True for a layer with a border column. The cap on slices then
+              measures the width inside the ring of a box ('_slice_cap').
+
+            A layer whose border shows on the map has these keys too ('_with_border',
+            '_stage_entry_borders'):
+            - 'border_colorer': a function that takes an Entry. It returns the '(color_hexcode,
+              priority)' pair of the Entry's border value, or None where the Entry has none. The
+              color goes to the ring. The priority is not used.
+            - 'border_entry_keys': the accessions with border values. They find the entries that
+              take rings.
+            - 'border_pathway_numbers': the maps on which the border has a value to color, or None
+              for every map. On any other map the layer draws no ring.
+
+            A layer whose border has sliced rings has these keys too ('_stage_entry_ring'):
+            - 'border_ringer': a function used in place of 'border_colorer'. It takes the map and an
+              Entry, and it returns the ring of the Entry with its colors ('_ringer').
+            - 'border_slice_map' and 'border_slice_rank': what the key table of the border calls the
+              map and where the map comes in it, as for the slices of the fill.
+            - 'border_slice_key', 'border_slice_uncolored', and 'border_slice_unshown': where the
+              rows of the key table, the entries left out by shares of 0, and the units that no
+              column of the fill shows are kept. They belong to the border.
 
         output_dir : str
             Path to the output directory in which the map PDF is drawn.
@@ -11919,19 +13992,17 @@ class Mapper:
         pathway = self._get_pathway(pathway_number)
 
         slice_records: list = []
-        color_priority, found_entries = self._stage_map_elements(
+        color_priority, found_entries, _ = self._stage_map_elements(
             pathway_number, pathway, layer_specs, slice_records=slice_records
         )
 
         if not found_entries and not draw_map_lacking_data:
             return False
 
-        # The slices of a map are kept for the key table only once the map is to be drawn.
-        for spec, key, rows, uncolored_accessions in slice_records:
-            if rows is None:
-                spec['slice_uncolored'][key] = uncolored_accessions
-            else:
-                spec['slice_key'][key] = rows
+        # The slices of a map, and the slices of its rings, are kept for the key tables only once
+        # the map is to be drawn.
+        for kept, key, value in slice_records:
+            kept[key] = value
 
         compound_layer = next(
             (spec for spec in layer_specs if spec['element_type'] == 'compound'), None
@@ -11939,11 +14010,11 @@ class Mapper:
         if compound_layer is not None:
             self._warn_unrenderable_compounds(pathway, compound_layer['entry_keys'])
 
-        # When a compound layer supplies compound colors, or the map is neither global nor overview,
-        # colors are applied directly. Otherwise, on a reaction-only global/overview map, compounds
-        # are derived from their associated reactions per the reaction layer's 'derived_compound'.
+        # On a global or overview map where a reaction layer stages fills and no compound layer
+        # does, compounds are derived from their associated reactions per the reaction layer's
+        # 'derived_compound' ('_derives_compounds'). Otherwise, colors are applied directly.
         recolor = 'g' if pathway.is_global_map else 'w'
-        if compound_layer is not None or not (pathway.is_global_map or pathway.is_overview_map):
+        if not self._derives_compounds(pathway, layer_specs):
             pathway.set_color_priority(color_priority, recolor_unprioritized_entries=recolor)
         else:
             reaction_layer = next(
@@ -11973,7 +14044,7 @@ class Mapper:
         pathway: kgml.Pathway,
         layer_specs: List[dict],
         slice_records: Union[list, None] = None
-    ) -> Tuple[dict, bool]:
+    ) -> Tuple[dict, bool, dict]:
         """
         Stage the colors of every layer on one map, without applying them.
 
@@ -11995,32 +14066,42 @@ class Mapper:
             drawn beneath later ones.
 
         slice_records : Union[list, None], None
-            Where the slices of the map are recorded for the key table ('_stage_entry_slices'). Only
-            the drawing of a map records them. The check of compound colors does not.
+            Where the slices of the map, and the slices of its rings, are recorded for the key
+            tables ('_stage_entry_slices', '_stage_entry_borders'). Only the drawing of a map
+            records them. The check of compound colors does not.
 
         Returns
         =======
-        Tuple[dict, bool]
-            Two values:
+        Tuple[dict, bool, dict]
+            Three values:
             - The '{entry_type: {graphics_type: {(fg, bg): priority}}}' dictionary, to be passed to
               'kgml.Pathway.set_color_priority'.
             - Whether any layer matched an entry of the map. A layer with 'require_color' matches
-              only where it colors an entry.
+              only where it colors an entry. A ring counts as a match.
+            - The rings staged on the map, as the ring of each Entry keyed by its ID, in the form of
+              'Graphics.border' ('_stage_entry_borders').
         """
         color_priority: dict = {}
         found_entries = False
-        # A global or overview map without a compound layer colors compounds from the reactions that
-        # touch them. A sliced entry then casts the vote of its stand-in value, or no vote where
-        # that is undefined.
-        derives_compounds = (pathway.is_global_map or pathway.is_overview_map) and not any(
-            spec['element_type'] == 'compound' for spec in layer_specs
-        )
+        borders: dict = {}
+        # A global or overview map can color compounds from the reactions that touch them
+        # ('_derives_compounds'). A sliced entry then casts the vote of its stand-in value, or no
+        # vote where that is undefined.
+        derives_compounds = self._derives_compounds(pathway, layer_specs)
         for spec in layer_specs:
+            # A layer with a border stages its rings after its fill. The border keeps its own maps,
+            # so a map that the fill skips can still show rings.
             if spec.get('pathway_numbers') is not None and (
                 pathway_number not in spec['pathway_numbers']
             ):
+                if spec.get('border_colorer') is not None and self._stage_entry_borders(
+                    pathway_number, pathway, spec, borders, slice_records
+                ):
+                    found_entries = True
                 continue
-            entries = self._find_element_entries(
+            # A layer in the fill mode 'none' has no colorer. Its entries are not staged and do not
+            # count as data, so it stages only its rings.
+            entries = [] if spec['colorer'] is None else self._find_element_entries(
                 pathway, spec['use_reaction_attribute'], spec['entry_keys']
             )
             if entries and not spec.get('require_color', False):
@@ -12042,7 +14123,192 @@ class Mapper:
                     pathway, entry, spec['element_type'], color_hexcode, priority, color_priority,
                     keep_highest_priority=spec.get('keep_highest_priority', False)
                 )
-        return color_priority, found_entries
+            if spec.get('border_colorer') is not None and self._stage_entry_borders(
+                pathway_number, pathway, spec, borders, slice_records
+            ):
+                found_entries = True
+        return color_priority, found_entries, borders
+
+    @staticmethod
+    def _derives_compounds(pathway: kgml.Pathway, layer_specs: List[dict]) -> bool:
+        """
+        Say whether a map colors its compounds from the reactions that touch them.
+
+        A global or overview map does this where a reaction layer stages fills and no compound layer
+        does. A layer in the fill mode 'none' stages none. A compound layer in this mode draws only
+        rings, so the compounds keep the fills derived from the reactions
+        ('kgml.Pathway.color_associated_compounds'). '_check_derived_compound_colors' makes the same
+        test of the layers.
+
+        Parameters
+        ==========
+        pathway : kgml.Pathway
+            The map.
+
+        layer_specs : List[dict]
+            One spec per layer, with the keys '_draw_map_elements' describes.
+
+        Returns
+        =======
+        bool
+            True if the compounds of the map take colors from its reactions.
+        """
+        if not (pathway.is_global_map or pathway.is_overview_map):
+            return False
+        fills = {spec['element_type'] for spec in layer_specs if spec['colorer'] is not None}
+        return 'reaction' in fills and 'compound' not in fills
+
+    def _stage_entry_borders(
+        self,
+        pathway_number: str,
+        pathway: kgml.Pathway,
+        spec: dict,
+        borders: dict,
+        slice_records: Union[list, None] = None
+    ) -> bool:
+        """
+        Stage the rings of a layer's border on one map.
+
+        The border's colorer colors the entries of its accessions. A ring goes on each shape of an
+        Entry that shows rings ('_shows_border'). Its color goes to the Python-only
+        'Graphics.border', never to the fg and bg colors of the Entry. Color priority, recoloring,
+        and the colors that compounds derive from reactions therefore never see a ring. An Entry
+        whose fill has no color keeps an unprioritized fill. 'kgml' recolors that fill, and the ring
+        is drawn on it. A border with sliced rings stages each ring with its ringer instead
+        ('_stage_entry_ring').
+
+        Parameters
+        ==========
+        pathway_number : str
+            Numeric ID of the map.
+
+        pathway : kgml.Pathway
+            The map.
+
+        spec : dict
+            The layer spec, with the border keys that '_draw_map_elements' describes.
+
+        borders : dict
+            The ring of each staged Entry, keyed by its ID, in the form of 'Graphics.border'. It is
+            updated here.
+
+        slice_records : Union[list, None], None
+            Where the slices of rings are recorded for the key table of the border, as in
+            '_stage_entry_slices'. Nothing is recorded with None.
+
+        Returns
+        =======
+        bool
+            True if a ring was staged.
+        """
+        # Sliced rings are asked on every map, so that the units and rings that are not shown are
+        # recorded too. A map without a value to show gets no ring from the ringer.
+        maps = spec.get('border_pathway_numbers')
+        if maps is not None and pathway_number not in maps and spec.get('border_ringer') is None:
+            return False
+        staged = False
+        for entry in self._find_element_entries(
+            pathway, spec['use_reaction_attribute'], spec['border_entry_keys']
+        ):
+            shapes = [
+                pathway.uuid_element_lookup[uuid] for uuid in entry.children['graphics']
+            ]
+            shapes = [shape for shape in shapes if self._shows_border(pathway, entry, shape)]
+            if not shapes:
+                continue
+            if spec.get('border_ringer') is not None:
+                if self._stage_entry_ring(
+                    pathway_number, pathway, entry, shapes, spec, borders, slice_records
+                ):
+                    staged = True
+                continue
+            colored = spec['border_colorer'](entry)
+            if colored is None:
+                continue
+            color, _ = colored
+            for shape in shapes:
+                shape.border = color
+            borders[entry.id] = color
+            staged = True
+        return staged
+
+    def _stage_entry_ring(
+        self,
+        pathway_number: str,
+        pathway: kgml.Pathway,
+        entry: kgml.Entry,
+        shapes: List[kgml.Graphics],
+        spec: dict,
+        borders: dict,
+        slice_records: Union[list, None] = None
+    ) -> bool:
+        """
+        Stage the sliced ring of an Entry on one map.
+
+        The spec's ringer finds the ring ('_ringer'). The bands of a ring lie above and below the
+        columns of the fill, which the fill of the layer staged before ('_stage_entry_slices'). The
+        segments of a ring, and a whole ring, do not depend on these columns. The rows of the key
+        table of the border are recorded, as the rows of slices are ('_stage_entry_slices'). An
+        Entry whose ring is left out by shares of 0 is recorded too, and so are the units whose
+        border values no column of the fill shows.
+
+        Parameters
+        ==========
+        pathway_number : str
+            Numeric ID of the map.
+
+        pathway : kgml.Pathway
+            The map.
+
+        entry : kgml.Entry
+            An ortholog Entry with border values.
+
+        shapes : List[kgml.Graphics]
+            The shapes of the Entry that show rings ('_shows_border').
+
+        spec : dict
+            The layer spec, with the keys of sliced rings that '_draw_map_elements' describes.
+
+        borders : dict
+            The ring of each staged Entry, as in '_stage_entry_borders'. It is updated here.
+
+        slice_records : Union[list, None], None
+            Where the rows are recorded, as in '_stage_entry_slices'. Nothing is recorded with None.
+
+        Returns
+        =======
+        bool
+            True if a ring was staged.
+        """
+        ring = spec['border_ringer'](pathway, entry)
+        if ring is None:
+            return False
+        key = (
+            pathway_number, spec['border_slice_rank'], int(entry.id) if entry.id.isdigit() else -1,
+            spec['border_slice_map'], entry.id
+        )
+        if slice_records is not None and ring['unshown']:
+            slice_records.append((spec['border_slice_unshown'], key, ring['unshown']))
+        if ring['kind'] == 'uncolored' and slice_records is not None:
+            slice_records.append((spec['border_slice_uncolored'], key, ring['accessions']))
+        if ring['kind'] in ('uncolored', 'none'):
+            return False
+        for shape in shapes:
+            shape.border = ring['border']
+        borders[entry.id] = ring['border']
+        if slice_records is not None:
+            x, y, label = self._slice_label_point(pathway, entry)
+            rows = [
+                (
+                    pathway_number, spec['border_slice_map'], entry.id, x, y, label,
+                    '' if position is None else str(position), *self._slice_unit_labels(unit),
+                    value if isinstance(value, str) else str(float(value)), str(float(share)),
+                    color, ring['reason'] or ''
+                )
+                for (position, unit, value, share), color in zip(ring['slices'], ring['colors'])
+            ]
+            slice_records.append((spec['border_slice_key'], key, rows))
+        return True
 
     def _draw_map_element_presence(
         self,

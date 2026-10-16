@@ -520,6 +520,159 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
                         --draw-grid \
                         --no-progress
 
+## BORDER VALUES
+# A second column can color the borders of map elements, while the value column still colors their
+# fills. '--reaction-border-column' names it. A border is a ring inside the outline of each box on
+# standard maps, and of each compound circle on standard and overview maps. Here the fills show the
+# coverage of each sample, and the borders show its status. The 'unified' map chooses one status
+# across the samples, so it shows a border too. The borders take keys of their own.
+INFO "Coloring borders by a column of categorical values beside a value column"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+                        --reaction-border-column status \
+                        --reaction-border-value-type categorical \
+                        --reaction-border-value-colors draw-status-colors.txt \
+                        --reaction-border-sample-summary plurality_order \
+                        --output-dir draw_txt_samples_kos_border_status \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
+if [ ! -s draw_txt_samples_kos_border_status/colorbar_reactions_border.pdf ] \
+    || [ ! -s draw_txt_samples_kos_border_status/colorbar_reactions_border_samples.pdf ]
+then
+    echo "ERROR: a run with borders should have written a key for each scale of the borders."
+    exit 1
+fi
+
+# A file whose only column of values is its border column colors its fills by presence. With
+# groups, the border of each group's map takes the status chosen among the group's samples, and the
+# 'unified' map takes the status chosen among the groups.
+INFO "Coloring borders across groups of samples, with the fills showing presence"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+                        --reaction-border-column status \
+                        --reaction-border-value-type categorical \
+                        --groups-txt draw-sample-group-information.txt \
+                        --group-threshold 0.5 \
+                        --reaction-border-sample-summary plurality_order \
+                        --reaction-border-group-summary plurality_order \
+                        --output-dir draw_txt_groups_kos_border_status \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-grid \
+                        --no-progress
+
+if [ ! -s draw_txt_groups_kos_border_status/colorbar_reactions_border.pdf ] \
+    || [ ! -s draw_txt_groups_kos_border_status/colorbar_reactions_border_groups.pdf ]
+then
+    echo "ERROR: a grouped run with borders should have written a key for each border scale."
+    exit 1
+fi
+
+# Numeric border values take 'viridis' by default, so their colors differ from those of the fills.
+# Each layer has a border of its own. The reaction file here has no other column of values, so its
+# fills show presence and get no colorbar.
+INFO "Coloring the borders of both layers by numbers"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+                        --reaction-border-column coverage \
+                        --compound-txt draw_compounds_samples.compound.txt \
+                        --compound-border-column concentration \
+                        --compound-border-sample-summary mean \
+                        --output-dir draw_txt_both_layers_border \
+                        --pathway-numbers $pathway_numbers \
+                        --no-progress
+
+if [ ! -s draw_txt_both_layers_border/colorbar_reactions_border.pdf ] \
+    || [ ! -s draw_txt_both_layers_border/colorbar_compounds_border.pdf ]
+then
+    echo "ERROR: a run with borders on both layers should have written a key for each border."
+    exit 1
+fi
+if [ -e draw_txt_both_layers_border/colorbar_reactions.pdf ]
+then
+    echo "ERROR: fills that show presence without samples should have no colorbar."
+    exit 1
+fi
+
+# '--compound-color none' leaves the fills of a compound file without a value column uncolored, so
+# that its circles show only their rings. On the overview map 01200, the circles keep the fills that
+# they take from the reactions that touch them. A circle there shows the coverage of its reactions
+# in its fill and the mean concentration of its compound in its ring. The compound layer writes a
+# key of its rings and none of its fills.
+INFO "Drawing compound rings alone, over the fills that compounds take from reactions"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+                        --compound-txt draw_compounds_samples.compound.txt \
+                        --compound-border-column concentration \
+                        --compound-border-sample-summary mean \
+                        --compound-color none \
+                        --output-dir draw_txt_both_layers_compound_rings_alone \
+                        --pathway-numbers $pathway_numbers \
+                        --no-progress
+
+if [ ! -s draw_txt_both_layers_compound_rings_alone/colorbar_compounds_border.pdf ]
+then
+    echo "ERROR: a compound layer of rings alone should have written a key of its rings."
+    exit 1
+fi
+if [ -e draw_txt_both_layers_compound_rings_alone/colorbar_compounds.pdf ]
+then
+    echo "ERROR: a compound layer of rings alone should have written no key of its fills."
+    exit 1
+fi
+
+# '--reaction-border-slice-by' divides the ring of each box among its KOs or genes. Here the fill
+# is sliced by KO as well, so the rings are aligned with it. Each column of the fill takes the
+# status of its own KO, as bands above and below the column. The coverage of each KO sizes its
+# column, and its expression colors the column. A second key table lists the slices of the rings.
+INFO "Slicing borders by KO, aligned with fills that are sliced by KO and sized by weights"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+                        --reaction-sample-summary mean \
+                        --reaction-slice-by accession \
+                        --reaction-slice-weights coverage \
+                        --reaction-border-column status \
+                        --reaction-border-value-type categorical \
+                        --reaction-border-value-colors draw-status-colors.txt \
+                        --reaction-border-sample-summary plurality_order \
+                        --reaction-border-slice-by accession \
+                        --output-dir draw_txt_samples_kos_border_slices_aligned \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
+if [ ! -s draw_txt_samples_kos_border_slices_aligned/slice_key_reactions_border.txt ]
+then
+    echo "ERROR: a run that slices borders should have written a key table of the slices of rings."
+    exit 1
+fi
+
+# Without '--reaction-slice-by', each ring is divided on its own, clockwise from the top left corner
+# of its box, while the fill stays whole. The weights size the slices of the rings.
+INFO "Slicing borders by KO on their own, with weights, around fills drawn whole"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+                        --reaction-sample-summary mean \
+                        --reaction-slice-weights coverage \
+                        --reaction-border-column status \
+                        --reaction-border-value-type categorical \
+                        --reaction-border-value-colors draw-status-colors.txt \
+                        --reaction-border-sample-summary plurality_order \
+                        --reaction-border-slice-by accession \
+                        --output-dir draw_txt_samples_kos_border_slices_independent \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
+if [ ! -s draw_txt_samples_kos_border_slices_independent/slice_key_reactions_border.txt ]
+then
+    echo "ERROR: a run that slices borders on their own should have written their key table."
+    exit 1
+fi
+if [ -e draw_txt_samples_kos_border_slices_independent/slice_key_reactions.txt ]
+then
+    echo "ERROR: fills drawn whole should have no key table of slices."
+    exit 1
+fi
+
 ## PRESENCE COLORING
 INFO "Mixing presence coloring of reactions with value coloring of compounds"
 anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \

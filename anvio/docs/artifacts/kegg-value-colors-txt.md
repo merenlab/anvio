@@ -4,6 +4,8 @@ A value column holds categorical values when the run gives `--reaction-value-typ
 
 Pass it with `--reaction-value-colors` for the reaction layer, and `--compound-value-colors` for the compound layer. The two layers are colored independently, so each can take its own file.
 
+A border column holds categorical values when the run gives `--reaction-border-value-type categorical` or `--compound-border-value-type categorical` (see %(anvi-draw-kegg-pathways)s). Pass this file with `--reaction-border-value-colors` or `--compound-border-value-colors` to color the values of a border column. Without it, border values take 7 default colors of their own, those of Matplotlib's `Dark2` without its gray, in this order: `#d95f02`, `#7570b3`, `#e6ab02`, `#a6761d`, `#1b9e77`, `#e7298a`, and `#66a61e`. More than 7 border values need this file. Border colors are not checked against the colors that maps reserve, so black, white, and gray can color borders.
+
 ## File format
 
 |Column|Required|Description|
@@ -31,8 +33,12 @@ The order of the rows is the order of the values. It is used in three places.
 - **Drawing.** Where map elements overlap, the first value is drawn on top. `--reaction-reverse-overlay`/`--compound-reverse-overlay` puts the last value on top instead.
 - **Choosing one value.** Where several values meet, a rule chooses one. `plurality_order` gives a tie to the value that comes first, and `order` always takes the value that comes first. If `up` is in an earlier row than `same`, `order` chooses `up` for a map element whose KOs have both.
 
+For the values of a border column, the order is used only in the legend and in choosing one value. It does not set the order of drawing, which follows the fills of the elements.
+
 ## When this file does not apply
 
-This file needs categorical values. It is refused unless the layer's value type is `categorical`.
+This file needs categorical values. It is refused unless the layer's value type is `categorical`. Given for a border column, it is refused unless `--reaction-border-value-type` or `--compound-border-value-type` is `categorical`.
 
 With a %(groups-txt)s, a layer whose file has a `sample` column also needs a rule in its sample summary, or this file is refused. That is `--reaction-sample-summary` for the reaction layer and `--compound-sample-summary` for the compound layer. Without a rule, each group's map counts the group's samples. No map then shows the values, so they take no colors, and there can be more than 18 of them without this file. A layer whose file has no `sample` column shows the same values on every group's map, so this file is accepted for that layer without a rule.
+
+The same holds for a border column, whose rule goes in `--reaction-border-sample-summary` or `--compound-border-sample-summary`. Without a rule, no map shows the borders.

@@ -11,14 +11,15 @@ Each column name may appear only once, and names that start with `__` are reserv
 |Column|Required|Description|
 |:--|:--|:--|
 |`accession`|YES|A KEGG ID. Accessions in the file must **all** be **KEGG Ortholog (KO) IDs** (`K#####`) or **KEGG reaction IDs** (`R#####`) — a single file cannot mix the two. Both KOs and Reactions address the reaction layer, so combining them can clash with two scales on the same map elements.|
-|`gene_id`|NO|An identifier for the gene a value came from. The "gene" can be anything that carries the annotation, such as a gene, a transcript, a protein, or a gene cluster, and any text works as its ID. Several genes may carry the same accession, and their values are combined into that accession's value (by default their `sum` — see `--reaction-gene-aggregation`). With `--reaction-slice-by gene`, each gene is drawn as a slice of its own instead. Every row then needs a gene ID, and one gene ID must name the same gene in every sample (see [Drawing elements in slices](#drawing-elements-in-slices)).|
+|`gene_id`|NO|An identifier for the gene a value came from. The "gene" can be anything that carries the annotation, such as a gene, a transcript, a protein, or a gene cluster, and any text works as its ID. Several genes may carry the same accession, and their values are combined into that accession's value (by default their `sum` — see `--reaction-gene-aggregation`). With `--reaction-slice-by gene`, each gene is drawn as a slice of its own instead, and `--reaction-border-slice-by gene` does the same for the rings of a border column. Every row then needs a gene ID, and one gene ID must name the same gene in every sample (see [Drawing elements in slices](#drawing-elements-in-slices)).|
 |`sample`|NO|A sample of origin, enabling comparison across samples (and, with a %(groups-txt)s, across groups of samples). If this column is present, every row must have a sample.|
-|*a value column*|NO|A SINGLE column with any name of your choosing, for coloring by a value instead of by presence/absence. Its values are numbers by default, for coloring by a continuous quantitative value. Its meaning is up to you (coverage, expression, flux, ...). With `--reaction-value-type categorical`, its values are categorical values instead, such as `up` and `down` (see below). If this column is present, every row must have a value. This column is **auto-detected** as not being named `accession`, `gene_id`, or `sample`, and not being named by `--reaction-slice-weights`.|
-|*a weight column*|NO|A column of numbers that sizes the slices of reaction elements drawn with `--reaction-slice-by` (see below). It can have any name. It is not auto-detected, so name it with `--reaction-slice-weights`. Without that option, the file would have two candidate value columns and be refused. Every row needs a weight, which is a finite number of 0 or more. The file still needs a separate value column, which colors the slices.|
+|*a value column*|NO|A SINGLE column with any name of your choosing, for coloring by a value instead of by presence/absence. Its values are numbers by default, for coloring by a continuous quantitative value. Its meaning is up to you (coverage, expression, flux, ...). With `--reaction-value-type categorical`, its values are categorical values instead, such as `up` and `down` (see below). If this column is present, every row must have a value. This column is **auto-detected** as not being named `accession`, `gene_id`, or `sample`, and not being named by `--reaction-slice-weights` or `--reaction-border-column`.|
+|*a weight column*|NO|A column of numbers that sizes the slices of reaction elements drawn with `--reaction-slice-by` (see below), and the slices of rings that `--reaction-border-slice-by` divides on their own. It can have any name. It is not auto-detected, so name it with `--reaction-slice-weights`. Without that option, the file would have two candidate value columns and be refused. Every row needs a weight, which is a finite number of 0 or more. The file still needs a separate value column, which colors the slices, unless the weights size only the slices of rings.|
+|*a border column*|NO|A column whose values color the borders of reaction boxes on standard maps. Each border is a ring just inside the black outline of a box, and the value column still colors the fill. The column can have any name. It is not auto-detected, so name it with `--reaction-border-column`. Without that option, a file with a value column would have two candidate value columns and be refused. It cannot be `accession`, `gene_id`, `sample`, or the weight column. Its values are numbers by default, and each must be a finite number. With `--reaction-border-value-type categorical`, its values are categorical values instead. A row can leave its border cell empty, and then it has no border value. A border column with no values at all is refused. A file with a border column is read as text, so `NA` is a name in every column, including `sample` and `gene_id`. With `--reaction-color none`, a file without a value column leaves its fills uncolored, and its boxes show only their rings. Reaction lines show no borders. See the example below.|
 
-To color by **presence** of accessions, do not include a value column.
+To color by **presence** of accessions, do not include a value column. A border column is not a value column, so a file with a border column and no value column colors its fills by presence. `--reaction-color none` leaves these fills uncolored, so that each box shows only its ring. A box whose border cell is empty then shows nothing, and the run counts such rows. Reaction lines take no rings, so they show nothing either.
 
-With a value column, no two rows may describe the same thing — the same accession, gene, and sample. Repeated rows are ambiguous, as they can be replicate measurements to average or separate contributions to add, so combine them yourself in whichever way suits your data. Note that several *different* genes carrying one accession are not repeats, and are the ordinary case of the same type of protein being encoded by different genes.
+With a value column or a border column, no two rows may describe the same thing — the same accession, gene, and sample. Repeated rows are ambiguous, as they can be replicate measurements to average or separate contributions to add, so combine them yourself in whichever way suits your data. Note that several *different* genes carrying one accession are not repeats, and are the ordinary case of the same type of protein being encoded by different genes.
 
 A reaction element on a map is defined by one or more KEGG reactions (~23%% of elements have multiple), which may be carried out by one or more KOs. A file of **KO** accessions addresses the reaction layer by KO ID, while a file of **KEGG reaction** accessions addresses it by reaction ID — useful when your values are per-reaction, as with metabolic model fluxes. Since a single line or box can stand for several KOs or reactions, its color is the aggregate of whichever of its accessions are in the file (`--reaction-accession-aggregation`; see below). With `--reaction-slice-by`, the element is drawn in slices instead, one for each of its accessions or genes with a value (see [Drawing elements in slices](#drawing-elements-in-slices)).
 
@@ -28,7 +29,7 @@ The inclusion of different columns results in different coloring modes.
 
 **No sample column, no value column**
 
-Reactions are colored a single presence color, green by default — set it with `--reaction-color`, or use `--original-color` for the reference map's colors.
+Reactions are colored a single presence color, green by default — set it with `--reaction-color`, which takes a six-digit color hex code, or use `--original-color` for the reference map's colors.
 
 **Sample column, no value column**
 
@@ -71,7 +72,7 @@ The order of the values is the row order of the colors file, or else the sorted 
 
 `plurality` and `majority` can give no value. An accession given no value has no value in that sample, so it does not vote in its map elements. A map element given no value is left uncolored. That looks like an element the file lacks, so a warning says how many there are. These two rules suit a map that should show only clear choices. With two voters, `majority` means that both agree.
 
-On global and overview maps drawn from reactions alone, each compound takes a color from the reactions that touch it. The accession rule chooses among their values. `plurality` and `majority` can leave a compound without a value. It then keeps the color of a compound that no colored reaction touches. A warning says how many such compounds there are. `--reaction-reverse-overlay` puts the last value on top where reactions overlap. It does not change which value a rule chooses.
+On global and overview maps where no compound layer colors the fills, each compound takes a color from the reactions that touch it. The accession rule chooses among their values. `plurality` and `majority` can leave a compound without a value. It then keeps the color of a compound that no colored reaction touches. A warning says how many such compounds there are. `--reaction-reverse-overlay` puts the last value on top where reactions overlap. It does not change which value a rule chooses.
 
 **Samples.** With a `sample` column, the map of each sample shows that sample's values. Draw these maps with `--draw-individual-files` and/or `--draw-grid`. They share one legend, `colorbar_reactions_samples.pdf`. A value in one sample need not mean the same thing in another sample. For example, cluster 1 of one sample need not be cluster 1 of another. The `unified` map therefore shows presence across the samples by default. It counts the samples that contain each element, however few samples there are. A run that draws only the `unified` map then colors nothing by the values. anvi'o warns about it. Coloring by which samples contain an element would use the `tab10` colors of the values. A color would then mean a sample on one map and a value on another. `--reaction-sample-summary membership` still asks for it. Where a value does mean the same thing in every sample, give a rule to `--reaction-sample-summary`. The rule then chooses one value per element across the samples, and the `unified` map shows it. Each sample with a value for the element gives one vote. A sample without one does not vote.
 
@@ -88,7 +89,7 @@ anvi-draw-kegg-pathways --reaction-txt kegg-reaction.txt \
 
 ## Summarizing across samples and groups
 
-There are four distinct reductions of values, each with its own option, plus one rescaling that is not a reduction. The first two reductions apply whenever the file has a value column. The next two, and the rescaling, need a `sample` column. Slices drawn with `--reaction-slice-by` add two reductions of weights, in the last two rows of the table.
+There are four distinct reductions of values, each with its own option, plus one rescaling that is not a reduction. The first two reductions apply whenever the file has a value column. The next two, and the rescaling, need a `sample` column. Slices drawn with `--reaction-slice-by` or `--reaction-border-slice-by` add two reductions of weights, in the last two rows of the table.
 
 |Level|Option|What it does|
 |:--|:--|:--|
@@ -97,7 +98,7 @@ There are four distinct reductions of values, each with its own option, plus one
 |across samples|`--reaction-sample-summary` (`count`, `count_continuous`, `membership`, an aggregation, or a rule for categorical values)|a set of samples → one value or one presence value per map element, or per slice with `--reaction-slice-by`|
 |across groups|`--reaction-group-summary` (`count`, `count_continuous`, `membership`, an aggregation, or a rule for categorical values)|the groups of a %(groups-txt)s → one value or one presence value per map element, or per slice with `--reaction-slice-by`|
 |each sample's or group's value for an element|`--reaction-element-normalization` (a normalization; none by default)|an element's value in one sample or group → that value rescaled against the element's values across all samples or groups|
-|weights of the genes of an accession|`--reaction-slice-weight-aggregation` (`sum` by default, or `mean`)|the weights of the genes carrying an accession → that accession's weight, which sizes its slice. This applies only with `--reaction-slice-by accession`.|
+|weights of the genes of an accession|`--reaction-slice-weight-aggregation` (`sum` by default, or `mean`)|the weights of the genes carrying an accession → that accession's weight, which sizes its slice. This applies only where `--reaction-slice-by accession` slices the elements or `--reaction-border-slice-by accession` slices the rings.|
 |shares across samples and groups|`--reaction-slice-share-summary` (`share_mean` by default, or `pooled_sum`)|the shares of a slice in a set of samples, or in the groups → its share on the map of a group or the `unified` map|
 
 An **aggregation** is `sum` (default), `mean`, `max`, `min`, `median`, `std` — or any other unsuggested pandas aggregation that reduces a series of numbers to one number, such as `var` or `sem`. Names that transform rather than reduce (`cumsum`) or that only a grouping offers (`first`) are rejected. Where an aggregation is undefined for the values available, as `std` is for a single value, the affected elements are left uncolored. `circular_mean` averages values that repeat after a period, such as clock times, and requires `--reaction-value-period`. `angular_deviation` measures how far such values are spread apart, on the `unified` map only.
@@ -162,9 +163,11 @@ anvi-draw-kegg-pathways --reaction-txt kegg-reaction.txt \
                         -o output_dir
 {{ codestop }}
 
-With `--reaction-slice-by gene`, each gene of the `gene_id` column gets a slice instead, and every row needs a gene ID. A gene with rows for two or more accessions of an element is one slice. In each sample, its value is the mean of these rows, or their circular mean with `--reaction-value-period`. A gene with one row takes the value of that row. Without a period, `--reaction-accession-aggregation` can name another aggregation that returns a single value unchanged, such as `sum` or `max`. An aggregation that changes a single value, such as `std` or `count`, is refused. For categorical values, the accession rule chooses among the rows. The weight of the gene is the mean of the weights of these rows. Each gene is a slice of its own, so `--reaction-gene-aggregation` and `--reaction-slice-weight-aggregation` are refused.
+With `--reaction-slice-by gene`, each gene of the `gene_id` column gets a slice instead, and every row needs a gene ID. A gene with rows for two or more accessions of an element is one slice. In each sample, its value is the mean of these rows, or their circular mean with `--reaction-value-period`. A gene with one row takes the value of that row. Without a period, `--reaction-accession-aggregation` can name another aggregation that returns a single value unchanged, such as `sum` or `max`. An aggregation that changes a single value, such as `std` or `count`, is refused. For categorical values, the accession rule chooses among the rows. The weight of the gene is the mean of the weights of these rows. Each gene is a slice of its own, so `--reaction-gene-aggregation` is refused. `--reaction-slice-weight-aggregation` is refused too, unless the rings of a border column are sliced by accession.
 
 The maps of groups and the `unified` map pool the values of each gene across samples, so one gene ID must name the same gene in every sample. Gene caller IDs start at 0 in every %(contigs-db)s, so IDs from separate assemblies must be made unique, for example with a sample prefix. Otherwise, unrelated genes are pooled as one. On the drawn maps that pool samples, a warning names the gene IDs that have no accession in common between their rows in two samples. A gene of one contigs database has the same accessions in every sample, so such an ID likely names two genes. A gene that only lacks rows for some of its accessions in a sample is not named. Another warning names the maps where no gene ID occurs in two or more samples. Nothing is pooled there.
+
+With a border column, the columns of a sliced box fit inside its ring. Inside the ring, a box is 85 points wide rather than 92. A box in a layer with a border column therefore holds up to 10 slices rather than 11. The ring stays whole unless `--reaction-border-slice-by` divides it among the accessions or genes with border values. Where `--reaction-slice-by` names the same unit, each column of the fill takes the border value of its own accession or gene, as bands above and below it. Otherwise, each ring is divided on its own, clockwise from the top left corner, and the weight column sizes its slices. The slices of rings are listed in `slice_key_reactions_border.txt`.
 
 The program writes a %(kegg-slice-key-txt)s that lists each slice drawn on each map. See %(anvi-draw-kegg-pathways)s for which maps are sliced, how the shares of samples are pooled, how slices are drawn and ordered, and how to read sliced maps.
 
@@ -217,6 +220,29 @@ anvi-draw-kegg-pathways --reaction-txt kegg-reaction.txt \
                         --draw-individual-files \
                         -o output_dir
 {{ codestop }}
+
+### KO coverage with a status border (quantitative fill, categorical border)
+
+Color the fill of each box by the coverage of its KOs, and its border by a status. `coverage` is auto-detected as the value column. `status` is named as the border column, and `--reaction-border-value-type categorical` reads its values as categorical values. The last row leaves its status empty, so K01810 has no border value.
+
+|accession|gene_id|sample|coverage|status|
+|:--|:--|:--|:--|:--|
+|K00844|gene_1|treated|12.5|up|
+|K00844|gene_1|control|3.1|down|
+|K00845|gene_2|treated|8.0|same|
+|K00845|gene_2|control|7.7|same|
+|K01810|gene_3|treated|4.2||
+
+{{ codestart }}
+anvi-draw-kegg-pathways --reaction-txt kegg-reaction.txt \
+                        --reaction-border-column status \
+                        --reaction-border-value-type categorical \
+                        --reaction-border-sample-summary plurality_order \
+                        --draw-individual-files \
+                        -o output_dir
+{{ codestop }}
+
+The map of each sample shows that sample's coverage in the fills and its status in the borders. The border summaries have no default, so the `unified` map shows borders here only because `--reaction-border-sample-summary` gives a rule. Its fills show presence across the samples, as they do by default. Each border option, such as `--reaction-border-colormap`, works like the option of the fill whose name lacks `border-`, but some defaults differ. The border aggregations default to `mean` for numbers, rather than `sum`. Numeric border values take `viridis` from 0.2 to 1, and categorical border values take the 7 colors of Matplotlib's `Dark2` without its gray. The borders get keys of their own, such as `colorbar_reactions_border.pdf` and `colorbar_reactions_border_samples.pdf`. `--reaction-border-slice-by` divides each ring among the accessions or genes with border values (see [Drawing elements in slices](#drawing-elements-in-slices)). See %(anvi-draw-kegg-pathways)s for the border options, their defaults, and the maps that show borders.
 
 ### KO presence (single color)
 
