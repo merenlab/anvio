@@ -46,7 +46,8 @@ def check_package_dependencies():
 check_package_dependencies()
 
 from anvio.keggmapping import (
-    AGGREGATION_FUNCTIONS, CATEGORICAL_RULES, CATEGORICAL_RULES_PHRASE, DEFAULT_CATEGORICAL_SEED,
+    AGGREGATION_FUNCTIONS, CATEGORICAL_RULES, CATEGORICAL_RULES_PHRASE, DEFAULT_BORDER_COLORMAP,
+    DEFAULT_BORDER_COLORMAP_LIMITS, DEFAULT_BORDER_VALUE_COLORS, DEFAULT_CATEGORICAL_SEED,
     DEFAULT_CENTERED_COLORMAP, DEFAULT_GROUP_TINT_SPAN, DEFAULT_VALUE_COLORS,
     ELEMENT_NORMALIZATION_PHRASE, GROUP_COLORMAP_TINT, GROUP_SCHEME_OPTIONS,
     MAX_DISCRETE_COUNT_BANDS, MIN_ANGULAR_DEVIATION_VALUES, MIN_BOX_SLICE_WIDTH,
@@ -103,6 +104,32 @@ RECOMMENDED_AGGREGATIONS = ', '.join(f"'{name}'" for name in AGGREGATION_FUNCTIO
 # categorical values.
 VALUE_MODES = ('quantitative', 'categorical')
 
+# The options of the border of each layer, in the order of the help. Every one but the border column
+# needs the border column ('--reaction-border-column', '--compound-border-column'). A compound file
+# has no genes, so the compound border has no gene aggregation.
+BORDER_FLAGS = {
+    'reaction': (
+        '--reaction-border-column', '--reaction-border-value-type',
+        '--reaction-border-value-colors', '--reaction-border-value-period',
+        '--reaction-border-gene-aggregation',
+        '--reaction-border-accession-aggregation', '--reaction-border-sample-summary',
+        '--reaction-border-group-summary', '--reaction-border-colormap',
+        '--reaction-border-individual-colormap', '--reaction-border-value-limits',
+        '--reaction-border-individual-value-limits', '--reaction-border-value-center',
+        '--reaction-border-individual-value-center', '--reaction-border-element-normalization'
+    ),
+    'compound': (
+        '--compound-border-column', '--compound-border-value-type',
+        '--compound-border-value-colors', '--compound-border-value-period',
+        '--compound-border-accession-aggregation',
+        '--compound-border-sample-summary', '--compound-border-group-summary',
+        '--compound-border-colormap', '--compound-border-individual-colormap',
+        '--compound-border-value-limits', '--compound-border-individual-value-limits',
+        '--compound-border-value-center', '--compound-border-individual-value-center',
+        '--compound-border-element-normalization'
+    )
+}
+
 
 def get_args() -> Namespace:
     parser = ArgumentParser(description=DESCRIPTION)
@@ -129,10 +156,10 @@ def get_args() -> Namespace:
         "('--reaction-gene-aggregation'). An optional 'sample' column assigns each row to a sample "
         "of origin, enabling comparison across samples (and, with '--groups-txt', groups of "
         "samples) as when using multiple contigs databases. The single column that is not "
-        "'accession', 'gene_id', 'sample', or a column of weights ('--reaction-slice-weights') is "
-        "auto-detected as the value column. With it, reactions are colored by value, and without "
-        "it, by presence. Its values are numbers, or categorical values with "
-        "'--reaction-value-type categorical'."
+        "'accession', 'gene_id', 'sample', a column of weights ('--reaction-slice-weights'), or a "
+        "border column ('--reaction-border-column') is auto-detected as the value column. With it, "
+        "reactions are colored by value, and without it, by presence. Its values are numbers, or "
+        "categorical values with '--reaction-value-type categorical'."
     )
     groupTXT.add_argument(
         '--compound-txt', type=str, metavar='FILE', help=
@@ -140,9 +167,9 @@ def get_args() -> Namespace:
         "must have an 'accession' column whose values are all KEGG compound IDs ('C' followed by "
         "digits). It must NOT have a 'gene_id' column, since compounds are not gene products. An "
         "optional 'sample' column works as for '--reaction-txt'. The single column that is not "
-        "'accession' or 'sample' is auto-detected as the value column: with it, compounds are "
-        "colored by value; without it, by presence. Its values are numbers, or categorical values "
-        "with '--compound-value-type categorical'."
+        "'accession', 'sample', or a border column ('--compound-border-column') is auto-detected "
+        "as the value column: with it, compounds are colored by value; without it, by presence. "
+        "Its values are numbers, or categorical values with '--compound-value-type categorical'."
     )
     groupTXT.add_argument(
         '--reaction-gene-aggregation', metavar='NAME', help=
@@ -274,8 +301,10 @@ def get_args() -> Namespace:
         f"'random' make these choices (see '--reaction-value-type'). The default is "
         f"{DEFAULT_CATEGORICAL_SEED}. Each choice comes from the seed and from what the value is "
         f"chosen for, such as the KOs of a map element in one sample. A map element therefore gets "
-        f"the same value on every map, and in every run with the same seed. This option is refused "
-        f"where no rule chooses at random."
+        f"the same value on every map, and in every run with the same seed. The rules of borders "
+        f"('--reaction-border-sample-summary', for example) use the same seed, but they choose "
+        f"apart from the rules of the fills. This option is refused where no rule chooses at "
+        f"random."
     )
     groupTXT.add_argument(
         '--reaction-slice-by', choices=list(SLICE_UNITS), help=
@@ -354,6 +383,174 @@ def get_args() -> Namespace:
         "'--groups-txt', the map of each group pools its samples, and the 'unified' map pools the "
         "groups by the same rule. Under 'share_mean', each group counts once. This option needs "
         "'--reaction-slice-weights', since slices without weights are equal on every map."
+    )
+
+    groupBORDER = parser.add_argument_group(
+        "BORDER VALUES",
+        "Color the borders of map elements by a second column of a draw-kegg-pathways text file. A "
+        "border is a ring just inside the black outline of a reaction box on standard maps, or of "
+        "a compound circle on standard and overview maps. A thin black line separates the ring "
+        "from the fill. The value column still colors the fills. Global maps draw no rings, and "
+        "neither do reaction lines. Each border option is like the option of the fill whose name "
+        "lacks 'border-', but applies to the border column. A ring is whole, so the options that "
+        "slice the fill ('--reaction-slice-by') do not change the border."
+    )
+    groupBORDER.add_argument(
+        '--reaction-border-column', metavar='COLUMN', help=
+        "The column of the reaction file whose values color the borders of reaction boxes on "
+        "standard maps. The column is left out of the search for the value column, so a file whose "
+        "only other column is this one colors its fills by presence. It cannot be 'accession', "
+        "'gene_id', 'sample', or the column of '--reaction-slice-weights'. A row can leave its "
+        "cell empty, and then it has no border value. A file with a border column is read as text, "
+        "so 'NA' in any column is a name. Every other '--reaction-border-*' option needs this one. "
+        "The borders take keys of their own, such as 'colorbar_reactions_border.pdf', whose labels "
+        "end in ' (border)'. Reaction lines show no border, and a warning counts the elements with "
+        "border values that standard maps draw as lines."
+    )
+    groupBORDER.add_argument(
+        '--compound-border-column', metavar='COLUMN', help=
+        "Like '--reaction-border-column', but for the compound file. Its values color the borders "
+        "of compound circles on standard and overview maps. Global maps draw compound circles "
+        "without an outline, so they show no borders. A compound file with only a border column "
+        "colors its fills by presence. On global and overview maps, these fills replace the "
+        "compound colors that are otherwise derived from reactions."
+    )
+    groupBORDER.add_argument(
+        '--reaction-border-value-type', choices=list(VALUE_TYPES), help=
+        f"Like '--reaction-value-type', but for the border column. Categorical border values take "
+        f"{len(DEFAULT_BORDER_VALUE_COLORS)} default colors in sorted order, those of Matplotlib's "
+        f"'Dark2' without its gray. '--reaction-border-value-colors' gives colors of your choosing "
+        f"instead."
+    )
+    groupBORDER.add_argument(
+        '--compound-border-value-type', choices=list(VALUE_TYPES), help=
+        "Like '--compound-value-type', but for the border column. The default colors are those of "
+        "'--reaction-border-value-type'."
+    )
+    groupBORDER.add_argument(
+        '--reaction-border-value-colors', metavar='FILE', help=
+        "Like '--reaction-value-colors', but for the categorical values of the border column. The "
+        "order of the rows sets the order of the values in the legend and how 'order' and "
+        "'plurality_order' break ties. It does not change which element is drawn on top."
+    )
+    groupBORDER.add_argument(
+        '--compound-border-value-colors', metavar='FILE', help=
+        "Like '--reaction-border-value-colors', but for the compound layer."
+    )
+    groupBORDER.add_argument(
+        '--reaction-border-value-period', metavar='PERIOD', help=
+        "Like '--reaction-value-period', but for the border column."
+    )
+    groupBORDER.add_argument(
+        '--compound-border-value-period', metavar='PERIOD', help=
+        "Like '--compound-value-period', but for the border column."
+    )
+    groupBORDER.add_argument(
+        '--reaction-border-gene-aggregation', metavar='NAME', help=
+        "Like '--reaction-gene-aggregation', but for the border column. The default is 'mean', not "
+        "'sum'. A border value given once per KO and repeated in the rows of its genes keeps its "
+        "size under 'mean'. The ring is whole, so this option applies with '--reaction-slice-by' "
+        "too."
+    )
+    groupBORDER.add_argument(
+        '--reaction-border-accession-aggregation', metavar='NAME', help=
+        "Like '--reaction-accession-aggregation', but for the border column. The default is "
+        "'mean', not 'sum'. The ring is whole, so this option applies with '--reaction-slice-by' "
+        "too."
+    )
+    groupBORDER.add_argument(
+        '--compound-border-accession-aggregation', metavar='NAME', help=
+        "Like '--compound-accession-aggregation', but for the border column. The default is "
+        "'mean', not 'sum'."
+    )
+    groupBORDER.add_argument(
+        '--reaction-border-sample-summary', metavar='NAME', help=
+        f"Like '--reaction-sample-summary', but for the border column. There is no default. "
+        f"Without it, the 'unified' map shows no border, and with '--groups-txt', no map of a "
+        f"group shows one either. A border shows values only, so the presence names "
+        f"{SUMMARY_PRESENCE_PHRASE} are refused."
+    )
+    groupBORDER.add_argument(
+        '--compound-border-sample-summary', metavar='NAME', help=
+        "Like '--compound-sample-summary', but for the border column. As for "
+        "'--reaction-border-sample-summary', there is no default, and presence names are refused."
+    )
+    groupBORDER.add_argument(
+        '--reaction-border-group-summary', metavar='NAME', help=
+        "Like '--reaction-group-summary', but for the border column. There is no default. Without "
+        "it, the 'unified' map of a grouped run shows no border. It needs "
+        "'--reaction-border-sample-summary' of the same kind, and it takes no presence names."
+    )
+    groupBORDER.add_argument(
+        '--compound-border-group-summary', metavar='NAME', help=
+        "Like '--compound-group-summary', but for the border column. As for "
+        "'--reaction-border-group-summary', there is no default, and presence names are refused."
+    )
+    groupBORDER.add_argument(
+        '--reaction-border-colormap', nargs='+', help=
+        f"Like '--reaction-colormap', but for numeric border values. The default is "
+        f"'{DEFAULT_BORDER_COLORMAP}' from {DEFAULT_BORDER_COLORMAP_LIMITS[0]:g} to "
+        f"{DEFAULT_BORDER_COLORMAP_LIMITS[1]:g}. Below 0.2, 'viridis' is nearly black, and a ring "
+        f"of that color would merge with the black lines on each side of it. With "
+        f"'--reaction-border-value-period', the default is 'clocktime'. Categorical border values "
+        f"take colors of their own, so this option is refused for them."
+    )
+    groupBORDER.add_argument(
+        '--compound-border-colormap', nargs='+', help=
+        "Like '--reaction-border-colormap', but for the compound layer."
+    )
+    groupBORDER.add_argument(
+        '--reaction-border-individual-colormap', nargs='+', help=
+        "Like '--reaction-individual-colormap', but for the border column."
+    )
+    groupBORDER.add_argument(
+        '--compound-border-individual-colormap', nargs='+', help=
+        "Like '--compound-individual-colormap', but for the border column."
+    )
+    groupBORDER.add_argument(
+        '--reaction-border-value-limits', nargs=2, metavar='LIMIT', help=
+        "Like '--reaction-value-limits', but for the border column."
+    )
+    groupBORDER.add_argument(
+        '--compound-border-value-limits', nargs=2, metavar='LIMIT', help=
+        "Like '--compound-value-limits', but for the border column."
+    )
+    groupBORDER.add_argument(
+        '--reaction-border-individual-value-limits', nargs=2, metavar='LIMIT', help=
+        "Like '--reaction-individual-value-limits', but for the border column."
+    )
+    groupBORDER.add_argument(
+        '--compound-border-individual-value-limits', nargs=2, metavar='LIMIT', help=
+        "Like '--compound-individual-value-limits', but for the border column."
+    )
+    groupBORDER.add_argument(
+        '--reaction-border-value-center', nargs='?', const=VALUE_CENTER_DEFAULT, metavar='VALUE',
+        help="Like '--reaction-value-center', but for the border column."
+    )
+    groupBORDER.add_argument(
+        '--compound-border-value-center', nargs='?', const=VALUE_CENTER_DEFAULT, metavar='VALUE',
+        help="Like '--compound-value-center', but for the border column."
+    )
+    groupBORDER.add_argument(
+        '--reaction-border-individual-value-center', nargs='?', const=VALUE_CENTER_DEFAULT,
+        metavar='VALUE',
+        help="Like '--reaction-individual-value-center', but for the border column."
+    )
+    groupBORDER.add_argument(
+        '--compound-border-individual-value-center', nargs='?', const=VALUE_CENTER_DEFAULT,
+        metavar='VALUE',
+        help="Like '--compound-individual-value-center', but for the border column."
+    )
+    groupBORDER.add_argument(
+        '--reaction-border-element-normalization', nargs='+', metavar='NAME', help=
+        f"Like '--reaction-element-normalization', but for the border column. A normalization "
+        f"centered on zero colors the border scale of the individual maps with "
+        f"'{DEFAULT_CENTERED_COLORMAP}', as it does for the fill. A label given after the "
+        f"normalization is used as given, without ' (border)'."
+    )
+    groupBORDER.add_argument(
+        '--compound-border-element-normalization', nargs='+', metavar='NAME', help=
+        "Like '--reaction-border-element-normalization', but for the compound layer."
     )
 
     groupJSON = parser.add_argument_group(
@@ -609,16 +806,17 @@ def get_args() -> Namespace:
         "Skip the 'unified' map. That map summarizes every sample, group, contigs database, or "
         "genome at once. Skipping it drops the files written under 'unified' and the first panel "
         "of each map grid. The summary is not always wanted. Pooling values is only meaningful "
-        "across commensurable samples. The default 'unified' map display of the presence of "
-        "sample or group sources says little when the point is to compare the samples or groups. A "
-        "run normally draws the map even when no summary was asked for. This option does not "
-        "affect the maps of individual samples or groups and the color scale they share. The "
-        "colorbar for the summary ('colorbar_reactions.pdf' or 'colorbar_compounds.pdf') is kept "
-        "only where the same scale also colors the individual maps. '--draw-individual-files' "
-        "and/or '--draw-grid' are therefore required with '--skip-unified-maps'. Options that only "
-        "shape the summary are refused: the sample and group summaries, "
-        "'--presence-colormap-scheme', and the limits and center of the summary's own value scale. "
-        "'--group-threshold' is also refused, though a grouped run otherwise requires it."
+        "across commensurable samples. The default 'unified' map display of the presence of sample "
+        "or group sources says little when the point is to compare the samples or groups. A run "
+        "normally draws the map even when no summary was asked for. This option does not affect "
+        "the maps of individual samples or groups and the color scale they share. The colorbar for "
+        "the summary ('colorbar_reactions.pdf' or 'colorbar_compounds.pdf') is kept only where the "
+        "same scale also colors the individual maps. The same rule applies to the keys of borders, "
+        "such as 'colorbar_reactions_border.pdf'. '--draw-individual-files' and/or '--draw-grid' "
+        "are therefore required with '--skip-unified-maps'. Options that only shape the summary "
+        "are refused: the sample and group summaries, '--presence-colormap-scheme', and the limits "
+        "and center of the summary's own value scale. '--group-threshold' is also refused, though "
+        "a grouped run otherwise requires it."
     )
     groupOUT.add_argument(
         '--collate-files-by-map', action='store_true', default=False, help=
@@ -751,7 +949,8 @@ def get_args() -> Namespace:
         "column, and, with '--groups-txt', '--reaction-sample-summary' must pool the values of "
         "each group's samples rather than summarize their presence, which '--group-colormap' "
         "colors instead. It is refused for categorical values ('--reaction-value-type "
-        "categorical'), which take colors of their own."
+        "categorical'), which take colors of their own. A border column has a colormap of its own "
+        "for these maps ('--reaction-border-individual-colormap'), with its own colorbar."
     )
     groupCOLOR.add_argument(
         '--compound-individual-colormap', nargs='+', help=
@@ -1213,28 +1412,50 @@ def map_json_network_ko_data(args: Namespace, mapper: Mapper) -> None:
         draw_maps_lacking_data=args.draw_bare_maps
     )
 
-def _detect_txt_layer(path: str, value_type: str = None, weight_column: str = None) -> dict:
+def _detect_txt_layer(
+    path: str,
+    value_type: str = None,
+    weight_column: str = None,
+    border_column: str = None,
+    border_value_type: str = None
+) -> dict:
     """Light structural peek at a per-layer text file for CLI flag validation.
 
     Returns {'mode': 'quantitative'|'categorical'|'membership'|'single'|None, 'has_sample': bool,
-    'has_gene_id': bool, 'has_weights': bool}. 'mode' is None when the file is malformed in a way
-    the reader ('Mapper._read_element_txt') should report (no 'accession' column, an ambiguous >1
-    value column, a column name given twice, or a name starting with '__'); the caller then skips
-    flag guards and lets the reader raise the definitive error. The names are read as the reader
-    reads them, with quotes left as text ('Mapper._read_txt_header'). A value column is
-    'categorical' where 'value_type' says so, and 'quantitative' otherwise. 'weight_column' names
-    the column of slice weights ('--reaction-slice-weights'). It is left out of value detection,
-    and 'has_weights' says whether the file has it.
+    'has_gene_id': bool, 'has_weights': bool, 'has_border': bool, 'border_mode': str or None}.
+    'mode' is None when the file is malformed in a way the reader ('Mapper._read_element_txt')
+    should report (no 'accession' column, an ambiguous >1 value column, a column name given twice,
+    or a name starting with '__'); the caller then skips flag guards and lets the reader raise the
+    definitive error. The names are read as the reader reads them, with quotes left as text
+    ('Mapper._read_txt_header'). A value column is 'categorical' where 'value_type' says so, and
+    'quantitative' otherwise. 'weight_column' names the column of slice weights
+    ('--reaction-slice-weights'). It is left out of value detection, and 'has_weights' says whether
+    the file has it. 'border_column' names the border column ('--reaction-border-column',
+    '--compound-border-column'). It is left out of value detection too, and 'has_border' says
+    whether the file has it. 'border_mode' is the mode of the border, 'categorical' where
+    'border_value_type' says so and 'quantitative' otherwise. It is None for a file without the
+    border column.
     """
     filesnpaths.is_file_exists(path)
     columns = Mapper._read_txt_header(path)
     if not columns:
         # An empty file has no columns to detect, so defer to the reader for the definitive error.
-        return {'mode': None, 'has_sample': False, 'has_gene_id': False, 'has_weights': False}
+        return {
+            'mode': None, 'has_sample': False, 'has_gene_id': False, 'has_weights': False,
+            'has_border': False, 'border_mode': None
+        }
     has_sample = 'sample' in columns
     has_gene_id = 'gene_id' in columns
     has_weights = weight_column is not None and weight_column in columns
-    structure = {'has_sample': has_sample, 'has_gene_id': has_gene_id, 'has_weights': has_weights}
+    has_border = border_column is not None and border_column in columns
+    structure = {
+        'has_sample': has_sample, 'has_gene_id': has_gene_id, 'has_weights': has_weights,
+        'has_border': has_border,
+        'border_mode': (
+            ('categorical' if border_value_type == 'categorical' else 'quantitative')
+            if has_border else None
+        )
+    }
     # Pandas names each blank column itself, such as 'Unnamed: 2', so blank names are not compared.
     named = [column for column in columns if column]
     repeated = len(set(named)) < len(named)
@@ -1242,7 +1463,8 @@ def _detect_txt_layer(path: str, value_type: str = None, weight_column: str = No
     if 'accession' not in columns or repeated or reserved:
         return {'mode': None, **structure}
     value_columns = [
-        c for c in columns if c not in ('accession', 'gene_id', 'sample', weight_column)
+        c for c in columns
+        if c not in ('accession', 'gene_id', 'sample', weight_column, border_column)
     ]
     if len(value_columns) > 1:
         return {'mode': None, **structure}
@@ -1341,10 +1563,12 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
     # (presence, no samples). This says what the file provides. The mapper uses it to choose how the
     # layer colors each map context. A column of slice weights is not a value column.
     reaction = _detect_txt_layer(
-        args.reaction_txt, args.reaction_value_type, args.reaction_slice_weights
+        args.reaction_txt, args.reaction_value_type, args.reaction_slice_weights,
+        args.reaction_border_column, args.reaction_border_value_type
     ) if args.reaction_txt is not None else None
     compound = _detect_txt_layer(
-        args.compound_txt, args.compound_value_type
+        args.compound_txt, args.compound_value_type, border_column=args.compound_border_column,
+        border_value_type=args.compound_border_value_type
     ) if args.compound_txt is not None else None
     present = [layer for layer in (reaction, compound) if layer is not None]
     any_sample = any(layer['has_sample'] for layer in present)
@@ -1432,6 +1656,14 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
             )
         weight_column = args.reaction_slice_weights
         if weight_column is not None:
+            # One column cannot hold both the weights and the border values. This is checked first,
+            # since the other checks of the weights count the border column as a column of its own.
+            if weight_column == args.reaction_border_column:
+                raise ConfigError(
+                    f"'--reaction-border-column' and '--reaction-slice-weights' both name the "
+                    f"column '{weight_column}'. A column can either color borders or hold the "
+                    f"weights of slices, not both. Please name another column for one of them."
+                )
             if weight_column in ('accession', 'gene_id', 'sample'):
                 raise ConfigError(
                     f"'--reaction-slice-weights' names the column '{weight_column}' as the weights "
@@ -1445,13 +1677,18 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"of slices, but the reaction file has no column with that header."
                 )
             if reaction['mode'] not in VALUE_MODES:
+                key_columns = "'accession', 'gene_id', and 'sample'"
+                if reaction['has_border']:
+                    key_columns = (
+                        f"'accession', 'gene_id', 'sample', and the border column "
+                        f"'{args.reaction_border_column}'"
+                    )
                 raise ConfigError(
                     f"'--reaction-slice-weights' names the column '{weight_column}' as the weights "
-                    f"of slices. It is the only column of the reaction file besides 'accession', "
-                    f"'gene_id', and 'sample', so it would otherwise be the value column. Slices "
-                    f"need a value column for their colors and a separate column for their "
-                    f"weights. Add a value column, or drop '--reaction-slice-weights' to color "
-                    f"equal slices by '{weight_column}'."
+                    f"of slices. It is the only column of the reaction file besides {key_columns}, "
+                    f"so it would otherwise be the value column. Slices need a value column for "
+                    f"their colors and a separate column for their weights. Add a value column, or "
+                    f"drop '--reaction-slice-weights' to color equal slices by '{weight_column}'."
                 )
         if args.reaction_slice_weight_aggregation is not None:
             if args.reaction_slice_by == 'gene':
@@ -1486,12 +1723,94 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 "'--reaction-slice-share-summary'."
             )
 
+        # The border column of a layer is named, not detected. Every border option of a layer needs
+        # it, and it needs the layer's file. Its name is checked before the value guards below, so
+        # that a mistake in naming it is not reported as a problem of the value column.
+        for element_type, layer in (('reaction', reaction), ('compound', compound)):
+            column = getattr(args, f'{element_type}_border_column')
+            column_flag = f'--{element_type}-border-column'
+            given = [
+                flag for flag in BORDER_FLAGS[element_type][1:]
+                if getattr(args, flag[2:].replace('-', '_')) is not None
+            ]
+            if column is None:
+                if given:
+                    listed = ', '.join(f"'{flag}'" for flag in given)
+                    raise ConfigError(
+                        f"{listed} {'apply' if len(given) > 1 else 'applies'} to the borders of "
+                        f"the {element_type} layer, but no border column was named with "
+                        f"'{column_flag}'. Name the column whose values color the borders."
+                    )
+                continue
+            if layer is None:
+                raise ConfigError(
+                    f"'{column_flag}' names the border column of the {element_type} file, but no "
+                    f"{element_type} file ('--{element_type}-txt') was provided."
+                )
+            if column in ('accession', 'gene_id', 'sample'):
+                raise ConfigError(
+                    f"'{column_flag}' names the column '{column}' as the border column. That "
+                    f"column is one of the columns that identify a row ('accession', 'gene_id', "
+                    f"and 'sample'), so it cannot hold border values. Name a column of values "
+                    f"instead."
+                )
+            if not layer['has_border']:
+                raise ConfigError(
+                    f"'{column_flag}' names the column '{column}' as the border column, but the "
+                    f"{element_type} file has no column with that header."
+                )
+
+        def _arg(stem: str, name: str):
+            # The value of the option '--{stem}-{name}', where 'stem' is a layer, such as
+            # 'reaction', or the border of a layer, such as 'reaction-border'.
+            return getattr(args, f"{stem}_{name}".replace('-', '_'))
+
+        def _value_column(layer: dict) -> str:
+            # A file with a border column has no other column of values where a guard finds no value
+            # column. Messages call the missing column the fill value column.
+            return 'fill value column' if layer is not None and layer['has_border'] else (
+                'value column'
+            )
+
+        def _border_note(element_type: str, layer: dict, flag: str) -> str:
+            # A fill option given for a file whose only column of values is its border column is
+            # likely meant for the border. The message names the option of the border.
+            if layer is None or not layer['has_border']:
+                return ""
+            column = getattr(args, f'{element_type}_border_column')
+            border_flag = flag.replace(f'--{element_type}-', f'--{element_type}-border-', 1)
+            if border_flag in BORDER_FLAGS[element_type]:
+                return f" The border column '{column}' has an option of its own, '{border_flag}'."
+            return f" The border column '{column}' colors only the borders."
+
+        # The guards below apply to each channel of a layer: its fill, and its border where a border
+        # column names one. A channel is listed with its element type, the stem of its options, the
+        # noun that messages use for it, its file option, its structure, its two summaries, and
+        # whether it is a border. The structure of a border is that of its file, with the mode of
+        # its border column. A border option without its border column was refused above, so every
+        # border option given here has a channel.
+        channels = []
+        for element_type, file_flag, layer, sample_summary, group_summary in summaries:
+            channels.append((
+                element_type, element_type, element_type, file_flag, layer, sample_summary,
+                group_summary, False
+            ))
+            if layer is not None and layer['border_mode'] is not None:
+                stem = f'{element_type}-border'
+                channels.append((
+                    element_type, stem, f'{element_type} border', file_flag,
+                    {**layer, 'mode': layer['border_mode']}, _arg(stem, 'sample_summary'),
+                    _arg(stem, 'group_summary'), True
+                ))
+
         # A value type says what a layer's value column holds, so it needs that layer's file and its
         # value column. Colors given per categorical value need categorical values, and a map that
         # shows them. With groups, only a rule among each group's samples puts the values on a map.
-        for element_type, file_flag, layer, sample_summary, _ in summaries:
-            value_type = getattr(args, f'{element_type}_value_type')
-            type_flag = f'--{element_type}-value-type'
+        # A border column has a value type and colors of its own.
+        for element_type, stem, noun, file_flag, layer, sample_summary, _, border in channels:
+            value_type = _arg(stem, 'value_type')
+            type_flag = f'--{stem}-value-type'
+            column_noun = 'border column' if border else 'value column'
             if value_type is not None and layer is None:
                 raise ConfigError(
                     f"'{type_flag}' says what the value column of the {element_type} file holds, "
@@ -1500,10 +1819,11 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
             if value_type is not None and layer['mode'] not in VALUE_MODES:
                 raise ConfigError(
                     f"'{type_flag}' says what the value column of the {element_type} file holds, "
-                    f"but the file has no value column. Its layer is colored by presence."
+                    f"but the file has no {_value_column(layer)}. Its layer is colored by "
+                    f"presence.{_border_note(element_type, layer, type_flag)}"
                 )
-            colors_flag = f'--{element_type}-value-colors'
-            if getattr(args, f'{element_type}_value_colors') is not None:
+            colors_flag = f'--{stem}-value-colors'
+            if _arg(stem, 'value_colors') is not None:
                 if layer is None:
                     raise ConfigError(
                         f"'{colors_flag}' gives a color to each categorical value of the "
@@ -1513,14 +1833,25 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 if layer['mode'] not in VALUE_MODES:
                     raise ConfigError(
                         f"'{colors_flag}' gives a color to each categorical value of the "
-                        f"{element_type} layer, but the {element_type} file has no value column. "
-                        f"Its layer is colored by presence."
+                        f"{element_type} layer, but the {element_type} file has no "
+                        f"{_value_column(layer)}. Its layer is colored by presence."
+                        f"{_border_note(element_type, layer, colors_flag)}"
                     )
                 if value_type != 'categorical':
                     raise ConfigError(
-                        f"'{colors_flag}' gives a color to each categorical value of the "
-                        f"{element_type} layer, but '{type_flag} categorical' was not given. Give "
-                        f"it to read the value column as categorical values."
+                        f"'{colors_flag}' gives a color to each categorical value of the {noun} "
+                        f"layer, but '{type_flag} categorical' was not given. Give it to read the "
+                        f"{column_noun} as categorical values."
+                    )
+                if (
+                    layer['has_sample'] and args.groups_txt is not None
+                    and sample_summary not in CATEGORICAL_RULES and border
+                ):
+                    raise ConfigError(
+                        f"'{colors_flag}' gives a color to each categorical border value. Here the "
+                        f"samples are grouped, and '--{stem}-sample-summary' gives no rule. No map "
+                        f"then shows a border. Give '--{stem}-sample-summary' a rule, such as "
+                        f"'plurality_order', or drop the colors file."
                     )
                 if (
                     layer['has_sample'] and args.groups_txt is not None
@@ -1576,7 +1907,11 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 (args.reaction_slice_weights is not None, '--reaction-slice-weights'),
                 (args.reaction_slice_weight_aggregation is not None,
                  '--reaction-slice-weight-aggregation'),
-                (args.reaction_slice_share_summary is not None, '--reaction-slice-share-summary')
+                (args.reaction_slice_share_summary is not None, '--reaction-slice-share-summary'),
+                *(
+                    (getattr(args, flag[2:].replace('-', '_')) is not None, flag)
+                    for flag in BORDER_FLAGS['reaction']
+                )
             ) if present_flag]
             if original_flags:
                 message = ', '.join(f"'{flag}'" for flag in original_flags)
@@ -1679,8 +2014,9 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
             if reaction['mode'] == 'single':
                 raise ConfigError(
                     f"Reaction-layer coloring options were given ({message}), but the reaction "
-                    f"layer is colored by single-color presence (the file has no value column and "
-                    f"no 'sample' column), which does not use them."
+                    f"layer is colored by single-color presence (the file has no "
+                    f"{_value_column(reaction)} and no 'sample' column), which does not use them."
+                    f"{_border_note('reaction', reaction, reaction_flags[0])}"
                 )
 
         compound_flags = [flag for present_flag, flag in (
@@ -1697,8 +2033,9 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
             if compound['mode'] == 'single':
                 raise ConfigError(
                     f"Compound-layer coloring options were given ({message}), but the compound "
-                    f"layer is colored by single-color presence (the file has no value column and "
-                    f"no 'sample' column), which does not use them."
+                    f"layer is colored by single-color presence (the file has no "
+                    f"{_value_column(compound)} and no 'sample' column), which does not use them."
+                    f"{_border_note('compound', compound, compound_flags[0])}"
                 )
 
         # Categorical values take colors of their own. A colormap of such a layer colors only its
@@ -1708,6 +2045,16 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         # each group's map counts the group's samples, and '--group-colormap' colors those counts. A
         # rule across the groups in such a run is refused further below.
         unified_level = 'group' if args.groups_txt is not None else 'sample'
+        # The colormap of a border colors numbers only. Categorical border values take colors of
+        # their own, and a border shows no presence for a colormap to color.
+        for element_type, stem, _, _, layer, _, _, border in channels:
+            if border and layer['mode'] == 'categorical' and _arg(stem, 'colormap') is not None:
+                raise ConfigError(
+                    f"'--{stem}-colormap' colors numeric border values. The border values of the "
+                    f"{element_type} layer are categorical ('--{stem}-value-type categorical'). "
+                    f"Each takes a color of its own, from '--{stem}-value-colors' or from anvi'o's "
+                    f"default border colors. Please drop '--{stem}-colormap'."
+                )
         for element_type, _, layer, sample_summary, group_summary in summaries:
             colormap_flag = f'--{element_type}-colormap'
             unified_summary = group_summary if args.groups_txt is not None else sample_summary
@@ -1790,52 +2137,49 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
             )
 
         # Each aggregation reduces a layer's values, so it needs that layer's file and its value
-        # column; the gene level additionally needs the genes it reduces.
-        for aggregation, flag, element_type, file_flag, layer in (
-            (args.reaction_gene_aggregation, '--reaction-gene-aggregation', 'reaction',
-             '--reaction-txt', reaction),
-            (args.reaction_accession_aggregation, '--reaction-accession-aggregation', 'reaction',
-             '--reaction-txt', reaction),
-            (args.compound_accession_aggregation, '--compound-accession-aggregation', 'compound',
-             '--compound-txt', compound)
-        ):
-            if aggregation is None:
-                continue
-            if layer is None:
-                raise ConfigError(
-                    f"'{flag}' reduces the values of the {element_type} layer, but no "
-                    f"{element_type} file ('{file_flag}') was provided."
-                )
-            if layer['mode'] not in VALUE_MODES:
-                raise ConfigError(
-                    f"'{flag}' reduces the values of the {element_type} layer, but its file has no "
-                    f"value column, so the layer is colored by presence and there are no values to "
-                    f"reduce."
-                )
-            if aggregation in CATEGORICAL_RULES and layer['mode'] == 'quantitative':
-                raise ConfigError(
-                    f"'{flag}' was given as '{aggregation}', which chooses one categorical value "
-                    f"among several. The values of the {element_type} layer are numbers, so they "
-                    f"are reduced with an aggregation, such as 'sum' or 'mean'. To read them as "
-                    f"categorical values, give '--{element_type}-value-type categorical'."
-                )
-            if flag == '--reaction-gene-aggregation' and not layer['has_gene_id']:
-                raise ConfigError(
-                    f"'{flag}' reduces the values of the genes annotated with one accession, but "
-                    f"the reaction file has no 'gene_id' column naming genes. Each accession there "
-                    f"already has a single value per sample, since rows repeating an accession are "
-                    f"refused. Use '--reaction-accession-aggregation' to set how a map element "
-                    f"combines the several accessions it stands for."
-                )
+        # column; the gene level additionally needs the genes it reduces. A border has aggregations
+        # of its own.
+        for element_type, stem, noun, file_flag, layer, _, _, _ in channels:
+            for level in ('gene', 'accession'):
+                aggregation = _arg(stem, f'{level}_aggregation') if (
+                    element_type == 'reaction' or level == 'accession'
+                ) else None
+                flag = f'--{stem}-{level}-aggregation'
+                if aggregation is None:
+                    continue
+                if layer is None:
+                    raise ConfigError(
+                        f"'{flag}' reduces the values of the {element_type} layer, but no "
+                        f"{element_type} file ('{file_flag}') was provided."
+                    )
+                if layer['mode'] not in VALUE_MODES:
+                    raise ConfigError(
+                        f"'{flag}' reduces the values of the {element_type} layer, but its file "
+                        f"has no {_value_column(layer)}, so the layer is colored by presence and "
+                        f"there are no values to reduce.{_border_note(element_type, layer, flag)}"
+                    )
+                if aggregation in CATEGORICAL_RULES and layer['mode'] == 'quantitative':
+                    raise ConfigError(
+                        f"'{flag}' was given as '{aggregation}', which chooses one categorical "
+                        f"value among several. The values of the {noun} layer are numbers, so they "
+                        f"are reduced with an aggregation, such as 'sum' or 'mean'. To read them "
+                        f"as categorical values, give '--{stem}-value-type categorical'."
+                    )
+                if level == 'gene' and not layer['has_gene_id']:
+                    raise ConfigError(
+                        f"'{flag}' reduces the values of the genes annotated with one accession, "
+                        f"but the reaction file has no 'gene_id' column naming genes. Each "
+                        f"accession there already has a single value per sample, since rows "
+                        f"repeating an accession are refused. Use '--{stem}-accession-aggregation' "
+                        f"to set how a map element combines the several accessions it stands for."
+                    )
 
         # A period describes a layer's values, so it needs that layer's file and its value column.
-        # The mapper checks the number itself, as it does for programmatic calls.
-        for period, flag, element_type, file_flag, layer in (
-            (args.reaction_value_period, '--reaction-value-period', 'reaction', '--reaction-txt',
-             reaction),
-            (args.compound_value_period, '--compound-value-period', 'compound', '--compound-txt',
-             compound)
-        ):
+        # The mapper checks the number itself, as it does for programmatic calls. A border has a
+        # period of its own.
+        for element_type, stem, noun, file_flag, layer, _, _, _ in channels:
+            period = _arg(stem, 'value_period')
+            flag = f'--{stem}-value-period'
             if period is None:
                 continue
             if layer is None:
@@ -1845,16 +2189,15 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 )
             if layer['mode'] == 'categorical':
                 raise ConfigError(
-                    f"'{flag}' says how far the values of the {element_type} layer go before they "
-                    f"repeat. The values of that layer are categorical "
-                    f"('--{element_type}-value-type categorical'). They are names, which do not "
-                    f"repeat after a period."
+                    f"'{flag}' says how far the values of the {noun} layer go before they repeat. "
+                    f"The values of that layer are categorical ('--{stem}-value-type "
+                    f"categorical'). They are names, which do not repeat after a period."
                 )
             if layer['mode'] != 'quantitative':
                 raise ConfigError(
                     f"'{flag}' says how far the values of the {element_type} layer go before they "
-                    f"repeat, but its file has no value column, so the layer is colored by "
-                    f"presence and has no values."
+                    f"repeat, but its file has no {_value_column(layer)}, so the layer is colored "
+                    f"by presence and has no values.{_border_note(element_type, layer, flag)}"
                 )
 
         # Each pair of value limits bounds, and each value center centers, a color scale of values,
@@ -1863,62 +2206,56 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         # checks everything past this point like a programmatic call, including the numbers
         # themselves and whether the context in question ends up colored by value once the summaries
         # have had their say.
-        for setting, flag, element_type, file_flag, layer, per_individual, verb in (
-            (args.reaction_value_limits, '--reaction-value-limits', 'reaction', '--reaction-txt',
-             reaction, False, 'bound'),
-            (args.reaction_individual_value_limits, '--reaction-individual-value-limits',
-             'reaction', '--reaction-txt', reaction, True, 'bound'),
-            (args.compound_value_limits, '--compound-value-limits', 'compound', '--compound-txt',
-             compound, False, 'bound'),
-            (args.compound_individual_value_limits, '--compound-individual-value-limits',
-             'compound', '--compound-txt', compound, True, 'bound'),
-            (args.reaction_value_center, '--reaction-value-center', 'reaction', '--reaction-txt',
-             reaction, False, 'center'),
-            (args.reaction_individual_value_center, '--reaction-individual-value-center',
-             'reaction', '--reaction-txt', reaction, True, 'center'),
-            (args.compound_value_center, '--compound-value-center', 'compound', '--compound-txt',
-             compound, False, 'center'),
-            (args.compound_individual_value_center, '--compound-individual-value-center',
-             'compound', '--compound-txt', compound, True, 'center')
+        # A border has limits and centers of its own. The limits are checked before the centers,
+        # channel by channel, and the 'unified' scale of a channel before its scale of individual
+        # maps.
+        for verb, names in (
+            ('bound', ('value_limits', 'individual_value_limits')),
+            ('center', ('value_center', 'individual_value_center'))
         ):
-            if setting is None:
-                continue
-            if layer is None:
-                raise ConfigError(
-                    f"'{flag}' {verb}s the color scale of the {element_type} layer, but no "
-                    f"{element_type} file ('{file_flag}') was provided."
-                )
-            if layer['mode'] == 'categorical':
-                raise ConfigError(
-                    f"'{flag}' {verb}s a color scale of numbers. The values of the {element_type} "
-                    f"layer are categorical ('--{element_type}-value-type categorical'). Each "
-                    f"takes a color of its own, so there is no scale to {verb}."
-                )
-            if layer['mode'] != 'quantitative':
-                raise ConfigError(
-                    f"'{flag}' {verb}s the color scale spanning the values of the {element_type} "
-                    f"layer, but its file has no value column, so the layer is colored by presence "
-                    f"and there is no scale of values to {verb}."
-                )
-            if per_individual and not layer['has_sample']:
-                raise ConfigError(
-                    f"'{flag}' {verb}s the color scale shared by the maps of the individual "
-                    f"samples or groups, but the {element_type} file has no 'sample' column, so it "
-                    f"draws no such maps and its values take a single scale. {verb.capitalize()} "
-                    f"that one with "
-                    f"'--{element_type}-value-{'limits' if verb == 'bound' else 'center'}'."
-                )
+            for (element_type, stem, noun, file_flag, layer, _, _, _), name in [
+                (channel, name) for channel in channels for name in names
+            ]:
+                per_individual = name.startswith('individual')
+                setting = _arg(stem, name)
+                flag = f"--{stem}-{name.replace('_', '-')}"
+                if setting is None:
+                    continue
+                if layer is None:
+                    raise ConfigError(
+                        f"'{flag}' {verb}s the color scale of the {element_type} layer, but no "
+                        f"{element_type} file ('{file_flag}') was provided."
+                    )
+                if layer['mode'] == 'categorical':
+                    raise ConfigError(
+                        f"'{flag}' {verb}s a color scale of numbers. The values of the {noun} "
+                        f"layer are categorical ('--{stem}-value-type categorical'). Each takes a "
+                        f"color of its own, so there is no scale to {verb}."
+                    )
+                if layer['mode'] != 'quantitative':
+                    raise ConfigError(
+                        f"'{flag}' {verb}s the color scale spanning the values of the "
+                        f"{element_type} layer, but its file has no {_value_column(layer)}, so the "
+                        f"layer is colored by presence and there is no scale of values to {verb}."
+                        f"{_border_note(element_type, layer, flag)}"
+                    )
+                if per_individual and not layer['has_sample']:
+                    raise ConfigError(
+                        f"'{flag}' {verb}s the color scale shared by the maps of the individual "
+                        f"samples or groups, but the {element_type} file has no 'sample' column, "
+                        f"so it draws no such maps and its values take a single scale. "
+                        f"{verb.capitalize()} that one with "
+                        f"'--{stem}-value-{'limits' if verb == 'bound' else 'center'}'."
+                    )
 
         # A normalization needs the same things: the layer's file, a value column to rescale, and
         # the samples to rescale each value against. It also needs maps for those samples to be
         # drawn at all, which the mapper checks once it knows what this run draws.
-        for normalization, element_type, file_flag, layer in (
-            (args.reaction_element_normalization, 'reaction', '--reaction-txt', reaction),
-            (args.compound_element_normalization, 'compound', '--compound-txt', compound)
-        ):
+        for element_type, stem, noun, file_flag, layer, _, _, _ in channels:
+            normalization = _arg(stem, 'element_normalization')
             if normalization is None:
                 continue
-            flag = f'--{element_type}-element-normalization'
+            flag = f'--{stem}-element-normalization'
             if layer is None:
                 raise ConfigError(
                     f"'{flag}' rescales the values of the {element_type} layer, but no "
@@ -1926,15 +2263,15 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 )
             if layer['mode'] == 'categorical':
                 raise ConfigError(
-                    f"'{flag}' rescales numbers. The values of the {element_type} layer are "
-                    f"categorical ('--{element_type}-value-type categorical'). They are names, "
-                    f"which cannot be rescaled."
+                    f"'{flag}' rescales numbers. The values of the {noun} layer are categorical "
+                    f"('--{stem}-value-type categorical'). They are names, which cannot be "
+                    f"rescaled."
                 )
             if layer['mode'] != 'quantitative':
                 raise ConfigError(
                     f"'{flag}' rescales the values of the {element_type} layer, but its file has "
-                    f"no value column, so the layer is colored by presence and has no values to "
-                    f"rescale."
+                    f"no {_value_column(layer)}, so the layer is colored by presence and has no "
+                    f"values to rescale.{_border_note(element_type, layer, flag)}"
                 )
             if not layer['has_sample']:
                 raise ConfigError(
@@ -1948,13 +2285,11 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         # limits needs: the layer's file, a value column to put those maps on a scale, and the
         # samples they are drawn for. Whether that scale ends up colored by value once the summaries
         # have had their say is checked by the mapper, as for programmatic callers.
-        for individual_colormap, element_type, file_flag, layer in (
-            (args.reaction_individual_colormap, 'reaction', '--reaction-txt', reaction),
-            (args.compound_individual_colormap, 'compound', '--compound-txt', compound)
-        ):
+        for element_type, stem, noun, file_flag, layer, _, _, _ in channels:
+            individual_colormap = _arg(stem, 'individual_colormap')
             if individual_colormap is None:
                 continue
-            flag = f'--{element_type}-individual-colormap'
+            flag = f'--{stem}-individual-colormap'
             if layer is None:
                 raise ConfigError(
                     f"'{flag}' colors the maps of the individual samples or groups of the "
@@ -1964,22 +2299,23 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
             if layer['mode'] == 'categorical':
                 raise ConfigError(
                     f"'{flag}' colors the maps of the individual samples or groups along a scale "
-                    f"of numbers. The values of the {element_type} layer are categorical "
-                    f"('--{element_type}-value-type categorical'). They take their colors from "
-                    f"'--{element_type}-value-colors', or from anvi'o's default colors."
+                    f"of numbers. The values of the {noun} layer are categorical "
+                    f"('--{stem}-value-type categorical'). They take their colors from "
+                    f"'--{stem}-value-colors', or from anvi'o's default colors."
                 )
             if layer['mode'] != 'quantitative':
                 raise ConfigError(
                     f"'{flag}' colors the maps of the individual samples or groups of the "
-                    f"{element_type} layer along a scale of values, but its file has no value "
-                    f"column, so the layer is colored by presence instead. "
+                    f"{element_type} layer along a scale of values, but its file has no "
+                    f"{_value_column(layer)}, so the layer is colored by presence instead. "
                     f"'--{element_type}-colormap' is what colors a presence scale."
+                    f"{_border_note(element_type, layer, flag)}"
                 )
             if not layer['has_sample']:
                 raise ConfigError(
                     f"'{flag}' colors the maps of the individual samples or groups, but the "
                     f"{element_type} file has no 'sample' column, so it draws no such maps and its "
-                    f"values take a single scale. Color that one with '--{element_type}-colormap'."
+                    f"values take a single scale. Color that one with '--{stem}-colormap'."
                 )
 
         # '--presence-colormap-scheme' is superseded for text layers by the summaries, which choose
@@ -1998,11 +2334,15 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         # Sample and group summaries. A summary reduces a set of samples, or the sample groups, to
         # one value or one presence state per map element. It needs its layer's file and a 'sample'
         # column. A summary that pools values also needs a value column.
-        for element_type, file_flag, layer, sample_summary, group_summary in summaries:
+        # A border has summaries of its own. They take no presence names, since a border shows
+        # values only.
+        for element_type, stem, noun, file_flag, layer, sample_summary, group_summary, border in (
+            channels
+        ):
             for level, summary in (('sample', sample_summary), ('group', group_summary)):
                 if summary is None:
                     continue
-                flag = f'--{element_type}-{level}-summary'
+                flag = f'--{stem}-{level}-summary'
                 if layer is None:
                     raise ConfigError(
                         f"'{flag}' summarizes the {element_type} layer, but no {element_type} file "
@@ -2010,13 +2350,19 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     )
                 if not layer['has_sample']:
                     raise ConfigError(
-                        f"'{flag}' summarizes the samples of the {element_type} layer, but its "
-                        f"file has no 'sample' column, so there are no samples to summarize."
+                        f"'{flag}' summarizes the samples of the {noun} layer, but its file has no "
+                        f"'sample' column, so there are no samples to summarize."
                     )
                 if level == 'group' and args.groups_txt is None:
                     raise ConfigError(
                         f"'{flag}' summarizes groups of samples, but no groups were defined with "
                         f"'--groups-txt'."
+                    )
+                if border and summary in PRESENCE_SUMMARIES:
+                    raise ConfigError(
+                        f"'{flag}' was given as '{summary}', which summarizes presence across the "
+                        f"{level}s. A border shows values only, and the fill already shows "
+                        f"presence. Give an aggregation or a rule, or drop '{flag}'."
                     )
                 # A categorical rule chooses one categorical value across the samples or groups.
                 # Every other name that is not presence is an aggregation, which pools numbers. A
@@ -2025,26 +2371,34 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 if summary in CATEGORICAL_RULES and layer['mode'] not in VALUE_MODES:
                     raise ConfigError(
                         f"'{flag}' was given as '{summary}', which chooses one categorical value "
-                        f"across the {level}s. The {element_type} file has no value column, so "
-                        f"there are no values to choose among. Summarize presence with one of "
-                        f"{SUMMARY_PRESENCE_PHRASE} instead."
+                        f"across the {level}s. The {element_type} file has no "
+                        f"{_value_column(layer)}, so there are no values to choose among. "
+                        f"Summarize presence with one of {SUMMARY_PRESENCE_PHRASE} "
+                        f"instead.{_border_note(element_type, layer, flag)}"
                     )
                 if summary in CATEGORICAL_RULES and layer['mode'] == 'quantitative':
+                    values_of = (
+                        f"the border column of the {element_type} file" if border
+                        else f"the {element_type} file"
+                    )
                     raise ConfigError(
                         f"'{flag}' was given as '{summary}', which chooses one categorical value "
-                        f"across the {level}s. The values of the {element_type} file are numbers. "
-                        f"To read them as categorical values, give '--{element_type}-value-type "
-                        f"categorical'."
+                        f"across the {level}s. The values of {values_of} are numbers. To read them "
+                        f"as categorical values, give '--{stem}-value-type categorical'."
                     )
                 if (
                     layer['mode'] == 'categorical'
                     and summary not in PRESENCE_SUMMARIES + CATEGORICAL_RULES
                 ):
                     # With groups, the samples of a group are counted unless a rule chooses among
-                    # them, so presence names are no alternative at the sample level there.
-                    if level == 'sample' and args.groups_txt is not None:
+                    # them, so presence names are no alternative at the sample level there. A border
+                    # takes no presence names.
+                    if border or level == 'sample' and args.groups_txt is not None:
                         alternatives = (
                             f"Choose one value among the samples of each group with one of "
+                            f"{CATEGORICAL_RULES_PHRASE}."
+                        ) if level == 'sample' and args.groups_txt is not None else (
+                            f"Choose one value across the {level}s with one of "
                             f"{CATEGORICAL_RULES_PHRASE}."
                         )
                     else:
@@ -2054,10 +2408,10 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                             f"with one of {CATEGORICAL_RULES_PHRASE}."
                         )
                     raise ConfigError(
-                        f"'{flag}' was given as '{summary}'. The values of the {element_type} "
-                        f"layer are categorical ('--{element_type}-value-type categorical'). They "
-                        f"cannot be added up or averaged across the {level}s. {alternatives} "
-                        f"Choosing assumes that a value means the same thing in every one of them."
+                        f"'{flag}' was given as '{summary}'. The values of the {noun} layer are "
+                        f"categorical ('--{stem}-value-type categorical'). They cannot be added up "
+                        f"or averaged across the {level}s. {alternatives} Choosing assumes that a "
+                        f"value means the same thing in every one of them."
                     )
                 if (
                     summary not in PRESENCE_SUMMARIES + CATEGORICAL_RULES
@@ -2065,9 +2419,10 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 ):
                     raise ConfigError(
                         f"'{flag}' was given as '{summary}', which is an aggregation that pools "
-                        f"values, but the {element_type} file has no value column, so there are no "
-                        f"values to pool. Summarize presence with one of {SUMMARY_PRESENCE_PHRASE} "
-                        f"instead, or add a value column to the file."
+                        f"values, but the {element_type} file has no {_value_column(layer)}, so "
+                        f"there are no values to pool. Summarize presence with one of "
+                        f"{SUMMARY_PRESENCE_PHRASE} instead, or add a value column to the file."
+                        f"{_border_note(element_type, layer, flag)}"
                     )
                 # With groups, presence at the SAMPLE level is always the count of a group's own
                 # samples in discrete bands from '--group-colormap', so every presence name
@@ -2095,9 +2450,10 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                         f"what chooses how presence is colored across the groups themselves."
                     )
                 # A static color overrides summarizing across samples or groups, so asking for both
-                # is asking for two different things on the 'unified' map.
+                # is asking for two different things on the 'unified' map. The static color is the
+                # fill's, so a border keeps its summaries.
                 static_flag = f'--{element_type}-color'
-                if getattr(args, f'{element_type}_color') is not None:
+                if not border and getattr(args, f'{element_type}_color') is not None:
                     raise ConfigError(
                         f"'{flag}' summarizes the {element_type} layer's samples or groups, but "
                         f"'{static_flag}' colors that layer one static color for presence in any "
@@ -2109,18 +2465,21 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 # neither summary colors it.
                 if args.skip_unified_maps and (level == 'group' or args.groups_txt is None):
                     elsewhere = (
-                        f"Each group's own map is colored by '--{element_type}-sample-summary'. "
-                        f"That option summarizes the group's own samples."
+                        f"Each group's own map is colored by '--{stem}-sample-summary'. That "
+                        f"option summarizes the group's own samples."
                     ) if level == 'group' else (
+                        "The map of an individual sample shows the border values of that sample "
+                        "alone."
+                    ) if border else (
                         "The map of an individual sample shows that one sample alone. It shows "
                         "the sample's own values where the file has a value column, and its "
                         "presence where it does not."
                     )
                     raise ConfigError(
                         f"'{flag}' decides how the 'unified' map summarizes the {level}s of the "
-                        f"{element_type} layer. Nothing else uses it. {elsewhere} "
-                        f"'--skip-unified-maps' draws no 'unified' map to color. Please use "
-                        f"'{flag}' or '--skip-unified-maps', not both."
+                        f"{noun} layer. Nothing else uses it. {elsewhere} '--skip-unified-maps' "
+                        f"draws no 'unified' map to color. Please use '{flag}' or "
+                        f"'--skip-unified-maps', not both."
                     )
             # A group's value comes from the sample summary, so a rule or an aggregation across the
             # groups needs one of the same kind among each group's samples.
@@ -2128,23 +2487,32 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 layer is not None and layer['mode'] == 'categorical'
                 and group_summary in CATEGORICAL_RULES and sample_summary not in CATEGORICAL_RULES
             ):
+                without = (
+                    "the groups have no border values" if border else
+                    "that option counts each group's samples, so the groups have no values"
+                )
                 raise ConfigError(
-                    f"'--{element_type}-group-summary' was given as '{group_summary}', which "
-                    f"chooses one value among the values of the groups. Each group's value comes "
-                    f"from '--{element_type}-sample-summary'. Without a rule, that option counts "
-                    f"each group's samples, so the groups have no values to choose among. Please "
-                    f"also give '--{element_type}-sample-summary' a rule, such as "
-                    f"'plurality_order'."
+                    f"'--{stem}-group-summary' was given as '{group_summary}', which chooses one "
+                    f"value among the values of the groups. Each group's value comes from "
+                    f"'--{stem}-sample-summary'. Without a rule, {without} to choose among. Please "
+                    f"also give '--{stem}-sample-summary' a rule, such as 'plurality_order'."
                 )
             if group_summary is not None and group_summary not in PRESENCE_SUMMARIES and (
                 sample_summary is None or sample_summary in PRESENCE_SUMMARIES
             ) and group_summary not in CATEGORICAL_RULES:
+                if border:
+                    raise ConfigError(
+                        f"'--{stem}-group-summary' was given as '{group_summary}', which pools the "
+                        f"border values of the groups. Each group's border value comes from "
+                        f"'--{stem}-sample-summary', which was not given. Please also set "
+                        f"'--{stem}-sample-summary' to an aggregation such as 'mean'."
+                    )
                 raise ConfigError(
-                    f"'--{element_type}-group-summary' was given as '{group_summary}', which pools "
-                    f"the values of the groups, but each group's value comes from "
-                    f"'--{element_type}-sample-summary', which summarizes the group's samples by "
-                    f"presence rather than by value. Please also set "
-                    f"'--{element_type}-sample-summary' to an aggregation such as 'mean'."
+                    f"'--{stem}-group-summary' was given as '{group_summary}', which pools the "
+                    f"values of the groups, but each group's value comes from "
+                    f"'--{stem}-sample-summary', which summarizes the group's samples by presence "
+                    f"rather than by value. Please also set '--{stem}-sample-summary' to an "
+                    f"aggregation such as 'mean'."
                 )
 
         # Group options.
@@ -2206,10 +2574,11 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         if args.reaction_slice_by is not None:
             if reaction['mode'] not in VALUE_MODES:
                 raise ConfigError(
-                    "'--reaction-slice-by' gives each slice the color of its own value, but the "
-                    "reaction file has no value column. Its layer is colored by presence, and "
-                    "slices of presence are not supported yet. Add a value column, or drop "
-                    "'--reaction-slice-by'."
+                    f"'--reaction-slice-by' gives each slice the color of its own value, but the "
+                    f"reaction file has no {_value_column(reaction)}. Its layer is colored by "
+                    f"presence, and slices of presence are not supported yet. Add a value column, "
+                    f"or drop '--reaction-slice-by'."
+                    f"{_border_note('reaction', reaction, '--reaction-slice-by')}"
                 )
             if args.reaction_element_normalization is not None:
                 raise ConfigError(
@@ -2476,6 +2845,43 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
     ):
         if setting is not None:
             kwargs[key] = setting
+
+    # The options of each border go to the mapper as one dictionary, keyed as the mapper's
+    # 'BORDER_OPTIONS', with only the options given. The mapper resolves their defaults.
+    for element_type in ('reaction', 'compound'):
+        stem = f'{element_type}_border'
+        border = {}
+        for option in (
+            'column', 'value_type', 'value_colors', 'value_period', 'gene_aggregation',
+            'accession_aggregation', 'sample_summary', 'group_summary', 'value_center',
+            'individual_value_center'
+        ):
+            if element_type == 'compound' and option == 'gene_aggregation':
+                continue
+            value = getattr(args, f'{stem}_{option}')
+            if value is not None:
+                border[option] = value
+        for option in ('colormap', 'individual_colormap'):
+            colormap, limits = _resolve_colormap(
+                getattr(args, f'{stem}_{option}'),
+                f"--{element_type}-border-{option.replace('_', '-')}"
+            )
+            if colormap is not None:
+                border[option] = colormap
+                border[f'{option}_limits'] = limits
+        for option in ('value_limits', 'individual_value_limits'):
+            limits = _resolve_value_limits(getattr(args, f'{stem}_{option}'))
+            if limits is not None:
+                border[option] = limits
+        normalization, label = _resolve_element_normalization(
+            getattr(args, f'{stem}_element_normalization'),
+            f'--{element_type}-border-element-normalization'
+        )
+        if normalization is not None:
+            border['element_normalization'] = normalization
+            border['element_normalization_label'] = label
+        if border:
+            kwargs[f'{element_type}_border'] = border
 
     kwargs['count_scale_max'] = args.count_scale_max
 
@@ -2919,7 +3325,12 @@ def main() -> None:
                 (args.reaction_slice_weights is not None, '--reaction-slice-weights'),
                 (args.reaction_slice_weight_aggregation is not None,
                  '--reaction-slice-weight-aggregation'),
-                (args.reaction_slice_share_summary is not None, '--reaction-slice-share-summary')
+                (args.reaction_slice_share_summary is not None, '--reaction-slice-share-summary'),
+                *(
+                    (getattr(args, flag[2:].replace('-', '_')) is not None, flag)
+                    for element_type in ('reaction', 'compound')
+                    for flag in BORDER_FLAGS[element_type]
+                )
             ) if present_flag]
             if compound_only_flags:
                 message = ', '.join(f"'{flag}'" for flag in compound_only_flags)

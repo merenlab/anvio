@@ -70,7 +70,17 @@ Map files are sorted into up to four subdirectories, one for each kind of map:
 |`grid`|The map grids, each showing the `unified` map alongside the individual ones, or the individual ones alone with `--skip-unified-maps`. Drawn on request with `--draw-grid`.|
 |`by_map`|The same individual maps arranged the other way round: one subdirectory per map, each holding one file per data source, named after it. Written on request with `--collate-files-by-map`.|
 
-Colorbars, which are keys to the colors of every map in the run, are written at the top of the output directory beside these subdirectories. With `--reaction-slice-by`, a %(kegg-slice-key-txt)s named `slice_key_reactions.txt` is written there too (see [Draw elements in slices](#draw-elements-in-slices)).
+Colorbars, which are keys to the colors of every map in the run, are written at the top of the output directory beside these subdirectories. The reaction layer can have the keys below. The compound layer has the same colorbars, with `compounds` in place of `reactions`.
+
+|File|What it keys|
+|:--|:--|
+|`colorbar_reactions.pdf`|The fills of the `unified` map. For a file without a `sample` column, it keys the fills of every map.|
+|`colorbar_reactions_samples.pdf` or `colorbar_reactions_groups.pdf`|The fills of the maps of the individual samples or groups, which share this key.|
+|`colorbar_reactions_border.pdf`|The borders of the `unified` map, or of every map for a file without a `sample` column (see [Color borders by a second column](#color-borders-by-a-second-column)).|
+|`colorbar_reactions_border_samples.pdf` or `colorbar_reactions_border_groups.pdf`|The borders of the maps of the individual samples or groups, which share this key.|
+|`slice_key_reactions.txt`|A %(kegg-slice-key-txt)s that lists each slice drawn with `--reaction-slice-by` (see [Draw elements in slices](#draw-elements-in-slices)).|
+
+A group's own maps that count the group's sources are keyed beside them instead, in `individual` and `grid` (see [Show individual group maps](#show-individual-group-maps)).
 
 Because the names in `individual` come from your own data, they are kept in that subdirectory of their own: a sample, genome, or group may be named anything at all — including `unified`, `grid`, `by_map`, `all_maps`, or `Metabolism` — without ever colliding with a directory this program creates for itself.
 
@@ -88,7 +98,7 @@ The `--categorize-files` flag categorizes output map files into a subdirectory s
 
 The `unified` map summarizes every sample, group, contigs database, or genome at once. A run draws it even when no summary was asked for. By default the sources are summarized by presence. That summary is not always wanted, and it can claim more than the data supports. Pooling values is only meaningful across commensurable samples. Presence in any one sample says little when the point is to compare the samples.
 
-`--skip-unified-maps` leaves that map out. The `unified` subdirectory is not written. The colorbar for that map is not written either, unless the same scale also colors the individual maps, which would otherwise have no key anywhere in the output. The maps of the individual sources are all that is left, so `--draw-individual-files` and/or `--draw-grid` are required. Each grid holds the individual maps alone, without the first 'unified' map panel labeled `all` (or `pangenome`).
+`--skip-unified-maps` leaves that map out. The `unified` subdirectory is not written. The colorbar for that map is not written either, unless the same scale also colors the individual maps, which would otherwise have no key anywhere in the output. The same rule applies to the key of the borders of that map, such as `colorbar_reactions_border.pdf`. The maps of the individual sources are all that is left, so `--draw-individual-files` and/or `--draw-grid` are required. Each grid holds the individual maps alone, without the first 'unified' map panel labeled `all` (or `pangenome`).
 
 Here is a simple example of the output file structure produced with `--name-files` and `--categorize-files` in the course of `anvi-self-test --suite kegg-mapping` (with the `-o` option to save the temporary directories in the test from removal).
 
@@ -117,7 +127,7 @@ Maps can be drawn directly from per-layer text files — the quickest way to vis
 - a %(kegg-reaction-txt)s file (`--reaction-txt`) colors the **reaction layer**. Its `accession` column holds either KO IDs (`K#####`), as with the database inputs, **or** KEGG reaction IDs (`R#####`) when data are per-reaction, such as a metabolic model's fluxes — ALL accessions in the file must be of one type or the other.
 - a %(kegg-compound-txt)s file (`--compound-txt`) colors the **compound layer**, from data such as metabolomics. Its `accession` column holds compound IDs (`C#####`).
 
-When both files are given, the two layers are drawn together on each map, each on its own color scale, so that (for example) metabolite levels can be compared against enzyme expression. Each layer is colored independently by its own auto-detected mode (see below). Here is a basic command drawing just the reaction layer.
+When both files are given, the two layers are drawn together on each map, each on its own color scale, so that (for example) metabolite levels can be compared against enzyme expression. Each layer is colored independently by its own auto-detected mode (see below). Columns named by `--reaction-slice-weights`, `--reaction-border-column`, and `--compound-border-column` are left out of the detection. Here is a basic command drawing just the reaction layer.
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
@@ -129,6 +139,8 @@ See %(kegg-reaction-txt)s and %(kegg-compound-txt)s for the full format of each 
 Data from more than one origin, such as multiple genomes or samples, can be compared on the same maps by adding a `sample` column. Because this works just like comparing multiple contigs databases, it is described further below, under [Compare samples in an input text file](#compare-samples-in-an-input-text-file).
 
 Instead of showing presence/absence, elements can be colored by a continuous quantitative value from a numeric column of the file, such as KO coverage, reaction flux, or compound concentration. This is described below, under [Color elements by a quantitative value](#color-elements-by-a-quantitative-value).
+
+A second column can color the borders of reaction boxes and compound circles. It is named with `--reaction-border-column` or `--compound-border-column`, so it is never taken for the value column. This is described below, under [Color borders by a second column](#color-borders-by-a-second-column).
 
 ### Reaction network JSON file
 
@@ -445,7 +457,7 @@ The functional annotations of gene clusters as a whole are imputed to the genes 
 
 ### Color elements by a quantitative value
 
-The sections above color elements to show **presence/absence**. A layer can instead be colored by a continuous **quantitative value** simply by including a numeric value column in its %(kegg-reaction-txt)s or %(kegg-compound-txt)s file. The single column that is not a key column — `accession`; `sample`; in the reaction file, `gene_id` — is auto-detected as the value column, and its header labels the colorbar. The column can have any name. Uses can include coloring reactions by gene, transcript, or protein levels in a %(kegg-reaction-txt)s file, and compound levels in a %(kegg-compound-txt)s file. Every row must have a numeric value.
+The sections above color elements to show **presence/absence**. A layer can instead be colored by a continuous **quantitative value** simply by including a numeric value column in its %(kegg-reaction-txt)s or %(kegg-compound-txt)s file. The single column that is not a key column — `accession`; `sample`; in the reaction file, `gene_id` — is auto-detected as the value column, and its header labels the colorbar. The column can have any name. A column named by `--reaction-slice-weights`, `--reaction-border-column`, or `--compound-border-column` is left out of this detection. Uses can include coloring reactions by gene, transcript, or protein levels in a %(kegg-reaction-txt)s file, and compound levels in a %(kegg-compound-txt)s file. Every row must have a numeric value.
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
@@ -454,9 +466,9 @@ anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
 
 For a reaction file of KO accessions, the value of a KO is the aggregate of its optional gene rows' values, and KO accessions are aggregated to map element values. Two options set these, both defaulting to `sum`: `--reaction-gene-aggregation` combines the genes carrying one KO into that KO's value, and `--reaction-accession-aggregation` combines the KOs of one map element into that element's value. They can differ — averaging across the genes of each KO while totaling across the KOs of a reaction, for instance. The compound layer has only the second of the two, `--compound-accession-aggregation`, since a compound file names no genes and no two of its rows may name the same compound in the same sample. Accession aggregations reduce values **within a sample**.
 
-The **reaction layer** and the **compound layer** are colored on independent scales, each through its own sequential colormap and each getting its own continuous key: `colorbar_reactions.pdf` and `colorbar_compounds.pdf`. The reaction colormap is set with `--reaction-colormap` and the compound colormap with `--compound-colormap` (both default `plasma_r`). The drawing order of overlapping elements can be flipped per layer with `--reaction-reverse-overlay` and `--compound-reverse-overlay`.
+The **reaction layer** and the **compound layer** are colored on independent scales, each through its own sequential colormap and each getting its own continuous key: `colorbar_reactions.pdf` and `colorbar_compounds.pdf`. A border column takes keys of its own, such as `colorbar_reactions_border.pdf`. The reaction colormap is set with `--reaction-colormap` and the compound colormap with `--compound-colormap` (both default `plasma_r`). The drawing order of overlapping elements can be flipped per layer with `--reaction-reverse-overlay` and `--compound-reverse-overlay`.
 
-If a layer's file has a `sample` column, the value column colors **each sample's own magnitude**: maps for individual samples are added with `--draw-individual-files` and/or `--draw-grid`, as when comparing samples by presence/absence, and they share a single `colorbar_reactions_samples.pdf` and `colorbar_compounds_samples.pdf` so their colors are directly comparable across samples. That makes two scales per layer, the `unified` map's and the one those individual maps share. They are colored by the layer's one colormap from `--reaction-colormap`/`--compound-colormap` unless `--reaction-individual-colormap`/`--compound-individual-colormap` gives the individual maps a distinct colormap; see [Give the two scales different colormaps](#give-the-two-scales-different-colormaps).
+If a layer's file has a `sample` column, the value column colors **each sample's own magnitude**: maps for individual samples are added with `--draw-individual-files` and/or `--draw-grid`, as when comparing samples by presence/absence, and they share a single `colorbar_reactions_samples.pdf` and `colorbar_compounds_samples.pdf` so their colors are directly comparable across samples. That makes two scales per layer, the `unified` map's and the one those individual maps share. They are colored by the layer's one colormap from `--reaction-colormap`/`--compound-colormap` unless `--reaction-individual-colormap`/`--compound-individual-colormap` gives the individual maps a distinct colormap; see [Give the two scales different colormaps](#give-the-two-scales-different-colormaps). A border column adds two scales of its own, keyed in `colorbar_reactions_border.pdf` and `colorbar_reactions_border_samples.pdf` for the reaction layer.
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
@@ -478,6 +490,8 @@ A layer with a `sample` column involves multiple separate reductions, and each h
 |weights of the genes of an accession|`--reaction-slice-weight-aggregation` (`sum` by default, or `mean`)|the weights of the genes carrying one accession → that accession's weight, which sizes its slice. This applies only with `--reaction-slice-by accession`.|
 |shares across samples and groups|`--reaction-slice-share-summary` (`share_mean` by default, or `pooled_sum`)|the shares of a slice in a set of samples, or in the groups → its share on the map of a group or the `unified` map|
 
+A border column has its own versions of the first four options: `--reaction-border-gene-aggregation`, `--reaction-border-accession-aggregation`/`--compound-border-accession-aggregation`, `--reaction-border-sample-summary`/`--compound-border-sample-summary`, and `--reaction-border-group-summary`/`--compound-border-group-summary`. They reduce the values of the border column, and their defaults differ from those of the fill (see [Color borders by a second column](#color-borders-by-a-second-column)).
+
 An **aggregation** is `sum` (default), `mean`, `max`, `min`, `median`, `std` — or any other unsuggested pandas aggregation that reduces a series of numbers to one number, such as `var` or `sem`. Names that transform rather than reduce (`cumsum`) or that only a grouping offers (`first`) are rejected. Where an aggregation is undefined for the values available, as `std` is for a single value, the affected elements are left uncolored. `circular_mean` averages values that repeat after a period, such as clock times, and requires `--reaction-value-period`/`--compound-value-period` (see [Color clock times with a cyclic colormap](#color-clock-times-with-a-cyclic-colormap)). `angular_deviation` measures how far such values are spread apart, on the `unified` map only.
 
 A summary pools the values of a **map element**, not of an accession. An element's value in a sample is the aggregate of its accessions in that sample. Without `--reaction-element-normalization`/`--compound-element-normalization`, this is the value that the sample's own map draws, so the sample summary pools what the maps of the individual samples show. With groups, the group summary then pools the values of the groups.
@@ -488,9 +502,9 @@ The sample summary drives the `unified` map when there are no groups, and each p
 
 Note that with groups, the per-group map either shows the count of that group's sample — the default case — or, with a `--reaction-sample-summary`/`--compound-sample-summary` aggregation argument, the samples' pooled value; `--*-sample-summary` is therefore not permitted with a presence name (`count`, `count_continuous` or `membership`) when using groups. Whether that count is drawn in bands or on a gradient is set for every layer's group maps at once by `--group-colormap-scheme`, not per layer; see [counts in bands or on a gradient](#counts-in-bands-or-on-a-gradient). For categorical values, a rule given to `--reaction-sample-summary`/`--compound-sample-summary` colors each group's map by the value that it chooses among the group's samples.
 
-Both summaries default to **presence**: in how many (`count` and `count_continuous`) or exactly which (`membership`) samples or groups an element occurs. `membership` is chosen automatically for 3 or fewer samples or groups, and `count` is chosen above that. This matches the presence/absence behavior for contigs databases and genomes. Where a discrete scale would run out of distinguishable colors or of room to label its bands, `count_continuous` is chosen instead. A warning says so. `count` draws a discrete colorbar with one band per count, while `count_continuous` draws a gradient from the lowest count to the highest — see [counts on a continuous scale](#counts-on-a-continuous-scale). Presence is the default because it is meaningful for any set of samples, whereas pooling values is only meaningful when the samples are commensurable: averaging the coverages or concentrations of replicates of one condition makes sense, while pooling them across unrelated conditions does not. Name an aggregation to pool values instead, which draws a continuous colorbar for that view; `std` across replicate samples turns the map into a picture of where they disagree. Note that `count`, `count_continuous` and `membership` always mean presence at these two levels, so pandas `count` (a row count) is not reachable through a summary option — use it with `--reaction-gene-aggregation` if you want it.
+Both summaries default to **presence**: in how many (`count` and `count_continuous`) or exactly which (`membership`) samples or groups an element occurs. `membership` is chosen automatically for 3 or fewer samples or groups, and `count` is chosen above that. This matches the presence/absence behavior for contigs databases and genomes. Where a discrete scale would run out of distinguishable colors or of room to label its bands, `count_continuous` is chosen instead. A warning says so. `count` draws a discrete colorbar with one band per count, while `count_continuous` draws a gradient from the lowest count to the highest — see [counts on a continuous scale](#counts-on-a-continuous-scale). Presence is the default because it is meaningful for any set of samples, whereas pooling values is only meaningful when the samples are commensurable: averaging the coverages or concentrations of replicates of one condition makes sense, while pooling them across unrelated conditions does not. Name an aggregation to pool values instead, which draws a continuous colorbar for that view; `std` across replicate samples turns the map into a picture of where they disagree. Note that `count`, `count_continuous` and `membership` always mean presence at these two levels, so pandas `count` (a row count) is not reachable through a summary option — use it with `--reaction-gene-aggregation` if you want it. The summaries of a border column, such as `--reaction-border-sample-summary`, have no default and refuse presence names, since the fill already shows presence.
 
-The sample and group summaries in the `unified` maps both default to **presence**, even with a quantitative value column. The default is `membership` for 3 or fewer samples or groups, `count` above that, and `count_continuous` beyond what the colormap can distinguish. Presence is the default because it is meaningful across any set of samples. Pooling values is only meaningful for commensurable samples. For example, it makes sense to average transcript abundances across samples from replicate conditions, but not from unrelated conditions. Pooling values across samples is triggered by providing an aggregation argument to `--reaction-sample-summary`/`--compound-sample-summary` or `--reaction-group-summary`/`--compound-group-summary`. `std` at sample and group levels map how much samples and groups disagree. Note that `count`, `count_continuous` and `membership` always mean presence at these two levels, so pandas `count` (a row count) is not reachable through a summary option, but may be used through gene and accession aggregation options, say for drawing counts of the number of genes per reaction.
+The sample and group summaries in the `unified` maps both default to **presence**, even with a quantitative value column. The default is `membership` for 3 or fewer samples or groups, `count` above that, and `count_continuous` beyond what the colormap can distinguish. Presence is the default because it is meaningful across any set of samples. Pooling values is only meaningful for commensurable samples. For example, it makes sense to average transcript abundances across samples from replicate conditions, but not from unrelated conditions. Pooling values across samples is triggered by providing an aggregation argument to `--reaction-sample-summary`/`--compound-sample-summary` or `--reaction-group-summary`/`--compound-group-summary`. `std` at sample and group levels map how much samples and groups disagree. Note that `count`, `count_continuous` and `membership` always mean presence at these two levels, so pandas `count` (a row count) is not reachable through a summary option, but may be used through gene and accession aggregation options, say for drawing counts of the number of genes per reaction. The summaries of a border column, `--reaction-border-sample-summary`/`--compound-border-sample-summary` and `--reaction-border-group-summary`/`--compound-border-group-summary`, do not default to presence. Without one, the `unified` map shows no border.
 
 A layer can show **presence in the overview and values per sample or group**. With the default presence summary, the `unified` map gets a colorbar of sample or group counts or memberships, while per-sample maps keep a continuous colorbar. The sample and group levels can be treated independently — replicate samples can be averaged within each condition (group) while the `unified` map summarizing all conditions shows in how many conditions each element occurs, with a group containing an element when at least half of its samples do:
 
@@ -588,9 +602,9 @@ anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
                         -o output_dir
 {{ codestop }}
 
-Here the `unified` map draws the standard deviation across samples on a sequential scale, whereas each sample's own map draws its signed values on a diverging scale. Each scale writes its own colorbar either way — `colorbar_reactions.pdf` for the `unified` map and `colorbar_reactions_samples.pdf` or `colorbar_reactions_groups.pdf` for the individual maps — so which colors mean what is never left implicit.
+Here the `unified` map draws the standard deviation across samples on a sequential scale, whereas each sample's own map draws its signed values on a diverging scale. Each scale writes its own colorbar either way — `colorbar_reactions.pdf` for the `unified` map and `colorbar_reactions_samples.pdf` or `colorbar_reactions_groups.pdf` for the individual maps — so which colors mean what is never left implicit. The scales of a border column write `colorbar_reactions_border.pdf` and `colorbar_reactions_border_samples.pdf` or `colorbar_reactions_border_groups.pdf` in the same way.
 
-The compound layer takes `--compound-individual-colormap` on its own independent scales, so a run drawing both layers across samples can have four colormaps and four colorbars. `--reaction-individual-colormap` and `--compound-individual-colormap` apply only where those individual maps are actually colored by value. The file needs a value column and a `sample` column. Under a %(groups-txt)s, the sample summary must also pool each group's values rather than summarize their presence. Group maps that show presence are colored by `--group-colormap` instead.
+The compound layer takes `--compound-individual-colormap` on its own independent scales, so a run drawing both layers across samples can have four colormaps and four colorbars. With a border column in each file, it can have eight of each. `--reaction-individual-colormap` and `--compound-individual-colormap` apply only where those individual maps are actually colored by value. The file needs a value column and a `sample` column. Under a %(groups-txt)s, the sample summary must also pool each group's values rather than summarize their presence. Group maps that show presence are colored by `--group-colormap` instead.
 
 #### Color clock times with a cyclic colormap
 
@@ -808,7 +822,7 @@ A line is cut into repeating dashes with no gaps. Each cycle of dashes holds one
 
 Where elements overlap, an element in slices is drawn in the order of its top slice. That is the slice that would be drawn on top if it were an element of its own. For numbers, it is the slice of the highest value. `--reaction-reverse-overlay` reverses this order, as it does for elements without slices.
 
-**Too many slices.** A box is drawn whole where a slice of equal width would be narrower than 8 points. Boxes on standard maps are 92 points wide, so a box holds up to 11 slices. A line is drawn whole where any of its pieces would give a slice of equal length shorter than the line is wide. Only the part of the piece that compound circles leave visible counts. This limit counts slices, not shares, so a slice with a small weight can still be thin.
+**Too many slices.** A box is drawn whole where a slice of equal width would be narrower than 8 points. Boxes on standard maps are 92 points wide, so a box holds up to 11 slices. In a layer with a border column, the slices of a box fit inside its ring, which leaves 85 points. Every box of such a layer then holds up to 10 slices (see [Color borders by a second column](#color-borders-by-a-second-column)). A line is drawn whole where any of its pieces would give a slice of equal length shorter than the line is wide. Only the part of the piece that compound circles leave visible counts. This limit counts slices, not shares, so a slice with a small weight can still be thin.
 
 An element drawn whole takes the color of a stand-in value. For numbers, this is the mean of the slice values, weighted by their shares. With `--reaction-value-period`, it is their circular mean, weighted the same way. A spread from `angular_deviation` is averaged as a plain number. For categorical values, the stand-in is the value chosen among the accessions of the slices, by `--reaction-accession-aggregation` and then by the sample and group rules. In both cases, only the accessions of the slices count. An element whose stand-in is undefined is left uncolored. A warning counts the elements drawn whole on each KEGG map, and the key table lists them with the reason.
 
@@ -878,7 +892,7 @@ Slices are drawn with private methods of Biopython's map canvas, which a Biopyth
 - A slice is one KO, one KEGG reaction, or one gene. The KOs of a box can be subunits of one enzyme, which are all needed, or alternative enzymes, any one of which is enough. KEGG does not say which for every box.
 - The same KO can appear in several elements of a map. Each of them shows a slice of that KO in the same color, though its share can differ.
 - With slices of genes, a gene with rows for several KOs can show a different value in each element. Each element reduces only the gene's rows for its own KOs.
-- The width of a slice shows its share of one element, not an amount. A box with weights of 1000 and 1000 looks the same as a box with weights of 1 and 1. A small share draws a thin slice. Shares of 0.95 and 0.05 give a box a slice 4.6 points wide, which can look like a border.
+- The width of a slice shows its share of one element, not an amount. A box with weights of 1000 and 1000 looks the same as a box with weights of 1 and 1. A small share draws a thin slice. Shares of 0.95 and 0.05 give a box a slice 4.6 points wide, which can look like an edge of the box.
 - Color and width are pooled separately on the maps of groups and the `unified` map, as described above.
 - On the `unified` map, the slices of one element can come from different samples. One sample may have data only for K1, and another only for K2.
 - On the map of a group and the `unified` map, a slice of a gene pools the values of one gene ID across samples. It stands for one gene only where that ID names the same gene in every sample.
@@ -886,12 +900,107 @@ Slices are drawn with private methods of Biopython's map canvas, which a Biopyth
 - In a view of a whole map and in the panels of a grid, slices are small. Dashes of two colors can then blend into a third color that looks like a value between them. Zoom in, or check the key table.
 - Neighboring colors can look alike to readers with color-vision deficiency. For categorical values, `--reaction-value-colors` can set colors that are easier to tell apart.
 
+### Color borders by a second column
+
+A reaction or compound file can hold a second column of values, the border column. Its values color a ring just inside the black outline of each reaction box on standard maps, and of each compound circle on standard and overview maps. A thin black line separates the ring from the fill. The value column still colors the fill, so an element can show two values at once.
+
+The border column is named with `--reaction-border-column` or `--compound-border-column`. In the reaction file below, `coverage` is the value column, and `status` is the border column.
+
+|accession|gene_id|sample|coverage|status|
+|:--|:--|:--|:--|:--|
+|K00844|gene_1|treated|12.5|up|
+|K00844|gene_1|control|3.1|down|
+|K00845|gene_2|treated|8.0|same|
+|K00845|gene_2|control|7.7|same|
+|K01810|gene_3|treated|4.2||
+
+{{ codestart }}
+anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
+                        --reaction-border-column status \
+                        --reaction-border-value-type categorical \
+                        --reaction-border-sample-summary plurality_order \
+                        --draw-individual-files \
+                        -o output_dir
+{{ codestop }}
+
+The fills show coverage, and the rings show status. The map of each sample shows that sample's coverage and status. The `unified` map shows presence across the samples in its fills, as it does by default. Its rings show the status that `plurality_order` chooses across the samples. The last row leaves its status empty, so K01810 has no border value. Without `--reaction-border-column`, the file would have two candidate value columns and be refused.
+
+#### Read the border column
+
+The border column can have any name, but it cannot be `accession`, `gene_id`, `sample`, or the column of `--reaction-slice-weights`. It is left out of the search for the value column, as the column of weights is. A file whose only column of values is its border column therefore colors its fills by presence.
+
+A row can leave its border cell empty. That row then has no border value, and its other columns are read as usual. A border column with no values at all is refused. Border values are numbers by default. Each must be a finite number, so `NA` or other text is refused. `--reaction-border-value-type categorical` or `--compound-border-value-type categorical` reads them as categorical values instead, whatever the type of the value column. A file with a border column is read as text, so `NA` is a name in every column, including `sample` and `gene_id`.
+
+Where a file has a value column or a border column, no two rows may describe the same accession, gene, and sample. A file that colors its fills by presence therefore refuses repeated rows if it has a border column. The run reports each column with its type and the aggregations that reduce its values. It also reports the number of rows without a border value.
+
+#### Border options
+
+Each option that reduces, summarizes, or colors the values of the fill has a border version, which works the same way on the border column. Its name adds `border-` after the name of the layer. For example, `--reaction-border-colormap` colors border values as `--reaction-colormap` colors fill values. These are the border options of the reaction layer:
+
+- `--reaction-border-value-type` and `--reaction-border-value-colors`
+- `--reaction-border-value-period`
+- `--reaction-border-gene-aggregation` and `--reaction-border-accession-aggregation`
+- `--reaction-border-sample-summary` and `--reaction-border-group-summary`
+- `--reaction-border-colormap` and `--reaction-border-individual-colormap`
+- `--reaction-border-value-limits` and `--reaction-border-individual-value-limits`
+- `--reaction-border-value-center` and `--reaction-border-individual-value-center`
+- `--reaction-border-element-normalization`
+
+The compound layer has the same options with `compound` in place of `reaction`, except the gene aggregation, since a compound file names no genes. Every border option needs the border column of its layer. Runs of contigs databases, a pangenome, or a reaction network JSON file refuse every border option.
+
+Some defaults of the border differ from those of the fill. The border takes default colors of its own, so that a color means a value of one column only. These are the defaults that differ:
+
+- The aggregations default to `mean`, not `sum`. A border value given once per KO and repeated in the rows of its genes keeps its size under `mean`, but `sum` would multiply it. With a period, they default to `circular_mean`, and for categorical values to `plurality_order`, as for the fill.
+- Numeric border values take `viridis` from 0.2 to 1, while fills take `plasma_r`. Below 0.2, `viridis` is nearly black, and a ring of that color would merge with the black lines on each side of it. With a period, borders take `clocktime`, as fills do. A spread from `angular_deviation` on the `unified` map takes `viridis` from 0.2 to 1. A normalization centered on 0 takes `RdYlGn`, as for the fill.
+- Categorical border values take the colors of Matplotlib's `Dark2` without its gray, in this order: `#d95f02`, `#7570b3`, `#e6ab02`, `#a6761d`, `#1b9e77`, `#e7298a`, and `#66a61e`. The last two are close to the default presence colors of compounds and reactions, so they come last. The values take these colors in sorted order, as fill values do. More than 7 values need a %(kegg-value-colors-txt)s file, given with `--reaction-border-value-colors` or `--compound-border-value-colors`. The rows of that file set the order of the legend and how `order` and `plurality_order` break ties. They do not set the order in which elements are drawn.
+
+For categorical border values, the options that shape a scale of numbers are refused, as they are for the fill. The border colormap is refused too, since a border shows no presence for it to color.
+
+#### Borders of samples and groups
+
+Without a `sample` column, one border scale colors every map. With a `sample` column, the map of each sample shows that sample's border values. The `unified` map shows a border only where `--reaction-border-sample-summary` or `--compound-border-sample-summary` gives an aggregation or a rule for categorical values. Unlike the summaries of the fill, these have no default.
+
+With a %(groups-txt)s, the border sample summary colors the rings of each group's map from the group's samples, and the border group summary colors the rings of the `unified` map. The group summary needs a sample summary of the same kind, as it does for the fill. Without a border sample summary, no map of a group shows a border. A border shows values only, since the fill already shows presence. The border summaries therefore refuse `count`, `count_continuous`, and `membership`. `--group-threshold`, `--group-colormap`, `--group-colormap-scheme`, and `--group-reverse-overlay` apply only to the fill.
+
+A run is refused before it draws anything when its options alone mean that no map shows a border. For example, the `unified` map of a file with samples shows no border without a border sample summary, so a run that draws only that map is refused. Where the data leave every ring empty, the run warns instead.
+
+#### Where rings are drawn
+
+A ring is drawn where a map draws an outline. These are reaction boxes on standard maps and compound circles on standard and overview maps. Global maps draw their circles without an outline, so they show no rings. Lines never show rings. Some reaction elements on standard maps are drawn as lines, and a warning counts those with border values. The scale of a border spans only the values of the rings that are drawn.
+
+A run is refused when none of its maps can show a layer's rings. A reaction border needs a standard map, and a compound border needs a standard or overview map. Where only some maps of a run cannot show a layer's rings, the run reports how many.
+
+The ring is 2.5 points wide on boxes, 2 points wide on circles of 24 points or less, and 3 points wide on larger circles. The 0.5-point black line between the ring and the fill keeps a ring visible where its color is close to the color of the fill. The ring lies inside the outline, so shapes keep their size. A circle with a ring hides as much of a line as before, so sliced lines meet circles as they do without rings.
+
+An element with a fill and no border value shows no ring, so it looks as it does without a border column. An element with a border value and no fill color keeps the white fill of an element that is not highlighted, and its ring is drawn on that. A map with such an element is drawn even if nothing else on it is colored.
+
+Where elements overlap, they are drawn in the order of their fills. `--reaction-reverse-overlay` and `--compound-reverse-overlay` apply only to the fills. Ring colors are not used in this order, in the check of reserved colors, or in the colors that compounds take from reactions on global and overview maps. Black, white, and gray are valid border colors.
+
+Rings are drawn with private methods of Biopython's map canvas, as slices are. Where a Biopython release has renamed them, anvi'o stops with an error before it draws any map.
+
+#### Border keys
+
+Border keys are named like the keys of the fill, with `_border` after the name of the layer. `colorbar_reactions_border.pdf` keys the reaction borders of the `unified` map, or of every map for a file without a `sample` column. `colorbar_reactions_border_samples.pdf` or `colorbar_reactions_border_groups.pdf` keys the border scale shared by the maps of the samples or groups. The compound layer writes the same files with `compounds` in place of `reactions`.
+
+A border key is labeled as a key of the fill would be for the border column, with `(border)` added, such as `status (border)`. A label given after `--reaction-border-element-normalization` or `--compound-border-element-normalization` is used as given. A legend of categorical border values is written only where some map that it keys shows a ring. Border keys are written only at the top of the output directory, so `--collate-files-by-map` gathers none of them. `--skip-unified-maps` drops the border key of the `unified` map by the same rule as the fill key of that map.
+
+#### Borders of sliced boxes
+
+With `--reaction-slice-by` and a reaction border column, the columns of a sliced box fit inside its ring. The ring stays whole. It shows the border value of the whole element, as on a box without slices. `--reaction-border-accession-aggregation` reduces the border values of the element's accessions to that value. The inside of a 92-point box is 85 points wide, so a box holds up to 10 slices in a layer with a border column, rather than 11. This holds for every box of the layer, with or without a ring on the map, so a box is sliced the same way on every map.
+
+#### Other options with borders
+
+- `--reaction-color` and `--compound-color` work with a border column in a file without a value column, since the fill then shows presence. The border summaries still color the rings.
+- `--original-color` is refused with `--reaction-border-column`, since the reference map sets both the colors and the drawing order of reactions.
+- `--seed` also seeds the random rules of the border aggregations and summaries. The border makes its random choices independently of the fill.
+- A compound file with only a border column colors its compounds by presence. On global and overview maps, these fills replace the colors that compounds would otherwise take from reactions. Global maps show no rings, so such a file shows only presence there.
+
 ### Mixed coloring across reaction and compound layers
 
 Because each file is colored independently by its own mode, one map can mix a value-colored layer with a presence- or membership-colored layer. For example, the presence/absence of KOs in a genome (a %(kegg-reaction-txt)s file with no value column) can be displayed alongside quantitative metabolomics of compounds (a %(kegg-compound-txt)s file with a value column), each layer getting its own colorbar. When only one layer carries a `sample` column, that layer drives the per-sample (or per-group) maps and the other layer is drawn identically on every one of them, as would apply in the example with metabolomes measured from different treatments of an organism.
 
-Text-file presence layers use their own default colors (reaction green, compound pink), which can be changed independently with `--reaction-color` and `--compound-color` (each takes a color hex code, or is used as a flag for the default). Either one is a *static* color, so with a `sample` column it overrides comparison across samples the same way it does for multiple contigs databases: the `unified` map shows presence in any sample in that one color, with no colorbar, while the individual maps still show one sample each (or, with a %(groups-txt)s, their group's sample counts). Because it overrides the comparison, it cannot be combined with that layer's sample or group summary.
+Text-file presence layers use their own default colors (reaction green, compound pink), which can be changed independently with `--reaction-color` and `--compound-color` (each takes a color hex code, or is used as a flag for the default). Either one is a *static* color, so with a `sample` column it overrides comparison across samples the same way it does for multiple contigs databases: the `unified` map shows presence in any sample in that one color, with no colorbar, while the individual maps still show one sample each (or, with a %(groups-txt)s, their group's sample counts). Because it overrides the comparison, it cannot be combined with that layer's sample or group summary. The summaries of a border column are still allowed, since a static color colors only the fills.
 
-A reaction presence layer can instead be highlighted in the reference map's colors with `--original-color`, which also works with a `sample` column: the `unified` map shows the union of the samples and `--draw-individual-files`/`--draw-grid` add a reference-colored map per sample, just as they do for multiple contigs databases. Because the reference map dictates both the colors and their drawing order, that flag, like a fixed color, cannot be combined with a value column, with the sample or group summaries, with `--reaction-reverse-overlay`, or with `--group-threshold`. With a %(groups-txt)s the `unified` map is still the union, while each group's map falls back to counting the group's samples — one color cannot distinguish them — styled by `--group-colormap`/`--group-reverse-overlay`.
+A reaction presence layer can instead be highlighted in the reference map's colors with `--original-color`, which also works with a `sample` column: the `unified` map shows the union of the samples and `--draw-individual-files`/`--draw-grid` add a reference-colored map per sample, just as they do for multiple contigs databases. Because the reference map dictates both the colors and their drawing order, that flag, like a fixed color, cannot be combined with a value column, with the sample or group summaries, with `--reaction-reverse-overlay`, or with `--group-threshold`. Unlike a fixed color, it also cannot be combined with `--reaction-border-column`. With a %(groups-txt)s the `unified` map is still the union, while each group's map falls back to counting the group's samples — one color cannot distinguish them — styled by `--group-colormap`/`--group-reverse-overlay`.
 
-Avoid purely grayscale colormaps or colormaps whose ends are pure white or black, as these can collide with the reserved colors that anvi'o uses for un-highlighted reactions and compounds; if that happens, the error names which layer's colormap (`--reaction-colormap` or `--compound-colormap`) to change. The same check covers the colors given per categorical value in a %(kegg-value-colors-txt)s file. It covers the colors given in a %(kegg-membership-colors-txt)s file. It also covers the scale of each group's own maps. That includes the ramp of tints of a group's color that `--group-colormap tint` builds. This ramp runs towards white by construction, so it is the most likely of these colors to collide. The check also covers the compounds of global and overview maps drawn without a compound layer — compounds take their colors from the average colors of touching reactions, so a compound can come out in a reserved color even where no reaction has that color.
+Avoid purely grayscale colormaps or colormaps whose ends are pure white or black, as these can collide with the reserved colors that anvi'o uses for un-highlighted reactions and compounds; if that happens, the error names which layer's colormap (`--reaction-colormap` or `--compound-colormap`) to change. The same check covers the colors given per categorical value in a %(kegg-value-colors-txt)s file. It covers the colors given in a %(kegg-membership-colors-txt)s file. It also covers the scale of each group's own maps. That includes the ramp of tints of a group's color that `--group-colormap tint` builds. This ramp runs towards white by construction, so it is the most likely of these colors to collide. The check also covers the compounds of global and overview maps drawn without a compound layer — compounds take their colors from the average colors of touching reactions, so a compound can come out in a reserved color even where no reaction has that color. The colors of borders are not checked, so black, white, and gray can color rings.

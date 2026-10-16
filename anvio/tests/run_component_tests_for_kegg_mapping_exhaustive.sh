@@ -168,6 +168,25 @@ printf 'accession\tgene_id\tsample\tcoverage\nK01623\t0\tS1\t1\nK01624\t0\tS2\t9
 printf 'accession\tgene_id\tcoverage\nK01623\tgene_1\t2\nK01624\tgene_1\t5\nK01622\tgene_2\t4\n' > draw_kos_genes_coverage.reaction.txt
 printf 'accession\tgene_id\tsample\tstatus\nK01623\tgene_1\tS1\tup\nK01624\tgene_1\tS1\tdown\nK01622\tgene_2\tS1\tup\nK01622\tgene_2\tS2\tup\nK01624\tgene_2\tS3\tdown\nK01622\tgene_2\tS3\tdown\nK01622\tgene_3\tS1\tdown\nK01624\tgene_3\tS1\tup\n' > draw_kos_samples_genes_status.reaction.txt
 printf 'accession\tgene_id\tclocktime\nK01623\tgene_1\t23\nK01624\tgene_1\t3\nK01622\tgene_2\t12\n' > draw_kos_genes_clocktime.reaction.txt
+# A value column and a border column, with an empty border cell, and a file with one more column.
+printf 'accession\tcoverage\tstatus\nK00844\t10\tup\nK01810\t20\tdown\nK00850\t30\t\n' > draw_kos_coverage_status.reaction.txt
+printf 'accession\tcoverage\tstatus\textra\nK00844\t10\tup\t1\n' > draw_bad_three_columns.reaction.txt
+# A border column named twice, a border column named with '__', and a border column with no values.
+printf 'accession\tstatus\tstatus\nK00844\tup\tdown\n' > draw_bad_repeated_border.reaction.txt
+printf 'accession\t__status\nK00844\tup\n' > draw_bad_reserved_border.reaction.txt
+printf 'accession\tcoverage\tstatus\nK00844\t10\t\nK01810\t20\t\n' > draw_bad_empty_border.reaction.txt
+# 'NA' in a column of numeric border values, and two rows of one KO with only a border column.
+printf 'accession\tcoverage\tlevel\nK00844\t10\t2.5\nK01810\t20\tNA\n' > draw_bad_na_border.reaction.txt
+printf 'accession\tstatus\nK00844\tup\nK00844\tdown\n' > draw_bad_repeated_border_rows.reaction.txt
+# Eight categorical border values, one more than the default border colors.
+printf 'accession\tstatus\nK00844\tv1\nK00845\tv2\nK01810\tv3\nK00850\tv4\nK16370\tv5\nK01623\tv6\nK01624\tv7\nK01803\tv8\n' > draw_kos_border_class8.reaction.txt
+# A stray quote in a categorical border value of a file whose fill values are numbers.
+printf 'accession\tcoverage\tstatus\nK00844\t10\t"high\nK01810\t20\tlow\n' > draw_kos_border_stray_quote.reaction.txt
+# K00844 has one gene, so the standard deviation of its genes gives it no fill value. Its border
+# value is the mean of its genes. It is the only KO of the file on map 00010.
+printf 'accession\tgene_id\tcoverage\tlevel\nK00844\tgene_1\t10\t4\n' > draw_kos_border_no_fill.reaction.txt
+# K03850 is drawn as a line on the standard map 00510, and K00844 as a box on 00010.
+printf 'accession\tstatus\nK03850\tup\nK00844\tdown\n' > draw_kos_border_lines.reaction.txt
 
 # A test that expects a refusal discards the output of the draw, so a fixture that was never written
 # would make that test pass for the wrong reason. Fail loudly here instead.
@@ -195,7 +214,13 @@ for fixture in contigs-db-group-information.txt draw_kos_samples300.reaction.txt
               draw_kos_weights.reaction.txt draw_kos_global_slices.reaction.txt \
               draw_bad_negative_weight.reaction.txt draw_bad_blank_gene_id.reaction.txt \
               draw_kos_gene_id_collision.reaction.txt draw_kos_genes_coverage.reaction.txt \
-              draw_kos_samples_genes_status.reaction.txt draw_kos_genes_clocktime.reaction.txt
+              draw_kos_samples_genes_status.reaction.txt draw_kos_genes_clocktime.reaction.txt \
+              draw_kos_coverage_status.reaction.txt draw_bad_three_columns.reaction.txt \
+              draw_bad_repeated_border.reaction.txt draw_bad_reserved_border.reaction.txt \
+              draw_bad_empty_border.reaction.txt draw_bad_na_border.reaction.txt \
+              draw_bad_repeated_border_rows.reaction.txt draw_kos_border_class8.reaction.txt \
+              draw_kos_border_stray_quote.reaction.txt draw_kos_border_no_fill.reaction.txt \
+              draw_kos_border_lines.reaction.txt
 do
     if [ ! -s $fixture ]
     then
@@ -3359,6 +3384,513 @@ if ! tr '\n' ' ' < draw_txt_slice_genes_std.log \
     | grep -q "return a single value unchanged, so genes with several rows"
 then
     echo "ERROR: slicing by gene with 'std' over a gene's rows was refused for another reason."
+    exit 1
+fi
+
+# A border column colors a ring inside the outline of each box on standard maps, and of each
+# compound circle on standard and overview maps. A row with an empty border cell has no border
+# value, and the other rows still color their rings.
+INFO "Testing a border column with an empty cell beside a value column"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --output-dir draw_txt_border_empty_cell --pathway-numbers $pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_border_empty_cell.log
+if ! tr '\n' ' ' < draw_txt_border_empty_cell.log | grep -q "Reaction rows without a border value"
+then
+    echo "ERROR: the rows without a border value were not counted."
+    exit 1
+fi
+if [ ! -s draw_txt_border_empty_cell/colorbar_reactions_border.pdf ]
+then
+    echo "ERROR: a categorical border should have written a legend of its own."
+    exit 1
+fi
+
+# A stray quote in a categorical border value is part of the value. The file is read as text, even
+# though its fill values are numbers.
+INFO "Testing a stray quote in a categorical border value of a file of numbers"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_border_stray_quote.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --output-dir draw_txt_border_stray_quote --pathway-numbers $pathway_numbers \
+    --no-progress
+
+# K00844 has no fill value, since the standard deviation of one gene is undefined. Its border value
+# still draws a ring, so map 00010 is drawn though nothing on it has a fill color.
+INFO "Testing an element with a border and no fill color"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_border_no_fill.reaction.txt \
+    --reaction-gene-aggregation std --reaction-border-column level \
+    --output-dir draw_txt_border_no_fill --pathway-numbers 00010 \
+    --no-progress
+if [ ! -s draw_txt_border_no_fill/unified/ko00010.pdf ]
+then
+    echo "ERROR: a map with a ring and no fill color should have been drawn."
+    exit 1
+fi
+
+# Rings are drawn on circles of standard and overview maps, not on the global map. The run counts
+# the maps that show no compound border.
+INFO "Testing a compound border on maps of every kind"
+anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+    --compound-border-column concentration --compound-border-sample-summary mean \
+    --output-dir draw_txt_compound_border_global --pathway-numbers $global_pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_compound_border_global.log
+if ! tr '\n' ' ' < draw_txt_compound_border_global.log \
+    | grep -q "Maps that show no compound borders"
+then
+    echo "ERROR: the maps without compound borders were not counted."
+    exit 1
+fi
+
+# Lines show no ring. A reaction element that a standard map draws as a line is reported.
+INFO "Testing the warning that reaction lines on a standard map show no border"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_border_lines.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --output-dir draw_txt_border_lines --pathway-numbers 00010 00510 \
+    --no-progress 2>&1 | tee draw_txt_border_lines.log
+if ! tr '\n' ' ' < draw_txt_border_lines.log | grep -q "Lines show no border"
+then
+    echo "ERROR: reaction lines with border values on a standard map were not reported."
+    exit 1
+fi
+
+# A border summary that is undefined for an element leaves it without a ring.
+INFO "Testing the warning that a border summary was undefined"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-border-column coverage --reaction-value-type categorical \
+    --reaction-border-sample-summary std \
+    --output-dir draw_txt_border_std --pathway-numbers $pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_border_std.log
+if ! tr '\n' ' ' < draw_txt_border_std.log | grep -q "show no border on the 'unified' map"
+then
+    echo "ERROR: elements with an undefined border summary were not reported."
+    exit 1
+fi
+
+# Choices among categorical border values are reported apart from those of the fill.
+INFO "Testing that choices of a categorical border value are reported"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-sample-summary plurality_random --seed 2 \
+    --output-dir draw_txt_border_choices --pathway-numbers $pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_border_choices.log
+if ! tr '\n' ' ' < draw_txt_border_choices.log | grep -q "Choices of a reaction border value among"
+then
+    echo "ERROR: the choices of categorical border values were not reported."
+    exit 1
+fi
+
+# Skipping the 'unified' map drops the key of its border and keeps the key of the sample maps.
+INFO "Testing that skipping the 'unified' map drops its border key"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --output-dir draw_txt_border_skip_unified --pathway-numbers $pathway_numbers \
+    --skip-unified-maps --draw-grid \
+    --no-progress
+if [ -e draw_txt_border_skip_unified/colorbar_reactions_border.pdf ]
+then
+    echo "ERROR: the border key of the skipped 'unified' map was drawn."
+    exit 1
+fi
+if [ ! -s draw_txt_border_skip_unified/colorbar_reactions_border_samples.pdf ]
+then
+    echo "ERROR: skipping the 'unified' map should keep the border key of the sample maps."
+    exit 1
+fi
+
+# Border keys stay at the top of the output directory, so gathering maps by map leaves them out.
+INFO "Testing that gathering maps by map gathers no border key"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --output-dir draw_txt_border_collate --pathway-numbers $pathway_numbers \
+    --draw-individual-files --collate-files-by-map \
+    --no-progress
+if ls -R draw_txt_border_collate/by_map | grep -q "colorbar"
+then
+    echo "ERROR: a border key was gathered by map as if it were a map."
+    exit 1
+fi
+
+INFO "Testing that border columns are refused where they cannot apply"
+# A border column is read like the column of weights. It must be a column of the file, and it
+# cannot be a key column, a name given twice, or a name that starts with '__'.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage_status.reaction.txt \
+    --reaction-border-column nothing --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_missing.log 2>&1
+then
+    echo "ERROR: a border column that the file lacks should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_missing.log | grep -q "as the border column, but"
+then
+    echo "ERROR: a border column that the file lacks was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage_status.reaction.txt \
+    --reaction-border-column sample --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_key_column.log 2>&1
+then
+    echo "ERROR: a key column as the border column should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_key_column.log | grep -q "key column, which cannot hold border values"
+then
+    echo "ERROR: a key column as the border column was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_repeated_border.reaction.txt \
+    --reaction-border-column status --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_repeated.log 2>&1
+then
+    echo "ERROR: a border column named twice should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_repeated.log | grep -q "more than once"
+then
+    echo "ERROR: a border column named twice was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_reserved_border.reaction.txt \
+    --reaction-border-column __status --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_reserved.log 2>&1
+then
+    echo "ERROR: a border column named with '__' should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_reserved.log | grep -q "that start with '__'"
+then
+    echo "ERROR: a border column named with '__' was refused for another reason."
+    exit 1
+fi
+
+# One column cannot hold both the weights of slices and the border values.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights coverage \
+    --reaction-border-column coverage --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_weights.log 2>&1
+then
+    echo "ERROR: one column as both weights and border should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_weights.log | grep -q "can either color borders or hold"
+then
+    echo "ERROR: one column as both weights and border was refused for another reason."
+    exit 1
+fi
+
+# A border column leaves two other candidate value columns in this file.
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_three_columns.reaction.txt \
+    --reaction-border-column status --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_three_columns.log 2>&1
+then
+    echo "ERROR: a file with two value columns besides its border column should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_three_columns.log | grep -q "is ambiguous which to color elements by"
+then
+    echo "ERROR: a file with two value columns besides its border column failed for another reason."
+    exit 1
+fi
+
+# The values of a border column: none at all, 'NA' among numbers, more categorical values than
+# default colors, and repeated rows in a file whose only values are border values.
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_empty_border.reaction.txt \
+    --reaction-border-column status --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_empty.log 2>&1
+then
+    echo "ERROR: a border column without values should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_empty.log | grep -q "has no values"
+then
+    echo "ERROR: a border column without values was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_na_border.reaction.txt \
+    --reaction-border-column level --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_na.log 2>&1
+then
+    echo "ERROR: 'NA' in a column of numeric border values should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_na.log | grep -q "such as text or 'NA'"
+then
+    echo "ERROR: 'NA' in a column of numeric border values was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_border_class8.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_class8.log 2>&1
+then
+    echo "ERROR: more categorical border values than default colors should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_class8.log | grep -q "default colors for"
+then
+    echo "ERROR: more categorical border values than default colors failed for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_repeated_border_rows.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_repeated_rows.log 2>&1
+then
+    echo "ERROR: repeated rows of a file with only border values should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_repeated_rows.log | grep -q "only one border value"
+then
+    echo "ERROR: repeated rows of a file with only border values failed for another reason."
+    exit 1
+fi
+
+# Every other border option needs the border column of its layer.
+for border_option in "--reaction-border-value-type categorical" \
+                     "--reaction-border-value-colors draw-status-colors.txt" \
+                     "--reaction-border-value-period 24" \
+                     "--reaction-border-gene-aggregation mean" \
+                     "--reaction-border-accession-aggregation mean" \
+                     "--reaction-border-sample-summary mean" \
+                     "--reaction-border-group-summary mean" \
+                     "--reaction-border-colormap viridis" \
+                     "--reaction-border-individual-colormap viridis" \
+                     "--reaction-border-value-limits 0 1" \
+                     "--reaction-border-individual-value-limits 0 1" \
+                     "--reaction-border-value-center" \
+                     "--reaction-border-individual-value-center" \
+                     "--reaction-border-element-normalization z_score" \
+                     "--compound-border-sample-summary mean"
+do
+    if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+        $border_option --pathway-numbers $pathway_numbers \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_border_option_alone.log 2>&1
+    then
+        echo "ERROR: '$border_option' without a border column should have failed but did not."
+        exit 1
+    fi
+    if ! tr '\n' ' ' < draw_txt_border_option_alone.log | grep -q "no border column was named"
+    then
+        echo "ERROR: '$border_option' without a border column was refused for another reason."
+        exit 1
+    fi
+done
+
+# A border shows values only, so its summaries take no presence names.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-sample-summary count --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_presence_summary.log 2>&1
+then
+    echo "ERROR: a presence summary of a border should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_presence_summary.log | grep -q "A border shows values only"
+then
+    echo "ERROR: a presence summary of a border was refused for another reason."
+    exit 1
+fi
+
+# The colormap of a border colors numbers only.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-colormap viridis --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_categorical_colormap.log 2>&1
+then
+    echo "ERROR: a colormap of categorical border values should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_categorical_colormap.log \
+    | grep -q "colors numeric border values"
+then
+    echo "ERROR: a colormap of categorical border values was refused for another reason."
+    exit 1
+fi
+
+# A colors file needs categorical border values.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-value-type categorical --reaction-border-column coverage \
+    --reaction-border-value-colors draw-status-colors.txt --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_numeric_colors.log 2>&1
+then
+    echo "ERROR: colors for numeric border values should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_numeric_colors.log | grep -q "Give it to read the border column as categorical"
+then
+    echo "ERROR: colors for numeric border values were refused for another reason."
+    exit 1
+fi
+
+# The border value of a group comes from the border sample summary, so a group summary needs one.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-value-type categorical --reaction-border-column coverage \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0.5 \
+    --reaction-border-group-summary mean --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_group_summary.log 2>&1
+then
+    echo "ERROR: a border group summary without a border sample summary should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_group_summary.log | grep -q "which was not given"
+then
+    echo "ERROR: a border group summary without a border sample summary failed for another reason."
+    exit 1
+fi
+
+# The reference map's colors leave no colors for values, and they are drawn without rings.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt --original-color \
+    --reaction-border-column coverage --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_original.log 2>&1
+then
+    echo "ERROR: '--original-color' with a border column should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_original.log | grep -q "along with '--original-color'"
+then
+    echo "ERROR: '--original-color' with a border column was refused for another reason."
+    exit 1
+fi
+
+# A border that no drawn map can show. Reaction borders need a standard map, and compound borders a
+# standard or an overview map.
+for border_map in 01200 01100
+do
+    if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+        --reaction-border-column status --reaction-border-value-type categorical \
+        --reaction-border-sample-summary plurality_order --pathway-numbers $border_map \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_border_map_kind.log 2>&1
+    then
+        echo "ERROR: a reaction border drawn only on map $border_map should have failed."
+        exit 1
+    fi
+    if ! tr '\n' ' ' < draw_txt_border_map_kind.log | grep -q "This run draws no such map"
+    then
+        echo "ERROR: a reaction border drawn only on map $border_map failed for another reason."
+        exit 1
+    fi
+done
+
+if anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+    --compound-border-column concentration --compound-border-sample-summary mean \
+    --pathway-numbers 01100 \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_compound_border_map_kind.log 2>&1
+then
+    echo "ERROR: a compound border drawn only on map 01100 should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_compound_border_map_kind.log | grep -q "This run draws no such map"
+then
+    echo "ERROR: a compound border drawn only on map 01100 was refused for another reason."
+    exit 1
+fi
+
+# The options alone can leave the border off every map. Here the 'unified' map shows no border
+# without a border summary, and no map of a sample is drawn.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_no_map.log 2>&1
+then
+    echo "ERROR: a border that no map shows should have failed but did not."
+    exit 1
+fi
+
+# A database run has no text file and no border column.
+if anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db --reaction-border-column status \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_db_bad --overwrite-output-destinations \
+    --no-progress > draw_db_border.log 2>&1
+then
+    echo "ERROR: a border column on a database run should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_db_border.log \
+    | grep -q "These options were given: '--reaction-border-column'"
+then
+    echo "ERROR: a border column on a database run was refused for another reason."
+    exit 1
+fi
+
+# Messages from four places name the options of the border, not those of the fill: the builder of
+# a border model, the check of the maps that show a border, a guard of the command line looped over
+# the borders, and the check of a normalization. ConfigError breaks its lines after hyphens, so the
+# spaces and line breaks are deleted before the flags are matched.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-value-type categorical --reaction-border-column coverage \
+    --reaction-border-value-limits 0 1 --draw-individual-files \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_message_builder.log 2>&1
+then
+    echo "ERROR: limits on a 'unified' map that shows no border should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_border_message_builder.log \
+    | grep -q "since'--reaction-border-sample-summary'wasnotgiven"
+then
+    echo "ERROR: limits on a 'unified' map without a border named the wrong option."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_border_no_map.log \
+    | grep -q "'--reaction-border-sample-summary'wasnotgiven,sothe'unified'mapshowsnoborder"
+then
+    echo "ERROR: a border that no map shows named the wrong option."
+    exit 1
+fi
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-individual-value-limits 0 1 --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_message_guard.log 2>&1
+then
+    echo "ERROR: limits of categorical border values should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_border_message_guard.log \
+    | grep -q "('--reaction-border-value-typecategorical')"
+then
+    echo "ERROR: limits of categorical border values named the wrong option."
+    exit 1
+fi
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-value-type categorical --reaction-border-column coverage \
+    --reaction-border-element-normalization mean --draw-individual-files \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_message_normalization.log 2>&1
+then
+    echo "ERROR: a border normalization that reduces values should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_border_message_normalization.log \
+    | grep -q "belongsto'--reaction-border-sample-summary'instead"
+then
+    echo "ERROR: a border normalization that reduces values named the wrong option."
     exit 1
 fi
 
