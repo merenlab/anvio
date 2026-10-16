@@ -187,6 +187,17 @@ printf 'accession\tcoverage\tstatus\nK00844\t10\t"high\nK01810\t20\tlow\n' > dra
 printf 'accession\tgene_id\tcoverage\tlevel\nK00844\tgene_1\t10\t4\n' > draw_kos_border_no_fill.reaction.txt
 # K03850 is drawn as a line on the standard map 00510, and K00844 as a box on 00010.
 printf 'accession\tstatus\nK03850\tup\nK00844\tdown\n' > draw_kos_border_lines.reaction.txt
+# Twelve and eleven genes of K00844, which boxes 69 and 75 of map 00010 stand for, with border
+# values. A ring of 12 slices is over the cap of 11, and a fill of 11 slices inside a ring is over
+# the cap of 10.
+awk 'BEGIN {OFS = "\t"; print "accession", "gene_id", "coverage", "status"; split("up down same", s, " "); for (i = 1; i <= 12; i++) print "K00844", "gene_" i, i, s[i % 3 + 1]}' > draw_kos_genes12_status.reaction.txt
+awk 'NR <= 12' draw_kos_genes12_status.reaction.txt > draw_kos_genes11_status.reaction.txt
+# The mock of weights and border values without its value column, and without its weights too.
+cut -f 1-3,5,6 draw_kos_samples_weights_status.reaction.txt > draw_kos_samples_weights_border.reaction.txt
+cut -f 1-3,6 draw_kos_samples_weights_status.reaction.txt > draw_kos_samples_genes_border.reaction.txt
+# Weights of 0 with border values. K16306 of box 18 of map 00010 has no slice of the fill, but it
+# has a border value. Both KOs of box 154 have a weight of 0.
+printf 'accession\tcoverage\tweight\tstatus\nK00174\t1.5\t0\tup\nK00175\t3.0\t0\tdown\nK01624\t2.0\t3\tup\nK01622\t4.0\t1\tdown\nK16306\t6.0\t0\tsame\n' > draw_kos_weights_status.reaction.txt
 
 # A test that expects a refusal discards the output of the draw, so a fixture that was never written
 # would make that test pass for the wrong reason. Fail loudly here instead.
@@ -220,7 +231,9 @@ for fixture in contigs-db-group-information.txt draw_kos_samples300.reaction.txt
               draw_bad_empty_border.reaction.txt draw_bad_na_border.reaction.txt \
               draw_bad_repeated_border_rows.reaction.txt draw_kos_border_class8.reaction.txt \
               draw_kos_border_stray_quote.reaction.txt draw_kos_border_no_fill.reaction.txt \
-              draw_kos_border_lines.reaction.txt
+              draw_kos_border_lines.reaction.txt draw_kos_genes12_status.reaction.txt \
+              draw_kos_genes11_status.reaction.txt draw_kos_samples_weights_border.reaction.txt \
+              draw_kos_samples_genes_border.reaction.txt draw_kos_weights_status.reaction.txt
 do
     if [ ! -s $fixture ]
     then
@@ -3675,6 +3688,7 @@ for border_option in "--reaction-border-value-type categorical" \
                      "--reaction-border-value-center" \
                      "--reaction-border-individual-value-center" \
                      "--reaction-border-element-normalization z_score" \
+                     "--reaction-border-slice-by accession" \
                      "--compound-border-sample-summary mean"
 do
     if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
@@ -3891,6 +3905,363 @@ if ! tr -d ' \n' < draw_txt_border_message_normalization.log \
     | grep -q "belongsto'--reaction-border-sample-summary'instead"
 then
     echo "ERROR: a border normalization that reduces values named the wrong option."
+    exit 1
+fi
+
+# '--reaction-border-slice-by gene' divides each ring among the genes of its box. With
+# '--reaction-slice-by gene', the rings are aligned with the fill, so each slice of a ring is a
+# column of the fill. Its position, accession, gene, and share are those of the column.
+INFO "Testing rings sliced by gene and aligned with fills sliced by gene"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+    --reaction-sample-summary mean --reaction-slice-by gene --reaction-slice-weights coverage \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-sample-summary plurality_order --reaction-border-slice-by gene \
+    --output-dir draw_txt_border_slices_genes_aligned --pathway-numbers 00010 \
+    --draw-individual-files \
+    --no-progress
+if [ "$(awk -F'\t' 'FNR > 1 && $9 != ""' \
+    draw_txt_border_slices_genes_aligned/slice_key_reactions_border.txt | wc -l)" -eq 0 ]
+then
+    echo "ERROR: rings sliced by gene should have listed the genes of their slices."
+    exit 1
+fi
+if awk -F'\t' 'NR == FNR {fill[$1 FS $2 FS $3 FS $7 FS $8 FS $9 FS $11]; next}
+    FNR > 1 && !(($1 FS $2 FS $3 FS $7 FS $8 FS $9 FS $11) in fill) {bad++} END {exit !bad}' \
+    draw_txt_border_slices_genes_aligned/slice_key_reactions.txt \
+    draw_txt_border_slices_genes_aligned/slice_key_reactions_border.txt
+then
+    echo "ERROR: an aligned ring has a slice that no column of the fill has."
+    exit 1
+fi
+
+# A file without a value column colors its fills by presence. Its rings can still be sliced by
+# gene, each on its own.
+INFO "Testing rings sliced by gene in a file without a value column"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes_border.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-slice-by gene \
+    --output-dir draw_txt_border_slices_genes_no_fill --pathway-numbers 00010 \
+    --draw-individual-files \
+    --no-progress 2>&1 | tee draw_txt_border_slices_genes_no_fill.log
+if ! tr '\n' ' ' < draw_txt_border_slices_genes_no_fill.log \
+    | grep -q "by gene, independent of the fill"
+then
+    echo "ERROR: rings sliced by gene without a value column were not sliced on their own."
+    exit 1
+fi
+if [ "$(awk -F'\t' 'FNR > 1 && $9 != ""' \
+    draw_txt_border_slices_genes_no_fill/slice_key_reactions_border.txt | wc -l)" -eq 0 ]
+then
+    echo "ERROR: rings sliced by gene without a value column should have listed their genes."
+    exit 1
+fi
+
+# The weights size the slices of rings that are sliced on their own, so a file needs no value
+# column for them. 'pooled_sum' adds up the weights of the rows with a border value. On the
+# 'unified' map, K00174 weighs 96 and K00175 weighs 19 in box 154, so K00174 takes 96 / 115 of the
+# ring.
+INFO "Testing weights that size the slices of rings in a file without a value column"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_border.reaction.txt \
+    --reaction-slice-weights coverage --reaction-slice-share-summary pooled_sum \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-sample-summary plurality_order --reaction-border-slice-by accession \
+    --output-dir draw_txt_border_slices_weights --pathway-numbers 00010 \
+    --no-progress
+if [ "$(awk -F'\t' '$2 == "unified" && $3 == "154" && $8 == "K00174" {print $11}' \
+    draw_txt_border_slices_weights/slice_key_reactions_border.txt)" != "0.8347826086956521" ]
+then
+    echo "ERROR: the weights of the rows with border values did not size the slice of a ring."
+    exit 1
+fi
+
+# The weights of the genes of an accession are reduced where the rings are sliced by accession,
+# even where the fill is sliced by gene.
+INFO "Testing a weight aggregation for rings sliced by accession around fills sliced by gene"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+    --reaction-sample-summary mean --reaction-slice-by gene --reaction-slice-weights coverage \
+    --reaction-slice-weight-aggregation mean --reaction-border-column status \
+    --reaction-border-value-type categorical --reaction-border-sample-summary plurality_order \
+    --reaction-border-slice-by accession \
+    --output-dir draw_txt_border_slices_weight_aggregation --pathway-numbers 00010 \
+    --draw-individual-files \
+    --no-progress
+if [ ! -s draw_txt_border_slices_weight_aggregation/slice_key_reactions_border.txt ]
+then
+    echo "ERROR: rings sliced by accession around fills sliced by gene should have been drawn."
+    exit 1
+fi
+
+# The fill of a box inside an aligned ring holds up to 10 slices, so a fill of 11 genes is drawn
+# whole, and so is its ring. A ring sliced on its own holds up to 11 slices.
+INFO "Testing the caps of sliced rings"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_genes11_status.reaction.txt \
+    --reaction-slice-by gene --reaction-border-column status \
+    --reaction-border-value-type categorical --reaction-border-slice-by gene \
+    --output-dir draw_txt_border_slices_cap_aligned --pathway-numbers 00010 \
+    --no-progress
+if [ "$(awk -F'\t' '$13 == "over the cap"' \
+    draw_txt_border_slices_cap_aligned/slice_key_reactions_border.txt | wc -l)" -ne 22 ]
+then
+    echo "ERROR: aligned rings around fills over the cap were not drawn whole."
+    exit 1
+fi
+anvi-draw-kegg-pathways --reaction-txt draw_kos_genes11_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-slice-by gene \
+    --output-dir draw_txt_border_slices_cap_fits --pathway-numbers 00010 \
+    --no-progress
+if [ "$(awk -F'\t' '$7 == "11"' \
+    draw_txt_border_slices_cap_fits/slice_key_reactions_border.txt | wc -l)" -ne 2 ]
+then
+    echo "ERROR: rings of 11 slices sliced on their own should have been drawn in slices."
+    exit 1
+fi
+anvi-draw-kegg-pathways --reaction-txt draw_kos_genes12_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-slice-by gene \
+    --output-dir draw_txt_border_slices_cap_over --pathway-numbers 00010 \
+    --no-progress 2>&1 | tee draw_txt_border_slices_cap_over.log
+if ! tr '\n' ' ' < draw_txt_border_slices_cap_over.log | grep -q "have had more than 11 slices"
+then
+    echo "ERROR: rings of 12 slices were not reported as drawn whole."
+    exit 1
+fi
+
+# The 'unified' map shows presence in its fills here, so its fills are not sliced. Its aligned
+# rings are drawn whole, while the rings of the maps of the samples are sliced with the fills.
+INFO "Testing whole rings around fills that are not sliced"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights coverage \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-sample-summary plurality_order --reaction-border-slice-by accession \
+    --output-dir draw_txt_border_slices_not_sliced --pathway-numbers 00010 \
+    --draw-individual-files \
+    --no-progress
+if [ "$(awk -F'\t' '$2 == "unified" && $13 != "fill not sliced"' \
+    draw_txt_border_slices_not_sliced/slice_key_reactions_border.txt | wc -l)" -ne 0 ]
+then
+    echo "ERROR: the rings of a 'unified' map whose fills are not sliced were not drawn whole."
+    exit 1
+fi
+if [ "$(awk -F'\t' '$2 == "SAMPLE_1" && $7 == "2"' \
+    draw_txt_border_slices_not_sliced/slice_key_reactions_border.txt | wc -l)" -eq 0 ]
+then
+    echo "ERROR: the rings of the map of a sample should have been sliced with the fills."
+    exit 1
+fi
+
+# Weights of 0 leave out slices. An aligned ring cannot show a border value whose accession has
+# no slice of the fill, and a ring all of whose slices weigh 0 is not drawn.
+INFO "Testing border values that no column shows, and rings left out by weights of 0"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_weights_status.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights weight \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-slice-by accession \
+    --output-dir draw_txt_border_slices_zero_aligned --pathway-numbers 00010 \
+    --no-progress 2>&1 | tee draw_txt_border_slices_zero_aligned.log
+for phrase in "so no band shows their border values" "every slice of the fill had a weight"
+do
+    if ! tr '\n' ' ' < draw_txt_border_slices_zero_aligned.log | grep -q "$phrase"
+    then
+        echo "ERROR: the warning that contains '$phrase' was not given."
+        exit 1
+    fi
+done
+anvi-draw-kegg-pathways --reaction-txt draw_kos_weights_status.reaction.txt \
+    --reaction-slice-weights weight --reaction-border-column status \
+    --reaction-border-value-type categorical --reaction-border-slice-by accession \
+    --output-dir draw_txt_border_slices_zero_independent --pathway-numbers 00010 \
+    --no-progress 2>&1 | tee draw_txt_border_slices_zero_independent.log
+if ! tr '\n' ' ' < draw_txt_border_slices_zero_independent.log \
+    | grep -q "every accession with a border value"
+then
+    echo "ERROR: a ring all of whose slices weigh 0 was not reported."
+    exit 1
+fi
+
+INFO "Testing that sliced rings are refused where they cannot apply"
+# Rings sliced by gene need a 'gene_id' column.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-slice-by gene --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_slices_no_genes.log 2>&1
+then
+    echo "ERROR: rings sliced by gene without a 'gene_id' column should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_slices_no_genes.log \
+    | grep -q "has no 'gene_id' column naming genes"
+then
+    echo "ERROR: rings sliced by gene without a 'gene_id' column were refused for another reason."
+    exit 1
+fi
+
+# Each gene is a slice of its own, so no border values of genes are reduced to an accession.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes_border.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-gene-aggregation plurality_order --reaction-border-slice-by gene \
+    --draw-individual-files --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_slices_gene_aggregation.log 2>&1
+then
+    echo "ERROR: a border gene aggregation for rings sliced by gene should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_slices_gene_aggregation.log \
+    | grep -q "so no border values of genes are reduced"
+then
+    echo "ERROR: a border gene aggregation for rings sliced by gene was refused for another reason."
+    exit 1
+fi
+
+# Each slice of a ring sliced by accession shows the border value of one accession.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-value-type categorical --reaction-border-column coverage \
+    --reaction-border-sample-summary mean --reaction-border-accession-aggregation max \
+    --reaction-border-slice-by accession --draw-individual-files \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_slices_accession_aggregation.log 2>&1
+then
+    echo "ERROR: a border accession aggregation for rings sliced by accession did not fail."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_slices_accession_aggregation.log \
+    | grep -q "each slice of a ring shows the border value of one accession"
+then
+    echo "ERROR: a border accession aggregation for rings sliced by accession failed otherwise."
+    exit 1
+fi
+
+# The slices of rings cannot be normalized yet.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-value-type categorical --reaction-border-column coverage \
+    --reaction-border-element-normalization z_score --reaction-border-slice-by accession \
+    --draw-individual-files --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_slices_normalization.log 2>&1
+then
+    echo "ERROR: a border normalization with sliced rings should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_slices_normalization.log \
+    | grep -q "Rescaling each slice of a ring on its own"
+then
+    echo "ERROR: a border normalization with sliced rings was refused for another reason."
+    exit 1
+fi
+
+# A gene with one row shows the border value of that row, so an aggregation of the rows of a gene
+# must return a single value unchanged. The mapper refuses 'std'.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-value-type categorical --reaction-border-column coverage \
+    --reaction-border-sample-summary mean --reaction-border-accession-aggregation std \
+    --reaction-border-slice-by gene --draw-individual-files \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_slices_genes_std.log 2>&1
+then
+    echo "ERROR: rings sliced by gene with 'std' over a gene's rows should have failed but did not."
+    exit 1
+fi
+
+# A reaction border slices the rings of boxes, which only standard maps draw.
+for pathway_number in 01200 01100
+do
+    if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes_border.reaction.txt \
+        --reaction-border-column status --reaction-border-value-type categorical \
+        --reaction-border-slice-by accession --draw-individual-files \
+        --pathway-numbers $pathway_number \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_border_slices_map_kind.log 2>&1
+    then
+        echo "ERROR: rings sliced on map $pathway_number alone should have failed but did not."
+        exit 1
+    fi
+    if ! tr '\n' ' ' < draw_txt_border_slices_map_kind.log | grep -q "This run draws no such map"
+    then
+        echo "ERROR: rings sliced on map $pathway_number alone were refused for another reason."
+        exit 1
+    fi
+done
+
+# The weights size the slices of elements or of rings, so they need one kind of slicing.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+    --reaction-slice-weights coverage --reaction-border-column status \
+    --reaction-border-value-type categorical --draw-individual-files \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_slices_weights_neither.log 2>&1
+then
+    echo "ERROR: weights with neither kind of slicing should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_slices_weights_neither.log \
+    | grep -q "so no element or ring is sliced"
+then
+    echo "ERROR: weights with neither kind of slicing were refused for another reason."
+    exit 1
+fi
+
+# The weights of the genes of an accession are reduced only where something is sliced by accession.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+    --reaction-slice-by gene --reaction-slice-weights coverage \
+    --reaction-slice-weight-aggregation mean --reaction-border-column status \
+    --reaction-border-value-type categorical --reaction-border-slice-by gene \
+    --draw-individual-files --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_slices_weight_aggregation_genes.log 2>&1
+then
+    echo "ERROR: a weight aggregation with all slices by gene should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_slices_weight_aggregation_genes.log \
+    | grep -q "so no weights are reduced to an"
+then
+    echo "ERROR: a weight aggregation with all slices by gene was refused for another reason."
+    exit 1
+fi
+
+# A summary of shares needs a drawn map that pools samples and shows slices. Here the rings show no
+# border on the 'unified' map, and no map of a group is drawn.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+    --reaction-slice-weights coverage --reaction-slice-share-summary pooled_sum \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-slice-by accession --draw-individual-files \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_slices_share_summary.log 2>&1
+then
+    echo "ERROR: a summary of shares with no map that pools slices should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_slices_share_summary.log \
+    | grep -q "slices of elements or of rings"
+then
+    echo "ERROR: a summary of shares with no map that pools slices was refused for another reason."
+    exit 1
+fi
+
+# Messages of the command line and of the mapper name the options of the border where rings are
+# sliced. ConfigError breaks its lines after hyphens, so the spaces and line breaks are deleted
+# before the flags are matched.
+if ! tr -d ' \n' < draw_txt_border_slices_accession_aggregation.log \
+    | grep -q "With'--reaction-border-slice-byaccession',eachsliceofaring"
+then
+    echo "ERROR: a border accession aggregation for sliced rings named the wrong option."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_border_slices_genes_std.log \
+    | grep -q "With'--reaction-border-slice-bygene',itreducestherows"
+then
+    echo "ERROR: 'std' over the rows of a gene in a ring named the wrong option."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_border_slices_weight_aggregation_genes.log \
+    | grep -q "With'--reaction-slice-bygene'and'--reaction-border-slice-bygene',eachgene"
+then
+    echo "ERROR: a weight aggregation with everything sliced by gene named the wrong options."
     exit 1
 fi
 

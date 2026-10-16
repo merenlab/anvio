@@ -50,7 +50,7 @@ from anvio.keggmapping import (
     DEFAULT_BORDER_COLORMAP_LIMITS, DEFAULT_BORDER_VALUE_COLORS, DEFAULT_CATEGORICAL_SEED,
     DEFAULT_CENTERED_COLORMAP, DEFAULT_GROUP_TINT_SPAN, DEFAULT_VALUE_COLORS,
     ELEMENT_NORMALIZATION_PHRASE, GROUP_COLORMAP_TINT, GROUP_SCHEME_OPTIONS,
-    MAX_DISCRETE_COUNT_BANDS, MIN_ANGULAR_DEVIATION_VALUES, MIN_BOX_SLICE_WIDTH,
+    MAX_DISCRETE_COUNT_BANDS, MAX_RING_SLICES, MIN_ANGULAR_DEVIATION_VALUES, MIN_BOX_SLICE_WIDTH,
     SLICE_SHARE_SUMMARIES, SLICE_UNITS, SLICE_WEIGHT_AGGREGATIONS, SUMMARY_PRESENCE_PHRASE,
     SUMMARY_PRESENCE_SCHEMES, VALUE_TYPES, Mapper
 )
@@ -106,7 +106,8 @@ VALUE_MODES = ('quantitative', 'categorical')
 
 # The options of the border of each layer, in the order of the help. Every one but the border column
 # needs the border column ('--reaction-border-column', '--compound-border-column'). A compound file
-# has no genes, so the compound border has no gene aggregation.
+# has no genes, so the compound border has no gene aggregation. Compound circles are never sliced,
+# so it has no slicing either.
 BORDER_FLAGS = {
     'reaction': (
         '--reaction-border-column', '--reaction-border-value-type',
@@ -116,7 +117,8 @@ BORDER_FLAGS = {
         '--reaction-border-group-summary', '--reaction-border-colormap',
         '--reaction-border-individual-colormap', '--reaction-border-value-limits',
         '--reaction-border-individual-value-limits', '--reaction-border-value-center',
-        '--reaction-border-individual-value-center', '--reaction-border-element-normalization'
+        '--reaction-border-individual-value-center', '--reaction-border-element-normalization',
+        '--reaction-border-slice-by'
     ),
     'compound': (
         '--compound-border-column', '--compound-border-value-type',
@@ -151,15 +153,15 @@ def get_args() -> Namespace:
         "must have an 'accession' column whose values are ALL KO IDs ('K' followed by digits) or "
         "ALL KEGG reaction IDs ('R' followed by digits): the two cannot be mixed in one file. An "
         "optional 'gene_id' column names the gene that a row comes from. Gene IDs affect coloring "
-        "only with '--reaction-slice-by gene', which draws each gene as a slice. Otherwise, the "
-        "values of the genes of an accession are reduced to one value "
-        "('--reaction-gene-aggregation'). An optional 'sample' column assigns each row to a sample "
-        "of origin, enabling comparison across samples (and, with '--groups-txt', groups of "
-        "samples) as when using multiple contigs databases. The single column that is not "
-        "'accession', 'gene_id', 'sample', a column of weights ('--reaction-slice-weights'), or a "
-        "border column ('--reaction-border-column') is auto-detected as the value column. With it, "
-        "reactions are colored by value, and without it, by presence. Its values are numbers, or "
-        "categorical values with '--reaction-value-type categorical'."
+        "only with '--reaction-slice-by gene' or '--reaction-border-slice-by gene', which draw "
+        "each gene as a slice. Otherwise, the values of the genes of an accession are reduced to "
+        "one value ('--reaction-gene-aggregation'). An optional 'sample' column assigns each row "
+        "to a sample of origin, enabling comparison across samples (and, with '--groups-txt', "
+        "groups of samples) as when using multiple contigs databases. The single column that is "
+        "not 'accession', 'gene_id', 'sample', a column of weights ('--reaction-slice-weights'), "
+        "or a border column ('--reaction-border-column') is auto-detected as the value column. "
+        "With it, reactions are colored by value, and without it, by presence. Its values are "
+        "numbers, or categorical values with '--reaction-value-type categorical'."
     )
     groupTXT.add_argument(
         '--compound-txt', type=str, metavar='FILE', help=
@@ -327,8 +329,9 @@ def get_args() -> Namespace:
         f"names the gene IDs that have no accession in common between their rows in two samples of "
         f"a map that pools samples. Such an ID likely names two genes. Another warning names the "
         f"maps that pool samples where no gene ID occurs in two or more samples. Each gene is a "
-        f"slice of its own, so '--reaction-gene-aggregation' and "
-        f"'--reaction-slice-weight-aggregation' are refused. A box is cut into columns from left "
+        f"slice of its own, so '--reaction-gene-aggregation' is refused. "
+        f"'--reaction-slice-weight-aggregation' is refused too, unless the rings of a border are "
+        f"sliced by accession ('--reaction-border-slice-by'). A box is cut into columns from left "
         f"to right, and a line into repeating dashes. The dashes fill the part of the line that "
         f"compound circles leave visible. The slices of an element are equal unless "
         f"'--reaction-slice-weights' names a column of weights. A box is drawn whole where an "
@@ -347,26 +350,29 @@ def get_args() -> Namespace:
     groupTXT.add_argument(
         '--reaction-slice-weights', metavar='COLUMN', help=
         "The column of the reaction file that holds the weights of slices ('--reaction-slice-by'). "
-        "Without this option, the slices of an element are equal. This column is never taken for "
-        "the value column. Every row needs a weight, which is a number of 0 or more. Where a map "
-        "shows one sample, or the file has no 'sample' column, the share of a slice is its weight "
-        "divided by the total weight of the slices drawn. An accession or gene with a weight of 0 "
-        "gets no slice. When slicing by accession with a 'gene_id' column, the weights of the "
-        "genes of an accession are added up ('--reaction-slice-weight-aggregation'). When slicing "
-        "by gene, a gene takes the mean weight of its rows for the accessions of an element, so a "
-        "gene with two KOs does not take twice the space. Group maps and the 'unified' map pool "
-        "the shares of their samples ('--reaction-slice-share-summary'). The width of a slice in a "
-        "box, or its length on a line, shows its share of the element, not its weight. The weights "
-        "do not change the colors of slices."
+        "The weights also size the slices of rings that are divided on their own "
+        "('--reaction-border-slice-by'). This option needs '--reaction-slice-by' or "
+        "'--reaction-border-slice-by'. Without this option, the slices of an element are equal. "
+        "This column is never taken for the value column. Every row needs a weight, which is a "
+        "number of 0 or more. Where a map shows one sample, or the file has no 'sample' column, "
+        "the share of a slice is its weight divided by the total weight of the slices drawn. An "
+        "accession or gene with a weight of 0 gets no slice. When slicing by accession with a "
+        "'gene_id' column, the weights of the genes of an accession are added up "
+        "('--reaction-slice-weight-aggregation'). When slicing by gene, a gene takes the mean "
+        "weight of its rows for the accessions of an element, so a gene with two KOs does not take "
+        "twice the space. Group maps and the 'unified' map pool the shares of their samples "
+        "('--reaction-slice-share-summary'). The width of a slice in a box, or its length on a "
+        "line, shows its share of the element, not its weight. The weights do not change the "
+        "colors of slices."
     )
     groupTXT.add_argument(
         '--reaction-slice-weight-aggregation', choices=list(SLICE_WEIGHT_AGGREGATIONS), help=
         "How to reduce the weights of the genes annotated with one accession to the weight of that "
-        "accession. This needs '--reaction-slice-by accession', '--reaction-slice-weights', and a "
-        "'gene_id' column. 'sum', the default, suits amounts that add up over genes, such as "
-        "counts and coverage. 'mean' suits rates and scores of single genes. With 'mean', a KO "
-        "with ten genes takes the same share as a KO with one gene, if all of their genes have the "
-        "same weight."
+        "accession. This needs '--reaction-slice-weights', a 'gene_id' column, and "
+        "'--reaction-slice-by accession' or '--reaction-border-slice-by accession'. 'sum', the "
+        "default, suits amounts that add up over genes, such as counts and coverage. 'mean' suits "
+        "rates and scores of single genes. With 'mean', a KO with ten genes takes the same share "
+        "as a KO with one gene, if all of their genes have the same weight."
     )
     groupTXT.add_argument(
         '--reaction-slice-share-summary', choices=list(SLICE_SHARE_SUMMARIES), help=
@@ -379,7 +385,8 @@ def get_args() -> Namespace:
         "each accession over the samples and divides each sum by the total over the accessions of "
         "the element. A sample with more weight counts for more, so use it where the weights are "
         "in the same units in every sample, such as counts at comparable sequencing depth. Slices "
-        "of genes are pooled by the same rules, with genes in place of accessions. With "
+        "of genes are pooled by the same rules, with genes in place of accessions, and so are the "
+        "slices of rings that are divided on their own ('--reaction-border-slice-by'). With "
         "'--groups-txt', the map of each group pools its samples, and the 'unified' map pools the "
         "groups by the same rule. Under 'share_mean', each group counts once. This option needs "
         "'--reaction-slice-weights', since slices without weights are equal on every map."
@@ -392,8 +399,8 @@ def get_args() -> Namespace:
         "a compound circle on standard and overview maps. A thin black line separates the ring "
         "from the fill. The value column still colors the fills. Global maps draw no rings, and "
         "neither do reaction lines. Each border option is like the option of the fill whose name "
-        "lacks 'border-', but applies to the border column. A ring is whole, so the options that "
-        "slice the fill ('--reaction-slice-by') do not change the border."
+        "lacks 'border-', but applies to the border column. A ring is whole unless "
+        "'--reaction-border-slice-by' divides it among the accessions or genes of its box."
     )
     groupBORDER.add_argument(
         '--reaction-border-column', metavar='COLUMN', help=
@@ -404,8 +411,10 @@ def get_args() -> Namespace:
         "cell empty, and then it has no border value. A file with a border column is read as text, "
         "so 'NA' in any column is a name. Every other '--reaction-border-*' option needs this one. "
         "The borders take keys of their own, such as 'colorbar_reactions_border.pdf', whose labels "
-        "end in ' (border)'. Reaction lines show no border, and a warning counts the elements with "
-        "border values that standard maps draw as lines."
+        "end in ' (border)'. With '--reaction-border-slice-by', the file "
+        "'slice_key_reactions_border.txt' lists the slices of rings. Reaction lines show no "
+        "border, and a warning counts the elements with border values that standard maps draw as "
+        "lines."
     )
     groupBORDER.add_argument(
         '--compound-border-column', metavar='COLUMN', help=
@@ -449,14 +458,18 @@ def get_args() -> Namespace:
         '--reaction-border-gene-aggregation', metavar='NAME', help=
         "Like '--reaction-gene-aggregation', but for the border column. The default is 'mean', not "
         "'sum'. A border value given once per KO and repeated in the rows of its genes keeps its "
-        "size under 'mean'. The ring is whole, so this option applies with '--reaction-slice-by' "
-        "too."
+        "size under 'mean'. It applies whether or not the fill is sliced. With "
+        "'--reaction-border-slice-by gene', each gene is a slice of its own, so this option is "
+        "refused."
     )
     groupBORDER.add_argument(
         '--reaction-border-accession-aggregation', metavar='NAME', help=
         "Like '--reaction-accession-aggregation', but for the border column. The default is "
-        "'mean', not 'sum'. The ring is whole, so this option applies with '--reaction-slice-by' "
-        "too."
+        "'mean', not 'sum'. It applies whether or not the fill is sliced. With "
+        "'--reaction-border-slice-by', it acts on the slices of rings as "
+        "'--reaction-accession-aggregation' acts on the slices of fills. It is refused for numbers "
+        "sliced by accession. With 'gene', it reduces the rows of a gene for the accessions of an "
+        "element, and a name that does not return a single value unchanged is refused."
     )
     groupBORDER.add_argument(
         '--compound-border-accession-aggregation', metavar='NAME', help=
@@ -546,11 +559,37 @@ def get_args() -> Namespace:
         f"Like '--reaction-element-normalization', but for the border column. A normalization "
         f"centered on zero colors the border scale of the individual maps with "
         f"'{DEFAULT_CENTERED_COLORMAP}', as it does for the fill. A label given after the "
-        f"normalization is used as given, without ' (border)'."
+        f"normalization is used as given, without ' (border)'. Slices of rings cannot be "
+        f"normalized yet, so this option is refused with '--reaction-border-slice-by'."
     )
     groupBORDER.add_argument(
         '--compound-border-element-normalization', nargs='+', metavar='NAME', help=
         "Like '--reaction-border-element-normalization', but for the compound layer."
+    )
+    groupBORDER.add_argument(
+        '--reaction-border-slice-by', choices=list(SLICE_UNITS), help=
+        f"Divide the ring of each box among the accessions or genes of the box that have border "
+        f"values, as '--reaction-slice-by' divides the fill. Where '--reaction-slice-by' names the "
+        f"same unit, the rings are aligned with the slices of the fill. Each column of the fill "
+        f"then takes the border value of its own accession or gene, as bands above and below it. "
+        f"The first and last columns also take the left and right ends of the ring. A column "
+        f"without a border value takes no bands. A box whose fill is drawn whole takes a whole "
+        f"ring, in the border value of its one slice or in the color of a stand-in value. Where "
+        f"'--reaction-slice-by' is not given or names the other unit, each ring is divided on its "
+        f"own, whatever its fill shows, into one slice for each accession or gene, clockwise from "
+        f"the top left corner. Thin gray lines separate the slices. The slices are equal, or sized "
+        f"by '--reaction-slice-weights' from the rows that have a border value. Ring slices and "
+        f"fill slices are then separate, even where a slice of the ring lies next to a column of "
+        f"the fill. A ring holds at most {MAX_RING_SLICES} slices. A ring with more is drawn whole "
+        f"in the color of a stand-in value. A stand-in value is the mean of the slice values, "
+        f"weighted by their shares, as for a fill drawn whole. With "
+        f"'--reaction-border-value-period', it is a circular mean, and for categorical border "
+        f"values, '--reaction-border-accession-aggregation' chooses it. With 'gene', the file "
+        f"needs a 'gene_id' column with an ID in every row, even where it has no value column. "
+        f"Only boxes on standard maps take rings, and compound circles are never sliced. Rings "
+        f"with many slices are hard to read, so this suits boxes with a few accessions or genes. "
+        f"The file 'slice_key_reactions_border.txt' in the output directory lists each slice of "
+        f"each ring on each map, and each ring drawn whole."
     )
 
     groupJSON = parser.add_argument_group(
@@ -1613,9 +1652,10 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
     # definitive file error rather than a guard reporting a misleading secondary problem.
     if not any(layer['mode'] is None for layer in present):
         # Slicing draws reaction elements in slices, so every slicing option needs the reaction
-        # file. The options that size slices also need '--reaction-slice-by'. A column of weights is
-        # left out when the value column is detected. Its checks come first, so that a mistake in
-        # naming it is not reported as a missing value column.
+        # file. The options that size slices also need '--reaction-slice-by', or rings sliced on
+        # their own ('--reaction-border-slice-by'). A column of weights is left out when the value
+        # column is detected. Its checks come first, so that a mistake in naming it is not reported
+        # as a missing value column.
         for setting, flag, does in (
             (args.reaction_slice_by, '--reaction-slice-by',
              "draws each accession or gene of a reaction element as a slice"),
@@ -1632,16 +1672,23 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 raise ConfigError(
                     f"'{flag}' {does}, but no reaction file ('--reaction-txt') was provided."
                 )
-            if args.reaction_slice_by is None:
+            if args.reaction_slice_by is None and args.reaction_border_slice_by is None:
                 # Weights of genes are reduced to an accession only when slicing by accession.
                 units = (
                     "'--reaction-slice-by accession'"
                     if args.reaction_slice_weight_aggregation is not None
                     else "'--reaction-slice-by accession' or '--reaction-slice-by gene'"
                 )
+                if args.reaction_border_column is None:
+                    raise ConfigError(
+                        f"'{flag}' {does}. '--reaction-slice-by' was not given, so no element is "
+                        f"sliced. To slice elements, give {units}. Otherwise, drop '{flag}'."
+                    )
                 raise ConfigError(
-                    f"'{flag}' {does}. '--reaction-slice-by' was not given, so no element is "
-                    f"sliced. To slice elements, give {units}. Otherwise, drop '{flag}'."
+                    f"'{flag}' {does}. Neither '--reaction-slice-by' nor "
+                    f"'--reaction-border-slice-by' was given, so no element or ring is sliced. To "
+                    f"slice elements, give {units}. To slice the rings of the border column, give "
+                    f"{units.replace('-slice-by', '-border-slice-by')}. Otherwise, drop '{flag}'."
                 )
         # Slices by gene need the genes of a 'gene_id' column. A file without a value column skips
         # this check, so that the refusal of slices of presence below comes first.
@@ -1676,28 +1723,45 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"'--reaction-slice-weights' names the column '{weight_column}' as the weights "
                     f"of slices, but the reaction file has no column with that header."
                 )
-            if reaction['mode'] not in VALUE_MODES:
+            # Weights can size the slices of rings without a value column. The border column then
+            # colors them.
+            sliced_rings = reaction['has_border'] and args.reaction_border_slice_by is not None
+            if reaction['mode'] not in VALUE_MODES and not sliced_rings:
                 key_columns = "'accession', 'gene_id', and 'sample'"
+                remedy = "Add a value column, or drop '--reaction-slice-weights'"
                 if reaction['has_border']:
                     key_columns = (
                         f"'accession', 'gene_id', 'sample', and the border column "
                         f"'{args.reaction_border_column}'"
                     )
+                    remedy = (
+                        "Add a value column, slice only the rings of the border column with "
+                        "'--reaction-border-slice-by' in place of '--reaction-slice-by', or drop "
+                        "'--reaction-slice-weights'"
+                    )
                 raise ConfigError(
                     f"'--reaction-slice-weights' names the column '{weight_column}' as the weights "
                     f"of slices. It is the only column of the reaction file besides {key_columns}, "
                     f"so it would otherwise be the value column. Slices need a value column for "
-                    f"their colors and a separate column for their weights. Add a value column, or "
-                    f"drop '--reaction-slice-weights' to color equal slices by '{weight_column}'."
+                    f"their colors and a separate column for their weights. {remedy} to color "
+                    f"equal slices by '{weight_column}'."
                 )
         if args.reaction_slice_weight_aggregation is not None:
-            if args.reaction_slice_by == 'gene':
+            # The weights of genes are reduced where the elements or the rings are sliced by
+            # accession.
+            by_gene = [
+                f"'{flag} gene'" for flag, unit in (
+                    ('--reaction-slice-by', args.reaction_slice_by),
+                    ('--reaction-border-slice-by', args.reaction_border_slice_by)
+                ) if unit == 'gene'
+            ]
+            if 'accession' not in (args.reaction_slice_by, args.reaction_border_slice_by):
                 raise ConfigError(
-                    "'--reaction-slice-weight-aggregation' reduces the weights of the genes of an "
-                    "accession to one weight. With '--reaction-slice-by gene', each gene is a "
-                    "slice of its own, so no weights are reduced to an accession. A gene with rows "
-                    "for two or more accessions of an element takes the mean weight of these rows. "
-                    "Please drop '--reaction-slice-weight-aggregation'."
+                    f"'--reaction-slice-weight-aggregation' reduces the weights of the genes of an "
+                    f"accession to one weight. With {' and '.join(by_gene)}, each gene is a slice "
+                    f"of its own, so no weights are reduced to an accession. A gene with rows for "
+                    f"two or more accessions of an element takes the mean weight of these rows. "
+                    f"Please drop '--reaction-slice-weight-aggregation'."
                 )
             if weight_column is None:
                 raise ConfigError(
@@ -1760,6 +1824,51 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"{element_type} file has no column with that header."
                 )
 
+        # Rings sliced by gene need the genes of a 'gene_id' column. As for the slices of the fill,
+        # the border gene aggregation is refused under slicing by gene, the border accession
+        # aggregation is refused for numbers under slicing by accession, and the border
+        # normalization is refused with either kind. The mapper repeats these checks for
+        # programmatic callers.
+        if args.reaction_border_slice_by == 'gene' and not reaction['has_gene_id']:
+            raise ConfigError(
+                "'--reaction-border-slice-by gene' draws each gene of a box as a slice of its "
+                "ring, but the reaction file has no 'gene_id' column naming genes. Add a 'gene_id' "
+                "column, or give '--reaction-border-slice-by accession' to slice rings by their "
+                "accessions."
+            )
+        if (
+            args.reaction_border_slice_by == 'gene'
+            and args.reaction_border_gene_aggregation is not None
+        ):
+            raise ConfigError(
+                "'--reaction-border-gene-aggregation' reduces the border values of the genes "
+                "annotated with one accession to one value. With '--reaction-border-slice-by "
+                "gene', each gene is a slice of its own, so no border values of genes are reduced "
+                "to an accession. Please drop '--reaction-border-gene-aggregation', or give "
+                "'--reaction-border-slice-by accession' to slice rings by their accessions."
+            )
+        if (
+            args.reaction_border_slice_by == 'accession'
+            and args.reaction_border_accession_aggregation is not None
+            and reaction['border_mode'] == 'quantitative'
+        ):
+            raise ConfigError(
+                "'--reaction-border-accession-aggregation' reduces the border values of the "
+                "accessions of a map element to one value. With '--reaction-border-slice-by "
+                "accession', each slice of a ring shows the border value of one accession. A ring "
+                "drawn whole takes the mean of its slice values, weighted by their shares, in "
+                "place of this reduction. Please drop '--reaction-border-accession-aggregation'."
+            )
+        if (
+            args.reaction_border_slice_by is not None
+            and args.reaction_border_element_normalization is not None
+        ):
+            raise ConfigError(
+                "'--reaction-border-slice-by' cannot be combined with "
+                "'--reaction-border-element-normalization' yet. Rescaling each slice of a ring on "
+                "its own is not supported. Please use only one."
+            )
+
         def _arg(stem: str, name: str):
             # The value of the option '--{stem}-{name}', where 'stem' is a layer, such as
             # 'reaction', or the border of a layer, such as 'reaction-border'.
@@ -1778,6 +1887,11 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
             if layer is None or not layer['has_border']:
                 return ""
             column = getattr(args, f'{element_type}_border_column')
+            # Where the rings are sliced already, only the slicing of the fill is in the way.
+            if flag == f'--{element_type}-slice-by' and getattr(
+                args, f'{element_type}_border_slice_by', None
+            ) is not None:
+                return f" To slice only the rings of the border column '{column}', drop '{flag}'."
             border_flag = flag.replace(f'--{element_type}-', f'--{element_type}-border-', 1)
             if border_flag in BORDER_FLAGS[element_type]:
                 return f" The border column '{column}' has an option of its own, '{border_flag}'."
@@ -2571,6 +2685,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         # With one, the map of each sample shows them. The map of a group and the 'unified' map show
         # them only where their summary pools values or chooses a value with a rule. Maps that show
         # presence are drawn whole. The mapper repeats these checks for programmatic callers.
+        fill_pooled = False
         if args.reaction_slice_by is not None:
             if reaction['mode'] not in VALUE_MODES:
                 raise ConfigError(
@@ -2673,8 +2788,62 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
             # The map of one sample, and the one map of a file without samples, take their shares
             # from the weights directly. In a grouped run every map pools samples, so the check
             # above already found one that shows values.
-            pooled_values = (grouped and individual_values) or (has_sample and unified_values)
-            if args.reaction_slice_share_summary is not None and not pooled_values:
+            fill_pooled = (grouped and individual_values) or (has_sample and unified_values)
+
+        # Rings sliced on their own pool their shares by the same rules, on the maps that show
+        # border values. Rings aligned with the fill take the shares of the fill. A summary of
+        # shares needs a drawn map that pools samples and shows slices of either kind.
+        if args.reaction_slice_share_summary is not None:
+            has_sample = reaction['has_sample']
+            grouped = has_sample and args.groups_txt is not None
+            independent = (
+                reaction['has_border'] and args.reaction_border_slice_by is not None
+                and args.reaction_border_slice_by != args.reaction_slice_by
+            )
+            border_unified_summary = (
+                args.reaction_border_group_summary if grouped
+                else args.reaction_border_sample_summary
+            )
+            ring_pooled = independent and has_sample and (
+                (
+                    grouped and draw_individual_maps
+                    and args.reaction_border_sample_summary is not None
+                )
+                or (not args.skip_unified_maps and border_unified_summary is not None)
+            )
+            if independent and not (ring_pooled or fill_pooled):
+                alternative = "Please drop '--reaction-slice-share-summary'."
+                if not has_sample:
+                    reason = (
+                        "The reaction file has no 'sample' column, so no map pools samples. Each "
+                        "map takes its shares from the weights in the file."
+                    )
+                elif not grouped and args.skip_unified_maps:
+                    reason = (
+                        "Without groups, only the 'unified' map pools the samples, and "
+                        "'--skip-unified-maps' draws no 'unified' map. The map of each sample "
+                        "takes its shares from the weights of that sample."
+                    )
+                else:
+                    reason = (
+                        "The fill shows slices on such a map only where '--reaction-slice-by' is "
+                        "given and the summary of that map pools values or chooses them with a "
+                        "rule. The rings show slices on such a map only where it is drawn and a "
+                        "border summary gives its border values. The maps of groups take them from "
+                        "'--reaction-border-sample-summary', and the 'unified' map from "
+                        "'--reaction-border-group-summary' with groups, or from "
+                        "'--reaction-border-sample-summary' without them."
+                    )
+                    alternative = (
+                        "Please drop '--reaction-slice-share-summary', or show slices on such a "
+                        "map."
+                    )
+                raise ConfigError(
+                    f"'--reaction-slice-share-summary' says how the maps of groups and the "
+                    f"'unified' map pool the shares of slices across samples. Here no such map is "
+                    f"drawn with slices of elements or of rings. {reason} {alternative}"
+                )
+            if not independent and not fill_pooled:
                 if not has_sample:
                     reason = (
                         "The reaction file has no 'sample' column, so no map pools samples. Each "
@@ -2854,9 +3023,9 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         for option in (
             'column', 'value_type', 'value_colors', 'value_period', 'gene_aggregation',
             'accession_aggregation', 'sample_summary', 'group_summary', 'value_center',
-            'individual_value_center'
+            'individual_value_center', 'slice_by'
         ):
-            if element_type == 'compound' and option == 'gene_aggregation':
+            if element_type == 'compound' and option in ('gene_aggregation', 'slice_by'):
                 continue
             value = getattr(args, f'{stem}_{option}')
             if value is not None:

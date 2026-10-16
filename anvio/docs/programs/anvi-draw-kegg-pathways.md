@@ -79,6 +79,7 @@ Colorbars, which are keys to the colors of every map in the run, are written at 
 |`colorbar_reactions_border.pdf`|The borders of the `unified` map, or of every map for a file without a `sample` column (see [Color borders by a second column](#color-borders-by-a-second-column)).|
 |`colorbar_reactions_border_samples.pdf` or `colorbar_reactions_border_groups.pdf`|The borders of the maps of the individual samples or groups, which share this key.|
 |`slice_key_reactions.txt`|A %(kegg-slice-key-txt)s that lists each slice drawn with `--reaction-slice-by` (see [Draw elements in slices](#draw-elements-in-slices)).|
+|`slice_key_reactions_border.txt`|A %(kegg-slice-key-txt)s that lists each slice of the rings drawn with `--reaction-border-slice-by` (see [Slice rings](#slice-rings)).|
 
 A group's own maps that count the group's sources are keyed beside them instead, in `individual` and `grid` (see [Show individual group maps](#show-individual-group-maps)).
 
@@ -487,16 +488,16 @@ A layer with a `sample` column involves multiple separate reductions, and each h
 |accessions of an element|`--reaction-accession-aggregation`/`--compound-accession-aggregation` (an aggregation; `sum` by default; or a rule for categorical values)|the constituent accessions of a map element → that element's value. With `--reaction-slice-by accession`, each slice keeps the value of its own accession instead. With `--reaction-slice-by gene`, the rows of one gene for the accessions of an element → that gene's value, with `mean` as the default. An aggregation that changes a single value, such as `std`, is then refused.|
 |across samples|`--reaction-sample-summary`/`--compound-sample-summary` (`count`, `count_continuous`, `membership`, an aggregation, or a rule for categorical values)|a set of samples → one value or one presence value per map element, or per slice with `--reaction-slice-by`|
 |across groups|`--reaction-group-summary`/`--compound-group-summary` (`count`, `count_continuous`, `membership`, an aggregation, or a rule for categorical values)|the groups of a %(groups-txt)s → one value or one presence value per map element, or per slice with `--reaction-slice-by`|
-|weights of the genes of an accession|`--reaction-slice-weight-aggregation` (`sum` by default, or `mean`)|the weights of the genes carrying one accession → that accession's weight, which sizes its slice. This applies only with `--reaction-slice-by accession`.|
+|weights of the genes of an accession|`--reaction-slice-weight-aggregation` (`sum` by default, or `mean`)|the weights of the genes carrying one accession → that accession's weight, which sizes its slice. This applies only where `--reaction-slice-by accession` slices the elements or `--reaction-border-slice-by accession` slices the rings.|
 |shares across samples and groups|`--reaction-slice-share-summary` (`share_mean` by default, or `pooled_sum`)|the shares of a slice in a set of samples, or in the groups → its share on the map of a group or the `unified` map|
 
-A border column has its own versions of the first four options: `--reaction-border-gene-aggregation`, `--reaction-border-accession-aggregation`/`--compound-border-accession-aggregation`, `--reaction-border-sample-summary`/`--compound-border-sample-summary`, and `--reaction-border-group-summary`/`--compound-border-group-summary`. They reduce the values of the border column, and their defaults differ from those of the fill (see [Color borders by a second column](#color-borders-by-a-second-column)).
+A border column has its own versions of the first four options: `--reaction-border-gene-aggregation`, `--reaction-border-accession-aggregation`/`--compound-border-accession-aggregation`, `--reaction-border-sample-summary`/`--compound-border-sample-summary`, and `--reaction-border-group-summary`/`--compound-border-group-summary`. They reduce the values of the border column, and their defaults differ from those of the fill (see [Color borders by a second column](#color-borders-by-a-second-column)). The last two rows also size and pool the slices of rings that are divided on their own (see [Slice rings](#slice-rings)).
 
 An **aggregation** is `sum` (default), `mean`, `max`, `min`, `median`, `std` — or any other unsuggested pandas aggregation that reduces a series of numbers to one number, such as `var` or `sem`. Names that transform rather than reduce (`cumsum`) or that only a grouping offers (`first`) are rejected. Where an aggregation is undefined for the values available, as `std` is for a single value, the affected elements are left uncolored. `circular_mean` averages values that repeat after a period, such as clock times, and requires `--reaction-value-period`/`--compound-value-period` (see [Color clock times with a cyclic colormap](#color-clock-times-with-a-cyclic-colormap)). `angular_deviation` measures how far such values are spread apart, on the `unified` map only.
 
 A summary pools the values of a **map element**, not of an accession. An element's value in a sample is the aggregate of its accessions in that sample. Without `--reaction-element-normalization`/`--compound-element-normalization`, this is the value that the sample's own map draws, so the sample summary pools what the maps of the individual samples show. With groups, the group summary then pools the values of the groups.
 
-With `--reaction-slice-by`, a summary pools the values of each **slice** instead. A slice's value in a sample is the value of its one accession or gene, so the summary pools the values of that accession or gene across the samples or groups. The last two rows of the table apply only to slices sized by `--reaction-slice-weights`. See [Draw elements in slices](#draw-elements-in-slices).
+With `--reaction-slice-by`, a summary pools the values of each **slice** instead. A slice's value in a sample is the value of its one accession or gene, so the summary pools the values of that accession or gene across the samples or groups. The last two rows of the table apply only to slices sized by `--reaction-slice-weights`, of elements or of rings. See [Draw elements in slices](#draw-elements-in-slices).
 
 The sample summary drives the `unified` map when there are no groups, and each per-group map (produced when using `--draw-individual-files` or `--draw-grid`) when there are. The group summary colors the `unified` map when there are groups.
 
@@ -776,6 +777,8 @@ Without weights, every slice drawn on a map takes the same share of its element.
 
 On the map of a sample, the share of a slice is its weight in that sample divided by the total weight of the slices drawn on the map. A file without a `sample` column works the same way, with the weight of each accession in the file. An accession with a weight of 0 gets no slice. An element is left uncolored where every slice with a value has a weight of 0 on the map, and a warning counts these elements.
 
+The weights also size the slices of rings that are divided on their own (see [Slice rings](#slice-rings)).
+
 When elements are sliced by accession and the file has a `gene_id` column, the weights of the genes of an accession in a sample are added up to give the weight of the accession. This suits amounts that add up over genes, such as counts and coverage. `--reaction-slice-weight-aggregation mean` takes their mean instead, which suits rates and scores of single genes. With `mean`, a KO with ten genes takes the same share as a KO with one gene, if all of their genes have the same weight.
 
 The command below sizes the slices by a column headed `coverage` and colors them by the file's value column. The map of each sample draws the shares of that sample. The `unified` map shows the mean of each accession's values across the samples, and it pools the shares as described next.
@@ -883,7 +886,7 @@ Slicing is refused in these cases:
 - `--reaction-gene-aggregation` with `--reaction-slice-by gene`. This option reduces the genes of an accession to one value. Each gene is a slice of its own, so no genes are reduced to an accession.
 - A run in which no drawn map shows the values of the reaction layer.
 
-The options that size slices need `--reaction-slice-by`. The column named by `--reaction-slice-weights` must be in the file, and it cannot be `accession`, `gene_id`, or `sample`. The file still needs a separate value column. `--reaction-slice-weight-aggregation` needs `--reaction-slice-by accession`, `--reaction-slice-weights`, and a `gene_id` column. It is refused with `--reaction-slice-by gene`, since a gene takes the mean weight of its rows. `--reaction-slice-share-summary` needs `--reaction-slice-weights` and a drawn map that pools samples and shows values.
+The options that size slices need `--reaction-slice-by`, or rings that `--reaction-border-slice-by` divides on their own. The column named by `--reaction-slice-weights` must be in the file, and it cannot be `accession`, `gene_id`, or `sample`. The file still needs a separate value column, unless a border column is sliced with `--reaction-border-slice-by`. `--reaction-slice-weight-aggregation` needs `--reaction-slice-weights`, a `gene_id` column, and elements or rings sliced by accession. Where everything is sliced by gene, it is refused, since a gene takes the mean weight of its rows. `--reaction-slice-share-summary` needs `--reaction-slice-weights` and a drawn map that pools samples and shows slices of elements, or slices of rings divided on their own.
 
 Slices are drawn with private methods of Biopython's map canvas, which a Biopython release could rename. Anvi'o then stops with an error that names the installed version of Biopython, before it draws any map.
 
@@ -945,8 +948,9 @@ Each option that reduces, summarizes, or colors the values of the fill has a bor
 - `--reaction-border-value-limits` and `--reaction-border-individual-value-limits`
 - `--reaction-border-value-center` and `--reaction-border-individual-value-center`
 - `--reaction-border-element-normalization`
+- `--reaction-border-slice-by`, which divides rings among accessions or genes (see [Slice rings](#slice-rings))
 
-The compound layer has the same options with `compound` in place of `reaction`, except the gene aggregation, since a compound file names no genes. Every border option needs the border column of its layer. Runs of contigs databases, a pangenome, or a reaction network JSON file refuse every border option.
+The compound layer has the same options with `compound` in place of `reaction`, except the gene aggregation and the slicing. A compound file names no genes, and compound circles are never sliced. Every border option needs the border column of its layer. Runs of contigs databases, a pangenome, or a reaction network JSON file refuse every border option.
 
 Some defaults of the border differ from those of the fill. The border takes default colors of its own, so that a color means a value of one column only. These are the defaults that differ:
 
@@ -982,11 +986,52 @@ Rings are drawn with private methods of Biopython's map canvas, as slices are. W
 
 Border keys are named like the keys of the fill, with `_border` after the name of the layer. `colorbar_reactions_border.pdf` keys the reaction borders of the `unified` map, or of every map for a file without a `sample` column. `colorbar_reactions_border_samples.pdf` or `colorbar_reactions_border_groups.pdf` keys the border scale shared by the maps of the samples or groups. The compound layer writes the same files with `compounds` in place of `reactions`.
 
-A border key is labeled as a key of the fill would be for the border column, with `(border)` added, such as `status (border)`. A label given after `--reaction-border-element-normalization` or `--compound-border-element-normalization` is used as given. A legend of categorical border values is written only where some map that it keys shows a ring. Border keys are written only at the top of the output directory, so `--collate-files-by-map` gathers none of them. `--skip-unified-maps` drops the border key of the `unified` map by the same rule as the fill key of that map.
+A border key is labeled as a key of the fill would be for the border column, with `(border)` added, such as `status (border)`. A label given after `--reaction-border-element-normalization` or `--compound-border-element-normalization` is used as given. A legend of categorical border values is written only where some map that it keys shows a ring. Border keys are written only at the top of the output directory, so `--collate-files-by-map` gathers none of them. `--skip-unified-maps` drops the border key of the `unified` map by the same rule as the fill key of that map. With `--reaction-border-slice-by`, the slices of rings are listed in `slice_key_reactions_border.txt` (see [Slice rings](#slice-rings)).
 
 #### Borders of sliced boxes
 
-With `--reaction-slice-by` and a reaction border column, the columns of a sliced box fit inside its ring. The ring stays whole. It shows the border value of the whole element, as on a box without slices. `--reaction-border-accession-aggregation` reduces the border values of the element's accessions to that value. The inside of a 92-point box is 85 points wide, so a box holds up to 10 slices in a layer with a border column, rather than 11. This holds for every box of the layer, with or without a ring on the map, so a box is sliced the same way on every map.
+With `--reaction-slice-by` and a reaction border column, the columns of a sliced box fit inside its ring. Without `--reaction-border-slice-by`, the ring stays whole. It shows the border value of the whole element, as on a box without slices. `--reaction-border-accession-aggregation` reduces the border values of the element's accessions to that value. The inside of a 92-point box is 85 points wide, so a box holds up to 10 slices in a layer with a border column, rather than 11. This holds for every box of the layer, with or without a ring on the map, so a box is sliced the same way on every map.
+
+#### Slice rings
+
+`--reaction-border-slice-by accession` divides the ring of each box among the KOs or KEGG reactions of the box that have border values. `--reaction-border-slice-by gene` divides it among the genes of the file's `gene_id` column instead. These units follow the rules of the slices of the fill (see [Draw elements in slices](#draw-elements-in-slices)). A unit without a border value on a map gets no slice there, and the slices follow the order of the KGML file. Only boxes on standard maps take rings, and compound circles are never sliced.
+
+The rings of a run take one of two layouts, aligned with the fill or divided on their own.
+
+**Aligned with the fill.** Where `--reaction-slice-by` names the same unit, each column of the fill takes the border value of its own accession or gene. The value is drawn as a band above and below the column. The first column also takes the left end of the ring, and the last column the right end. One thin black line encloses the fill, and the thin gray lines between columns cross the bands. A column whose unit has no border value takes no bands. A unit with a border value but no column of the fill on a map is not shown there. A warning counts such units, and a numeric border scale leaves their values out.
+
+Where the fill of a box is drawn whole, its ring is whole too:
+
+- A fill with one slice takes a ring in the border value of that slice.
+- A fill with more slices than fit takes a ring in the color of a stand-in value. The stand-in comes from the units with both a slice of the fill and a border value, with the shares of the fill.
+- A fill that is not sliced, since the map shows presence or the box has no fill value there, takes a ring in the color of a stand-in value of every unit with a border value. These units take equal shares.
+
+The command below slices the fill and the rings by KO. The coverage of each KO sizes its column, its expression colors the column, and its status colors the bands above and below it.
+
+{{ codestart }}
+anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
+                        --reaction-slice-by accession \
+                        --reaction-slice-weights coverage \
+                        --reaction-sample-summary mean \
+                        --reaction-border-column status \
+                        --reaction-border-value-type categorical \
+                        --reaction-border-sample-summary plurality_order \
+                        --reaction-border-slice-by accession \
+                        --draw-individual-files \
+                        -o output_dir
+{{ codestop }}
+
+**Divided on its own.** Where `--reaction-slice-by` is not given or names the other unit, each ring is divided on its own, whatever the fill of its box shows. Each unit with a border value takes one slice of the ring, clockwise from the top left corner. A thin gray line crosses the ring between neighboring slices. The slices are equal, unless `--reaction-slice-weights` names a column of weights. A slice then takes its share from the weights of the rows of its unit that have a border value. The weights are reduced and pooled as for the slices of the fill, by `--reaction-slice-weight-aggregation` and `--reaction-slice-share-summary`. A ring of one slice is drawn whole in its color. A ring holds up to 11 slices, and a ring with more is drawn whole in the color of a stand-in value of all of them.
+
+In this layout, ring slices and fill slices are separate, even where they stand for the same KOs. A slice along the top of a ring can lie next to a column of the fill that stands for another KO. The two key tables say what each slice stands for.
+
+A stand-in value is found as for a fill drawn whole. For numbers, it is the mean of the border values, weighted by their shares. With `--reaction-border-value-period`, it is their circular mean. For categorical values, it is the value that `--reaction-border-accession-aggregation` and the border summaries choose among the units. A ring whose stand-in is undefined is not drawn.
+
+The border options follow the rules of the fill options. A numeric `--reaction-border-accession-aggregation` is refused with `--reaction-border-slice-by accession`. With `--reaction-border-slice-by gene`, it reduces the rows of a gene for the accessions of an element, by `mean` by default. A name that does not return a single value unchanged, such as `std`, is then refused. `--reaction-border-gene-aggregation` is refused with `--reaction-border-slice-by gene`, and `--reaction-border-element-normalization` with either unit. Rings sliced by gene need a `gene_id` column with an ID in every row, even in a file without a value column. A gene ID must name the same gene in every sample, and the warnings about gene IDs cover the rings too.
+
+The slices of rings are listed in a %(kegg-slice-key-txt)s named `slice_key_reactions_border.txt`, beside `slice_key_reactions.txt`. The positions of aligned rings are those of the columns of the fill. The positions of rings divided on their own count clockwise from the top left corner. A ring drawn whole for a reason has a row for each slice it stands for, with the reason `over the cap` or `fill not sliced`.
+
+Rings with a few slices are easy to read. Up to about 5 slices, each one can be told apart at a zoom that shows a few boxes. With more, the slices are short and take effort to read. In a view of a whole map, only whole rings stay readable.
 
 #### Other options with borders
 
