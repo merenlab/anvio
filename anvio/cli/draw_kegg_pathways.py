@@ -20,7 +20,7 @@ from anvio.errors import ConfigError, FilesNPathsError
 
 def check_package_dependencies():
     missing_packages = []
-    for package_name in ('Bio', 'reportlab', 'fitz'):
+    for package_name in ('Bio', 'reportlab', 'fitz', 'PIL'):
         try:
             importlib.import_module(package_name)
         except ImportError:
@@ -41,8 +41,8 @@ def check_package_dependencies():
         sys.exit(-1)
 
 # Checked before the import below rather than from within main: 'anvio.keggmapping' imports 'fitz'
-# and, through 'anvio.kgml', 'reportlab', so by the time main runs a missing one of those has
-# already reached the user as an ImportError traceback.
+# and 'PIL', and, through 'anvio.kgml', 'reportlab', so by the time main runs a missing one of those
+# has already reached the user as an ImportError traceback.
 check_package_dependencies()
 
 from anvio.keggmapping import (
@@ -873,6 +873,20 @@ def get_args() -> Namespace:
         "maps already drawn, so they take up no disk space of their own."
     )
     groupOUT.add_argument(
+        '--animate-files-by-map', action='store_true', default=False, help=
+        "Write a player beside each directory of maps that '--collate-files-by-map' gathers. The "
+        "player is an HTML file that shows the map of each sample, group, contigs database, or "
+        "genome in turn. It can be paused, stepped frame by frame with the arrow keys, and moved "
+        "to any frame with a slider. It opens in a web browser from the disk, with no internet "
+        "connection. For example, the directory 'by_map/ko00010' gets the player "
+        "'by_map/ko00010.html'. The frames follow the order of the run. Samples are sorted by "
+        "name, groups follow the groups file, contigs databases follow the order given, and "
+        "genomes follow the pangenome. Names listed after '--draw-individual-files' set the order "
+        "instead. A sample, group, contigs database, or genome with no data on a map is shown as "
+        "the bare map. The colorbars that key the individual maps are shown beside the map. Unlike "
+        "the gathered maps, the players are new files rather than links."
+    )
+    groupOUT.add_argument(
         '--draw-bare-maps', action='store_true', default=False, help=
         "By default, without this flag, only draw maps containing select input data. Even if "
         "pathway maps are given explicitly with '--pathway-numbers' (e.g., \"00010 01100\"), if "
@@ -1379,6 +1393,8 @@ def map_json_network_ko_data(args: Namespace, mapper: Mapper) -> None:
         unsupported_args.append('--draw-grid')
     if args.collate_files_by_map:
         unsupported_args.append('--collate-files-by-map')
+    if args.animate_files_by_map:
+        unsupported_args.append('--animate-files-by-map')
     if args.reaction_colormap is not None:
         unsupported_args.append('--reaction-colormap')
     if args.compound_colormap is not None:
@@ -3735,6 +3751,18 @@ def main() -> None:
                     "it to, or drop this flag."
                 )
 
+        # Players are written only in a run that gathers maps by map, so the refusals of collation
+        # cover the players too.
+        if (
+            args.animate_files_by_map and not args.collate_files_by_map
+            and args.reaction_network_json is None
+        ):
+            raise ConfigError(
+                "'--animate-files-by-map' writes a player beside each directory of maps that "
+                "'--collate-files-by-map' gathers, but that flag was not given. Please add "
+                "'--collate-files-by-map', or drop this flag."
+            )
+
         # Skipping the 'unified' map makes the maps of the individual databases, genomes, or groups
         # the whole of the output. The run therefore needs those maps, and has nothing to skip where
         # the 'unified' map is all that should be drawn, as in the following cases. A text run is
@@ -3778,7 +3806,8 @@ def main() -> None:
                         overwrite_output=args.overwrite_output_destinations,
                         name_files=args.name_files,
                         categorize_files=args.categorize_files,
-                        collate_files_by_map=args.collate_files_by_map)
+                        collate_files_by_map=args.collate_files_by_map,
+                        animate_files_by_map=args.animate_files_by_map)
         performed = False
 
         if is_txt_run:
