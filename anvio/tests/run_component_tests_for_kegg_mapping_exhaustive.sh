@@ -880,6 +880,32 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_awkward_sample_names.reaction.tx
                         --draw-grid \
                         --no-progress
 
+# The players of the same samples. Samples 'grid' and 'by_map' have no data on the map. The grid
+# draws blank maps for them and deletes them, and the player draws its own, so it still has a frame
+# for each of the five samples.
+INFO "Writing players for samples whose names match the output directory's own subdirectories"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_awkward_sample_names.reaction.txt \
+                        --categorize-files \
+                        --output-dir draw_txt_awkward_sample_names_animated \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --collate-files-by-map \
+                        --animate-files-by-map \
+                        --no-progress
+
+player=draw_txt_awkward_sample_names_animated/by_map/Metabolism/Carbohydrate_metabolism/ko00010.html
+if [ "$(grep -o '"label":' $player | wc -l)" -ne 5 ]
+then
+    echo "ERROR: the player should hold a frame for each of the five samples."
+    exit 1
+fi
+if [ "$(grep -o 'No data on this map' $player | wc -l)" -ne 2 ]
+then
+    echo "ERROR: the player should show the bare map for the two samples without data."
+    exit 1
+fi
+
 # A sample whose name cannot be a directory name, which is summarized on the 'unified' map by color
 # alone and so never becomes a path.
 INFO "Testing a sample whose name cannot be a directory name"
@@ -913,6 +939,34 @@ if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: gathering by map for a file with no 'sample' column should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --draw-individual-files --animate-files-by-map \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_animate_no_collate.log 2>&1
+then
+    echo "ERROR: a player without gathering by map should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_animate_no_collate.log | grep -q "but that flag was not given"
+then
+    echo "ERROR: a player without gathering by map was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --draw-individual-files SAMPLE_1 --collate-files-by-map --animate-files-by-map \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_animate_one_sample.log 2>&1
+then
+    echo "ERROR: a player of one sample's maps should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_animate_one_sample.log | grep -q "so each player would hold"
+then
+    echo "ERROR: a player of one sample's maps was refused for another reason."
     exit 1
 fi
 
@@ -1847,6 +1901,23 @@ if anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db \
     --output-dir draw_db_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: gathering by map for a single contigs database should have failed."
+    exit 1
+fi
+
+# A reaction network JSON file is a single source drawn in one color, so it has no individual maps
+# for a player to show.
+if anvi-draw-kegg-pathways --reaction-network-json pan-network.json \
+    --animate-files-by-map --pathway-numbers $pathway_numbers \
+    --output-dir draw_db_bad --overwrite-output-destinations \
+    --no-progress > draw_json_animate.log 2>&1
+then
+    echo "ERROR: a player of a reaction network JSON should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_json_animate.log \
+    | grep -q "single source drawn in one color): '--animate-files-by-map'"
+then
+    echo "ERROR: a player of a reaction network JSON was refused for another reason."
     exit 1
 fi
 

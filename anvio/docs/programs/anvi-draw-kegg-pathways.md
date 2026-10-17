@@ -8,10 +8,10 @@ There are hundreds of pathway maps, listed and categorized [here](https://www.ge
 anvi-setup-kegg-data
 {{ codestop }}
 
-Additional Python packages may be needed if you installed anvi'o `v8.0-dev` before this program's package requirements were included. These can be installed with the following command.
+Additional Python packages may be needed if you installed anvi'o before this program's package requirements were included. These can be installed with the following command.
 
 {{ codestart }}
-pip install biopython reportlab rl_accel pymupdf
+pip install biopython reportlab rl_accel pymupdf pillow
 {{ codestop }}
 
 The program can be tested with the following command.
@@ -68,7 +68,7 @@ Map files are sorted into up to four subdirectories, one for each kind of map:
 |`unified`|The type of map drawn from all of the data at once. With a single source — a %(kegg-reaction-txt)s and/or %(kegg-compound-txt)s with no `sample` column, one %(contigs-db)s, or one %(reaction-network-json)s — these maps per pathway are the only ones drawn. Not written at all with `--skip-unified-maps`.|
 |`individual`|One subdirectory per data source, named after it: each sample of a text file, each contigs database, each genome of a pangenome, or, when they are grouped with a %(groups-txt)s file, each group instead. Drawn on request with `--draw-individual-files`.|
 |`grid`|The map grids, each showing the `unified` map alongside the individual ones, or the individual ones alone with `--skip-unified-maps`. Drawn on request with `--draw-grid`.|
-|`by_map`|The same individual maps arranged the other way round: one subdirectory per map, each holding one file per data source, named after it. Written on request with `--collate-files-by-map`.|
+|`by_map`|The same individual maps arranged the other way round: one subdirectory per map, each holding one file per data source, named after it. Written on request with `--collate-files-by-map`. With `--animate-files-by-map`, a player of each map is written beside its subdirectory.|
 
 Colorbars, which are keys to the colors of every map in the run, are written at the top of the output directory beside these subdirectories. The reaction layer can have the keys below. The compound layer has the same colorbars, with `compounds` in place of `reactions`.
 
@@ -112,6 +112,20 @@ Here is a simple example of the output file structure produced with `--name-file
 With samples `A` through `E`, `by_map/ko00010` holds `A.pdf` through `E.pdf`, `by_map/ko00020` holds another five files, and so on. Selecting everything in one of those subdirectories and stepping through it with a file browser's preview shows the colors of a single map changing from sample to sample, like an animation. Files are sorted by the name of their source, so name your samples in the order in which you would like to step through them.
 
 This is a second arrangement of the same files rather than a replacement: the subdirectory per source stays where it is, and the gathered files are links to the maps already drawn there, so they take up no disk space of their own. `--name-files` and `--categorize-files` apply here as they do elsewhere in the output, so with both of them a gathered map would be found at, say, `by_map/Metabolism/Carbohydrate_metabolism/ko00010_Glycolysis_Gluconeogenesis/SAMPLE_1.pdf`.
+
+### Playing maps gathered by map
+
+The `--animate-files-by-map` flag adds a player for each map gathered by `--collate-files-by-map`. The player is an HTML file written beside the map's subdirectory, so `by_map/ko00010` gets `by_map/ko00010.html`. It opens in any current web browser, straight from the disk, with no internet connection and no anvi'o installation, so it can be passed around as a single file.
+
+The player shows the map of each sample, contigs database, genome, or group in turn. The **Play** button or the space bar starts and pauses it. Dragging the slider moves back and forth to any frame, the arrow keys step one frame at a time, and Home and End jump to the first and last frames. The seconds per frame and looping can be changed on the page. **Actual size** shows the map at its full resolution instead of fitting it to the window.
+
+The name of each frame's source is shown above the map. Frames follow the order of the run. Samples are sorted by name as text, so `T10` comes before `T2` unless the numbers are padded, as in `T02`. Groups follow the %(groups-txt)s file, contigs databases follow the order in which they were given, and genomes follow the pangenome. Names listed after `--draw-individual-files` are shown in the order listed, which is a way to choose any order.
+
+A source with no data on a map has no file in that map's subdirectory. The player shows the bare map in its place, with the note "No data on this map", so every player of a run has the same frames in the same order. With `--draw-bare-maps`, the bare map of that source is drawn and gathered like any other map, so the player shows it without the note. Every map of the run then gets a player, even a map with no data in any source.
+
+The colorbars that key the individual maps are shown beside the map. Where groups are colored by counts of their own sources, each group has its own colorbar, and the player shows the one that belongs to the frame.
+
+Each frame is stored in the page as a lossless image of the map at the resolution of the KEGG image, so the colors are those of the map files. Unlike the gathered maps, the players are new files rather than links. Three frames of `00010` take about 0.2 MB, and twelve frames of the global map `01100` take about 13 MB.
 
 ## Mapping reaction and compound occurrence
 

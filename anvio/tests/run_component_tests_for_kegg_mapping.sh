@@ -742,6 +742,7 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
                         --draw-individual-files \
                         --draw-grid \
                         --collate-files-by-map \
+                        --animate-files-by-map \
                         --no-progress
 
 collated_dir=draw_txt_collate_by_map_categorized/by_map
@@ -749,6 +750,11 @@ brite_dir=$collated_dir/Metabolism/Carbohydrate_metabolism
 if [ ! -s $brite_dir/ko00010_Glycolysis_Gluconeogenesis/SAMPLE_1.pdf ]
 then
     echo "ERROR: gathering by map did not keep the BRITE subdirectories of the map."
+    exit 1
+fi
+if [ ! -s $brite_dir/ko00010_Glycolysis_Gluconeogenesis.html ]
+then
+    echo "ERROR: the player of a map did not keep the BRITE subdirectories and the map's name."
     exit 1
 fi
 if [ -e $collated_dir/all_maps ]
@@ -792,6 +798,34 @@ fi
 if [ -e $collated_dir/colorbar ]
 then
     echo "ERROR: a group's colorbar was gathered by map as if it were one of its maps."
+    exit 1
+fi
+
+INFO "Writing a player of each map gathered by map"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+                        --output-dir draw_txt_animate_by_map \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --collate-files-by-map \
+                        --animate-files-by-map \
+                        --no-progress
+
+player=draw_txt_animate_by_map/by_map/ko00010.html
+if [ ! -s $player ]
+then
+    echo "ERROR: the map gathered by map has no player."
+    exit 1
+fi
+# The page describes each frame with a label.
+if [ "$(grep -o '"label":' $player | wc -l)" -ne 3 ]
+then
+    echo "ERROR: the player of a map should hold a frame for each of the three samples."
+    exit 1
+fi
+# The player holds everything it shows, so it can be opened and passed around as one file.
+if grep -q '<script src=\|<link \|<img [^>]*src="[^d]' $player
+then
+    echo "ERROR: the player of a map loads a file of its own."
     exit 1
 fi
 

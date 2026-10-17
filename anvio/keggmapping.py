@@ -4,17 +4,21 @@
 import os
 import re
 import csv
+import html
 import fitz
 import json
 import math
+import base64
 import shutil
 import hashlib
 import numpy as np
 import pandas as pd
 import matplotlib.colors as mcolors
 
+from io import BytesIO
 from argparse import Namespace
 from collections import Counter
+from PIL import Image, features
 from itertools import combinations
 # The text that pandas reads as a missing value by default, such as 'NA' and 'NaN'.
 from pandas._libs.parsers import STR_NA_VALUES
@@ -531,10 +535,11 @@ MIN_TICK_SEPARATION_FRACTION = 0.08
 
 # Subdirectories of the output directory, one per role a map file can have: the map unifying every
 # source, the map of one individual source, and the grid comparing them. A fourth holds those
-# individual maps a second time, arranged into a directory per map rather than per source. Every
-# name directly in the output directory is therefore anvi'o's own, while the names that come from
-# user data — samples, contigs databases, genomes, groups — are confined to 'individual', where
-# they cannot collide with anything anvi'o creates for itself.
+# individual maps a second time, arranged into a directory per map rather than per source. Beside
+# each of those directories, it can also hold a player of the same maps. Every name directly in the
+# output directory is therefore anvi'o's own, while the names that come from user data — samples,
+# contigs databases, genomes, groups — are confined to 'individual', where they cannot collide with
+# anything anvi'o creates for itself.
 UNIFIED_SUBDIR = 'unified'
 INDIVIDUAL_SUBDIR = 'individual'
 GRID_SUBDIR = 'grid'
@@ -546,6 +551,19 @@ FLAT_SUBDIR = 'all_maps'
 
 # The colorbar keying the maps of one individual source, written beside them in its directory.
 INDIVIDUAL_COLORBAR_BASENAME = 'colorbar.pdf'
+
+# The player of a map gathered by map ('_draw_map_players'). It is an HTML file written beside the
+# map's directory under 'by_map', and it shows the same maps one after another. The page is filled
+# in from a template that ships with anvi'o.
+PLAYER_EXTENSION = '.html'
+PLAYER_TEMPLATE_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), 'data', 'static', 'template',
+    'kegg-map-player.tmpl'
+)
+# The number of seconds a player first shows each frame. The viewer can change it on the page.
+PLAYER_SECONDS_PER_FRAME = 1
+# The note on a frame of a player whose source has no map drawn, so the frame shows the bare map.
+PLAYER_BARE_NOTE = 'No data on this map'
 
 class Mapper:
     """
@@ -580,6 +598,10 @@ class Mapper:
         Alongside the maps drawn for each individual source in a directory of its own, gather those
         same maps into a directory per map, each holding one file per source.
 
+    animate_files_by_map : bool
+        Beside each directory of maps gathered by 'collate_files_by_map', write an HTML player that
+        shows the maps one after another.
+
     pathway_categorization : dict[str, list[str]]
         Maps pathway numbers to categorization, with categories listed from general to specific.
 
@@ -594,6 +616,9 @@ class Mapper:
 
     grid_drawer : PDFGridDrawer
         Writes PDF files that are a grid of input PDF files.
+
+    player_drawer : HTMLPlayerDrawer
+        Writes HTML files that show input PDF files one after another.
 
     ignore_compound_rectangles : bool
         If True, do not draw KGML compound Entry rectangle Graphics. These are found in a small
@@ -617,6 +642,7 @@ class Mapper:
         name_files: bool = False,
         categorize_files: bool = False,
         collate_files_by_map: bool = False,
+        animate_files_by_map: bool = False,
         run: terminal.Run = terminal.Run(),
         progress: terminal.Progress = terminal.Progress(),
         quiet: bool = QUIET
@@ -643,6 +669,11 @@ class Mapper:
             Alongside the maps drawn for each individual source in a directory of its own, gather
             those same maps into a directory per map, each holding one file per source.
 
+        animate_files_by_map : bool, False
+            Beside each directory of maps gathered by 'collate_files_by_map', write an HTML player
+            that shows the maps one after another. Without 'collate_files_by_map', no player is
+            written.
+
         run : anvio.terminal.Run, anvio.terminal.Run()
             This object prints run information to the terminal.
 
@@ -663,6 +694,15 @@ class Mapper:
                 "location, include that path using the 'kegg_dir' argument. Otherwise, please "
                 "consider using the program `anvi-setup-kegg-data` to set up the latest KEGG data "
                 "that includes the necessary files for KEGG pathway maps."
+            )
+
+        # A player holds each frame as a WebP image. Pillow writes WebP only if it was built with
+        # libwebp, which is the case for the usual builds, but not for every build.
+        if animate_files_by_map and not features.check('webp'):
+            raise ConfigError(
+                "A player written by '--animate-files-by-map' holds its frames as WebP images, but "
+                "the installed Python package 'pillow' cannot write WebP. Please install a build "
+                "of 'pillow' with WebP support, or drop this flag."
             )
 
         available_pathway_numbers: List[str] = []
@@ -690,10 +730,12 @@ class Mapper:
         self.compound_circle_grids: Dict[str, kgml.CircleGrid] = {}
         self.colorbar_drawer = ColorbarDrawer(overwrite_output=overwrite_output)
         self.grid_drawer = PDFGridDrawer(overwrite_output=overwrite_output)
+        self.player_drawer = HTMLPlayerDrawer(overwrite_output=overwrite_output)
 
         self.name_files = name_files
         self.categorize_files = categorize_files
         self.collate_files_by_map = collate_files_by_map
+        self.animate_files_by_map = animate_files_by_map
         self.pathway_categorization = self._categorize_pathways() if categorize_files else None
         self.overwrite_output = overwrite_output
         self.run = run
@@ -9714,6 +9756,18 @@ class Mapper:
             # name that is not a sample, contigs database, genome, or group of the run is reported
             # as unrecognized rather than as unusable.
             self._check_individual_names(draw_individuals, individual_noun)
+            # A player of one frame would show the same map that the directory of the map holds, so
+            # the flag would have no effect.
+            if (
+                self.collate_files_by_map and self.animate_files_by_map
+                and len(draw_files_individuals) == 1
+            ):
+                raise ConfigError(
+                    f"'--animate-files-by-map' writes a player that shows the map of each "
+                    f"{individual_noun} in turn. Maps were asked for only one {individual_noun}, "
+                    f"'{draw_files_individuals[0]}', so each player would hold a single frame. "
+                    f"Please ask for the maps of more {individual_noun}s, or drop this flag."
+                )
             # In an ordinary run, every sample, contigs database, genome, or group appears in the
             # output. At the least, it appears as color on the 'unified' map. Without that map, the
             # ones left out of a subset request are drawn nowhere at all.
@@ -9961,7 +10015,16 @@ class Mapper:
         ]
         if draw_grid is not False:
             check_dirs.append(os.path.join(output_dir, GRID_SUBDIR))
-        pathway_numbers = self._find_maps(check_dirs, patterns=pathway_numbers)
+        # The players are the only files written under 'by_map' that are not links. The links of an
+        # earlier run are replaced as a matter of course.
+        extensions = None
+        if self.collate_files_by_map and self.animate_files_by_map and draw_files_individuals:
+            collated_dir = os.path.join(output_dir, COLLATED_SUBDIR)
+            check_dirs.append(collated_dir)
+            extensions = {collated_dir: PLAYER_EXTENSION}
+        pathway_numbers = self._find_maps(
+            check_dirs, patterns=pathway_numbers, extensions=extensions
+        )
         # A border that no map of the run can show is refused before any output is written.
         self._check_border_maps(
             borders, pathway_numbers, draw_unified_maps, draw_individual_maps, individual_noun,
@@ -10845,7 +10908,9 @@ class Mapper:
         # own. Its individual maps take the unified scale, so that colorbar is drawn as the only key
         # to their colors. A border is keyed in files of its own, such as
         # 'colorbar_reactions_border.pdf'. Its labels end in ' (border)', except a label that was
-        # given with its normalization.
+        # given with its normalization. The colorbars that key the individual maps are listed, so a
+        # player can show them beside those maps.
+        individual_keys: List[str] = []
         for layer in models:
             suffix = ' (border)' if _is_border(layer) else ''
             if layer['unified_mode'] == 'quantitative' and _unified_scale_drawn(layer):
@@ -10853,14 +10918,19 @@ class Mapper:
                 if vmin is not None:
                     limited_low, limited_high = layer['_unified_limited']
                     clamped_low, clamped_high = layer['_unified_clamped']
+                    colorbar_path = os.path.join(output_dir, f"colorbar_{layer['name']}.pdf")
                     self._draw_quantitative_colorbar(
-                        layer['cmap'], vmin, vmax,
-                        os.path.join(output_dir, f"colorbar_{layer['name']}.pdf"),
+                        layer['cmap'], vmin, vmax, colorbar_path,
                         layer.get('unified_colorbar_label', layer['colorbar_label']) + suffix,
                         limited_low=limited_low, limited_high=limited_high,
                         clamped_low=clamped_low, clamped_high=clamped_high,
                         center=layer['_unified_center']
                     )
+                    if (
+                        draw_individual_maps and layer['individual_mode'] == 'quantitative'
+                        and layer['sample_values'] is None
+                    ):
+                        individual_keys.append(colorbar_path)
             elif layer['unified_mode'] == 'membership' and draw_unified_maps:
                 scheme, color_priorities, membership_combos, presence_cmap = layer['_colors']
                 count_scale_top = layer['_count_scale_top']
@@ -10907,6 +10977,8 @@ class Mapper:
                     draw_unified_maps or (layer['sample_values'] is None and draw_individual_maps)
                 ) and ring_maps['unified']:
                     legend_paths.append(os.path.join(output_dir, f"colorbar_{layer['name']}.pdf"))
+                    if layer['sample_values'] is None and draw_individual_maps:
+                        individual_keys.append(legend_paths[-1])
                 if (
                     draw_individual_maps and layer['sample_values'] is not None
                     and layer['individual_mode'] == 'categorical' and ring_maps['individual']
@@ -10914,6 +10986,7 @@ class Mapper:
                     legend_paths.append(os.path.join(
                         output_dir, f"colorbar_{layer['name']}_{colorbar_individual_suffix}.pdf"
                     ))
+                    individual_keys.append(legend_paths[-1])
                 for legend_path in legend_paths:
                     self.colorbar_drawer.draw_discrete(
                         legend_colors, legend_path, color_labels=legend_values,
@@ -10932,16 +11005,16 @@ class Mapper:
                     )
                     if not layer.get('individual_colorbar_label_given'):
                         individual_label += suffix
+                    colorbar_path = os.path.join(
+                        output_dir, f"colorbar_{layer['name']}_{colorbar_individual_suffix}.pdf"
+                    )
                     self._draw_quantitative_colorbar(
-                        layer['individual_cmap'], vmin, vmax,
-                        os.path.join(
-                            output_dir, f"colorbar_{layer['name']}_{colorbar_individual_suffix}.pdf"
-                        ),
-                        individual_label,
+                        layer['individual_cmap'], vmin, vmax, colorbar_path, individual_label,
                         limited_low=limited_low, limited_high=limited_high,
                         clamped_low=clamped_low, clamped_high=clamped_high,
                         center=layer['_individual_center']
                     )
+                    individual_keys.append(colorbar_path)
 
         # Draw the unified map. In a run with a single source of data, it is the only map.
         if draw_unified_maps:
@@ -10976,6 +11049,9 @@ class Mapper:
             self.run.info("Number of maps drawn", count)
             return drawn
 
+        # The colorbar of each group's own count scale, where a group's maps have one. A player
+        # shows it beside that group's maps.
+        individual_colorbars: Dict[str, str] = {}
         for individual in draw_individuals:
             drawn_individual: Dict[str, bool] = {}
             self.progress.new(f"Drawing maps for {individual_noun} '{individual}'")
@@ -11009,6 +11085,7 @@ class Mapper:
                         color_labels=range(1, individual_scale_top + 1),
                         label=membership_count_label
                     )
+                individual_colorbars[individual] = colorbar_path
                 specs = _individual_specs(individual)
                 for pathway_number in pathway_numbers:
                     progress.update(pathway_number)
@@ -11070,11 +11147,20 @@ class Mapper:
         # directories of the samples, contigs databases, genomes, or groups that were never asked
         # for individually.
         collated_count = 0
+        animated_count = 0
         if self.collate_files_by_map and draw_files_individuals:
             self.progress.new(f"Gathering the maps of each {individual_noun}")
             self.progress.update("...")
             collated_count = self._collate_maps_by_map(output_dir, draw_files_individuals)
             self.progress.end()
+            if self.animate_files_by_map:
+                self.progress.new(f"Writing a player of each map across the {individual_noun}s")
+                self.progress.update("...")
+                animated_count = self._draw_map_players(
+                    output_dir, pathway_numbers, draw_files_individuals, drawn['individual'],
+                    individual_keys, individual_colorbars
+                )
+                self.progress.end()
 
         self._write_slice_keys(models, output_dir)
         self._report_categorical_choices(
@@ -11096,6 +11182,11 @@ class Mapper:
                 self.run.info(
                     f"Number of maps gathered across individual {individual_noun}s", collated_count
                 )
+                if self.animate_files_by_map:
+                    self.run.info(
+                        f"Number of maps with a player across individual {individual_noun}s",
+                        animated_count
+                    )
         count = sum(drawn['grid'].values()) if drawn['grid'] else 0
         self.run.info("Number of map grids drawn", count)
 
@@ -14532,7 +14623,12 @@ class Mapper:
                 f"'{pan_db}'"
             )
 
-    def _find_maps(self, check_dirs: List[str], patterns: List[str] = None) -> List[str]:
+    def _find_maps(
+        self,
+        check_dirs: List[str],
+        patterns: List[str] = None,
+        extensions: Dict[str, str] = None
+    ) -> List[str]:
         """
         Find the numeric IDs of maps to draw, checking that the maps can be drawn without
         overwriting output already there.
@@ -14546,7 +14642,14 @@ class Mapper:
 
         patterns : List[str], None
             Regex patterns of pathway numbers, which are five digits.
+
+        extensions : Dict[str, str], None
+            The extension of the files written into a check directory, where it is not '.pdf'. Keys
+            are check directories, and values are extensions, such as '.html'.
         """
+        if extensions is None:
+            extensions = {}
+
         if patterns is None:
             pathway_numbers = self.available_pathway_numbers
         else:
@@ -14572,13 +14675,9 @@ class Mapper:
         if not self.overwrite_output:
             for check_dir in check_dirs:
                 for pathway_number in pathway_numbers:
-                    out_basename = self._map_basename(pathway_number)
-                    if self.pathway_categorization is None:
-                        out_path = os.path.join(check_dir, out_basename)
-                    else:
-                        out_path = os.path.join(
-                            check_dir, *self.pathway_categorization[pathway_number], out_basename
-                        )
+                    out_path = self._map_path(
+                        check_dir, pathway_number, extension=extensions.get(check_dir, '.pdf')
+                    )
                     if os.path.exists(out_path):
                         raise ConfigError(
                             f"Output files would be overwritten in {check_dir}. Either delete the "
@@ -14839,6 +14938,142 @@ class Mapper:
                     )
         return len(map_dirs)
 
+    def _draw_map_players(
+        self,
+        output_dir: str,
+        pathway_numbers: List[str],
+        individuals: List[str],
+        drawn_individual: Dict[str, Dict[str, bool]],
+        keys: List[str],
+        individual_colorbars: Dict[str, str]
+    ) -> int:
+        """
+        Write a player of each map gathered by map.
+
+        The individual maps are those drawn for each sample, contigs database, genome, or group. A
+        player is an HTML file that shows a map's individual maps one after another, with controls
+        to pause, step, and move to any frame. It is written beside the directory of the map under
+        'by_map', so that directory still holds only the maps.
+
+        A map gets a player where this run drew it for at least one sample, contigs database,
+        genome, or group. Where one of them lacks the map, its frame shows the bare map, so every
+        player of a run has the same frames in the same order.
+
+        The frames are found from the record of the maps drawn in this run, not from the files on
+        disk. The record leaves out the blank maps of grids and any maps of an earlier run.
+        Collation reads the files on disk, so it also gathers maps left by an earlier run, and those
+        get no player.
+
+        Parameters
+        ==========
+        output_dir : str
+            Path to the output directory holding the 'individual' and 'by_map' subdirectories.
+
+        pathway_numbers : List[str]
+            Numeric IDs of the maps of the run.
+
+        individuals : List[str]
+            Names of the samples, contigs databases, genomes, or groups whose maps are shown, in the
+            order of the frames.
+
+        drawn_individual : Dict[str, Dict[str, bool]]
+            Whether each map was drawn. Outer keys are the names of the samples, contigs databases,
+            genomes, or groups. Inner keys are pathway numbers.
+
+        keys : List[str]
+            Paths to the colorbars that key every individual map, shown beside every frame.
+
+        individual_colorbars : Dict[str, str]
+            Paths to colorbars that key the maps of one group only, where groups have their own
+            count scales. Keys are group names. Each colorbar is shown beside its group's frames.
+
+        Returns
+        =======
+        int
+            The number of players written.
+        """
+        collated_dir = os.path.join(output_dir, COLLATED_SUBDIR)
+        frame_keys = [individual_colorbars.get(individual) for individual in individuals]
+        if not any(frame_keys):
+            frame_keys = None
+        count = 0
+        for pathway_number in pathway_numbers:
+            has_map = [
+                drawn_individual[individual].get(pathway_number, False)
+                for individual in individuals
+            ]
+            if not any(has_map):
+                continue
+            self.progress.update(pathway_number)
+            blank_dir = None
+            try:
+                if not all(has_map):
+                    self.progress.update(f"{pathway_number}: blank map")
+                    blank_dir = self._draw_blank_map(pathway_number)
+                in_paths: List[str] = []
+                notes: List[str] = []
+                for individual, has in zip(individuals, has_map):
+                    if has:
+                        in_paths.append(self._map_path(
+                            os.path.join(output_dir, INDIVIDUAL_SUBDIR, individual), pathway_number
+                        ))
+                        notes.append('')
+                    else:
+                        in_paths.append(self._map_path(blank_dir, pathway_number))
+                        notes.append(PLAYER_BARE_NOTE)
+                self.progress.update(f"{pathway_number}: player")
+                title = f"ko{pathway_number} {self.pathway_names.get(pathway_number, '')}".strip()
+                self.player_drawer.draw(
+                    in_paths,
+                    self._map_path(collated_dir, pathway_number, extension=PLAYER_EXTENSION),
+                    individuals,
+                    notes=notes,
+                    title=title,
+                    keys=keys,
+                    frame_keys=frame_keys
+                )
+            finally:
+                if blank_dir is not None:
+                    shutil.rmtree(blank_dir, ignore_errors=True)
+            count += 1
+        return count
+
+    def _draw_blank_map(self, pathway_number: str) -> str:
+        """
+        Draw the bare map of a pathway in a temporary directory.
+
+        The bare map is drawn as the blank maps of grids are drawn ('_draw_map_grids'). Nothing on
+        it is highlighted, and the reactions and compounds are recolored as they are wherever a map
+        highlights nothing.
+
+        Parameters
+        ==========
+        pathway_number : str
+            ID number of the pathway, which is five digits.
+
+        Returns
+        =======
+        str
+            The temporary directory, which holds the map at '_map_path(directory, pathway_number)'.
+            The caller removes it.
+        """
+        blank_dir = filesnpaths.get_temp_directory_path()
+        progress = self.progress
+        run = self.run
+        self.progress = terminal.Progress(verbose=False)
+        self.run = terminal.Run(verbose=False)
+        try:
+            self._map_kos_fixed_colors(
+                [], blank_dir, [pathway_number], draw_maps_lacking_data=True
+            )
+        except BaseException:
+            shutil.rmtree(blank_dir, ignore_errors=True)
+            raise
+        finally:
+            self.progress = progress
+            self.run = run
+        return blank_dir
+
     def _link_map(self, map_path: str, link_path: str) -> None:
         """
         Link from elsewhere in the output to a map file that has already been drawn.
@@ -14975,15 +15210,6 @@ class Mapper:
                     except KeyError:
                         drawn_pathway_number[pathway_number] = {individual: drawn_map}
 
-            def _map_path(map_dir: str, pathway_number: str) -> str:
-                # The path of the pathway's map in a directory of maps.
-                if self.pathway_categorization is None:
-                    return os.path.join(map_dir, self._map_basename(pathway_number))
-                return os.path.join(
-                    map_dir, *self.pathway_categorization[pathway_number],
-                    self._map_basename(pathway_number)
-                )
-
             # Find the panels that need a blank map. A sample, contigs database, genome, or group in
             # the grid needs one where it has no map of a pathway that another one has.
             unified_dir = os.path.join(output_dir, UNIFIED_SUBDIR)
@@ -15003,7 +15229,7 @@ class Mapper:
                 # does for a missing individual panel. Otherwise the grid would not be drawn.
                 if include_unified and any(
                     drawn_individual.get(individual, False) for individual in draw_grid_individuals
-                ) and not os.path.exists(_map_path(unified_dir, pathway_number)):
+                ) and not os.path.exists(self._map_path(unified_dir, pathway_number)):
                     map_dirs.append(unified_dir)
                     unified_fillers = True
                 if map_dirs:
@@ -15021,14 +15247,14 @@ class Mapper:
                 self._map_kos_fixed_colors(
                     [], map_dirs[0], [pathway_number], draw_maps_lacking_data=True
                 )
-                blank_path = _map_path(map_dirs[0], pathway_number)
+                blank_path = self._map_path(map_dirs[0], pathway_number)
                 paths_to_remove.append(blank_path)
                 if self.categorize_files:
                     paths_to_remove.append(
                         os.path.join(map_dirs[0], FLAT_SUBDIR, os.path.basename(blank_path))
                     )
                 for map_dir in map_dirs[1:]:
-                    out_path = _map_path(map_dir, pathway_number)
+                    out_path = self._map_path(map_dir, pathway_number)
                     os.makedirs(os.path.dirname(out_path), exist_ok=True)
                     shutil.copyfile(blank_path, out_path)
                     paths_to_remove.append(out_path)
@@ -15193,7 +15419,7 @@ class Mapper:
 
         return pathway
 
-    def _map_basename(self, pathway_number: str) -> str:
+    def _map_basename(self, pathway_number: str, extension: str = '.pdf') -> str:
         """
         Name the output file of a pathway map.
 
@@ -15209,6 +15435,9 @@ class Mapper:
         pathway_number : str
             ID number of the pathway, which is five digits.
 
+        extension : str, '.pdf'
+            The extension of the file. A player of the map is an '.html' file.
+
         Returns
         =======
         str
@@ -15216,7 +15445,35 @@ class Mapper:
             file names carry pathway names.
         """
         pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
-        return f'ko{pathway_number}{pathway_name}.pdf'
+        return f'ko{pathway_number}{pathway_name}{extension}'
+
+    def _map_path(self, map_dir: str, pathway_number: str, extension: str = '.pdf') -> str:
+        """
+        Find the path of a pathway's file in a directory of maps.
+
+        With 'categorize_files', the file is in the BRITE subdirectories of the map under that
+        directory. Otherwise it is in the directory itself.
+
+        Parameters
+        ==========
+        map_dir : str
+            A directory of maps, such as the directory of one sample under 'individual'.
+
+        pathway_number : str
+            ID number of the pathway, which is five digits.
+
+        extension : str, '.pdf'
+            The extension of the file. A player of the map is an '.html' file.
+
+        Returns
+        =======
+        str
+            The path of the file, which need not exist.
+        """
+        basename = self._map_basename(pathway_number, extension=extension)
+        if self.pathway_categorization is None:
+            return os.path.join(map_dir, basename)
+        return os.path.join(map_dir, *self.pathway_categorization[pathway_number], basename)
 
     def _name_pathway(self, pathway_number: str) -> str:
         """
@@ -15782,3 +16039,279 @@ class PDFGridDrawer:
 
         filesnpaths.is_output_file_writable(out_path, ok_if_exists=self.overwrite_output)
         output_doc.save(out_path)
+
+
+class HTMLPlayerDrawer:
+    """
+    Writes HTML files that show input PDF files one after another.
+
+    The page is a player. It can be paused, stepped frame by frame, and moved to any frame with a
+    slider. It needs no other file and no network connection, so it can be opened from the disk and
+    passed around as a single file.
+
+    Each frame is the first page of a PDF file. It is rendered at the resolution of the largest
+    image on the page and stored in the page as a lossless WebP image. A KEGG map draws its base
+    image at one pixel per point, so the frame keeps the pixels of the base image exactly. Keys,
+    such as colorbars, are shown beside the frames.
+
+    Attributes
+    ==========
+    overwrite_output : bool
+        If True, methods in this class overwrite existing output files.
+
+    seconds_per_frame : float
+        The number of seconds each frame is first shown during playback. The viewer can change it on
+        the page.
+
+    loop : bool
+        If True, playback starts again after the last frame. The viewer can turn this on or off on
+        the page.
+
+    key_zoom : float
+        The zoom at which a key is rendered. A key is shown at one CSS pixel per point, so a zoom of
+        2 keeps it sharp on a display with two device pixels per CSS pixel.
+
+    webp_options : dict
+        Arguments of Pillow's WebP encoder. 'quality' sets the effort of lossless compression.
+    """
+    def __init__(self, overwrite_output: bool = FORCE_OVERWRITE) -> None:
+        """
+        Parameters
+        ==========
+        overwrite_output : bool, FORCE_OVERWRITE
+            If True, methods in this class overwrite existing output files.
+        """
+        self.overwrite_output = overwrite_output
+
+        self.seconds_per_frame: float = PLAYER_SECONDS_PER_FRAME
+        self.loop: bool = True
+        self.key_zoom: float = 2.0
+        self.webp_options: dict = {'lossless': True, 'quality': 80, 'method': 4}
+
+    def draw(
+        self,
+        in_paths: List[str],
+        out_path: str,
+        labels: List[str],
+        notes: List[str] = None,
+        title: str = '',
+        keys: List[str] = None,
+        frame_keys: List[Union[str, None]] = None
+    ) -> None:
+        """
+        Write a player.
+
+        The page is written as its frames are rendered, so no more than one frame is held at once.
+
+        Parameters
+        ==========
+        in_paths : List[str]
+            Paths to the PDF file of each frame, in the order of play. The same path may be given
+            for several frames, and its image is then stored once. Every page must have the same
+            size.
+
+        out_path : str
+            Path to the output HTML file.
+
+        labels : List[str]
+            The label of each frame. It is shown above the frame with the frame's position.
+
+        notes : List[str], None
+            A note shown beside the label of each frame, or an empty string for no note.
+
+        title : str, ''
+            The title of the page.
+
+        keys : List[str], None
+            Paths to PDF files of keys, such as colorbars, shown beside every frame.
+
+        frame_keys : List[Union[str, None]], None
+            Paths to PDF files of keys shown beside one frame each, or None for a frame without a
+            key of its own.
+        """
+        assert len(in_paths) == len(labels) > 0
+        assert notes is None or len(notes) == len(in_paths)
+        assert frame_keys is None or len(frame_keys) == len(in_paths)
+        filesnpaths.is_output_file_writable(out_path, ok_if_exists=self.overwrite_output)
+
+        with open(PLAYER_TEMPLATE_PATH, encoding='utf-8') as template_file:
+            template = template_file.read()
+        head, rest = template.split('<!--FRAMES-->')
+        middle, tail = rest.split('<!--KEYS-->')
+        head = head.replace('__TITLE__', html.escape(title, quote=False))
+        head = head.replace('__LAST__', str(len(in_paths) - 1))
+        head = head.replace('__SECONDS__', f'{self.seconds_per_frame:g}')
+        head = head.replace('__LOOP__', 'true' if self.loop else 'false')
+        # The first frame is shown before the script runs, as it is by the script itself.
+        first_note = notes[0] if notes is not None else ''
+        head = head.replace('__LABEL__', html.escape(f"{labels[0]} (1 of {len(labels)})"))
+        head = head.replace('__NOTE__', html.escape(first_note))
+
+        frames = [
+            {'label': label, 'image': None, 'key': None, 'note': note}
+            for label, note in zip(labels, notes if notes is not None else [''] * len(labels))
+        ]
+        with open(out_path, 'w', encoding='utf-8', newline='\n') as out_file:
+            out_file.write(head)
+            # An image shown by several frames is stored once. Images are told apart by their bytes,
+            # so two PDF files that render the same are stored once too. The label of a frame is
+            # text on the page, so an image can be shown under any label. The first image belongs to
+            # the first frame, so it is the one image that is not hidden.
+            image_indices: Dict[str, int] = {}
+            path_indices: Dict[str, int] = {}
+            size = None
+            for frame, in_path in zip(frames, in_paths):
+                if in_path not in path_indices:
+                    image = self._render(in_path)
+                    if size is None:
+                        size = image.size
+                    assert image.size == size, "Every frame of a player must have the same size."
+                    data = self._encode(image)
+                    digest = hashlib.sha256(data).hexdigest()
+                    if digest not in image_indices:
+                        image_indices[digest] = len(image_indices)
+                        self._write_image(
+                            out_file, data, image.size, 'frame', 'map',
+                            hidden=image_indices[digest] > 0
+                        )
+                    path_indices[in_path] = image_indices[digest]
+                frame['image'] = path_indices[in_path]
+            out_file.write(middle)
+
+            for key_path in keys or []:
+                image = self._render(key_path, zoom=self.key_zoom)
+                self._write_image(
+                    out_file, self._encode(image), image.size, 'key', 'key', scale=self.key_zoom,
+                    hidden=False
+                )
+            if frame_keys is not None:
+                out_file.write('<div id="frame-keys">\n')
+                key_indices: Dict[str, int] = {}
+                for frame, key_path in zip(frames, frame_keys):
+                    if key_path is None:
+                        continue
+                    if key_path not in key_indices:
+                        key_indices[key_path] = len(key_indices)
+                        image = self._render(key_path, zoom=self.key_zoom)
+                        self._write_image(
+                            out_file, self._encode(image), image.size, 'key', 'key',
+                            scale=self.key_zoom, hidden=frame is not frames[0]
+                        )
+                    frame['key'] = key_indices[key_path]
+                out_file.write('</div>')
+
+            # The frames are described in JSON inside a script element. Escaping '<', '>', and '&'
+            # keeps a label such as '</script>' from ending the element early.
+            frames_json = json.dumps(frames, ensure_ascii=False, separators=(',', ':'))
+            for character, escape in (('<', '\\u003c'), ('>', '\\u003e'), ('&', '\\u0026')):
+                frames_json = frames_json.replace(character, escape)
+            out_file.write(tail.replace('__FRAMES__', frames_json))
+
+    @staticmethod
+    def _render(path: str, zoom: float = None) -> Image.Image:
+        """
+        Render the first page of a PDF file as RGB pixels on white.
+
+        Parameters
+        ==========
+        path : str
+            Path to the PDF file.
+
+        zoom : float, None
+            The zoom at which the page is rendered. If None, the page is rendered at the resolution
+            of its largest image, so that the image keeps its pixels. MuPDF resamples an image that
+            does not start on the edge of a pixel. The page is therefore also shifted by less than a
+            pixel, so that the image's corner falls on one.
+
+        Returns
+        =======
+        PIL.Image.Image
+            The rendered page.
+        """
+        with fitz.open(path) as pdf_doc:
+            page = pdf_doc.load_page(0)
+            shift_x = shift_y = 0.0
+            if zoom is None:
+                zoom = 1.0
+                infos = [info for info in page.get_images(full=True) if info[2] * info[3] > 0]
+                if infos:
+                    info = max(infos, key=lambda info: info[2] * info[3])
+                    bbox = page.get_image_bbox(info)
+                    if bbox.is_valid and not bbox.is_empty and not bbox.is_infinite:
+                        zoom = info[2] / bbox.width
+                        shift_x = math.ceil(bbox.x0 * zoom) - bbox.x0 * zoom
+                        shift_y = math.ceil(bbox.y0 * zoom) - bbox.y0 * zoom
+            pixmap = page.get_pixmap(
+                matrix=fitz.Matrix(zoom, 0, 0, zoom, shift_x, shift_y), alpha=False
+            )
+            image = Image.frombytes('RGB', (pixmap.width, pixmap.height), pixmap.samples)
+        # MuPDF keeps the decoded image of each closed PDF file in its store, though no later frame
+        # can use it. Emptying the store keeps memory from growing with the number of frames.
+        fitz.TOOLS.store_shrink(100)
+        return image
+
+    def _encode(self, image: Image.Image) -> bytes:
+        """
+        Encode an image as a lossless WebP image.
+
+        Parameters
+        ==========
+        image : PIL.Image.Image
+            The image to encode.
+
+        Returns
+        =======
+        bytes
+            The bytes of the WebP image.
+        """
+        buffer = BytesIO()
+        image.save(buffer, format='WEBP', **self.webp_options)
+        return buffer.getvalue()
+
+    @staticmethod
+    def _write_image(
+        out_file,
+        data: bytes,
+        size: Tuple[int, int],
+        role: str,
+        alt: str,
+        scale: float = 1.0,
+        hidden: bool = True
+    ) -> None:
+        """
+        Write an image element whose source is the data of a WebP image.
+
+        Parameters
+        ==========
+        out_file : file object
+            The HTML file being written.
+
+        data : bytes
+            The bytes of the WebP image.
+
+        size : Tuple[int, int]
+            The width and height of the image in pixels.
+
+        role : str
+            The class of the image element, 'frame' or 'key'.
+
+        alt : str
+            The text that describes the image.
+
+        scale : float, 1.0
+            The number of pixels of the image per CSS pixel, so that an image rendered at a zoom of
+            2 is shown at the size of the page it was rendered from. Other than 1, it is declared in
+            the 'srcset' of the image, which sets the size at which the browser shows the image.
+
+        hidden : bool, True
+            If True, the image is hidden until the page shows it.
+        """
+        width, height = size
+        source = 'src' if scale == 1 else 'srcset'
+        out_file.write(
+            f'<img class="{role}" width="{round(width / scale)}" height="{round(height / scale)}" '
+            f'alt="{html.escape(alt)}" decoding="sync"{" hidden" if hidden else ""} '
+            f'{source}="data:image/webp;base64,'
+        )
+        out_file.write(base64.b64encode(data).decode('ascii'))
+        out_file.write('">\n' if scale == 1 else f' {scale:g}x">\n')
