@@ -143,12 +143,14 @@ antiSMASH provides a series of additional annotation tools that you can also inc
 * **`--tfbs`**: TFBS finder that looks for transcription-factor binding sites in clusters (regulatory context).
 * **`--cassis`**: an alternative, motif-based method for predicting cluster boundaries.
 
-To include any of them, pass them through the `--antismash-add-on` flag:
+To include any of them, pass them through the `--antismash-add-on` flag. Please use the `=` form shown below, otherwise the command line parser may mistake the antiSMASH flags for flags of `anvi-run-antismash` itself:
 
 {{ codestart }}
 anvi-run-antismash -c %(contigs-db)s \
-                   --antismash-add-on "--fullhmmer --tfbs"
+                   --antismash-add-on="--fullhmmer --tfbs"
 {{ codestop }}
+
+Flags anvi'o already sets for antiSMASH on its own (such as `--cpus`, `--taxon`, `--databases`, `--output-dir`, or the ones `--include-detailed-output` turns on) are not accepted here; please use the corresponding `anvi-run-antismash` flags for those instead.
 
 ## Re-annotating a database
 
