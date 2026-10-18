@@ -747,12 +747,13 @@ class Antismash(object):
         if empty_sources:
             gene_functions_table.add_empty_sources_to_functional_sources(empty_sources)
 
-    def _report_dir(self):
+
+    def _report_dir(self, contigs_db_path=None):
         """Where the antiSMASH report is written: the user's --output-dir, or a default next to the db."""
 
         if self.output_dir:
             return self.output_dir
-        return os.path.splitext(self.contigs_db_path)[0] + "-ANTISMASH"
+        return os.path.splitext(contigs_db_path or self.contigs_db_path)[0] + "-ANTISMASH"
 
 
     def _slim_report(self, report_dir):
