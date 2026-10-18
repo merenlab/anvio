@@ -498,9 +498,10 @@ class Antismash(object):
 
         json_files = [f for f in os.listdir(antismash_output_dir) if f.endswith(".json")]
         if not json_files:
-            raise ConfigError("antiSMASH did its job but then didn't generate a JSON output file to hand to anvi'o. "
-                              "There is no harm in re-running using the `--just-do-it` flag and have a look at the "
-                              "antismash.log file.")
+            raise ConfigError(f"antiSMASH finished without complaining, but then didn't generate the JSON output file "
+                              f"anvi'o reads its results from :/ Nothing was added to your contigs database. The "
+                              f"antismash.log file (anvi'o saved it at {os.path.join(self._report_dir(), 'antismash.log')}) "
+                              f"is the best place to look for what went wrong.")
 
         with open(os.path.join(antismash_output_dir, json_files[0])) as json_fh:
             payload = json.load(json_fh)
@@ -641,10 +642,10 @@ class Antismash(object):
         else:
             # antiSMASH found nothing, but we still register the source so that a searched-but-empty
             # contigs database is distinguishable from one that was never processed.
-            self.run.warning(f"Just to let you know, (some) of these genomes or assemblies don't seem to encode any "
-                             f"BGCs. We are not sure if that's what you were expecting, but anvi'o will still register "
-                             f"'{ANTISMASH_SOURCE}' as an annotation source even though there was nothing to annotate "
-                             f"just so you know that you looked for BGCs in these databases.")
+            self.run.warning(f"Just to let you know, antiSMASH did not find any BGCs in '{self.contigs_db_path}'. We are "
+                             f"not sure if that's what you were expecting, but anvi'o will still register "
+                             f"'{ANTISMASH_SOURCE}' as an annotation source even though there was nothing to annotate, "
+                             f"so you will know later that you did look for BGCs in this database.")
             gene_functions_table.add_empty_sources_to_functional_sources({ANTISMASH_SOURCE})
 
 
