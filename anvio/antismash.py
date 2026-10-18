@@ -464,15 +464,15 @@ class Antismash(object):
                     clean_fh.write(line)
                     continue
 
+                # antiSMASH only needs the protein-coding genes, so we leave out everything else (e.g., tRNA and
+                # rRNA rows, which would also come with the same empty source column we fix for CDSs below).
                 columns = line.rstrip("\n").split("\t")
-                if len(columns) < 9 or columns[0] not in surviving_contigs:
-                    continue
-                if columns[2] != "CDS":
-                    clean_fh.write(line)
+                if len(columns) < 9 or columns[0] not in surviving_contigs or columns[2] != "CDS":
                     continue
 
                 attributes = dict(kv.split("=", 1) for kv in columns[8].split(";") if "=" in kv)
                 anvio_id = attributes.get("ID", "unknown")
+                columns[0] = self.record_id_of_contig[columns[0]]
 
                 # emit a 'gene' feature for antiSMASH to anchor on, then its 'CDS' with phase and Parent.
                 clean_fh.write("\t".join([columns[0], "anvio", "gene", columns[3], columns[4], ".", columns[6], ".",
@@ -544,10 +544,22 @@ class Antismash(object):
         return output_dir
 
 
-    def _parse_json(self, antismash_output_dir):
+    def _parse_json(self, antismash_output_dir, fasta):
         """Walk the antiSMASH JSON output and collect per-CDS annotations and per-region metadata."""
 
+        # antiSMASH names its JSON after the input FASTA. The work directory starts out empty, so the expected
+        # file should also be the only one, but we go for it by name rather than taking whichever comes first.
         json_files = [f for f in os.listdir(antismash_output_dir) if f.endswith(".json")]
+        expected_json_file = os.path.splitext(os.path.basename(fasta))[0] + ".json"
+        if expected_json_file in json_files:
+            json_files = [expected_json_file]
+
+        if len(json_files) > 1:
+            raise ConfigError(f"anvi'o expected antiSMASH to generate a single JSON output file, but it found "
+                              f"{len(json_files)} of them ({', '.join(sorted(json_files))}) in '{antismash_output_dir}', "
+                              f"and it is not sure which one to trust. This is not supposed to happen, and it would be "
+                              f"great if you could let the anvi'o developers know about it.")
+
         if not json_files:
             raise ConfigError(f"antiSMASH finished without complaining, but then didn't generate the JSON output file "
                               f"anvi'o reads its results from :/ Nothing was added to your contigs database. The "
@@ -608,10 +620,12 @@ class Antismash(object):
         """Enrich each parsed BGC region with the gene caller ids it contains.
 
         Returns a list of records, one per region, each a dict with keys: region_id (a compact,
-        assembly-unique id, see `_region_id`), contig, product, start, end, contig_edge, and
-        gene_callers_ids (the sorted ids of genes fully contained within the region). antiSMASH regions
-        do not overlap, so each gene belongs to at most one region. Both the database annotations and the
-        per-region output file are derived from these records.
+        assembly-unique id, see `_region_id`), contig, product, start, end, length, contig_edge, and
+        gene_callers_ids (the sorted ids of genes that overlap with the region). A gene that sits on a
+        region boundary counts as part of that region, which is also how antiSMASH draws them. antiSMASH
+        regions do not overlap, but should a gene ever touch two of them, it is assigned to the one it
+        overlaps the most, so each gene belongs to at most one region. Both the database annotations and
+        the per-region output file are derived from these records.
         """
 
         # group genes by contig once, so each region only scans the genes on its own contig.
@@ -619,21 +633,36 @@ class Antismash(object):
         for gene_callers_id, gene_call in contigs_super.genes_in_contigs_dict.items():
             genes_by_contig[gene_call["contig"]].append((gene_callers_id, gene_call["start"], gene_call["stop"]))
 
+        # {gene_callers_id: (overlap in bp, index of the region in `records`)} for the best region of each gene
+        best_region_of_gene = {}
+
         records = []
         for contig, regions in self.regions_by_contig.items():
             for region in regions:
-                start, end = self._parse_location(region["location"])
-                gene_callers_ids = sorted(gene_callers_id for gene_callers_id, gene_start, gene_stop in genes_by_contig[contig]
-                                          if gene_start >= start and gene_stop <= end)
+                # a region that wraps around the origin of a circular contig comes in more than one part
+                parts = self._parse_location(region["location"])
+                for gene_callers_id, gene_start, gene_stop in genes_by_contig[contig]:
+                    overlap = sum(max(0, min(gene_stop, part_end) - max(gene_start, part_start)) for part_start, part_end in parts)
+                    if overlap and overlap > best_region_of_gene.get(gene_callers_id, (0, None))[0]:
+                        best_region_of_gene[gene_callers_id] = (overlap, len(records))
+
                 records.append({
                     "region_id": self._region_id(contig, region["region_number"]),
                     "contig": contig,
                     "product": region["product"] or "unknown",
-                    "start": start,
-                    "end": end,
+                    "start": parts[0][0],
+                    "end": parts[-1][1],
+                    "length": sum(part_end - part_start for part_start, part_end in parts),
                     "contig_edge": region["contig_edge"],
-                    "gene_callers_ids": gene_callers_ids,
+                    "gene_callers_ids": [],
                 })
+
+        for gene_callers_id, (overlap, record_index) in best_region_of_gene.items():
+            records[record_index]["gene_callers_ids"].append(gene_callers_id)
+
+        for record in records:
+            record["gene_callers_ids"].sort()
+
         return records
 
 
@@ -782,7 +811,7 @@ class Antismash(object):
                 "product": record["product"],
                 "start": record["start"],
                 "end": record["end"],
-                "length": record["end"] - record["start"],
+                "length": record["length"],
                 "num_genes": len(record["gene_callers_ids"]),
                 "gene_callers_ids": gene_callers_ids,
                 "contig_edge": record["contig_edge"],
@@ -902,11 +931,20 @@ class Antismash(object):
 
     @staticmethod
     def _parse_location(location):
-        """Turn an antiSMASH location string like '[12345:67890](+)' into a (12345, 67890) tuple."""
+        """Turn an antiSMASH location string into a list of (start, end) tuples, one per part.
 
-        body = location.strip("[]").split("]")[0]
-        start, end = body.split(":")
-        return int(start), int(end)
+        A simple location like '[12345:67890](+)' becomes [(12345, 67890)]. A region that wraps around the
+        origin of a circular contig comes as a compound location like 'join{[9000:10000](+), [0:500](+)}', and
+        becomes [(9000, 10000), (0, 500)]. Fuzzy ends ('<' or '>') are treated as exact.
+        """
+
+        parts = [(int(start), int(end)) for start, end in re.findall(r"\[<?(\d+):>?(\d+)\]", location)]
+        if not parts:
+            raise ConfigError(f"anvi'o could not make sense of the location '{location}' antiSMASH reported for one of "
+                              f"its regions. This is not supposed to happen, and it would be great if you could let the "
+                              f"anvi'o developers know about it.")
+
+        return parts
 
 
     @staticmethod
