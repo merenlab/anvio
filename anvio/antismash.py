@@ -382,8 +382,6 @@ class Antismash(object):
             # we keep the complete report, including the .gbk / JSON files and the comparison data. The report
             # directory does not exist at this point, since `sanity_check` made sure of it.
             report_dir = self._report_dir()
-            if os.path.exists(report_dir):
-                shutil.rmtree(report_dir)
             shutil.copytree(antismash_output_dir, report_dir)
             if not self.include_detailed_output:
                 self._slim_report(report_dir)
