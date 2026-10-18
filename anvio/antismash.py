@@ -370,7 +370,7 @@ class Antismash(object):
         try:
             fasta, gff = self._export_inputs(contigs_super)
             antismash_output_dir = self._run_antismash(fasta, gff)
-            self._parse_json(antismash_output_dir)
+            self._parse_json(antismash_output_dir, fasta)
 
             # enrich each region with the genes it contains; both the database annotations and the
             # per-region output file are derived from these records, so the membership is computed once.
@@ -379,7 +379,8 @@ class Antismash(object):
 
             # save the antiSMASH report (done before writing the per-region file, which lives inside the
             # report directory). By default we keep a lean, view-only report; with --include-detailed-output
-            # we keep the complete report, including the .gbk / JSON files and the comparison data.
+            # we keep the complete report, including the .gbk / JSON files and the comparison data. The report
+            # directory does not exist at this point, since `sanity_check` made sure of it.
             report_dir = self._report_dir()
             if os.path.exists(report_dir):
                 shutil.rmtree(report_dir)
@@ -391,6 +392,7 @@ class Antismash(object):
                 self._write_genes_txt(self._genes_txt_path())
             if self.region_records:
                 self._write_regions_txt(self._regions_txt_path())
+            self._write_contig_name_mapping(self._contig_name_mapping_path())
 
             self._report()
         finally:
@@ -404,12 +406,11 @@ class Antismash(object):
                                  f"the temporary files created by anvi-run-antismash. You can find the directory with "
                                  f"the usually temporary files here: {self.work_dir}")
 
-        return True
-
 
     def _export_inputs(self, contigs_super):
         """Dump a nucleotide FASTA and a GFF3 from the contigs-db, ready for antiSMASH."""
 
+        fasta_raw = os.path.join(self.work_dir, "contigs.raw.fa")
         fasta = os.path.join(self.work_dir, "contigs.fa")
         gff = os.path.join(self.work_dir, "contigs.gff")
         gff_clean = os.path.join(self.work_dir, "contigs.clean.gff")
@@ -431,9 +432,20 @@ class Antismash(object):
                               f"shorter contigs for BGCs, you can lower the cutoff with `--min-contig-length`, but "
                               f"keep in mind that antiSMASH is not very good at finding clusters on short fragments.")
 
+        # antiSMASH quietly renames records with long ids, after which we could no longer match its regions to
+        # our contigs. So we give every contig an id antiSMASH will keep, and translate back when parsing.
+        # The translation is also written into the report directory (see `_write_contig_name_mapping`).
+        self.record_id_of_contig = self._get_record_ids(surviving_contigs)
+        self.contig_of_record_id = {record_id: contig_name for contig_name, record_id in self.record_id_of_contig.items()}
+
         self.progress.update("nucleotide FASTA")
-        utils.export_sequences_from_contigs_db(self.contigs_db_path, fasta, seq_names_to_export=sorted(surviving_contigs),
+        utils.export_sequences_from_contigs_db(self.contigs_db_path, fasta_raw, seq_names_to_export=sorted(surviving_contigs),
                                                run=terminal.Run(verbose=False))
+        with open(fasta_raw) as raw_fh, open(fasta, "w") as fasta_fh:
+            for line in raw_fh:
+                if line.startswith(">"):
+                    line = f">{self.record_id_of_contig[line[1:].strip()]}\n"
+                fasta_fh.write(line)
 
         # we ask for simple headers because we only need each gene's ID and coordinates here (we rewrite
         # the GFF ourselves below); the richer `;Name=...` header carries information antiSMASH ignores.
@@ -472,6 +484,20 @@ class Antismash(object):
 
         self.progress.end()
         return fasta, gff_clean
+
+
+    @staticmethod
+    def _get_record_ids(contig_names):
+        """Return a {contig name: record id} map with ids antiSMASH will not rename.
+
+        antiSMASH renames records with ids longer than 16 characters (and its rules for what it alters are
+        its own business, which may change between versions). Rather than trying to predict which names it
+        would keep, we give every contig a short, predictable id, so the naming in antiSMASH's output files
+        is consistent and independent of antiSMASH's rules. These ids are at most 16 characters for up to a
+        billion contigs.
+        """
+
+        return {contig_name: f"anvio_c{i:06d}" for i, contig_name in enumerate(sorted(contig_names))}
 
 
     def _run_antismash(self, fasta, gff):
@@ -536,7 +562,14 @@ class Antismash(object):
         self.antismash_version = payload.get("version", "unknown")
 
         for record in payload.get("records", []):
-            contig = record.get("id")
+            # translate antiSMASH's record id back to our contig name (see `_get_record_ids`)
+            contig = self.contig_of_record_id.get(record.get("id"))
+            if contig is None:
+                raise ConfigError(f"antiSMASH reported results for a sequence called '{record.get('id')}', but that is "
+                                  f"not one of the sequences anvi'o gave it. Most likely antiSMASH renamed it, which "
+                                  f"anvi'o tries hard to prevent, so this is not supposed to happen :/ The antismash.log "
+                                  f"file may tell you more, and it would be great if you could let the anvi'o "
+                                  f"developers know about it.")
             for feature in record.get("features", []):
                 feature_type = feature.get("type")
                 qualifiers = feature.get("qualifiers", {})
@@ -762,6 +795,25 @@ class Antismash(object):
                                                         "num_genes", "gene_callers_ids", "contig_edge"])
 
 
+    def _contig_name_mapping_path(self):
+        """Where the record id -> contig name translation is written (inside the report directory)."""
+
+        return os.path.join(self._report_dir(), CONTIG_NAME_MAPPING_FILE_NAME)
+
+
+    def _write_contig_name_mapping(self, txt_path):
+        """Write the TAB-delimited file that translates the record ids in antiSMASH's output back to contig names.
+
+        antiSMASH's own output files (the HTML report and, with --include-detailed-output, the GenBank and JSON
+        files) only know the short record ids anvi'o gave the contigs (see `_get_record_ids`), so this file is
+        how a user gets from what they see there to the contig in their database.
+        """
+
+        mapping = {record_id: {"contig": contig_name} for record_id, contig_name in sorted(self.contig_of_record_id.items())}
+        utils.store_dict_as_TAB_delimited_file(mapping, txt_path, key_header="antismash_record_id",
+                                               headers=["antismash_record_id", "contig"])
+
+
     def _genes_txt_path(self):
         """Where the per-gene TAB-delimited file is written (inside the report directory)."""
 
@@ -816,6 +868,7 @@ class Antismash(object):
             self.run.info("Regions file", os.path.abspath(self._regions_txt_path()))
         report_label = "HTML report (detailed)" if self.include_detailed_output else "HTML report (lean)"
         self.run.info(report_label, os.path.abspath(self._report_dir()))
+        self.run.info("Contig names in the report", os.path.abspath(self._contig_name_mapping_path()))
         self.run.info("antiSMASH log", os.path.abspath(os.path.join(self._report_dir(), "antismash.log")))
 
 
