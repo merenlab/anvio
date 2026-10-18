@@ -405,7 +405,8 @@ class Antismash(object):
                               f"keep in mind that antiSMASH is not very good at finding clusters on short fragments.")
 
         self.progress.update("nucleotide FASTA")
-        utils.export_sequences_from_contigs_db(self.contigs_db_path, fasta, run=terminal.Run(verbose=False))
+        utils.export_sequences_from_contigs_db(self.contigs_db_path, fasta, seq_names_to_export=sorted(surviving_contigs),
+                                               run=terminal.Run(verbose=False))
 
         # we ask for simple headers because we only need each gene's ID and coordinates here (we rewrite
         # the GFF ourselves below); the richer `;Name=...` header carries information antiSMASH ignores.
@@ -633,8 +634,10 @@ class Antismash(object):
             # we are adding (our three antiSMASH sources) if they already exist from a previous run, leaving
             # all other annotation sources untouched, which is exactly what we want on a re-run.
             functions_dict = {i: row for i, row in enumerate(all_rows)}
-            gene_functions_table.create(functions_dict)
-            self.progress.end()
+            try:
+                gene_functions_table.create(functions_dict)
+            finally:
+                self.progress.end()
         else:
             # antiSMASH found nothing, but we still register the source so that a searched-but-empty
             # contigs database is distinguishable from one that was never processed.
@@ -880,11 +883,6 @@ class AntismashMatrix(object):
 
 
     def sanity_check(self):
-        if self.contigs_db_path:
-            raise ConfigError("For `anvi-script-gen-antismash-matrix` to work, it needs to know which contig-dbs to "
-                              "compare and a single database is not enough. Please provide either an external- or an "
-                              "internal-genomes file defining the individual contig-dbs or bins in a collection that "
-                              "you would like to include in your comparison.")
         if not self.external_genomes_path and not self.internal_genomes_path:
             raise ConfigError("Looks like you want to compare BGCs across a bunch of contig-dbs but you didn't let "
                               "the script know which contig-dbs to compare. What you need is to point the script to "
@@ -989,12 +987,11 @@ class AntismashMatrix(object):
         can be cached per database when several bins share one (see `_collect_genes`).
         """
 
-        utils.is_contigs_db(contigs_db_path)
-        database = db.DB(contigs_db_path, None, ignore_version=True)
+        contigs_db = ContigsDatabase(contigs_db_path, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
         # smart_get builds the `source IN (...)` clause; error_if_no_data=False lets a database with none
         # of these sources (e.g. one not yet annotated) return no rows instead of raising.
-        rows = database.smart_get(t.gene_function_calls_table_name, 'source', sources, error_if_no_data=False)
-        database.disconnect()
+        rows = contigs_db.db.smart_get(t.gene_function_calls_table_name, 'source', sources, error_if_no_data=False)
+        contigs_db.disconnect()
         return list(rows.values())
 
 
@@ -1059,9 +1056,9 @@ class AntismashMatrix(object):
     def _contig_of_gene(self, contigs_db_path):
         """Return a {gene_callers_id: contig name} mapping for one contigs database."""
 
-        database = db.DB(contigs_db_path, None, ignore_version=True)
-        rows = database.get_some_columns_from_table(t.genes_in_contigs_table_name, "gene_callers_id, contig")
-        database.disconnect()
+        contigs_db = ContigsDatabase(contigs_db_path, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
+        rows = contigs_db.db.get_some_columns_from_table(t.genes_in_contigs_table_name, "gene_callers_id, contig")
+        contigs_db.disconnect()
         return dict(rows)
 
 
