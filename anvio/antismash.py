@@ -245,12 +245,12 @@ class Antismash(object):
 
 
     def _already_annotated(self, contigs_db_path):
-        """Whether a database already carries antiSMASH annotations from a previous run."""
+        """Whether a database already carries (any of the) antiSMASH annotations from a previous run."""
 
         contigs_db = ContigsDatabase(contigs_db_path, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
         existing_sources = set(contigs_db.meta['gene_function_sources'] or [])
         contigs_db.disconnect()
-        return ANTISMASH_SOURCE in existing_sources
+        return bool(existing_sources.intersection(ANTISMASH_SOURCES))
 
 
     def _resolve_antismash_bin(self):
@@ -322,10 +322,15 @@ class Antismash(object):
         for i, (genome_name, contigs_db_path) in enumerate(self.genomes.items()):
             if total > 1:
                 self.run.warning(None, header=f"[{i + 1}/{total}] {genome_name}", lc="green", nl_before=1)
-            if self._annotate(genome_name, contigs_db_path):
-                annotated.append(genome_name)
-            else:
+
+            if genome_name in self.genomes_to_skip:
+                self.run.warning(f"'{genome_name}' already contains antiSMASH annotations, so anvi'o is skipping it. "
+                                 f"Use --just-do-it if you want to re-annotate it.")
                 skipped.append(genome_name)
+                continue
+
+            self._annotate(contigs_db_path)
+            annotated.append(genome_name)
 
         if total > 1:
             message = f"Done. Annotated {len(annotated)} of {total} databases with antiSMASH."
@@ -334,8 +339,8 @@ class Antismash(object):
             self.run.info_single(message, nl_before=1, nl_after=1, mc="green")
 
 
-    def _annotate(self, genome_name, contigs_db_path):
-        """Run antiSMASH on a single database and import its results. Returns True, or False if it was skipped."""
+    def _annotate(self, contigs_db_path):
+        """Run antiSMASH on a single database and import its results."""
 
         self.contigs_db_path = contigs_db_path
         self.args.contigs_db = contigs_db_path   # so the ContigsSuperclass below reads this database
@@ -345,20 +350,8 @@ class Antismash(object):
         self.regions_by_contig = defaultdict(list)
         self.gene_annotations = []
         self.region_records = []
-
-        # refuse to clobber an existing antiSMASH run unless --just-do-it. With a single database this is an
-        # error; in a batch we skip databases that are already annotated, so a re-run resumes cleanly.
-        if self._already_annotated(contigs_db_path) and not self.just_do_it:
-            if len(self.genomes) == 1:
-                raise ConfigError(f"You have already annotated this db with {ANTISMASH_SOURCE}. You want to re-run "
-                                  f"it? Just add `--just-do-it` to your command and anvi'o will overwrite your "
-                                  f"previous outputs and create new ones. If you want to remove previous annotations "
-                                  f"yourself, you can run `anvi-delete-functions -c {contigs_db_path} "
-                                  f"--annotation-sources {ANTISMASH_SOURCE}`. If you can't remember what you've "
-                                  f"annotated, you can double-check with `anvi-db-info {contigs_db_path}`.")
-            self.run.warning(f"'{genome_name}' already contains {ANTISMASH_SOURCE} annotations, so anvi'o is skipping "
-                             f"it. Use --just-do-it if you want to re-annotate it.")
-            return False
+        self.record_id_of_contig = {}
+        self.contig_of_record_id = {}
 
         # all intermediate files live in a working directory. if the user gave us one (single-database runs
         # only), use it; otherwise make a temporary one and remove it at the end (unless we are in --debug
@@ -660,28 +653,39 @@ class Antismash(object):
                                                      run=terminal.Run(verbose=False),
                                                      progress=terminal.Progress(verbose=False))
 
+        # remove every antiSMASH source a previous run left behind (this only happens with --just-do-it). Simply
+        # adding the new rows would only replace the sources that show up in them again, so a source with no rows
+        # this time (or all of them, if antiSMASH found nothing) would keep its stale annotations.
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
+        previous_sources = [source for source in ANTISMASH_SOURCES if source in set(contigs_db.meta['gene_function_sources'] or [])]
+        if previous_sources:
+            self.run.info("Previous antiSMASH annotations removed", ", ".join(previous_sources))
+            gene_functions_table.drop_functions(database=contigs_db.db, sources_to_drop=previous_sources)
+        contigs_db.disconnect()
+
         if all_rows:
             self.progress.new("Storing annotations")
             self.progress.update(f"{len(all_rows):,} rows")
             # `create` wants a dict keyed by a unique entry id. We do NOT pass
             # drop_previous_annotations_first=True: that would delete EVERY functional annotation source in
-            # the database (KOfam, COGs, ...), not just ours. By default, create() replaces only the sources
-            # we are adding (our three antiSMASH sources) if they already exist from a previous run, leaving
-            # all other annotation sources untouched, which is exactly what we want on a re-run.
+            # the database (KOfam, COGs, ...), not just ours.
             functions_dict = {i: row for i, row in enumerate(all_rows)}
             try:
                 gene_functions_table.create(functions_dict)
             finally:
                 self.progress.end()
         else:
-            # antiSMASH found nothing, but we still register the source so that a searched-but-empty
-            # contigs database is distinguishable from one that was never processed.
             self.run.warning(f"Just to let you know, antiSMASH did not find any BGCs in '{self.contigs_db_path}'. We are "
-                             f"not sure if that's what you were expecting, but anvi'o will still register "
-                             f"'{ANTISMASH_SOURCE}' as an annotation source even though there was nothing to annotate, "
-                             f"so you will know later that you did look for BGCs in this database.")
-            gene_functions_table.add_empty_sources_to_functional_sources({ANTISMASH_SOURCE})
+                             f"not sure if that's what you were expecting, but anvi'o will still register the antiSMASH "
+                             f"annotation sources even though there was nothing to annotate, so you will know later that "
+                             f"you did look for BGCs in this database.")
 
+        # we always register all antiSMASH sources, including the ones that ended up with no rows, so a database
+        # that was searched is always recognizable as such (whatever antiSMASH found), and distinguishable from
+        # one that was never processed.
+        empty_sources = set(ANTISMASH_SOURCES) - set(row["source"] for row in all_rows)
+        if empty_sources:
+            gene_functions_table.add_empty_sources_to_functional_sources(empty_sources)
 
     def _report_dir(self):
         """Where the antiSMASH report is written: the user's --output-dir, or a default next to the db."""
@@ -982,8 +986,8 @@ class AntismashMatrix(object):
     def _unannotated_genomes(self, genomes):
         """Return, in input order, the names of genomes that were never run through anvi-run-antismash.
 
-        anvi-run-antismash always registers the antiSMASH source (even when it finds no clusters), so a
-        database that does not have the source registered at all was never annotated. Such genomes get NA
+        anvi-run-antismash always registers all antiSMASH sources (even when it finds no clusters), so a
+        database that has none of them registered was never annotated. Such genomes get NA
         (unknown) in the matrix, as opposed to 0 (annotated, but no cluster of that kind).
         """
 
@@ -995,7 +999,7 @@ class AntismashMatrix(object):
             contigs_db_path = genome["contigs_db_path"]
             if contigs_db_path not in annotated:
                 contigs_db = ContigsDatabase(contigs_db_path, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
-                annotated[contigs_db_path] = ANTISMASH_SOURCE in set(contigs_db.meta['gene_function_sources'] or [])
+                annotated[contigs_db_path] = bool(set(contigs_db.meta['gene_function_sources'] or []).intersection(ANTISMASH_SOURCES))
                 contigs_db.disconnect()
             if not annotated[contigs_db_path]:
                 unannotated.append(genome_name)
@@ -1044,8 +1048,7 @@ class AntismashMatrix(object):
         for genome_name, genome in genomes.items():
             contigs_db_path = genome["contigs_db_path"]
             if contigs_db_path not in rows_of_db:
-                rows_of_db[contigs_db_path] = self._antismash_rows(contigs_db_path, [ANTISMASH_SOURCE,
-                                                  ANTISMASH_ROLE_SOURCE, ANTISMASH_DOMAIN_SOURCE, ANTISMASH_REGION_SOURCE])
+                rows_of_db[contigs_db_path] = self._antismash_rows(contigs_db_path, ANTISMASH_SOURCES)
                 contig_of_gene_of_db[contigs_db_path] = self._contig_of_gene(contigs_db_path)
 
             gene_caller_ids = genome["gene_caller_ids"]
