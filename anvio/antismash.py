@@ -290,12 +290,11 @@ class Antismash(object):
                               f"anvi'o is confused. It found these: {', '.join(candidates)}. You can choose one of the "
                               f"installations using the `--antismash-dir` flag.")
 
-        raise ConfigError("anvi'o looked for antiSMASH everywhere, but it doesn't seem to be anywhere :(. antiSMASH is "
-                          "not part of the anvi'o installation because both rely on some of the same dependencies but "
-                          "different versions of them. Therefore, antiSMASH needs to live in its own environment and be "
-                          "installed separately, just follow the installation instructions on the `anvi-run-antismash` "
-                          "program webpage. Maybe you also did an excellent job at hiding antiSMASH's location, in that "
-                          "case you can let anvi'o know where to find it using the `--antismash-dir` flag.")
+        raise ConfigError("Anvi'o looked for antiSMASH everywhere, but couldn't find it :( antiSMASH is NOT a part "
+                          "the standard anvi'o installation because both anvi'o and antiSMASH rely on some of the "
+                          "same dependencies but different versions of them. Therefore, antiSMASH needs to live in its "
+                          "own environment and be installed separately. Please follow the installation instructions "
+                          "on the `anvi-run-antismash` program webpage on https://anvio.org.")
 
 
     def _find_antismash_in_conda_envs(self):
