@@ -346,11 +346,26 @@ class Antismash(object):
         """Dump a nucleotide FASTA and a GFF3 from the contigs-db, ready for antiSMASH."""
 
         fasta = os.path.join(self.work_dir, "contigs.fa")
-        fasta_filtered = os.path.join(self.work_dir, "contigs.min.fa")
         gff = os.path.join(self.work_dir, "contigs.gff")
         gff_clean = os.path.join(self.work_dir, "contigs.clean.gff")
 
         self.progress.new("Exporting from the contigs database")
+
+        # antiSMASH cannot meaningfully call clusters on short fragments, so we only export the contigs that
+        # are long enough, and below we only keep their gene calls.
+        self.progress.update(f"finding contigs >= {self.min_contig_length} bp")
+        surviving_contigs = set([contig_name for contig_name, contig_info in contigs_super.contigs_basic_info.items()
+                                 if contig_info['length'] >= self.min_contig_length])
+
+        # we must stop here if nothing survives, since asking the export function for an empty list of
+        # sequences would give us ALL of them.
+        if not surviving_contigs:
+            self.progress.end()
+            raise ConfigError(f"None of the contigs in '{self.contigs_db_path}' is at least {self.min_contig_length} bp "
+                              f"long, so there is nothing for antiSMASH to look at :/ If you really want to search "
+                              f"shorter contigs for BGCs, you can lower the cutoff with `--min-contig-length`, but "
+                              f"keep in mind that antiSMASH is not very good at finding clusters on short fragments.")
+
         self.progress.update("nucleotide FASTA")
         utils.export_sequences_from_contigs_db(self.contigs_db_path, fasta, run=terminal.Run(verbose=False))
 
@@ -359,18 +374,7 @@ class Antismash(object):
         self.progress.update("gene calls as GFF3")
         contigs_super.gen_GFF3_file_of_sequences_for_gene_caller_ids(output_file_path=gff, simple_headers=True)
 
-        self.progress.update(f"filtering contigs to >= {self.min_contig_length} bp")
-        utils.run_command(["seqkit", "seq", "-m", str(self.min_contig_length), "-o", fasta_filtered, fasta],
-                          log_file_path=os.path.join(self.work_dir, "seqkit.log"))
-
-        # figure out which contigs survived the length filter, so we only keep their gene calls.
         self.progress.update("cleaning the GFF3")
-        surviving_contigs = set()
-        with open(fasta_filtered) as fasta_fh:
-            for line in fasta_fh:
-                if line.startswith(">"):
-                    surviving_contigs.add(line[1:].split()[0])
-
         # anvi'o exports a flat list of CDS rows with empty source/phase columns, but antiSMASH wants
         # (1) a gene -> CDS hierarchy via a Parent attribute, (2) a non-empty source column, and (3) a
         # valid phase (0/1/2) for every CDS. We synthesise the gene parent on the fly and set phase to 0,
@@ -401,7 +405,7 @@ class Antismash(object):
                                           f"ID=cds_{anvio_id};Parent=gene_{anvio_id};locus_tag={anvio_id}"]) + "\n")
 
         self.progress.end()
-        return fasta_filtered, gff_clean
+        return fasta, gff_clean
 
 
     def _run_antismash(self, fasta, gff):
