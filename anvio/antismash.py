@@ -870,14 +870,12 @@ class AntismashMatrix(object):
         self.run = run
         self.progress = progress
 
-        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ and args.__dict__[x] is not None else None
-        null = lambda x: x
-        self.contigs_db_path = A('contigs_db', null)
-        self.external_genomes_path = A('external_genomes', null)
-        self.internal_genomes_path = A('internal_genomes', null)
-        self.output_file_prefix = A('output_file_prefix', null)
-        self.report_genes = A('genes', bool) or False
-        self.report_regions = A('regions', bool) or False
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.external_genomes_path = A('external_genomes')
+        self.internal_genomes_path = A('internal_genomes')
+        self.output_file_prefix = A('output_file_prefix')
+        self.report_genes = A('genes') or False
+        self.report_regions = A('regions') or False
 
         self.sanity_check()
 
