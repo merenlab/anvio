@@ -85,10 +85,8 @@ def _bgc_function_name(smcog_descriptions, domain_names):
 def get_target_genomes(args):
     """Resolve the target databases from -c (one) or -e (many) into an ordered {name: contigs_db_path} map.
 
-    Shared by `Antismash` (which annotates them) and `AntismashMatrix` (which summarizes them), so both
-    accept input the same way: a single contigs-db with -c, or several through an external-genomes file
-    with -e. The external-genomes reader validates each database and,
-    unlike a raw file read, resolves the paths relative to the external-genomes file.
+    The external-genomes reader validates each database and, unlike a raw file read, resolves the paths
+    relative to the external-genomes file.
     """
 
     contigs_db_path = args.__dict__.get('contigs_db')
@@ -154,16 +152,9 @@ class Antismash(object):
 
 
     def sanity_check(self):
-        # locate the antiSMASH executable (see _resolve_antismash_bin for the search order). seqkit, in
-        # contrast, is expected in the anvi'o environment, so we use the filesnpaths helper which can offer
-        # installation advice if it is missing. Both checks are independent of the target databases, so we do
-        # them once here rather than per genome.
+        # locate the antiSMASH executable (see _resolve_antismash_bin for the search order). This is independent
+        # of the target databases, so we do it once here rather than per genome.
         self.antismash_bin = self._resolve_antismash_bin()
-        filesnpaths.is_program_exists('seqkit',
-                                      advice_if_not_exists="Seems like you didn't read the installation instructions "
-                                                           "for `anvi-run-antismash` carefully :). Anvi'o can't find "
-                                                           "seqkit in its environment, just run `conda install -c "
-                                                           "bioconda seqkit`.")
 
         # the single-database output options make no sense for a batch (each database would clobber the next),
         # so refuse that combination early, with a clear message.
