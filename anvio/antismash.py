@@ -118,26 +118,25 @@ class Antismash(object):
         self.run = run
         self.progress = progress
 
-        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ and args.__dict__[x] is not None else None
-        null = lambda x: x
-        self.num_threads = A('num_threads', int) or 1
-        self.taxon = A('taxon', null) or 'bacteria'
-        self.antismash_data_dir = A('antismash_data_dir', null)
-        self.output_dir = A('output_dir', null)
-        self.regions_output_path = A('regions_output', null)
-        self.min_contig_length = A('min_contig_length', int) or 3000
-        self.just_do_it = A('just_do_it', bool) or False
-        self.include_detailed_output = A('include_detailed_output', bool) or False
-        self.antismash_add_on = A('antismash_add_on', null) or ''
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.num_threads = A('num_threads') or 1
+        self.taxon = A('taxon') or 'bacteria'
+        self.antismash_data_dir = A('antismash_data_dir')
+        self.output_dir = A('output_dir')
+        self.regions_output_path = A('regions_output')
+        self.min_contig_length = A('min_contig_length') or 3000
+        self.just_do_it = A('just_do_it') or False
+        self.include_detailed_output = A('include_detailed_output') or False
+        self.antismash_add_on = A('antismash_add_on') or ''
 
         # antiSMASH usually lives in its own conda environment (its dependency pins conflict with anvi'o's),
         # so its executable is typically not on anvi'o's PATH. Here we just record the optional installation
         # directory the user gave us; `sanity_check` resolves the actual executable (see `_resolve_antismash_bin`).
-        self.antismash_dir = A('antismash_dir', null)
+        self.antismash_dir = A('antismash_dir')
 
         # a caller may point us at a directory to keep intermediate files (handy for debugging); otherwise
         # each genome gets its own temporary one, created and removed in `_annotate`.
-        self.work_dir_arg = A('work_dir', null)
+        self.work_dir_arg = A('work_dir')
 
         # the target databases: one (with -c) or many (with -e). Resolved once, up front.
         self.genomes = get_target_genomes(args)
