@@ -34,7 +34,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.dbops import ContigsDatabase, ContigsSuperclass
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, CommandError
 from anvio.genomedescriptions import GenomeDescriptions
 from anvio.tables.genefunctions import TableForGeneFunctions
 
@@ -450,13 +450,13 @@ class Antismash(object):
         self.progress.end()
 
         if return_code != 0:
-            raise ConfigError(f"This didn't work, antiSMASH could not annotate the BGCs in your database :(. One "
-                              f"reason could be that you didn't download the antiSMASH databases yet? If that's the "
-                              f"case, go to your antiSMASH environment and run `download-antismash-databases` and then "
-                              f"come back to your anvi'o environment and try again. If that's not it, we also don't "
-                              f"know. Looking at the antismash.log (anvi'o saved it next to your output at "
-                              f"{os.path.join(self._report_dir(), 'antismash.log')}) should help you to figure out "
-                              f"what went wrong.")
+            raise CommandError(f"This didn't work, antiSMASH could not annotate the BGCs in your database :(. One "
+                               f"reason could be that you didn't download the antiSMASH databases yet? If that's the "
+                               f"case, go to your antiSMASH environment and run `download-antismash-databases` and then "
+                               f"come back to your anvi'o environment and try again. If that's not it, we also don't "
+                               f"know. Looking at the antismash.log (anvi'o saved it next to your output at "
+                               f"{os.path.join(self._report_dir(), 'antismash.log')}) should help you to figure out "
+                               f"what went wrong.")
 
         return output_dir
 

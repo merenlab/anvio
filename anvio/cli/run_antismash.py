@@ -6,7 +6,7 @@ import anvio
 import anvio.antismash as antismash
 
 from anvio.argparse import ArgumentParser
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.errors import ConfigError, FilesNPathsError, CommandError
 from anvio.terminal import time_program
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -29,6 +29,9 @@ def main():
         print(e)
         sys.exit(-1)
     except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
+    except CommandError as e:
         print(e)
         sys.exit(-1)
 
