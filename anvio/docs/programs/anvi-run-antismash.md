@@ -1,5 +1,8 @@
 This program runs [antiSMASH](https://antismash.secondarymetabolites.org/) on a %(contigs-db)s to identify **biosynthetic gene clusters** (BGCs) that, for example, produce secondary metabolites such as antibiotics, siderophores, pigments, and quorum-sensing signals. The program stores antiSMASH's annotations in the database as %(functions)s.
 
+{:.notice}
+Just to avoid any misunderstandings and/or confusions down the line: what a gene cluster describes in this context is very different than what it describes in the context of pangenomics. 
+
 For downstream analysis, you can export the annotations with %(anvi-export-functions)s, search them with %(anvi-search-functions)s, view them in %(anvi-interactive)s, include them in %(anvi-summarize)s, and compare BGCs across different contigs databases with %(anvi-script-gen-antismash-matrix)s.
 
 antiSMASH describes several different facets of each gene in a cluster (what it does, its role, the biosynthetic domains it carries, and which cluster it belongs to). The anvi'o functions table stores a single accession and function per row, so each of these facets becomes its own annotation source:
@@ -9,7 +12,9 @@ antiSMASH describes several different facets of each gene in a cluster (what it 
 |`antiSMASH`|the clearest functional name for each gene: antiSMASH's smCOG description where available (e.g. `crotonyl-CoA reductase / alcohol dehydrogenase`, with the smCOG id as the accession and its E-value), otherwise the biosynthetic domain name. A gene with several names gets several rows.|
 |`antiSMASH_ROLE`|the gene's role in the cluster: `biosynthetic`, `biosynthetic-additional`, `regulatory`, `transport`, or `other`.|
 |`antiSMASH_DOMAIN`|all the biosynthetic domains an individual gene in the BGC carries, each with its E-value.|
-|`antiSMASH_REGION`|which BGC region the gene belongs to (the accession is a compact, assembly-unique region id; the function is the region's product/type, e.g. `terpene` or `NRPS`).|
+|`antiSMASH_REGION`|which BGC region the gene belongs to (the accession is a compact, assembly-unique region id; the function is the region's product/type, e.g. `terpene` or `NRPS`). Genes that sit on a region boundary count as part of that region.|
+
+All four sources are always registered in the database after a run, even if antiSMASH found nothing for some (or all) of them, so you can always tell a database that was searched from one that was never processed.
 
 ## How does it work?
 
@@ -37,21 +42,6 @@ The `download-antismash-databases` step fetches several gigabytes of reference d
 {:.notice}
 The `bcbio-gff<0.7` pin is a workaround for a current incompatibility: newer `bcbio-gff` (0.7+) needs a `biopython` version that antiSMASH 7.1.0 does not allow, and without the pin antiSMASH fails to parse the gene calls (with a `could not parse records from GFF3 file` error). You can drop it once a future antiSMASH release resolves this.
 
-### On macOS (Intel or Apple Silicon)
-
-At the time of writing, the bioconda `nrpys` package (a dependency of antiSMASH) is mis-packaged for macOS: it installs a Linux binary, so antiSMASH fails to start with an `ImportError` mentioning `nrpys.abi3.so`, on every Python version. Two changes to the setup above fix it: build the environment for `osx-64`, and replace `nrpys` with the correct wheel from PyPI after installing antiSMASH.
-
-{{ codestart }}
-CONDA_SUBDIR=osx-64 conda create -y -n antismash python=3.10
-conda activate antismash
-conda install -y -c conda-forge -c bioconda antismash=7.1.0 "bcbio-gff<0.7"
-pip install --force-reinstall --no-deps --only-binary :all: nrpys==0.1.1
-download-antismash-databases
-conda deactivate
-{{ codestop }}
-
-`CONDA_SUBDIR=osx-64` makes the environment run under Rosetta on Apple Silicon (and is harmless on Intel Macs), which is the configuration antiSMASH's toolchain is most reliable on. The `pip install` line swaps the broken `nrpys` for a working build. This is a workaround for a current upstream packaging bug, and may become unnecessary in a future antiSMASH release.
-
 ## Standard usage
 
 To annotate a single %(contigs-db)s with BGCs, run:
@@ -63,7 +53,8 @@ anvi-run-antismash -c %(contigs-db)s
 To annotate **many databases in one command**, list them in an %(external-genomes)s file and pass it with `-e` instead of `-c` (just like %(anvi-estimate-metabolism)s):
 
 {{ codestart }}
-anvi-run-antismash -e %(external-genomes)s -T 4
+anvi-run-antismash -e %(external-genomes)s \
+                   --num-threads 8
 {{ codestop }}
 
 Each database in the file is annotated in place and gets its own report directory (`<db>-ANTISMASH`) next to it. Databases that already carry antiSMASH annotations are skipped, so you can safely re-run to pick up where a batch left off (add `--just-do-it` to re-annotate them anyway). The single-database output options (`--output-dir`, `--regions-output`, `--work-dir`) apply to `-c` runs only.
@@ -168,11 +159,29 @@ or pass `--just-do-it` to overwrite them in a single step:
 anvi-run-antismash -c %(contigs-db)s --just-do-it
 {{ codestop }}
 
+With `--just-do-it`, anvi'o first removes all four antiSMASH sources from the previous run, so nothing stale survives even if the new run finds fewer (or no) clusters.
+
+{:.notice}
+Like other anvi'o programs, `anvi-run-antismash` will not write into an output directory that already exists. So if the report directory from the previous run (the default `<contigs-db basename>-ANTISMASH`, or the one you gave with `--output-dir`) is still around, either use `--output-dir` to put the new report elsewhere, or add `--force-overwrite` to have anvi'o remove the existing directory first (please use that flag with care, since it removes the directory with everything in it). The same applies to a directory you give with `--work-dir`.
+
+{{ codestart }}
+anvi-run-antismash -c %(contigs-db)s --just-do-it --force-overwrite
+{{ codestop }}
+
 ## What you get
 
 **Four annotation sources in the database.** These are the four sources described at the top of this page. You can confirm they were added with %(anvi-db-info)s.
 
-**A browsable HTML report,** saved by default as `<contigs-db basename>-ANTISMASH`. Open its `index.html` in a web browser to explore each region interactively, exactly as you would on the antiSMASH website.
+**A browsable HTML report,** saved by default as `<contigs-db basename>-ANTISMASH`. Open its `index.html` in a web browser to explore each region interactively, exactly as you would on the antiSMASH website. Please note that contigs in the HTML report are named `anvio_c000000`, `anvio_c000001`, and so on, rather than with your contig names (see below for why, and for how to translate them back).
+
+**A contig name mapping file,** `contig-name-mapping.txt`, inside the report directory. It translates the contig names you see in antiSMASH's own output back to the contig names in your %(contigs-db)s:
+
+|**antismash_record_id**|**contig**|
+|:--|:--|
+|anvio_c000000|c_000000000001|
+|anvio_c000001|c_000000000002|
+
+Why is this necessary? antiSMASH renames any sequence whose name is longer than 16 characters (e.g., `NODE_1_length_10000_cov_5.2` becomes something like `c00001_NODE_1_..`), and once that happens anvi'o could no longer tell which of your contigs a given BGC came from. To make sure every result can be linked back to the right contig regardless of how long your contig names are (or how future versions of antiSMASH decide to handle them), anvi'o gives every contig a short, predictable name before handing it to antiSMASH, and translates these names back when it imports the results. So, the annotations in your database and the two summary files below always use your own contig names, and the only places the `anvio_c` names show up are the files antiSMASH itself generates: the HTML report and, with `--include-detailed-output`, the GenBank (`.gbk`) and JSON files (keep this in mind if you use the `.gbk` files with other tools such as BiG-SCAPE). Whenever you need to know which contig an `anvio_c` name refers to, `contig-name-mapping.txt` is where to look.
 
 **Two self-contained TAB-delimited (`.txt`) summary files inside the report directory.** These lay everything out for direct inspection, so you never have to go back to the database to read the results.
 
