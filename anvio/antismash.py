@@ -28,7 +28,6 @@ import subprocess
 from collections import defaultdict
 
 import anvio
-import anvio.db as db
 import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal

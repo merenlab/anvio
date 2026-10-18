@@ -26,7 +26,7 @@ antiSMASH has to be installed in a **separate** conda environment, because its s
 {{ codestart }}
 conda create -y -n antismash python=3.10
 conda activate antismash
-conda install -y -c conda-forge -c bioconda antismash=7.1.0 seqkit "bcbio-gff<0.7"
+conda install -y -c conda-forge -c bioconda antismash=7.1.0 "bcbio-gff<0.7"
 download-antismash-databases
 conda deactivate
 {{ codestop }}
@@ -37,12 +37,6 @@ The `download-antismash-databases` step fetches several gigabytes of reference d
 {:.notice}
 The `bcbio-gff<0.7` pin is a workaround for a current incompatibility: newer `bcbio-gff` (0.7+) needs a `biopython` version that antiSMASH 7.1.0 does not allow, and without the pin antiSMASH fails to parse the gene calls (with a `could not parse records from GFF3 file` error). You can drop it once a future antiSMASH release resolves this.
 
-You also need `seqkit` in your **anvi'o** environment (it is used to filter out short contigs before handing the sequences to antiSMASH):
-
-{{ codestart }}
-conda install -c bioconda seqkit
-{{ codestop }}
-
 ### On macOS (Intel or Apple Silicon)
 
 At the time of writing, the bioconda `nrpys` package (a dependency of antiSMASH) is mis-packaged for macOS: it installs a Linux binary, so antiSMASH fails to start with an `ImportError` mentioning `nrpys.abi3.so`, on every Python version. Two changes to the setup above fix it: build the environment for `osx-64`, and replace `nrpys` with the correct wheel from PyPI after installing antiSMASH.
@@ -50,7 +44,7 @@ At the time of writing, the bioconda `nrpys` package (a dependency of antiSMASH)
 {{ codestart }}
 CONDA_SUBDIR=osx-64 conda create -y -n antismash python=3.10
 conda activate antismash
-conda install -y -c conda-forge -c bioconda antismash=7.1.0 seqkit "bcbio-gff<0.7"
+conda install -y -c conda-forge -c bioconda antismash=7.1.0 "bcbio-gff<0.7"
 pip install --force-reinstall --no-deps --only-binary :all: nrpys==0.1.1
 download-antismash-databases
 conda deactivate
