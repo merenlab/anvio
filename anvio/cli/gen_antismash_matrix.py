@@ -42,20 +42,13 @@ def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group("INPUT", "This script accepts external- and internal-genomes files as input, "
-                             "simply use either the -e or -i flag.")
-    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+                             "simply use either the -e or -i flag (or both).")
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {'required': False}))
     groupA.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes', {'required': False}))
 
     groupB = parser.add_argument_group("MATRIX TYPE", "Choose exactly one of the following.")
-    groupB.add_argument('--genes', default=False, action='store_true',
-                        help="Build a per-gene matrix: rows are distinct gene signatures (role, function, "
-                             "smCOG and domains as separate columns), columns are genomes, and each cell is "
-                             "how many genes in that genome match the signature.")
-    groupB.add_argument('--regions', default=False, action='store_true',
-                        help="Build a per-cluster matrix: rows are BGC product types (terpene, NRPS, ...), "
-                             "columns are genomes, and each cell is how many regions (clusters) of that type "
-                             "the genome has.")
+    groupB.add_argument(*anvio.A('antismash-genes-matrix'), **anvio.K('antismash-genes-matrix'))
+    groupB.add_argument(*anvio.A('antismash-regions-matrix'), **anvio.K('antismash-regions-matrix'))
 
     groupC = parser.add_argument_group("OUTPUT", "A prefix for the two matrix files (frequency and "
                              "presence/absence) this program will write.")
