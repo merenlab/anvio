@@ -1,7 +1,7 @@
 This program runs [antiSMASH](https://antismash.secondarymetabolites.org/) on a %(contigs-db)s to identify **biosynthetic gene clusters** (BGCs) that, for example, produce secondary metabolites such as antibiotics, siderophores, pigments, and quorum-sensing signals. The program stores antiSMASH's annotations in the database as %(functions)s.
 
 {:.notice}
-Just to avoid any misunderstandings and/or confusions down the line: what a gene cluster describes in this context is very different than what it describes in the context of pangenomics. 
+Just to avoid any misunderstandings and/or confusions down the line: what a gene cluster describes in this context is very different than what it describes in the context of pangenomics.
 
 For downstream analysis, you can export the annotations with %(anvi-export-functions)s, search them with %(anvi-search-functions)s, view them in %(anvi-interactive)s, include them in %(anvi-summarize)s, and compare BGCs across different contigs databases with %(anvi-script-gen-antismash-matrix)s.
 
