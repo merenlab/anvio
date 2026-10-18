@@ -60,6 +60,9 @@ ANTISMASH_DOMAIN_SOURCE = "antiSMASH_DOMAIN"
 # the functional annotation source under which per-gene BGC-region membership is stored
 ANTISMASH_REGION_SOURCE = "antiSMASH_REGION"
 
+# every source anvi-run-antismash writes. They are always added, dropped, and checked for together
+ANTISMASH_SOURCES = [ANTISMASH_SOURCE, ANTISMASH_ROLE_SOURCE, ANTISMASH_DOMAIN_SOURCE, ANTISMASH_REGION_SOURCE]
+
 # antiSMASH annotation analyses that always run: RRE-Finder (--rre, for RiPP-recognition elements) and the
 # Active Site Finder (--asf). Both add BGC-specific information with no anvi'o equivalent. We deliberately do
 # NOT add --tigrfam / --pfam2go: antiSMASH's core detection already contributes the relevant TIGRFAM/Pfam
@@ -178,6 +181,32 @@ class Antismash(object):
 
         if self.output_dir:
             filesnpaths.is_output_dir_writable(os.path.dirname(os.path.abspath(self.output_dir)))
+
+        # antiSMASH refuses to write into an output directory that already has things in it, and leftovers
+        # from an earlier run would get mixed with the new ones, so a user-defined work directory must be new
+        # or empty.
+        if self.work_dir_arg and os.path.exists(self.work_dir_arg) and not filesnpaths.is_dir_empty(self.work_dir_arg):
+            raise ConfigError(f"The work directory you provided ('{self.work_dir_arg}') is not empty. Since leftovers "
+                              f"from an earlier run would get mixed up with the new intermediate files, anvi'o needs "
+                              f"a new or an empty directory here. Please remove it or pick another one.")
+
+        # figure out up front which databases are already annotated (so a batch can fail early rather than
+        # half-way through, if something is off), and make sure we will not overwrite anything we shouldn't.
+        self.genomes_to_skip = set()
+        for genome_name, contigs_db_path in self.genomes.items():
+            if self._already_annotated(contigs_db_path) and not self.just_do_it:
+                # with a single database this is an error; in a batch we skip databases that are already
+                # annotated, so a re-run resumes cleanly.
+                if len(self.genomes) == 1:
+                    raise ConfigError(f"You have already annotated this db with antiSMASH. You want to re-run it? "
+                                      f"Just add `--just-do-it` to your command and anvi'o will overwrite your "
+                                      f"previous outputs and create new ones. If you want to remove previous "
+                                      f"annotations yourself, you can run `anvi-delete-functions -c {contigs_db_path} "
+                                      f"--annotation-sources {','.join(ANTISMASH_SOURCES)}`. If you can't remember "
+                                      f"what you've annotated, you can double-check with `anvi-db-info {contigs_db_path}`.")
+
+                self.genomes_to_skip.add(genome_name)
+                continue
 
 
     def _get_antismash_add_on_args(self):
