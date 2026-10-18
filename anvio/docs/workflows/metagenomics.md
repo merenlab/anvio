@@ -359,6 +359,68 @@ anvi-run-workflow -w metagenomics \
                   -c config-references-mode.json
 ```
 
+### Long-read and mixed read-type support
+
+The metagenomics workflow handles long reads (Oxford Nanopore, PacBio) alongside — or instead of — short reads. To include long reads, add an `lr` column to your %(samples-txt)s pointing to the long-read FASTQ files (long reads must be FASTQ, not FASTA — the long-read QC and mapping steps rely on per-base quality scores). A single sample can carry both short reads (`r1`/`r2`) and long reads (`lr`); the workflow tracks the two read sets separately and never mixes incompatible read types in assembly or mapping.
+
+Long reads are assembled with [(meta)Flye](https://github.com/mikolmogorov/Flye) and mapped with [minimap2](https://github.com/lh3/minimap2), while short reads continue to use your chosen short-read assembler and bowtie2.
+
+#### Choosing long-read presets: the `lr_technology` column vs. the config
+
+Each long-read tool needs a technology-appropriate preset: a read-type flag for Flye (e.g. `--nano-raw`) and a mapping preset for minimap2 (e.g. `map-ont`). There are two ways to provide these, and **anvi'o will never run these tools on their built-in defaults**: if it cannot determine a preset, it stops before building the workflow with a message telling you exactly what to set.
+
+1. **Recommended — the `lr_technology` column in your %(samples-txt)s.** If you declare the sequencing technology per sample (e.g. `ont`, `pb-hifi`; see the %(samples-txt)s documentation for the full list), anvi'o automatically selects the correct preset for every long-read tool. When the column is present it is all-or-nothing: every long-read sample must have a value, and short-read-only samples leave it blank. Samples in the same co-assembly `group` must use technologies that map to the same Flye read type, otherwise anvi'o asks you to split them into separate groups.
+
+2. **The config file.** If you omit the `lr_technology` column, you must set the presets explicitly in your %(workflow-config)s: `minimap2`'s `preset`, and exactly one of Flye's read-type flags (`--nano-raw`, `--pacbio-hifi`, …).
+
+The technology → preset mapping is maintained in `anvio/workflows/lr_technology_presets.yaml`, which also records the tool versions each preset was validated against; if you have an untested version installed, anvi'o prints a non-fatal heads-up but proceeds.
+
+#### Long-read quality control
+
+Beyond the default short-read QC (illumina-utils), the workflow offers several optional QC steps, all disabled by default and enabled per rule in your %(workflow-config)s with `"run": true`:
+
+* `filtlong` — length/quality filtering of long reads with [Filtlong](https://github.com/rrwick/Filtlong) (`--min-length`, `--max-length`, `--target-bases`, `--keep-percent`, `--min-mean-q`). `--min-length`/`--max-length` are hard length thresholds, while `--target-bases`, `--keep-percent`, and `--min-mean-q` filter against the read set's own length/quality distribution. When enabled, downstream mapping and assembly use the filtered reads. Because Filtlong is a filter, anvi'o requires at least one filtering criterion when it is enabled — set one of the parameters above, or pass another Filtlong option via `additional_params`; otherwise anvi'o stops with an error.
+* `nanoplot` — long-read quality assessment with [NanoPlot](https://github.com/wdecoster/NanoPlot) (one report per long-read readset per stage). It needs no sequencing-technology preset. Two independent flags control which reads it assesses: `run_on_raw` (the original reads) and `run_on_filtered` (the `filtlong` output). Both default to `false`, so when you enable `nanoplot` you must set at least one of them to `true`; set both to get a before/after comparison of your filtering.
+* `fastqc` — [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) on short reads (one report per short-read readset per stage). Like `nanoplot`, it takes `run_on_raw` (the original reads) and `run_on_filtered` (the illumina-utils `QUALITY_PASSED` reads), both defaulting to `false`.
+* `multiqc` — aggregates the FastQC and NanoPlot (NanoStats) outputs into a single [MultiQC](https://multiqc.info) report. Samples are labelled `<readset> | <stage>` (e.g. `S1 | raw`, `S1 | filtered`) so that when both stages are produced, a sample's raw and filtered rows sort next to each other rather than being split into separate `raw`/`filtered` blocks.
+
+For `nanoplot` and `fastqc`, anvi'o validates the stage flags before running: if the tool is enabled you must select at least one stage, and `run_on_filtered` is only allowed when the matching filter (`filtlong` for `nanoplot`, `iu_filter_quality_minoche` for `fastqc`) is enabled — otherwise there would be no filtered reads to look at. In practice, if you enable one of these tools without any filtering, set `run_on_raw: true`.
+
+`filtlong`, `nanoplot`, `fastqc`, and `multiqc` are not shipped inside the anvi'o environment. See [Providing third-party tools via conda](#providing-third-party-tools-via-conda) below for how the workflow gets hold of them (this applies to the assemblers and mappers too).
+
+### Providing third-party tools via conda
+
+Several rules in the metagenomics workflow call programs that anvi'o does **not** bundle in its own environment — the assemblers, mappers, and QC tools:
+
+`bowtie` (Bowtie2) · `minimap2` · `megahit` · `metaspades` · `idba_ud` · `flye` · `filtlong` · `nanoplot` · `fastqc` (FastQC) · `multiqc`
+
+**By default, anvi'o expects each enabled tool on your `$PATH`**: it checks that the program exists before starting and stops with a clear error if it does not. Alternatively, so you do not have to install every one of these into a single environment, you can have any rule run inside its own conda environment that anvi'o (through Snakemake) sets up just for that rule. You control this **per rule** in your %(workflow-config)s with three mutually exclusive options, all off by default:
+
+1. **`use_anvio_conda_yaml`** (boolean; default `false`). Set it to `true` to use the environment file anvi'o ships for this rule (one curated, version-pinned `.yaml` per tool, living in `anvio/workflows/conda_envs/`). The file is resolved at run time from your installed anvi'o, so your config stays reproducible on any machine — there is no hard-coded path to a repository. This is the easiest way to get a pinned, tested version of a tool without installing anything yourself.
+
+2. **`conda_yaml`** — a path to *your own* environment `.yaml` file (for example, a copy of one of anvi'o's that you have customized, or an entirely different recipe). Snakemake builds the environment from it.
+
+3. **`conda_env`** — the name of an environment you have **already created yourself** (e.g. `conda create -n my-flye -c bioconda -c conda-forge flye`). The rule runs the tool via `conda run -n <name> ...`.
+
+When a rule resolves to a conda `.yaml` (the anvi'o-shipped one via `use_anvio_conda_yaml: true`, or your own `conda_yaml`), anvi'o automatically adds `--use-conda` to the underlying Snakemake command, so Snakemake builds and activates that environment. The first run builds the environment (which takes a little while); later runs reuse the cached environment. Because `conda_env` points at an environment that already exists, it does not need `--use-conda`.
+
+#### These three options are mutually exclusive
+
+Set at most one of `use_anvio_conda_yaml: true`, `conda_yaml`, or `conda_env` per rule; if more than one is in effect anvi'o stops with a clear error rather than guessing which one you meant. For example, to run Flye from your own named environment:
+
+``` json
+"flye": {
+    "run": true,
+    "conda_env": "my-flye"
+}
+```
+
+#### Running these tools from your `$PATH`
+
+This is the default. With all three conda options off for a rule (`use_anvio_conda_yaml: false` and both `conda_yaml` and `conda_env` empty), anvi'o expects the program on your `$PATH` and checks for it up front.
+
+Note that whenever a rule *is* set to be provided by conda (any of the three options above), anvi'o will **not** pre-check that the program exists on your `$PATH` — Snakemake will provide it. In that case, if the environment cannot be built or the tool is otherwise unavailable, you will see the failure when that rule runs rather than up front.
+
 ### Running binning algorithms
 
 If you wish to utilize automatic binning algorithms, you can use %(anvi-cluster-contigs)s as part of your metagenomics workflow. You can run one or more binning algorithms, and resulting %(collection)ss would be automatically imported into your merged profile database/s.
@@ -552,6 +614,99 @@ HUMAN		GRCh38_latest_genomic.fna.gz
 ```
 
 </div>
+
+### Downloading metagenomes from the SRA (and not keeping them)
+
+Sometimes the metagenomes you want to work with are not on your computer, and you have no particular wish to keep them there. You want to know whether a set of organisms shows up in a thousand public metagenomes, you have a server with a few hundred gigabytes of free space, and the thousand metagenomes will not fit on it no matter how you arrange them.
+
+The metagenomics workflow can download reads from the SRA itself, use them, and delete them as it goes. Instead of file paths, your %(samples-txt)s names SRA run accessions:
+
+```
+sample	sra_accession
+S01	ERR6450080
+S02	ERR6450081
+```
+
+and your %(workflow-config)s says how much disk space anvi'o may use for reads while it works:
+
+```json
+    (...)
+    "download_reads": {
+        "max_disk_gb": 500,
+        "keep_reads": "none",
+        "safety_factor": 1.3,
+        "metadata_cache": "SRA-METADATA.txt"
+    },
+    (...)
+```
+
+That is the whole setup. Everything else — quality filtering, assembly, mapping, profiling — works exactly as it does for reads that were already on your disk.
+
+#### How the disk budget works
+
+`max_disk_gb` is a promise about a moment in time, not a total: it is the most disk space that downloaded reads will occupy *at once*. The thousand metagenomes still all get processed; there are just never more than `max_disk_gb` worth of them sitting around while it happens.
+
+Anvi'o keeps that promise by making a sample's download wait for an earlier sample's reads to have been used up and deleted. It works out how much space each sample needs from what NCBI reports about it (the number of bases it holds, the size of its archive) plus room for the intermediate files that exist while it is being unpacked and quality filtered, and multiplies the result by `safety_factor` to leave itself some slack.
+
+{:.notice}
+Setting `max_disk_gb` is optional, and anvi'o will warn you if you leave it out. Without a budget it downloads as fast as it can, which is exactly what you want if you have the room — reads are still deleted the moment nothing needs them anymore.
+
+If your budget is too small to hold even one sample, anvi'o says so before downloading anything, and tells you how many GB that sample actually needs. The same is true of a co-assembly group: everything that goes into one assembly has to be on disk at the same time, so a group's samples count against the budget together.
+
+#### Keeping the reads after all
+
+`keep_reads` decides what survives:
+
+|keep_reads|What stays on disk|
+|:--|:--|
+|`none`|Nothing. The default.|
+|`raw`|The reads as they were downloaded|
+|`qc`|The quality-filtered reads|
+|`both`|Both of the above|
+
+{:.warning}
+Anything you keep is, by definition, not deleted, so `max_disk_gb` no longer describes your total disk use — only the transient files. Anvi'o will remind you of this when you set `keep_reads` to anything other than `none`, and tell you roughly how much the reads you are keeping will come to.
+
+One thing to know if your %(samples-txt)s mixes downloaded reads with reads that were already on your disk: `keep_reads` is not decided per sample. Snakemake works out whether a step's output is temporary when it reads the workflow, not when it runs a job, so with `keep_reads: none` the quality-filtered reads of *every* sample are deleted once nothing needs them anymore — including the samples you supplied yourself. The files you pointed anvi'o at are never touched, and quality filtering can always be done again from them, but if you want the filtered copies of your own samples kept, set `keep_reads` to `qc` or `both`. Anvi'o warns you when this applies to your run.
+
+#### What anvi'o needs to know about your accessions, and how it finds out
+
+An accession by itself does not say whether a run is paired-end, whether it came off a long-read instrument, or how big it is, and the workflow needs all three before it can start. So the first time anvi'o sees a new accession it asks NCBI, and writes what it learns into a %(sra-metadata-txt)s (`SRA-METADATA.txt` by default). After that it reads the file and leaves NCBI alone.
+
+The file is meant to be looked at and, where necessary, corrected — NCBI's description of a run is written by whoever submitted it, and is sometimes wrong. Anvi'o only ever looks up accessions that are missing from the file, so anything you edit stays edited.
+
+Two things anvi'o will tell you about after that lookup:
+
+* **Single-end short reads.** The metagenomics workflow does not handle these, so anvi'o stops and names the accessions before downloading anything, rather than after.
+* **PacBio runs of unclear chemistry.** Nanopore runs are unambiguous, and so are several PacBio instruments, but a Sequel II was used for both CLR and HiFi sequencing and NCBI's metadata does not say which. Anvi'o warns rather than stops, because if all your long-read samples came off the same kind of machine you can simply set the presets in your config file as usual. If they did not, add an `lr_technology` column to your %(samples-txt)s or fill it in in the metadata file.
+
+#### Samples made of several runs
+
+A sample sequenced across several runs is described by several accessions, separated by commas. Anvi'o downloads each of them and puts them together into one set of reads for that sample. Since it knows what each accession holds, a sample can name a short-read run and a long-read run at once and become a hybrid sample:
+
+```
+sample	sra_accession
+S01	ERR6450080,ERR6450082
+S02	ERR6450081,SRR11951439
+```
+
+#### When samples cannot be taken a few at a time
+
+There is one arrangement where anvi'o cannot spread downloads out at all: assembling your samples *and* mapping every sample against every assembly (`all_against_all`). A sample cannot be mapped until the last assembly exists, and that assembly cannot exist until its own reads have been downloaded, so by the time the final assembly is built every metagenome is necessarily still on disk. There is no order that avoids it.
+
+This is still allowed, because it is a perfectly reasonable thing to want, and reads are still deleted once nothing needs them anymore. What changes is what the budget means: anvi'o treats all of your samples as a single unit, so `max_disk_gb` can only tell you whether you have room for the whole set — it cannot make do with less. If you do not, anvi'o says so before downloading anything, and tells you how many GB the run actually needs.
+
+In references mode the same setting is harmless, since the references come from a %(fasta-txt)s rather than from the reads, and `all_against_all` costs nothing.
+
+#### One combination anvi'o will refuse
+
+* **Reference-based read removal with quality filtering turned off.** In that combination the read removal step consumes the downloaded files themselves rather than a filtered copy, leaving nothing for the steps that come after it.
+
+#### Where things end up
+
+Downloads live under `01_SRA` while they are being worked on: each run in `01_SRA/runs/`, and the finished per-sample reads in `01_SRA/reads/`. You will also find `01_SRA/samples-txt-with-downloaded-reads.txt`, which is your samples-txt with the accessions replaced by the paths anvi'o gave them — handy for seeing what it decided each sample was made of.
+
+If you watch that directory while a workflow runs, you will see files appear and disappear as the workflow moves through your samples. At the end of a run with `keep_reads: none` it is empty, and everything you actually wanted — profiles, contigs databases, merged profiles — is where it always is.
 
 ## Frequently Asked Questions
 

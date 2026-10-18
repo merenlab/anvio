@@ -328,13 +328,15 @@ class XSplitter(object):
         bin_contigs_db.db.copy_paste(table_name='hmm_hits_info', source_db_path=self.contigs_db_path)
         bin_contigs_db.db.copy_paste(table_name='taxon_names', source_db_path=self.contigs_db_path)
 
-        # update some variables in the self table:
-        self.contigs_db_hash = bin_contigs_db.get_hash()
+        # update some variables in the self table. please note that the `contigs_db_hash` of this new
+        # database is not one of them: since the hash of a contigs database is a function of its
+        # content, it can only be computed after the data migration below is done (until then this
+        # database will carry the hash of the contigs database it is coming from, which is inherited
+        # through the `self` table copy-paste above)
         bin_contigs_db.db.update_meta_value('num_contigs', self.num_contigs)
         bin_contigs_db.db.update_meta_value('num_splits', self.num_splits)
         bin_contigs_db.db.update_meta_value('total_length', self.total_length)
         bin_contigs_db.db.update_meta_value('creation_date', bin_contigs_db.get_date())
-        bin_contigs_db.db.update_meta_value('contigs_db_hash', self.contigs_db_hash)
         bin_contigs_db.db.update_meta_value('project_name', self.bin_id)
         # reaction network tables are not populated after splitting, so we clear the corresponding self values
         bin_contigs_db.db.update_meta_value('reaction_network_ko_annotations_hash', None)
@@ -404,6 +406,12 @@ class XSplitter(object):
         actual_sources = bin_contigs_db.db.get_single_column_from_table(t.contig_classification_table_name, 'source', unique=True)
         bin_contigs_db.db.update_meta_value('contig_classification_sources',
                                     ','.join(sorted(actual_sources)) if actual_sources else None)
+
+        # everything that describes the identity of this new contigs database is now in place, so this
+        # is the right moment to compute its hash. the profile and auxiliary databases that may be
+        # generated for this bin later will link themselves to this database through this very hash
+        self.contigs_db_hash = bin_contigs_db.get_hash()
+        bin_contigs_db.db.update_meta_value('contigs_db_hash', self.contigs_db_hash)
 
         bin_contigs_db.disconnect()
 
@@ -1036,6 +1044,13 @@ class LocusSplitter:
         self.include_fasta_output = A('include_fasta_output') or True
         self.is_in_flank_mode = bool(A('flank_mode'))
 
+        # should the gene caller ids in the output contigs databases be reset to start from 0, or
+        # should they be preserved to match those in the source contigs database? when the argument
+        # is not provided at all (e.g., callers that predate this option), we default to `True` to
+        # retain the historical behavior of resetting gene caller ids.
+        reset_gene_caller_ids = A('reset_gene_caller_ids')
+        self.reset_gene_caller_ids = True if reset_gene_caller_ids is None else reset_gene_caller_ids
+
         if A('list_hmm_sources'):
             dbops.ContigsDatabase(self.input_contigs_db_path).list_available_hmm_sources()
             sys.exit()
@@ -1479,14 +1494,18 @@ class LocusSplitter:
         gene_calls_list = list(gene_calls.keys())
         if reverse_complement:
             sequence = utils.rev_comp(sequence)
-            gene_calls, gene_caller_id_conversion_dict = utils.rev_comp_gene_calls_dict(gene_calls, sequence)
-        else:
+            gene_calls, gene_caller_id_conversion_dict = utils.rev_comp_gene_calls_dict(gene_calls, sequence, preserve_gene_caller_ids=not self.reset_gene_caller_ids)
+        elif self.reset_gene_caller_ids:
             gene_caller_id_conversion_dict = dict([(gene_calls_list[g], g) for g in range(0, len(gene_calls_list))])
             new_gene_calls = {}
             for g in range(0, len(gene_calls_list)):
                 gene_call = copy.deepcopy(gene_calls[gene_calls_list[g]])
                 new_gene_calls[g] = gene_call
             gene_calls = new_gene_calls
+        else:
+            # preserve the original gene caller ids: the conversion dict is an identity mapping and
+            # the gene calls dict is kept as-is (its keys are the original gene caller ids)
+            gene_caller_id_conversion_dict = dict([(g, g) for g in gene_calls_list])
 
         # write the sequence as a temporary FASTA file since the design of ContigsDatabase::create
         # will work seamlessly with this approach:
