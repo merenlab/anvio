@@ -289,7 +289,7 @@ class Inversions:
             if not max(contig_coverage) > 0:
                 continue
 
-            # if we are here, we're good to go. let's keep the contig lenght in a separate variable:
+            # if we are here, we're good to go. let's keep the contig length in a separate variable:
             contig_length = len(contig_coverage)
 
             # to find regions of high coverage, we first need to 'pad' our array to ensure it always
@@ -305,7 +305,7 @@ class Inversions:
             cov_stretch_end_positions = np.where(regions_of_contig_covered_enough_diff == -1)[0]
 
             # at this stage, `cov_stretch_start_positions` and `cov_stretch_end_positions` contain pairs of
-            # positions that match to the begining and end of stretches. we will remove those that are too
+            # positions that match to the beginning and end of stretches. we will remove those that are too
             # short to be considered, and store the start/end positions for the remaining stretches of
             # high coverage into the dictionary `coverage_stretches_in_contigs`
             for i in range(0, len(cov_stretch_start_positions)):

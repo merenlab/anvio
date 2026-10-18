@@ -283,16 +283,18 @@ It's common that not all genomes or metagenomes will have the gene family of int
 
 ### Multiple sequence alignment step with MUSCLE
 
-One step of ecophylo is to perform a multiple sequence alignment of the recruited homologs and depending on your application, this could recruit thousands of ORFs which make the MSA a challenging feat. By default, the ecophylo is designed for quick insights, and thus the %(workflow-config)s file uses MUSCLE parameters to perform a large MSA, swiftly:
+One step of ecophylo is to perform a multiple sequence alignment of the recruited homologs and depending on your application, this could recruit thousands of ORFs which make the MSA a challenging feat. By default, the %(workflow-config)s file asks MUSCLE 5 for the Super5 algorithm, which is the one MUSCLE 5 offers for large numbers of sequences:
 
 ```bash
 "align_sequences": {
     "threads": 5,
-    "additional_params": "-maxiters 1 -diags -sv -distance1 kbit20_3"
+    "additional_params": "-super5"
 },
 ```
 
-However, these parameters may not be optimal for your use case. For example, maybe you are trying to explore branches patterns of a specific protein family and would prefer to have mulitple interations of the MSA. Please explore the MUSCLE documentation to [documentation](https://www.drive5.com/muscle/muscle.html) customize the MSA step for your needs. You can replace the `additional_params` with whatever MUSCLE parameters that are best for you.
+The default MUSCLE 5 algorithm (which you get by setting `additional_params` to an empty string) is more thorough, but both its running time and its memory use grow steeply with the number of sequences, so it is a better fit for a few hundred sequences than for the thousands ecophylo often recruits.
+
+The default may not be optimal for your use case, though. For example, maybe you are trying to explore branching patterns of a specific protein family, and would rather have a more thorough MSA of a smaller set of sequences. Please explore the [MUSCLE 5 documentation](https://drive5.com/muscle5/) to customize the MSA step for your needs, and replace `additional_params` with whatever MUSCLE 5 parameters are best for you.
 
 ## tree-mode: Insights into the evolutionary patterns of target genes
 
@@ -423,7 +425,7 @@ anvi-script-reformat-fasta 02_NR_FASTAS/"${PROTEIN}"/"${PROTEIN}"-AA_subset.fa -
 ALIGNMENT_PREFIX=""${PROTEIN}"-AA_subset_remove_bad_branches"
 
 # Align
-clusterize "muscle -in SUBSET_TREE/"${PROTEIN}"-AA_subset_remove_bad_branches.fa -out SUBSET_TREE/"${ALIGNMENT_PREFIX}".faa -maxiters 1" -n 15 -o 00_LOGS/align.log
+clusterize "muscle -align SUBSET_TREE/"${PROTEIN}"-AA_subset_remove_bad_branches.fa -output SUBSET_TREE/"${ALIGNMENT_PREFIX}".faa" -n 15 -o 00_LOGS/align.log
 
 # Trim
 clusterize "trimal -in SUBSET_TREE/"${ALIGNMENT_PREFIX}".faa -out SUBSET_TREE/"${ALIGNMENT_PREFIX}"_trimmed.faa -gappyout" -n 5 -o 00_LOGS/trim.log

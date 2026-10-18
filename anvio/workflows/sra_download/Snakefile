@@ -5,6 +5,7 @@ import anvio
 import argparse
 import pandas as pd
 import anvio.workflows as w
+import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 from anvio.workflows.sra_download import SRADownloadWorkflow
@@ -45,6 +46,8 @@ ERR6450082
 """
 
 
+run = terminal.Run()
+
 M = SRADownloadWorkflow(argparse.Namespace(config=config))
 M.init()
 
@@ -69,6 +72,11 @@ def rule_log(rule_name, log_file_name="log"):
 
 
 remove_tmp = M.get_param_value_from_config(["Remove_unzipped_SRA_files"])
+
+# Constrains the `{accession}` wildcard to the accessions the user actually asked for. Without
+# it snakemake would let `{accession}` match anything at all (including path separators), which
+# makes rules match file names they have no business matching.
+ACCESSION_RE = w.regex_from_ids(M.accessions_list)
 
 
 rule SRA_DOWNLOAD_WORKFLOW_target_rule:

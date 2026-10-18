@@ -148,7 +148,7 @@ class ProgramSearch:
 
             row_info = [program.name, description, tags, provides, requires, can_use, can_provide]
             row = dict(zip(self.headers, row_info))
-            self.table = self.table.append(row, ignore_index = True)
+            self.table = pd.concat([self.table, pd.DataFrame([row])], ignore_index=True)
 
         self.table.sort_values(by = 'Program').reset_index(inplace = True)
 

@@ -5,9 +5,23 @@
         "all_against_all":  {"type": "bool", "default": null},
         "kraken_txt":       {"type": "str",  "default": null},
         "collections_txt":  {"type": "str",  "default": null},
-        "read_type_suffix": {"type": "str",  "default": "auto"}
+        "read_type_suffix": {"type": "str",  "default": "auto"},
+        "download_reads":   {"type": "dict", "default": {"max_disk_gb": null,
+                                                         "keep_reads": "none",
+                                                         "safety_factor": 1.3,
+                                                         "metadata_cache": "SRA-METADATA.txt"}}
     },
     "rules": {
+        "sra_prefetch": {
+            "threads":    {"type": "int", "default": 2},
+            "--max-size": {"type": "str", "default": "40g"}
+        },
+        "sra_fasterq_dump": {
+            "threads": {"type": "int", "default": 6}
+        },
+        "sra_gather_reads": {
+            "threads": {"type": "int", "default": 1}
+        },
         "iu_gen_configs": {
             "threads":      {"type": "int", "default": 1},
             "--r1-prefix":  {"type": "str", "default": null},
@@ -29,12 +43,54 @@
             "threads": {"type": "int",  "default": 1},
             "run":     {"type": "bool", "default": true}
         },
+        "fastqc": {
+            "threads":          {"type": "int",  "default": 1},
+            "run":              {"type": "bool", "default": false},
+            "run_on_raw":       {"type": "bool", "default": false},
+            "run_on_filtered":  {"type": "bool", "default": false},
+            "conda_yaml":       {"type": "str",  "default": ""},
+            "use_anvio_conda_yaml": {"type": "bool", "default": false},
+            "conda_env":        {"type": "str",  "default": ""},
+            "additional_params":{"type": "str",  "default": ""}
+        },
+        "filtlong": {
+            "threads":          {"type": "int",  "default": 1},
+            "run":              {"type": "bool", "default": false},
+            "conda_yaml":       {"type": "str",  "default": ""},
+            "use_anvio_conda_yaml": {"type": "bool", "default": false},
+            "conda_env":        {"type": "str",  "default": ""},
+            "--min-length":     {"type": "int",   "default": null},
+            "--max-length":     {"type": "int",   "default": null},
+            "--target-bases":   {"type": "int",   "default": null},
+            "--keep-percent":   {"type": "float", "default": null},
+            "--min-mean-q":     {"type": "float", "default": null},
+            "additional_params":{"type": "str",   "default": ""}
+        },
+        "nanoplot": {
+            "threads":          {"type": "int",  "default": 2},
+            "run":              {"type": "bool", "default": false},
+            "run_on_raw":       {"type": "bool", "default": false},
+            "run_on_filtered":  {"type": "bool", "default": false},
+            "conda_yaml":       {"type": "str",  "default": ""},
+            "use_anvio_conda_yaml": {"type": "bool", "default": false},
+            "conda_env":        {"type": "str",  "default": ""},
+            "additional_params":{"type": "str",  "default": ""}
+        },
+        "multiqc": {
+            "threads":          {"type": "int",  "default": 1},
+            "run":              {"type": "bool", "default": false},
+            "conda_yaml":       {"type": "str",  "default": ""},
+            "use_anvio_conda_yaml": {"type": "bool", "default": false},
+            "conda_env":        {"type": "str",  "default": ""},
+            "additional_params":{"type": "str",  "default": ""}
+        },
         "merge_fastqs_for_co_assembly": {},
         "merge_fastas_for_co_assembly":  {},
         "megahit": {
             "threads":          {"type": "int",   "default": 7},
             "run":              {"type": "bool",  "default": null},
             "conda_yaml":       {"type": "str",   "default": null},
+            "use_anvio_conda_yaml": {"type": "bool", "default": false},
             "conda_env":        {"type": "str",   "default": null},
             "--min-contig-len": {"type": "int",   "default": 1000},
             "--min-count":      {"type": "int",   "default": null},
@@ -65,6 +121,7 @@
             "threads":          {"type": "int",  "default": 7},
             "run":              {"type": "bool", "default": null},
             "conda_yaml":       {"type": "str",  "default": null},
+            "use_anvio_conda_yaml": {"type": "bool", "default": false},
             "conda_env":        {"type": "str",  "default": null},
             "additional_params":{"type": "str",  "default": "--only-assembler"},
             "use_scaffolds":    {"type": "bool", "default": null}
@@ -73,6 +130,7 @@
             "threads":          {"type": "int",  "default": 7},
             "run":              {"type": "bool", "default": null},
             "conda_yaml":       {"type": "str",  "default": null},
+            "use_anvio_conda_yaml": {"type": "bool", "default": false},
             "conda_env":        {"type": "str",  "default": null},
             "--mink":           {"type": "int",  "default": null},
             "--maxk":           {"type": "int",  "default": null},
@@ -98,11 +156,12 @@
             "threads":          {"type": "int",  "default": 7},
             "run":              {"type": "bool", "default": false},
             "conda_yaml":       {"type": "str",  "default": null},
+            "use_anvio_conda_yaml": {"type": "bool", "default": false},
             "conda_env":        {"type": "str",  "default": null},
             "--meta":           {"type": "bool", "default": true},
             "--pacbio-raw":     {"type": "bool", "default": null},
             "--pacbio-corr":    {"type": "bool", "default": null},
-            "--pacbio-hifi":    {"type": "bool", "default": true},
+            "--pacbio-hifi":    {"type": "bool", "default": null},
             "--nano-raw":       {"type": "bool", "default": null},
             "--nano-corr":      {"type": "bool", "default": null},
             "--nano-hq":        {"type": "bool", "default": null},
@@ -123,6 +182,7 @@
         "bowtie": {
             "threads":          {"type": "int", "default": 3},
             "conda_yaml":       {"type": "str", "default": null},
+            "use_anvio_conda_yaml": {"type": "bool", "default": false},
             "conda_env":        {"type": "str", "default": null},
             "additional_params":{"type": "str", "default": "--no-unal"}
         },
@@ -132,8 +192,9 @@
         },
         "minimap2": {
             "threads":          {"type": "int", "default": 3},
-            "preset":           {"type": "str", "default": "map-hifi"},
+            "preset":           {"type": "str", "default": ""},
             "conda_yaml":       {"type": "str", "default": null},
+            "use_anvio_conda_yaml": {"type": "bool", "default": false},
             "conda_env":        {"type": "str", "default": null},
             "additional_params":{"type": "str", "default": "--secondary-seq"}
         },

@@ -172,6 +172,26 @@ def get_terminal_size():
     return int(cr[1]), int(cr[0])
 
 
+def stdout_supports_unicode():
+    """Whether the output stream can encode fancy characters, such as box-drawing glyphs.
+
+    Please note that this is a completely different question from `sys.stdout.isatty()`, which is
+    what anvi'o asks before it uses colors (see `ttycolors.color_text`) or draws progress bars (see
+    the class `Progress`). Being attached to a terminal has nothing to do with being able to encode
+    a character: a file anvi'o writes to through a pipe holds box-drawing characters perfectly well
+    even though it is not a terminal, while an ASCII terminal would raise a `UnicodeEncodeError` the
+    moment anvi'o tried to print one. So please don't 'fix' this function to use `isatty`.
+
+    Being a bit lax about how the encoding is spelled is intentional: Python reports it as anything
+    from 'utf-8' to 'UTF8' depending on the platform, and it can also be None when stdout has been
+    replaced with something that doesn't bother to declare one.
+    """
+
+    encoding = sys.stdout.encoding or ''
+
+    return encoding.lower().replace('-', '').replace('_', '') == 'utf8'
+
+
 def clear_progress_line():
     null = '\r' + ' ' * (get_terminal_width())
     sys.stderr.write(null)
@@ -511,6 +531,46 @@ class Run:
                 progress.update(progress.msg)
         else:
             self.write(message_line, overwrite_verbose=overwrite_verbose)
+
+
+    def section(self, section_header, lc='green', bgc=Back.GREY_93, fgc=Fore.BLACK, overwrite_verbose=False, nl_before=2, nl_after=1, progress=None):
+        """Print a major section header to help the user distinguish major steps of an analysis.
+
+        When `bgc` is set (a background color from `colored.Back`), the header is drawn as a filled
+        block of color, where `fgc` (from `colored.Fore`) sets the text color, and `lc` is ignored.
+        Setting `bgc` to None falls back to drawing the header between two colored `=` rules using
+        the tty color `lc`.
+        """
+
+        if isinstance(section_header, str):
+            section_header = remove_spaces(section_header)
+
+        terminal_width = get_terminal_width()
+
+        # the text of the header is wrapped at a comfortable reading width regardless of how wide the
+        # terminal is, but a block of background color is filled all the way to the edge of it
+        wrap_width = min(terminal_width, 80)
+        separator = '=' * wrap_width
+        header_lines = ['  %s' % line for line in textwrap.fill(str(section_header), wrap_width - 4, subsequent_indent='  ').split('\n')]
+
+        if bgc and sys.stdout.isatty():
+            # each line is padded to the full width of the terminal and reset individually so the
+            # block spans the entire line, and does not bleed into anything that comes after it
+            block = ['', *header_lines, '']
+            output = '%s%s\n%s' % ('\n' * nl_before,
+                                   '\n'.join([bgc + fgc + line.ljust(terminal_width) + Style.RESET for line in block]),
+                                   '\n' * nl_after)
+        else:
+            output = c("%s%s\n\n%s\n\n%s\n%s" % ('\n' * nl_before, separator, '\n'.join(header_lines),
+                                                separator, '\n' * nl_after), lc)
+
+        if progress:
+            progress.clear()
+            self.write(output, overwrite_verbose=overwrite_verbose)
+            if progress.msg and progress.pid:
+                progress.update(progress.msg)
+        else:
+            self.write(output, overwrite_verbose=overwrite_verbose)
 
 
     def warning(self, message, header='WARNING', lc='red', raw=False, overwrite_verbose=False, nl_before=0, nl_after=0, progress=None):

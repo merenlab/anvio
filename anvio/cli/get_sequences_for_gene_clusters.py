@@ -96,7 +96,16 @@ def run_program():
         run.info_single("Dry run, eh? Well. Your dry run is done!")
         sys.exit(0)
 
-    if args.output_file:
+    if args.representative_sequences:
+        if args.split_output_per_gene_cluster:
+            for gene_cluster_name in filtered_gene_clusters_dict:
+                output_file_path = f"{args.output_file_prefix}{gene_cluster_name}.fa"
+                pan.write_gene_cluster_representative_sequences_to_file(gene_clusters_dict={gene_cluster_name: filtered_gene_clusters_dict[gene_cluster_name]},
+                                                                       output_file_path=output_file_path)
+        else:
+            pan.write_gene_cluster_representative_sequences_to_file(gene_clusters_dict=filtered_gene_clusters_dict,
+                                                                    output_file_path=args.output_file)
+    elif args.output_file:
         if args.concatenate_gene_clusters:
             pan.write_sequences_in_gene_clusters_for_phylogenomics(gene_clusters_dict=filtered_gene_clusters_dict,
                                                                    output_file_path=args.output_file,
@@ -127,6 +136,16 @@ def run_program():
 
 
 def sanity_check(args):
+    if args.representative_sequences and args.concatenate_gene_clusters:
+        raise ConfigError("The flag `--representative-sequences` reports a single sequence per gene cluster, so it makes "
+                          "no sense to also ask for concatenated gene clusters with `--concatenate-gene-clusters`. Please "
+                          "remove one of these flags and try again.")
+
+    if args.representative_sequences and args.report_DNA_sequences:
+        raise ConfigError("The flag `--representative-sequences` only reports amino acid sequences (the representative-picking "
+                          "strategy relies on the aligned amino acid sequences), so it cannot be combined with "
+                          "`--report-DNA-sequences`. Please remove one of these flags and try again.")
+
     if args.gene_cluster_id and args.gene_cluster_ids_file:
         raise ConfigError('You should either declare a single gene cluster name or a set of gene cluster names in a file, but not both :/')
 
@@ -167,7 +186,8 @@ def sanity_check(args):
         filesnpaths.is_output_dir_writable(os.path.dirname(args.output_file_prefix))
     else:
         if not args.output_file:
-            args.output_file = os.path.join(os.path.abspath(os.getcwd()), 'GENE-CLUSTER-ALIGNMENTS.fa')
+            default_output_file_name = 'GENE-CLUSTER-REPRESENTATIVES.fa' if args.representative_sequences else 'GENE-CLUSTER-ALIGNMENTS.fa'
+            args.output_file = os.path.join(os.path.abspath(os.getcwd()), default_output_file_name)
 
         filesnpaths.is_output_file_writable(args.output_file, ok_if_exists=False)
 
@@ -237,6 +257,10 @@ def get_args():
     groupG.add_argument(*anvio.A('separator'), **anvio.K('separator'))
     groupG.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))
     groupG.add_argument(*anvio.A('list-aligners'), **anvio.K('list-aligners'))
+
+    groupR = parser.add_argument_group('REPRESENTATIVE SEQUENCES', "Rather than reporting every gene in a gene cluster, "
+                                       "report a single representative amino acid sequence per gene cluster.")
+    groupR.add_argument(*anvio.A('representative-sequences'), **anvio.K('representative-sequences'))
 
     groupH = parser.add_argument_group('LIFE SAVERS', "Just when you need them.")
     groupH.add_argument(*anvio.A('report-DNA-sequences'), **anvio.K('report-DNA-sequences'))
