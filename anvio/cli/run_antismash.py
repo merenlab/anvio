@@ -13,7 +13,8 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['jessika-fuessel']
-__requires__ = ['contigs-db', 'external-genomes']
+__requires__ = ['contigs-db']
+__can_use__ = ['external-genomes']
 __provides__ = ['functions']
 __description__ = ("Run antiSMASH on one or many anvi'o contigs databases and import biosynthetic gene "
                    "cluster (BGC) annotations into the gene functions table")
