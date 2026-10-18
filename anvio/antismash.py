@@ -72,6 +72,11 @@ ANTISMASH_ANNOTATION_ARGS = ["--asf", "--rre"]
 # change the per-gene annotations imported into the database.
 ANTISMASH_DETAILED_ARGS = ["--cb-general", "--cb-knownclusters", "--cb-subclusters", "--cc-mibig", "--smcog-trees"]
 
+# flags `_run_antismash` always passes to antiSMASH on its own, which therefore cannot also come through
+# --antismash-add-on
+ANTISMASH_FLAGS_SET_BY_ANVIO = ["--cpus", "-c", "--taxon", "--genefinding-tool", "--genefinding-gff3", "--output-dir",
+                                "--logfile", "--html-title", "--databases"]
+
 # per-(meta)genome result files antiSMASH always writes, but which we keep only with --include-detailed-output
 ANTISMASH_DETAILED_FILE_SUFFIXES = (".gbk", ".json", ".zip")
 
@@ -156,6 +161,9 @@ class Antismash(object):
         # of the target databases, so we do it once here rather than per genome.
         self.antismash_bin = self._resolve_antismash_bin()
 
+        # make sure the add-on flags parse, and that they do not repeat anything anvi'o already sets
+        self.antismash_add_on_args = self._get_antismash_add_on_args()
+
         # the single-database output options make no sense for a batch (each database would clobber the next),
         # so refuse that combination early, with a clear message.
         if len(self.genomes) > 1:
@@ -170,6 +178,36 @@ class Antismash(object):
 
         if self.output_dir:
             filesnpaths.is_output_dir_writable(os.path.dirname(os.path.abspath(self.output_dir)))
+
+
+    def _get_antismash_add_on_args(self):
+        """Split the --antismash-add-on string into a list of arguments, refusing flags anvi'o already sets."""
+
+        if not self.antismash_add_on:
+            return []
+
+        try:
+            add_on_args = shlex.split(self.antismash_add_on)
+        except ValueError as e:
+            raise ConfigError(f"anvi'o could not make sense of the flags you passed with `--antismash-add-on` "
+                              f"('{self.antismash_add_on}'): {e}. Perhaps there is a quote that is not closed?")
+
+        # everything we always pass to antiSMASH ourselves, plus the heavy analyses when they are already on
+        flags_set_by_anvio = set(ANTISMASH_FLAGS_SET_BY_ANVIO + ANTISMASH_ANNOTATION_ARGS)
+        if self.include_detailed_output:
+            flags_set_by_anvio.update(ANTISMASH_DETAILED_ARGS)
+
+        # a flag can also come in the '--flag=value' form
+        repeated_flags = sorted(set(arg.split('=', 1)[0] for arg in add_on_args).intersection(flags_set_by_anvio))
+        if repeated_flags:
+            raise ConfigError(f"Some of the flags you passed with `--antismash-add-on` are flags anvi'o already sets "
+                              f"for antiSMASH on its own: {', '.join(repeated_flags)}. Passing them twice would at "
+                              f"best be redundant and at worst confuse antiSMASH. If you want to change something "
+                              f"anvi'o controls, please use the corresponding anvi-run-antismash flag instead (e.g., "
+                              f"`--num-threads` instead of `--cpus`, `--antismash-data-dir` instead of `--databases`, "
+                              f"or `--include-detailed-output` for the ClusterBlast/MIBiG analyses).")
+
+        return add_on_args
 
 
     def _already_annotated(self, contigs_db_path):
@@ -428,8 +466,7 @@ class Antismash(object):
             cmd += ANTISMASH_DETAILED_ARGS
         if self.antismash_data_dir:
             cmd += ["--databases", self.antismash_data_dir]
-        if self.antismash_add_on:
-            cmd += shlex.split(self.antismash_add_on)
+        cmd += self.antismash_add_on_args
         cmd.append(fasta)
 
         # put antiSMASH's own environment at the front of PATH so it finds its helper binaries
