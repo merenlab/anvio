@@ -13,7 +13,8 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['jessika-fuessel']
-__requires__ = ['external-genomes', 'internal-genomes']
+__requires__ = ['functions', 'external-genomes']
+__can_use__ = ['internal-genomes']
 __provides__ = ['functions-across-genomes-txt']
 __description__ = ("With this script you can generate a matrix across many contig-dbs or bins in a collection to "
                    "compare their biosynthetic capacity. You can choose between a per-gene matrix that resolves "
