@@ -116,4 +116,4 @@ def get_fields_for_fasta_information():
     """ Return a list of legitimate column names for fasta.txt files"""
     # Notice we don't include the name of the first column because
     # utils.get_TAB_delimited_file_as_dictionary doesn't really care about it.
-    return ["path", "external_gene_calls", "gene_functional_annotation"]
+    return ["path", "external_gene_calls", "gene_functional_annotation", "structure_genes_of_interest"]
