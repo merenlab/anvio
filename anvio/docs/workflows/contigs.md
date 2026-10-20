@@ -71,6 +71,10 @@ The contigs workflow can also predict the structures of the genes in each %(cont
 
 The workflow writes one %(structure-db)s per FASTA file into `03_STRUCTURE`, e.g., `03_STRUCTURE/SAMPLE_01-STRUCTURE.db`. The prediction does not hold up the rest of the workflow: it only needs the %(contigs-db)s, and annotating the %(contigs-db)s afterwards will not trigger a new prediction.
 
+Once a %(structure-db)s exists, the workflow never touches it again, even if you change the structure parameters in your %(workflow-config)s or the genes of interest of that %(contigs-db)s: predicting structures can take days, and the workflow will not delete them. Anvi'o lists these %(structure-db)s files every time you run the workflow. To predict the structures of a %(contigs-db)s again, move or remove its %(structure-db)s first. To only add genes to it, you can use %(anvi-update-structure-database)s. The workflow writes each %(structure-db)s under a temporary name (e.g., `03_STRUCTURE/SAMPLE_01-STRUCTURE-INCOMPLETE.db`) and only renames it once it is complete, so an unfinished prediction (for instance, if your job was killed) never counts as an existing %(structure-db)s.
+
+A %(structure-db)s may contain no structures at all, for instance when MODELLER does not find a good enough template for any of the genes of interest. This is not an error: the %(structure-db)s still records the genes anvi'o tried.
+
 ### Choosing genes
 
 By default, anvi'o predicts a structure for every gene of every %(contigs-db)s, and warns you when it is about to do so. A single genome has thousands of genes, so this can take a very long time. To limit the prediction to some genes, add a `structure_genes_of_interest` column to your %(fasta-txt)s that points to a %(genes-of-interest-txt)s for each FASTA file:
@@ -82,7 +86,7 @@ By default, anvi'o predicts a structure for every gene of every %(contigs-db)s, 
 
 Here, anvi'o predicts structures for the genes listed in `genes_01.txt` for `SAMPLE_01`, and for every gene of `SAMPLE_02`.
 
-Since gene caller ids only exist once a %(contigs-db)s is built, you can first run the workflow without structure prediction, pick your genes, add the column to your %(fasta-txt)s, turn on `anvi_gen_structure_database`, and then run the workflow again: anvi'o will only run the missing structure steps. Changing a %(genes-of-interest-txt)s later will re-predict the structures of that %(contigs-db)s.
+Since gene caller ids only exist once a %(contigs-db)s is built, you can first run the workflow without structure prediction, pick your genes, add the column to your %(fasta-txt)s, turn on `anvi_gen_structure_database`, and then run the workflow again: anvi'o will only run the missing structure steps.
 
 ### Splitting ColabFold into CPU and GPU steps
 

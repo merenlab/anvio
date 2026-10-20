@@ -115,12 +115,29 @@ class StructureModule(WorkflowSuperClass):
                 raise ConfigError(f"The `structure_genes_of_interest` file for '{group}' in your fasta_txt does not "
                                   f"exist: '{genes_of_interest}'.")
 
+        self.warn_about_existing_structure_dbs()
         self.warn_about_structure_gene_selection()
+
+
+    def warn_about_existing_structure_dbs(self):
+        """Let the user know which structure databases the workflow keeps as they are."""
+        existing_structure_dbs = [self.get_structure_db_path(g) for g in self.get_structure_group_names()
+                                  if filesnpaths.is_file_exists(self.get_structure_db_path(g), dont_raise=True)]
+
+        if not existing_structure_dbs:
+            return
+
+        self.run.warning(f"The following structure databases already exist, and the workflow will not touch them, "
+                         f"even if you changed the structure parameters or genes of interest since they were made: "
+                         f"{', '.join(existing_structure_dbs)}. If you want the workflow to predict the structures "
+                         f"of a contigs database again, move or remove its structure database first. If you only want "
+                         f"to add genes to one, you can use `anvi-update-structure-database` instead.",
+                         header="EXISTING STRUCTURE DATABASES", lc='green')
 
 
     def warn_about_structure_gene_selection(self):
         """Let the user know which groups will get a structure for every single gene."""
-        groups_with_all_genes = [g for g in self.get_structure_group_names()
+        groups_with_all_genes = [g for g in self.get_structure_groups_to_predict()
                                  if not self.fasta_information.get(g, {}).get('structure_genes_of_interest')]
 
         if not groups_with_all_genes:
@@ -142,8 +159,22 @@ class StructureModule(WorkflowSuperClass):
         return self.group_names
 
 
+    def get_structure_groups_to_predict(self):
+        """The groups that do not have a structure database yet.
+
+        An existing structure database is never predicted again, since that would delete structures that
+        may have taken days to predict. The rules write the database under a temporary name and only
+        rename it once it is complete, so an existing one is always a finished one."""
+        return [g for g in self.get_structure_group_names()
+                if not filesnpaths.is_file_exists(self.get_structure_db_path(g), dont_raise=True)]
+
+
     def get_structure_db_path(self, group='{group}'):
         return os.path.join(self.dirs_dict["STRUCTURE_DIR"], f"{group}-STRUCTURE.db")
+
+
+    def get_incomplete_structure_db_path(self, group='{group}'):
+        return os.path.join(self.dirs_dict["STRUCTURE_DIR"], f"{group}-STRUCTURE-INCOMPLETE.db")
 
 
     def get_colabfold_msa_dir(self, group='{group}'):
@@ -154,7 +185,7 @@ class StructureModule(WorkflowSuperClass):
         if not self.run_structure:
             return []
 
-        return [self.get_structure_db_path(group) for group in self.get_structure_group_names()]
+        return [self.get_structure_db_path(group) for group in self.get_structure_groups_to_predict()]
 
 
     def get_input_for_structure_rules(self, wildcards):

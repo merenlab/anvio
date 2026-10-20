@@ -7,8 +7,8 @@
 # again, which should only run the structure steps.
 #
 # The default MODELLER engine needs internet (it downloads its templates from the RCSB PDB) and may find
-# no template for a given gene, so the `proteins` table is asserted strictly while whether a structure
-# was actually produced is treated softly.
+# no template for a given gene (a structure database without structures is not an error), so the
+# `proteins` table is asserted strictly while whether a structure was actually produced is treated softly.
 #
 # ColabFold is opt-in: set COLABFOLD_CONDA_ENV to the conda environment ColabFold is installed in (a real
 # run also needs a GPU). With COLABFOLD_DB also set to a local ColabFold database, the test runs the
@@ -102,6 +102,12 @@ update_config config-modeller.json anvi_run_hmms '{"run": true}'
 anvi-run-workflow -w contigs -c config-modeller.json
 mtime_after=$(stat -c %Y 03_STRUCTURE/E_faecalis_6240-STRUCTURE.db 2>/dev/null || stat -f %m 03_STRUCTURE/E_faecalis_6240-STRUCTURE.db)
 assert_eq "$mtime_after" "$mtime_before" "structure database untouched by annotation"
+
+INFO "Changing the structure parameters must not touch existing structure databases"
+update_config config-modeller.json anvi_gen_structure_database '{"--num-models": 2}'
+anvi-run-workflow -w contigs -c config-modeller.json
+mtime_after=$(stat -c %Y 03_STRUCTURE/E_faecalis_6240-STRUCTURE.db 2>/dev/null || stat -f %m 03_STRUCTURE/E_faecalis_6240-STRUCTURE.db)
+assert_eq "$mtime_after" "$mtime_before" "structure database untouched by a change of structure parameters"
 
 if [ -z "$COLABFOLD_CONDA_ENV" ]; then
     INFO "COLABFOLD_CONDA_ENV is not set, skipping the ColabFold workflow tests"

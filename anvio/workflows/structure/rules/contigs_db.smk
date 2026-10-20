@@ -22,13 +22,18 @@ if not M.split_msa_and_predict:
         params:
             genes_of_interest=M.get_structure_genes_of_interest_param,
             engine_params=M.get_structure_engine_params(),
+            # the database is only renamed to its final name once it is complete (see
+            # StructureModule.get_structure_groups_to_predict)
+            incomplete_structure_db=M.get_incomplete_structure_db_path(),
         shell:
             """
+                rm -f {params.incomplete_structure_db}
                 anvi-gen-structure-database -c {input.contigs_db} \
-                                            -o {output.structure_db} \
+                                            -o {params.incomplete_structure_db} \
                                             {params.genes_of_interest} \
                                             {params.engine_params} \
                                             --num-threads {threads} >> {log} 2>&1
+                mv {params.incomplete_structure_db} {output.structure_db}
             """
 
 else:
@@ -78,13 +83,16 @@ else:
         params:
             genes_of_interest=M.get_structure_genes_of_interest_param,
             engine_params=M.get_structure_engine_params(msa_source=False),
+            incomplete_structure_db=M.get_incomplete_structure_db_path(),
         shell:
             """
+                rm -f {params.incomplete_structure_db}
                 anvi-gen-structure-database -c {input.contigs_db} \
-                                            -o {output.structure_db} \
+                                            -o {params.incomplete_structure_db} \
                                             --only-predict \
                                             --dump-dir {input.msa_dir} \
                                             {params.genes_of_interest} \
                                             {params.engine_params} \
                                             --num-threads {threads} >> {log} 2>&1
+                mv {params.incomplete_structure_db} {output.structure_db}
             """
