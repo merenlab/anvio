@@ -11,6 +11,7 @@ import anvio
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.dbinfo import DBInfo as dbi
 from anvio.workflows import WorkflowSuperClass
 
 
@@ -127,12 +128,40 @@ class StructureModule(WorkflowSuperClass):
         if not existing_structure_dbs:
             return
 
+        self.check_existing_structure_dbs_match_contigs_dbs()
+
         self.run.warning(f"The following structure databases already exist, and the workflow will not touch them, "
                          f"even if you changed the structure parameters or genes of interest since they were made: "
                          f"{', '.join(existing_structure_dbs)}. If you want the workflow to predict the structures "
                          f"of a contigs database again, move or remove its structure database first. If you only want "
                          f"to add genes to one, you can use `anvi-update-structure-database` instead.",
                          header="EXISTING STRUCTURE DATABASES", lc='green')
+
+
+    def check_existing_structure_dbs_match_contigs_dbs(self):
+        """Make sure every existing structure database was made from the contigs database it sits next to.
+
+        The workflow never predicts an existing structure database again, so if a contigs database is
+        rebuilt, its old structure database would otherwise stay around with gene caller ids that no
+        longer point to the same genes."""
+        mismatches = []
+        for group in self.get_structure_group_names():
+            structure_db_path = self.get_structure_db_path(group)
+            contigs_db_path = self.get_contigs_db_path().format(group=group)
+
+            if not filesnpaths.is_file_exists(structure_db_path, dont_raise=True) or \
+               not filesnpaths.is_file_exists(contigs_db_path, dont_raise=True):
+                continue
+
+            if dbi(structure_db_path).hash != dbi(contigs_db_path).hash:
+                mismatches.append(structure_db_path)
+
+        if mismatches:
+            raise ConfigError(f"The following structure databases were not made from the contigs databases that "
+                              f"are in your workflow now (the contigs databases were probably made again since): "
+                              f"{', '.join(mismatches)}. Their gene caller ids may no longer point to the same "
+                              f"genes. Please move or remove these structure databases, and the workflow will "
+                              f"predict them again.")
 
 
     def warn_about_structure_gene_selection(self):
@@ -164,7 +193,8 @@ class StructureModule(WorkflowSuperClass):
 
         An existing structure database is never predicted again, since that would delete structures that
         may have taken days to predict. The rules write the database under a temporary name and only
-        rename it once it is complete, so an existing one is always a finished one."""
+        rename it once anvi-gen-structure-database exits successfully, so a job that failed or was killed
+        does not leave one behind."""
         return [g for g in self.get_structure_group_names()
                 if not filesnpaths.is_file_exists(self.get_structure_db_path(g), dont_raise=True)]
 
