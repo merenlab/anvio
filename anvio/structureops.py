@@ -1922,12 +1922,9 @@ class StructureSuperclass(object):
 
 
     def warn_no_structures_modelled(self):
-        """A structure database without any structure is a valid outcome (e.g., MODELLER found no template
-        for any gene), so we only let the user know: the database still records which genes were tried."""
-        self.run.warning("None of your genes of interest got a structure (for instance, because MODELLER could "
-                         "not find a good enough template for any of them). Anvi'o will still finish the structure "
-                         "database: it contains no structures, but it records the genes it tried, so you can "
-                         "add or re-run genes later with `anvi-update-structure-database`.",
+        """A structure database without any structure is a valid outcome, so we only let the user know."""
+        self.run.warning("None of your genes of interest got a structure. Anvi'o will still finish the structure "
+                         "database, which records the genes it tried.",
                          header="NO STRUCTURES")
 
 
