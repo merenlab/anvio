@@ -863,6 +863,18 @@ then
     exit 1
 fi
 
+## LABELS
+# By default, only the reaction elements of standard maps are labeled. Here the reaction elements
+# and compound circles of standard and overview maps are all labeled.
+INFO "Labeling reaction elements and compound circles on standard and overview maps"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_and_compounds.reaction.txt \
+                        --compound-txt draw_compounds.compound.txt \
+                        --reaction-labels standard overview \
+                        --compound-labels standard overview \
+                        --output-dir draw_txt_labels \
+                        --pathway-numbers $pathway_numbers \
+                        --no-progress
+
 ## CONTIGS DATABASE INPUT
 INFO "Mapping KOs from a genomic contigs database"
 anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db \

@@ -2116,9 +2116,9 @@ class SlicedKGMLCanvas(KGMLCanvas):
     and compound circles.
 
     A sliced rectangle is drawn as columns, left to right, with a thin gray line between columns. It
-    has one outline and one label. A sliced line is drawn as repeating dashes with no gaps, one dash
-    per slice in each cycle. The dashes fill the part of the line that compound circles leave
-    visible.
+    has one outline, and one label where ortholog entries are labeled ('label_orthologs'). A sliced
+    line is drawn as repeating dashes with no gaps, one dash per slice in each cycle. The dashes
+    fill the part of the line that compound circles leave visible.
 
     A ring colors the border of a rectangle or a compound circle ('Graphics.border'). It lies just
     inside the black outline, with a thin black line between the ring and the fill

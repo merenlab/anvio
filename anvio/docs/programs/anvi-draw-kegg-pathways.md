@@ -55,6 +55,23 @@ anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s \
                         -o output_dir
 {{ codestop }}
 
+## Labels
+
+By default, the reaction elements of standard maps are labeled, and nothing else is. Most of these are boxes. A few standard maps, such as N-Glycan biosynthesis (`00510`), also draw reactions as lines, which are labeled too. The fill of a box hides the text of the base map, so a box without a label is blank. `--reaction-labels` and `--compound-labels` choose the kinds of map whose reaction elements and compound circles are labeled. Each takes one or more of `standard`, `overview`, and `global`, or `none` for no labels. Global maps are numbered `011XX`, overview maps are numbered `012XX` and `013XX`, and all other maps are standard (see [Single contigs database](#single-contigs-database) for an example of each).
+
+The kinds given replace the default. The following command labels the reaction elements of standard maps, the reaction arrows of overview maps, and the compound circles of both kinds of map.
+
+{{ codestart }}
+anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s \
+                        --reaction-labels standard overview \
+                        --compound-labels standard overview \
+                        -o output_dir
+{{ codestop }}
+
+Every element of a map of a given kind is labeled, with or without data. A reaction element is labeled with KEGG's name for it. That is the first KO of the element, followed by `...` when the element stands for several KOs. The label may therefore name a KO that is not in your data. It is a KO even when a %(kegg-reaction-txt)s file holds KEGG reaction IDs. A compound circle is labeled with the KEGG ID of its compound, glycan, or drug, or with the first of several IDs, followed by `...`.
+
+A compound label is wider than its circle and sits above its center. It can cover nearby lines, arrowheads, boxes, and the compound names printed on the base map. A compound that takes part in no reaction on the map is labeled in faint gray. On maps without reactions, such as many signaling maps, that is every compound. The labels of global maps are small and crowded, and they can be read only when the map is zoomed in.
+
 ## Output
 
 This program requires the path to a directory as an argument to `-o` or `--output-dir`. This must be a non-existent directory unless the flag, `-W` or `--overwrite-output-destinations`, is also used. Options are available to make it easier to browse through output files and anticipate their contents.
@@ -781,7 +798,7 @@ Both summaries default to presence. With the default summaries, a run without gr
 
 On each map, an accession of an element gets a slice where it has a value on that map. An accession without data on a map takes no space there. An accession whose summary is undefined on the map takes no space either. Examples are `std` over a single sample, a rule with no winner, and the circular mean of times that cancel out. The other slices then take the whole width or length of the element, and a warning counts the accessions whose summary was undefined. An element is left uncolored on a map where none of its accessions has a value, as before. An element with one slice is drawn whole, in the color of that slice.
 
-Slices follow the order of the accessions in the map's KGML file. With a KO file, the leftmost slice of a box is the KO that the box label names, whenever that KO has data. Only the accessions with values are drawn, so one position can hold different accessions on different maps. The slices still keep the same order relative to each other. Slices are never ordered by value or by weight.
+Slices follow the order of the accessions in the map's KGML file. With a KO file, the leftmost slice of a box is the first KO of the element, which a box label names, whenever that KO has data. Only the accessions with values are drawn, so one position can hold different accessions on different maps. The slices still keep the same order relative to each other. Slices are never ordered by value or by weight.
 
 Each slice shows the value of one accession. Within a sample, `--reaction-gene-aggregation` reduces the values of the accession's genes to that value. The maps of groups and the `unified` map pool the values of the accession with the sample and group summaries, as they pool the values of elements without slices. `--reaction-accession-aggregation` is never applied to a slice of an accession, so it is refused for numbers sliced by accession. For categorical values, it still chooses the stand-in value of an element among the accessions of its slices (see below). The run's report of choices counts the choices of the accession rule only for these stand-in values. The color scales span the values of single accessions, not of whole elements, and their limits and centers are read in these values too. An element drawn whole adds only its stand-in value to a scale, since none of its slices is drawn.
 
@@ -833,7 +850,7 @@ Equal shares are not the same as weights of 1. Without weights, the slices are e
 
 #### How slices are drawn
 
-A box is cut into columns, left to right. A thin gray line separates neighboring columns, so that two neighbors of the same color can still be told apart. The box keeps one black outline and one label.
+A box is cut into columns, left to right. A thin gray line separates neighboring columns, so that two neighbors of the same color can still be told apart. The box keeps one black outline, and one label where reaction elements are labeled (see [Labels](#labels)).
 
 A line is cut into repeating dashes with no gaps. Each cycle of dashes holds one dash per slice, in order from the first point of the line in the KGML file. On global maps, compound circles cover about 10 points at each end of almost every line. The dashes fill the part of the line that the circles leave visible. That part holds a whole number of cycles, so each slice shows exactly its share of it. It holds as many cycles as it can while its shortest dash stays at least twice as long as the line is wide. A short line holds one cycle. Neighboring dashes overlap by 0.5 points, so no seams show between them. A line in several pieces shows every slice on each piece.
 
