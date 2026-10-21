@@ -2804,16 +2804,27 @@ class Drawer:
                 beneath KGML graphics, which is especially useful for decluttering global maps.
 
             label_compounds : bool
-                By default, Drawer sets to False to reduce clutter. Setting to True displays KEGG
-                COMPOUND IDs.
+                By default, Drawer sets to False to reduce clutter. Setting to True labels each
+                compound with the name of its Graphics element, a KEGG ID such as a COMPOUND or
+                GLYCAN ID. Biopython also labels gene entries when this is True. Organism-specific
+                KGML files have gene entries, but KO KGML files do not.
 
             label_orthologs : bool
                 By default, Drawer sets to False for global and overview maps to reduce clutter next
-                to reaction arrows and to True for standard maps. Setting to True displays KO IDs.
+                to reaction arrows and to True for standard maps. Setting to True labels each
+                ortholog entry with the name of its Graphics element. In KO KGML, that is the first
+                KO of the entry, followed by '...' when the entry has several.
 
             label_reaction_entries : bool
-                By default, Drawer sets to False to reduce clutter. Setting to True displays KEGG
-                REACTION IDs.
+                By default, Drawer sets to False for KO maps and for global and overview maps. Other
+                standard maps keep Biopython's default of True. Setting to True labels each entry
+                that has a reaction with the name of its Graphics element, not with a KEGG REACTION
+                ID. In KO KGML, these entries are ortholog entries, so the label repeats the one
+                that 'label_orthologs' draws. Biopython draws it in a pass before the ortholog pass,
+                which draws boxes over it. With 'label_orthologs' also True, the PDF holds the label
+                twice. In EC and RN KGML, these entries are enzyme and reaction entries, which no
+                other argument labels. In organism-specific KGML, they are gene entries, which
+                'label_compounds' also labels.
 
             fontname : str
                 KGML label font name, with the default being Helvetica.
@@ -2831,6 +2842,9 @@ class Drawer:
             kwargs['import_imagemap'] = True
         if kwargs.get('label_compounds') is None:
             kwargs['label_compounds'] = False
+        # In KO KGML, the ortholog pass already labels every entry that has a reaction.
+        if pathway.org == 'ko' and kwargs.get('label_reaction_entries') is None:
+            kwargs['label_reaction_entries'] = False
         if map_filepath is not None and kwargs.get('fontsize') is None:
             kwargs['fontsize'] = 9
 
@@ -3115,6 +3129,9 @@ class Drawer:
             Valid kwargs are arguments to a biopython.Bio.Graphics.KGML_vis.KGMLCanvas object.
             These control what is displayed on the map from the KGML file.
         """
+        if kwargs.get('label_orthologs') is None:
+            kwargs['label_orthologs'] = True
+
         # Slices and rings are not part of KGML, so they are gathered before the KGML round trip.
         entry_slices = self._get_entry_slices(pathway)
         entry_borders = self._get_entry_borders(pathway)
