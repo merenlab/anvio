@@ -70,6 +70,13 @@ RING_LINE_WIDTH = 0.5
 RING_LINE_COLOR = '#000000'
 BOX_OUTLINE_HALF_WIDTH = 0.5
 
+# The largest width and height of a box or circle that Drawer leaves unlabeled, in pixels of the
+# base image ('Drawer._unlabel_tiny_graphics'). A shape this small cannot be seen, but Biopython
+# would still draw its label. KEGG puts boxes of 2 x 2 pixels in the top left corner of a few 2x
+# maps, such as 04723, which also has compound circles of 0 x 0 pixels there. anvi'o shrinks
+# compound rectangles to 0 x 0 ('keggmapping.Mapper._zero_out_compound_rectangles').
+TINY_GRAPHICS_MAX_SIZE = 2
+
 # A distance in points small enough to count as 0 in the walk along a line into compound circles
 # ('get_hidden_length'). A point this close to a circle counts as inside it, so rounding errors do
 # not stop the walk where two circles meet.
@@ -2686,7 +2693,8 @@ class Drawer:
     Write pathway map image files incorporating KGML data.
 
     A map with Graphics elements that have slices or rings is drawn with 'SlicedKGMLCanvas'. Any
-    other map is drawn with Biopython's 'KGMLCanvas'.
+    other map is drawn with Biopython's 'KGMLCanvas'. Neither canvas labels a box or circle too
+    small to see ('TINY_GRAPHICS_MAX_SIZE').
 
     Attributes
     ==========
@@ -2933,6 +2941,30 @@ class Drawer:
                 entry_borders[int(entry.id)] = graphics_borders
         return entry_borders
 
+    @staticmethod
+    def _unlabel_tiny_graphics(bio_pathway: KGML_pathway.Pathway) -> None:
+        """
+        Blank the names of boxes and circles too small to see, so that they are not labeled.
+
+        A shape no wider and no taller than 'TINY_GRAPHICS_MAX_SIZE' gets an empty name. Lines are
+        left alone, since their width is the width of the stroke. Only Biopython's copy of the
+        pathway changes, so the anvi'o Pathway keeps every name.
+
+        Parameters
+        ==========
+        bio_pathway : Bio.KEGG.KGML.KGML_pathway.Pathway
+            Biopython representation of a KGML file.
+        """
+        for entry in bio_pathway.entries.values():
+            for graphics in entry.graphics:
+                if graphics.type == 'line':
+                    continue
+                if (
+                    graphics.width <= TINY_GRAPHICS_MAX_SIZE
+                    and graphics.height <= TINY_GRAPHICS_MAX_SIZE
+                ):
+                    graphics.name = ''
+
     def _draw_global_map(
         self,
         pathway: Pathway,
@@ -2981,6 +3013,7 @@ class Drawer:
         entry_slices = self._get_entry_slices(pathway)
         entry_borders = self._get_entry_borders(pathway)
         bio_pathway = KGML_parser.read(StringIO(self.xml_ops.get_str(pathway)))
+        self._unlabel_tiny_graphics(bio_pathway)
 
         if map_filepath is None:
             if pathway.org == 'ko':
@@ -3062,6 +3095,7 @@ class Drawer:
         entry_slices = self._get_entry_slices(pathway)
         entry_borders = self._get_entry_borders(pathway)
         bio_pathway = KGML_parser.read(StringIO(self.xml_ops.get_str(pathway)))
+        self._unlabel_tiny_graphics(bio_pathway)
 
         if map_filepath is None:
             if use_org_map:
@@ -3136,6 +3170,7 @@ class Drawer:
         entry_slices = self._get_entry_slices(pathway)
         entry_borders = self._get_entry_borders(pathway)
         bio_pathway = KGML_parser.read(StringIO(self.xml_ops.get_str(pathway)))
+        self._unlabel_tiny_graphics(bio_pathway)
 
         if map_filepath is None:
             if use_org_map:
