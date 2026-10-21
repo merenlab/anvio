@@ -3529,6 +3529,30 @@ then
     exit 1
 fi
 
+# A player shows the key of a border only beside a map that can show its rings. The player of the
+# standard map shows the keys of the coverage, the reaction border, and the compound border, in that
+# order. The overview map shows compound rings but no reaction rings, and the global map shows no
+# rings, so their players leave out the keys of the borders they lack. A key is an image that holds
+# its data, so the same key is the same element in every player.
+INFO "Testing the keys of borders in the players of maps of every kind"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --compound-txt draw_compounds_samples.compound.txt --compound-border-column concentration \
+    --output-dir draw_txt_border_players --pathway-numbers $global_pathway_numbers \
+    --draw-individual-files --collate-files-by-map --animate-files-by-map \
+    --no-progress
+players=draw_txt_border_players/by_map
+standard_keys=$(grep -o '<img class="key"[^>]*' $players/ko00010.html)
+overview_keys=$(grep -o '<img class="key"[^>]*' $players/ko01200.html)
+global_keys=$(grep -o '<img class="key"[^>]*' $players/ko01100.html)
+if [ "$(echo "$standard_keys" | wc -l)" -ne 3 ] \
+    || [ "$overview_keys" != "$(echo "$standard_keys" | sed -n '1p;3p')" ] \
+    || [ "$global_keys" != "$(echo "$standard_keys" | sed -n 1p)" ]
+then
+    echo "ERROR: a player should show the key of a border only beside maps that show its rings."
+    exit 1
+fi
+
 # Lines show no ring. A reaction element that a standard map draws as a line is reported.
 INFO "Testing the warning that reaction lines on a standard map show no border"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_border_lines.reaction.txt \

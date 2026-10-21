@@ -10909,10 +10909,13 @@ class Mapper:
         # to their colors. A border is keyed in files of its own, such as
         # 'colorbar_reactions_border.pdf'. Its labels end in ' (border)', except a label that was
         # given with its normalization. The colorbars that key the individual maps are listed, so a
-        # player can show them beside those maps.
-        individual_keys: List[str] = []
+        # player can show them beside those maps. A border's colorbar is listed with the element
+        # type of its border, since a player shows it only beside the maps that can show the
+        # border's rings ('_map_shows_borders').
+        individual_keys: List[Tuple[str, Union[str, None]]] = []
         for layer in models:
             suffix = ' (border)' if _is_border(layer) else ''
+            border_element_type = layer['element_type'] if _is_border(layer) else None
             if layer['unified_mode'] == 'quantitative' and _unified_scale_drawn(layer):
                 vmin, vmax = layer['_unified_range']
                 if vmin is not None:
@@ -10930,7 +10933,7 @@ class Mapper:
                         draw_individual_maps and layer['individual_mode'] == 'quantitative'
                         and layer['sample_values'] is None
                     ):
-                        individual_keys.append(colorbar_path)
+                        individual_keys.append((colorbar_path, border_element_type))
             elif layer['unified_mode'] == 'membership' and draw_unified_maps:
                 scheme, color_priorities, membership_combos, presence_cmap = layer['_colors']
                 count_scale_top = layer['_count_scale_top']
@@ -10978,7 +10981,7 @@ class Mapper:
                 ) and ring_maps['unified']:
                     legend_paths.append(os.path.join(output_dir, f"colorbar_{layer['name']}.pdf"))
                     if layer['sample_values'] is None and draw_individual_maps:
-                        individual_keys.append(legend_paths[-1])
+                        individual_keys.append((legend_paths[-1], border_element_type))
                 if (
                     draw_individual_maps and layer['sample_values'] is not None
                     and layer['individual_mode'] == 'categorical' and ring_maps['individual']
@@ -10986,7 +10989,7 @@ class Mapper:
                     legend_paths.append(os.path.join(
                         output_dir, f"colorbar_{layer['name']}_{colorbar_individual_suffix}.pdf"
                     ))
-                    individual_keys.append(legend_paths[-1])
+                    individual_keys.append((legend_paths[-1], border_element_type))
                 for legend_path in legend_paths:
                     self.colorbar_drawer.draw_discrete(
                         legend_colors, legend_path, color_labels=legend_values,
@@ -11014,7 +11017,7 @@ class Mapper:
                         clamped_low=clamped_low, clamped_high=clamped_high,
                         center=layer['_individual_center']
                     )
-                    individual_keys.append(colorbar_path)
+                    individual_keys.append((colorbar_path, border_element_type))
 
         # Draw the unified map. In a run with a single source of data, it is the only map.
         if draw_unified_maps:
@@ -11226,6 +11229,32 @@ class Mapper:
             return graphics.type == 'rectangle' and not pathway.is_overview_map
         return False
 
+    @staticmethod
+    def _map_shows_borders(element_type: str, pathway_number: str) -> bool:
+        """
+        Say whether a map is of a kind that shows the rings of a border.
+
+        A reaction border shows on standard maps, where reactions are boxes. A compound border shows
+        on standard and overview maps, whose circles have an outline. Global maps show neither
+        ('_shows_border').
+
+        Parameters
+        ==========
+        element_type : str
+            The element type of the border, 'reaction' or 'compound'.
+
+        pathway_number : str
+            Numeric ID of the map.
+
+        Returns
+        =======
+        bool
+            True if the map can show the rings of the border.
+        """
+        if re.match(GLOBAL_MAP_ID_PATTERN, pathway_number):
+            return False
+        return element_type == 'compound' or not re.match(OVERVIEW_MAP_ID_PATTERN, pathway_number)
+
     def _shows_ring(
         self,
         pathway_number: str,
@@ -11281,10 +11310,10 @@ class Mapper:
         Refuse a border that no map of a run can show, and count the maps that show none.
 
         A reaction border needs a standard map, where reactions are boxes. A compound border needs a
-        standard or an overview map ('_shows_border'). A border also needs a drawn map that shows
-        its values. A border of samples shows none on the 'unified' map without a sample or group
-        summary, and none on the maps of groups without a sample summary. These refusals come from
-        the options alone. Where the data leave every ring empty, the run warns instead.
+        standard or an overview map ('_map_shows_borders'). A border also needs a drawn map that
+        shows its values. A border of samples shows none on the 'unified' map without a sample or
+        group summary, and none on the maps of groups without a sample summary. These refusals come
+        from the options alone. Where the data leave every ring empty, the run warns instead.
 
         Parameters
         ==========
@@ -11307,18 +11336,15 @@ class Mapper:
             The element types of the layers in the fill mode 'none'. Their rings are all that they
             draw, so a refusal does not suggest dropping their border columns.
         """
-        def kind(number: str) -> str:
-            if re.match(GLOBAL_MAP_ID_PATTERN, number):
-                return 'global'
-            return 'overview' if re.match(OVERVIEW_MAP_ID_PATTERN, number) else 'standard'
-
         value_modes = ('quantitative', 'categorical')
         for border in borders:
             element_type = border['element_type']
             noun = border['channel']['noun']
             column_flag = f"--{element_type}-border-column"
-            kinds = ('standard',) if element_type == 'reaction' else ('standard', 'overview')
-            showing = [number for number in pathway_numbers if kind(number) in kinds]
+            showing = [
+                number for number in pathway_numbers
+                if self._map_shows_borders(element_type, number)
+            ]
             if not showing:
                 listed = ', '.join(pathway_numbers[:10])
                 more = (
@@ -14944,7 +14970,7 @@ class Mapper:
         pathway_numbers: List[str],
         individuals: List[str],
         drawn_individual: Dict[str, Dict[str, bool]],
-        keys: List[str],
+        keys: List[Tuple[str, Union[str, None]]],
         individual_colorbars: Dict[str, str]
     ) -> int:
         """
@@ -14980,8 +15006,12 @@ class Mapper:
             Whether each map was drawn. Outer keys are the names of the samples, contigs databases,
             genomes, or groups. Inner keys are pathway numbers.
 
-        keys : List[str]
-            Paths to the colorbars that key every individual map, shown beside every frame.
+        keys : List[Tuple[str, Union[str, None]]]
+            Paths to the colorbars that key the individual maps, each with the element type of the
+            border it keys, or None for a colorbar of fills. A colorbar of fills is shown beside
+            every frame. A colorbar of a border is shown only in the players of maps that can show
+            the border's rings ('_map_shows_borders'). Global maps show none, and overview maps show
+            only the rings of compounds.
 
         individual_colorbars : Dict[str, str]
             Paths to colorbars that key the maps of one group only, where groups have their own
@@ -15005,6 +15035,11 @@ class Mapper:
             if not any(has_map):
                 continue
             self.progress.update(pathway_number)
+            map_keys = [
+                key_path for key_path, border_element_type in keys
+                if border_element_type is None
+                or self._map_shows_borders(border_element_type, pathway_number)
+            ]
             blank_dir = None
             try:
                 if not all(has_map):
@@ -15029,7 +15064,7 @@ class Mapper:
                     individuals,
                     notes=notes,
                     title=title,
-                    keys=keys,
+                    keys=map_keys,
                     frame_keys=frame_keys
                 )
             finally:
