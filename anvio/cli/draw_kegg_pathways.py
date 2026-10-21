@@ -49,7 +49,7 @@ from anvio.keggmapping import (
     AGGREGATION_FUNCTIONS, CATEGORICAL_RULES, CATEGORICAL_RULES_PHRASE, DEFAULT_BORDER_COLORMAP,
     DEFAULT_BORDER_COLORMAP_LIMITS, DEFAULT_BORDER_VALUE_COLORS, DEFAULT_CATEGORICAL_SEED,
     DEFAULT_CENTERED_COLORMAP, DEFAULT_GROUP_TINT_SPAN, DEFAULT_VALUE_COLORS,
-    ELEMENT_NORMALIZATION_PHRASE, GROUP_COLORMAP_TINT, GROUP_SCHEME_OPTIONS,
+    ELEMENT_NORMALIZATION_PHRASE, GROUP_COLORMAP_TINT, GROUP_SCHEME_OPTIONS, MAP_KINDS,
     MAX_DISCRETE_COUNT_BANDS, MAX_RING_SLICES, MIN_ANGULAR_DEVIATION_VALUES, MIN_BOX_SLICE_WIDTH,
     SLICE_SHARE_SUMMARIES, SLICE_UNITS, SLICE_WEIGHT_AGGREGATIONS, SUMMARY_PRESENCE_PHRASE,
     SUMMARY_PRESENCE_SCHEMES, VALUE_TYPES, Mapper
@@ -88,6 +88,10 @@ COUNT_SCALE_MAX_RULES = ('observed', 'total')
 # end of a color scale wherever the data puts it. Both options take two values, so an end can be
 # left open without being left out.
 VALUE_LIMIT_NONE = 'none'
+
+# The '--reaction-labels' and '--compound-labels' value that labels no map. It is given alone. The
+# mapper takes only the kinds of map to label, so 'main' passes it no kinds instead.
+LABELS_NONE = 'none'
 
 # The value the '--*-value-center' options center a color scale on when they are given as a bare
 # flag. Zero is what a signed quantity is read against — a log ratio, a difference of means — so it
@@ -343,9 +347,10 @@ def get_args() -> Namespace:
         f"chooses among the accessions or genes of its slices. Each slice shows the value of one "
         f"accession or gene, so the color scales span the values of single accessions or genes. "
         f"When numbers are sliced by accession, the weighted mean takes the place of "
-        f"'--reaction-accession-aggregation', which is refused. An element keeps its usual label, "
-        f"and its slices are not labeled. The file 'slice_key_reactions.txt' in the output "
-        f"directory lists each slice on each map, and each element drawn whole."
+        f"'--reaction-accession-aggregation', which is refused. A sliced element keeps one label "
+        f"on a map whose reaction elements are labeled ('--reaction-labels'), and its slices are "
+        f"not labeled. The file 'slice_key_reactions.txt' in the output directory lists each slice "
+        f"on each map, and each element drawn whole."
     )
     groupTXT.add_argument(
         '--reaction-slice-weights', metavar='COLUMN', help=
@@ -906,6 +911,33 @@ def get_args() -> Namespace:
         '--kegg-dir', type=str, metavar='PATH', help=
         "Path to KEGG database directory containing map files. If this option is not used, the "
         "program expects a database set up in the default location used by 'anvi-setup-kegg-data'."
+    )
+
+    groupLABEL = parser.add_argument_group("LABELS", "Labels on map elements.")
+    groupLABEL.add_argument(
+        '--reaction-labels', nargs='+', choices=[*MAP_KINDS, LABELS_NONE], metavar='MAP_KIND', help=
+        "Label the reaction elements of the given kinds of map, among 'standard', 'overview', and "
+        "'global'. 'none' labels no map. The default is 'standard'. Global maps are numbered "
+        "011XX, overview maps are numbered 012XX and 013XX, and all other maps are standard. The "
+        "kinds given replace the default, so list 'standard' among them to keep the labels of "
+        "boxes on standard maps. Without a label, a box is blank, since its fill hides the text of "
+        "the base map. Every reaction element of a map of a given kind is labeled, with or without "
+        "data. A label is KEGG's name for the element. That is the first KO of the element, "
+        "followed by '...' if the element stands for several KOs. The label is a KO even when "
+        "'--reaction-txt' holds KEGG reaction IDs, and it may name a KO that is not in the data. "
+        "On global maps, the labels are small and crowded, and they can be read only when the map "
+        "is zoomed in."
+    )
+    groupLABEL.add_argument(
+        '--compound-labels', nargs='+', choices=[*MAP_KINDS, LABELS_NONE], metavar='MAP_KIND', help=
+        "Like '--reaction-labels', but for compound circles, which are not labeled by default. A "
+        "label is the KEGG ID of the compound, glycan, or drug that a circle stands for. If the "
+        "circle stands for several, the label is the first ID, followed by '...'. A label is wider "
+        "than its circle and sits above its center. It can cover nearby lines, arrowheads, boxes, "
+        "and the names printed on the base map. A compound that takes part in no reaction on the "
+        "map is labeled in faint gray. On maps without reactions, such as many signaling maps, "
+        "that is every compound. Compound circles can be labeled with any input, not only with "
+        "'--compound-txt'."
     )
 
     groupCOLOR = parser.add_argument_group("COLOR", "Everything to do with coloring.")
@@ -3418,6 +3450,21 @@ def main() -> None:
                     f"one sample, contigs database, genome, or group."
                 )
 
+        # 'none' labels no map, so it cannot be given with kinds of map to label. The mapper takes
+        # only kinds of map, so 'none' is passed to it as no kinds.
+        for element_type in ('reaction', 'compound'):
+            label_map_kinds = getattr(args, f'{element_type}_labels')
+            if label_map_kinds is None or LABELS_NONE not in label_map_kinds:
+                continue
+            other_map_kinds = [map_kind for map_kind in MAP_KINDS if map_kind in label_map_kinds]
+            if other_map_kinds:
+                listed = ', '.join(f"'{map_kind}'" for map_kind in other_map_kinds)
+                raise ConfigError(
+                    f"'--{element_type}-labels' was given 'none' with these kinds of map to label: "
+                    f"{listed}. 'none' labels no map. Please give 'none' alone, or drop it."
+                )
+            setattr(args, f'{element_type}_labels', [])
+
         # Only one primary data source can be drawn per run. Each source writes its map files (and
         # shared colorbars) into the same output directory with the same names, so combining sources
         # would collide or silently overwrite. The reaction- and compound-layer text files are one
@@ -3807,7 +3854,9 @@ def main() -> None:
                         name_files=args.name_files,
                         categorize_files=args.categorize_files,
                         collate_files_by_map=args.collate_files_by_map,
-                        animate_files_by_map=args.animate_files_by_map)
+                        animate_files_by_map=args.animate_files_by_map,
+                        reaction_label_map_kinds=args.reaction_labels,
+                        compound_label_map_kinds=args.compound_labels)
         performed = False
 
         if is_txt_run:

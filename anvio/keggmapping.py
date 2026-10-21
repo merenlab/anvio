@@ -565,6 +565,14 @@ PLAYER_SECONDS_PER_FRAME = 1
 # The note on a frame of a player whose source has no map drawn, so the frame shows the bare map.
 PLAYER_BARE_NOTE = 'No data on this map'
 
+# The kinds of map whose reaction elements and compound circles can be labeled ('--reaction-labels'
+# and '--compound-labels'). Global maps match 'GLOBAL_MAP_ID_PATTERN' (011XX), overview maps match
+# 'OVERVIEW_MAP_ID_PATTERN' (012XX and 013XX), and all other maps are standard. By default, only the
+# reaction elements of standard maps are labeled.
+MAP_KINDS: Tuple[str, ...] = ('standard', 'overview', 'global')
+DEFAULT_REACTION_LABEL_MAP_KINDS: Tuple[str, ...] = ('standard',)
+DEFAULT_COMPOUND_LABEL_MAP_KINDS: Tuple[str, ...] = ()
+
 class Mapper:
     """
     Make KEGG pathway maps incorporating data sourced from external inputs.
@@ -601,6 +609,12 @@ class Mapper:
     animate_files_by_map : bool
         Beside each directory of maps gathered by 'collate_files_by_map', write an HTML player that
         shows the maps one after another.
+
+    reaction_label_map_kinds : Set[str]
+        The kinds of map whose reaction elements are labeled, among those in 'MAP_KINDS'.
+
+    compound_label_map_kinds : Set[str]
+        The kinds of map whose compound circles are labeled, among those in 'MAP_KINDS'.
 
     pathway_categorization : dict[str, list[str]]
         Maps pathway numbers to categorization, with categories listed from general to specific.
@@ -643,6 +657,8 @@ class Mapper:
         categorize_files: bool = False,
         collate_files_by_map: bool = False,
         animate_files_by_map: bool = False,
+        reaction_label_map_kinds: Iterable[str] = None,
+        compound_label_map_kinds: Iterable[str] = None,
         run: terminal.Run = terminal.Run(),
         progress: terminal.Progress = terminal.Progress(),
         quiet: bool = QUIET
@@ -673,6 +689,17 @@ class Mapper:
             Beside each directory of maps gathered by 'collate_files_by_map', write an HTML player
             that shows the maps one after another. Without 'collate_files_by_map', no player is
             written.
+
+        reaction_label_map_kinds : Iterable[str], None
+            The kinds of map whose reaction elements are labeled, among 'standard', 'overview', and
+            'global'. A label is KEGG's name for the element, which is its first KO. None labels
+            standard maps only ('DEFAULT_REACTION_LABEL_MAP_KINDS'). Their boxes are blank without
+            labels, since the fills hide the text of the base map.
+
+        compound_label_map_kinds : Iterable[str], None
+            The kinds of map whose compound circles are labeled with their KEGG IDs, among
+            'standard', 'overview', and 'global'. None labels no map
+            ('DEFAULT_COMPOUND_LABEL_MAP_KINDS').
 
         run : anvio.terminal.Run, anvio.terminal.Run()
             This object prints run information to the terminal.
@@ -705,6 +732,27 @@ class Mapper:
                 "of 'pillow' with WebP support, or drop this flag."
             )
 
+        if reaction_label_map_kinds is None:
+            reaction_label_map_kinds = DEFAULT_REACTION_LABEL_MAP_KINDS
+        if compound_label_map_kinds is None:
+            compound_label_map_kinds = DEFAULT_COMPOUND_LABEL_MAP_KINDS
+        # The program offers only the known kinds of map, so this check is for other callers.
+        reaction_label_map_kinds = set(reaction_label_map_kinds)
+        compound_label_map_kinds = set(compound_label_map_kinds)
+        for parameter_name, label_map_kinds in (
+            ('reaction_label_map_kinds', reaction_label_map_kinds),
+            ('compound_label_map_kinds', compound_label_map_kinds)
+        ):
+            unknown_map_kinds = sorted(label_map_kinds.difference(MAP_KINDS), key=str)
+            if unknown_map_kinds:
+                unknown = ', '.join(f"'{map_kind}'" for map_kind in unknown_map_kinds)
+                known = ', '.join(f"'{map_kind}'" for map_kind in MAP_KINDS[:-1])
+                known += f", and '{MAP_KINDS[-1]}'"
+                raise ConfigError(
+                    f"'{parameter_name}' names kinds of map that anvi'o does not know: {unknown}. "
+                    f"The kinds of map are {known}."
+                )
+
         available_pathway_numbers: List[str] = []
         for row in pd.read_csv(
             self.kegg_context.kegg_map_image_kgml_file, sep='\t', index_col=0
@@ -736,6 +784,8 @@ class Mapper:
         self.categorize_files = categorize_files
         self.collate_files_by_map = collate_files_by_map
         self.animate_files_by_map = animate_files_by_map
+        self.reaction_label_map_kinds = reaction_label_map_kinds
+        self.compound_label_map_kinds = compound_label_map_kinds
         self.pathway_categorization = self._categorize_pathways() if categorize_files else None
         self.overwrite_output = overwrite_output
         self.run = run
@@ -14864,6 +14914,9 @@ class Mapper:
         """
         Draw a map given the KGML pathway data.
 
+        Reaction elements and compound circles are labeled if the map is of a kind in
+        'reaction_label_map_kinds' and 'compound_label_map_kinds', respectively.
+
         Parameters
         ==========
         pathway : anvio.kgml.Pathway
@@ -14883,7 +14936,19 @@ class Mapper:
             out_path = os.path.join(out_dir, out_basename)
         os.makedirs(out_dir, exist_ok=True)
 
-        self.drawer.draw_map(pathway, out_path)
+        if pathway.is_global_map:
+            map_kind = 'global'
+        elif pathway.is_overview_map:
+            map_kind = 'overview'
+        else:
+            map_kind = 'standard'
+        # The reaction elements of a KO map are its ortholog entries.
+        self.drawer.draw_map(
+            pathway,
+            out_path,
+            label_orthologs=map_kind in self.reaction_label_map_kinds,
+            label_compounds=map_kind in self.compound_label_map_kinds
+        )
 
         if self.pathway_categorization is None:
             return

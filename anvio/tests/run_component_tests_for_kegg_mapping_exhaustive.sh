@@ -970,6 +970,20 @@ then
     exit 1
 fi
 
+if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
+    --reaction-labels none standard \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_labels_none_and_kind.log 2>&1
+then
+    echo "ERROR: labels given as 'none' and a kind of map should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_labels_none_and_kind.log | grep -q "'none' labels no map"
+then
+    echo "ERROR: labels given as 'none' and a kind of map were refused for another reason."
+    exit 1
+fi
+
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_unusable_sample_names.reaction.txt \
     --draw-individual-files \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
