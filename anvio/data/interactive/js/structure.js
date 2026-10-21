@@ -76,17 +76,48 @@ $(document).ready(function() {
         $(this).colpickSetColor(this.value);
     });
 
-    window.addEventListener( "resize", function( event ){
-        for (let group in stages) {
-            stages[group].handleResize();
+    window.addEventListener("resize", resize_all_stages, false);
+
+    // the viewers' width follows the settings panel, so their stages have to be
+    // told to resize once it has finished sliding. transitionend fires per
+    // property and bubbles from descendants, hence both guards.
+    let panel = document.getElementById('panel-left');
+    panel.addEventListener('transitionend', function(ev) {
+        if (ev.target !== panel || ev.propertyName !== 'left') return;
+        $('#ngl-container').css('pointer-events', '');
+        resize_all_stages();
+    });
+
+    // keep a viewer from swallowing the drag while the panel is in motion. The
+    // timeout mirrors the fallback in toggleLeftPanel(), so a click that starts
+    // no transition cannot leave the viewers unclickable.
+    $('#toggle-panel-left').on('click', function() {
+        $('#ngl-container').css('pointer-events', 'none');
+        setTimeout(function() { $('#ngl-container').css('pointer-events', ''); }, 400);
+    });
+
+    $(document).on('keydown', function(ev) {
+        if ((/^(?:input|select|textarea|button)$/i).test(ev.target.nodeName)) return;
+
+        if (ev.keyCode === 83) { // S toggles the settings panel, as in anvi-interactive
+            $('#toggle-panel-left').trigger('click');
         }
-    }, false );
+
+        if (ev.keyCode === 82) { // R redraws, mirroring D for draw in anvi-interactive
+            create_ngl_views(fetch_variability=true);
+        }
+    });
 
     $('#gene_callers_id_list').on('change', function(ev) {
         $.when({}).then(load_protein).then(load_gene_function_info).then(load_model_info).then(() => {
             create_ui();
             load_sample_group_widget($('#sample_groups_list').val());
         });
+    });
+
+    $('#engine_list').on('change', function(ev) {
+        $.when({}).then(create_ui).then(() => { fetch_and_draw_variability(); });
+        update_title_subline();
     });
 
     $('#sample_groups_list').on('change', function(ev) {
@@ -104,6 +135,8 @@ $(document).ready(function() {
             let available_engines = data['available_engines'];
             sample_groups = data['sample_groups'];
 
+            $('#title-panel-first-line').text(data['title'] || 'Structure Display');
+
             available_gene_callers_ids.forEach(function(gene_callers_id) {
                 $('#gene_callers_id_list').append(`<option id=${gene_callers_id}>${gene_callers_id}</option>`);
             });
@@ -111,7 +144,7 @@ $(document).ready(function() {
             $.when({}).then(load_protein).then(load_gene_function_info).then(load_model_info).then(() => {
                 let default_engine = available_engines[0];
                 available_engines.forEach(function(engine) {
-                    $('#engine_list').append(`<input type="radio" name="engine" onclick="$.when({}).then(create_ui).then(() => { fetch_and_draw_variability(); });" value="${engine}" id="engine_${engine}" ${engine == default_engine ? 'checked="checked"' : ''}><label for="engine_${engine}">${engine}</label>`);
+                    $('#engine_list').append(`<option value="${engine}" ${engine == default_engine ? 'selected="selected"' : ''}>${engine}</option>`);
                 });
                 create_ui();
 
@@ -129,7 +162,7 @@ function load_sample_group_widget(category, trigger_create_ngl_views=true) {
     $('#sample_groups').empty();
     $('#sample_groups').attr('created-for-category', category);
 
-    tableHtml = '<table class="table table-sm table-responsive"><tr><td><label class="col-md-4 settings-label">Groups</label></td><td><label class="col-md-4 settings-label">Samples</label></td></tr>';
+    tableHtml = '<table class="table table-sm"><tr><td><label class="settings-label">Groups</label></td><td><label class="settings-label">Samples</label></td></tr>';
 
     let counter=0;
     for (let group in sample_groups[category]) {
@@ -192,6 +225,53 @@ function load_sample_group_widget(category, trigger_create_ngl_views=true) {
     }
 }
 
+function resize_all_stages() {
+    for (let group in stages) {
+        stages[group].handleResize();
+    }
+}
+
+function update_title_subline() {
+    let gene = $('#gene_callers_id_list').val();
+    let engine = $('#engine_list').val();
+    let groups = $('[checkbox-for="group"]:checked').length;
+
+    let parts = [];
+    if (gene) parts.push('Gene ' + gene);
+    if (engine) parts.push(engine);
+    if (groups) parts.push(groups + (groups > 1 ? ' groups' : ' group'));
+
+    $('#title-panel-second-line').text(parts.join(' | '));
+}
+
+// the tooltip goes above and to the right of the cursor, flipping below or to
+// the left wherever that side has no room, so residues near the top or right
+// of the window do not push it off screen
+function place_tooltip(tooltip, mouse) {
+    const gap = 3;
+
+    tooltip.style.display = 'block';
+    tooltip.style.bottom = 'auto';
+
+    let box = tooltip.getBoundingClientRect();
+    let width = Math.ceil(box.width);
+    let height = Math.ceil(box.height);
+
+    let top = mouse.y - gap - height;
+    if (top < 0) {
+        top = mouse.y + gap;
+    }
+
+    let left = mouse.x + gap;
+    if (left + width > window.innerWidth) {
+        left = mouse.x - gap - width;
+    }
+
+    // a tooltip taller or wider than the room on either side still starts on screen
+    tooltip.style.top = Math.max(0, Math.min(top, window.innerHeight - height)) + 'px';
+    tooltip.style.left = Math.max(0, left) + 'px';
+}
+
 function apply_orientation_matrix_to_all_stages(orientationMatrix) {
     for (let group in stages) {
         stages[group].viewerControls.orient(orientationMatrix);
@@ -208,6 +288,8 @@ async function create_ngl_views(fetch_variability = true) {
     } else {
         $('#maximum_ngl_widgets_error').hide();
     }
+
+    update_title_subline();
 
     for (let group in stages) {
         stages[group].dispose();
@@ -236,7 +318,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
     var defer = $.Deferred();
 
     $('#ngl-container').append(`
-        <div id="ngl_${group}_wrapper d-flex"
+        <div id="ngl_${group}_wrapper"
              class="col-md-${parseInt(12 / num_columns)} nopadding"
              style="height: ${parseFloat(100 / num_rows)}%; ">
              <div class="ngl-group-title">
@@ -464,7 +546,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                         <tr><td>Mean Entropy</td><td>${variability[group][residue]['entropy'].toFixed(2)}</td></tr>
                     `
                     // add engine-specific data
-                    if ($('[name=engine]:checked').val() == 'AA') {
+                    if ($('#engine_list').val() == 'AA') {
                         // append to body
                         tooltip_HTML_variant_body += `<tr><td>Mean BLOSUM90</td><td>${variability[group][residue]['BLOSUM90'].toFixed(1)}</td></tr>`
                     } else {
@@ -474,7 +556,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                     }
 
                     var tooltip_HTML_variant_freqs_title = `<h5>Variant frequencies</h5>`
-                    if ($('[name=engine]:checked').val() == 'AA') {
+                    if ($('#engine_list').val() == 'AA') {
                         var tooltip_HTML_variant_freqs_body = `
                             <tr><td>${variability[group][residue]['0_item']}</td><td>${variability[group][residue]['0_freq'].toFixed(3)}</td></tr>
                             <tr><td>${variability[group][residue]['1_item']}</td><td>${variability[group][residue]['1_freq'].toFixed(3)}</td></tr>
@@ -504,9 +586,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                     }
 
                     tooltip.innerHTML = tooltip_HTML;
-                    tooltip.style.bottom = window.innerHeight - mp.y + 3 + "px";
-                    tooltip.style.left = mp.x + 3 + "px";
-                    tooltip.style.display = "block";
+                    place_tooltip(tooltip, mp);
                 }
                 else if ($('#show_tooltip').is(':checked') && $('#show_tooltip_when').val() == 'variant residues') {
                     if (variability[group].hasOwnProperty(residue)) {
@@ -519,9 +599,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                         tooltip_HTML += tooltip_HTML_variant_freqs_title + tooltip_HTML_variant_freqs_body
 
                         tooltip.innerHTML = tooltip_HTML;
-                        tooltip.style.bottom = window.innerHeight - mp.y + 3 + "px";
-                        tooltip.style.left = mp.x + 3 + "px";
-                        tooltip.style.display = "block";
+                        place_tooltip(tooltip, mp);
                     }
                 }
 
@@ -742,8 +820,8 @@ function get_model_info_table_html(model_data) {
     var engine_labels = {'modeller': 'MODELLER', 'colabfold': 'ColabFold', 'external': 'External'};
     var engine = model_data['engine'];
     if (engine) {
-        geneModelHtml += '<div class="widget">'
-        geneModelHtml += '<span class="settings-header"><h4>Prediction engine</h4></span>'
+        geneModelHtml += '<div class="model-info-group">'
+        geneModelHtml += '<span class="settings-secondary-header">Prediction engine</span>'
         geneModelHtml += '<p>' + (engine_labels[engine] || engine) + '</p>';
         geneModelHtml += "</div>";
     }
@@ -751,13 +829,13 @@ function get_model_info_table_html(model_data) {
     /* TEMPLATES */
     // template-free engines (ColabFold) and external structures report no templates
     if (Object.keys(templates).length > 0) {
-        geneModelHtml += '<div class="widget">'
-        geneModelHtml += '<span class="settings-header"><h4>Templates Used</h4></span>'
-        geneModelHtml += '<table class="table table-sm table-responsive" id="model_info_table"><tbody>';
+        geneModelHtml += '<div class="model-info-group">'
+        geneModelHtml += '<span class="settings-secondary-header">Templates Used</span>'
+        geneModelHtml += '<table class="table table-sm model-info-table"><tbody>';
 
         var header = '<tr>';
         for (const col_name of Object.keys(templates[0])) {
-            header += '<td><label class="col-md-4 settings-label">' + col_name + '</label></td>';
+            header += '<td><label class="settings-label">' + col_name + '</label></td>';
         }
         header += '</tr>';
         geneModelHtml += header;
@@ -789,14 +867,14 @@ function get_model_info_table_html(model_data) {
     /* MODELS */
     // external structures carry no model scores
     if (models) {
-        geneModelHtml += '<div class="widget">'
-        geneModelHtml += '<span class="settings-header"><h4>Model Scores</h4></span>'
-        geneModelHtml += '<table class="table table-sm table-responsive" id="model_info_table"><tbody>';
+        geneModelHtml += '<div class="model-info-group">'
+        geneModelHtml += '<span class="settings-secondary-header">Model Scores</span>'
+        geneModelHtml += '<table class="table table-sm model-info-table"><tbody>';
 
         var header = '<tr>';
         var row = '<tr>';
         for (const [col_name, value] of Object.entries(models)) {
-            header += '<td><label class="col-md-4 settings-label">' + col_name + '</label></td>';
+            header += '<td><label class="settings-label">' + col_name + '</label></td>';
             row += '<td>' + Number(value).toFixed(2) + '</td>';
         }
         header += '</tr>';
@@ -832,17 +910,33 @@ function serialize_checked_groups() {
     return output;
 }
 
+// bootstrap-slider snaps its values to the step, so a handle left at the end of
+// the slider can sit just inside the data's real bound (0.80 for a column whose
+// minimum is 0.798) and would silently filter out the extreme residues. A handle
+// within half a step of its end therefore stands for the real bound.
+function get_filter_range(column) {
+    let slider = $(`#${column}`);
+    let min_allowed = parseFloat(slider.attr('data-slider-min'));
+    let max_allowed = parseFloat(slider.attr('data-slider-max'));
+    let half_step = parseFloat(slider.attr('data-slider-step')) / 2;
+    let range = slider.val().split(',').map(parseFloat);
+
+    return [range[0] - min_allowed <= half_step ? min_allowed : range[0],
+            max_allowed - range[1] <= half_step ? max_allowed : range[1]];
+}
+
 function serialize_filtering_widgets() {
     let output = {};
 
-    $('#controls .widget').each((index, widget) => {
+    $('#controls .filter-control').each((index, widget) => {
         let column = $(widget).attr('data-column');
         let controller = $(widget).attr('data-controller');
 
         if (controller == 'slider') {
             output[column] = {}
-            output[column]["min_" + column] = $(widget).find('input').val().split(',')[0];
-            output[column]["max_" + column] = $(widget).find('input').val().split(',')[1];
+            let range = get_filter_range(column);
+            output[column]["min_" + column] = range[0];
+            output[column]["max_" + column] = range[1];
         }
         else if (controller == 'checkbox') {
             output[column] = {}
@@ -856,7 +950,7 @@ function serialize_filtering_widgets() {
 function fetch_and_draw_variability() {
     $('.overlay').show();
     let gene_callers_id = $('#gene_callers_id_list').val();
-    let engine = $('[name=engine]:checked').val();
+    let engine = $('#engine_list').val();
 
     // serialize options programatically
     let options = {
@@ -895,7 +989,7 @@ function fetch_and_draw_variability() {
 
 function draw_variability() {
     let gene_callers_id = $('#gene_callers_id_list').val();
-    let engine = $('[name=engine]:checked').val();
+    let engine = $('#engine_list').val();
 
     if (Object.keys(stages).length == 0)
         return;
@@ -1025,7 +1119,7 @@ function draw_variability() {
 
 
 function draw_histogram() {
-    let engine = $('[name=engine]:checked').val();
+    let engine = $('#engine_list').val();
 
     for (let column in histogram_data[engine]) {
         let svg = d3.select('#histogram_' + column);
@@ -1043,41 +1137,76 @@ function draw_histogram() {
         let bins = histogram_data[engine][column]['bins'];
         let counts = histogram_data[engine][column]['counts'];
 
-        var min_count = Math.min(...counts);
-        var max_count = Math.max(...counts);
-        var max_slider = parseFloat(document.getElementById(column).dataset.sliderMax);
-        var min_slider = parseFloat(document.getElementById(column).dataset.sliderMin);
+        let max_count = Math.max(...counts);
+        let max_slider = parseFloat(document.getElementById(column).dataset.sliderMax);
+        let min_slider = parseFloat(document.getElementById(column).dataset.sliderMin);
+        let x = (v) => ((v - min_slider) / (max_slider - min_slider)) * width;
 
-        let normalized_counts = counts.map(v => (v / max_count) * height);
-        let normalized_bins = bins.map(v => ((v - min_slider) / (max_slider - min_slider)) * width);
+        for (let i = 0; i < counts.length; i++) {
+            if (counts[i] == 0) {
+                continue;
+            }
 
-        let data_points = [];
+            let bar_height = (counts[i] / max_count) * height;
 
-        for (let i=0; i < normalized_counts.length; i++) {
-            data_points.push({'x': normalized_bins[i], 'y': height - normalized_counts[i]});
-            data_points.push({'x': normalized_bins[i+1], 'y': height - normalized_counts[i]});
+            svg.append('rect')
+                .attr('x', x(bins[i]))
+                .attr('y', height - bar_height)
+                .attr('width', Math.max(x(bins[i + 1]) - x(bins[i]) - 0.6, 0.4))
+                .attr('height', bar_height)
+                .attr('data-low', bins[i])
+                .attr('data-high', bins[i + 1]);
         }
-        data_points.push({'x': width, 'y': height})
 
-        var make_bar_chart = d3.line()
-                            .x(function(d) { return d.x; })
-                            .y(function(d) { return d.y; });
-
-        var bar_chart = make_bar_chart(data_points);
-        bar_chart += `L ${data_points[normalized_bins.length - 1]['x']} ${height} L ${data_points[0]['x']} ${height}`;
-
-        svg.append("path")
-            .style("fill","#337ab7")
-            .style("stroke","#182943")
-            .attr("d",function(d,i){ return bar_chart; });
+        shade_histogram(column);
     }
 };
+
+// bars that fall outside the slider's current range are drawn as filtered out
+function shade_histogram(column) {
+    let range = $(`#${column}`).val().split(',').map(parseFloat);
+
+    d3.selectAll(`#histogram_${column} rect`).classed('filtered-out', function() {
+        return parseFloat(this.dataset.high) <= range[0] || parseFloat(this.dataset.low) >= range[1];
+    });
+}
+
+// the two boxes under a slider show its range and accept a typed cut-off
+function sync_range_inputs(column) {
+    let slider = $(`#${column}`);
+    let step = parseFloat(slider.attr('data-slider-step'));
+    let decimals = step >= 1 ? 0 : Math.ceil(-Math.log10(step));
+    let range = slider.val().split(',').map(parseFloat);
+    let widget = slider.closest('.filter-control');
+
+    widget.find('.filter-range-min').val(range[0].toFixed(decimals));
+    widget.find('.filter-range-max').val(range[1].toFixed(decimals));
+}
+
+function on_range_input_change(input) {
+    let widget = $(input).closest('.filter-control');
+    let column = widget.attr('data-column');
+    let slider = $(`#${column}`);
+    let min_allowed = parseFloat(slider.attr('data-slider-min'));
+    let max_allowed = parseFloat(slider.attr('data-slider-max'));
+
+    let low = parseFloat(widget.find('.filter-range-min').val());
+    let high = parseFloat(widget.find('.filter-range-max').val());
+
+    if (!isNaN(low) && !isNaN(high) && low <= high) {
+        slider.slider('setValue', [Math.max(low, min_allowed), Math.min(high, max_allowed)]);
+    }
+
+    // put back what the slider actually holds, so a rejected or clamped value does not linger
+    sync_range_inputs(column);
+    shade_histogram(column);
+}
 
 
 function create_ui() {
     var defer = $.Deferred();
     let gene_callers_id = $('#gene_callers_id_list').val();
-    let engine = $('[name=engine]:checked').val();
+    let engine = $('#engine_list').val();
 
     backupFilters();
 
@@ -1151,20 +1280,30 @@ function create_ui() {
                     }
 
                     $(container).append(`
-                        <div class="widget" data-column="${item['name']}" data-controller="${item['as_filter']}">
-                            <span class="settings-header"><h5>${item['title']}</h5></span><br />
-                            <svg id="histogram_${item['name']}" width="100%" height="30" style="position: relative; top: 6;" viewBox="0 0 200 30" preserveAspectRatio="none"></svg>
-                            <input id="${item['name']}"
-                                    type="${item['data_type']}"
-                                    data-provide="slider"
-                                    data-slider-min="${item['min']}"
-                                    data-slider-max="${item['max']}"
-                                    data-slider-step="${item['step']}"
-                                    data-slider-value="[${min_val},${max_val}]"
-                                    >
+                        <div class="filter-control" data-column="${item['name']}" data-controller="${item['as_filter']}">
+                            <span class="settings-secondary-header">${item['title']}</span>
+                            <div class="filter-slider">
+                                <svg id="histogram_${item['name']}" class="filter-histogram" viewBox="0 0 200 30" preserveAspectRatio="none"></svg>
+                                <input id="${item['name']}"
+                                        type="${item['data_type']}"
+                                        data-provide="slider"
+                                        data-slider-min="${item['min']}"
+                                        data-slider-max="${item['max']}"
+                                        data-slider-step="${item['step']}"
+                                        data-slider-value="[${min_val},${max_val}]"
+                                        >
+                            </div>
+                            <div class="filter-range">
+                                <input class="form-control input-xs filter-range-min" type="text" onchange="on_range_input_change(this);">
+                                <input class="form-control input-xs filter-range-max" type="text" onchange="on_range_input_change(this);">
+                            </div>
                         </div>
                     `);
-                    $(`#${item['name']}`).slider({});
+                    $(`#${item['name']}`).slider({'tooltip': 'hide'}).on('slide change', function() {
+                        sync_range_inputs(this.id);
+                        shade_histogram(this.id);
+                    });
+                    sync_range_inputs(item['name']);
                 }
                 if (item['as_filter'] == 'checkbox') {
                     let checked_choices = item['choices'];
@@ -1174,19 +1313,20 @@ function create_ui() {
                     }
 
                     $(container).append(`
-                        <div class="widget" data-column="${item['name']}" data-controller="${item['as_filter']}">
-                            <span class="settings-header"><h5>${item['title']}</h5></span><br />
-                            <div class="ml-3 d-flex">
+                        <div class="filter-control" data-column="${item['name']}" data-controller="${item['as_filter']}">
+                            <span class="settings-secondary-header filter-header">
+                                <span>${item['title']}</span>
+                                <span class="filter-all-none">
+                                    <a href="#" onclick="$(this).closest('.filter-control').find('input:checkbox').prop('checked', true); return false;">All</a> &middot;
+                                    <a href="#" onclick="$(this).closest('.filter-control').find('input:checkbox').prop('checked', false); return false;">None</a>
+                                </span>
+                            </span>
+                            <div class="filter-chips">
                             ${item['choices'].map((choice) => { return `
-                                <div>
-                                    <input class="form-check-input" type="checkbox" id="${item['name']}_${choice}" value="${choice}" ${ checked_choices.indexOf(choice) > -1 ? 'checked="checked"' : ''}>
-                                    <label class="form-check-label" for="${item['name']}_${choice}">${choice}</label>`; }).join('')}
-                                </div>    
-                                <br />
-                                <div>
-                                    <button class="btn btn-xs btn-primary" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', true);">Check All</button>
-                                    <button class="btn btn-xs btn-outline-danger" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', false);">Uncheck All</button>
-                                </div>
+                                <label class="filter-chip">
+                                    <input type="checkbox" id="${item['name']}_${choice}" value="${choice}" ${ checked_choices.indexOf(choice) > -1 ? 'checked="checked"' : ''}>
+                                    <span>${choice}</span>
+                                </label>`; }).join('')}
                             </div>
                         </div>
                     `);
@@ -1219,20 +1359,23 @@ function create_ui() {
 
 
 function onTargetResidueInfoChange(element) {
+    // this on change event is shared between backbone_color_variable and
+    // surface_color_variable; the prefix names the section whose range to fill
     let name = $(element).val();
+    let prefix = element.getAttribute('id').replace(/_variable$/, '');
 
-    $(`#backbone_numerical_panel`).show();
+    $(`#${prefix}_numerical_panel`).show();
 
     if (residue_info[1].hasOwnProperty(name)) {
       // The selected dynamic variable is in residue_info's elements
-      $(`#backbone_color_min`).val(residue_info_types[name]['amin']);
-      $(`#backbone_color_max`).val(residue_info_types[name]['amax']);
+      $(`#${prefix}_min`).val(residue_info_types[name]['amin']);
+      $(`#${prefix}_max`).val(residue_info_types[name]['amax']);
     } else {
       for (i in column_info) {
         let item = column_info[i];
         if (item['name'] == name) {
-          $(`#backbone_color_min`).val(item['min']);
-          $(`#backbone_color_max`).val(item['max']);
+          $(`#${prefix}_min`).val(item['min']);
+          $(`#${prefix}_max`).val(item['max']);
           break;
         }
       }
@@ -1263,7 +1406,7 @@ function onTargetResidueInfoChange(element) {
 
 function onTargetColumnChange(element) {
     // this on change event is shared between color_target_column and size_target_column.
-    let engine = $('[name=engine]:checked').val();
+    let engine = $('#engine_list').val();
     let column = $(element).val();
     let selected_column_info = column_info.find(function(el) {if (el['name'] == column) {return el}})
 
@@ -1448,7 +1591,7 @@ function get_gene_functions_table_html_for_structure(gene){
         return functions_table_html
     }
 
-    functions_table_html  = '<table class="table table-striped table-responsive">';
+    functions_table_html  = '<table class="table table-striped">';
     functions_table_html += '<thead><th>Source</th>';
     functions_table_html += '<th>Accession</th>';
     functions_table_html += '<th>Annotation</th></thead>';
@@ -1477,7 +1620,7 @@ function get_gene_functions_table_html_for_structure(gene){
 function store_variability() {
     $('.overlay').show();
     let gene_callers_id = $('#gene_callers_id_list').val();
-    let engine = $('[name=engine]:checked').val();
+    let engine = $('#engine_list').val();
     let output_path = $('#var_output_path').val();
 
     // serialize options programatically
@@ -1545,6 +1688,20 @@ function store_structure_as_pdb(path_id, success_id, failure_id) {
 function showPymolWindow() {
     gen_pymol_script_html(gen_pymol_script());
     $('#pymol_export_page').modal('show');
+}
+
+function showSaveVariantDataWindow() {
+    $('#store_var_success, #store_var_failure').hide();
+    $('#modSaveVariantData').modal('show');
+}
+
+function showRenderImagesWindow() {
+    $('#modRenderImages').modal('show');
+}
+
+function showExportPdbWindow() {
+    $('#store_pdb_success, #store_pdb_failure').hide();
+    $('#modExportPdb').modal('show');
 }
 
 function gen_pymol_script_html(script) {
@@ -1720,13 +1877,20 @@ async function generate_summary() {
     $('.overlay').hide();
 }
 
+// the sections Save State records inputs for, keyed by the names state files use;
+// 'tab_output' holds the inputs of the Output actions' modals
+const AUXILIARY_INPUT_SECTIONS = {
+    'tab_views': '#tab_views',
+    'tab_output': '#modSaveVariantData, #modRenderImages, #modExportPdb',
+};
+
 function serializeAuxiliaryInputs() {
     let backup = {};
 
-    ['tab_views', 'tab_output'].forEach((tab) => {
+    Object.entries(AUXILIARY_INPUT_SECTIONS).forEach(([tab, containers]) => {
         backup[tab] = {};
 
-        $(`#${tab} :input`).each((index, elem) => {
+        $(containers).find(':input').each((index, elem) => {
             let tag = elem.tagName;
             let id = elem.getAttribute('id');
 
@@ -1746,7 +1910,7 @@ function serializeAuxiliaryInputs() {
                 }
             }
         });
-         $(`#${tab} .colorpicker`).each((index, elem) => {
+         $(containers).find('.colorpicker').each((index, elem) => {
             let id = elem.getAttribute('id');
             if (id) {
                 backup[tab][id] = $(elem).attr('color');
@@ -1799,7 +1963,7 @@ function serializeState() {
     let state = {
         'version': '1',
         'gene_callers_id': $('#gene_callers_id_list').val(),
-        'engine': $('[name=engine]:checked').val(),
+        'engine': $('#engine_list').val(),
         'category': $('#sample_groups_list').val(),
         'sample_groups_backup': sample_groups_backup,
         'filter_backup': filter_backup,
@@ -1925,8 +2089,8 @@ function loadState()
                 $('#sample_groups_list').val(state['category']);
             }
 
-            if($(`[name=engine][value='${state['engine']}']`).length > 0) {
-                $(`[name=engine][value='${state['engine']}']`).prop('checked', true);
+            if($(`#engine_list option[value='${state['engine']}']`).length > 0) {
+                $('#engine_list').val(state['engine']);
             }
 
             if($(`#gene_callers_id_list option[id='${state['gene_callers_id']}']`).length > 0) {
@@ -1934,11 +2098,15 @@ function loadState()
             }
 
             for (let tab_name in state['auxiliary']) {
-                for (let object_id in state['auxiliary'][tab_name]) {
-                    let selector = `#${tab_name} #${object_id}`;
+                if (!AUXILIARY_INPUT_SECTIONS.hasOwnProperty(tab_name)) {
+                    continue;
+                }
 
-                    if ($(selector).length > 0) {
-                        let elem = $(selector)[0];
+                for (let object_id in state['auxiliary'][tab_name]) {
+                    let found = $(AUXILIARY_INPUT_SECTIONS[tab_name]).find(`#${object_id}`);
+
+                    if (found.length > 0) {
+                        let elem = found[0];
 
                         if (elem.tagName == 'SELECT') {
                             $(elem).val(state['auxiliary'][tab_name][object_id]);

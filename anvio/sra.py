@@ -338,7 +338,7 @@ def _try_one_runinfo_request(accessions):
     except Exception as e:
         raise NCBIIsBusy(f"the request for the table describing them failed ({e})")
 
-    return _parse_runinfo(runinfo)
+    return _parse_runinfo(runinfo, accessions)
 
 
 def _read_xml_value(text, tag):
@@ -352,9 +352,17 @@ def _read_xml_value(text, tag):
     return text.split(opening, 1)[1].split(closing, 1)[0].strip()
 
 
-def _parse_runinfo(runinfo_text):
-    """Turn NCBI's runinfo CSV into anvi'o's vocabulary, keyed by accession."""
+def _parse_runinfo(runinfo_text, accessions_asked_about):
+    """Turn NCBI's runinfo CSV into anvi'o's vocabulary, keyed by accession.
 
+    Only the runs in `accessions_asked_about` come back. The rest of the table is discarded, and
+    there is usually a lot of it: the unit of record in NCBI's `sra` database is the experiment
+    rather than the run, so searching for a run accession finds the experiment that contains it,
+    and the runinfo table for that experiment describes every run in it. A library that was split
+    across several lanes turns one accession into a dozen rows this way, and keeping them would
+    fill the metadata file with runs nobody asked for."""
+
+    wanted = set(accessions_asked_about)
     entries = {}
 
     for fields in csv.reader(runinfo_text.splitlines()):
@@ -371,7 +379,7 @@ def _parse_runinfo(runinfo_text):
         row = dict(zip(RUNINFO_COLUMNS, fields))
         accession = row['Run'].strip()
 
-        if not is_valid_accession(accession):
+        if accession not in wanted:
             continue
 
         read_type, lr_technology = infer_read_type(row['Platform'], row['LibraryLayout'], row['Model'])

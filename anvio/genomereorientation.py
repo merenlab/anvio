@@ -81,6 +81,7 @@ class GenomeReorienter:
         self.reference_name = A('reference')
         self.output_dir = os.path.abspath(A('output_dir'))
         self.threads = A('threads') or 1
+        self.minimap2_presets_known = ['asm5', 'asm10', 'asm20']
         self.minimap2_preset = A('minimap2_preset') or "asm5"
         self.near_start_bp = A('near_start_bp') or 10000
         self.use_dnaa_for_reference_orientation = A('use_dnaa_for_reference_orientation') or False
@@ -88,6 +89,7 @@ class GenomeReorienter:
         self.scaffold_fragmented = A('scaffold_fragmented') or False
         self.min_contig_length = A('min_contig_length') or 1000
         self.keep_query_contigs_intact = A('keep_query_contigs_intact') or False
+        self.just_do_it = A('just_do_it') or False
 
         # Visualization parameters
         self.skip_visualizing_alignments = A('skip_visualizing_alignments') or False
@@ -113,6 +115,10 @@ class GenomeReorienter:
         # Deal with reference selection
         reference_was_user_specified = self.reference_name is not None
         self.select_reference_genome()
+
+        # Before anything else, make sure this collection of genomes is one this program can
+        # actually do something with (i.e., they all align to the reference to begin with).
+        self.check_all_genomes_align_to_reference()
 
         # Decide how to orient the reference
         if self.use_dnaa_for_reference_orientation:
@@ -178,6 +184,7 @@ class GenomeReorienter:
 
         total_to_process = len(self.genomes) - 1
         processed = 0
+        genomes_explained_in_full = []
 
         if total_to_process > 0:
             self.progress.new("Reorienting genomes", progress_total_items=total_to_process)
@@ -207,7 +214,21 @@ class GenomeReorienter:
                     results.append(result)
             except (ConfigError, FilesNPathsError, RuntimeError) as e:
                 self.progress.clear()
-                self.run.info(f"{genome_name} reorientation", f"failed ({e})", mc="red")
+
+                # the same failure tends to repeat itself across every genome in a set that does not
+                # belong together, and the explanation for it is a wall of text, so anvi'o spells it
+                # out for the first genome it happens to and keeps quiet about it afterwards. every
+                # message is still stored with its result, and makes it into the log file.
+                self.log_run.info_single(f"'{genome_name}' failed: {e}", level=2)
+
+                if genomes_explained_in_full:
+                    self.run.info(f"{genome_name} reorientation", f"FAILED (for the same reason "
+                                  f"'{genomes_explained_in_full[0]}' did)", mc="red")
+                else:
+                    self.run.info(f"{genome_name} reorientation", "FAILED (see below)", mc="red")
+                    self.run.warning(str(e), header=f"WHY '{genome_name}' COULD NOT BE REORIENTED", lc='red')
+                    genomes_explained_in_full.append(genome_name)
+
                 results.append(ReorientationResult(genome_name, "failed", str(e), trust="FAILED"))
             finally:
                 if total_to_process > 0:
@@ -272,6 +293,10 @@ class GenomeReorienter:
             num_sequences = utils.get_num_sequences_in_fasta(genome_path)
             self.genomes[genome_name]['num_contigs'] = num_sequences
             self.genomes[genome_name]['path'] = genome_path
+
+        if self.minimap2_preset not in self.minimap2_presets_known:
+            raise ConfigError(f"'{self.minimap2_preset}' is not a minimap2 preset anvi'o knows how to use here. Please "
+                              f"choose one of these instead: {', '.join(self.minimap2_presets_known)}.")
 
         if self.use_auto_reference_as_is and self.reference_name:
             raise ConfigError("9 9 9. You can't use `--reference` with `--use-auto-reference-as-is`. You have to "
@@ -1023,7 +1048,7 @@ class GenomeReorienter:
             f.write(f">{contig['id']}\n{contig['seq']}\n")
 
         try:
-            return self._minimap2_align(self.reference_path, temp_contig_fa)
+            return self._minimap2_align(self.reference_path, temp_contig_fa, allow_empty=True) or None
         except RuntimeError as e:
             self.log_run.info_single(f"'{contig['id']}': no alignment to the reference ({e})", level=2)
             return None
@@ -1598,7 +1623,17 @@ class GenomeReorienter:
         return resulting_contigs, num_contigs_split, num_fragments
 
 
-    def _minimap2_align(self, ref_fa, qry_fa, find_all_alignments=False):
+    def _no_alignment_advice(self):
+        """A human explanation for the most common reason minimap2 returns nothing."""
+
+        return (f"The most likely explanation is that these sequences are simply too distant from one another for "
+                f"`minimap2` with the current 'preset' (which is '{self.minimap2_preset}'): presets put a ceiling on "
+                f"how much sequence divergence an alignment is allowed to have, and anything past that ceiling is not "
+                f"reported at all, which looks exactly like 'no alignment'. Try a more permissive `--minimap2-preset`, "
+                f"such as `asm20`.")
+
+
+    def _minimap2_align(self, ref_fa, qry_fa, find_all_alignments=False, allow_empty=False):
         cmd = ["minimap2",
                "-x",
                self.minimap2_preset,
@@ -1618,7 +1653,7 @@ class GenomeReorienter:
 
         self.log_run.info_single(f"Running minimap2: {' '.join(cmd)}", level=2)
         stdout = utils.run_command_and_get_output(cmd, raise_on_error=True)
-        return self._read_paf(stdout.splitlines())
+        return self._read_paf(stdout.splitlines(), allow_empty=allow_empty)
 
 
     def _seqkit_reverse_complement(self, in_fa, out_fa):
@@ -1639,7 +1674,15 @@ class GenomeReorienter:
             f.write(stdout)
 
 
-    def _read_paf(self, paf_lines):
+    def _read_paf(self, paf_lines, allow_empty=False):
+        """Turn raw PAF lines into `PafRecord` objects.
+
+        An empty PAF is a perfectly legitimate answer from `minimap2` (it means nothing in the query
+        was similar enough to the reference to be reported), so callers that can live with that pass
+        `allow_empty` and get an empty list back. Callers that cannot go a step further without an
+        alignment leave it alone and get an exception with an explanation in it.
+        """
+
         recs = []
         for line in paf_lines:
             if not line:
@@ -1678,8 +1721,10 @@ class GenomeReorienter:
                 )
             )
 
-        if not recs:
-            raise RuntimeError("PAF output is empty; minimap2 did not produce any alignments.")
+        if not recs and not allow_empty:
+            raise RuntimeError(f"minimap2 aligned nothing here: not a single region of this sequence was similar "
+                               f"enough to the reference genome '{self.reference_name}' to be reported as an "
+                               f"alignment. {self._no_alignment_advice()}")
 
         primaries = [r for r in recs if r.is_primary]
         self.log_run.info_single(f"PAF records: total={len(recs)} primary={len(primaries)}", level=2)
@@ -1687,10 +1732,19 @@ class GenomeReorienter:
         return recs
 
 
+    def _no_primary_alignment_error(self, when):
+        """The exception for 'minimap2 found something, but nothing anvi'o can anchor on'."""
+
+        return RuntimeError(f"{when}: minimap2 reported some alignments between this genome and the reference "
+                            f"genome '{self.reference_name}', but not a single one of them was a PRIMARY alignment, "
+                            f"which is what anvi'o needs to decide how this genome should be oriented and where it "
+                            f"should start. {self._no_alignment_advice()}")
+
+
     def _select_anchor_near_reference_start(self, recs, near_bp):
         primaries = [r for r in recs if r.is_primary]
         if not primaries:
-            raise RuntimeError("No primary alignments (tp:A:P) found in PAF.")
+            raise self._no_primary_alignment_error("Anchoring the first pass")
 
         near = [r for r in primaries if r.tstart < near_bp]
         if near:
@@ -1707,7 +1761,7 @@ class GenomeReorienter:
     def _select_anchor_for_ref0(self, recs):
         primaries = [r for r in recs if r.is_primary]
         if not primaries:
-            raise RuntimeError("No primary alignments (tp:A:P) found in PAF.")
+            raise self._no_primary_alignment_error("Anchoring to the start of the reference")
 
         def dist_to_zero(r):
             return min(r.tstart, r.tlen - r.tstart)
@@ -1718,7 +1772,7 @@ class GenomeReorienter:
     def _select_anchor_smallest_reference_start(self, recs):
         primaries = [r for r in recs if r.is_primary]
         if not primaries:
-            raise RuntimeError("No primary alignments (tp:A:P) found in PAF.")
+            raise self._no_primary_alignment_error("Anchoring to the earliest reference position")
         return sorted(primaries, key=lambda r: (r.tstart, -r.aligned_bases, -r.mapq))[0]
 
 
@@ -1760,7 +1814,7 @@ class GenomeReorienter:
     def _best_primary_alignment(self, recs):
         primaries = [r for r in recs if r.is_primary]
         if not primaries:
-            raise RuntimeError("Final validation: no primary alignments found.")
+            raise self._no_primary_alignment_error("Final validation")
         best = max(primaries, key=lambda r: (r.aligned_bases, r.mapq, r.nmatch))
         self.log_run.info_single(
             f"Final primary: strand={best.strand} qstart={best.qstart} tstart={best.tstart} "
@@ -2203,6 +2257,12 @@ class GenomeReorienter:
         self.progress.new("Surveying genomes", progress_total_items=total_genomes)
         genome_counter = 0
 
+        # genomes that `minimap2` could not align to the reference at all. this is not an error
+        # here: a genome that shares nothing with the reference simply has no say in where the
+        # reference should start. but it IS something the user needs to hear about, so we keep
+        # their names and report them once the survey is over.
+        genomes_with_no_alignment = []
+
         for genome_name, entry in self.genomes.items():
             if genome_name == self.reference_name:
                 continue
@@ -2212,7 +2272,13 @@ class GenomeReorienter:
 
             self.progress.update(f"Aligning {genome_name} ({genome_counter}/{total_genomes})")
             self.log_run.info_single(f"Aligning {genome_name} to find coverage (including secondary alignments)", level=2)
-            paf_recs = self._minimap2_align(self.reference_path, query_path, find_all_alignments=True)
+            paf_recs = self._minimap2_align(self.reference_path, query_path, find_all_alignments=True, allow_empty=True)
+
+            if not paf_recs:
+                genomes_with_no_alignment.append(genome_name)
+                self.log_run.info_single(f"'{genome_name}' did not align to the reference at all", level=2)
+                self.progress.increment()
+                continue
 
             # Mark bins covered by ALL alignments (primary + secondary)
             # This gives us a true picture of all conserved regions, not just the "best" alignment
@@ -2231,12 +2297,26 @@ class GenomeReorienter:
 
         self.progress.end()
 
+        # `check_all_genomes_align_to_reference` has already told the user about any genome that does
+        # not align, and has already stopped the program over it unless they insisted with
+        # `--just-do-it`, so all that is left to do here is to keep those genomes from having a say
+        # in where the reference should start (they have no alignments to say it with).
+        num_genomes_aligned = total_genomes - len(genomes_with_no_alignment)
+
+        if not num_genomes_aligned:
+            self.run.warning("Not one of your genomes aligned to the reference, so there is no conserved position for "
+                             "anvi'o to rotate the reference to. It will be left as it is.")
+            return 0, 0, total_genomes
+
         # Find the longest contiguous high-coverage region
         # This is better than greedy first-match as it avoids edges of conserved regions
         self.run.info_single("Finding longest conserved region instead of first match", level=2)
 
-        # Determine coverage threshold (at least 80% of genomes, or all if there are few)
-        min_coverage_threshold = max(int(total_genomes * 0.8), total_genomes - 1) if total_genomes > 3 else total_genomes
+        # Determine coverage threshold (at least 80% of genomes, or all if there are few). the
+        # threshold is set over the genomes that actually aligned, since asking for a position that
+        # is covered by genomes that share nothing with the reference would be asking for the
+        # impossible, and would leave anvi'o with no conserved region to work with whatsoever.
+        min_coverage_threshold = max(int(num_genomes_aligned * 0.8), num_genomes_aligned - 1) if num_genomes_aligned > 3 else num_genomes_aligned
 
         # Find all contiguous regions with high coverage
         conserved_regions = []
@@ -2557,6 +2637,101 @@ class GenomeReorienter:
         # it the sequence is circular, but we can make sure at least some part of it (i.e.,
         # being a single contig actually holds:
         self.check_reference_is_single_contig(user_specified)
+
+
+    def check_all_genomes_align_to_reference(self):
+        """Make sure every genome actually aligns to the reference before anything else happens.
+
+           Everything this program does for the user is expressed in the reference genome's
+           coordinate system: which strand a contig belongs on, where it starts, what order the
+           contigs go in. A genome that shares no sequence with the reference has no position in
+           that coordinate system, so there is nothing to reorient it to, and no answer this program
+           could give for it would mean anything.
+
+           Finding that out one genome at a time, halfway through a long run, is a miserable way to
+           learn that a collection of FASTA files was never a job for this program. So anvi'o asks
+           the question up front, for every genome at once, and refuses to go further if the answer
+           is no for any of them. The user can then either fix the collection, loosen
+           `--minimap2-preset`, or insist with `--just-do-it`.
+        """
+
+        genome_names = [g for g in self.genomes if g != self.reference_name]
+
+        if not len(genome_names):
+            return
+
+        self.progress.new("Checking alignments to the reference", progress_total_items=len(genome_names))
+
+        genomes_with_no_alignment = []
+        for i, genome_name in enumerate(genome_names):
+            self.progress.update(f"{genome_name} ({i + 1}/{len(genome_names)})")
+
+            paf_recs = self._minimap2_align(self.reference_path, self.genomes[genome_name]['path'], allow_empty=True)
+            if not paf_recs:
+                genomes_with_no_alignment.append(genome_name)
+
+            self.log_run.info_single(f"'{genome_name}': {P('alignment', len(paf_recs))} to the reference", level=2)
+            self.progress.increment()
+
+        self.progress.end()
+
+        num_aligned = len(genome_names) - len(genomes_with_no_alignment)
+
+        if not genomes_with_no_alignment:
+            self.run.info("Genomes that align to the reference", f"all {len(genome_names)} of them", mc='green', nl_after=1)
+            return
+
+        # from here on something is off, and the first order of business is to show the user WHICH
+        # genomes are in trouble. the names go here, in a block of their own, rather than into the
+        # error message that follows, so that the error can get on with explaining what to do.
+        self.run.warning(None, header="ALIGNMENT SNAFUS DETECTED :/")
+        self.run.info(f"NO ALIGNMENT AT ALL ({len(genomes_with_no_alignment)} of {len(genome_names)})",
+                      ', '.join(genomes_with_no_alignment), mc='red')
+        if num_aligned:
+            self.run.info(f"SOME ALIGNMENT ({num_aligned} of {len(genome_names)})",
+                          ', '.join([g for g in genome_names if g not in genomes_with_no_alignment]),
+                          mc='green', nl_after=1)
+
+        # every single genome failed to align. this is not a collection of related genomes at all,
+        # and no flag is going to turn it into one, so `--just-do-it` does not apply here.
+        if not num_aligned:
+            raise ConfigError(f"Not one of the {P('genome', len(genome_names))} in your fasta-txt file aligned to the "
+                              f"reference genome '{self.reference_name}'. Which means this collection of FASTA files is "
+                              f"not what this program is for: reorienting genomes is the act of re-expressing all of "
+                              f"them in the reference genome's coordinate system, and genomes that share no sequence "
+                              f"with the reference have no place in it. If your genomes are related in ways that "
+                              f"nucleotide alignment cannot see (which is very much the norm for, say, phages from "
+                              f"different samples), you will have much better luck with a pangenome, where the "
+                              f"comparison happens at the level of gene clusters rather than nucleotides. "
+                              f"{self._no_alignment_advice()}")
+
+        if self.just_do_it:
+            self.run.warning("Anvi'o would have stopped right here to tell you about the genomes in the NO ALIGNMENT "
+                             "AT ALL list above, but you said `--just-do-it`, so it will keep going with the ones "
+                             "that did align, and report each of the others as FAILED at the end instead.")
+            return
+
+        raise ConfigError(f"Anvi'o aligned each of the {P('genome', len(genome_names))} in your fasta-txt file to the "
+                          f"reference genome '{self.reference_name}' before getting to work, but "
+                          f"{len(genomes_with_no_alignment)} of them did not align to this reference AT ALL. Anvi'o is "
+                          f"stopping here rather than working through the rest of them first as there is nothing this "
+                          f"program can do for a genome that shares no sequence with the reference :( So WHAT TO DO "
+                          f"NOW? You have three ways forward. (1) If you like the reference, then you can take the "
+                          f"genomes in the NO ALIGNMENT AT ALL list out of your `fasta-txt` file and see what happens. "
+                          f"(2) If you really would like to keep them and you think to yourself \"they belong, but they "
+                          f"are probably just a bit too divergent\", then you can try a more permissive "
+                          f"`--minimap2-preset` (see the help menu for options). (3) If you know all this and want "
+                          f"anvi'o to go ahead anyway and do what it can with what it has, you can simply add the "
+                          f"`--just-do-it` flag into your command line, and these genomes will be reported as FAILED at "
+                          f"the end while the others are processed normally. The most likely explanation is that the "
+                          f"sequences in question are simply too distant from one another for `minimap2` with the "
+                          f"current 'preset' (presets put a ceiling on how much sequence divergence an alignment is "
+                          f"allowed to have). If you are working with genomes that are not quite closely related try a "
+                          f"permissive preset like `asm20` (which will give you up to about 20% divergence for "
+                          f"reported alignments). But keep in mind that the overall purpose of this program is to give "
+                          f"you the best alignments by working with input genomes rigorously. After all, maybe you have "
+                          f"the wrong set of genomes here to expect an architectural conservancy between them. If it is "
+                          f"the case, then don't over do it with this program.")
 
 
     def check_reference_is_single_contig(self, user_specified):

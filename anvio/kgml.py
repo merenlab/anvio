@@ -15,17 +15,19 @@ from __future__ import annotations
 
 import os
 import re
+import Bio
+import math
 import uuid
 import numpy as np
 import xml.etree.ElementTree as ET
 
 from io import StringIO
 from argparse import Namespace
-from Bio.KEGG.KGML import KGML_parser
-from Bio.Graphics.KGML_vis import KGMLCanvas
+from reportlab.lib import colors as reportlab_colors
 from matplotlib.colors import Colormap, rgb2hex, to_hex
-
-from typing import Dict, Iterable, List, Literal, Tuple, Union
+from typing import Callable, Dict, Iterable, List, Literal, Tuple, Union
+from Bio.KEGG.KGML import KGML_parser, KGML_pathway
+from Bio.Graphics.KGML_vis import KGMLCanvas, color_to_reportlab, darken
 
 import anvio.terminal as terminal
 
@@ -38,13 +40,40 @@ from anvio.metabolism.downloads import download_org_pathway_image_files
 from anvio.metabolism.constants import GLOBAL_MAP_ID_PATTERN, OVERVIEW_MAP_ID_PATTERN
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2026, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = VERSION
 __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
 __status__ = "Development"
+
+# The color of the thin lines drawn between the slices of a box. Gray keeps them distinct from the
+# black borders of KEGG boxes.
+SLICE_DIVIDER_COLOR = '#808080'
+
+# Half the width of the outline of a compound circle, in points. Biopython draws the outline 1 point
+# wide, centered on the edge of the fill, so a circle reaches this far past half its width.
+CIRCLE_OUTLINE_HALF_WIDTH = 0.5
+
+# The ring that colors the border of a box or a compound circle ('SlicedKGMLCanvas'). A ring lies
+# just inside the black outline of its shape, which Biopython draws 1 point wide, centered on the
+# edge. The shape therefore keeps its size, and a circle hides as much of a line as it did before. A
+# thin black line lies between the ring and the fill. It keeps a ring visible where its color is
+# close to the color of the fill. Widths are in points. A circle wider than 'SMALL_CIRCLE_MAX_WIDTH'
+# takes the wider ring. A box ring of 2.5 points stays clear of the label at the top of a box.
+BOX_RING_WIDTH = 2.5
+SMALL_CIRCLE_RING_WIDTH = 2.0
+LARGE_CIRCLE_RING_WIDTH = 3.0
+SMALL_CIRCLE_MAX_WIDTH = 24
+RING_LINE_WIDTH = 0.5
+RING_LINE_COLOR = '#000000'
+BOX_OUTLINE_HALF_WIDTH = 0.5
+
+# A distance in points small enough to count as 0 in the walk along a line into compound circles
+# ('get_hidden_length'). A point this close to a circle counts as inside it, so rounding errors do
+# not stop the walk where two circles meet.
+CIRCLE_TOLERANCE = 1e-6
 
 
 def canonical_color(color: Union[str, None]) -> Union[str, None]:
@@ -269,7 +298,10 @@ class Pathway(Element):
         self,
         new_color_priority: Dict[str, Dict[str, Dict[Tuple[str, str], float]]],
         recolor_unprioritized_entries: Union[str, Dict[str, Tuple[str, str]]] = False,
-        color_associated_compounds: Literal['high', 'low', 'average'] = None,
+        color_associated_compounds: Union[
+            Literal['high', 'low', 'average', 'circular_average'],
+            Callable[[str, List[Tuple[str, float]]], Union[Tuple[str, float], None]]
+        ] = None,
         colormap: Colormap = None
     ) -> None:
         """
@@ -351,7 +383,10 @@ class Pathway(Element):
                 }
             }
 
-        color_associated_compounds : Literal['high', 'low', 'average'], None
+        color_associated_compounds : Union[
+            Literal['high', 'low', 'average', 'circular_average'],
+            Callable[[str, List[Tuple[str, float]]], Union[Tuple[str, float], None]]
+        ], None
             Automatically set the background color of compound entries based on the color priority
             of ortholog entries involving the compounds. By default, compounds participating in
             reactions are circles, and orthologs are lines on global/overview maps and boxes or
@@ -365,15 +400,24 @@ class Pathway(Element):
             colormap argument. The average priority value of the orthologs with prioritized colors
             is mapped to a bg color for compound Entry circle Graphics.
 
+            'circular_average' is for a colormap with the same color at both ends, such as one for
+            clock times. Priorities of 0 and 1 are then the same point on a circle. The compound
+            takes the mean direction of the priorities on that circle. So priorities of 0.99 and
+            0.01 give 0, not 0.5. Some priorities have no mean direction, such as 0.25 and 0.75. The
+            compound then takes the 'average' color.
+
+            A function can be given instead of a name. It chooses the color of each compound
+            ('color_associated_compounds').
+
             Automatically colored compound entries are added to the color_priority attribute, and
             Entry elements in the children attribute are reordered accordingly. Compound entries
             that are already in the color_priority attribute are exempt from recoloring and given
             higher priority than automatically recolored compound entries.
 
         colormap : matplotlib.colors.Colormap, None
-            If 'average' is used as the color_associated_compounds argument, a colormap must be
-            provided to map averaged priority values on the interval [0, 1] to a background color
-            for compound Entry circle Graphics.
+            If 'average' or 'circular_average' is used as the color_associated_compounds argument, a
+            colormap must be provided to map averaged priority values on the interval [0, 1] to a
+            background color for compound Entry circle Graphics.
         """
         # Check that new_color_priority only contains positive priority values.
         for new_entry_color_priority in new_color_priority.values():
@@ -443,6 +487,11 @@ class Pathway(Element):
         attribute of the Pathway object. This determines how entries are ordered in KGML files and
         rendered in maps.
 
+        Among the entries without a color priority, those with a ring ('Graphics.border') are put
+        after the others, which otherwise keep their order. A ring on an element without a fill
+        color is then drawn over an element at the same position that shows nothing, such as a box
+        of map 00230 that lies on top of another box.
+
         Returns
         =======
         List[str]
@@ -451,7 +500,19 @@ class Pathway(Element):
         # Entries have different types ('ortholog', 'compound', etc.). Group entries into two
         # classes. "Qualifying" entries have types in the color priority outermost dict. Other
         # entries do not have types in the dict and are assigned the lowest nominal priority of
-        # -1.0. No effort is made to sort these entries in any way.
+        # -1.0. These entries keep their order, except that those with rings come last.
+        def _rings_last(entry_uuids: List[str]) -> List[str]:
+            ringed = {
+                entry_uuid for entry_uuid in entry_uuids if any(
+                    self.uuid_element_lookup[graphics_uuid].border
+                    for graphics_uuid in self.uuid_element_lookup[entry_uuid].children['graphics']
+                )
+            }
+            return (
+                [entry_uuid for entry_uuid in entry_uuids if entry_uuid not in ringed]
+                + [entry_uuid for entry_uuid in entry_uuids if entry_uuid in ringed]
+            )
+
         reordered_entry_uuids: List[str] = []
         unprioritized_entry_uuids: List[str] = []
         qualifying_entry_uuids: Dict[str, List[str]] = {
@@ -464,6 +525,7 @@ class Pathway(Element):
             else:
                 reordered_entry_uuids.append(entry_uuid)
                 unprioritized_entry_uuids.append(entry_uuid)
+        reordered_entry_uuids = _rings_last(reordered_entry_uuids)
 
         # Sort "qualifying" entries. Loop through each Entry type in the color priority dict.
         for entry_type, entry_type_color_priority in self.color_priority.items():
@@ -513,9 +575,12 @@ class Pathway(Element):
                     type_priority_entry_uuids[priority] = [entry_uuid]
 
             # Add the reordered UUIDs of the Entry type to the new list of Entry UUIDs and to the
-            # dict mapping priority values to UUIDs of entries of all types.
+            # dict mapping priority values to UUIDs of entries of all types. The entries of the type
+            # without a color priority come first, with those with rings last among them.
             for priority, entry_uuids in sorted(type_priority_entry_uuids.items()):
-                reordered_entry_uuids += entry_uuids
+                reordered_entry_uuids += (
+                    _rings_last(entry_uuids) if priority == -1.0 else entry_uuids
+                )
 
             try:
                 unprioritized_entry_uuids += type_priority_entry_uuids[-1.0]
@@ -665,7 +730,10 @@ class Pathway(Element):
 
     def color_associated_compounds(
         self,
-        transfer: Literal['high', 'low', 'average'],
+        transfer: Union[
+            Literal['high', 'low', 'average', 'circular_average'],
+            Callable[[str, List[Tuple[str, float]]], Union[Tuple[str, float], None]]
+        ],
         colormap: Colormap = None
     ) -> None:
         """
@@ -680,9 +748,17 @@ class Pathway(Element):
         chemical structure drawings to which they correspond on maps (see
         `anvio.keggmapping.Mapper._zero_out_compound_rectangles`).
 
+        Each ortholog entry casts one vote, a color and priority, for its compounds. An entry whose
+        'compound_vote' attribute is set casts that vote, or no vote if it is an empty tuple. Any
+        other entry votes with the color of its Graphics elements and the priority of that color. It
+        does not vote if the color has no priority.
+
         Parameters
         ==========
-        transfer : Literal['high', 'low', 'average']
+        transfer : Union[
+            Literal['high', 'low', 'average', 'circular_average'],
+            Callable[[str, List[Tuple[str, float]]], Union[Tuple[str, float], None]]
+        ]
             An argument of 'high' or 'low' sets the compound color to the bg color of the ortholog
             with the highest or lowest priority fg/bg color combination. 'average' sets the compound
             color to the average bg color of orthologs with prioritized colors -- unprioritized
@@ -691,13 +767,26 @@ class Pathway(Element):
             colormap argument. The average priority value of the orthologs with prioritized colors
             is mapped to a color for the compound Entry.
 
+            'circular_average' is for a colormap with the same color at both ends, such as one for
+            clock times. Priorities of 0 and 1 are then the same point on a circle. The compound
+            takes the mean direction of the priorities on that circle. So priorities of 0.99 and
+            0.01 give 0, not 0.5. Some priorities have no mean direction, such as 0.25 and 0.75. The
+            compound then takes the 'average' color.
+
+            A function chooses the color itself. It is called for each compound Entry that has no
+            color yet, and it can be called more than once for one Entry. It takes the Entry's name,
+            such as 'cpd:C00031', and the color and priority of each ortholog. It returns the color
+            and priority of the compound. It can return None instead. The compound then keeps the
+            color given to unprioritized entries. The name lets the function make the same choice
+            for a compound wherever it appears.
+
             Compound entries that are already in the color_priority attribute are exempt from
             recoloring and given higher priority than recolored compound entries.
 
         colormap : matplotlib.colors.Colormap, None
-            If 'average' is used as an argument to transfer, a colormap must be provided to map
-            averaged priority values on the interval [0, 1] to a background color for compound
-            entries.
+            If 'average' or 'circular_average' is used as an argument to transfer, a colormap must
+            be provided to map averaged priority values on the interval [0, 1] to a background color
+            for compound entries.
         """
         # Make Reaction elements searchable by name (KEGG IDs). Reaction elements link Compound
         # elements to ortholog Entry elements.
@@ -741,13 +830,25 @@ class Pathway(Element):
             graphics_type = graphics_types[0]
             fgcolor = fgcolors[0]
             bgcolor = bgcolors[0]
-            try:
-                priority = self.color_priority['ortholog'][graphics_type][
-                    (canonical_color(fgcolor), canonical_color(bgcolor))
-                ]
-            except KeyError:
-                # Unprioritized ortholog entries do not affect the color of associated compounds.
+            if entry.compound_vote is None:
+                try:
+                    priority = self.color_priority['ortholog'][graphics_type][
+                        (canonical_color(fgcolor), canonical_color(bgcolor))
+                    ]
+                except KeyError:
+                    # Unprioritized ortholog entries do not affect the color of associated
+                    # compounds.
+                    continue
+                if graphics_type == 'line':
+                    ortholog_color = fgcolor
+                else:
+                    ortholog_color = bgcolor
+            elif entry.compound_vote == ():
+                # A sliced entry with no value to stand for its slices casts no vote.
                 continue
+            else:
+                # A sliced entry casts the one vote that was set for it.
+                ortholog_color, priority = entry.compound_vote
 
             reaction_name = entry.reaction
             if reaction_name is None:
@@ -759,11 +860,6 @@ class Pathway(Element):
             except KeyError:
                 # No Reaction element is present with the name of the ortholog reaction.
                 continue
-
-            if graphics.type == 'line':
-                ortholog_color = fgcolor
-            else:
-                ortholog_color = bgcolor
 
             for substrate_uuid in reaction.children['substrate']:
                 substrate: Substrate = self.uuid_element_lookup[substrate_uuid]
@@ -819,12 +915,35 @@ class Pathway(Element):
             color = rgb2hex(colormap(priority))
             return color, priority
 
-        if transfer == 'high':
+        def _get_circular_average_color(
+            color_priorities: List[Tuple[str, float]]
+        ) -> Tuple[str, float]:
+            # Each priority is a point on a circle, with 0 and 1 the same point. The means of the
+            # sines and cosines of the points give their mean direction.
+            priorities = np.array([t[1] for t in color_priorities])
+            angles = 2 * np.pi * priorities
+            sine = np.mean(np.sin(angles))
+            cosine = np.mean(np.cos(angles))
+            # Equal priorities, as from a single ortholog, take the plain average. This gives them
+            # the same color and priority as 'average'. Priorities that cancel out, such as 0.25 and
+            # 0.75, have no mean direction. They take the plain average too.
+            if np.all(priorities == priorities[0]) or np.hypot(sine, cosine) < 1e-9:
+                return _get_average_color(color_priorities)
+            # Rounding removes floating-point error. Without it, a mean on the boundary between two
+            # colors of the colormap could take the lower color.
+            priority = round(float(np.arctan2(sine, cosine) / (2 * np.pi)), 12) % 1.0
+            return rgb2hex(colormap(priority)), priority
+
+        if callable(transfer):
+            get_color_priority = None
+        elif transfer == 'high':
             get_color_priority = _get_high_color
         elif transfer == 'low':
             get_color_priority = _get_low_color
         elif transfer == 'average':
             get_color_priority = _get_average_color
+        elif transfer == 'circular_average':
+            get_color_priority = _get_circular_average_color
         else:
             raise AssertionError
 
@@ -852,7 +971,13 @@ class Pathway(Element):
             if not set_color:
                 continue
 
-            compound_color, compound_priority = get_color_priority(color_priorities)
+            if get_color_priority is None:
+                chosen = transfer(compound_entry.name, color_priorities)
+                if chosen is None:
+                    continue
+                compound_color, compound_priority = chosen
+            else:
+                compound_color, compound_priority = get_color_priority(color_priorities)
             # Set the color of each Graphics element.
             for graphics in graphics_elements:
                 graphics.bgcolor = compound_color
@@ -1007,6 +1132,13 @@ class Entry(Element):
 
     children : Dict[str, List[str]]
         Keys are subelement tags, values are lists of subelement UUIDs.
+
+    compound_vote : Tuple[str, float], Tuple[()], None
+        A color and priority that replace those of the Graphics elements of an ortholog entry when
+        the entry colors its compounds ('Pathway.color_associated_compounds'). A sliced entry has
+        one, so it casts one vote rather than one per slice. An empty tuple means that the entry
+        casts no vote. None means that no vote was set, so the entry votes with the colors of its
+        Graphics elements. This attribute is not part of KGML, and XMLOps does not write it.
     """
     tag = 'entry'
     attribute_required = {
@@ -1040,6 +1172,8 @@ class Entry(Element):
         self.link: str = None
 
         self.children: Dict[str, List[str]] = {n: [] for n in self.subelement_tags}
+
+        self.compound_vote: Union[Tuple[str, float], Tuple[()]] = None
 
         super().__init__()
 
@@ -1078,6 +1212,23 @@ class Graphics(Element):
 
     height : float, None
         Height of graphical object on map.
+
+    slices : List[Tuple[str, float]], None
+        The color and share of each slice of the graphical object, in draw order: left to right in a
+        rectangle, and from the first coordinate of a line. There are at least 2 slices, and the
+        shares sum to 1. Drawer draws them with 'SlicedKGMLCanvas'. This attribute is not part of
+        KGML, and XMLOps does not write it.
+
+    border : Union[str, Tuple[str, list]], None
+        The ring drawn just inside the outline of a rectangle or a circle ('BOX_RING_WIDTH'). A
+        color draws a whole ring. A rectangle can instead take one of these:
+        - ('bands', colors): one color per slice of 'slices', in the same order, or None for a slice
+          without a band. Each slice takes a band above and below its column. The first and last
+          slices also take the left and right ends of the ring.
+        - ('segments', [(color, share), ...]): the ring is divided among at least 2 segments,
+          clockwise from the top left corner. The shares sum to 1.
+        Drawer draws rings with 'SlicedKGMLCanvas'. This attribute is not part of KGML, and XMLOps
+        does not write it.
     """
     tag = 'graphics'
     attribute_required = {
@@ -1108,6 +1259,9 @@ class Graphics(Element):
         self.coords: Tuple[float] = None
         self.width: float = None
         self.height: float = None
+
+        self.slices: List[Tuple[str, float]] = None
+        self.border: Union[str, Tuple[str, list]] = None
 
         super().__init__()
 
@@ -1737,9 +1891,802 @@ class XMLOps:
 
         return indented_output
 
+class CircleGrid:
+    """
+    Circles sorted into the square cells of a grid, so that the circles near a point are found fast.
+
+    A cell is wider than the largest circle. A circle that holds a point therefore has its center in
+    the cell of the point or in one of the eight cells around it.
+
+    Attributes
+    ==========
+    cell_width : float
+        The width of a cell, in points.
+
+    cells : Dict[Tuple[int, int], List[Tuple[float, float, float]]]
+        Keys are the column and row of a cell. Each value holds the circles centered in the cell,
+        each as its x, y, and radius.
+    """
+    def __init__(self, circles: Iterable[Tuple[float, float, float]]) -> None:
+        """
+        Parameters
+        ==========
+        circles : Iterable[Tuple[float, float, float]]
+            The x, y, and radius of each circle, in points.
+        """
+        circles = list(circles)
+        # A cell is 1 point wider than the largest circle, so it has a width even with no circles.
+        self.cell_width = 2 * max([radius for _, _, radius in circles], default=0.0) + 1
+        self.cells: Dict[Tuple[int, int], List[Tuple[float, float, float]]] = {}
+        for x, y, radius in circles:
+            self.cells.setdefault(self._get_cell(x, y), []).append((x, y, radius))
+
+    def _get_cell(self, x: float, y: float) -> Tuple[int, int]:
+        """Get the column and row of the cell that holds a point."""
+        return int(x // self.cell_width), int(y // self.cell_width)
+
+    def get_nearby_circles(self, x: float, y: float) -> List[Tuple[float, float, float]]:
+        """Get the circles centered in the cell of a point and in the eight cells around it."""
+        column, row = self._get_cell(x, y)
+        return [
+            circle
+            for nearby_column in (column - 1, column, column + 1)
+            for nearby_row in (row - 1, row, row + 1)
+            for circle in self.cells.get((nearby_column, nearby_row), ())
+        ]
+
+def get_drawn_circle_radius(width: float) -> float:
+    """
+    Get the radius of a circle as Biopython draws it, which includes half of its outline.
+
+    Parameters
+    ==========
+    width : float
+        The width of the circle in KGML.
+
+    Returns
+    =======
+    float
+        The radius of the circle with its outline, in points.
+    """
+    return width * 0.5 + CIRCLE_OUTLINE_HALF_WIDTH
+
+def get_box_fill_width(width: float) -> float:
+    """
+    Get the width of the fill of a box inside a ring, where the columns of its slices are drawn.
+
+    Parameters
+    ==========
+    width : float
+        The width of the box in KGML.
+
+    Returns
+    =======
+    float
+        The width between the black lines inside the ring, in points ('BOX_RING_WIDTH').
+    """
+    return width - 2 * (BOX_OUTLINE_HALF_WIDTH + BOX_RING_WIDTH + RING_LINE_WIDTH)
+
+def get_compound_circle_grid(pathway: Pathway) -> CircleGrid:
+    """
+    Sort the circles of the compound entries of a map into a grid.
+
+    Every circle with a width is put in the grid, whatever its color. 'SlicedKGMLCanvas' leaves out
+    the circles that it draws see-through, so its own grid holds no circle that this grid lacks.
+
+    Parameters
+    ==========
+    pathway : Pathway
+        Object representation of a KGML file.
+
+    Returns
+    =======
+    CircleGrid
+        The compound circles, each with the radius that Biopython draws.
+    """
+    circles: List[Tuple[float, float, float]] = []
+    for entry in pathway.get_entries(entry_type='compound'):
+        for graphics_uuid in entry.children['graphics']:
+            graphics: Graphics = pathway.uuid_element_lookup[graphics_uuid]
+            if graphics.type == 'circle' and graphics.width is not None:
+                circles.append((graphics.x, graphics.y, get_drawn_circle_radius(graphics.width)))
+    return CircleGrid(circles)
+
+def get_hidden_length(
+    points: List[Tuple[float, float]],
+    grid: CircleGrid,
+    line_width: float
+) -> float:
+    """
+    Measure how much of a line the circles of a grid hide, starting from its first point.
+
+    A walk starts at the first point if a circle holds it. It follows the line through bends, and
+    from one circle into another that overlaps it, until the line leaves the last circle. The edges
+    of a wide line leave a circle a little before the middle of the line does, so the hidden length
+    ends where the edges leave. This is worked out for a line that runs along a radius of the last
+    circle, as a line from the center of a compound circle does. For a line that leaves a circle
+    away from its center, the hidden length is a little too long, by up to about 3 points on global
+    maps.
+
+    Parameters
+    ==========
+    points : List[Tuple[float, float]]
+        The x and y coordinates of the points of the line, in order.
+
+    grid : CircleGrid
+        The circles drawn over the line.
+
+    line_width : float
+        The width of the line, in points.
+
+    Returns
+    =======
+    float
+        The length along the line from its first point to where the line shows, in points. This is 0
+        where no circle holds the first point, and the length of the whole line where circles hide
+        all of it.
+    """
+    hidden = 0.0
+    exit_radius = 0.0
+    point = points[0]
+    i = 1
+    while i < len(points):
+        next_point = points[i]
+        step = math.dist(point, next_point)
+        if step == 0:
+            i += 1
+            continue
+        dx = (next_point[0] - point[0]) / step
+        dy = (next_point[1] - point[1]) / step
+        # Find how far the line runs before it leaves every circle that holds the point. The run in
+        # one circle is the distance along the line to where it crosses the edge of the circle.
+        run = 0.0
+        run_radius = 0.0
+        for x, y, radius in grid.get_nearby_circles(*point):
+            offset_x = point[0] - x
+            offset_y = point[1] - y
+            squared_distance = offset_x * offset_x + offset_y * offset_y
+            if squared_distance > (radius + CIRCLE_TOLERANCE) ** 2:
+                continue
+            projection = offset_x * dx + offset_y * dy
+            circle_run = -projection + math.sqrt(
+                max(projection * projection - squared_distance + radius * radius, 0.0)
+            )
+            if circle_run > run:
+                run = circle_run
+                run_radius = radius
+        if run <= CIRCLE_TOLERANCE:
+            break
+        exit_radius = run_radius
+        if run < step:
+            hidden += run
+            point = (point[0] + dx * run, point[1] + dy * run)
+        else:
+            hidden += step
+            point = next_point
+            i += 1
+    if hidden == 0 or i == len(points):
+        # No circle holds the first point, or circles hide the whole line.
+        return hidden
+    half_width = line_width * 0.5
+    back_off = exit_radius - math.sqrt(max(exit_radius ** 2 - half_width ** 2, 0.0))
+    return max(hidden - back_off, 0.0)
+
+def get_visible_span(
+    points: List[Tuple[float, float]],
+    grid: CircleGrid,
+    line_width: float
+) -> Tuple[float, float]:
+    """
+    Find the part of a line that the circles of a grid leave visible.
+
+    Parameters
+    ==========
+    points : List[Tuple[float, float]]
+        The x and y coordinates of the points of the line, in order.
+
+    grid : CircleGrid
+        The circles drawn over the line.
+
+    line_width : float
+        The width of the line, in points.
+
+    Returns
+    =======
+    Tuple[float, float]
+        The length along the line from its first point to the start of the visible part, and the
+        length of the visible part, in points ('get_hidden_length'). The second is 0 or less where
+        circles hide the whole line.
+    """
+    length = sum([math.dist(points[i], points[i + 1]) for i in range(len(points) - 1)])
+    start = get_hidden_length(points, grid, line_width)
+    end = get_hidden_length(points[::-1], grid, line_width)
+    return start, length - start - end
+
+class SlicedKGMLCanvas(KGMLCanvas):
+    """
+    Biopython's KGML canvas, extended to draw ortholog entries in slices and to draw rings on boxes
+    and compound circles.
+
+    A sliced rectangle is drawn as columns, left to right, with a thin gray line between columns. It
+    has one outline and one label. A sliced line is drawn as repeating dashes with no gaps, one dash
+    per slice in each cycle. The dashes fill the part of the line that compound circles leave
+    visible.
+
+    A ring colors the border of a rectangle or a compound circle ('Graphics.border'). It lies just
+    inside the black outline, with a thin black line between the ring and the fill
+    ('BOX_RING_WIDTH'). A rectangle with a ring is drawn as one column or as sliced columns, which
+    then fit inside the ring. Its ring can be whole, or divided into bands that pair with the
+    columns, or into segments of its own. A circle with a ring is drawn whole. Lines have no rings.
+
+    Everything else is drawn by Biopython's own methods, as in KGMLCanvas. The canvas overrides
+    three private methods of KGMLCanvas and calls two others. Biopython can rename private methods
+    in any release, so the canvas checks that all five exist.
+
+    Attributes
+    ==========
+    entry_slices : Dict[int, List[Union[List[Tuple[str, float]], None]]]
+        Keys are the IDs of sliced entries. Each value holds the slices of each Graphics element of
+        the entry, in order, as in 'Graphics.slices'. An element drawn whole has None.
+
+    entry_borders : Dict[int, List[Union[str, Tuple[str, list], None]]]
+        Keys are the IDs of entries with rings. Each value holds the ring of each Graphics element
+        of the entry, in order, as in 'Graphics.border'. An element without a ring has None.
+
+    circle_grid : Union[CircleGrid, None]
+        The compound circles drawn opaque over lines ('_get_circle_grid'). It is None until the
+        first sliced line is drawn.
+    """
+    private_methods: Tuple[str] = (
+        '_KGMLCanvas__add_orthologs',
+        '_KGMLCanvas__add_reaction_entries',
+        '_KGMLCanvas__add_compounds',
+        '_KGMLCanvas__add_graphics',
+        '_KGMLCanvas__add_labels'
+    )
+
+    def __init__(
+        self,
+        pathway: KGML_pathway.Pathway,
+        entry_slices: Dict[int, List[Union[List[Tuple[str, float]], None]]],
+        entry_borders: Union[Dict[int, List[Union[str, Tuple[str, list], None]]], None] = None,
+        **kwargs
+    ) -> None:
+        """
+        Parameters
+        ==========
+        pathway : Bio.KEGG.KGML.KGML_pathway.Pathway
+            Biopython representation of a KGML file.
+
+        entry_slices : Dict[int, List[Union[List[Tuple[str, float]], None]]]
+            The slices of each sliced entry, as in the attribute.
+
+        entry_borders : Union[Dict[int, List[Union[str, Tuple[str, list], None]]], None], None
+            The rings of each entry with rings, as in the attribute, or None for no rings.
+
+        **kwargs
+            Arguments to KGMLCanvas.
+        """
+        self.check_biopython()
+        super().__init__(pathway, **kwargs)
+        self.entry_slices = entry_slices
+        self.entry_borders = {} if entry_borders is None else entry_borders
+        # The grid is built when the first sliced line is drawn, since Drawer sets
+        # 'non_reactant_transparency' after it makes the canvas.
+        self.circle_grid: Union[CircleGrid, None] = None
+
+    @classmethod
+    def check_biopython(cls) -> None:
+        """
+        Raise a ConfigError if KGMLCanvas lacks a private method that this canvas uses.
+
+        The canvas runs the check when it is made. Callers can also run it before any map is drawn,
+        so that no output is written before the error.
+        """
+        missing = [name for name in cls.private_methods if not hasattr(KGMLCanvas, name)]
+        if missing:
+            missing_message = ', '.join([f"'{name}'" for name in missing])
+            raise ConfigError(
+                f"Biopython {Bio.__version__} cannot draw map elements in slices or with borders. "
+                f"Slices and borders are drawn with private methods of Biopython's KGMLCanvas, and "
+                f"this version lacks these: {missing_message}. Drop '--reaction-slice-by', "
+                f"'--reaction-border-column', and '--compound-border-column' to draw the maps "
+                f"without slices or borders, or install a version of Biopython that has these "
+                f"methods, such as 1.87."
+            )
+
+    def _KGMLCanvas__add_reaction_entries(self) -> None:
+        """
+        Draw reaction entries as Biopython does, except for entries with slices or rings.
+
+        Biopython draws an ortholog entry with a reaction twice, here and in the ortholog pass. An
+        entry with slices or rings is drawn once, in the ortholog pass.
+        """
+        for reaction in self.pathway.reaction_entries:
+            if reaction.id in self.entry_slices or reaction.id in self.entry_borders:
+                continue
+            for g in reaction.graphics:
+                self.drawing.setStrokeColor(color_to_reportlab(g.fgcolor))
+                self.drawing.setFillColor(color_to_reportlab(g.bgcolor))
+                self._KGMLCanvas__add_graphics(g)
+                if self.label_reaction_entries:
+                    self.drawing.setFillColor(darken(g.fgcolor))
+                    self._KGMLCanvas__add_labels(g)
+
+    def _KGMLCanvas__add_orthologs(self) -> None:
+        """
+        Draw ortholog entries as Biopython does, except for Graphics elements with slices or rings.
+
+        Only rectangles take rings. A ring on any other element is not drawn.
+        """
+        for ortholog in self.pathway.orthologs:
+            graphics_slices = self.entry_slices.get(ortholog.id)
+            graphics_borders = self.entry_borders.get(ortholog.id)
+            for i, g in enumerate(ortholog.graphics):
+                slices = None if graphics_slices is None else graphics_slices[i]
+                border = None if graphics_borders is None else graphics_borders[i]
+                self.drawing.setStrokeColor(color_to_reportlab(g.fgcolor))
+                self.drawing.setFillColor(color_to_reportlab(g.bgcolor))
+                if (slices or border) and g.type == 'rectangle':
+                    self._draw_sliced_rectangle(g, slices, border)
+                elif slices and g.type == 'line':
+                    self._draw_sliced_line(g, slices)
+                else:
+                    self._KGMLCanvas__add_graphics(g)
+                if self.label_orthologs:
+                    # The label is drawn in a darker shade of the fg color, as Biopython does.
+                    self.drawing.setFillColor(darken(g.fgcolor))
+                    self._KGMLCanvas__add_labels(g)
+
+    def _KGMLCanvas__add_compounds(self) -> None:
+        """
+        Draw compound entries as Biopython does, and the rings of circles that have them.
+
+        This follows Biopython's own method step by step, so a map without rings is drawn as
+        Biopython draws it. A ring is drawn after its circle and before the label.
+        """
+        for compound in self.pathway.compounds:
+            graphics_borders = self.entry_borders.get(compound.id)
+            for i, g in enumerate(compound.graphics):
+                # Biopython draws a compound that takes part in no reaction see-through, by
+                # 'non_reactant_transparency'.
+                fillcolor = color_to_reportlab(g.bgcolor)
+                if not compound.is_reactant:
+                    fillcolor.alpha *= self.non_reactant_transparency
+                self.drawing.setStrokeColor(color_to_reportlab(g.fgcolor))
+                self.drawing.setFillColor(fillcolor)
+                self._KGMLCanvas__add_graphics(g)
+                border = None if graphics_borders is None else graphics_borders[i]
+                if border and g.type == 'circle':
+                    self._draw_circle_ring(g, border)
+                if self.label_compounds:
+                    if not compound.is_reactant:
+                        t = 0.3
+                    else:
+                        t = 1
+                    self.drawing.setFillColor(reportlab_colors.Color(0.2, 0.2, 0.2, t))
+                    self._KGMLCanvas__add_labels(g)
+
+    def _draw_circle_ring(self, graphics: KGML_pathway.Graphics, color: str) -> None:
+        """
+        Draw a whole ring just inside the outline of a circle, and the black line inside the ring.
+
+        A circle wider than 'SMALL_CIRCLE_MAX_WIDTH' takes the wider ring. The outline of the circle
+        stays where it is ('get_drawn_circle_radius').
+
+        Parameters
+        ==========
+        graphics : Bio.KEGG.KGML.KGML_pathway.Graphics
+            A circle.
+
+        color : str
+            The color of the ring.
+        """
+        drawing = self.drawing
+        ring = (
+            LARGE_CIRCLE_RING_WIDTH if graphics.width > SMALL_CIRCLE_MAX_WIDTH
+            else SMALL_CIRCLE_RING_WIDTH
+        )
+        radius = graphics.width * 0.5 - CIRCLE_OUTLINE_HALF_WIDTH
+        drawing.saveState()
+        drawing.setLineWidth(ring)
+        drawing.setStrokeColor(color_to_reportlab(color))
+        drawing.circle(graphics.x, graphics.y, radius - ring * 0.5, stroke=1, fill=0)
+        drawing.setLineWidth(RING_LINE_WIDTH)
+        drawing.setStrokeColor(color_to_reportlab(RING_LINE_COLOR))
+        drawing.circle(
+            graphics.x, graphics.y, radius - ring - RING_LINE_WIDTH * 0.5, stroke=1, fill=0
+        )
+        drawing.restoreState()
+
+    def _draw_sliced_rectangle(
+        self,
+        graphics: KGML_pathway.Graphics,
+        slices: Union[List[Tuple[str, float]], None],
+        border: Union[str, Tuple[str, list], None] = None
+    ) -> None:
+        """
+        Draw a rectangle as columns, one per slice, left to right, and its ring.
+
+        Without a ring, the columns span the whole rectangle. With a ring, each column takes its
+        share of the width of the fill inside the ring ('get_box_fill_width'), so each column shows
+        its exact share. Every column is still drawn the full height of the rectangle, and the first
+        and last columns reach its left and right sides. Where a ring has no band, it shows the
+        color of the column under it, not the base map. The ring is drawn over the columns. Then
+        come the gray lines between columns, the black line inside the ring, and the outline.
+
+        Parameters
+        ==========
+        graphics : Bio.KEGG.KGML.KGML_pathway.Graphics
+            A rectangle. The stroke color of the canvas is already set to its fg color.
+
+        slices : Union[List[Tuple[str, float]], None]
+            The color and share of the width of each column, or None for one column in the bg color
+            of the rectangle.
+
+        border : Union[str, Tuple[str, list], None], None
+            The ring, as in 'Graphics.border', or None for no ring.
+        """
+        drawing = self.drawing
+        # KGML gives the center of a rectangle, and reportlab takes a corner.
+        x0 = graphics.x - graphics.width * 0.5
+        y0 = graphics.y - graphics.height * 0.5
+        x1 = x0 + graphics.width
+        if slices is None:
+            slices = [(graphics.bgcolor, 1.0)]
+        if border is None:
+            fill_x0, fill_width, fill_x1 = x0, graphics.width, x1
+        else:
+            fill_width = get_box_fill_width(graphics.width)
+            fill_x0 = x0 + (graphics.width - fill_width) * 0.5
+            fill_x1 = fill_x0 + fill_width
+
+        drawing.saveState()
+        # Each column reaches 0.5 pt into the next. Without the overlap, anti-aliasing leaves thin
+        # seams that show the base map. No column reaches past the right side of the box.
+        start = 0.0
+        boundaries: List[float] = []
+        columns: List[Tuple[float, float]] = []
+        for index, (color, share) in enumerate(slices):
+            left = fill_x0 + start * fill_width
+            right = min(left + share * fill_width + 0.5, fill_x1)
+            drawing.setFillColor(color_to_reportlab(color))
+            if border is None:
+                drawing.rect(left, y0, right - left, graphics.height, stroke=0, fill=1)
+            else:
+                draw_left = x0 if index == 0 else left
+                draw_right = x1 if index == len(slices) - 1 else right
+                drawing.rect(
+                    draw_left, y0, draw_right - draw_left, graphics.height, stroke=0, fill=1
+                )
+            if start > 0:
+                boundaries.append(left)
+            columns.append((left, fill_x0 + (start + share) * fill_width))
+            start += share
+
+        if isinstance(border, str):
+            self._draw_box_ring(x0, y0, graphics.width, graphics.height, border)
+        elif border is not None and border[0] == 'bands':
+            self._draw_box_ring_bands(x0, y0, graphics.width, graphics.height, columns, border[1])
+        elif border is not None:
+            self._draw_box_ring_segments(x0, y0, graphics.width, graphics.height, border[1])
+
+        # A thin line between columns shows each column when neighbors have the same color. It
+        # crosses bands, which share the boundaries of the columns, and stops at any other ring.
+        line_y0, line_y1 = y0, y0 + graphics.height
+        if border is not None and (isinstance(border, str) or border[0] != 'bands'):
+            inset = (graphics.width - fill_width) * 0.5
+            line_y0, line_y1 = y0 + inset, y0 + graphics.height - inset
+        drawing.setLineWidth(0.5)
+        drawing.setStrokeColor(color_to_reportlab(SLICE_DIVIDER_COLOR))
+        for x in boundaries:
+            drawing.line(x, line_y0, x, line_y1)
+
+        # A thin black line encloses the fill inside the ring.
+        if border is not None:
+            inset = BOX_OUTLINE_HALF_WIDTH + BOX_RING_WIDTH + RING_LINE_WIDTH * 0.5
+            drawing.setLineWidth(RING_LINE_WIDTH)
+            drawing.setStrokeColor(color_to_reportlab(RING_LINE_COLOR))
+            drawing.rect(
+                x0 + inset, y0 + inset, graphics.width - 2 * inset, graphics.height - 2 * inset,
+                stroke=1, fill=0
+            )
+        drawing.restoreState()
+
+        drawing.rect(x0, y0, graphics.width, graphics.height, stroke=1, fill=0)
+
+    def _draw_box_ring(self, x0: float, y0: float, width: float, height: float, color: str) -> None:
+        """
+        Draw a whole ring just inside the outline of a rectangle.
+
+        Parameters
+        ==========
+        x0, y0 : float
+            The corner of the rectangle with the smallest coordinates.
+
+        width, height : float
+            The size of the rectangle.
+
+        color : str
+            The color of the ring.
+        """
+        inset = BOX_OUTLINE_HALF_WIDTH + BOX_RING_WIDTH * 0.5
+        self.drawing.setLineWidth(BOX_RING_WIDTH)
+        self.drawing.setStrokeColor(color_to_reportlab(color))
+        self.drawing.rect(
+            x0 + inset, y0 + inset, width - 2 * inset, height - 2 * inset, stroke=1, fill=0
+        )
+
+    def _draw_box_ring_bands(
+        self,
+        x0: float,
+        y0: float,
+        width: float,
+        height: float,
+        columns: List[Tuple[float, float]],
+        band_colors: List[Union[str, None]]
+    ) -> None:
+        """
+        Draw a ring of a rectangle as bands that pair with the columns of its slices.
+
+        Each column takes a band above it and a band below it, in the color that 'band_colors' gives
+        the column. The first column also takes the left end of the ring, and the last column the
+        right end. A column with None in 'band_colors' takes no band.
+
+        Parameters
+        ==========
+        x0, y0 : float
+            The corner of the rectangle with the smallest coordinates.
+
+        width, height : float
+            The size of the rectangle.
+
+        columns : List[Tuple[float, float]]
+            The left and right sides of each column in the fill.
+
+        band_colors : List[Union[str, None]]
+            The color of the bands of each column, or None for a column without bands.
+        """
+        drawing = self.drawing
+        ring = BOX_RING_WIDTH
+        outer = BOX_OUTLINE_HALF_WIDTH
+        x1 = x0 + width
+        top = y0 + outer
+        bottom = y0 + height - outer - ring
+        last = len(columns) - 1
+        for index, ((left, right), color) in enumerate(zip(columns, band_colors)):
+            if color is None:
+                continue
+            band_left = x0 + outer if index == 0 else left
+            # A band reaches 0.5 pt under the next band, so that no seam shows between them.
+            if index == last:
+                band_right = x1 - outer
+            elif band_colors[index + 1] is not None:
+                band_right = right + 0.5
+            else:
+                band_right = right
+            drawing.setFillColor(color_to_reportlab(color))
+            drawing.rect(band_left, top, band_right - band_left, ring, stroke=0, fill=1)
+            drawing.rect(band_left, bottom, band_right - band_left, ring, stroke=0, fill=1)
+            if index == 0:
+                drawing.rect(x0 + outer, top, ring, height - 2 * outer, stroke=0, fill=1)
+            if index == last:
+                drawing.rect(x1 - outer - ring, top, ring, height - 2 * outer, stroke=0, fill=1)
+
+    def _draw_box_ring_segments(
+        self,
+        x0: float,
+        y0: float,
+        width: float,
+        height: float,
+        segments: List[Tuple[str, float]]
+    ) -> None:
+        """
+        Draw a ring of a rectangle as segments, clockwise from the top left corner.
+
+        Each segment takes its share of the length of the middle line of the ring. The ring is laid
+        out as four strips, one for each side, clockwise from the top. Each strip starts with the
+        corner where its side starts, and it is as long as its side of the middle line. A length
+        along the middle line is then the same length along the strips. Each segment is drawn as one
+        rectangle on each strip that it covers. A thin gray line crosses the ring between
+        neighboring segments, as between columns, so that neighbors of one color can be told apart.
+
+        Parameters
+        ==========
+        x0, y0 : float
+            The corner of the rectangle with the smallest coordinates.
+
+        width, height : float
+            The size of the rectangle.
+
+        segments : List[Tuple[str, float]]
+            The color and share of each segment.
+        """
+        drawing = self.drawing
+        ring = BOX_RING_WIDTH
+        half = ring * 0.5
+        # The corners of the middle line of the ring.
+        a = x0 + BOX_OUTLINE_HALF_WIDTH + half
+        b = y0 + BOX_OUTLINE_HALF_WIDTH + half
+        c = x0 + width - BOX_OUTLINE_HALF_WIDTH - half
+        d = y0 + height - BOX_OUTLINE_HALF_WIDTH - half
+
+        # Each strip gives the rectangle that covers the lengths from 't0' to 't1' along it, and the
+        # line across it at length 't'. The top strip runs right, the right strip down, the bottom
+        # strip left, and the left strip up.
+        def top(t0: float, t1: float) -> Tuple[float, float, float, float]:
+            return a - half + t0, b - half, t1 - t0, ring
+
+        def right(t0: float, t1: float) -> Tuple[float, float, float, float]:
+            return c - half, b - half + t0, ring, t1 - t0
+
+        def bottom(t0: float, t1: float) -> Tuple[float, float, float, float]:
+            return c + half - t1, d - half, t1 - t0, ring
+
+        def left(t0: float, t1: float) -> Tuple[float, float, float, float]:
+            return a - half, d + half - t1, ring, t1 - t0
+
+        def top_line(t: float) -> Tuple[float, float, float, float]:
+            return a - half + t, b - half, a - half + t, b + half
+
+        def right_line(t: float) -> Tuple[float, float, float, float]:
+            return c - half, b - half + t, c + half, b - half + t
+
+        def bottom_line(t: float) -> Tuple[float, float, float, float]:
+            return c + half - t, d - half, c + half - t, d + half
+
+        def left_line(t: float) -> Tuple[float, float, float, float]:
+            return a - half, d + half - t, a + half, d + half - t
+
+        strips = []
+        start = 0.0
+        for length, rect, line in (
+            (c - a, top, top_line), (d - b, right, right_line), (c - a, bottom, bottom_line),
+            (d - b, left, left_line)
+        ):
+            strips.append((start, start + length, rect, line))
+            start += length
+        perimeter = start
+
+        # A segment with a share of 0 is not drawn. The last segment ends at the top left corner,
+        # where the first segment starts.
+        segments = [(color, share) for color, share in segments if share > 0]
+        boundaries: List[float] = []
+        position = 0.0
+        for index, (color, share) in enumerate(segments):
+            segment_start = position
+            segment_end = perimeter if index == len(segments) - 1 else position + share * perimeter
+            position = segment_end
+            if index > 0:
+                boundaries.append(segment_start)
+            drawing.setFillColor(color_to_reportlab(color))
+            for strip_start, strip_end, rect, _ in strips:
+                piece_start = max(segment_start, strip_start)
+                piece_end = min(segment_end, strip_end)
+                if piece_end <= piece_start:
+                    continue
+                # Each rectangle reaches 0.5 pt into the next one, which is drawn later, so that
+                # no seam shows. The first segment is drawn first, so no rectangle reaches into it.
+                reach = min(0.5, perimeter - piece_end)
+                x, y, w, h = rect(piece_start - strip_start, piece_end - strip_start + reach)
+                drawing.rect(x, y, w, h, stroke=0, fill=1)
+        # The last segment also meets the first, at the top left corner.
+        if boundaries:
+            boundaries.append(perimeter)
+
+        drawing.setLineWidth(0.5)
+        drawing.setStrokeColor(color_to_reportlab(SLICE_DIVIDER_COLOR))
+        for boundary in boundaries:
+            # A boundary at a corner lies at the end of the strip before the corner. Rounding can
+            # put a boundary meant for a corner a tiny distance past it, so a small tolerance keeps
+            # it on that strip. The strips are searched in order.
+            for strip_start, strip_end, _, line in strips:
+                if boundary <= strip_end + 1e-9:
+                    drawing.line(*line(min(boundary, strip_end) - strip_start))
+                    break
+
+    def _draw_sliced_line(
+        self,
+        graphics: KGML_pathway.Graphics,
+        slices: List[Tuple[str, float]]
+    ) -> None:
+        """
+        Draw a line as repeating dashes. Each cycle holds one dash per slice, in order.
+
+        On global maps, compound circles cover the ends of almost every line. A whole number of
+        cycles fills the part of the line that the circles leave visible ('get_visible_span'), so
+        each slice shows its exact share of that part. The number of cycles is the largest that
+        keeps the shortest dash at least twice as long as the line is wide, and there is always at
+        least one cycle. Where circles hide the whole line, the cycles fill it from end to end.
+
+        Parameters
+        ==========
+        graphics : Bio.KEGG.KGML.KGML_pathway.Graphics
+            A line. The stroke color of the canvas is already set to its fg color.
+
+        slices : List[Tuple[str, float]]
+            The color and share of the length of each dash in a cycle.
+        """
+        drawing = self.drawing
+        line_width = 1 if graphics.width is None else graphics.width
+        coords = graphics.coords
+        # The path is built as Biopython builds it, starting with a segment of zero length.
+        path = drawing.beginPath()
+        path.moveTo(*coords[0])
+        for x, y in coords:
+            path.lineTo(x, y)
+        length = sum([math.dist(coords[i], coords[i + 1]) for i in range(len(coords) - 1)])
+        if self.circle_grid is None:
+            self.circle_grid = self._get_circle_grid()
+        start, visible = get_visible_span(coords, self.circle_grid, line_width)
+        if visible <= 0:
+            start, visible = 0.0, length
+
+        drawing.saveState()
+        drawing.setLineWidth(line_width)
+        # The line is first drawn solid in the fg color. This fills notches at corners where a dash
+        # ends near a vertex.
+        drawing.drawPath(path)
+        if visible > 0:
+            cycle_count = max(
+                1, math.floor(visible * min([share for _, share in slices]) / (2 * line_width))
+            )
+            cycle = visible / cycle_count
+            drawing.setLineCap(0)
+            # Dashes overlap by 0.5 pt, so anti-aliasing leaves no seam. An overlap always lies
+            # under the dash drawn later, so each dash shows its exact length. Each dash but the
+            # last reaches into the next dash. The first dash also reaches back under the last dash
+            # of the cycle before. The dashes repeat along the whole path, under the circles too,
+            # and the first cycle starts where the line shows.
+            for i, (color, share) in enumerate(slices):
+                head = 0.5 if i == 0 else 0.0
+                tail = 0.5 if i < len(slices) - 1 else 0.0
+                dash = head + share * cycle + tail
+                # reportlab writes the phase with Python's str(), which puts a number below 0.0001
+                # in exponent form, such as '2e-05'. PDF readers reject that form, so the phase is
+                # rounded.
+                phase = round((cycle - start + head) % cycle, 4)
+                drawing.setStrokeColor(color_to_reportlab(color))
+                drawing.setDash([dash, max(cycle - dash, 0.001)], phase)
+                drawing.drawPath(path)
+                start += share * cycle
+        # Restoring the state ends the dashes. Otherwise later lines and circles would be dashed.
+        drawing.restoreState()
+
+    def _get_circle_grid(self) -> CircleGrid:
+        """
+        Sort the compound circles that the canvas draws opaque into a grid.
+
+        Biopython draws compounds after ortholog entries, so their circles cover the ends of lines.
+        A circle with a see-through fill is left out. Where 'non_reactant_transparency' is below 1,
+        Biopython draws a compound that takes part in no reaction see-through. No circle is drawn
+        where 'show_compounds' is False.
+
+        Returns
+        =======
+        CircleGrid
+            The circles, each with the radius that Biopython draws ('get_drawn_circle_radius').
+        """
+        circles: List[Tuple[float, float, float]] = []
+        if not self.show_compounds:
+            return CircleGrid(circles)
+        for compound in self.pathway.compounds:
+            for graphics in compound.graphics:
+                if graphics.type != 'circle' or color_to_reportlab(graphics.bgcolor).alpha < 1:
+                    continue
+                # Biopython searches every reaction of the map to find whether a compound takes part
+                # in one. This is slow, so it is done only where the answer matters.
+                if self.non_reactant_transparency < 1 and not compound.is_reactant:
+                    continue
+                circles.append((graphics.x, graphics.y, get_drawn_circle_radius(graphics.width)))
+        return CircleGrid(circles)
+
 class Drawer:
     """
     Write pathway map image files incorporating KGML data.
+
+    A map with Graphics elements that have slices or rings is drawn with 'SlicedKGMLCanvas'. Any
+    other map is drawn with Biopython's 'KGMLCanvas'.
 
     Attributes
     ==========
@@ -1912,6 +2859,66 @@ class Drawer:
                 **kwargs
             )
 
+    @staticmethod
+    def _get_entry_slices(
+        pathway: Pathway
+    ) -> Dict[int, List[Union[List[Tuple[str, float]], None]]]:
+        """
+        Get the slices of the entries that have any.
+
+        Parameters
+        ==========
+        pathway : Pathway
+            Object representation of a KGML file.
+
+        Returns
+        =======
+        Dict[int, List[Union[List[Tuple[str, float]], None]]]
+            Keys are the IDs of entries with any sliced Graphics element. Each value holds the
+            'slices' attribute of each Graphics element of the entry, in order. The dictionary is
+            empty if no entry has slices.
+        """
+        entry_slices: Dict[int, List[Union[List[Tuple[str, float]], None]]] = {}
+        for entry_uuid in pathway.children['entry']:
+            entry: Entry = pathway.uuid_element_lookup[entry_uuid]
+            graphics_slices = [
+                pathway.uuid_element_lookup[graphics_uuid].slices
+                for graphics_uuid in entry.children['graphics']
+            ]
+            if any(graphics_slices):
+                entry_slices[int(entry.id)] = graphics_slices
+        return entry_slices
+
+    @staticmethod
+    def _get_entry_borders(
+        pathway: Pathway
+    ) -> Dict[int, List[Union[str, Tuple[str, list], None]]]:
+        """
+        Get the rings of the entries that have any.
+
+        Parameters
+        ==========
+        pathway : Pathway
+            Object representation of a KGML file.
+
+        Returns
+        =======
+        Dict[int, List[Union[str, Tuple[str, list], None]]]
+            Keys are the IDs of entries with any Graphics element that has a ring. Each value holds
+            the 'border' attribute of each Graphics element of the entry, in order. The dictionary
+            is empty if no entry has a ring.
+        """
+        entry_borders: Dict[int, List[Union[str, Tuple[str, list], None]]] = {}
+        for entry_uuid in pathway.children['entry']:
+            entry: Entry = pathway.uuid_element_lookup[entry_uuid]
+            graphics_borders = [
+                pathway.uuid_element_lookup[graphics_uuid].border
+                for graphics_uuid in entry.children['graphics']
+            ]
+            if any(graphics_borders):
+                entry_borders[int(entry.id)] = graphics_borders
+        return entry_borders
+
     def _draw_global_map(
         self,
         pathway: Pathway,
@@ -1956,6 +2963,9 @@ class Drawer:
         if kwargs.get('fontsize') is None:
             kwargs['fontsize'] = 9
 
+        # Slices and rings are not part of KGML, so they are gathered before the KGML round trip.
+        entry_slices = self._get_entry_slices(pathway)
+        entry_borders = self._get_entry_borders(pathway)
         bio_pathway = KGML_parser.read(StringIO(self.xml_ops.get_str(pathway)))
 
         if map_filepath is None:
@@ -1988,7 +2998,10 @@ class Drawer:
 
         bio_pathway.image = map_filepath
 
-        canvas = KGMLCanvas(bio_pathway, **kwargs)
+        if entry_slices or entry_borders:
+            canvas = SlicedKGMLCanvas(bio_pathway, entry_slices, entry_borders, **kwargs)
+        else:
+            canvas = KGMLCanvas(bio_pathway, **kwargs)
         canvas.non_reactant_transparency = self.non_reactant_transparency
         canvas.draw(output_filepath)
 
@@ -2031,6 +3044,9 @@ class Drawer:
         if kwargs.get('label_reaction_entries') is None:
             kwargs['label_reaction_entries'] = False
 
+        # Slices and rings are not part of KGML, so they are gathered before the KGML round trip.
+        entry_slices = self._get_entry_slices(pathway)
+        entry_borders = self._get_entry_borders(pathway)
         bio_pathway = KGML_parser.read(StringIO(self.xml_ops.get_str(pathway)))
 
         if map_filepath is None:
@@ -2058,7 +3074,10 @@ class Drawer:
 
         bio_pathway.image = map_filepath
 
-        canvas = KGMLCanvas(bio_pathway, **kwargs)
+        if entry_slices or entry_borders:
+            canvas = SlicedKGMLCanvas(bio_pathway, entry_slices, entry_borders, **kwargs)
+        else:
+            canvas = KGMLCanvas(bio_pathway, **kwargs)
         canvas.non_reactant_transparency = self.non_reactant_transparency
         canvas.draw(output_filepath)
 
@@ -2096,6 +3115,9 @@ class Drawer:
             Valid kwargs are arguments to a biopython.Bio.Graphics.KGML_vis.KGMLCanvas object.
             These control what is displayed on the map from the KGML file.
         """
+        # Slices and rings are not part of KGML, so they are gathered before the KGML round trip.
+        entry_slices = self._get_entry_slices(pathway)
+        entry_borders = self._get_entry_borders(pathway)
         bio_pathway = KGML_parser.read(StringIO(self.xml_ops.get_str(pathway)))
 
         if map_filepath is None:
@@ -2122,7 +3144,10 @@ class Drawer:
 
         bio_pathway.image = map_filepath
 
-        canvas = KGMLCanvas(bio_pathway, **kwargs)
+        if entry_slices or entry_borders:
+            canvas = SlicedKGMLCanvas(bio_pathway, entry_slices, entry_borders, **kwargs)
+        else:
+            canvas = KGMLCanvas(bio_pathway, **kwargs)
         canvas.non_reactant_transparency = self.non_reactant_transparency
         canvas.draw(output_filepath)
 

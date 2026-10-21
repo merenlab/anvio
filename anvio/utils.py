@@ -11,6 +11,7 @@ try:
     import os
     import sys
     import ssl
+    import json
     import yaml
     import gzip
     import time
@@ -46,7 +47,7 @@ try:
     from anvio.sequence import Composition
     from anvio.version import versions_for_db_types
     from anvio.errors import ConfigError, FilesNPathsError
-    from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode
+    from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
 except ModuleNotFoundError as e:
     # Extract just the module name from "No module named 'modulename'"
     module_name = str(e).split("'")[1] if "'" in str(e) else str(e)
@@ -1221,6 +1222,19 @@ def is_all_npm_packages_installed():
     # Check if node_modules exists and is not empty
     node_modules_path = os.path.join(interactive_dir_path, 'node_modules')
 
+    # package-lock.json is not part of anvi'o, so a clean install drops the one a previous install left
+    # behind, which may still point to versions npm upgraded
+    def show_npm_install_commands(restore_package_json=False, clean_install=False):
+        commands = [f"cd {interactive_dir_path}"]
+        if restore_package_json:
+            commands.append("git restore package.json")
+        if clean_install:
+            commands.append("rm -rf node_modules package-lock.json")
+        commands.extend(["npm install", "cd -"])
+
+        for i, command in enumerate(commands):
+            run.info_single(f"{i + 1}) {command}", level=0, overwrite_verbose=True)
+
     if not os.path.exists(node_modules_path) or not os.listdir(node_modules_path):
         run.warning("Anvi'o recently changed its use of external libraries for interactive interfaces"
                     "from git submodules to npm packages. Your current setup does not seem to have the "
@@ -1230,14 +1244,76 @@ def is_all_npm_packages_installed():
                     "on GitHub or Discord since this is a new feature and some hiccups may occur.",
                     header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True,
                     lc='yellow')
-        run.info_single(f"1) cd {interactive_dir_path}", level=0, overwrite_verbose=True)
-        run.info_single("2) npm install", level=0, overwrite_verbose=True)
-        run.info_single("3) cd -", level=0, overwrite_verbose=True)
+        show_npm_install_commands()
 
         raise ConfigError("Some npm packages seem to be missing in your interactive directory. "
                           "Please run 'npm install' in the interactive directory and try again.")
-    else:
-        return True
+
+    with open(os.path.join(interactive_dir_path, 'package.json')) as package_json:
+        dependencies = json.load(package_json).get('dependencies', {})
+
+    # Anvi'o pins every package to an exact version, since the interfaces only work with those
+    # versions (e.g., Bootstrap 4 refuses to run with jQuery 4). A version range in package.json
+    # (e.g., '^4.0.0') means `npm audit fix --force` or `npm install <package>` rewrote it, and an
+    # installed version that differs from its pin means node_modules no longer matches package.json
+    installed_versions = {}
+    for package in dependencies:
+        installed_package_json_path = os.path.join(node_modules_path, package, 'package.json')
+        if os.path.exists(installed_package_json_path):
+            with open(installed_package_json_path) as installed_package_json:
+                installed_versions[package] = json.load(installed_package_json).get('version')
+
+    unpinned_packages = [p for p, v in dependencies.items() if not all(part.isdigit() for part in v.split('.'))]
+    mismatched_packages = [p for p in installed_versions if p not in unpinned_packages and installed_versions[p] != dependencies[p]]
+
+    if unpinned_packages or mismatched_packages:
+        changed_packages = [f"{p} ({installed_versions.get(p, 'not installed')}, package.json asks for '{dependencies[p]}')" for p in unpinned_packages] + \
+                           [f"{p} ({installed_versions[p]}, expected {dependencies[p]})" for p in mismatched_packages]
+
+        is_git_checkout = os.path.exists(os.path.join(os.path.dirname(anvio_module_path), '.git'))
+
+        explanation = (f"The npm packages in your interactive directory do not match the versions anvi'o "
+                       f"was tested with: {', '.join(changed_packages)}. This most often happens after "
+                       f"running `npm audit fix --force` or `npm install <package>`, which upgrade packages "
+                       f"to versions the interactive interfaces do not work with (e.g., the interface hangs "
+                       f"on its loading screen). The vulnerabilities `npm audit` reports concern websites "
+                       f"served to the open internet, and do not apply to anvi'o interfaces running on your "
+                       f"own computer, so you can safely ignore them.")
+
+        if unpinned_packages and not is_git_checkout:
+            run.warning(f"{explanation} Since npm rewrote the package.json file of your anvi'o installation, "
+                        f"which is not a git checkout anvi'o could restore it from, please reinstall anvi'o "
+                        f"to get the original package.json back, and run `npm install` in the interactive "
+                        f"directory again.", header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True,
+                        lc='yellow')
+
+            raise ConfigError("The package.json file in your interactive directory no longer pins the npm "
+                              "package versions anvi'o needs. Please reinstall anvi'o and try again.")
+
+        run.warning(f"{explanation} If you run the commands below in your terminal, you will reinstall "
+                    f"the correct versions:", header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True,
+                    lc='yellow')
+        show_npm_install_commands(restore_package_json=bool(unpinned_packages), clean_install=True)
+
+        raise ConfigError("Some npm packages in your interactive directory are not the versions anvi'o "
+                          "needs. Please reinstall them with the commands above and try again.")
+
+    # Check if every package listed in package.json is in node_modules, since a node_modules
+    # directory from an earlier `npm install` lacks the packages added to anvi'o after it
+    missing_packages = [p for p in dependencies if not os.path.exists(os.path.join(node_modules_path, p, 'package.json'))]
+
+    if missing_packages:
+        run.warning(f"Your interactive directory is missing {pluralize('npm package', len(missing_packages))} "
+                    f"that anvi'o interfaces need: {', '.join(missing_packages)}. This happens when anvi'o "
+                    f"starts using a new library after your last `npm install`. If you run the commands below "
+                    f"in your terminal, you will most likely be fine :)",
+                    header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True, lc='yellow')
+        show_npm_install_commands()
+
+        raise ConfigError("Some npm packages seem to be missing in your interactive directory. "
+                          "Please run 'npm install' in the interactive directory and try again.")
+
+    return True
 
 
 def HTMLColorToRGB(colorstring, scaled=True):

@@ -30,9 +30,15 @@ rule sra_prefetch:
 
     The `gate` input is what enforces the disk budget: when it is not empty, this download waits
     for an earlier release unit to be finished with its reads. The archive is declared as a temp
-    directory so that it goes away as soon as the reads have been extracted from it."""
+    directory so that it goes away as soon as the reads have been extracted from it.
+
+    The gate is ancient: once the flag exists, the download has nothing more to wait for, and
+    redoing that release has no bearing on it. Otherwise a release redone on a restart would
+    redo this download too, whose archive and reads are long gone, and everything downstream of
+    it, including this unit's own release, which would then pull in the next gated download,
+    and so on down the line."""
     input:
-        gate=lambda wildcards: M.get_gate_flag_for_accession(wildcards.accession),
+        gate=lambda wildcards: ancient(M.get_gate_flag_for_accession(wildcards.accession)),
     output:
         prefetch_dir=temp(directory(os.path.join(dirs_dict["SRA_DIR"], "runs", "{accession}", "prefetch"))),
     log:
@@ -124,7 +130,12 @@ rule sra_reads_released:
 
     This rule deliberately does not take the reads as input. By the time it runs snakemake has
     already deleted them, which is exactly the point: the marker it leaves behind is what allows
-    the next download to start."""
+    the next download to start.
+
+    The inputs stand for each profile only once nothing else is going to write into it (see
+    `get_read_consumer_targets`), so a restart finds the flag up to date. Should something still
+    redo this rule, that only touches the flag again: the downloads gated on it do not follow,
+    since their gate is ancient."""
     input:
         sinks=lambda wildcards: M.get_read_consumer_targets(wildcards.unit),
     output:
