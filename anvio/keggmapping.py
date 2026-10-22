@@ -13867,8 +13867,8 @@ class Mapper:
         touching reaction gives one vote for its value. The layer's accession rule chooses among the
         votes, as it does among the accessions of one map element ('_choose_categorical_value'). The
         key of a random choice is the compound's name, so a compound with the same votes gets the
-        same value on every map. The choices are counted in the layer's '_choices', once per
-        compound and set of votes.
+        same value wherever it is drawn, at another circle or on another map. The choices are
+        counted in the layer's '_choices', once per compound and set of votes.
 
         Parameters
         ==========
@@ -13886,9 +13886,10 @@ class Mapper:
             kgml.canonical_color(color): value
             for value, (color, _) in value_color_priorities.items()
         }
-        # kgml can choose for one compound more than once with the same votes. It does so on another
-        # map, and again while the compound has no color. Each such choice is counted once
-        # ('_report_categorical_choices').
+        # kgml chooses once for each circle that reactions touch. A compound comes up again with the
+        # same votes at another of its circles, on another map, and where the derived colors of a
+        # map are checked before it is drawn ('_check_derived_compound_colors'). Each such choice is
+        # counted once ('_report_categorical_choices').
         counted: Set[Tuple[str, Tuple[str, ...]]] = set()
 
         def choose(compound_name: str, color_priorities: List[Tuple[str, float]]):
@@ -14178,7 +14179,7 @@ class Mapper:
             self._warn_unrenderable_compounds(pathway, compound_layer['entry_keys'])
 
         # On a global or overview map where a reaction layer stages fills and no compound layer
-        # does, compounds are derived from their associated reactions per the reaction layer's
+        # does, compounds are derived from the reactions that touch them, per the reaction layer's
         # 'derived_compound' ('_derives_compounds'). Otherwise, colors are applied directly.
         recolor = 'g' if pathway.is_global_map else 'w'
         if not self._derives_compounds(pathway, layer_specs):
@@ -14890,7 +14891,7 @@ class Mapper:
             color_priority['ortholog'][graphics_type] = graphics_type_color_priority
 
         # Recolor "unprioritized" reactions to a background color. In global and overview maps,
-        # recolor circles to reflect the colors of prioritized reactions involving the compounds.
+        # recolor the circles that prioritized reactions touch, to reflect their colors.
         if pathway.is_global_map:
             recolor_unprioritized_entries = 'g'
             color_associated_compounds = 'high'
