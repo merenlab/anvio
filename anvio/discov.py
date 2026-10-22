@@ -23,12 +23,12 @@ class DisCov:
                            "Windows Depth Evenness CV (coarse)",
                            "Windows Depth Evenness CV (medium)",
                            "Windows Depth Evenness CV (fine)"]
-    # subset of the above whose spread-evenness scores (C) are combined with detection (D) in the Discov scores
-    DISCOV_EVENNESS_METRICS = ["Nonzero Depth Fold-Range Detection (Narrow: 0.5x - 2x)",
-                               "Windows Depth Evenness CV (fine)"]
     # subset of the above that are also combined with the normalized spread (S*) in spread-evenness scores
     NORM_SE_EVENNESS_METRICS = ["Nonzero Depth Fold-Range Detection (Narrow: 0.5x - 2x)",
                                 "Windows Depth Evenness CV (fine)"]
+    # the Discov scores combine detection (D) with spread-evenness scores (C) using this E and each of these S
+    DISCOV_EVENNESS_METRIC = "Windows Depth Evenness CV (fine)"
+    DISCOV_SPREAD_METRICS = ["Proportion Windows Covered (fine)", "Normalized Spread"]
 
     def __init__(self, coverage, contig_or_genome_name=None, sample_name=None, contig_starts=None, num_reads=None):
         self.median: float = np.median(coverage)
@@ -68,7 +68,7 @@ class DisCov:
                   *[f"Spread-Evenness Score [{formula}; E = {E}]" for E in self.SE_EVENNESS_METRICS for formula in ['linear', 'geometric']],
                   *[f"Spread-Evenness Score [{formula}; S = Normalized Spread; E = {E}]" for E in self.NORM_SE_EVENNESS_METRICS for formula in ['linear', 'geometric']],
                   # combines spread-evenness score (C) with detection (D)
-                  *[f"Discov {opt} [{formula} C, k={k}; E = {E}]" for E, opt, formula, k in self.get_discov_versions()]
+                  *[f"Discov {opt} [{formula} C, k={k}; S = {S}; E = {self.DISCOV_EVENNESS_METRIC}]" for S, opt, formula, k in self.get_discov_versions()]
         ]
         for outfile in [unfilt_output]:
             if not filesnpaths.is_file_exists(outfile, dont_raise=True):
@@ -169,12 +169,17 @@ class DisCov:
                           for E in self.NORM_SE_EVENNESS_METRICS for formula in ['linear', 'geometric']}
 
         ## discov
-        discov_funcs = {'A': lambda C, k: self.discov_option_A(C, self.detection, beta=1, k=k),
-                        'B': lambda C, k: self.discov_option_B(C, self.detection, beta=1, k=k),
-                        'X': lambda C, k: self.discov_option_X(C, self.detection, gamma=1, k=k),
-                        'V': lambda C, k: self.discov_option_V(C, self.detection, k=k),
-                        'W': lambda C, k: self.discov_option_W(C, self.detection, S=sliding_window_metrics['fine']['Proportion_Covered'], k=k)}
-        discov_scores = [discov_funcs[opt](SE_scores[(E, formula)], k) for E, opt, formula, k in self.get_discov_versions()]
+        E = self.DISCOV_EVENNESS_METRIC
+        S_values = {"Proportion Windows Covered (fine)": sliding_window_metrics['fine']['Proportion_Covered'],
+                    "Normalized Spread": normalized_spread}
+        C_values = {("Proportion Windows Covered (fine)", formula): SE_scores[(E, formula)] for formula in ['linear', 'geometric']}
+        C_values.update({("Normalized Spread", formula): norm_SE_scores[(E, formula)] for formula in ['linear', 'geometric']})
+        discov_funcs = {'A': lambda C, S, k: self.discov_option_A(C, self.detection, beta=1, k=k),
+                        'B': lambda C, S, k: self.discov_option_B(C, self.detection, beta=1, k=k),
+                        'X': lambda C, S, k: self.discov_option_X(C, self.detection, gamma=1, k=k),
+                        'V': lambda C, S, k: self.discov_option_V(C, self.detection, k=k),
+                        'W': lambda C, S, k: self.discov_option_W(C, self.detection, S=S, k=k)}
+        discov_scores = [discov_funcs[opt](C_values[(S, formula)], S_values[S], k) for S, opt, formula, k in self.get_discov_versions()]
 
         # append all metrics to file
         fmt = lambda x: "NA" if x is None else f"{float(x):.4}"
@@ -480,9 +485,9 @@ class DisCov:
         return min(1, S_obs / S_exp)
 
     def get_discov_versions(self):
-        """Returns an (E, option, C formula, k) tuple for each Discov version, in output order."""
+        """Returns an (S, option, C formula, k) tuple for each Discov version, in output order."""
 
-        return [(E, opt, formula, k) for E in self.DISCOV_EVENNESS_METRICS
+        return [(S, opt, formula, k) for S in self.DISCOV_SPREAD_METRICS
                                      for opt in ['A', 'B', 'X', 'V', 'W']
                                      for formula in ['linear', 'geometric']
                                      for k in [1, 2, 3]]
