@@ -62,8 +62,7 @@ class DisCov:
                   # combines proportion windows covered (fine) with an evenness metric E
                   *[f"Spread-Evenness Score [{formula}; E = {E}]" for E in self.SE_EVENNESS_METRICS for formula in ['linear', 'geometric']],
                   # combines spread-evenness score (C) with detection (D)
-                  *[f"Discov {opt} [{formula} C, k={k}; E = {E}]" if k else f"Discov {opt} [{formula} C; E = {E}]"
-                    for E, opt, formula, k in self.get_discov_versions()]
+                  *[f"Discov {opt} [{formula} C, k={k}; E = {E}]" for E, opt, formula, k in self.get_discov_versions()]
         ]
         for outfile in [unfilt_output]:
             if not filesnpaths.is_file_exists(outfile, dont_raise=True):
@@ -158,8 +157,7 @@ class DisCov:
         ## discov
         discov_funcs = {'A': lambda C, k: self.discov_option_A(C, self.detection, beta=1, k=k),
                         'B': lambda C, k: self.discov_option_B(C, self.detection, beta=1, k=k),
-                        'X': lambda C, k: self.discov_option_X(C, self.detection, gamma=1, k=k),
-                        'Y': lambda C, k: self.discov_option_Y(C, self.detection)}
+                        'X': lambda C, k: self.discov_option_X(C, self.detection, gamma=1, k=k)}
         discov_scores = [discov_funcs[opt](SE_scores[(E, formula)], k) for E, opt, formula, k in self.get_discov_versions()]
 
         # append all metrics to file
@@ -437,12 +435,12 @@ class DisCov:
             raise ConfigError(f"spread_evenness_score does not understand the formula parameter '{formula}'")
 
     def get_discov_versions(self):
-        """Returns an (E, option, C formula, k) tuple for each Discov version, in output order. Option Y has no k (None)."""
+        """Returns an (E, option, C formula, k) tuple for each Discov version, in output order."""
 
         return [(E, opt, formula, k) for E in self.DISCOV_EVENNESS_METRICS
-                                     for opt in ['A', 'B', 'X', 'Y']
+                                     for opt in ['A', 'B', 'X']
                                      for formula in ['linear', 'geometric']
-                                     for k in ([2, 3] if opt != 'Y' else [None])]
+                                     for k in [1, 2, 3]]
 
     def discov_option_A(self, C, D, beta=1, k=2):
         """Boosts C toward 1 by a detection-dependent fraction of its remaining distance: F = C + β·D^k·(1 − C)"""
@@ -464,13 +462,6 @@ class DisCov:
         if C is None or D is None:
             return None
         return C**(1 - gamma * D**k)
-
-    def discov_option_Y(self, C, D):
-        """Boosts C toward 1 by a fraction of its remaining distance equal to detection: F = C + (1 − C)·D"""
-
-        if C is None or D is None:
-            return None
-        return C + (1 - C) * D
 
 
     ##### HELPER FUNCTIONS #####
