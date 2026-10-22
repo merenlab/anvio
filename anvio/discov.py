@@ -157,7 +157,9 @@ class DisCov:
         ## discov
         discov_funcs = {'A': lambda C, k: self.discov_option_A(C, self.detection, beta=1, k=k),
                         'B': lambda C, k: self.discov_option_B(C, self.detection, beta=1, k=k),
-                        'X': lambda C, k: self.discov_option_X(C, self.detection, gamma=1, k=k)}
+                        'X': lambda C, k: self.discov_option_X(C, self.detection, gamma=1, k=k),
+                        'V': lambda C, k: self.discov_option_V(C, self.detection, k=k),
+                        'W': lambda C, k: self.discov_option_W(C, self.detection, S=sliding_window_metrics['fine']['Proportion_Covered'], k=k)}
         discov_scores = [discov_funcs[opt](SE_scores[(E, formula)], k) for E, opt, formula, k in self.get_discov_versions()]
 
         # append all metrics to file
@@ -438,7 +440,7 @@ class DisCov:
         """Returns an (E, option, C formula, k) tuple for each Discov version, in output order."""
 
         return [(E, opt, formula, k) for E in self.DISCOV_EVENNESS_METRICS
-                                     for opt in ['A', 'B', 'X']
+                                     for opt in ['A', 'B', 'X', 'V', 'W']
                                      for formula in ['linear', 'geometric']
                                      for k in [1, 2, 3]]
 
@@ -462,6 +464,22 @@ class DisCov:
         if C is None or D is None:
             return None
         return C**(1 - gamma * D**k)
+
+    def discov_option_V(self, C, D, k=2):
+        """Boosts C by a detection-dependent fraction of C(1 − C), so the boost is largest at intermediate C: F = C + D^k·C(1 − C)"""
+
+        if C is None or D is None:
+            return None
+        return C + D**k * C * (1 - C)
+
+    def discov_option_W(self, C, D, S, k=2):
+        """Boosts C toward 1 by the ratio of detection to spread (S, the spread score used to compute C): F = C + (1 − C)·(D/S)^k"""
+
+        if C is None or D is None or S is None:
+            return None
+        if S == 0: # no covered windows means D is also 0, so there is no boost
+            return C
+        return C + (1 - C) * (D / S)**k
 
 
     ##### HELPER FUNCTIONS #####
