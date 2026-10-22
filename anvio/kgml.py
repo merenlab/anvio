@@ -82,6 +82,17 @@ TINY_GRAPHICS_MAX_SIZE = 2
 # not stop the walk where two circles meet.
 CIRCLE_TOLERANCE = 1e-6
 
+# How far the end of an ortholog line can lie outside a compound circle and still touch it, in
+# points ('Pathway.color_associated_compounds'). The lines of global maps run into the circles of
+# their compounds, and a few stop up to a point short of the edge. The arrows of overview maps stop
+# short of their circles in the 2x KGML files from which anvi'o draws these maps, most by 2 to 12
+# points and some by up to 40 points where many arrows meet at one circle. No arrow ends within 56
+# points of a circle that it does not touch. In the KGML files of October 2025, any reach from 40 to
+# 56 points therefore finds the same circles on overview maps, and any reach from 1 to 4.5 points
+# finds the same circles on global maps.
+GLOBAL_MAP_LINE_END_REACH = 2.0
+OVERVIEW_MAP_LINE_END_REACH = 48.0
+
 
 def canonical_color(color: Union[str, None]) -> Union[str, None]:
     """
@@ -395,9 +406,9 @@ class Pathway(Element):
             Callable[[str, List[Tuple[str, float]]], Union[Tuple[str, float], None]]
         ], None
             Automatically set the background color of compound entries based on the color priority
-            of ortholog entries involving the compounds. By default, compounds participating in
-            reactions are circles, and orthologs are lines on global/overview maps and boxes or
-            lines on standard maps.
+            of the ortholog entries that touch them ('color_associated_compounds'). By default,
+            compounds participating in reactions are circles, and orthologs are lines on
+            global/overview maps and boxes or lines on standard maps.
 
             An argument of 'high' or 'low' sets the compound background color to the bg color of the
             ortholog with the highest or lowest priority fg/bg color combination. 'average' sets the
@@ -744,8 +755,8 @@ class Pathway(Element):
         colormap: Colormap = None
     ) -> None:
         """
-        Set the color of compound entries based on the color priority of ortholog entries involving
-        the compounds.
+        Set the color of compound entries based on the color priority of the ortholog entries that
+        touch them.
 
         Compound entries are assumed to have Graphics elements of type 'circle'. If the map is
         global, color both the background (interior) and foreground (border) of the circle. In
@@ -755,10 +766,19 @@ class Pathway(Element):
         chemical structure drawings to which they correspond on maps (see
         `anvio.keggmapping.Mapper._zero_out_compound_rectangles`).
 
-        Each ortholog entry casts one vote, a color and priority, for its compounds. An entry whose
-        'compound_vote' attribute is set casts that vote, or no vote if it is an empty tuple. Any
-        other entry votes with the color of its Graphics elements and the priority of that color. It
-        does not vote if the color has no priority.
+        Each ortholog entry casts one vote, a color and priority, for each compound Entry it
+        touches. An entry whose 'compound_vote' attribute is set casts that vote, or no vote if it
+        is an empty tuple. Any other entry votes with the color of its Graphics elements and the
+        priority of that color. It does not vote if the color has no priority.
+
+        On global and overview maps, an ortholog entry touches the circles at the ends of its lines.
+        Each end touches the circle whose edge lies nearest it, if the edge lies within reach
+        ('GLOBAL_MAP_LINE_END_REACH', 'OVERVIEW_MAP_LINE_END_REACH'). A compound drawn in several
+        places has an Entry for each circle, so each circle takes the votes of only the lines that
+        end at it. On other maps, where orthologs are mostly boxes, an ortholog entry touches the
+        compound entries that its Reaction element names. That is the Reaction element with the ID
+        of the ortholog Entry, whose Substrate and Product elements have the IDs of compound
+        entries.
 
         Parameters
         ==========
@@ -780,12 +800,12 @@ class Pathway(Element):
             0.01 give 0, not 0.5. Some priorities have no mean direction, such as 0.25 and 0.75. The
             compound then takes the 'average' color.
 
-            A function chooses the color itself. It is called for each compound Entry that has no
-            color yet, and it can be called more than once for one Entry. It takes the Entry's name,
-            such as 'cpd:C00031', and the color and priority of each ortholog. It returns the color
-            and priority of the compound. It can return None instead. The compound then keeps the
-            color given to unprioritized entries. The name lets the function make the same choice
-            for a compound wherever it appears.
+            A function chooses the color itself. It is called once for each compound Entry that has
+            votes and no color yet. It takes the Entry's name, such as 'cpd:C00031', and the color
+            and priority of each ortholog. It returns the color and priority of the compound. It can
+            return None instead. The compound then keeps the color given to unprioritized entries.
+            The name lets the function make the same choice for a compound wherever it appears with
+            the same votes.
 
             Compound entries that are already in the color_priority attribute are exempt from
             recoloring and given higher priority than recolored compound entries.
@@ -795,15 +815,45 @@ class Pathway(Element):
             be provided to map averaged priority values on the interval [0, 1] to a background color
             for compound entries.
         """
-        # Make Reaction elements searchable by name (KEGG IDs). Reaction elements link Compound
-        # elements to ortholog Entry elements.
-        name_reaction: Dict[str, Reaction] = {}
-        for entry_uuid in self.children['reaction']:
-            reaction: Reaction = self.uuid_element_lookup[entry_uuid]
-            name_reaction[reaction.name] = reaction
+        # Make compound entries searchable by ID, which should be a unique pathway element ID.
+        id_compound_entry: Dict[str, Entry] = {}
+        for entry_uuid in self.children['entry']:
+            entry: Entry = self.uuid_element_lookup[entry_uuid]
+            if entry.type != 'compound':
+                continue
+            id_compound_entry[entry.id] = entry
 
-        # For each compound Entry with associated color-prioritized ortholog entries, record the
-        # colors and priorities of these entries.
+        # On global and overview maps, the ends of ortholog lines touch compound circles. The
+        # circles are sorted into a grid, so that the one nearest the end of a line is found fast.
+        if self.is_global_map:
+            line_end_reach = GLOBAL_MAP_LINE_END_REACH
+        elif self.is_overview_map:
+            line_end_reach = OVERVIEW_MAP_LINE_END_REACH
+        else:
+            line_end_reach = None
+        if line_end_reach is not None:
+            # A circle belongs to more than one compound Entry only where a KGML file draws them in
+            # the same place.
+            circle_compound_entries: Dict[Tuple[float, float, float], List[Entry]] = {}
+            for compound_entry in id_compound_entry.values():
+                for graphics_uuid in compound_entry.children['graphics']:
+                    graphics: Graphics = self.uuid_element_lookup[graphics_uuid]
+                    if graphics.type != 'circle' or graphics.width is None:
+                        continue
+                    circle = (graphics.x, graphics.y, get_drawn_circle_radius(graphics.width))
+                    circle_compound_entries.setdefault(circle, []).append(compound_entry)
+            circle_grid = CircleGrid(circle_compound_entries.keys(), reach=line_end_reach)
+
+        # Make Reaction elements searchable by ID, which is the ID of the ortholog Entry they belong
+        # to. Several ortholog entries can have Reaction elements of the same name, each naming the
+        # compound entries of its own place on the map.
+        id_reaction: Dict[str, Reaction] = {}
+        for reaction_uuid in self.children['reaction']:
+            reaction: Reaction = self.uuid_element_lookup[reaction_uuid]
+            id_reaction[reaction.id] = reaction
+
+        # For each compound Entry touched by color-prioritized ortholog entries, record the colors
+        # and priorities of these entries.
         compound_uuid_color_priorities: Dict[str, List[Tuple[str, float]]] = {}
         # Loop through each ortholog Entry.
         for entry_uuid in self.children['entry']:
@@ -815,11 +865,15 @@ class Pathway(Element):
             graphics_types: List[str] = []
             fgcolors: List[str] = []
             bgcolors: List[str] = []
+            line_ends: List[Tuple[float, float]] = []
             for graphics_uuid in entry.children['graphics']:
                 graphics: Graphics = self.uuid_element_lookup[graphics_uuid]
                 graphics_types.append(graphics.type)
                 fgcolors.append(graphics.fgcolor)
                 bgcolors.append(graphics.bgcolor)
+                if graphics.type == 'line' and graphics.coords:
+                    line_ends.append((graphics.coords[0], graphics.coords[1]))
+                    line_ends.append((graphics.coords[-2], graphics.coords[-1]))
             if len(set(graphics_types)) != 1:
                 graphics_type_message = ', '.join([f"'{gt}'" for gt in graphics_types])
                 raise AssertionError(
@@ -843,8 +897,8 @@ class Pathway(Element):
                         (canonical_color(fgcolor), canonical_color(bgcolor))
                     ]
                 except KeyError:
-                    # Unprioritized ortholog entries do not affect the color of associated
-                    # compounds.
+                    # Unprioritized ortholog entries do not affect the color of the compounds they
+                    # touch.
                     continue
                 if graphics_type == 'line':
                     ortholog_color = fgcolor
@@ -857,58 +911,33 @@ class Pathway(Element):
                 # A sliced entry casts the one vote that was set for it.
                 ortholog_color, priority = entry.compound_vote
 
-            reaction_name = entry.reaction
-            if reaction_name is None:
-                # The ortholog is not associated with a reaction.
-                continue
+            # Find the compound entries that the ortholog touches, each once.
+            compound_entries: List[Entry] = []
+            if line_end_reach is not None and line_ends:
+                for x, y in line_ends:
+                    circle = circle_grid.get_nearest_circle(x, y)
+                    if circle is None:
+                        continue
+                    for compound_entry in circle_compound_entries[circle]:
+                        if compound_entry not in compound_entries:
+                            compound_entries.append(compound_entry)
+            elif entry.id in id_reaction:
+                reaction = id_reaction[entry.id]
+                for reactant_uuid in reaction.children['substrate'] + reaction.children['product']:
+                    reactant: Union[Substrate, Product] = self.uuid_element_lookup[reactant_uuid]
+                    compound_entry = id_compound_entry[reactant.id]
+                    if compound_entry not in compound_entries:
+                        compound_entries.append(compound_entry)
 
-            try:
-                reaction = name_reaction[reaction_name]
-            except KeyError:
-                # No Reaction element is present with the name of the ortholog reaction.
-                continue
-
-            for substrate_uuid in reaction.children['substrate']:
-                substrate: Substrate = self.uuid_element_lookup[substrate_uuid]
-                split_substrate_names = [
-                    split_name.split(':') for split_name in substrate.name.split()
-                ]
-                for split_name in split_substrate_names:
-                    for compound_entry in self.kegg_id_element_lookup[split_name[1]]:
-                        compound_entry: Entry
-                        compound_uuid = compound_entry.uuid
-                        try:
-                            compound_uuid_color_priorities[compound_uuid].append(
-                                (ortholog_color, priority)
-                            )
-                        except KeyError:
-                            compound_uuid_color_priorities[compound_uuid] = [
-                                (ortholog_color, priority)
-                            ]
-
-            for product_uuid in reaction.children['product']:
-                product: Product = self.uuid_element_lookup[product_uuid]
-                split_product_names = [split_name.split(':') for split_name in product.name.split()]
-                for split_name in split_product_names:
-                    for compound_entry in self.kegg_id_element_lookup[split_name[1]]:
-                        compound_entry: Entry
-                        compound_uuid = compound_entry.uuid
-                        try:
-                            compound_uuid_color_priorities[compound_uuid].append(
-                                (ortholog_color, priority)
-                            )
-                        except KeyError:
-                            compound_uuid_color_priorities[compound_uuid] = [
-                                (ortholog_color, priority)
-                            ]
-
-        # Make compound entries searchable by ID, which should be a unique pathway element ID.
-        id_compound_entry: Dict[str, Entry] = {}
-        for entry_uuid in self.children['entry']:
-            entry: Entry = self.uuid_element_lookup[entry_uuid]
-            if entry.type != 'compound':
-                continue
-            id_compound_entry[entry.id] = entry
+            for compound_entry in compound_entries:
+                try:
+                    compound_uuid_color_priorities[compound_entry.uuid].append(
+                        (ortholog_color, priority)
+                    )
+                except KeyError:
+                    compound_uuid_color_priorities[compound_entry.uuid] = [
+                        (ortholog_color, priority)
+                    ]
 
         # Define functions for finding compound Entry color.
         def _get_high_color(color_priorities: List[Tuple[str, float]]) -> Tuple[str, float]:
@@ -956,8 +985,7 @@ class Pathway(Element):
 
         # Set compound Entry color.
         for compound_uuid, color_priorities in compound_uuid_color_priorities.items():
-            compound: Union[Substrate, Product] = self.uuid_element_lookup[compound_uuid]
-            compound_entry: Entry = id_compound_entry[compound.id]
+            compound_entry: Entry = self.uuid_element_lookup[compound_uuid]
 
             # Get all of the Graphics elements for the Entry.
             graphics_elements: List[Graphics] = []
@@ -1902,11 +1930,15 @@ class CircleGrid:
     """
     Circles sorted into the square cells of a grid, so that the circles near a point are found fast.
 
-    A cell is wider than the largest circle. A circle that holds a point therefore has its center in
-    the cell of the point or in one of the eight cells around it.
+    A cell is wider than the largest circle and the reach of the grid. A circle that holds a point,
+    or whose edge lies within reach of it, therefore has its center in the cell of the point or in
+    one of the eight cells around it.
 
     Attributes
     ==========
+    reach : float
+        How far outside a circle a point can lie and still be near it, in points.
+
     cell_width : float
         The width of a cell, in points.
 
@@ -1914,16 +1946,21 @@ class CircleGrid:
         Keys are the column and row of a cell. Each value holds the circles centered in the cell,
         each as its x, y, and radius.
     """
-    def __init__(self, circles: Iterable[Tuple[float, float, float]]) -> None:
+    def __init__(self, circles: Iterable[Tuple[float, float, float]], reach: float = 0.0) -> None:
         """
         Parameters
         ==========
         circles : Iterable[Tuple[float, float, float]]
             The x, y, and radius of each circle, in points.
+
+        reach : float, 0.0
+            How far outside a circle a point can lie and still be near it, in points.
         """
         circles = list(circles)
-        # A cell is 1 point wider than the largest circle, so it has a width even with no circles.
-        self.cell_width = 2 * max([radius for _, _, radius in circles], default=0.0) + 1
+        self.reach = reach
+        # A cell is 1 point wider than the largest circle and the reach, so it has a width even with
+        # no circles.
+        self.cell_width = 2 * max([radius for _, _, radius in circles], default=0.0) + reach + 1
         self.cells: Dict[Tuple[int, int], List[Tuple[float, float, float]]] = {}
         for x, y, radius in circles:
             self.cells.setdefault(self._get_cell(x, y), []).append((x, y, radius))
@@ -1941,6 +1978,37 @@ class CircleGrid:
             for nearby_row in (row - 1, row, row + 1)
             for circle in self.cells.get((nearby_column, nearby_row), ())
         ]
+
+    def get_nearest_circle(self, x: float, y: float) -> Union[Tuple[float, float, float], None]:
+        """
+        Get the circle whose edge lies nearest a point, if the edge lies within reach of the point.
+
+        A point inside a circle lies a negative distance outside its edge.
+
+        Parameters
+        ==========
+        x : float
+            The x coordinate of the point.
+
+        y : float
+            The y coordinate of the point.
+
+        Returns
+        =======
+        Union[Tuple[float, float, float], None]
+            The x, y, and radius of the circle, or None if no circle lies within reach.
+        """
+        nearest_circle = None
+        nearest_distance = math.inf
+        for circle in self.get_nearby_circles(x, y):
+            circle_x, circle_y, radius = circle
+            distance = math.hypot(circle_x - x, circle_y - y) - radius
+            if distance < nearest_distance:
+                nearest_circle = circle
+                nearest_distance = distance
+        if nearest_distance > self.reach:
+            return None
+        return nearest_circle
 
 def get_drawn_circle_radius(width: float) -> float:
     """

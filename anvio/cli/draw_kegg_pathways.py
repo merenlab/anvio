@@ -971,19 +971,19 @@ def get_args() -> Namespace:
         '--original-color', action='store_true', default=False, help=
         "Color reaction elements using the original colors of the reference map, rather than a "
         "single color, dynamic coloring, or a value column. On global and overview maps, the "
-        "compounds of those reactions are automatically colored to match, just as they appear in "
-        "the reference maps. This draws only from the reaction layer, through a dedicated "
-        "renderer, so it cannot also take an explicit compound file ('--compound-txt'), and it "
-        "cannot be combined with '--reaction-color', '--compound-color', or the colormaps. It "
-        "works across multiple sources: with several contigs databases, the genomes of a "
-        "pangenome, or a '--reaction-txt' file with a 'sample' column, the 'unified' map "
-        "highlights the union of them all and '--draw-individual-files'/'--draw-grid' add a "
-        "reference-colored map per database, genome, or sample. Because the reference map fixes "
-        "both the colors and their drawing order, there is no color scale left to give away: a "
-        "value column, the sample and group summary options, '--reaction-reverse-overlay' and "
-        "'--group-threshold' therefore cannot be combined with it. With '--groups-txt', the "
-        "'unified' map is still the union, while each group's own map counts the group's sources "
-        "instead, since one color cannot distinguish them."
+        "compounds that those reactions touch are colored to match, just as they appear in the "
+        "reference maps. This draws only from the reaction layer, through a dedicated renderer, so "
+        "it cannot also take an explicit compound file ('--compound-txt'), and it cannot be "
+        "combined with '--reaction-color', '--compound-color', or the colormaps. It works across "
+        "multiple sources: with several contigs databases, the genomes of a pangenome, or a "
+        "'--reaction-txt' file with a 'sample' column, the 'unified' map highlights the union of "
+        "them all and '--draw-individual-files'/'--draw-grid' add a reference-colored map per "
+        "database, genome, or sample. Because the reference map fixes both the colors and their "
+        "drawing order, there is no color scale left to give away: a value column, the sample and "
+        "group summary options, '--reaction-reverse-overlay' and '--group-threshold' therefore "
+        "cannot be combined with it. With '--groups-txt', the 'unified' map is still the union, "
+        "while each group's own map counts the group's sources instead, since one color cannot "
+        "distinguish them."
     )
     groupCOLOR.add_argument(
         '--reaction-colormap', nargs='+', help=
@@ -2089,9 +2089,9 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                         f"samples. Or drop the colors file."
                     )
 
-        # '--original-color' highlights the reaction layer in the reference map's colors (its
-        # associated compounds follow, on global/overview maps) through a dedicated renderer that
-        # draws only the reaction layer. Both the colors and their render order come from the
+        # '--original-color' highlights the reaction layer in the reference map's colors (the
+        # compounds its lines touch follow, on global/overview maps) through a dedicated renderer
+        # that draws only the reaction layer. Both the colors and their render order come from the
         # reference map, so the flag carries no data: a value column has nowhere to go, and the
         # options that shape dynamic coloring do nothing. A 'sample' column is fine, giving a
         # reference-colored map per sample and a union 'unified' map, as multiple contigs databases
