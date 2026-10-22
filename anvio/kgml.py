@@ -1249,17 +1249,28 @@ class Graphics(Element):
         Height of graphical object on map.
 
     slices : List[Tuple[str, float]], None
-        The color and share of each slice of the graphical object, in draw order: left to right in a
-        rectangle, and from the first coordinate of a line. There are at least 2 slices, and the
-        shares sum to 1. Drawer draws them with 'SlicedKGMLCanvas'. This attribute is not part of
-        KGML, and XMLOps does not write it.
+        The color and share of each slice of a line, in order from its first coordinate. There are
+        at least 2 slices, and the shares sum to 1. Drawer draws them as dashes with
+        'SlicedKGMLCanvas'. A rectangle shows its slices in its 'glyph' instead. This attribute is
+        not part of KGML, and XMLOps does not write it.
+
+    glyph : Dict[str, list], None
+        What a rectangle shows inside its outline, as a display list. The shapes of the glyph are
+        painted first, kind by kind in the order listed here. The ring ('border') comes next, then
+        the thin gray lines between columns, the black line inside the ring, the outline, and the
+        label. The glyph has these kinds:
+        - 'cells': the color and share of each column of the fill, left to right, as (color, share)
+          pairs. Each column is the full height of the rectangle. The columns share its width, or
+          the width inside its ring ('get_box_fill_width'). The shares sum to 1.
+        A rectangle without a glyph is one column in its bg color. Drawer draws glyphs with
+        'SlicedKGMLCanvas'. This attribute is not part of KGML, and XMLOps does not write it.
 
     border : Union[str, Tuple[str, list]], None
         The ring drawn just inside the outline of a rectangle or a circle ('BOX_RING_WIDTH'). A
         color draws a whole ring. A rectangle can instead take one of these:
-        - ('bands', colors): one color per slice of 'slices', in the same order, or None for a slice
-          without a band. Each slice takes a band above and below its column. The first and last
-          slices also take the left and right ends of the ring.
+        - ('bands', colors): one color per column of the 'cells' of 'glyph', in the same order, or
+          None for a column without a band. Each column takes a band above and below it. The first
+          and last columns also take the left and right ends of the ring.
         - ('segments', [(color, share), ...]): the ring is divided among at least 2 segments,
           clockwise from the top left corner. The shares sum to 1.
         Drawer draws rings with 'SlicedKGMLCanvas'. This attribute is not part of KGML, and XMLOps
@@ -1296,6 +1307,7 @@ class Graphics(Element):
         self.height: float = None
 
         self.slices: List[Tuple[str, float]] = None
+        self.glyph: Dict[str, list] = None
         self.border: Union[str, Tuple[str, list]] = None
 
         super().__init__()
@@ -2183,16 +2195,18 @@ class SlicedKGMLCanvas(KGMLCanvas):
     Biopython's KGML canvas, extended to draw ortholog entries in slices and to draw rings on boxes
     and compound circles.
 
-    A sliced rectangle is drawn as columns, left to right, with a thin gray line between columns. It
-    has one outline, and one label where ortholog entries are labeled ('label_orthologs'). A sliced
-    line is drawn as repeating dashes with no gaps, one dash per slice in each cycle. The dashes
-    fill the part of the line that compound circles leave visible.
+    A rectangle with a glyph is drawn from that display list ('Graphics.glyph'). Its cells are
+    columns, left to right, with a thin gray line between columns. It has one outline, and one label
+    where ortholog entries are labeled ('label_orthologs'). A sliced line is drawn as repeating
+    dashes with no gaps, one dash per slice in each cycle. The dashes fill the part of the line that
+    compound circles leave visible.
 
     A ring colors the border of a rectangle or a compound circle ('Graphics.border'). It lies just
     inside the black outline, with a thin black line between the ring and the fill
-    ('BOX_RING_WIDTH'). A rectangle with a ring is drawn as one column or as sliced columns, which
-    then fit inside the ring. Its ring can be whole, or divided into bands that pair with the
-    columns, or into segments of its own. A circle with a ring is drawn whole. Lines have no rings.
+    ('BOX_RING_WIDTH'). A rectangle with a ring is drawn as one column or as the columns of its
+    glyph, which then fit inside the ring. Its ring can be whole, or divided into bands that pair
+    with the columns, or into segments of its own. A circle with a ring is drawn whole. Lines have
+    no rings.
 
     Everything else is drawn by Biopython's own methods, as in KGMLCanvas. The canvas overrides
     three private methods of KGMLCanvas and calls two others. Biopython can rename private methods
@@ -2200,9 +2214,13 @@ class SlicedKGMLCanvas(KGMLCanvas):
 
     Attributes
     ==========
+    entry_glyphs : Dict[int, List[Union[Dict[str, list], None]]]
+        Keys are the IDs of entries with glyphs. Each value holds the glyph of each Graphics element
+        of the entry, in order, as in 'Graphics.glyph'. An element without a glyph has None.
+
     entry_slices : Dict[int, List[Union[List[Tuple[str, float]], None]]]
-        Keys are the IDs of sliced entries. Each value holds the slices of each Graphics element of
-        the entry, in order, as in 'Graphics.slices'. An element drawn whole has None.
+        Keys are the IDs of entries with sliced lines. Each value holds the slices of each Graphics
+        element of the entry, in order, as in 'Graphics.slices'. An element drawn whole has None.
 
     entry_borders : Dict[int, List[Union[str, Tuple[str, list], None]]]
         Keys are the IDs of entries with rings. Each value holds the ring of each Graphics element
@@ -2225,6 +2243,7 @@ class SlicedKGMLCanvas(KGMLCanvas):
         pathway: KGML_pathway.Pathway,
         entry_slices: Dict[int, List[Union[List[Tuple[str, float]], None]]],
         entry_borders: Union[Dict[int, List[Union[str, Tuple[str, list], None]]], None] = None,
+        entry_glyphs: Union[Dict[int, List[Union[Dict[str, list], None]]], None] = None,
         **kwargs
     ) -> None:
         """
@@ -2234,10 +2253,13 @@ class SlicedKGMLCanvas(KGMLCanvas):
             Biopython representation of a KGML file.
 
         entry_slices : Dict[int, List[Union[List[Tuple[str, float]], None]]]
-            The slices of each sliced entry, as in the attribute.
+            The slices of each entry with sliced lines, as in the attribute.
 
         entry_borders : Union[Dict[int, List[Union[str, Tuple[str, list], None]]], None], None
             The rings of each entry with rings, as in the attribute, or None for no rings.
+
+        entry_glyphs : Union[Dict[int, List[Union[Dict[str, list], None]]], None], None
+            The glyphs of each entry with glyphs, as in the attribute, or None for no glyphs.
 
         **kwargs
             Arguments to KGMLCanvas.
@@ -2246,6 +2268,7 @@ class SlicedKGMLCanvas(KGMLCanvas):
         super().__init__(pathway, **kwargs)
         self.entry_slices = entry_slices
         self.entry_borders = {} if entry_borders is None else entry_borders
+        self.entry_glyphs = {} if entry_glyphs is None else entry_glyphs
         # The grid is built when the first sliced line is drawn, since Drawer sets
         # 'non_reactant_transparency' after it makes the canvas.
         self.circle_grid: Union[CircleGrid, None] = None
@@ -2272,13 +2295,16 @@ class SlicedKGMLCanvas(KGMLCanvas):
 
     def _KGMLCanvas__add_reaction_entries(self) -> None:
         """
-        Draw reaction entries as Biopython does, except for entries with slices or rings.
+        Draw reaction entries as Biopython does, except for entries with glyphs, slices, or rings.
 
         Biopython draws an ortholog entry with a reaction twice, here and in the ortholog pass. An
-        entry with slices or rings is drawn once, in the ortholog pass.
+        entry with glyphs, slices, or rings is drawn once, in the ortholog pass.
         """
         for reaction in self.pathway.reaction_entries:
-            if reaction.id in self.entry_slices or reaction.id in self.entry_borders:
+            if (
+                reaction.id in self.entry_glyphs or reaction.id in self.entry_slices
+                or reaction.id in self.entry_borders
+            ):
                 continue
             for g in reaction.graphics:
                 self.drawing.setStrokeColor(color_to_reportlab(g.fgcolor))
@@ -2290,20 +2316,23 @@ class SlicedKGMLCanvas(KGMLCanvas):
 
     def _KGMLCanvas__add_orthologs(self) -> None:
         """
-        Draw ortholog entries as Biopython does, except for Graphics elements with slices or rings.
+        Draw ortholog entries as Biopython does, except for Graphics with glyphs, slices, or rings.
 
-        Only rectangles take rings. A ring on any other element is not drawn.
+        Only rectangles take glyphs and rings, and only lines take slices. Anything else is drawn as
+        Biopython draws it.
         """
         for ortholog in self.pathway.orthologs:
+            graphics_glyphs = self.entry_glyphs.get(ortholog.id)
             graphics_slices = self.entry_slices.get(ortholog.id)
             graphics_borders = self.entry_borders.get(ortholog.id)
             for i, g in enumerate(ortholog.graphics):
+                glyph = None if graphics_glyphs is None else graphics_glyphs[i]
                 slices = None if graphics_slices is None else graphics_slices[i]
                 border = None if graphics_borders is None else graphics_borders[i]
                 self.drawing.setStrokeColor(color_to_reportlab(g.fgcolor))
                 self.drawing.setFillColor(color_to_reportlab(g.bgcolor))
-                if (slices or border) and g.type == 'rectangle':
-                    self._draw_sliced_rectangle(g, slices, border)
+                if (glyph or border) and g.type == 'rectangle':
+                    self._draw_box_glyph(g, glyph, border)
                 elif slices and g.type == 'line':
                     self._draw_sliced_line(g, slices)
                 else:
@@ -2374,30 +2403,31 @@ class SlicedKGMLCanvas(KGMLCanvas):
         )
         drawing.restoreState()
 
-    def _draw_sliced_rectangle(
+    def _draw_box_glyph(
         self,
         graphics: KGML_pathway.Graphics,
-        slices: Union[List[Tuple[str, float]], None],
+        glyph: Union[Dict[str, list], None],
         border: Union[str, Tuple[str, list], None] = None
     ) -> None:
         """
-        Draw a rectangle as columns, one per slice, left to right, and its ring.
+        Draw a rectangle from its glyph ('Graphics.glyph'), and its ring.
 
-        Without a ring, the columns span the whole rectangle. With a ring, each column takes its
-        share of the width of the fill inside the ring ('get_box_fill_width'), so each column shows
-        its exact share. Every column is still drawn the full height of the rectangle, and the first
-        and last columns reach its left and right sides. Where a ring has no band, it shows the
-        color of the column under it, not the base map. The ring is drawn over the columns. Then
-        come the gray lines between columns, the black line inside the ring, and the outline.
+        The cells of the glyph are columns, left to right. Without a ring, the columns span the
+        whole rectangle. With a ring, each column takes its share of the width of the fill inside
+        the ring ('get_box_fill_width'), so each column shows its exact share. Every column is still
+        drawn the full height of the rectangle, and the first and last columns reach its left and
+        right sides. Where a ring has no band, it shows the color of the column under it, not the
+        base map. The ring is drawn over the columns. Then come the gray lines between columns, the
+        black line inside the ring, and the outline.
 
         Parameters
         ==========
         graphics : Bio.KEGG.KGML.KGML_pathway.Graphics
             A rectangle. The stroke color of the canvas is already set to its fg color.
 
-        slices : Union[List[Tuple[str, float]], None]
-            The color and share of the width of each column, or None for one column in the bg color
-            of the rectangle.
+        glyph : Union[Dict[str, list], None]
+            The display list of the rectangle, as in 'Graphics.glyph', or None for one column in the
+            bg color of the rectangle.
 
         border : Union[str, Tuple[str, list], None], None
             The ring, as in 'Graphics.border', or None for no ring.
@@ -2407,8 +2437,7 @@ class SlicedKGMLCanvas(KGMLCanvas):
         x0 = graphics.x - graphics.width * 0.5
         y0 = graphics.y - graphics.height * 0.5
         x1 = x0 + graphics.width
-        if slices is None:
-            slices = [(graphics.bgcolor, 1.0)]
+        cells = [(graphics.bgcolor, 1.0)] if glyph is None else glyph['cells']
         if border is None:
             fill_x0, fill_width, fill_x1 = x0, graphics.width, x1
         else:
@@ -2422,7 +2451,7 @@ class SlicedKGMLCanvas(KGMLCanvas):
         start = 0.0
         boundaries: List[float] = []
         columns: List[Tuple[float, float]] = []
-        for index, (color, share) in enumerate(slices):
+        for index, (color, share) in enumerate(cells):
             left = fill_x0 + start * fill_width
             right = min(left + share * fill_width + 0.5, fill_x1)
             drawing.setFillColor(color_to_reportlab(color))
@@ -2430,7 +2459,7 @@ class SlicedKGMLCanvas(KGMLCanvas):
                 drawing.rect(left, y0, right - left, graphics.height, stroke=0, fill=1)
             else:
                 draw_left = x0 if index == 0 else left
-                draw_right = x1 if index == len(slices) - 1 else right
+                draw_right = x1 if index == len(cells) - 1 else right
                 drawing.rect(
                     draw_left, y0, draw_right - draw_left, graphics.height, stroke=0, fill=1
                 )
@@ -2760,9 +2789,9 @@ class Drawer:
     """
     Write pathway map image files incorporating KGML data.
 
-    A map with Graphics elements that have slices or rings is drawn with 'SlicedKGMLCanvas'. Any
-    other map is drawn with Biopython's 'KGMLCanvas'. Neither canvas labels a box or circle too
-    small to see ('TINY_GRAPHICS_MAX_SIZE').
+    A map with Graphics elements that have glyphs, slices, or rings is drawn with
+    'SlicedKGMLCanvas'. Any other map is drawn with Biopython's 'KGMLCanvas'. Neither canvas labels
+    a box or circle too small to see ('TINY_GRAPHICS_MAX_SIZE').
 
     Attributes
     ==========
@@ -2950,6 +2979,34 @@ class Drawer:
             )
 
     @staticmethod
+    def _get_entry_glyphs(pathway: Pathway) -> Dict[int, List[Union[Dict[str, list], None]]]:
+        """
+        Get the glyphs of the entries that have any.
+
+        Parameters
+        ==========
+        pathway : Pathway
+            Object representation of a KGML file.
+
+        Returns
+        =======
+        Dict[int, List[Union[Dict[str, list], None]]]
+            Keys are the IDs of entries with any Graphics element that has a glyph. Each value holds
+            the 'glyph' attribute of each Graphics element of the entry, in order. The dictionary is
+            empty if no entry has a glyph.
+        """
+        entry_glyphs: Dict[int, List[Union[Dict[str, list], None]]] = {}
+        for entry_uuid in pathway.children['entry']:
+            entry: Entry = pathway.uuid_element_lookup[entry_uuid]
+            graphics_glyphs = [
+                pathway.uuid_element_lookup[graphics_uuid].glyph
+                for graphics_uuid in entry.children['graphics']
+            ]
+            if any(graphics_glyphs):
+                entry_glyphs[int(entry.id)] = graphics_glyphs
+        return entry_glyphs
+
+    @staticmethod
     def _get_entry_slices(
         pathway: Pathway
     ) -> Dict[int, List[Union[List[Tuple[str, float]], None]]]:
@@ -3077,7 +3134,8 @@ class Drawer:
         if kwargs.get('fontsize') is None:
             kwargs['fontsize'] = 9
 
-        # Slices and rings are not part of KGML, so they are gathered before the KGML round trip.
+        # Glyphs, slices, and rings are not KGML, so they are gathered before the KGML round trip.
+        entry_glyphs = self._get_entry_glyphs(pathway)
         entry_slices = self._get_entry_slices(pathway)
         entry_borders = self._get_entry_borders(pathway)
         bio_pathway = KGML_parser.read(StringIO(self.xml_ops.get_str(pathway)))
@@ -3113,8 +3171,10 @@ class Drawer:
 
         bio_pathway.image = map_filepath
 
-        if entry_slices or entry_borders:
-            canvas = SlicedKGMLCanvas(bio_pathway, entry_slices, entry_borders, **kwargs)
+        if entry_glyphs or entry_slices or entry_borders:
+            canvas = SlicedKGMLCanvas(
+                bio_pathway, entry_slices, entry_borders, entry_glyphs=entry_glyphs, **kwargs
+            )
         else:
             canvas = KGMLCanvas(bio_pathway, **kwargs)
         canvas.non_reactant_transparency = self.non_reactant_transparency
@@ -3159,7 +3219,8 @@ class Drawer:
         if kwargs.get('label_reaction_entries') is None:
             kwargs['label_reaction_entries'] = False
 
-        # Slices and rings are not part of KGML, so they are gathered before the KGML round trip.
+        # Glyphs, slices, and rings are not KGML, so they are gathered before the KGML round trip.
+        entry_glyphs = self._get_entry_glyphs(pathway)
         entry_slices = self._get_entry_slices(pathway)
         entry_borders = self._get_entry_borders(pathway)
         bio_pathway = KGML_parser.read(StringIO(self.xml_ops.get_str(pathway)))
@@ -3190,8 +3251,10 @@ class Drawer:
 
         bio_pathway.image = map_filepath
 
-        if entry_slices or entry_borders:
-            canvas = SlicedKGMLCanvas(bio_pathway, entry_slices, entry_borders, **kwargs)
+        if entry_glyphs or entry_slices or entry_borders:
+            canvas = SlicedKGMLCanvas(
+                bio_pathway, entry_slices, entry_borders, entry_glyphs=entry_glyphs, **kwargs
+            )
         else:
             canvas = KGMLCanvas(bio_pathway, **kwargs)
         canvas.non_reactant_transparency = self.non_reactant_transparency
@@ -3234,7 +3297,8 @@ class Drawer:
         if kwargs.get('label_orthologs') is None:
             kwargs['label_orthologs'] = True
 
-        # Slices and rings are not part of KGML, so they are gathered before the KGML round trip.
+        # Glyphs, slices, and rings are not KGML, so they are gathered before the KGML round trip.
+        entry_glyphs = self._get_entry_glyphs(pathway)
         entry_slices = self._get_entry_slices(pathway)
         entry_borders = self._get_entry_borders(pathway)
         bio_pathway = KGML_parser.read(StringIO(self.xml_ops.get_str(pathway)))
@@ -3264,8 +3328,10 @@ class Drawer:
 
         bio_pathway.image = map_filepath
 
-        if entry_slices or entry_borders:
-            canvas = SlicedKGMLCanvas(bio_pathway, entry_slices, entry_borders, **kwargs)
+        if entry_glyphs or entry_slices or entry_borders:
+            canvas = SlicedKGMLCanvas(
+                bio_pathway, entry_slices, entry_borders, entry_glyphs=entry_glyphs, **kwargs
+            )
         else:
             canvas = KGMLCanvas(bio_pathway, **kwargs)
         canvas.non_reactant_transparency = self.non_reactant_transparency

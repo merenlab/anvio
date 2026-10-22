@@ -13616,15 +13616,15 @@ class Mapper:
         slice with the highest priority, which sets the order in which the Entry is drawn. The
         colors of every slice are registered in 'color_priority', in the form of a whole Entry
         ('_stage_element_color'). The top slice is registered last, so its color keeps its priority
-        where another slice of the Entry has the same color. Each Graphics element then gets the
-        slices, as (color, share) pairs in the order of the slices, in its 'slices' attribute. On a
-        map that derives the colors of compounds from reactions, the stand-in casts the Entry's one
-        vote ('compound_vote'). Where the stand-in is undefined, the vote is an empty tuple, and the
-        Entry casts no vote.
+        where another slice of the Entry has the same color. Each box then gets the slices as the
+        cells of its glyph ('Graphics.glyph'), and each line in its 'slices' attribute, as (color,
+        share) pairs in the order of the slices. On a map that derives the colors of compounds from
+        reactions, the stand-in casts the Entry's one vote ('compound_vote'). Where the stand-in is
+        undefined, the vote is an empty tuple, and the Entry casts no vote.
 
         '_find_element_entries' can find an Entry more than once. Each staging therefore overwrites
-        the slices and the vote of the last, and an Entry staged whole has neither. A vote of None
-        means that none was set.
+        the glyph or the slices and the vote of the last, and an Entry staged whole has none of
+        them. A vote of None means that none was set.
 
         Parameters
         ==========
@@ -13662,6 +13662,7 @@ class Mapper:
         ]
         for graphics in graphics_elements:
             graphics.slices = None
+            graphics.glyph = None
             graphics.border = None
         entry.compound_vote = None
         sliced = spec['slicer'](entry)
@@ -13690,7 +13691,11 @@ class Mapper:
                     keep_highest_priority=keep_highest_priority
                 )
             for graphics in graphics_elements:
-                graphics.slices = [(color, share) for _, _, share, color, _ in slices]
+                pairs = [(color, share) for _, _, share, color, _ in slices]
+                if graphics.type == 'rectangle':
+                    graphics.glyph = {'cells': pairs}
+                else:
+                    graphics.slices = pairs
             if derives_compounds:
                 # An Entry whose stand-in is undefined has no value to vote with. The empty tuple
                 # keeps 'kgml' from taking the color of the top slice as its vote.
