@@ -186,9 +186,9 @@ CIRCULAR_AGGREGATIONS: Tuple[str, ...] = (
 # colorbar is labeled with the value column's name. The 'unified' map shows the spread of those
 # points. Its scale runs from 0 to the largest spread there can be, 5.40 with a period of 24. It
 # takes a colormap that is not cyclic, since the smallest and the largest spread are not the same
-# point. By default this is 'plasma_r' for the fill and 'viridis' for a border ('_txt_channel'). Its
-# colorbar is labeled '{value} angular deviation'. On global and overview maps, its compound colors
-# are averaged as plain numbers, not on a circle.
+# point. By default this is 'plasma_r' for the fill and 'viridis' for a border
+# ('TXT_CHANNEL_ROLES'). Its colorbar is labeled '{value} angular deviation'. On global and overview
+# maps, its compound colors are averaged as plain numbers, not on a circle.
 CIRCULAR_SPREADS: Tuple[str, ...] = (
     'angular_deviation',
 )
@@ -349,10 +349,10 @@ DEFAULT_VALUE_COLORS: Tuple[str, ...] = (
     '#9edae5'
 )
 
-# The colors that categorical border values take when no colors file gives them ('_txt_channel').
-# These are the colors of Matplotlib's 'Dark2' without its gray. They differ from the colors of the
-# fill, so that a color means a value of one column only. The last two are close to the default
-# compound and reaction colors, so they come last.
+# The colors that categorical border values take when no colors file gives them
+# ('TXT_CHANNEL_ROLES'). These are the colors of Matplotlib's 'Dark2' without its gray. They differ
+# from the colors of the fill, so that a color means a value of one column only. The last two are
+# close to the default compound and reaction colors, so they come last.
 DEFAULT_BORDER_VALUE_COLORS: Tuple[str, ...] = (
     '#d95f02', '#7570b3', '#e6ab02', '#a6761d', '#1b9e77', '#e7298a', '#66a61e'
 )
@@ -363,6 +363,49 @@ DEFAULT_BORDER_VALUE_COLORS: Tuple[str, ...] = (
 # value of one column only.
 DEFAULT_BORDER_COLORMAP = 'viridis'
 DEFAULT_BORDER_COLORMAP_LIMITS: Tuple[float, float] = (0.2, 1.0)
+
+# The channels of a layer from a text file, keyed by role ('_txt_channel'). The value column of a
+# file colors the fill of each map element. A border column colors the border of the element instead
+# ('--reaction-border-column', '--compound-border-column'). Every channel is built by the same
+# methods ('_build_txt_model'). A channel names the options of its values in messages, and it gives
+# their defaults. The channels have different defaults, so that a color means a value of one column
+# only. In the text of a role, '{element_type}' stands for 'reaction' or 'compound'.
+TXT_CHANNEL_ROLES: Dict[str, dict] = {
+    'fill': {
+        'flag_stem': '{element_type}',
+        'noun': '{element_type}',
+        'plural': '{element_type}s',
+        'name': '{element_type}s',
+        'column': 'value column',
+        'values': 'values',
+        'presence': True,
+        'default_aggregation': 'sum',
+        'default_colormap': 'plasma_r',
+        'default_colormap_limits': None,
+        'default_centered_colormap': DEFAULT_CENTERED_COLORMAP,
+        'default_value_colors': DEFAULT_VALUE_COLORS,
+        'choice_salt': (),
+        'consequence': 'is left uncolored',
+        'consequence_plural': 'are left uncolored'
+    },
+    'border': {
+        'flag_stem': '{element_type}-border',
+        'noun': '{element_type} border',
+        'plural': '{element_type} borders',
+        'name': '{element_type}s_border',
+        'column': 'border column',
+        'values': 'border values',
+        'presence': False,
+        'default_aggregation': 'mean',
+        'default_colormap': DEFAULT_BORDER_COLORMAP,
+        'default_colormap_limits': DEFAULT_BORDER_COLORMAP_LIMITS,
+        'default_centered_colormap': DEFAULT_CENTERED_COLORMAP,
+        'default_value_colors': DEFAULT_BORDER_VALUE_COLORS,
+        'choice_salt': ('border',),
+        'consequence': 'shows no border',
+        'consequence_plural': 'show no border'
+    }
+}
 
 # The rules that choose one categorical value where several meet ('_choose_categorical_value').
 # Values meet among the genes of one accession ('--reaction-gene-aggregation'), among the accessions
@@ -3768,11 +3811,7 @@ class Mapper:
         """
         Describe one channel of a layer from a text file: its fill or its border.
 
-        The value column of a file colors the fill of each map element. A border column colors the
-        border of the element instead ('--reaction-border-column', '--compound-border-column'). The
-        two channels are built by the same methods ('_build_txt_model'). The channel names the
-        options of its values in messages, and it gives their defaults. The two channels have
-        different defaults, so that a color means a value of one column only.
+        A channel is the row of its role in 'TXT_CHANNEL_ROLES', with the layer named in its text.
 
         Parameters
         ==========
@@ -3814,44 +3853,13 @@ class Mapper:
             - 'consequence' and 'consequence_plural': what happens to an element without a value, as
               in "an element is left uncolored" or "elements show no border".
         """
-        if role == 'fill':
-            return {
-                'role': role,
-                'element_type': element_type,
-                'flag_stem': element_type,
-                'noun': element_type,
-                'plural': f'{element_type}s',
-                'name': f'{element_type}s',
-                'column': 'value column',
-                'values': 'values',
-                'presence': True,
-                'default_aggregation': 'sum',
-                'default_colormap': 'plasma_r',
-                'default_colormap_limits': None,
-                'default_centered_colormap': DEFAULT_CENTERED_COLORMAP,
-                'default_value_colors': DEFAULT_VALUE_COLORS,
-                'choice_salt': (),
-                'consequence': 'is left uncolored',
-                'consequence_plural': 'are left uncolored'
-            }
         return {
             'role': role,
             'element_type': element_type,
-            'flag_stem': f'{element_type}-border',
-            'noun': f'{element_type} border',
-            'plural': f'{element_type} borders',
-            'name': f'{element_type}s_border',
-            'column': 'border column',
-            'values': 'border values',
-            'presence': False,
-            'default_aggregation': 'mean',
-            'default_colormap': DEFAULT_BORDER_COLORMAP,
-            'default_colormap_limits': DEFAULT_BORDER_COLORMAP_LIMITS,
-            'default_centered_colormap': DEFAULT_CENTERED_COLORMAP,
-            'default_value_colors': DEFAULT_BORDER_VALUE_COLORS,
-            'choice_salt': ('border',),
-            'consequence': 'shows no border',
-            'consequence_plural': 'show no border'
+            **{
+                key: value.format(element_type=element_type) if isinstance(value, str) else value
+                for key, value in TXT_CHANNEL_ROLES[role].items()
+            }
         }
 
     def _txt_model_common(

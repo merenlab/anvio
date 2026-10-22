@@ -52,7 +52,7 @@ from anvio.keggmapping import (
     ELEMENT_NORMALIZATION_PHRASE, GROUP_COLORMAP_TINT, GROUP_SCHEME_OPTIONS, MAP_KINDS,
     MAX_DISCRETE_COUNT_BANDS, MAX_RING_SLICES, MIN_ANGULAR_DEVIATION_VALUES, MIN_BOX_SLICE_WIDTH,
     SLICE_SHARE_SUMMARIES, SLICE_UNITS, SLICE_WEIGHT_AGGREGATIONS, SUMMARY_PRESENCE_PHRASE,
-    SUMMARY_PRESENCE_SCHEMES, VALUE_TYPES, Mapper
+    SUMMARY_PRESENCE_SCHEMES, TXT_CHANNEL_ROLES, VALUE_TYPES, Mapper
 )
 
 
@@ -134,6 +134,13 @@ BORDER_FLAGS = {
         '--compound-border-value-center', '--compound-border-individual-value-center',
         '--compound-border-element-normalization'
     )
+}
+
+# The options of the channels of a layer other than its fill ('TXT_CHANNEL_ROLES'), keyed by role
+# and then by layer. '--original-color' refuses those of the reaction layer, and the inputs other
+# than text files refuse all of them.
+CHANNEL_FLAGS = {
+    'border': BORDER_FLAGS
 }
 
 
@@ -2006,34 +2013,37 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 return f" The border column '{column}' has an option of its own, '{border_flag}'."
             return f" The border column '{column}' colors only the borders."
 
-        # The guards below apply to each channel of a layer: its fill, and its border where a border
-        # column names one. A channel is listed with its element type, the stem of its options, the
-        # noun that messages use for it, its file option, its structure, its two summaries, and
-        # whether it is a border. The structure of a border is that of its file, with the mode of
-        # its border column. A border option without its border column was refused above, so every
-        # border option given here has a channel.
+        # The guards below apply to each channel of a layer ('TXT_CHANNEL_ROLES'): its fill, and its
+        # border where a border column names one. A channel is listed with its element type, the
+        # stem of its options, the noun that messages use for it, its file option, its structure,
+        # its two summaries, and its role. The structure of a channel other than the fill is that of
+        # its file, with the mode of the channel's column. A border option without its border column
+        # was refused above, so every border option given here has a channel.
         channels = []
         for element_type, file_flag, layer, sample_summary, group_summary in summaries:
-            channels.append((
-                element_type, element_type, element_type, file_flag, layer, sample_summary,
-                group_summary, False
-            ))
-            if layer is not None and layer['border_mode'] is not None:
-                stem = f'{element_type}-border'
-                channels.append((
-                    element_type, stem, f'{element_type} border', file_flag,
-                    {**layer, 'mode': layer['border_mode']}, _arg(stem, 'sample_summary'),
-                    _arg(stem, 'group_summary'), True
-                ))
+            for role in TXT_CHANNEL_ROLES:
+                channel = Mapper._txt_channel(element_type, role)
+                stem = channel['flag_stem']
+                if role == 'fill':
+                    channels.append((
+                        element_type, stem, channel['noun'], file_flag, layer, sample_summary,
+                        group_summary, role
+                    ))
+                elif layer is not None and layer[f'{role}_mode'] is not None:
+                    channels.append((
+                        element_type, stem, channel['noun'], file_flag,
+                        {**layer, 'mode': layer[f'{role}_mode']}, _arg(stem, 'sample_summary'),
+                        _arg(stem, 'group_summary'), role
+                    ))
 
         # A value type says what a layer's value column holds, so it needs that layer's file and its
         # value column. Colors given per categorical value need categorical values, and a map that
         # shows them. With groups, only a rule among each group's samples puts the values on a map.
         # A border column has a value type and colors of its own.
-        for element_type, stem, noun, file_flag, layer, sample_summary, _, border in channels:
+        for element_type, stem, noun, file_flag, layer, sample_summary, _, role in channels:
             value_type = _arg(stem, 'value_type')
             type_flag = f'--{stem}-value-type'
-            column_noun = 'border column' if border else 'value column'
+            column_noun = 'border column' if role == 'border' else 'value column'
             if value_type is not None and layer is None:
                 raise ConfigError(
                     f"'{type_flag}' says what the value column of the {element_type} file holds, "
@@ -2068,7 +2078,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     )
                 if (
                     layer['has_sample'] and args.groups_txt is not None
-                    and sample_summary not in CATEGORICAL_RULES and border
+                    and sample_summary not in CATEGORICAL_RULES and role == 'border'
                 ):
                     raise ConfigError(
                         f"'{colors_flag}' gives a color to each categorical border value. Here the "
@@ -2133,7 +2143,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 (args.reaction_slice_share_summary is not None, '--reaction-slice-share-summary'),
                 *(
                     (getattr(args, flag[2:].replace('-', '_')) is not None, flag)
-                    for flag in BORDER_FLAGS['reaction']
+                    for role_flags in CHANNEL_FLAGS.values() for flag in role_flags['reaction']
                 )
             ) if present_flag]
             if original_flags:
@@ -2257,8 +2267,11 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         unified_level = 'group' if args.groups_txt is not None else 'sample'
         # The colormap of a border colors numbers only. Categorical border values take colors of
         # their own, and a border shows no presence for a colormap to color.
-        for element_type, stem, _, _, layer, _, _, border in channels:
-            if border and layer['mode'] == 'categorical' and _arg(stem, 'colormap') is not None:
+        for element_type, stem, _, _, layer, _, _, role in channels:
+            if (
+                role == 'border' and layer['mode'] == 'categorical'
+                and _arg(stem, 'colormap') is not None
+            ):
                 raise ConfigError(
                     f"'--{stem}-colormap' colors numeric border values. The border values of the "
                     f"{element_type} layer are categorical ('--{stem}-value-type categorical'). "
@@ -2546,7 +2559,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         # column. A summary that pools values also needs a value column.
         # A border has summaries of its own. They take no presence names, since a border shows
         # values only.
-        for element_type, stem, noun, file_flag, layer, sample_summary, group_summary, border in (
+        for element_type, stem, noun, file_flag, layer, sample_summary, group_summary, role in (
             channels
         ):
             for level, summary in (('sample', sample_summary), ('group', group_summary)):
@@ -2568,7 +2581,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                         f"'{flag}' summarizes groups of samples, but no groups were defined with "
                         f"'--groups-txt'."
                     )
-                if border and summary in PRESENCE_SUMMARIES:
+                if role == 'border' and summary in PRESENCE_SUMMARIES:
                     raise ConfigError(
                         f"'{flag}' was given as '{summary}', which summarizes presence across the "
                         f"{level}s. A border shows values only, and the fill already shows "
@@ -2588,7 +2601,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     )
                 if summary in CATEGORICAL_RULES and layer['mode'] == 'quantitative':
                     values_of = (
-                        f"the border column of the {element_type} file" if border
+                        f"the border column of the {element_type} file" if role == 'border'
                         else f"the {element_type} file"
                     )
                     raise ConfigError(
@@ -2603,7 +2616,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     # With groups, the samples of a group are counted unless a rule chooses among
                     # them, so presence names are no alternative at the sample level there. A border
                     # takes no presence names.
-                    if border or level == 'sample' and args.groups_txt is not None:
+                    if role == 'border' or level == 'sample' and args.groups_txt is not None:
                         alternatives = (
                             f"Choose one value among the samples of each group with one of "
                             f"{CATEGORICAL_RULES_PHRASE}."
@@ -2663,7 +2676,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 # is asking for two different things on the 'unified' map. The static color is the
                 # fill's, so a border keeps its summaries.
                 static_flag = f'--{element_type}-color'
-                if not border and getattr(args, f'{element_type}_color') is not None:
+                if role == 'fill' and getattr(args, f'{element_type}_color') is not None:
                     raise ConfigError(
                         f"'{flag}' summarizes the {element_type} layer's samples or groups, but "
                         f"'{static_flag}' colors that layer one static color for presence in any "
@@ -2680,7 +2693,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     ) if level == 'group' else (
                         "The map of an individual sample shows the border values of that sample "
                         "alone."
-                    ) if border else (
+                    ) if role == 'border' else (
                         "The map of an individual sample shows that one sample alone. It shows "
                         "the sample's own values where the file has a value column, and its "
                         "presence where it does not."
@@ -2698,7 +2711,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 and group_summary in CATEGORICAL_RULES and sample_summary not in CATEGORICAL_RULES
             ):
                 without = (
-                    "the groups have no border values" if border else
+                    "the groups have no border values" if role == 'border' else
                     "that option counts each group's samples, so the groups have no values"
                 )
                 raise ConfigError(
@@ -2710,7 +2723,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
             if group_summary is not None and group_summary not in PRESENCE_SUMMARIES and (
                 sample_summary is None or sample_summary in PRESENCE_SUMMARIES
             ) and group_summary not in CATEGORICAL_RULES:
-                if border:
+                if role == 'border':
                     raise ConfigError(
                         f"'--{stem}-group-summary' was given as '{group_summary}', which pools the "
                         f"border values of the groups. Each group's border value comes from "
@@ -3697,8 +3710,9 @@ def main() -> None:
                 (args.reaction_slice_share_summary is not None, '--reaction-slice-share-summary'),
                 *(
                     (getattr(args, flag[2:].replace('-', '_')) is not None, flag)
+                    for role_flags in CHANNEL_FLAGS.values()
                     for element_type in ('reaction', 'compound')
-                    for flag in BORDER_FLAGS[element_type]
+                    for flag in role_flags[element_type]
                 )
             ) if present_flag]
             if compound_only_flags:
