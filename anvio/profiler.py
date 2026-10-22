@@ -923,7 +923,7 @@ class BAMProfilerQuick:
             self._write_bin_stats_minimal(output, bin_name, bam_file_name, bin_data, mean, detection, num_reads)
         else:
             C = utils.CoverageStats(coverage_array, skip_outliers=True, return_window_info=window_output is not None)
-            D = DisCov(coverage_array, bin_name, bam_file_name, contig_boundary_positions)
+            D = DisCov(coverage_array, bin_name, bam_file_name, contig_boundary_positions, num_reads=num_reads)
             output.write(f"{bin_name}\t"
                          f"{bam_file_name}\t"
                          f"{bin_data['length']}\t"
@@ -967,7 +967,7 @@ class BAMProfilerQuick:
                          f"{mean:.4}\n")
         else:
             C = utils.CoverageStats(coverage_obj.c, skip_outliers=True, return_window_info=window_output is not None)
-            D = DisCov(coverage_obj.c, contig_name, bam_file_name)
+            D = DisCov(coverage_obj.c, contig_name, bam_file_name, num_reads=coverage_obj.num_reads)
             output.write(f"{contig_name}\t"
                          f"{bam_file_name}\t"
                          f"{self.contigs_basic_info[contig_name]['length']}\t"
