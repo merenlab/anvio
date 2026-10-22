@@ -456,12 +456,12 @@ class DisCov:
         """Returns observed detection relative to the detection expected if reads were placed randomly: min(1, D_obs / D_exp)
 
         D_exp = 1 - e^(-c), where c is the mean coverage across all bases (including those with 0 coverage).
-        Returns None if there is no coverage, since D_exp is then 0.
+        Returns 0 if there is no coverage (D_exp is then 0).
         """
 
         D_exp = 1 - np.exp(-c)
         if D_exp == 0:
-            return None
+            return 0.0
         return min(1, D_obs / D_exp)
 
     def normalized_spread(self, S_obs, B, N, w, G):
@@ -469,14 +469,14 @@ class DisCov:
 
         S_exp = 1 - e^(-(B + N*w) / G), where B is the sum of aligned lengths (sum of the coverage array), N is the
         number of reads mapping to the reference, w is the window length used to compute S_obs, and G is the reference
-        length. Returns None if S_obs or N is not available, or if S_exp is 0.
+        length. Returns None if S_obs or N is not available, and 0 if there is no coverage (S_exp is then 0).
         """
 
         if S_obs is None or N is None:
             return None
         S_exp = 1 - np.exp(-(B + N * w) / G)
         if S_exp == 0:
-            return None
+            return 0.0
         return min(1, S_obs / S_exp)
 
     def get_discov_versions(self):
