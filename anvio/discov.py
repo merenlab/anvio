@@ -26,8 +26,11 @@ class DisCov:
     # subset of the above whose spread-evenness scores (C) are combined with detection (D) in the Discov scores
     DISCOV_EVENNESS_METRICS = ["Nonzero Depth Fold-Range Detection (Narrow: 0.5x - 2x)",
                                "Windows Depth Evenness CV (fine)"]
+    # subset of the above that are also combined with the normalized spread (S*) in spread-evenness scores
+    NORM_SE_EVENNESS_METRICS = ["Nonzero Depth Fold-Range Detection (Narrow: 0.5x - 2x)",
+                                "Windows Depth Evenness CV (fine)"]
 
-    def __init__(self, coverage, contig_or_genome_name=None, sample_name=None, contig_starts=None):
+    def __init__(self, coverage, contig_or_genome_name=None, sample_name=None, contig_starts=None, num_reads=None):
         self.median: float = np.median(coverage)
         self.mean: float = np.mean(coverage)
         self.std: float = np.std(coverage)
@@ -35,6 +38,7 @@ class DisCov:
         self.name = contig_or_genome_name # optional parameter, only used for debug output
         self.sample = sample_name
         self.contig_start_positions = contig_starts # optional for genome-level stats
+        self.num_reads = num_reads # optional, needed for normalized spread
 
         # establish output files for testing
         unfilt_output = "TEST_METRICS_DISCOV.txt"
@@ -43,6 +47,7 @@ class DisCov:
                   "Gini Gap Evenness",
                   "Proportion Windows Covered (fine)", "Proportion Covered (medium)", "Proportion Covered (coarse)",
                   "Detection",
+                  "Normalized Detection", "Normalized Spread (S = Proportion Windows Covered (fine))",
                   "Covered Region Midpoints Range", "Covered Region Midpoint Spread (CV of Distances)",
                   "Dispersion of Covered Bases in Windows (n=10)", "Dispersion of Covered Bases in Windows (n=30)", "Dispersion of Covered Bases in Windows (n=50)",
                   "Dispersion of Detection in Windows (n=10)", "Dispersion of Detection in Windows (n=30)",  "Dispersion of Detection in Windows (n=50)",
@@ -61,6 +66,7 @@ class DisCov:
                   "Log-normalized Shannon Entropy", # combines both spread and evenness
                   # combines proportion windows covered (fine) with an evenness metric E
                   *[f"Spread-Evenness Score [{formula}; E = {E}]" for E in self.SE_EVENNESS_METRICS for formula in ['linear', 'geometric']],
+                  *[f"Spread-Evenness Score [{formula}; S = Normalized Spread; E = {E}]" for E in self.NORM_SE_EVENNESS_METRICS for formula in ['linear', 'geometric']],
                   # combines spread-evenness score (C) with detection (D)
                   *[f"Discov {opt} [{formula} C, k={k}; E = {E}]" for E, opt, formula, k in self.get_discov_versions()]
         ]
@@ -118,7 +124,8 @@ class DisCov:
             'medium': max(500, L // 20),     # ~5% of contig
             'coarse': max(1000, L // 10)     # ~10% of contig
         }
-        sliding_window_metrics = self.sliding_window_evenness(cov_array, get_window_scales(len(cov_array)))
+        window_scales = get_window_scales(len(cov_array))
+        sliding_window_metrics = self.sliding_window_evenness(cov_array, window_scales)
         nz_sliding_window_metrics = self.sliding_window_evenness(nz_cov_array, get_window_scales(len(nz_cov_array)))
 
         covered_bases_dispersion = [self.binned_count_dispersion(cov_array, num_windows=n) for n in dispersion_window_nums]
@@ -145,6 +152,11 @@ class DisCov:
             nz_depth_foldrange_wide = 0.0
             shannon_entropy = None
 
+        ## normalized metrics
+        normalized_detection = self.normalized_detection(self.detection, c=np.mean(cov_array))
+        normalized_spread = self.normalized_spread(sliding_window_metrics['fine']['Proportion_Covered'], B=np.sum(cov_array), N=self.num_reads,
+                                                   w=window_scales['fine'], G=len(cov_array))
+
         ## combined metrics
         E_values = {"Nonzero Depth Fold-Range Detection (Narrow: 0.5x - 2x)": nz_depth_foldrange_narrow,
                     "Nonzero Depth Fold-Range Detection (Wide: 0.25x - 4x)": nz_depth_foldrange_wide,
@@ -153,6 +165,8 @@ class DisCov:
                     "Windows Depth Evenness CV (fine)": sliding_window_metrics['fine']['Depth_Evenness_CV']}
         SE_scores = {(E, formula): self.spread_evenness_score(S=sliding_window_metrics["fine"]['Proportion_Covered'], E=E_values[E], alpha=0.5, formula=formula)
                      for E in self.SE_EVENNESS_METRICS for formula in ['linear', 'geometric']}
+        norm_SE_scores = {(E, formula): self.spread_evenness_score(S=normalized_spread, E=E_values[E], alpha=0.5, formula=formula)
+                          for E in self.NORM_SE_EVENNESS_METRICS for formula in ['linear', 'geometric']}
 
         ## discov
         discov_funcs = {'A': lambda C, k: self.discov_option_A(C, self.detection, beta=1, k=k),
@@ -168,6 +182,7 @@ class DisCov:
                        fmt(gini_gap_evenness),
                        *[fmt(sliding_window_metrics[s]['Proportion_Covered']) for s in scales],
                        fmt(self.detection),
+                       fmt(normalized_detection), fmt(normalized_spread),
                        fmt(midpoint_range), fmt(midpoint_spread),
                        *[fmt(d) for d in covered_bases_dispersion],
                        *[fmt(d) for d in detection_dispersion],
@@ -182,6 +197,7 @@ class DisCov:
                        fmt(nz_depth_foldrange_narrow), fmt(nz_depth_foldrange_wide),
                        fmt(shannon_entropy),
                        *[fmt(SE_scores[(E, formula)]) for E in self.SE_EVENNESS_METRICS for formula in ['linear', 'geometric']],
+                       *[fmt(norm_SE_scores[(E, formula)]) for E in self.NORM_SE_EVENNESS_METRICS for formula in ['linear', 'geometric']],
                        *[fmt(d) for d in discov_scores],
                       ]
         with open(output_file, 'a') as f:
@@ -435,6 +451,33 @@ class DisCov:
             return S**(alpha) * E**(1-alpha)
         else:
             raise ConfigError(f"spread_evenness_score does not understand the formula parameter '{formula}'")
+
+    def normalized_detection(self, D_obs, c):
+        """Returns observed detection relative to the detection expected if reads were placed randomly: min(1, D_obs / D_exp)
+
+        D_exp = 1 - e^(-c), where c is the mean coverage across all bases (including those with 0 coverage).
+        Returns None if there is no coverage, since D_exp is then 0.
+        """
+
+        D_exp = 1 - np.exp(-c)
+        if D_exp == 0:
+            return None
+        return min(1, D_obs / D_exp)
+
+    def normalized_spread(self, S_obs, B, N, w, G):
+        """Returns observed spread relative to the spread expected if reads were placed randomly: min(1, S_obs / S_exp)
+
+        S_exp = 1 - e^(-(B + N*w) / G), where B is the sum of aligned lengths (sum of the coverage array), N is the
+        number of reads mapping to the reference, w is the window length used to compute S_obs, and G is the reference
+        length. Returns None if S_obs or N is not available, or if S_exp is 0.
+        """
+
+        if S_obs is None or N is None:
+            return None
+        S_exp = 1 - np.exp(-(B + N * w) / G)
+        if S_exp == 0:
+            return None
+        return min(1, S_obs / S_exp)
 
     def get_discov_versions(self):
         """Returns an (E, option, C formula, k) tuple for each Discov version, in output order."""
