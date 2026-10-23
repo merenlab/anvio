@@ -984,9 +984,10 @@ class Integrator(object):
             ['seed_contig_name', 'seed_permutation']).ngroups:
             are_permutations_unresolved = False
         if are_permutations_unresolved: # (1)
-            hits_df['count'] = hits_df.groupby(
-                ['seed_contig_name', 'seed_permutation'], as_index=False)[
-                    'seed_contig_name'].transform(len)
+            # Count each gene once, though its hit is repeated for each bin containing the gene.
+            gene_keys = hits_df['contigs_db_hash'] + '|' + hits_df['gene_callers_id'].astype(str)
+            hits_df['count'] = gene_keys.groupby(
+                [hits_df['seed_contig_name'], hits_df['seed_permutation']]).transform('nunique')
             hits_df = hits_df[
                 hits_df['count'] == hits_df.groupby('seed_contig_name')['count'].transform('max')]
             hits_df = hits_df.drop('count', axis=1)
