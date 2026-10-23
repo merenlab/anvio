@@ -993,7 +993,7 @@ class Integrator(object):
                 are_permutations_unresolved = False
         if are_permutations_unresolved: # (2)
             hits_df['num_permuted_positions'] = hits_df[
-                'seed_permutation'].apply(lambda p: p.count('_'))
+                'seed_permutation'].apply(lambda p: len(p.split('_')) if p else 0)
             hits_df = hits_df[
                 hits_df['num_permuted_positions'] == hits_df.groupby('seed_contig_name')[
                     'num_permuted_positions'].transform('min')]
