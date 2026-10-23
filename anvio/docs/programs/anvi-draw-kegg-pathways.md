@@ -87,7 +87,7 @@ Map files are sorted into up to four subdirectories, one for each kind of map:
 |`grid`|The map grids, each showing the `unified` map alongside the individual ones, or the individual ones alone with `--skip-unified-maps`. Drawn on request with `--draw-grid`.|
 |`by_map`|The same individual maps arranged the other way round: one subdirectory per map, each holding one file per data source, named after it. Written on request with `--collate-files-by-map`. With `--animate-files-by-map`, a player of each map is written beside its subdirectory.|
 
-Colorbars, which are keys to the colors of every map in the run, are written at the top of the output directory beside these subdirectories. The reaction layer can have the keys below. The compound layer has the same colorbars, with `compounds` in place of `reactions`.
+Colorbars, which are keys to the colors of every map in the run, are written at the top of the output directory beside these subdirectories, and so are the keys to the lengths of bars. The reaction layer can have the keys below. The compound layer has the same colorbars, with `compounds` in place of `reactions`. Only the reaction layer has bars.
 
 |File|What it keys|
 |:--|:--|
@@ -95,6 +95,8 @@ Colorbars, which are keys to the colors of every map in the run, are written at 
 |`colorbar_reactions_samples.pdf` or `colorbar_reactions_groups.pdf`|The fills of the maps of the individual samples or groups, which share this key.|
 |`colorbar_reactions_border.pdf`|The borders of the `unified` map, or of every map for a file without a `sample` column (see [Color borders by a second column](#color-borders-by-a-second-column)).|
 |`colorbar_reactions_border_samples.pdf` or `colorbar_reactions_border_groups.pdf`|The borders of the maps of the individual samples or groups, which share this key.|
+|`bar_key_reactions.pdf`|The lengths of the bars of the `unified` map, or of every map for a file without a `sample` column (see [Draw bars in boxes](#draw-bars-in-boxes)).|
+|`bar_key_reactions_samples.pdf` or `bar_key_reactions_groups.pdf`|The lengths of the bars of the maps of the individual samples or groups, which share this key.|
 |`slice_key_reactions.txt`|A %(kegg-slice-key-txt)s that lists each slice drawn with `--reaction-slice-by` (see [Draw elements in slices](#draw-elements-in-slices)).|
 |`slice_key_reactions_border.txt`|A %(kegg-slice-key-txt)s that lists each slice of the rings drawn with `--reaction-border-slice-by` (see [Slice rings](#slice-rings)).|
 
@@ -116,7 +118,7 @@ The `--categorize-files` flag categorizes output map files into a subdirectory s
 
 The `unified` map summarizes every sample, group, contigs database, or genome at once. A run draws it even when no summary was asked for. By default the sources are summarized by presence. That summary is not always wanted, and it can claim more than the data supports. Pooling values is only meaningful across commensurable samples. Presence in any one sample says little when the point is to compare the samples.
 
-`--skip-unified-maps` leaves that map out. The `unified` subdirectory is not written. The colorbar for that map is not written either, unless the same scale also colors the individual maps, which would otherwise have no key anywhere in the output. The same rule applies to the key of the borders of that map, such as `colorbar_reactions_border.pdf`. The maps of the individual sources are all that is left, so `--draw-individual-files` and/or `--draw-grid` are required. Each grid holds the individual maps alone, without the first 'unified' map panel labeled `all` (or `pangenome`).
+`--skip-unified-maps` leaves that map out. The `unified` subdirectory is not written. The colorbar for that map is not written either, unless the same scale also colors the individual maps, which would otherwise have no key anywhere in the output. The same rule applies to the key of the borders of that map, such as `colorbar_reactions_border.pdf`, and to the key of its bars, `bar_key_reactions.pdf`. The maps of the individual sources are all that is left, so `--draw-individual-files` and/or `--draw-grid` are required. Each grid holds the individual maps alone, without the first 'unified' map panel labeled `all` (or `pangenome`).
 
 Here is a simple example of the output file structure produced with `--name-files` and `--categorize-files` in the course of `anvi-self-test --suite kegg-mapping` (with the `-o` option to save the temporary directories in the test from removal).
 
@@ -140,7 +142,7 @@ The name of each frame's source is shown above the map. Frames follow the order 
 
 A source with no data on a map has no file in that map's subdirectory. The player shows the bare map in its place, with the note "No data on this map", so every player of a run has the same frames in the same order. With `--draw-bare-maps`, the bare map of that source is drawn and gathered like any other map, so the player shows it without the note. Every map of the run then gets a player, even a map with no data in any source.
 
-The colorbars that key the individual maps are shown beside the map. Where groups are colored by counts of their own sources, each group has its own colorbar, and the player shows the one that belongs to the frame.
+The colorbars and bar keys that key the individual maps are shown beside the map. The key of borders or bars is shown only in the players of maps that can show them. Where groups are colored by counts of their own sources, each group has its own colorbar, and the player shows the one that belongs to the frame.
 
 Each frame is stored in the page as a lossless image of the map at the resolution of the KEGG image, so the colors are those of the map files. Unlike the gathered maps, the players are new files rather than links. Three frames of `00010` take about 0.2 MB, and twelve frames of the global map `01100` take about 13 MB.
 
@@ -489,7 +491,7 @@ The functional annotations of gene clusters as a whole are imputed to the genes 
 
 ### Color elements by a quantitative value
 
-The sections above color elements to show **presence/absence**. A layer can instead be colored by a continuous **quantitative value** simply by including a numeric value column in its %(kegg-reaction-txt)s or %(kegg-compound-txt)s file. The single column that is not a key column — `accession`; `sample`; in the reaction file, `gene_id` — is auto-detected as the value column, and its header labels the colorbar. The column can have any name. A column named by `--reaction-slice-weights`, `--reaction-border-column`, or `--compound-border-column` is left out of this detection. Uses can include coloring reactions by gene, transcript, or protein levels in a %(kegg-reaction-txt)s file, and compound levels in a %(kegg-compound-txt)s file. Every row must have a numeric value.
+The sections above color elements to show **presence/absence**. A layer can instead be colored by a continuous **quantitative value** simply by including a numeric value column in its %(kegg-reaction-txt)s or %(kegg-compound-txt)s file. The single column that is not a key column — `accession`; `sample`; in the reaction file, `gene_id` — is auto-detected as the value column, and its header labels the colorbar. The column can have any name. A column named by `--reaction-slice-weights`, `--reaction-border-column`, `--compound-border-column`, or `--reaction-bar-column` is left out of this detection. Uses can include coloring reactions by gene, transcript, or protein levels in a %(kegg-reaction-txt)s file, and compound levels in a %(kegg-compound-txt)s file. Every row must have a numeric value.
 
 {{ codestart }}
 anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
@@ -1102,6 +1104,71 @@ The layer writes no key of its fills, such as `colorbar_compounds.pdf`. Its bord
 - `--original-color` is refused with `--reaction-border-column`, since the reference map sets both the colors and the drawing order of reactions.
 - `--seed` also seeds the random rules of the border aggregations and summaries. The border makes its random choices independently of the fill.
 - A compound file with only a border column colors its compounds by presence. On global and overview maps, these fills replace the colors that compounds would otherwise take from reactions. Global maps show no rings, so such a file shows only presence there. With `--compound-color none`, the compounds keep the colors that they take from reactions, and their circles on overview maps get rings too.
+
+### Draw bars in boxes
+
+A reaction file can hold a column whose values set the lengths of bars, the bar column. Each reaction box on a standard map then shows a bar in the color of its fill. The bar grows from the left side of the box, at 0, toward the right side, which stands for the top of the bar scale. The rest of the box shows a gray track (`#E5E5E5`), so that a bar of 0 differs from a box without data, which is white. A thin dark line (0.75 points, `#4D4D4D`) marks the end of every bar, at 0 and at the full length too. The line is what shows the end of a pale bar, whose color differs from the track by little more than its hue. The value column still sets the color of the fill, so a box shows one value by its color and another by its length.
+
+The bar column is named with `--reaction-bar-column`. In the reaction file below, `expression` is the value column, and `coverage` is the bar column.
+
+|accession|gene_id|sample|expression|coverage|
+|:--|:--|:--|:--|:--|
+|K00844|gene_1|treated|12.5|40|
+|K00844|gene_1|control|3.1|35|
+|K00845|gene_2|treated|8.0|12|
+|K00845|gene_2|control|7.7||
+
+{{ codestart }}
+anvi-draw-kegg-pathways --reaction-txt %(kegg-reaction-txt)s \
+                        --reaction-bar-column coverage \
+                        --reaction-bar-sample-summary mean \
+                        --draw-individual-files \
+                        -o output_dir
+{{ codestop }}
+
+The fills show expression, and the bars show coverage. The map of each sample shows that sample's expression and coverage. The `unified` map shows presence across the samples in its fills, as it does by default. Its bars show the mean coverage across the samples. The last row leaves its coverage empty, so K00845 has no bar value in the control sample, and its box is left uncolored on that sample's map.
+
+The part of a box shown in the fill color is proportional to the bar, so a bar weights the fill by its own value. A short bar leaves only a stripe of the fill color, which is hard to match to a colormap. Bars therefore suit a value that measures support for the fill, such as coverage behind expression, or a file whose fill shows presence or a single color. A file whose only column of values is its bar column colors its fills by presence, and its bars then compare the reactions by length alone.
+
+#### Read the bar column
+
+The bar column can have any name, but it cannot be `accession`, `gene_id`, `sample`, the column of `--reaction-slice-weights`, or the border column. It is left out of the search for the value column, as the border column is. A row can leave its bar cell empty, and then it has no bar value. A bar column with no values at all is refused. Each bar value must be a finite number, so `NA` or other text is refused. Bar values must also be 0 or more for now, since bars that grow both ways from 0 are not drawn yet. A file with a bar column is read as text, as a file with a border column is, and no two of its rows may describe the same accession, gene, and sample. The run reports the bar column, the aggregations that reduce its values, and the number of rows without a bar value.
+
+#### Bar options
+
+The options of bars are versions of options of the fill, with `bar-` after the name of the layer:
+
+- `--reaction-bar-gene-aggregation` and `--reaction-bar-accession-aggregation`
+- `--reaction-bar-sample-summary` and `--reaction-bar-group-summary`
+- `--reaction-bar-value-limits` and `--reaction-bar-individual-value-limits`
+
+Every bar option needs `--reaction-bar-column`. Bars take numbers only, so they have no value type, period, colormap, center, or normalization, and their aggregations and summaries take no rules for categorical values. The aggregations default to `mean`, not `sum`, as those of a border column do. A bar value given once per KO and repeated in the rows of its genes keeps its size under `mean`, but `sum` would multiply it. Only the reaction layer has bars.
+
+#### Bars of samples and groups
+
+Without a `sample` column, one bar scale serves every map. With a `sample` column, the map of each sample shows that sample's bars. The `unified` map shows bars only where `--reaction-bar-sample-summary` gives an aggregation. Without one, it draws its fills whole. With a %(groups-txt)s, the bar sample summary sets the bars of each group's map from the group's samples, and the bar group summary sets the bars of the `unified` map from the groups. The group summary needs a bar sample summary. A bar shows values only, so the bar summaries refuse `count`, `count_continuous`, and `membership`. A run whose options mean that no drawn map shows bars is refused before it draws anything.
+
+The `unified` map and the maps of the samples or groups have bar scales of their own, as they have color scales of their own. A bar of half a box can therefore stand for different values in neighboring panels of a grid, and the keys say which. Equal limits on the two scales make them one.
+
+#### The bar scale
+
+A bar grows from 0, so its scale always includes 0. Without limits, the scale runs from 0 to the largest bar value on the drawn maps. `--reaction-bar-value-limits` and `--reaction-bar-individual-value-limits` set its ends, as the limits of a color scale do. Limits that leave 0 out, such as `10 100`, are refused, since a bar that does not start at 0 misstates its value. A bar of a value past the maximum reaches the end of its box, and the key marks that end `≥`. Where every bar value is 0, every bar has no length.
+
+#### Where bars are drawn
+
+Bars are drawn in the reaction boxes of standard maps, which are the boxes that take rings. Global and overview maps draw reactions as lines, which take no bars, and a warning counts the reaction elements with bar values that standard maps draw as lines. A run is refused when none of its maps is a standard map. The scale of bars spans only the values of boxes.
+
+On a map that shows bars, a box with a fill and no bar value is left uncolored, and a warning counts such boxes. A whole fill there would read as a full bar, and a bare track as a bar of 0. A map that shows no bar values, such as the `unified` map without a bar sample summary, draws its fills whole.
+
+A box with a ring draws its bar inside the black line within the ring, in 85 points of its 92. A box without a ring draws it inside its outline, in 91 points. A bar is read as a fraction of its own box, so the difference does not bias the reading. The label of a box lies in its upper half, so the end of a bar always shows in the lower half.
+
+A bar takes the color of the fill of its box, whatever sets that color: values, categorical values, the colors of presence across samples or groups, or a single color from `--reaction-color`. The fill alone decides the order in which overlapping elements are drawn, so `--reaction-reverse-overlay` applies as it does without bars. The check of reserved colors and the colors that compounds take from reactions see only the fills too. `--original-color` and `--reaction-color none` are refused with a bar column, since a bar needs the color of a fill. Runs of contigs databases, a pangenome, or a reaction network JSON file refuse every bar option.
+
+Rings and bars combine. Bars cannot be drawn in slices yet, so `--reaction-slice-by` is refused with a bar column. Rings divided on their own with `--reaction-border-slice-by` are drawn around bars as around fills.
+
+#### Bar keys
+
+Bars are keyed by length, in files of their own. `bar_key_reactions.pdf` keys the bars of the `unified` map, or of every map for a file without a `sample` column. `bar_key_reactions_samples.pdf` or `bar_key_reactions_groups.pdf` keys the bar scale shared by the maps of the samples or groups. A key is a gray box with a ruler under it, whose width stands for the scale. 0 is always labeled, and so are both ends of the scale, which stand for full bars. The key is labeled with the bar column and `(bar)`, such as `coverage (bar)`. Bar keys are written only at the top of the output directory, and `--skip-unified-maps` drops the key of the `unified` map by the rule for colorbars. A player shows a bar key only beside the maps that can show bars.
 
 ### Mixed coloring across reaction and compound layers
 

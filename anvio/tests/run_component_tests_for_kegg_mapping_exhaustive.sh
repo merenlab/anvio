@@ -201,6 +201,15 @@ printf 'accession\tcoverage\tweight\tstatus\nK00174\t1.5\t0\tup\nK00175\t3.0\t0\
 # A border column alone, with an empty border cell. K00844, K01810, and K00850 are boxes of map
 # 00010.
 printf 'accession\tstatus\nK00844\tup\nK01810\tdown\nK00850\t\n' > draw_kos_status_empty_cell.reaction.txt
+# A bar column beside a value column, with an empty bar cell. K01810 then has a fill and no bar value.
+printf 'accession\tcoverage\tlevel\nK00844\t10\t2.5\nK01810\t20\t\n' > draw_kos_bar_empty_cell.reaction.txt
+# Bar values of 0 only, 'NA' among bar values, a negative bar value, and a bar column with no values.
+printf 'accession\tlevel\nK00844\t0\nK01810\t0\n' > draw_kos_bar_zero.reaction.txt
+printf 'accession\tcoverage\tlevel\nK00844\t10\tNA\nK01810\t20\t3\n' > draw_bad_na_bar.reaction.txt
+printf 'accession\tcoverage\tlevel\nK00844\t10\t-2\nK01810\t20\t3\n' > draw_bad_negative_bar.reaction.txt
+printf 'accession\tcoverage\tlevel\nK00844\t10\t\nK01810\t20\t\n' > draw_bad_empty_bar.reaction.txt
+# K03850 is drawn as a line on the standard map 00510, and K00844 as a box on 00010.
+printf 'accession\tlevel\nK03850\t2\nK00844\t3\n' > draw_kos_bar_lines.reaction.txt
 
 # A test that expects a refusal discards the output of the draw, so a fixture that was never written
 # would make that test pass for the wrong reason. Fail loudly here instead.
@@ -237,7 +246,10 @@ for fixture in contigs-db-group-information.txt draw_kos_samples300.reaction.txt
               draw_kos_border_lines.reaction.txt draw_kos_genes12_status.reaction.txt \
               draw_kos_genes11_status.reaction.txt draw_kos_samples_weights_border.reaction.txt \
               draw_kos_samples_genes_border.reaction.txt draw_kos_weights_status.reaction.txt \
-              draw_kos_status_empty_cell.reaction.txt
+              draw_kos_status_empty_cell.reaction.txt draw_kos_bar_empty_cell.reaction.txt \
+              draw_kos_bar_zero.reaction.txt draw_bad_na_bar.reaction.txt \
+              draw_bad_negative_bar.reaction.txt draw_bad_empty_bar.reaction.txt \
+              draw_kos_bar_lines.reaction.txt
 do
     if [ ! -s $fixture ]
     then
@@ -4611,6 +4623,420 @@ if ! tr -d ' \n' < draw_txt_color_none_group_colormap.log \
     | grep -q "countnothingforthereactionlayer,since'--reaction-colornone'"
 then
     echo "ERROR: '--group-colormap' for a grouped layer of rings alone failed for another reason."
+    exit 1
+fi
+
+# A bar column sets the length of a bar in each reaction box of a standard map, in the color of the
+# fill. A box with a fill and no bar value is left uncolored on a map that shows bars, and the run
+# counts such boxes.
+INFO "Testing a bar column with an empty cell beside a value column"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_empty_cell.reaction.txt \
+    --reaction-bar-column level --output-dir draw_txt_bar_empty_cell \
+    --pathway-numbers $pathway_numbers --no-progress 2>&1 | tee draw_txt_bar_empty_cell.log
+for phrase in "Reactionrowswithoutabarvalue" "havenobarvaluefromthe'level'barcolumn"
+do
+    if ! tr -d ' \n' < draw_txt_bar_empty_cell.log | grep -q "$phrase"
+    then
+        echo "ERROR: the warning or report that contains '$phrase' was not given."
+        exit 1
+    fi
+done
+if [ ! -s draw_txt_bar_empty_cell/bar_key_reactions.pdf ]
+then
+    echo "ERROR: a run with bars should have written a bar key."
+    exit 1
+fi
+
+# Bar values of 0 alone draw bars of no length, and a key labeled 0 alone.
+INFO "Testing a bar scale whose only value is 0"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_zero.reaction.txt --reaction-bar-column level \
+    --output-dir draw_txt_bar_zero --pathway-numbers $pathway_numbers --no-progress
+if [ ! -s draw_txt_bar_zero/bar_key_reactions.pdf ] \
+    || [ ! -s draw_txt_bar_zero/unified/ko00010.pdf ]
+then
+    echo "ERROR: bars of 0 alone should have been drawn with a key."
+    exit 1
+fi
+
+# Lines take no bars. A reaction element that a standard map draws as a line is reported.
+INFO "Testing the warning that reaction lines on a standard map show no bars"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_lines.reaction.txt --reaction-bar-column level \
+    --output-dir draw_txt_bar_lines --pathway-numbers 00010 00510 \
+    --no-progress 2>&1 | tee draw_txt_bar_lines.log
+if ! tr -d ' \n' < draw_txt_bar_lines.log | grep -q "Linesshownobars"
+then
+    echo "ERROR: reaction lines with bar values on a standard map were not reported."
+    exit 1
+fi
+
+# A player shows the key of bars only beside the maps that show bars, which are standard maps.
+# Skipping the 'unified' map drops its bar key.
+INFO "Testing the keys of bars in players and without the 'unified' map"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --skip-unified-maps \
+    --output-dir draw_txt_bar_players --pathway-numbers $global_pathway_numbers \
+    --draw-individual-files --collate-files-by-map --animate-files-by-map \
+    --no-progress
+players=draw_txt_bar_players/by_map
+standard_keys=$(grep -o '<img class="key"[^>]*' $players/ko00010.html)
+overview_keys=$(grep -o '<img class="key"[^>]*' $players/ko01200.html)
+if [ "$(echo "$standard_keys" | wc -l)" -ne 2 ] \
+    || [ "$overview_keys" != "$(echo "$standard_keys" | sed -n 1p)" ]
+then
+    echo "ERROR: a player should show the key of bars only beside maps that show bars."
+    exit 1
+fi
+if [ -e draw_txt_bar_players/bar_key_reactions.pdf ] \
+    || [ ! -s draw_txt_bar_players/bar_key_reactions_samples.pdf ]
+then
+    echo "ERROR: skipping the 'unified' map should drop its bar key and keep that of the samples."
+    exit 1
+fi
+
+INFO "Testing that bar columns are refused where they cannot apply"
+
+# Every bar option needs the bar column.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-sample-summary mean --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_option_without_column.log 2>&1
+then
+    echo "ERROR: a bar option without the bar column should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_option_without_column.log \
+    | grep -q "appliestothebarsofthereactionlayer,butnobarcolumnwasnamed"
+then
+    echo "ERROR: a bar option without the bar column was refused for another reason."
+    exit 1
+fi
+
+# A key column cannot hold bar values.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-bar-column sample --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_key_column.log 2>&1
+then
+    echo "ERROR: a key column as the bar column should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_key_column.log \
+    | grep -q "soitcannotholdbarvalues"
+then
+    echo "ERROR: a key column as the bar column was refused for another reason."
+    exit 1
+fi
+
+# The bar column must be a column of the file.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-bar-column nothing --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_missing_column.log 2>&1
+then
+    echo "ERROR: a missing bar column should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_missing_column.log \
+    | grep -q "asthebarcolumn,butthereactionfilehasnocolumnwiththatheader"
+then
+    echo "ERROR: a missing bar column was refused for another reason."
+    exit 1
+fi
+
+# One column cannot set the lengths of bars and color borders.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-bar-column status --reaction-border-column status \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_is_border.log 2>&1
+then
+    echo "ERROR: one column as the bar and border column should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_is_border.log \
+    | grep -q "eithersetthelengthsofbarsorcolorborders"
+then
+    echo "ERROR: one column as the bar and border column was refused for another reason."
+    exit 1
+fi
+
+# One column cannot set the lengths of bars and hold the weights of slices.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+    --reaction-bar-column coverage --reaction-slice-weights coverage \
+    --reaction-border-column expression --reaction-border-slice-by accession \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_is_weights.log 2>&1
+then
+    echo "ERROR: one column as the bar and weight column should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_is_weights.log \
+    | grep -q "eithersetthelengthsofbarsorholdtheweightsofslices"
+then
+    echo "ERROR: one column as the bar and weight column was refused for another reason."
+    exit 1
+fi
+
+# A bar shows values only, so its summaries take no presence names.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --reaction-bar-sample-summary count \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_presence_summary.log 2>&1
+then
+    echo "ERROR: a presence summary of bars should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_presence_summary.log \
+    | grep -q "Abarshowsvaluesonly"
+then
+    echo "ERROR: a presence summary of bars was refused for another reason."
+    exit 1
+fi
+
+# Bars take numbers only, so their summaries take no rules for categorical values.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --reaction-bar-sample-summary plurality_order \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_rule_summary.log 2>&1
+then
+    echo "ERROR: a rule as a bar summary should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_rule_summary.log \
+    | grep -q "Poolthemwithanaggregation"
+then
+    echo "ERROR: a rule as a bar summary was refused for another reason."
+    exit 1
+fi
+
+# Bars take no period.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --reaction-bar-sample-summary circular_mean \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_circular_summary.log 2>&1
+then
+    echo "ERROR: a circular summary of bars should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_circular_summary.log \
+    | grep -q "takenoperiod,sincethelengthofabarstartsat0"
+then
+    echo "ERROR: a circular summary of bars was refused for another reason."
+    exit 1
+fi
+
+# A bar group summary needs a bar sample summary.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --groups-txt draw-sample-group-information.txt \
+    --group-threshold 0.5 --reaction-bar-group-summary mean --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_group_without_sample.log 2>&1
+then
+    echo "ERROR: a bar group summary without a bar sample summary should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_group_without_sample.log \
+    | grep -q "whichpoolsthebarvaluesofthegroups"
+then
+    echo "ERROR: a bar group summary without a bar sample summary was refused for another reason."
+    exit 1
+fi
+
+# A bar scale always includes 0.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --reaction-bar-sample-summary mean \
+    --reaction-bar-value-limits 10 100 --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_limits_without_zero.log 2>&1
+then
+    echo "ERROR: bar limits that leave out 0 should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_limits_without_zero.log \
+    | grep -q "limitsthatleaveout0"
+then
+    echo "ERROR: bar limits that leave out 0 was refused for another reason."
+    exit 1
+fi
+
+# Bars that grow both ways from 0 are not supported yet.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --reaction-bar-sample-summary mean \
+    --reaction-bar-value-limits -5 100 --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_limits_negative.log 2>&1
+then
+    echo "ERROR: bar limits below 0 should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_limits_negative.log \
+    | grep -q "limitsthatreachbelow0"
+then
+    echo "ERROR: bar limits below 0 was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_negative_bar.reaction.txt \
+    --reaction-bar-column level --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_negative_values.log 2>&1
+then
+    echo "ERROR: a negative bar value should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_negative_values.log \
+    | grep -q "mustbe0ormore,sincebarsthatgrowbothwaysfrom0arenotsupportedyet"
+then
+    echo "ERROR: a negative bar value was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --reaction-bar-sample-summary skew \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_aggregation_negative.log 2>&1
+then
+    echo "ERROR: bar values reduced below 0 should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_aggregation_negative.log \
+    | grep -q "reduceitsvaluestonumbersbelow0"
+then
+    echo "ERROR: bar values reduced below 0 was refused for another reason."
+    exit 1
+fi
+
+# Each bar value must be a number, and a bar column needs a value.
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_na_bar.reaction.txt --reaction-bar-column level \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_na_value.log 2>&1
+then
+    echo "ERROR: 'NA' as a bar value should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_na_value.log \
+    | grep -q "somethingotherthanafinitenumber"
+then
+    echo "ERROR: 'NA' as a bar value was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_empty_bar.reaction.txt \
+    --reaction-bar-column level --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_empty_column.log 2>&1
+then
+    echo "ERROR: a bar column with no values should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_empty_column.log \
+    | grep -q "itwouldsetnobar"
+then
+    echo "ERROR: a bar column with no values was refused for another reason."
+    exit 1
+fi
+
+# A bar takes the color of its fill, which the reference map's colors and 'none' do not give.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_zero.reaction.txt \
+    --reaction-bar-column level --original-color --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_original_color.log 2>&1
+then
+    echo "ERROR: bars with '--original-color' should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_original_color.log \
+    | grep -q "givenalongwith'--original-color':'--reaction-bar-column'"
+then
+    echo "ERROR: bars with '--original-color' was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-bar-column coverage --reaction-border-column status \
+    --reaction-border-value-type categorical --reaction-color none \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_color_none.log 2>&1
+then
+    echo "ERROR: bars with '--reaction-color none' should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_color_none.log \
+    | grep -q "sothebarswouldhavenocolor"
+then
+    echo "ERROR: bars with '--reaction-color none' was refused for another reason."
+    exit 1
+fi
+
+# Bars are not drawn in slices yet.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --reaction-slice-by accession \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_slice_by.log 2>&1
+then
+    echo "ERROR: bars with '--reaction-slice-by' should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_slice_by.log \
+    | grep -q "cannotbecombinedwith'--reaction-bar-column'yet"
+then
+    echo "ERROR: bars with '--reaction-slice-by' was refused for another reason."
+    exit 1
+fi
+
+# Only a text file has a bar column.
+if anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db --reaction-bar-column coverage \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_contigs_db.log 2>&1
+then
+    echo "ERROR: a bar column for a contigs database should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_contigs_db.log \
+    | grep -q "Theseoptionsweregiven:'--reaction-bar-column'"
+then
+    echo "ERROR: a bar column for a contigs database was refused for another reason."
+    exit 1
+fi
+
+# Bars are drawn only in the reaction boxes of standard maps.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --pathway-numbers 01200 \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_only_overview.log 2>&1
+then
+    echo "ERROR: bars on an overview map alone should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_only_overview.log \
+    | grep -q "drawsbarsinreactionboxes,whichonlystandardmapsdraw"
+then
+    echo "ERROR: bars on an overview map alone was refused for another reason."
+    exit 1
+fi
+
+# Without a bar sample summary, the 'unified' map of a file with samples shows no bars.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_unified_without_summary.log 2>&1
+then
+    echo "ERROR: bars that no map shows should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_unified_without_summary.log \
+    | grep -q "butnomapofthisrunwouldshowitsbars"
+then
+    echo "ERROR: bars that no map shows was refused for another reason."
     exit 1
 fi
 

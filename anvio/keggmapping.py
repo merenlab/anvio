@@ -14,6 +14,7 @@ import hashlib
 import numpy as np
 import pandas as pd
 import matplotlib.colors as mcolors
+import matplotlib.ticker as mticker
 
 from io import BytesIO
 from argparse import Namespace
@@ -366,10 +367,12 @@ DEFAULT_BORDER_COLORMAP_LIMITS: Tuple[float, float] = (0.2, 1.0)
 
 # The channels of a layer from a text file, keyed by role ('_txt_channel'). The value column of a
 # file colors the fill of each map element. A border column colors the border of the element instead
-# ('--reaction-border-column', '--compound-border-column'). Every channel is built by the same
-# methods ('_build_txt_model'). A channel names the options of its values in messages, and it gives
-# their defaults. The channels have different defaults, so that a color means a value of one column
-# only. In the text of a role, '{element_type}' stands for 'reaction' or 'compound'.
+# ('--reaction-border-column', '--compound-border-column'). A bar column sets the length of a bar
+# inside the fill, drawn in the color of the fill ('--reaction-bar-column'). Every channel is built
+# by the same methods ('_build_txt_model'). A channel names the options of its values in messages,
+# and it gives their defaults. The channels have different defaults, so that a color means a value
+# of one column only. A bar takes numbers only, with no colormap, and its scale always includes 0
+# ('baseline'). In the text of a role, '{element_type}' stands for 'reaction' or 'compound'.
 TXT_CHANNEL_ROLES: Dict[str, dict] = {
     'fill': {
         'flag_stem': '{element_type}',
@@ -378,7 +381,11 @@ TXT_CHANNEL_ROLES: Dict[str, dict] = {
         'name': '{element_type}s',
         'column': 'value column',
         'values': 'values',
+        'scale': 'color scale',
         'presence': True,
+        'categorical': True,
+        'period': True,
+        'baseline': None,
         'default_aggregation': 'sum',
         'default_colormap': 'plasma_r',
         'default_colormap_limits': None,
@@ -395,7 +402,11 @@ TXT_CHANNEL_ROLES: Dict[str, dict] = {
         'name': '{element_type}s_border',
         'column': 'border column',
         'values': 'border values',
+        'scale': 'color scale',
         'presence': False,
+        'categorical': True,
+        'period': True,
+        'baseline': None,
         'default_aggregation': 'mean',
         'default_colormap': DEFAULT_BORDER_COLORMAP,
         'default_colormap_limits': DEFAULT_BORDER_COLORMAP_LIMITS,
@@ -404,6 +415,27 @@ TXT_CHANNEL_ROLES: Dict[str, dict] = {
         'choice_salt': ('border',),
         'consequence': 'shows no border',
         'consequence_plural': 'show no border'
+    },
+    'bar': {
+        'flag_stem': '{element_type}-bar',
+        'noun': '{element_type} bar',
+        'plural': '{element_type} bars',
+        'name': '{element_type}s',
+        'column': 'bar column',
+        'values': 'bar values',
+        'scale': 'bar scale',
+        'presence': False,
+        'categorical': False,
+        'period': False,
+        'baseline': 0.0,
+        'default_aggregation': 'mean',
+        'default_colormap': None,
+        'default_colormap_limits': None,
+        'default_centered_colormap': None,
+        'default_value_colors': None,
+        'choice_salt': ('bar',),
+        'consequence': 'is left uncolored',
+        'consequence_plural': 'are left uncolored'
     }
 }
 
@@ -476,6 +508,23 @@ BORDER_OPTIONS: Tuple[str, ...] = (
 
 # The options of a border that only the reaction layer has.
 REACTION_BORDER_OPTIONS: Tuple[str, ...] = ('gene_aggregation', 'slice_by')
+
+# The options of the bars of the reaction layer ('map_kegg_pathways_txt'). 'column' names the bar
+# column of the reaction file ('--reaction-bar-column'). Every other key is the bar version of an
+# option of the fill, such as 'sample_summary' for '--reaction-bar-sample-summary'. Bars take
+# numbers only, so they take no value type, period, colormap, center, or normalization.
+BAR_OPTIONS: Tuple[str, ...] = (
+    'column', 'gene_aggregation', 'accession_aggregation', 'sample_summary', 'group_summary',
+    'value_limits', 'individual_value_limits'
+)
+
+# The track of a bar, which is the part of the fill that a bar does not cover. A gray track tells a
+# bar of 0 from a box without data, which is white. The end line is drawn centered on the free end
+# of every bar, at 0 and at the full length too. A light bar differs from the track by little more
+# than its hue, and the line marks its end. Widths are in points.
+BAR_TRACK_COLOR = '#E5E5E5'
+BAR_END_LINE_COLOR = '#4D4D4D'
+BAR_END_LINE_WIDTH = 0.75
 
 # The narrowest that a slice of a box may be, in points, where every slice takes the same share. A
 # box with more slices than that allows is drawn whole in one color ('_slice_cap'). Boxes on
@@ -575,6 +624,11 @@ CLAMPED_MAX_PREFIX = '≥ '
 # be set almost on top of each other. The label of the limit or center is the one a reader needs, so
 # it is the one that stays.
 MIN_TICK_SEPARATION_FRACTION = 0.08
+
+# The same for the ruler of a key of bar lengths ('draw_length'). Its labels sit side by side along
+# the ruler rather than one above another, so a label of a limit, such as '≥ 35', needs about twice
+# the room.
+MIN_LENGTH_TICK_SEPARATION_FRACTION = 0.16
 
 # Subdirectories of the output directory, one per role a map file can have: the map unifying every
 # source, the map of one individual source, and the grid comparing them. A fourth holds those
@@ -1010,7 +1064,8 @@ class Mapper:
         slice_by: Union[str, None] = None,
         border_column: Union[str, None] = None,
         border_value_type: Literal['numeric', 'categorical'] = 'numeric',
-        border_slice_by: Union[str, None] = None
+        border_slice_by: Union[str, None] = None,
+        bar_column: Union[str, None] = None
     ) -> dict:
         """
         Read and validate a per-layer draw-kegg-pathways text file into a map-layer table.
@@ -1057,6 +1112,15 @@ class Mapper:
         every column, as in a file of categorical values. A numeric border value must be a finite
         number.
 
+        A bar column is named, not detected ('--reaction-bar-column'). Its values set the lengths of
+        bars drawn inside the fills of map elements. It is left out of the search for the value
+        column, as a border column is, so a file with a bar column and no other value column colors
+        its fills by presence. It cannot be a key column, the column of slice weights, or the border
+        column. A row can leave its bar cell empty, and then it has no bar value. A column with no
+        bar value at all is refused. A bar value must be a finite number. Negative values are
+        refused for now, since bars that grow both ways from 0 are not drawn yet. A file with a bar
+        column is read as text, as a file with a border column is.
+
         Parameters
         ==========
         path : str
@@ -1084,6 +1148,9 @@ class Mapper:
             What the rings of the border are sliced by ('SLICE_UNITS'), or None where they are not
             sliced.
 
+        bar_column : Union[str, None], None
+            The name of the bar column, or None for a file without one.
+
         Returns
         =======
         dict
@@ -1109,8 +1176,12 @@ class Mapper:
             - 'border_column' and 'border_value_type': the arguments. A file with a border column
               also gets a '__border_value' column in 'df'. It holds each row's border value, as a
               number or as text without the spaces around it, and is missing where the row has none
-              ('_border_view').
+              ('_channel_view').
             - 'border_empty': the number of rows without a border value.
+            - 'bar_column': the 'bar_column' argument. A file with a bar column also gets a
+              '__bar_value' column in 'df'. It holds each row's bar value as a number, and is
+              missing where the row has none ('_channel_view').
+            - 'bar_empty': the number of rows without a bar value.
         """
         # A single-column presence file (just 'accession') is valid, so 'is_file_tab_delimited'
         # (which rejects a line with no tab) is too strict here; the 'accession'-column check below
@@ -1128,13 +1199,14 @@ class Mapper:
         # only a pair of quotes enclosing a whole field is dropped, as R writes it and as in a colors
         # file ('_read_value_colors_txt'). Any other quote stays in its field, where a number or a
         # weight that holds it is refused. A missing value in a file of numbers is left missing. A
-        # file with a border column is read as text too, so that a border value such as 'NA' is
-        # kept.
+        # file with a border or bar column is read as text too, so that a value such as 'NA' in that
+        # column is kept as it is written.
         categorical = value_type == 'categorical'
         try:
             df = pd.read_csv(
                 path, sep='\t', dtype=str,
-                keep_default_na=not categorical and border_column is None, quoting=csv.QUOTE_NONE
+                keep_default_na=not categorical and border_column is None and bar_column is None,
+                quoting=csv.QUOTE_NONE
             )
         except pd.errors.EmptyDataError:
             self.progress.end()
@@ -1288,11 +1360,45 @@ class Mapper:
                     f"for one of them."
                 )
 
+        # A bar column is named by an option, as a border column is. It must be a column of the
+        # file. It cannot be a key column, and it cannot hold the weights or the border values too.
+        bar_flag = f'--{element_type}-bar-column'
+        if bar_column is not None:
+            if bar_column in ('accession', 'gene_id', 'sample'):
+                self.progress.end()
+                raise ConfigError(
+                    f"'{bar_flag}' names the '{bar_column}' column of the kegg-{element_type}-txt "
+                    f"file at '{path}' as the bar column. That is a key column, which cannot hold "
+                    f"bar values. Name a column of numbers instead."
+                )
+            if bar_column not in original_columns:
+                self.progress.end()
+                raise ConfigError(
+                    f"'{bar_flag}' names the '{bar_column}' column as the bar column, but the "
+                    f"kegg-{element_type}-txt file at '{path}' has no such column. Its columns "
+                    f"are: {', '.join(original_columns)}."
+                )
+            for other_flag, other_column, holds in (
+                (weights_flag, slice_weights, 'hold the weights of slices'),
+                (border_flag, border_column, 'color borders')
+            ):
+                if bar_column == other_column:
+                    self.progress.end()
+                    raise ConfigError(
+                        f"'{bar_flag}' and '{other_flag}' both name the '{bar_column}' column of "
+                        f"the kegg-{element_type}-txt file at '{path}'. A column can either set "
+                        f"the lengths of bars or {holds}, not both. Please name another column for "
+                        f"one of them."
+                    )
+
         # Auto-detect the value column: the single column that is not a key column ('accession',
         # 'gene_id' for reactions, or 'sample'). None means presence coloring; one means
         # quantitative coloring by that column (its header labels the colorbar); two or more is
-        # ambiguous. A column of slice weights and a border column are left out of the search.
-        key_columns = {'accession', 'gene_id', 'sample', slice_weights, border_column} - {None}
+        # ambiguous. A column of slice weights, a border column, and a bar column are left out of
+        # the search.
+        key_columns = {
+            'accession', 'gene_id', 'sample', slice_weights, border_column, bar_column
+        } - {None}
         value_columns = [column for column in original_columns if column not in key_columns]
         if len(value_columns) > 1:
             self.progress.end()
@@ -1303,6 +1409,8 @@ class Mapper:
             )
             if border_column is None:
                 hint += f" If one of them holds border values, name it with '{border_flag}'."
+            if element_type == 'reaction' and bar_column is None:
+                hint += f" If one of them sets the lengths of bars, name it with '{bar_flag}'."
             raise ConfigError(
                 f"The kegg-{element_type}-txt file at '{path}' has more than one candidate value "
                 f"column, so it is ambiguous which to color elements by: "
@@ -1446,6 +1554,47 @@ class Mapper:
                     )
             df = df.assign(__border_value=border_values)
 
+        # A row can leave its bar cell empty. It then has no bar value, and its other columns are
+        # read as usual. A bar value must be a finite number. Negative values are refused for now,
+        # since bars that grow both ways from 0 are not drawn yet. A bar column with no value at all
+        # sets no bar, so it is refused.
+        bar_empty = 0
+        if bar_column is not None:
+            bar_text = df[bar_column].fillna('').astype(str).str.strip()
+            has_bar = bar_text != ''
+            if not has_bar.any():
+                self.progress.end()
+                raise ConfigError(
+                    f"The bar column '{bar_column}' of the kegg-{element_type}-txt file at "
+                    f"'{path}' ('{bar_flag}') has no values. Every cell of it is empty, so it "
+                    f"would set no bar. Name a column that holds bar values."
+                )
+            bar_empty = int((~has_bar).sum())
+            bar_values = pd.to_numeric(bar_text.where(has_bar, ''), errors='coerce')
+            for rows, rule, problem in (
+                (
+                    has_bar & ~np.isfinite(bar_values), "a finite number",
+                    "something other than a finite number, such as text or 'NA'"
+                ),
+                (
+                    has_bar & (bar_values < 0),
+                    "0 or more, since bars that grow both ways from 0 are not supported yet",
+                    "a negative number"
+                )
+            ):
+                if not rows.any():
+                    continue
+                bad = sorted(set(df.loc[rows, '__accession']))[:5]
+                self.progress.end()
+                raise ConfigError(
+                    f"The bar column '{bar_column}' of the kegg-{element_type}-txt file at "
+                    f"'{path}' sets the lengths of bars, so each of its values must be {rule}. "
+                    f"{int(rows.sum())} {'rows have' if rows.sum() > 1 else 'row has'} {problem}. "
+                    f"Their accessions include these: {', '.join(bad)}. A row without a bar value "
+                    f"can leave its cell empty."
+                )
+            df = df.assign(__bar_value=bar_values)
+
         # An optional 'sample' column, if present, must be filled in every row, since the sample is
         # the origin used to color elements across samples.
         sample_names = None
@@ -1468,8 +1617,9 @@ class Mapper:
         # thing" is the file's own key: a reaction file naming genes describes one gene's value for
         # one accession, so several genes carrying one accession are not repeats and remain the
         # ordinary case. Slices of genes read the gene IDs without the spaces around them. The rule
-        # also applies to a file with a border column, even one that colors its fills by presence.
-        if value_column is not None or border_column is not None:
+        # also applies to a file with a border or bar column, even one that colors its fills by
+        # presence.
+        if value_column is not None or border_column is not None or bar_column is not None:
             gene_column = '__gene_id' if '__gene_id' in df.columns else 'gene_id'
             key_columns = [
                 column for column in ('__accession', gene_column, '__sample')
@@ -1492,14 +1642,24 @@ class Mapper:
                     f"are compared." if gene_column == '__gene_id' else ''
                 )
                 if value_column is None:
+                    # The values of such a file are those of its border and bar columns.
+                    held = [
+                        (noun, column) for noun, column in (
+                            ('border value', border_column), ('bar value', bar_column)
+                        ) if column is not None
+                    ]
+                    can_have = ' and '.join(
+                        f"a {noun} in the '{column}' column" for noun, column in held
+                    )
                     raise ConfigError(
-                        f"Each row of the kegg-{element_type}-txt file at '{path}' can have a "
-                        f"border value in the '{border_column}' column, so every row must describe "
-                        f"a different thing. {int(duplicated.sum())} rows repeat a combination of "
-                        f"{described}. The first repeated "
+                        f"Each row of the kegg-{element_type}-txt file at '{path}' can have "
+                        f"{can_have}, so every row must describe a different thing. "
+                        f"{int(duplicated.sum())} rows repeat a combination of {described}. The "
+                        f"first repeated "
                         f"{'combinations are' if len(key_columns) > 1 else 'accessions are'}: "
-                        f"{shown}. Each of these can have only one border value. Please keep one "
-                        f"row for each.{stripped}"
+                        f"{shown}. Each of these can have only one "
+                        f"{' and one '.join(noun for noun, _ in held)}. Please keep one row for "
+                        f"each.{stripped}"
                     )
                 if value_type == 'categorical':
                     raise ConfigError(
@@ -1533,40 +1693,45 @@ class Mapper:
             'slice_weights': slice_weights,
             'border_column': border_column,
             'border_value_type': border_value_type,
-            'border_empty': border_empty
+            'border_empty': border_empty,
+            'bar_column': bar_column,
+            'bar_empty': bar_empty
         }
 
     @staticmethod
-    def _border_view(data: dict) -> dict:
+    def _channel_view(data: dict, role: Literal['border', 'bar']) -> dict:
         """
-        Make a reader result whose values are the border values of a file with a border column.
+        Make a reader result whose values are those of the border or bar column of a file.
 
-        The model of the border is built from this view by the same method as the model of the fill
-        ('_build_txt_model'). The view holds only the rows with a border value. In these rows, the
-        border column holds the border value, and so does '__value', as text for categorical values.
-        The view names the border column as its value column.
+        The model of the border or the bars is built from this view by the same method as the model
+        of the fill ('_build_txt_model'). The view holds only the rows with a value in the column.
+        In these rows, the column holds that value, and so does '__value', as text for categorical
+        values. The view names the column as its value column. A bar column holds numbers only.
 
         Parameters
         ==========
         data : dict
-            The '_read_element_txt' result of a file with a border column.
+            The '_read_element_txt' result of a file with a border or bar column.
+
+        role : Literal['border', 'bar']
+            The channel of the column ('TXT_CHANNEL_ROLES').
 
         Returns
         =======
         dict
-            A reader result of the same form, with the border values in place of the fill values.
-            The names of the samples are those of the whole file.
+            A reader result of the same form, with the values of the column in place of the fill
+            values. The names of the samples are those of the whole file.
         """
-        border_column = data['border_column']
+        column = data[f'{role}_column']
         df = data['df']
-        rows = df[df['__border_value'].notna()]
-        values = rows['__border_value']
-        rows = rows.assign(**{border_column: values, '__value': values.astype(str)})
+        rows = df[df[f'__{role}_value'].notna()]
+        values = rows[f'__{role}_value']
+        rows = rows.assign(**{column: values, '__value': values.astype(str)})
         return {
             **data,
             'df': rows,
-            'value_column': border_column,
-            'value_type': data['border_value_type']
+            'value_column': column,
+            'value_type': data['border_value_type'] if role == 'border' else 'numeric'
         }
 
     @staticmethod
@@ -1619,15 +1784,26 @@ class Mapper:
             Reduces a sequence of values to a single value.
         """
         # A categorical rule chooses among names rather than reducing numbers. A layer of
-        # categorical values resolves its rules elsewhere ('_resolve_categorical_rule').
+        # categorical values resolves its rules elsewhere ('_resolve_categorical_rule'). A bar takes
+        # numbers only, so its message names no value type.
         if aggregation in CATEGORICAL_RULES:
+            hint = (
+                f" To read the {channel['column']} as categorical values, give "
+                f"'--{channel['flag_stem']}-value-type categorical'."
+            ) if channel['categorical'] else ""
             raise ConfigError(
                 f"'{flag}' was given as '{aggregation}', which chooses one categorical value among "
                 f"several. The values here are numbers, so they are reduced with an aggregation, "
-                f"such as 'sum' or 'mean'. To read the {channel['column']} as categorical values, "
-                f"give '--{channel['flag_stem']}-value-type categorical'."
+                f"such as 'sum' or 'mean'.{hint}"
             )
         if aggregation in CIRCULAR_AGGREGATIONS + CIRCULAR_SPREADS:
+            if not channel['period']:
+                raise ConfigError(
+                    f"'{flag}' was given as '{aggregation}', which is for values that repeat after "
+                    f"a period, such as clock times. The {channel['values']} take no period, since "
+                    f"the length of a bar starts at 0. Give an aggregation, such as 'mean', "
+                    f"instead."
+                )
             if period is None:
                 raise ConfigError(
                     f"'{flag}' was given as '{aggregation}', which is for values that repeat after "
@@ -2958,13 +3134,14 @@ class Mapper:
         if summary is None:
             return 'presence', None, None
         voters = 'groups' if flag.endswith('-group-summary') else 'samples'
-        # A border shows values only. Its fill already shows presence.
+        # A border or a bar shows values only. Its fill already shows presence.
         if summary in SUMMARY_PRESENCE_SCHEMES and not channel['presence']:
             raise ConfigError(
                 f"'{flag}' was given as '{summary}', which summarizes presence across the "
-                f"{voters}. A border shows values only, and the fill already shows presence. Give "
-                f"an aggregation, such as '{'mean' if period is None else 'circular_mean'}', to "
-                f"pool the border values, or drop '{flag}'."
+                f"{voters}. A {channel['role']} shows values only, and the fill already shows "
+                f"presence. Give an aggregation, such as "
+                f"'{'mean' if period is None else 'circular_mean'}', to pool the "
+                f"{channel['values']}, or drop '{flag}'."
             )
         if summary in SUMMARY_PRESENCE_SCHEMES:
             return 'presence', None, SUMMARY_PRESENCE_SCHEMES[summary]
@@ -2979,11 +3156,14 @@ class Mapper:
                     f"are no values to choose among. Summarize presence with "
                     f"{SUMMARY_PRESENCE_PHRASE} instead."
                 )
+            hint = (
+                f"To read them as categorical values, give '--{channel['flag_stem']}-value-type "
+                f"categorical'."
+            ) if channel['categorical'] else "Pool them with an aggregation, such as 'mean'."
             raise ConfigError(
                 f"'{flag}' was given as '{summary}', which chooses one categorical value across "
                 f"the {voters}. The {channel['values']} of the text file at '{path}' are numbers. "
-                f"To read them as categorical values, give '--{channel['flag_stem']}-value-type "
-                f"categorical'."
+                f"{hint}"
             )
         if value_column is None:
             raise ConfigError(
@@ -3806,10 +3986,10 @@ class Mapper:
     @staticmethod
     def _txt_channel(
         element_type: Literal['reaction', 'compound'],
-        role: Literal['fill', 'border'] = 'fill'
+        role: Literal['fill', 'border', 'bar'] = 'fill'
     ) -> dict:
         """
-        Describe one channel of a layer from a text file: its fill or its border.
+        Describe one channel of a layer from a text file: its fill, its border, or its bars.
 
         A channel is the row of its role in 'TXT_CHANNEL_ROLES', with the layer named in its text.
 
@@ -3818,7 +3998,7 @@ class Mapper:
         element_type : Literal['reaction', 'compound']
             The layer of the channel.
 
-        role : Literal['fill', 'border'], 'fill'
+        role : Literal['fill', 'border', 'bar'], 'fill'
             The channel.
 
         Returns
@@ -3837,12 +4017,19 @@ class Mapper:
               'colorbar_reactions.pdf' or 'reactions_border' in 'colorbar_reactions_border.pdf'.
             - 'column': what messages call the column of the values.
             - 'values': what messages call the values of that column.
-            - 'presence': whether the channel can show presence. A border shows only values.
+            - 'scale': what messages call the scale of the values, a color scale or a bar scale.
+            - 'presence': whether the channel can show presence. A border and a bar show only
+              values.
+            - 'categorical' and 'period': whether the values can be categorical
+              ('--*-value-type'), and whether they can repeat after a period ('--*-value-period').
+              Bars take neither.
+            - 'baseline': the value that every scale of the channel includes, or None. A bar grows
+              from 0, so its scale always includes 0.
             - 'default_aggregation': how numbers are reduced where no aggregation is given and the
               values have no period. A border value given once per accession and repeated in the
               rows of its genes keeps its size under 'mean', but 'sum' would multiply it.
             - 'default_colormap': the colormap of numbers where none is given and the values have no
-              period.
+              period. It is None for a channel without colormaps.
             - 'default_colormap_limits': the part of that colormap that is used, or None for all of
               it.
             - 'default_centered_colormap': the colormap of a scale that a normalization centers.
@@ -4137,6 +4324,41 @@ class Mapper:
         individual_value_limits = self._resolve_value_limits(
             individual_value_limits, individual_value_limits_flag
         )
+        # A bar grows from 0, so each of its scales always includes 0 ('TXT_CHANNEL_ROLES'). Limits
+        # that leave 0 out would draw bars that start elsewhere, and their lengths would misstate
+        # the values. Scales that reach below 0 are not supported yet.
+        baseline = channel['baseline']
+        for limits, flag in (
+            (value_limits, value_limits_flag),
+            (individual_value_limits, individual_value_limits_flag)
+        ):
+            if baseline is None or limits is None:
+                continue
+            limit_min, limit_max = limits
+            shown = ' to '.join('open' if limit is None else f'{limit:g}' for limit in limits)
+            if (limit_min is not None and limit_min > baseline) or (
+                limit_max is not None and limit_max < baseline
+            ):
+                raise ConfigError(
+                    f"'{flag}' was given limits that leave out {baseline:g}: {shown}. A bar grows "
+                    f"from {baseline:g}, so its scale always includes {baseline:g}, and a bar that "
+                    f"started elsewhere would misstate its value. Please give limits that include "
+                    f"{baseline:g}, or leave an end open."
+                )
+            if (limit_min is not None and limit_min < baseline) or (
+                limit_max is not None and limit_max <= baseline
+            ):
+                given = (
+                    f"limits that reach below {baseline:g}"
+                    if limit_min is not None and limit_min < baseline
+                    else f"a maximum of {baseline:g}"
+                )
+                raise ConfigError(
+                    f"'{flag}' was given {given}: {shown}. Bars that grow both ways from "
+                    f"{baseline:g} are not supported yet, so a bar scale runs from {baseline:g} up "
+                    f"to a maximum above it. Please give a minimum of {baseline:g} or leave it "
+                    f"open, and a maximum above {baseline:g}."
+                )
         # A period says that the values repeat, as clock times do every 24 hours. It is resolved
         # before the normalization, which it rules out.
         value_period_flag = f'--{flag_stem}-value-period'
@@ -4485,15 +4707,18 @@ class Mapper:
             )
             if slice_by != 'gene':
                 self._warn_undefined_values(undefined, gene_aggregation, path, channel)
-            limits = _limits(default_colormap_limits)
-            cmap = self._resolve_sequential_colormap(
-                colormap if colormap is not None else default_colormap, limits,
-                subject=channel['plural']
-            )
-            self._check_centered_colormap(
-                cmap, limits, value_center, value_center_flag, colormap_flag,
-                subject=channel['plural']
-            )
+            # A channel without colormaps, such as a bar, sets lengths rather than colors.
+            cmap = None
+            if channel['default_colormap'] is not None:
+                limits = _limits(default_colormap_limits)
+                cmap = self._resolve_sequential_colormap(
+                    colormap if colormap is not None else default_colormap, limits,
+                    subject=channel['plural']
+                )
+                self._check_centered_colormap(
+                    cmap, limits, value_center, value_center_flag, colormap_flag,
+                    subject=channel['plural']
+                )
             return {
                 **common,
                 'unified_mode': 'quantitative',
@@ -4558,12 +4783,12 @@ class Mapper:
         unified_mode = 'static' if static_color else (
             'quantitative' if unified_kind == 'value' else 'membership'
         )
-        # A border shows values only. A map that a summary would color by presence shows no border,
-        # which the mode None says ('_txt_channel'). Its summaries take no presence names
-        # ('_resolve_summary'), so such a map is one without a summary.
-        border = channel['role'] == 'border'
+        # A border or a bar shows values only. A map that a summary would color by presence shows no
+        # border or bar, which the mode None says ('_txt_channel'). Its summaries take no presence
+        # names ('_resolve_summary'), so such a map is one without a summary.
+        values_only = not channel['presence']
         individual_mode = 'quantitative' if individual_kind == 'value' else 'membership'
-        if border:
+        if values_only:
             unified_mode = 'quantitative' if unified_kind == 'value' else None
             individual_mode = 'quantitative' if individual_kind == 'value' else None
 
@@ -4608,18 +4833,23 @@ class Mapper:
         # group's samples contain an element rather than how much of it there is. This is checked
         # before the limits and the center below, since a centered normalization supplies a center
         # of its own and their messages would name that center rather than what put it there.
-        # A border shows no ring on a map without a summary, as its summaries take no presence
-        # names. The messages of the border say so.
-        no_border = (
-            f"Those maps show no border here, since '--{flag_stem}-sample-summary' was not given. "
-            f"Give it an aggregation, such as '{suggested_summary}', to show border values on the "
-            f"group maps"
+        # A border shows no ring, and a bar no bar, on a map without a summary, as their summaries
+        # take no presence names. Their messages say so.
+        absent = 'no border' if channel['role'] == 'border' else 'no bars'
+        scale_of = (
+            f"{channel['scale']} of {channel['values']}" if channel['role'] == 'border'
+            else channel['scale']
+        )
+        no_values = (
+            f"Those maps show {absent} here, since '--{flag_stem}-sample-summary' was not given. "
+            f"Give it an aggregation, such as '{suggested_summary}', to show {channel['values']} "
+            f"on the group maps"
         )
         if element_normalization is not None and model['individual_mode'] != 'quantitative':
-            if border:
+            if values_only:
                 raise ConfigError(
-                    f"'{element_normalization_flag}' rescales the border values of the maps of the "
-                    f"individual groups. {no_border}."
+                    f"'{element_normalization_flag}' rescales the {channel['values']} of the maps "
+                    f"of the individual groups. {no_values}."
                 )
             raise ConfigError(
                 f"'{element_normalization_flag}' rescales the values that color the maps of the "
@@ -4639,12 +4869,12 @@ class Mapper:
             (value_limits, value_limits_flag, individual_value_limits_flag, 'bound'),
             (value_center, value_center_flag, individual_value_center_flag, 'center')
         ):
-            if setting is not None and model['unified_mode'] != 'quantitative' and border:
+            if setting is not None and model['unified_mode'] != 'quantitative' and values_only:
                 raise ConfigError(
-                    f"'{flag}' {verb}s the color scale of border values on the 'unified' map. That "
-                    f"map shows no border here, since '{summary_flag}' was not given. Give it an "
-                    f"aggregation, such as '{suggested_summary}', or {verb} the scale of the maps "
-                    f"of the individual samples or groups with '{other_flag}' instead."
+                    f"'{flag}' {verb}s the {scale_of} on the 'unified' map. That map shows "
+                    f"{absent} here, since '{summary_flag}' was not given. Give it an aggregation, "
+                    f"such as '{suggested_summary}', or {verb} the scale of the maps of the "
+                    f"individual samples or groups with '{other_flag}' instead."
                 )
             if setting is not None and model['unified_mode'] != 'quantitative':
                 reason = (
@@ -4662,10 +4892,10 @@ class Mapper:
             (individual_value_limits, individual_value_limits_flag, value_limits_flag, 'bound'),
             (individual_value_center, individual_value_center_flag, value_center_flag, 'center')
         ):
-            if setting is not None and model['individual_mode'] != 'quantitative' and border:
+            if setting is not None and model['individual_mode'] != 'quantitative' and values_only:
                 raise ConfigError(
-                    f"'{flag}' {verb}s the color scale shared by the maps of the individual "
-                    f"groups. {no_border}, or {verb} the 'unified' map's own scale with "
+                    f"'{flag}' {verb}s the {channel['scale']} shared by the maps of the individual "
+                    f"groups. {no_values}, or {verb} the 'unified' map's own scale with "
                     f"'{other_flag}'."
                 )
             if setting is not None and model['individual_mode'] != 'quantitative':
@@ -4679,11 +4909,11 @@ class Mapper:
                 )
         if (
             individual_colormap is not None and model['individual_mode'] != 'quantitative'
-            and border
+            and values_only
         ):
             raise ConfigError(
                 f"'{individual_colormap_flag}' colors the scale shared by the maps of the "
-                f"individual groups. {no_border}, or color the 'unified' map's own scale with "
+                f"individual groups. {no_values}, or color the 'unified' map's own scale with "
                 f"'{colormap_flag}'."
             )
         if individual_colormap is not None and model['individual_mode'] != 'quantitative':
@@ -4716,12 +4946,12 @@ class Mapper:
                 given_flag, other_flag = value_limits_flag, individual_value_limits_flag
                 other_subject = f"the maps of the individual {'groups' if grouped else 'samples'}"
             self.run.warning(
-                f"'{given_flag}' bounds the color scale of the {noun} layer, but '{other_flag}' "
-                f"was not given, so the scale of {other_subject} still spans whatever its own "
-                f"values happen to reach. The two are bounded separately because they can differ a "
-                f"great deal -- a summary such as a mean across samples spans less than the "
-                f"samples themselves do -- so this may well be what you intend. If it is not, give "
-                f"'{other_flag}' limits of its own."
+                f"'{given_flag}' bounds the {channel['scale']} of the {noun} layer, but "
+                f"'{other_flag}' was not given, so the scale of {other_subject} still spans "
+                f"whatever its own values happen to reach. The two are bounded separately because "
+                f"they can differ a great deal -- a summary such as a mean across samples spans "
+                f"less than the samples themselves do -- so this may well be what you intend. If "
+                f"it is not, give '{other_flag}' limits of its own."
             )
 
         # Centering only one of the two scales also warns, for the same reason as the limits above.
@@ -4765,9 +4995,9 @@ class Mapper:
         if slice_by != 'gene':
             self._warn_undefined_values(undefined, gene_aggregation, path, channel)
 
-        if 'quantitative' not in (model['unified_mode'], model['individual_mode']) and border:
-            # A border that no map shows is refused once the maps of the run are known
-            # ('_check_border_maps'). The refusal says whether the samples are grouped.
+        if 'quantitative' not in (model['unified_mode'], model['individual_mode']) and values_only:
+            # A border or a bar that no map shows is refused once the maps of the run are known
+            # ('_check_channel_maps'). The refusal says whether the samples are grouped.
             model['group_samples'] = group_samples
             return model
         if 'quantitative' not in (model['unified_mode'], model['individual_mode']):
@@ -4801,6 +5031,15 @@ class Mapper:
         # A spread on the 'unified' map does not repeat. Its scale takes a sequential colormap. A
         # cyclic one would give the smallest and the largest spread the same color.
         model['unified_spread'] = unified_spread
+        # A channel without colormaps, such as a bar, sets lengths rather than colors. It has no
+        # normalization to relabel its scale.
+        if channel['default_colormap'] is None:
+            model['cmap'] = None
+            model['individual_cmap'] = None
+            model['aggregate'] = aggregate
+            model['colorbar_label'] = value_column
+            model['individual_colorbar_label'] = value_column
+            return model
         unified_default_colormap = (
             channel['default_colormap'] if unified_spread else default_colormap
         )
@@ -5328,6 +5567,89 @@ class Mapper:
             kgml.SlicedKGMLCanvas.check_biopython()
 
     @staticmethod
+    def _check_bar_options(
+        reaction_txt: Union[str, None],
+        reaction_bar: Union[Dict[str, object], None],
+        reaction_color: Union[str, None],
+        slice_by: Union[str, None]
+    ) -> None:
+        """
+        Check the options of the bars of the reaction layer, as far as that can be done without the
+        file.
+
+        Every option of the bars needs the bar column, and that column needs the reaction file. A
+        bar takes the color of the fill of its box, so the reference map's colors and fills left
+        uncolored are refused. Bars in the slices of boxes are not supported yet. The builder of the
+        model of the bars checks the rest ('_build_txt_model'). The command line makes these checks
+        too, and these repeat them for programmatic callers. Where a bar column is named, the
+        private methods of Biopython that draw bars are checked too
+        ('kgml.SlicedKGMLCanvas.check_biopython').
+
+        Parameters
+        ==========
+        reaction_txt : Union[str, None]
+            Path to the reaction file, or None.
+
+        reaction_bar : Union[Dict[str, object], None]
+            The options of the bars, keyed by 'BAR_OPTIONS', or None.
+
+        reaction_color : Union[str, None]
+            The presence color of the reaction layer. It is 'original' for '--original-color', and
+            'none' where the fills are left uncolored.
+
+        slice_by : Union[str, None]
+            What the reaction elements are sliced by ('SLICE_UNITS'), or None.
+        """
+        if not reaction_bar:
+            return
+        unknown = [option for option in reaction_bar if option not in BAR_OPTIONS]
+        if unknown:
+            raise ConfigError(
+                f"The options of the reaction bars include "
+                f"{', '.join(repr(option) for option in unknown)}, which "
+                f"{'is not an option' if len(unknown) == 1 else 'are not options'} of reaction "
+                f"bars. They take these: {', '.join(repr(option) for option in BAR_OPTIONS)}."
+            )
+        column_flag = '--reaction-bar-column'
+        given = [
+            f"'--reaction-bar-{option.replace('_', '-')}'" for option in BAR_OPTIONS
+            if option != 'column' and reaction_bar.get(option) is not None
+        ]
+        if reaction_bar.get('column') is None:
+            if given:
+                raise ConfigError(
+                    f"{', '.join(given)} {'apply' if len(given) > 1 else 'applies'} to the bars of "
+                    f"the reaction layer, but no bar column was named with '{column_flag}'. Name "
+                    f"the column whose values set the lengths of the bars."
+                )
+            return
+        if reaction_txt is None:
+            raise ConfigError(
+                f"'{column_flag}' names the bar column of the reaction file, but no reaction file "
+                f"('--reaction-txt') was provided."
+            )
+        if reaction_color == 'original':
+            raise ConfigError(
+                f"'{column_flag}' draws bars in the colors of the fills of reaction boxes, but "
+                f"'--original-color' takes both the colors and the drawing order of the reactions "
+                f"from the reference map, and it draws no bars. Please use only one of them."
+            )
+        if reaction_color == 'none':
+            raise ConfigError(
+                f"'{column_flag}' draws bars in the colors of the fills of reaction boxes, but "
+                f"'--reaction-color none' leaves the fills uncolored, so the bars would have no "
+                f"color. Please give the fills a color, or drop one of the two options."
+            )
+        if slice_by is not None:
+            raise ConfigError(
+                f"'--reaction-slice-by' cannot be combined with '{column_flag}' yet. Bars in the "
+                f"slices of boxes are not supported. Please use only one of them."
+            )
+        # Bars are drawn with private methods of Biopython, which a release can rename. This is
+        # checked before anything is written.
+        kgml.SlicedKGMLCanvas.check_biopython()
+
+    @staticmethod
     def _check_slice_options(
         reaction_txt: Union[str, None],
         slice_by: Union[str, None],
@@ -5524,8 +5846,8 @@ class Mapper:
 
         The rings of the border of a layer are sliced by this method too
         ('--reaction-border-slice-by'). The model of the border is built from the rows with a border
-        value ('_border_view'), and the messages name the options of the border. A border that no
-        drawn map shows is refused with the maps of the run ('_check_border_maps'). Where the fill
+        value ('_channel_view'), and the messages name the options of the border. A border that no
+        drawn map shows is refused with the maps of the run ('_check_channel_maps'). Where the fill
         is sliced by the same unit, the rings are aligned with its columns. The fill then gives the
         slices and their shares ('_ring_result'), so the border takes no weights. With slices of
         genes, it takes the genes of the fill, so that both find the same slices. Otherwise, the
@@ -5540,7 +5862,7 @@ class Mapper:
 
         data : dict
             The '_read_element_txt' result for the reaction file, or its border view
-            ('_border_view').
+            ('_channel_view').
 
         slice_by : str
             One of 'SLICE_UNITS'.
@@ -5950,6 +6272,7 @@ class Mapper:
         compound_element_normalization_label: Union[str, None] = None,
         reaction_border: Union[Dict[str, object], None] = None,
         compound_border: Union[Dict[str, object], None] = None,
+        reaction_bar: Union[Dict[str, object], None] = None,
         group_colormap: Union[str, mcolors.Colormap, None] = None,
         group_colormap_limits: Tuple[float, float] = None,
         group_reverse_overlay: bool = False,
@@ -6192,6 +6515,19 @@ class Mapper:
             The same for the compound layer, whose rings are drawn inside compound circles on
             standard and overview maps. It takes no 'gene_aggregation' and no 'slice_by'.
 
+        reaction_bar : Union[Dict[str, object], None], None
+            The options of the bars of the reaction layer, keyed by 'BAR_OPTIONS', or None for no
+            bars. 'column' names the bar column of the reaction file. Its values set the length of a
+            bar in each reaction box on standard maps, drawn in the color of the fill of the box
+            over a gray track ('BAR_TRACK_COLOR'). The other keys are the bar versions of the
+            options of the fill. A bar shows values only, so its summaries take no presence names.
+            Without a summary, the 'unified' map of a file with samples shows no bars, and its fills
+            are drawn whole. The aggregations default to 'mean'. Each scale of bars includes 0, and
+            limits that leave 0 out are refused. On a map that shows bars, a box with a fill and no
+            bar value is left uncolored. The bars are built by the builder of the fill
+            ('_build_txt_model', '_txt_channel'). Options left out are None. Negative bar values,
+            '--original-color', a 'reaction_color' of 'none', and 'reaction_slice_by' are refused.
+
         Notes
         =====
         The remaining parameters carry the shared groups, per-layer colors/colormaps, and drawing
@@ -6233,6 +6569,9 @@ class Mapper:
         self._check_border_options(
             reaction_txt, compound_txt, reaction_border, compound_border, reaction_color
         )
+        # The options of bars are checked the same way.
+        reaction_bar = dict(reaction_bar or {})
+        self._check_bar_options(reaction_txt, reaction_bar, reaction_color, reaction_slice_by)
         # The options that slice reaction elements are checked as far as they can be before the file
         # is read.
         self._check_slice_options(
@@ -6254,9 +6593,11 @@ class Mapper:
                     slice_weights=reaction_slice_weights, slice_by=reaction_slice_by,
                     border_column=reaction_border.get('column'),
                     border_value_type=reaction_border.get('value_type') or 'numeric',
-                    border_slice_by=reaction_border.get('slice_by')
+                    border_slice_by=reaction_border.get('slice_by'),
+                    bar_column=reaction_bar.get('column')
                 ),
                 'border': reaction_border,
+                'bar': reaction_bar,
                 'slice_by': reaction_slice_by,
                 'gene_aggregation': reaction_gene_aggregation,
                 'accession_aggregation': reaction_accession_aggregation,
@@ -6288,6 +6629,7 @@ class Mapper:
                     border_value_type=compound_border.get('value_type') or 'numeric'
                 ),
                 'border': compound_border,
+                'bar': {},
                 # A compound file has one row per accession per sample, so the gene level is a
                 # reduction over a single value. Left unset, it takes the layer's default. A period
                 # makes that default circular, and a period would refuse a 'sum' here.
@@ -6361,7 +6703,7 @@ class Mapper:
             for rule in (
                 layer['gene_aggregation'], layer['accession_aggregation'], layer['sample_summary'],
                 layer['group_summary'], *(
-                    layer['border'].get(option) for option in (
+                    layer[role].get(option) for role in ('border', 'bar') for option in (
                         'gene_aggregation', 'accession_aggregation', 'sample_summary',
                         'group_summary'
                     )
@@ -6379,7 +6721,7 @@ class Mapper:
         seed = DEFAULT_CATEGORICAL_SEED if seed is None else seed
         models = [
             self._build_txt_model(
-                **{key: value for key, value in layer.items() if key != 'border'},
+                **{key: value for key, value in layer.items() if key not in ('border', 'bar')},
                 all_sample_names=all_sample_names, group_samples=group_samples, seed=seed
             )
             for layer in raw_layers
@@ -6398,31 +6740,47 @@ class Mapper:
             return aggregations
 
         # The border of a layer is built from its border column by the builder of the fill. Its
-        # channel names its options and gives its defaults. Its options left out are None.
+        # channel names its options and gives its defaults. Its options left out are None. The bars
+        # of a layer are built from its bar column in the same way. They are kept as a list, which
+        # holds one model.
         for layer, model in zip(raw_layers, models):
             data = layer['data']
-            model['border'] = None
-            if data['border_column'] is None:
-                continue
             element_type = data['element_type']
-            border = {option: layer['border'].get(option) for option in BORDER_OPTIONS}
-            channel = self._txt_channel(element_type, 'border')
-            model['border'] = self._build_txt_model(
-                channel['name'], self._border_view(data), layer['path'],
-                border['gene_aggregation'], border['accession_aggregation'], None,
-                border['colormap'], border['colormap_limits'], border['individual_colormap'],
-                border['individual_colormap_limits'], None, False, all_sample_names, group_samples,
-                border['sample_summary'], border['group_summary'],
-                value_limits=border['value_limits'],
-                individual_value_limits=border['individual_value_limits'],
-                value_center=border['value_center'],
-                individual_value_center=border['individual_value_center'],
-                element_normalization=border['element_normalization'],
-                element_normalization_label=border['element_normalization_label'],
-                value_period=border['value_period'], value_colors_txt=border['value_colors'],
-                seed=seed, slice_by=border['slice_by'], channel=channel
-            )
-            # Each column and the aggregations that reduce its values are reported. The two channels
+            model['border'] = None
+            model['bars'] = []
+            if data['border_column'] is not None:
+                border = {option: layer['border'].get(option) for option in BORDER_OPTIONS}
+                channel = self._txt_channel(element_type, 'border')
+                model['border'] = self._build_txt_model(
+                    channel['name'], self._channel_view(data, 'border'), layer['path'],
+                    border['gene_aggregation'], border['accession_aggregation'], None,
+                    border['colormap'], border['colormap_limits'], border['individual_colormap'],
+                    border['individual_colormap_limits'], None, False, all_sample_names,
+                    group_samples, border['sample_summary'], border['group_summary'],
+                    value_limits=border['value_limits'],
+                    individual_value_limits=border['individual_value_limits'],
+                    value_center=border['value_center'],
+                    individual_value_center=border['individual_value_center'],
+                    element_normalization=border['element_normalization'],
+                    element_normalization_label=border['element_normalization_label'],
+                    value_period=border['value_period'], value_colors_txt=border['value_colors'],
+                    seed=seed, slice_by=border['slice_by'], channel=channel
+                )
+            if data['bar_column'] is not None:
+                bar = {option: layer['bar'].get(option) for option in BAR_OPTIONS}
+                channel = self._txt_channel(element_type, 'bar')
+                bar_model = self._build_txt_model(
+                    channel['name'], self._channel_view(data, 'bar'), layer['path'],
+                    bar['gene_aggregation'], bar['accession_aggregation'], None, None, None, None,
+                    None, None, False, all_sample_names, group_samples, bar['sample_summary'],
+                    bar['group_summary'], value_limits=bar['value_limits'],
+                    individual_value_limits=bar['individual_value_limits'], seed=seed,
+                    channel=channel
+                )
+                model['bars'] = [bar_model]
+            if model['border'] is None and not model['bars']:
+                continue
+            # Each column and the aggregations that reduce its values are reported. The channels
             # reduce values by different defaults, so the same column can give an element different
             # values as its fill and as its border. A layer in the fill mode 'none' colors no fills.
             # Its rows without a border value then show nothing.
@@ -6431,12 +6789,18 @@ class Mapper:
                 f"none, and '--{element_type}-color none' leaves the fills uncolored"
                 if model['unified_mode'] == 'none' else "none, so the fills show presence"
             )
-            for name, column, value_type, aggregations in (
-                ('value', data['value_column'], data['value_type'],
-                 _used(model.get('aggregations'), layer.get('slice_by'))),
-                ('border', data['border_column'], data['border_value_type'],
-                 _used(model['border'].get('aggregations'), border['slice_by']))
-            ):
+            columns = [(
+                'value', data['value_column'], data['value_type'],
+                _used(model.get('aggregations'), layer.get('slice_by'))
+            )]
+            if model['border'] is not None:
+                columns.append((
+                    'border', data['border_column'], data['border_value_type'],
+                    _used(model['border'].get('aggregations'), border['slice_by'])
+                ))
+            for bar_model in model['bars']:
+                columns.append(('bar', data['bar_column'], 'numeric', bar_model['aggregations']))
+            for name, column, value_type, aggregations in columns:
                 self.run.info(
                     f"{label} {name} column",
                     f"{column} ({value_type})" if column is not None else no_column
@@ -6445,8 +6809,11 @@ class Mapper:
                     if column is None or level == 'gene' and 'gene_id' not in data['df'].columns:
                         continue
                     self.run.info(f"{label} {name} {level} aggregation", aggregation)
-            self.run.info(f"{label} rows without a border value", data['border_empty'])
-            if border['slice_by'] is not None:
+            if model['border'] is not None:
+                self.run.info(f"{label} rows without a border value", data['border_empty'])
+            if model['bars']:
+                self.run.info(f"{label} rows without a bar value", data['bar_empty'])
+            if model['border'] is not None and border['slice_by'] is not None:
                 self.run.info(
                     f"{label} border slices",
                     f"by {border['slice_by']}, " + (
@@ -6471,13 +6838,14 @@ class Mapper:
         border_slice_by = reaction_border.get('slice_by')
         if border_slice_by is not None:
             fill = models[0]
-            fill['border'].update(self._build_slice_model(
-                fill['border'], self._border_view(raw_layers[0]['data']), border_slice_by,
-                reaction_slice_weight_aggregation, reaction_slice_share_summary,
+            border_slice_model = self._build_slice_model(
+                fill['border'], self._channel_view(raw_layers[0]['data'], 'border'),
+                border_slice_by, reaction_slice_weight_aggregation, reaction_slice_share_summary,
                 reaction_border.get('accession_aggregation'), all_sample_names, group_samples,
                 draw_unified_maps, draw_individual_maps,
                 fill=fill if border_slice_by == reaction_slice_by else None
-            ))
+            )
+            fill['border'].update(border_slice_model)
         # Shares are pooled on the maps that summarize several samples. A summary of shares needs
         # such a map that shows the slices of the fill, or rings that are sliced on their own.
         if reaction_slice_share_summary is not None:
@@ -7820,7 +8188,8 @@ class Mapper:
         flag: Union[str, None] = None,
         center: Union[float, None] = None,
         center_flag: Union[str, None] = None,
-        subject: str = 'these maps'
+        subject: str = 'these maps',
+        baseline: Union[float, None] = None
     ) -> Tuple[Union[mcolors.Normalize, None], Union[float, None], Union[float, None], bool, bool]:
         """
         Make a normalization over reaction values for quantitative coloring.
@@ -7864,6 +8233,11 @@ class Mapper:
         subject : str, 'these maps'
             What the scale colors, e.g. "the 'unified' map", for messages about the centering.
 
+        baseline : Union[float, None], None
+            A value that the scale always includes, or None. A bar grows from 0, so the scale of
+            bars includes 0 wherever the values would put its ends ('TXT_CHANNEL_ROLES'). Its limits
+            include it too ('_build_txt_model'). Such a scale takes no center.
+
         Returns
         =======
         Tuple[Union[matplotlib.colors.Normalize, None],
@@ -7883,7 +8257,9 @@ class Mapper:
             - The one limit given lies on the far end of the values.
             - A center is given, and every value equals it.
             Callers then give every element the top color of the colormap. Where the scale is
-            centered, they give it the middle color instead.
+            centered, they give it the middle color instead. With a baseline, the scale is a single
+            value only where every value is the baseline, and callers draw bars of no length
+            ('_bar_extent').
         """
         if not values:
             return None, None, None, False, False
@@ -7892,6 +8268,9 @@ class Mapper:
         limit_min, limit_max = (None, None) if limits is None else limits
         vmin = data_min if limit_min is None else limit_min
         vmax = data_max if limit_max is None else limit_max
+        if baseline is not None:
+            vmin = min(vmin, baseline) if limit_min is None else vmin
+            vmax = max(vmax, baseline) if limit_max is None else vmax
         if (limit_min is not None and limit_min > data_max) or (
             limit_max is not None and limit_max < data_min
         ):
@@ -9709,6 +10088,11 @@ class Mapper:
             in a key table ('_write_slice_keys'). A border with sliced rings has these keys too. Its
             rings are found from the fill of its layer ('_ring_result').
 
+            A text layer can also have 'border', the model of its border column, and 'bars', a list
+            of the models of its bar columns, which holds one model. These have the keys of a
+            'quantitative' layer, except that a bar has no colormap. Their mode is None on a map
+            that shows none of their values.
+
         output_dir : str
             Path to the output directory in which pathway map and colorbar PDF files are drawn.
 
@@ -9750,11 +10134,14 @@ class Mapper:
 
         # The border of a text layer is a model of its own, built from its border column
         # ('map_kegg_pathways_txt'). It has the keys of a 'quantitative' or 'categorical' layer. Its
-        # mode is None on a map that shows no border. The steps that find, check, and key a scale
-        # take the borders with the layers. The checks of reserved colors and of derived compound
-        # colors do not, since a border is never part of the colors of an element.
+        # mode is None on a map that shows no border. The bars of a text layer are models too, built
+        # from its bar column. The steps that find, check, and key a scale take the borders and bars
+        # with the layers. The checks of reserved colors and of derived compound colors do not,
+        # since a ring is never part of the colors of an element, and a bar takes the color of its
+        # fill.
         borders = [layer['border'] for layer in layers if layer.get('border') is not None]
-        models = layers + borders
+        bars = [bar for layer in layers for bar in layer.get('bars', [])]
+        models = layers + borders + bars
 
         def _stem(layer: dict) -> str:
             # The options of a layer from a text file start with the stem of its channel.
@@ -9765,6 +10152,10 @@ class Mapper:
 
         def _is_border(layer: dict) -> bool:
             return 'channel' in layer and layer['channel']['role'] == 'border'
+
+        def _role(layer: dict) -> str:
+            # The channel of a model: the fill of its layer, or its border or bars.
+            return layer['channel']['role'] if 'channel' in layer else 'fill'
 
         original_run = any(layer['unified_mode'] == 'original' for layer in layers)
         static = any(layer['unified_mode'] in ('static', 'original') for layer in layers)
@@ -9914,12 +10305,16 @@ class Mapper:
                 unified_suffix = flag_suffix.replace('individual-', '')
                 unified_flags = (
                     f"'--reaction-{unified_suffix}'/'--compound-{unified_suffix}'"
-                    if not any(_is_border(layer) for layer in affected_layers) else ', '.join(
+                    if all(_role(layer) == 'fill' for layer in affected_layers) else ', '.join(
                         f"'--{_stem(layer)}-{unified_suffix}'" for layer in affected_layers
                     )
                 )
+                # Bars are drawn on a scale of lengths, not of colors.
+                scale = 'scale' if any(_role(layer) == 'bar' for layer in affected_layers) else (
+                    'color scale'
+                )
                 raise ConfigError(
-                    f"{subject_phrase} the color scale shared by the maps of the individual "
+                    f"{subject_phrase} the {scale} shared by the maps of the individual "
                     f"samples or groups ({flags}), but this run draws no such maps, so that scale "
                     f"is never drawn and this would go nowhere. Ask for those maps with "
                     f"'--draw-individual-files' and/or '--draw-grid', or {remedy_phrase} the scale "
@@ -9945,12 +10340,15 @@ class Mapper:
                 )
                 individual_flags = (
                     f"'--reaction-individual-{flag_suffix}'/'--compound-individual-{flag_suffix}'"
-                    if not any(_is_border(layer) for layer in affected_layers) else ', '.join(
+                    if all(_role(layer) == 'fill' for layer in affected_layers) else ', '.join(
                         f"'--{_stem(layer)}-individual-{flag_suffix}'" for layer in affected_layers
                     )
                 )
+                scale = 'scale' if any(_role(layer) == 'bar' for layer in affected_layers) else (
+                    'color scale'
+                )
                 raise ConfigError(
-                    f"{subject_phrase} the color scale of the 'unified' map ({flags}). That map is "
+                    f"{subject_phrase} the {scale} of the 'unified' map ({flags}). That map is "
                     f"not drawn here, so its scale is never drawn either. {remedy_phrase} the "
                     f"scale shared by the maps of the individual {individual_noun}s instead, with "
                     f"{individual_flags}, or let the 'unified' map be drawn."
@@ -10083,9 +10481,10 @@ class Mapper:
         pathway_numbers = self._find_maps(
             check_dirs, patterns=pathway_numbers, extensions=extensions
         )
-        # A border that no map of the run can show is refused before any output is written.
-        self._check_border_maps(
-            borders, pathway_numbers, draw_unified_maps, draw_individual_maps, individual_noun,
+        # A border or bar that no map of the run can show is refused before any output is written.
+        self._check_channel_maps(
+            borders + bars, pathway_numbers, draw_unified_maps, draw_individual_maps,
+            individual_noun,
             unfilled={layer['element_type'] for layer in layers if layer['unified_mode'] == 'none'}
         )
         filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
@@ -10116,7 +10515,9 @@ class Mapper:
         # border is keyed only where some map shows one of its rings, so the pass records those maps
         # for it. Every border records the reaction elements with border values that a standard map
         # draws as lines, which show no ring. A border with sliced rings finds what its rings show
-        # from the fill of its layer ('_ring_result').
+        # from the fill of its layer ('_ring_result'). Bars are drawn in the boxes that take rings,
+        # so a bar scale spans only those, and bars record their lines too. A map with bars records
+        # the boxes it leaves uncolored for want of a bar value ('_stage_entry_bar').
         ring_layers = [
             layer for layer in borders
             if 'categorical' in (layer['unified_mode'], layer['individual_mode'])
@@ -10124,7 +10525,11 @@ class Mapper:
         for layer in borders:
             layer['_ring_maps'] = {'unified': set(), 'individual': set()}
             layer['_line_entries'] = {}
+        for layer in bars:
+            layer['_line_entries'] = {}
+            layer['_missing'] = {}
         fills = {id(layer['border']): layer for layer in layers if layer.get('border') is not None}
+        fills.update({id(bar): layer for layer in layers for bar in layer.get('bars', [])})
 
         def _unfilled(border: dict) -> str:
             # The rings of a layer in the fill mode 'none' are all that the layer draws, so the
@@ -10187,7 +10592,7 @@ class Mapper:
                     for entry in self._find_element_entries(
                         pathway, use_reaction, layer['accessions']
                     ):
-                        if _is_border(layer) and not self._shows_ring(
+                        if _role(layer) != 'fill' and not self._shows_ring(
                             pathway_number, pathway, layer, entry
                         ):
                             continue
@@ -10319,6 +10724,16 @@ class Mapper:
                             f"the individual {individual_noun}s."
                         )
                 elif not layer['_unified_vals'] and not layer['_individual_vals'] and (
+                    _role(layer) == 'bar'
+                ):
+                    self.run.warning(
+                        f"No map shows a bar from the '{layer['value_column']}' bar column of the "
+                        f"{layer['element_type']} layer, so no bar key was drawn for it. Either "
+                        f"none of the drawn maps shows a bar for its accessions, or the "
+                        f"aggregation reducing them is undefined for every map element, as the "
+                        f"standard deviation of a single value is."
+                    )
+                elif not layer['_unified_vals'] and not layer['_individual_vals'] and (
                     _is_border(layer)
                 ):
                     self.run.warning(
@@ -10336,6 +10751,21 @@ class Mapper:
                         f"contains its accessions, or the aggregation reducing them is undefined "
                         f"for every map element — the standard deviation of a single value, for "
                         f"instance."
+                    )
+                # Bars grow from 0 in one direction only, for now. The bar values of the file are 0
+                # or more ('_read_element_txt'), but some aggregations, such as 'skew', can still
+                # reduce them below 0.
+                negative = [
+                    value for value in layer['_unified_vals'] + layer['_individual_vals']
+                    if value < 0
+                ]
+                if _role(layer) == 'bar' and negative:
+                    raise ConfigError(
+                        f"The aggregations and summaries of the '{layer['value_column']}' bar "
+                        f"column of the {layer['element_type']} layer reduce its values to numbers "
+                        f"below 0 on the drawn maps, down to {min(negative):g}. Bars that grow "
+                        f"both ways from 0 are not supported yet. Please reduce the bar values in "
+                        f"a way that keeps them at 0 or more, such as with 'mean'."
                     )
                 # A period fixes each scale of values to run from 0 to the period. The limits are
                 # set here, not in the layer model. The checks on limits read a limit in the model
@@ -10358,6 +10788,8 @@ class Mapper:
                     individual_value_center = 0.0
                 else:
                     individual_value_limits = (0.0, period)
+                # A bar scale always includes 0 ('TXT_CHANNEL_ROLES').
+                baseline = layer['channel']['baseline'] if 'channel' in layer else None
                 if layer['unified_mode'] == 'quantitative' and _unified_scale_drawn(layer):
                     norm, vmin, vmax, clamped_low, clamped_high = self._make_quantitative_norm(
                         layer['_unified_vals'], value_limits, f"--{_stem(layer)}-value-limits",
@@ -10366,7 +10798,8 @@ class Mapper:
                         subject=(
                             f"the {_noun(layer)} layer of the 'unified' map"
                             if has_individuals else f"the {_noun(layer)} layer"
-                        )
+                        ),
+                        baseline=baseline
                     )
                     layer['_unified_norm'] = norm
                     layer['_unified_range'] = (vmin, vmax)
@@ -10395,7 +10828,8 @@ class Mapper:
                         subject=(
                             f"the {_noun(layer)} layer of the maps of the individual "
                             f"{individual_noun}s"
-                        )
+                        ),
+                        baseline=baseline
                     )
                     layer['_individual_norm'] = norm
                     layer['_individual_range'] = (vmin, vmax)
@@ -10412,7 +10846,7 @@ class Mapper:
                     layer['_individual_clamped'] = layer['_unified_clamped']
                     layer['_individual_center'] = layer['_unified_center']
             # A categorical border whose rings no map shows gets no legend. The data left every ring
-            # empty, since the options alone were checked before ('_check_border_maps').
+            # empty, since the options alone were checked before ('_check_channel_maps').
             for layer in ring_layers:
                 if not (layer['_ring_maps']['unified'] or layer['_ring_maps']['individual']):
                     self.run.warning(
@@ -10421,10 +10855,10 @@ class Mapper:
                         f"Either none of the drawn maps shows a border for its accessions, or the "
                         f"rules that choose among its values gave no value.{_unfilled(layer)}"
                     )
-            # Lines show no ring, so a reaction element that a standard map draws as a line shows
-            # only its fill. Users may expect a ring there. A layer in the fill mode 'none' shows
-            # nothing there.
-            for layer in borders:
+            # Lines show no ring and no bar, so a reaction element that a standard map draws as a
+            # line shows only its fill. Users may expect a ring or a bar there. A layer in the fill
+            # mode 'none' shows nothing there.
+            for layer in borders + bars:
                 lines = layer['_line_entries']
                 if not lines:
                     continue
@@ -10432,12 +10866,13 @@ class Mapper:
                 shown = (
                     "no border. '--reaction-color none' leaves their fills uncolored, so these "
                     "elements show nothing" if fills[id(layer)]['unified_mode'] == 'none'
-                    else "no border, so these elements show only their fills"
+                    else f"no {'border' if _is_border(layer) else 'bars'}, so these elements show "
+                    f"only their fills"
                 )
                 self.run.warning(
-                    f"On {len(lines)} standard map(s), {count} reaction element(s) with border "
-                    f"values in the column '{layer['value_column']}' are drawn as lines. Lines "
-                    f"show {shown}. The maps are these: "
+                    f"On {len(lines)} standard map(s), {count} reaction element(s) with "
+                    f"{layer['channel']['values']} in the column '{layer['value_column']}' are "
+                    f"drawn as lines. Lines show {shown}. The maps are these: "
                     f"{', '.join(sorted(lines)[:10])}{', and more' if len(lines) > 10 else ''}."
                 )
 
@@ -10802,6 +11237,49 @@ class Mapper:
                 'border_slice_unshown': border['_slice_unshown']
             }
 
+        # A layer with bars adds a function to the spec of each map that shows them. It finds where
+        # the bar of an Entry starts and ends on the bar scale of the map ('_bar_extent'), or gives
+        # None where the Entry has no bar value there. The boxes of such a map are drawn as bars in
+        # the colors of their fills ('_stage_entry_bar'). A map that shows no bar values, such as
+        # the 'unified' map without a bar summary, draws its fills whole. The bars of a layer are a
+        # list of one model.
+        def _with_bars(spec, layer, individual=None):
+            if not layer.get('bars'):
+                return spec
+            bar = layer['bars'][0]
+            mode = bar['unified_mode'] if individual is None else bar['individual_mode']
+            if mode != 'quantitative':
+                return spec
+            norm = bar['_unified_norm'] if individual is None else bar['_individual_norm']
+            # A layer without samples draws the same bars on every map.
+            if individual is None or bar['sample_values'] is None:
+                def entry_value(entry):
+                    return self._summarize_entry_values(entry, bar)[1]
+            else:
+                def entry_value(entry):
+                    return self._summarize_entry_values(entry, bar)[0].get(individual)
+
+            def bar_extent(entry):
+                value = entry_value(entry)
+                return None if value is None else self._bar_extent(value, norm)
+            return {
+                **spec,
+                'bar_extent': bar_extent,
+                'bar_map': 'unified' if individual is None else individual,
+                'bar_missing': bar['_missing']
+            }
+
+        # The spec of a layer on the 'unified' map, or on the map of an individual, colors its fills,
+        # slices them, and then adds its rings and bars.
+        def _layer_spec(layer, individual=None):
+            if individual is None:
+                spec = _unified_spec(layer)
+            else:
+                spec = _individual_spec(layer, individual)
+            spec = _sliced(spec, layer, individual)
+            spec = _with_border(spec, layer, individual)
+            return _with_bars(spec, layer, individual)
+
         # For grouped membership individual maps, precompute each group's within-group membership,
         # narrowing the layer's membership to the group's own sources so that a group's map counts
         # only them. The colors these counts take were resolved above, with every other color of the
@@ -10816,7 +11294,7 @@ class Mapper:
                         in_group = [s for s in sources if source_group.get(s) == group]
                         if in_group:
                             inner_membership[accession] = in_group
-                    specs.append(_with_border({
+                    spec = {
                         'element_type': layer['element_type'],
                         'use_reaction_attribute': layer['use_reaction_attribute'],
                         'entry_keys': inner_membership,
@@ -10826,7 +11304,9 @@ class Mapper:
                         ),
                         'keep_highest_priority': True,
                         'derived_compound': _reaction_derived(layer, 'membership')
-                    }, layer, group))
+                    }
+                    spec = _with_border(spec, layer, group)
+                    specs.append(_with_bars(spec, layer, group))
                 group_layer_membership[group] = (
                     specs, group_color_priorities[group], group_scale_tops[group]
                 )
@@ -10836,19 +11316,10 @@ class Mapper:
             # in its per-group context colors its own map and rides along on the same map.
             if grouped_presence:
                 return group_layer_membership[individual][0] + [
-                    _with_border(
-                        _sliced(_individual_spec(layer, individual), layer, individual), layer,
-                        individual
-                    )
+                    _layer_spec(layer, individual)
                     for layer in layers if layer['individual_mode'] != 'membership'
                 ]
-            return [
-                _with_border(
-                    _sliced(_individual_spec(layer, individual), layer, individual), layer,
-                    individual
-                )
-                for layer in layers
-            ]
+            return [_layer_spec(layer, individual) for layer in layers]
 
         def _element_map_specs():
             # The specs of each kind of map that '_draw_map_elements' draws, with a phrase naming
@@ -10857,7 +11328,7 @@ class Mapper:
             if draw_unified_maps and not original_run:
                 yield (
                     "the 'unified' map" if has_individuals else None, True,
-                    [_with_border(_sliced(_unified_spec(layer), layer), layer) for layer in layers]
+                    [_layer_spec(layer) for layer in layers]
                 )
             for individual in draw_individuals:
                 if grouped_presence or not original_run:
@@ -10884,7 +11355,7 @@ class Mapper:
             element_type = layer['element_type']
             # A layer in the fill mode 'none' draws only rings. Where its border shows no ring on
             # the 'unified' map, that map shows nothing of the layer. A run in which no map can show
-            # the rings was refused ('_check_border_maps').
+            # the rings was refused ('_check_channel_maps').
             if layer['unified_mode'] == 'none':
                 border = layer['border']
                 if draw_unified_maps and border['unified_mode'] is None:
@@ -10969,9 +11440,42 @@ class Mapper:
         # given with its normalization. The colorbars that key the individual maps are listed, so a
         # player can show them beside those maps. A border's colorbar is listed with the element
         # type of its border, since a player shows it only beside the maps that can show the
-        # border's rings ('_map_shows_borders').
+        # border's rings ('_map_shows_borders'). Bars are keyed by length in files of their own,
+        # such as 'bar_key_reactions.pdf' ('ColorbarDrawer.draw_length'). A bar key is labeled with
+        # the bar column and '(bar)'. Bar keys are listed for players as the keys of borders are,
+        # since bars take the shapes that rings take.
         individual_keys: List[Tuple[str, Union[str, None]]] = []
         for layer in models:
+            if _role(layer) == 'bar':
+                contexts = []
+                if layer['unified_mode'] == 'quantitative' and _unified_scale_drawn(layer):
+                    # A layer without samples of its own keys its individual maps with this key.
+                    contexts.append((
+                        'unified', f"bar_key_{layer['name']}.pdf",
+                        draw_individual_maps and layer['individual_mode'] == 'quantitative'
+                        and layer['sample_values'] is None
+                    ))
+                if (
+                    draw_individual_maps and layer['individual_mode'] == 'quantitative'
+                    and layer['sample_values'] is not None
+                ):
+                    contexts.append((
+                        'individual', f"bar_key_{layer['name']}_{colorbar_individual_suffix}.pdf",
+                        True
+                    ))
+                for context, basename, keys_individual_maps in contexts:
+                    vmin, vmax = layer[f'_{context}_range']
+                    if vmin is None:
+                        continue
+                    clamped_low, clamped_high = layer[f'_{context}_clamped']
+                    key_path = os.path.join(output_dir, basename)
+                    self.colorbar_drawer.draw_length(
+                        vmin, vmax, key_path, label=f"{layer['colorbar_label']} (bar)",
+                        clamped_low=clamped_low, clamped_high=clamped_high
+                    )
+                    if keys_individual_maps:
+                        individual_keys.append((key_path, layer['element_type']))
+                continue
             suffix = ' (border)' if _is_border(layer) else ''
             border_element_type = layer['element_type'] if _is_border(layer) else None
             if layer['unified_mode'] == 'quantitative' and _unified_scale_drawn(layer):
@@ -11083,9 +11587,7 @@ class Mapper:
                 f"Drawing 'unified' map incorporating data from all {unified_plural}"
                 if has_individuals else "Drawing map"
             )
-            unified_specs = None if original_run else [
-                _with_border(_sliced(_unified_spec(layer), layer), layer) for layer in layers
-            ]
+            unified_specs = None if original_run else [_layer_spec(layer) for layer in layers]
             for pathway_number in pathway_numbers:
                 self.progress.update(pathway_number)
                 if original_run:
@@ -11101,6 +11603,7 @@ class Mapper:
             self.progress.end()
 
         if not draw_individuals:
+            self._warn_missing_bars(bars)
             self._write_slice_keys(models, output_dir)
             self._report_categorical_choices(
                 models, draw_unified_maps, draw_individuals,
@@ -11223,6 +11726,7 @@ class Mapper:
                 )
                 self.progress.end()
 
+        self._warn_missing_bars(bars)
         self._write_slice_keys(models, output_dir)
         self._report_categorical_choices(
             models, draw_unified_maps, draw_individuals,
@@ -11325,7 +11829,8 @@ class Mapper:
 
         Users may expect a ring on a reaction element that a standard map draws as a line, so such
         an Entry is recorded in the border's '_line_entries', which a warning reads
-        ('_map_elements').
+        ('_map_elements'). Bars are drawn in the shapes that take rings, so the same holds for the
+        model of bars.
 
         Parameters
         ==========
@@ -11336,7 +11841,7 @@ class Mapper:
             The map.
 
         border : dict
-            A border model with '_line_entries'.
+            A border or bar model with '_line_entries'.
 
         entry : kgml.Entry
             An ortholog or compound Entry of the map.
@@ -11355,9 +11860,9 @@ class Mapper:
             border['_line_entries'].setdefault(pathway_number, set()).add(entry.id)
         return False
 
-    def _check_border_maps(
+    def _check_channel_maps(
         self,
-        borders: List[dict],
+        channels: List[dict],
         pathway_numbers: List[str],
         draw_unified_maps: bool,
         draw_individual_maps: bool,
@@ -11365,18 +11870,19 @@ class Mapper:
         unfilled: Union[Set[str], None] = None
     ) -> None:
         """
-        Refuse a border that no map of a run can show, and count the maps that show none.
+        Refuse a border or bar that no map of a run can show, and count the maps that show none.
 
         A reaction border needs a standard map, where reactions are boxes. A compound border needs a
-        standard or an overview map ('_map_shows_borders'). A border also needs a drawn map that
-        shows its values. A border of samples shows none on the 'unified' map without a sample or
-        group summary, and none on the maps of groups without a sample summary. These refusals come
-        from the options alone. Where the data leave every ring empty, the run warns instead.
+        standard or an overview map ('_map_shows_borders'). Bars are drawn in the boxes that take
+        rings. A border or a bar also needs a drawn map that shows its values. One of samples shows
+        none on the 'unified' map without a sample or group summary, and none on the maps of groups
+        without a sample summary. These refusals come from the options alone. Where the data leave
+        every ring or bar empty, the run warns instead.
 
         Parameters
         ==========
-        borders : List[dict]
-            The border models of the run.
+        channels : List[dict]
+            The border and bar models of the run.
 
         pathway_numbers : List[str]
             The maps that the run draws.
@@ -11395,10 +11901,14 @@ class Mapper:
             draw, so a refusal does not suggest dropping their border columns.
         """
         value_modes = ('quantitative', 'categorical')
-        for border in borders:
-            element_type = border['element_type']
-            noun = border['channel']['noun']
-            column_flag = f"--{element_type}-border-column"
+        for model in channels:
+            element_type = model['element_type']
+            channel = model['channel']
+            noun = channel['noun']
+            border = channel['role'] == 'border'
+            column_flag = f"--{channel['flag_stem']}-column"
+            # What the channel draws, and what a map without its values shows of it.
+            marks = 'borders' if border else 'bars'
             showing = [
                 number for number in pathway_numbers
                 if self._map_shows_borders(element_type, number)
@@ -11411,44 +11921,48 @@ class Mapper:
                 if element_type == 'reaction':
                     shapes = "reaction boxes, which only standard maps draw"
                     others = (
-                        "Global maps draw no borders, and overview maps draw reactions as lines, "
-                        "which have no borders."
+                        f"Global maps draw no {marks}, and overview maps draw reactions as lines, "
+                        f"which have no {marks}."
                     )
                 else:
                     shapes = "compound circles on standard and overview maps"
-                    others = "Global maps draw their circles without an outline, and no borders."
+                    others = f"Global maps draw their circles without an outline, and no {marks}."
                 remedy = (
                     f"Draw a map that shows borders. '--{element_type}-color none' leaves the "
                     f"fills of the {element_type} layer uncolored, so its rings are all that it "
-                    f"draws." if element_type in (unfilled or set())
-                    else f"Draw a map that shows borders, or drop '{column_flag}'."
+                    f"draws." if border and element_type in (unfilled or set())
+                    else f"Draw a map that shows {marks}, or drop '{column_flag}'."
                 )
+                draws = f"colors the borders of {shapes}" if border else f"draws bars in {shapes}"
                 raise ConfigError(
-                    f"'{column_flag}' colors the borders of {shapes}. This run draws no such map. "
-                    f"Its maps are these: {listed}{more}. {others} {remedy}"
+                    f"'{column_flag}' {draws}. This run draws no such map. Its maps are these: "
+                    f"{listed}{more}. {others} {remedy}"
                 )
             if len(showing) < len(pathway_numbers):
                 self.run.info(f"Maps that show no {noun}s", len(pathway_numbers) - len(showing))
-            unified = draw_unified_maps and border['unified_mode'] in value_modes
-            individual = draw_individual_maps and border['individual_mode'] in value_modes
+            unified = draw_unified_maps and model['unified_mode'] in value_modes
+            individual = draw_individual_maps and model['individual_mode'] in value_modes
             if unified or individual:
                 continue
-            stem = border['channel']['flag_stem']
-            grouped = border.get('group_samples') is not None
+            stem = channel['flag_stem']
+            grouped = model.get('group_samples') is not None
             unified_flag = f"--{stem}-{'group' if grouped else 'sample'}-summary"
             sample_flag = f"--{stem}-sample-summary"
-            # The values of a group come from the sample summary. Without it, no map shows a border.
-            # Otherwise a map is missing or has no summary.
-            if grouped and border['individual_mode'] is None:
+            shows, absent = ('shows a border', 'no border') if border else ('shows bars', 'no bars')
+            # A border takes a rule for categorical values, and a bar takes numbers only.
+            summary = 'an aggregation or a rule' if channel['categorical'] else 'an aggregation'
+            # The values of a group come from the sample summary. Without it, no map shows a border
+            # or bars. Otherwise a map is missing or has no summary.
+            if grouped and model['individual_mode'] is None:
                 reason = (
                     f"'{sample_flag}' was not given, so neither the maps of the groups nor the "
-                    f"'unified' map shows a border."
+                    f"'unified' map {shows}."
                 )
-                remedy = f"Give '{sample_flag}' an aggregation or a rule."
+                remedy = f"Give '{sample_flag}' {summary}."
             else:
                 unified_reason = (
                     "No 'unified' map is drawn." if not draw_unified_maps else
-                    f"'{unified_flag}' was not given, so the 'unified' map shows no border."
+                    f"'{unified_flag}' was not given, so the 'unified' map shows {absent}."
                 )
                 reason = f"{unified_reason} No map of an individual {individual_noun} is drawn."
                 remedy = (
@@ -11456,12 +11970,11 @@ class Mapper:
                     f"'--draw-individual-files' or '--draw-grid'"
                 )
                 remedy += (
-                    f", or give '{unified_flag}' an aggregation or a rule." if draw_unified_maps
-                    else "."
+                    f", or give '{unified_flag}' {summary}." if draw_unified_maps else "."
                 )
             raise ConfigError(
-                f"'{column_flag}' names the border column '{border['value_column']}' of the "
-                f"{element_type} layer, but no map of this run would show its borders. {reason} "
+                f"'{column_flag}' names the {channel['column']} '{model['value_column']}' of the "
+                f"{element_type} layer, but no map of this run would show its {marks}. {reason} "
                 f"{remedy}"
             )
 
@@ -11747,7 +12260,7 @@ class Mapper:
             reported_genes.update(colliding)
             unshared = [name for name in unshared if name not in reported_maps]
             reported_maps.update(unshared)
-            # The rows of a border are those with a border value ('_border_view').
+            # The rows of a border are those with a border value ('_channel_view').
             rows = 'rows' if layer['channel']['role'] == 'fill' else 'rows with border values'
             if colliding:
                 genes = self._sort_values(colliding)
@@ -11788,6 +12301,36 @@ class Mapper:
                 f"{ids} occurs in two or more samples of {' and '.join(parts)}. {shows}, and "
                 f"nothing is pooled. This is expected where the gene IDs of separate assemblies "
                 f"were made unique."
+            )
+
+    def _warn_missing_bars(self, bars: List[dict]) -> None:
+        """
+        Warn about the boxes that the maps with bars left uncolored for want of a bar value.
+
+        On a map that shows bars, a box with a fill color and no bar value is left uncolored
+        ('_stage_entry_bar'). Each box is counted once on each drawn map, such as the 'unified' map
+        of 00010 or the map of 00010 of one sample.
+
+        Parameters
+        ==========
+        bars : List[dict]
+            The bar models of the run. Each keeps the boxes of the drawn maps in '_missing'.
+        """
+        for bar in bars:
+            missing = bar['_missing']
+            if not missing:
+                continue
+            maps = {(pathway_number, drawn_map) for pathway_number, drawn_map, _ in missing}
+            examples = ', '.join(sorted({
+                accession for accessions in missing.values() for accession in accessions
+            })[:5])
+            self.run.warning(
+                f"On {len(maps)} drawn map(s), {len(missing)} {bar['element_type']} box(es) with a "
+                f"fill color have no bar value from the '{bar['value_column']}' bar column, so "
+                f"they were left uncolored. A whole fill would read as a full bar, and a bare "
+                f"track as a bar of 0. Their accessions include these: {examples}. A box has no "
+                f"bar value where none of its accessions has one on the map, or where reducing "
+                f"their bar values is undefined."
             )
 
     def _write_slice_keys(self, layers: List[dict], output_dir: str) -> None:
@@ -13849,6 +14392,37 @@ class Mapper:
         priority = (1.0 - fraction) if reverse_overlay else fraction
         return mcolors.rgb2hex(cmap(fraction)), priority
 
+    @staticmethod
+    def _bar_extent(
+        value: float,
+        norm: Union[mcolors.Normalize, None]
+    ) -> Tuple[float, float]:
+        """
+        Find where a bar starts and ends on a bar scale, as fractions of the length of the scale.
+
+        A bar runs from 0 to its value. The norm rescales both to fractions of the scale, and
+        'clip=True' keeps them in [0, 1], so a value past a limit reaches that end of the scale. A
+        degenerate scale has no norm. Its one value is 0, which is always on a bar scale, so every
+        bar on it has no length. A degenerate color scale takes its top color instead
+        ('_quantitative_color_priority').
+
+        Parameters
+        ==========
+        value : float
+            The value of the bar.
+
+        norm : Union[mcolors.Normalize, None]
+            The norm of the bar scale ('_make_quantitative_norm'), or None for a degenerate scale.
+
+        Returns
+        =======
+        Tuple[float, float]
+            The fractions of the scale at 0 and at the value.
+        """
+        if norm is None:
+            return 0.0, 0.0
+        return float(norm(0.0)), float(norm(value))
+
     def _categorical_colorer(
         self,
         entry_value: Callable[[kgml.Entry], Union[str, None]],
@@ -14159,6 +14733,16 @@ class Mapper:
               rows of the key table, the entries left out by shares of 0, and the units that no
               column of the fill shows are kept. They belong to the border.
 
+            A layer whose bars show on the map has these keys too ('_with_bars',
+            '_stage_entry_bar'):
+            - 'bar_extent': a function that takes an Entry. It returns where the bar of the Entry
+              starts and ends, as fractions of the bar scale of the map ('_bar_extent'), or None
+              where the Entry has no bar value there.
+            - 'bar_map': what the warning about boxes without a bar value calls the map, 'unified'
+              or the name of a sample or group.
+            - 'bar_missing': where the boxes left uncolored for want of a bar value are kept, once
+              the map is drawn. It belongs to the model of the bars.
+
         output_dir : str
             Path to the output directory in which the map PDF is drawn.
 
@@ -14248,7 +14832,8 @@ class Mapper:
 
         slice_records : Union[list, None], None
             Where the slices of the map, and the slices of its rings, are recorded for the key
-            tables ('_stage_entry_slices', '_stage_entry_borders'). Only the drawing of a map
+            tables ('_stage_entry_slices', '_stage_entry_borders'), and the boxes that it leaves
+            uncolored for want of a bar value ('_stage_entry_bar'). Only the drawing of a map
             records them. The check of compound colors does not.
 
         Returns
@@ -14300,6 +14885,11 @@ class Mapper:
                     continue
                 found_entries = True
                 color_hexcode, priority = colored
+                # On a map that shows bars, a box without a bar value is left uncolored.
+                if spec.get('bar_extent') is not None and not self._stage_entry_bar(
+                    pathway_number, pathway, entry, spec, color_hexcode, slice_records
+                ):
+                    continue
                 self._stage_element_color(
                     pathway, entry, spec['element_type'], color_hexcode, priority, color_priority,
                     keep_highest_priority=spec.get('keep_highest_priority', False)
@@ -14309,6 +14899,82 @@ class Mapper:
             ):
                 found_entries = True
         return color_priority, found_entries, borders
+
+    def _stage_entry_bar(
+        self,
+        pathway_number: str,
+        pathway: kgml.Pathway,
+        entry: kgml.Entry,
+        spec: dict,
+        color_hexcode: str,
+        slice_records: Union[list, None] = None
+    ) -> bool:
+        """
+        Stage the bar of an Entry whose fill is colored, on a map that shows bars.
+
+        A bar is drawn in the boxes that take rings, which are reaction boxes on standard maps
+        ('_shows_border'). Each such box gets a glyph ('kgml.Graphics.glyph'). Its one cell is the
+        gray track ('BAR_TRACK_COLOR'). A mark over it, in the color of the fill, runs from 0 to the
+        value of the bar along the length of the box. An end line is centered on the free end of the
+        bar, at 0 and at the full length too ('BAR_END_LINE_COLOR'). The fill color stays in the fg
+        and bg colors of the Entry, so color priority, recoloring, and the colors that compounds
+        derive from reactions see only the fill.
+
+        A box without a bar value on the map is left uncolored. A whole fill would read as a full
+        bar, and a bare track as a bar of 0. The box is recorded for a warning
+        ('_warn_missing_bars'). An Entry drawn as a line takes no bar and keeps its whole fill.
+
+        Parameters
+        ==========
+        pathway_number : str
+            Numeric ID of the map.
+
+        pathway : kgml.Pathway
+            The map.
+
+        entry : kgml.Entry
+            An Entry whose fill the spec's colorer has colored.
+
+        spec : dict
+            The layer spec, with the keys of bars that '_draw_map_elements' describes.
+
+        color_hexcode : str
+            The color of the fill of the Entry.
+
+        slice_records : Union[list, None], None
+            Where a box left uncolored is recorded, as in '_stage_entry_slices'. Nothing is recorded
+            with None.
+
+        Returns
+        =======
+        bool
+            False if the Entry is left uncolored. True if its bar was staged, or if it has no shape
+            that takes a bar.
+        """
+        shapes = [pathway.uuid_element_lookup[uuid] for uuid in entry.children['graphics']]
+        shapes = [shape for shape in shapes if self._shows_border(pathway, entry, shape)]
+        if not shapes:
+            return True
+        extent = spec['bar_extent'](entry)
+        if extent is None:
+            if slice_records is not None:
+                accessions = [
+                    accession for accession in self._get_entry_kegg_ids(
+                        entry, spec['use_reaction_attribute']
+                    ) if accession in spec['entry_keys']
+                ]
+                slice_records.append((
+                    spec['bar_missing'], (pathway_number, spec['bar_map'], entry.id), accessions
+                ))
+            return False
+        zero, end = extent
+        for shape in shapes:
+            shape.glyph = {
+                'cells': [(BAR_TRACK_COLOR, 1.0)],
+                'marks': [(0, 'x', min(zero, end), max(zero, end), color_hexcode, None)],
+                'rules': [(0, 'x', end, BAR_END_LINE_COLOR, BAR_END_LINE_WIDTH, None)]
+            }
+        return True
 
     @staticmethod
     def _derives_compounds(pathway: kgml.Pathway, layer_specs: List[dict]) -> bool:
@@ -15086,11 +15752,12 @@ class Mapper:
             genomes, or groups. Inner keys are pathway numbers.
 
         keys : List[Tuple[str, Union[str, None]]]
-            Paths to the colorbars that key the individual maps, each with the element type of the
-            border it keys, or None for a colorbar of fills. A colorbar of fills is shown beside
-            every frame. A colorbar of a border is shown only in the players of maps that can show
-            the border's rings ('_map_shows_borders'). Global maps show none, and overview maps show
-            only the rings of compounds.
+            Paths to the colorbars and bar keys that key the individual maps, each with the element
+            type of the border or bars it keys, or None for a colorbar of fills. A colorbar of fills
+            is shown beside every frame. The key of a border or of bars is shown only in the players
+            of maps that can show the border's rings, which are the shapes that bars take too
+            ('_map_shows_borders'). Global maps show none, and overview maps show only the rings of
+            compounds.
 
         individual_colorbars : Dict[str, str]
             Paths to colorbars that key the maps of one group only, where groups have their own
@@ -15745,6 +16412,10 @@ class ColorbarDrawer:
 
     max_integer_ticks : int
         The most ticks a continuous colorbar is given by 'draw_continuous' with 'integer_ticks'.
+
+    length_figsize : Tuple[float, float]
+        Dimensions in inches of the figure of a key of bar lengths ('draw_length'). The box of the
+        key has about the shape of a reaction box.
     """
     def __init__(self, overwrite_output: bool = FORCE_OVERWRITE) -> None:
         """
@@ -15764,6 +16435,7 @@ class ColorbarDrawer:
         self.label_fontsize: int = 24
         self.labelpad: int = 30
         self.max_integer_ticks: int = 6
+        self.length_figsize: Tuple[float, float] = (6, 2.2)
 
     def draw_discrete(
         self,
@@ -15970,27 +16642,9 @@ class ColorbarDrawer:
                 )
             ]
             ticks = sorted(kept + marked)
-            formatter = cb.formatter
-            formatter.set_locs(ticks)
-            if formatter.get_offset():
-                # The formatter wants to set a shared offset or multiplier beside the bar, which the
-                # fixed labels below would drop, taking the meaning of every tick with it. Spelling
-                # the numbers out in full is longer but says what it means without it.
-                formatter.set_useOffset(False)
-                formatter.set_scientific(False)
-                formatter.set_locs(ticks)
-            # The formatter's own call prints any value below 1e-8 as zero. Every label of a bar of
-            # tiny values would then read zero. Its format string is applied directly instead. The
-            # offset and multiplier are both zero here, so nothing else differs. Only a value within
-            # rounding error of zero, as tick arithmetic leaves it, is printed as zero.
-            tick_labels = [
-                formatter.fix_minus(formatter.format % (0 if abs(tick) < 1e-9 * span else tick))
-                for tick in ticks
-            ]
-            if clamped_low:
-                tick_labels[0] = f'{CLAMPED_MIN_PREFIX}{tick_labels[0]}'
-            if clamped_high:
-                tick_labels[-1] = f'{CLAMPED_MAX_PREFIX}{tick_labels[-1]}'
+            tick_labels = self._limit_tick_labels(
+                cb.formatter, ticks, span, clamped_low, clamped_high
+            )
             cb.set_ticks(ticks)
             cb.set_ticklabels(tick_labels)
 
@@ -16019,6 +16673,145 @@ class ColorbarDrawer:
                 labelpad=self.labelpad,
                 fontsize=self.label_fontsize
             )
+
+        filesnpaths.is_output_file_writable(out_path, ok_if_exists=self.overwrite_output)
+        fig.savefig(out_path, format='pdf', bbox_inches='tight')
+
+    @staticmethod
+    def _limit_tick_labels(
+        formatter: mticker.ScalarFormatter,
+        ticks: List[float],
+        span: float,
+        clamped_low: bool,
+        clamped_high: bool
+    ) -> List[str]:
+        """
+        Typeset the ticks of a scale whose limits, center, or start are labeled.
+
+        The ticks are run through the scale's own formatter, so that such a scale is typeset exactly
+        like a plain one ('draw_continuous', 'draw_length').
+
+        Parameters
+        ==========
+        formatter : matplotlib.ticker.ScalarFormatter
+            The formatter of the axis of the scale.
+
+        ticks : List[float]
+            The ticks, sorted.
+
+        span : float
+            The length of the scale.
+
+        clamped_low, clamped_high : bool
+            Whether values lie past the limit at the bottom or the top of the scale. The first or
+            last label is then marked with 'CLAMPED_MIN_PREFIX' or 'CLAMPED_MAX_PREFIX'.
+
+        Returns
+        =======
+        List[str]
+            The label of each tick.
+        """
+        formatter.set_locs(ticks)
+        if formatter.get_offset():
+            # The formatter wants to set a shared offset or multiplier beside the bar, which the
+            # fixed labels below would drop, taking the meaning of every tick with it. Spelling the
+            # numbers out in full is longer but says what it means without it.
+            formatter.set_useOffset(False)
+            formatter.set_scientific(False)
+            formatter.set_locs(ticks)
+        # The formatter's own call prints any value below 1e-8 as zero. Every label of a bar of tiny
+        # values would then read zero. Its format string is applied directly instead. The offset and
+        # multiplier are both zero here, so nothing else differs. Only a value within rounding error
+        # of zero, as tick arithmetic leaves it, is printed as zero.
+        tick_labels = [
+            formatter.fix_minus(formatter.format % (0 if abs(tick) < 1e-9 * span else tick))
+            for tick in ticks
+        ]
+        if clamped_low:
+            tick_labels[0] = f'{CLAMPED_MIN_PREFIX}{tick_labels[0]}'
+        if clamped_high:
+            tick_labels[-1] = f'{CLAMPED_MAX_PREFIX}{tick_labels[-1]}'
+        return tick_labels
+
+    def draw_length(
+        self,
+        vmin: float,
+        vmax: float,
+        out_path: str,
+        label: str = None,
+        clamped_low: bool = False,
+        clamped_high: bool = False
+    ) -> None:
+        """
+        Save a standalone key of a bar scale to a file.
+
+        A bar scale keys lengths, not colors. The key is a box in the gray of the track of bars
+        ('BAR_TRACK_COLOR'), with a ruler under it. The width of the box stands for the scale. A bar
+        starts at 0, which is always on the scale ('Mapper._bar_extent'), so 0 is always labeled.
+        Both ends of the scale are labeled too, since a full bar stands for its end, whether the
+        data or a limit sets it. An end is marked '≤' or '≥' where values lie past a limit, as on a
+        continuous colorbar ('draw_continuous'). A scale whose one value is 0 is drawn as a box
+        labeled 0 alone, since its bars have no length.
+
+        Parameters
+        ==========
+        vmin : float
+            The bottom of the scale.
+
+        vmax : float
+            The top of the scale.
+
+        out_path : str
+            Path to PDF output file.
+
+        label : str, None
+            The label of the key.
+
+        clamped_low, clamped_high : bool, False
+            As in 'draw_continuous'.
+        """
+        fig = Figure(figsize=self.length_figsize)
+        ax = fig.subplots()
+        # The axes themselves are the box: gray inside, with a black outline as a reaction box has.
+        ax.set_facecolor(BAR_TRACK_COLOR)
+        for spine in ax.spines.values():
+            spine.set_color('#000000')
+            spine.set_linewidth(1)
+        ax.yaxis.set_visible(False)
+        # The labels take the size of the labels of colorbars. They are sized before the automatic
+        # ticks are found, which are then spaced to fit them.
+        ax.tick_params(
+            axis='x', labelsize=(
+                self.max_tick_fontsize if self.tick_fontsize is None else self.tick_fontsize
+            )
+        )
+        if vmin == vmax:
+            ax.set_xlim(vmin, vmin + 1)
+            ticks = [vmin]
+            tick_labels = self._limit_tick_labels(
+                ax.xaxis.get_major_formatter(), ticks, 1, False, False
+            )
+        else:
+            ax.set_xlim(vmin, vmax)
+            span = vmax - vmin
+            # The start of the bars and the ends of the scale are the labels a reader needs, so an
+            # automatic tick all but on top of one of them is dropped.
+            marked = sorted({0.0, vmin, vmax})
+            kept = [
+                tick for tick in ax.get_xticks()
+                if vmin <= tick <= vmax and all(
+                    abs(tick - value) >= MIN_LENGTH_TICK_SEPARATION_FRACTION * span
+                    for value in marked
+                )
+            ]
+            ticks = sorted(kept + marked)
+            tick_labels = self._limit_tick_labels(
+                ax.xaxis.get_major_formatter(), ticks, span, clamped_low, clamped_high
+            )
+        ax.set_xticks(ticks)
+        ax.set_xticklabels(tick_labels)
+        if label:
+            ax.set_xlabel(label, labelpad=self.labelpad, fontsize=self.label_fontsize)
 
         filesnpaths.is_output_file_writable(out_path, ok_if_exists=self.overwrite_output)
         fig.savefig(out_path, format='pdf', bbox_inches='tight')

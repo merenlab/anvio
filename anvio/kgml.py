@@ -1262,6 +1262,11 @@ class Graphics(Element):
         - 'cells': the color and share of each column of the fill, left to right, as (color, share)
           pairs. Each column is the full height of the rectangle. The columns share its width, or
           the width inside its ring ('get_box_fill_width'). The shares sum to 1.
+        - 'marks': rectangles over the columns, such as bars, as (cell, axis, start, end, color,
+          band) tuples. Each lies in the part of a column that the box shows, and its extent along
+          the axis is given in fractions of that part ('SlicedKGMLCanvas._draw_box_marks').
+        - 'rules': lines over the marks, such as the end lines of bars, as (cell, axis, position,
+          color, line_width, band) tuples in the same part of a column.
         A rectangle without a glyph is one column in its bg color. Drawer draws glyphs with
         'SlicedKGMLCanvas'. This attribute is not part of KGML, and XMLOps does not write it.
 
@@ -2285,12 +2290,12 @@ class SlicedKGMLCanvas(KGMLCanvas):
         if missing:
             missing_message = ', '.join([f"'{name}'" for name in missing])
             raise ConfigError(
-                f"Biopython {Bio.__version__} cannot draw map elements in slices or with borders. "
-                f"Slices and borders are drawn with private methods of Biopython's KGMLCanvas, and "
-                f"this version lacks these: {missing_message}. Drop '--reaction-slice-by', "
-                f"'--reaction-border-column', and '--compound-border-column' to draw the maps "
-                f"without slices or borders, or install a version of Biopython that has these "
-                f"methods, such as 1.87."
+                f"Biopython {Bio.__version__} cannot draw map elements in slices, with borders, or "
+                f"with bars. Slices, borders, and bars are drawn with private methods of "
+                f"Biopython's KGMLCanvas, and this version lacks these: {missing_message}. Drop "
+                f"'--reaction-slice-by', '--reaction-border-column', '--compound-border-column', "
+                f"and '--reaction-bar-column' to draw the maps without slices, borders, or bars, "
+                f"or install a version of Biopython that has these methods, such as 1.87."
             )
 
     def _KGMLCanvas__add_reaction_entries(self) -> None:
@@ -2417,8 +2422,16 @@ class SlicedKGMLCanvas(KGMLCanvas):
         the ring ('get_box_fill_width'), so each column shows its exact share. Every column is still
         drawn the full height of the rectangle, and the first and last columns reach its left and
         right sides. Where a ring has no band, it shows the color of the column under it, not the
-        base map. The ring is drawn over the columns. Then come the gray lines between columns, the
-        black line inside the ring, and the outline.
+        base map.
+
+        The marks and rules of the glyph are drawn over the columns, in the part of each column that
+        the box shows: inside the outline, or inside the black line within the ring. An edge of a
+        mark that lies on the edge of that part reaches 0.5 pt past it, under the outline or the
+        black line, so that no seam shows there. Its other edges are exact, so a bar keeps its exact
+        length. Rules are drawn with square ends that stop at their own ends.
+
+        The ring is drawn over the columns, marks, and rules. Then come the gray lines between
+        columns, the black line inside the ring, and the outline.
 
         Parameters
         ==========
@@ -2468,6 +2481,11 @@ class SlicedKGMLCanvas(KGMLCanvas):
             columns.append((left, fill_x0 + (start + share) * fill_width))
             start += share
 
+        if glyph is not None and (glyph.get('marks') or glyph.get('rules')):
+            self._draw_box_marks(
+                x0, y0, graphics.width, graphics.height, columns, glyph, border is not None
+            )
+
         if isinstance(border, str):
             self._draw_box_ring(x0, y0, graphics.width, graphics.height, border)
         elif border is not None and border[0] == 'bands':
@@ -2498,6 +2516,102 @@ class SlicedKGMLCanvas(KGMLCanvas):
         drawing.restoreState()
 
         drawing.rect(x0, y0, graphics.width, graphics.height, stroke=1, fill=0)
+
+    def _draw_box_marks(
+        self,
+        x0: float,
+        y0: float,
+        width: float,
+        height: float,
+        columns: List[Tuple[float, float]],
+        glyph: Dict[str, list],
+        ringed: bool
+    ) -> None:
+        """
+        Draw the marks and rules of the glyph of a rectangle, over its columns.
+
+        Each mark and rule lies in the area of one column that the box shows. Across the column, the
+        area runs inside the outline, or inside the black line within the ring. Along the column, it
+        runs between the sides of the column, which are cut back to the same lines at the sides of
+        the box. A band of a mark or rule is the bottom of the area, so many points tall.
+
+        Parameters
+        ==========
+        x0, y0 : float
+            The corner of the rectangle with the smallest coordinates.
+
+        width, height : float
+            The size of the rectangle.
+
+        columns : List[Tuple[float, float]]
+            The left and right sides of each column of the cells of the glyph.
+
+        glyph : Dict[str, list]
+            The display list of the rectangle ('Graphics.glyph'). Its marks and rules are drawn:
+            - 'marks': [(cell, axis, start, end, color, band), ...], rectangles in the color. 'cell'
+              is the position of the column. 'axis' is 'x', along the width from the left, or 'y',
+              along the height from the bottom. 'start' and 'end' are fractions of the area along
+              the axis. The mark spans the area across the axis. 'band' is None for the whole area,
+              or the height in points of a band along its bottom.
+            - 'rules': [(cell, axis, position, color, line_width, band), ...], lines across the area
+              at a fraction along the axis, such as the end line of a bar.
+
+        ringed : bool
+            True if the rectangle has a ring.
+        """
+        drawing = self.drawing
+        # The box shows its fill inside the outline, which Biopython draws 1 point wide, centered on
+        # the edge. With a ring, it shows it inside the black line within the ring. The width of
+        # either line inside that edge is how far an edge of a mark reaches under it.
+        if ringed:
+            inset = BOX_OUTLINE_HALF_WIDTH + BOX_RING_WIDTH + RING_LINE_WIDTH
+            reach = RING_LINE_WIDTH
+        else:
+            inset = BOX_OUTLINE_HALF_WIDTH
+            reach = BOX_OUTLINE_HALF_WIDTH
+        shown_x0, shown_x1 = x0 + inset, x0 + width - inset
+        shown_y0, shown_y1 = y0 + inset, y0 + height - inset
+
+        def area(cell: int, band: Union[float, None]) -> Tuple[float, float, float, float]:
+            left, right = columns[cell]
+            top = shown_y0 if band is None else shown_y1 - band
+            return max(left, shown_x0), top, min(right, shown_x1), shown_y1
+
+        for cell, axis, start, end, color, band in glyph.get('marks', []):
+            if end <= start:
+                continue
+            area_x0, area_y0, area_x1, area_y1 = area(cell, band)
+            if axis == 'x':
+                mark_x0 = area_x0 + start * (area_x1 - area_x0)
+                mark_x1 = area_x0 + end * (area_x1 - area_x0)
+                mark_y0, mark_y1 = area_y0, area_y1
+            else:
+                mark_x0, mark_x1 = area_x0, area_x1
+                mark_y0 = area_y1 - end * (area_y1 - area_y0)
+                mark_y1 = area_y1 - start * (area_y1 - area_y0)
+            # An edge on the edge of the shown fill reaches under the line that bounds it.
+            if mark_x0 <= shown_x0:
+                mark_x0 -= reach
+            if mark_x1 >= shown_x1:
+                mark_x1 += reach
+            if mark_y0 <= shown_y0:
+                mark_y0 -= reach
+            if mark_y1 >= shown_y1:
+                mark_y1 += reach
+            drawing.setFillColor(color_to_reportlab(color))
+            drawing.rect(mark_x0, mark_y0, mark_x1 - mark_x0, mark_y1 - mark_y0, stroke=0, fill=1)
+
+        drawing.setLineCap(0)
+        for cell, axis, position, color, line_width, band in glyph.get('rules', []):
+            area_x0, area_y0, area_x1, area_y1 = area(cell, band)
+            drawing.setLineWidth(line_width)
+            drawing.setStrokeColor(color_to_reportlab(color))
+            if axis == 'x':
+                x = area_x0 + position * (area_x1 - area_x0)
+                drawing.line(x, area_y0, x, area_y1)
+            else:
+                y = area_y1 - position * (area_y1 - area_y0)
+                drawing.line(area_x0, y, area_x1, y)
 
     def _draw_box_ring(self, x0: float, y0: float, width: float, height: float, color: str) -> None:
         """

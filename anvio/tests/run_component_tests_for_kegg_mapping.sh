@@ -674,6 +674,43 @@ then
 fi
 
 ## PRESENCE COLORING
+# A bar column sets the length of a bar in each reaction box on standard maps, while the value
+# column still sets the color of its fill. A bar is drawn in the color of the fill over a gray track,
+# and a thin dark line marks its end. Here the fills show the expression of each sample, and the
+# bars show its coverage. The 'unified' map shows bars too, since a bar sample summary pools the
+# coverage of the samples. The bars take keys of their own.
+INFO "Drawing bars of a second column in boxes whose fills are colored by values"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+                        --reaction-bar-column coverage \
+                        --reaction-bar-sample-summary mean \
+                        --output-dir draw_txt_samples_kos_bars \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
+if [ ! -s draw_txt_samples_kos_bars/bar_key_reactions.pdf ] \
+    || [ ! -s draw_txt_samples_kos_bars/bar_key_reactions_samples.pdf ]
+then
+    echo "ERROR: a run with bars should have written a key for each bar scale."
+    exit 1
+fi
+
+# A file whose only other column of values is its bar column colors its fills by presence, and its
+# bars take the colors of presence. A ring of a border column lies around the bar.
+INFO "Drawing bars inside rings, in boxes whose fills show presence"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+                        --reaction-bar-column coverage \
+                        --reaction-bar-sample-summary mean \
+                        --reaction-border-column status \
+                        --reaction-border-value-type categorical \
+                        --reaction-border-value-colors draw-status-colors.txt \
+                        --reaction-border-sample-summary plurality_order \
+                        --output-dir draw_txt_samples_kos_bars_rings \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
 INFO "Mixing presence coloring of reactions with value coloring of compounds"
 anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
                         --compound-txt draw_compounds.compound.txt \
