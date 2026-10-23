@@ -1183,7 +1183,8 @@ class Integrator(object):
         # differ between the genes, then it is likely that the variation is genetic rather than
         # caused by a modification.
         modification_candidates_df = modifications_df.merge(
-            hits_df[['seed_contig_name', 'seed_alignment_start', 'gene_sequence']],
+            hits_df[['seed_contig_name', 'seed_alignment_start', 'gene_alignment_start',
+                     'gene_sequence']],
             how='left', on='seed_contig_name')
         modification_keys = []
         unmodified_nts = []
@@ -1191,11 +1192,15 @@ class Integrator(object):
         for group_key, modification_candidate_df in modification_candidates_df.groupby(
             ['seed_contig_name', 'seed_position'], as_index=False):
             unmodified_nt = ''
-            for seed_position, seed_alignment_start, gene_sequence in zip(
+            for seed_position, seed_alignment_start, gene_alignment_start, gene_sequence in zip(
                 modification_candidate_df['seed_position'],
                 modification_candidate_df['seed_alignment_start'],
+                modification_candidate_df['gene_alignment_start'],
                 modification_candidate_df['gene_sequence']):
-                gene_nt = gene_sequence[int(seed_position - seed_alignment_start)]
+                # The alignment starts past the 5' end of the gene when the seed lacks nucleotides
+                # at the 5' end of the gene.
+                gene_nt = gene_sequence[
+                    int(seed_position - seed_alignment_start + gene_alignment_start)]
                 if unmodified_nt:
                     if gene_nt != unmodified_nt:
                         variant_keys.append(group_key)
