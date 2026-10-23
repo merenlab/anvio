@@ -905,8 +905,10 @@ class Integrator(object):
                                               'collection_name',
                                               'bin_id'])
         # Merge the table of seed/gene hits with the new table of bin membership, multiplying each
-        # row per hit by each bin containing the gene.
-        hits_df = hits_df.merge(contig_bin_df, on=['contigs_db_hash', 'gene_contig_name'])
+        # row per hit by each bin containing the gene. A left merge keeps the BLAST order of hits,
+        # which breaks ties between seed permutations below.
+        hits_df = hits_df.merge(
+            contig_bin_df, how='left', on=['contigs_db_hash', 'gene_contig_name'])
 
         # For the sake of clarity, here is what happens to each of the different possible
         # (meta)genomic sources with "unambiguous" tRNA gene assignment.
