@@ -951,7 +951,7 @@ class Integrator(object):
                     if contigs_db_hash in external_genome_contigs_db_hashes:
                         retained_index.append(key)
                         continue
-                    if bin_id is not None:
+                    if bin_id != '':
                         retained_index.append(key)
                 hits_df = hits_df.loc[retained_index]
 
