@@ -1292,7 +1292,12 @@ class Integrator(object):
 
         # Add the unmodified nucleotides to the rows of the table.
         table_entries = []
-        hit_id = 0
+        if self.remove_previous_matches:
+            hit_id = 0
+        else:
+            # Number appended rows after the rows already in the table.
+            hit_id = trnaseq_contigs_db.get_max_value_in_column(
+                tables.trna_gene_hits_table_name, 'entry_id', value_if_empty=-1) + 1
         for row in hits_df.itertuples(index=False):
             seed_unmodified_nt_df = unmodified_nt_df[
                 unmodified_nt_df['seed_contig_name'] == row.seed_contig_name]
