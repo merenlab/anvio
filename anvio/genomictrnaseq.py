@@ -1311,9 +1311,10 @@ class Integrator(object):
 
         trnaseq_contigs_db.disconnect()
 
+        gene_count = len(hits_df[['contigs_db_hash', 'gene_gene_callers_id']].drop_duplicates())
         self.run.info_single(
             f"{hits_df['seed_gene_callers_id'].nunique()} tRNA-seq seeds are found to match "
-            f"{hits_df['gene_gene_callers_id'].nunique()} tRNA genes",
+            f"{gene_count} tRNA genes",
             cut_after=0, nl_after=1)
 
 
