@@ -2,12 +2,14 @@
 """Integrate tRNA-seq with (meta)genomic data, relating tRNA-seq seeds to tRNA genes"""
 
 
+import sys
+
 import anvio
 import anvio.terminal as terminal
 import anvio.genomictrnaseq as genomictrnaseq
 
 from anvio.argparse import ArgumentParser
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, FilesNPathsError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -29,23 +31,31 @@ run = terminal.Run()
 
 def main():
     args = get_args()
-    if args.list_genomes:
-        integrated_genome_dict = genomictrnaseq.Integrator.get_integrated_genomes(
-            args.trnaseq_contigs_db)
-        print_genomes(integrated_genome_dict)
-        return
 
-    sanity_check(args)
+    try:
+        if args.list_genomes:
+            integrated_genome_dict = genomictrnaseq.Integrator.get_integrated_genomes(
+                args.trnaseq_contigs_db)
+            print_genomes(integrated_genome_dict)
+            return
 
-    permuter = genomictrnaseq.SeedPermuter(args)
-    integrator = genomictrnaseq.Integrator(args)
+        sanity_check(args)
 
-    # Permute tRNA-seq seed sequences at positions with predicted modifications.
-    permuter.go()
+        permuter = genomictrnaseq.SeedPermuter(args)
+        integrator = genomictrnaseq.Integrator(args)
 
-    # Relate seeds to (meta)genomic tRNA genes.
-    integrator.permuted_seeds_fasta_path = permuter.permuted_seeds_fasta_path
-    integrator.go()
+        # Permute tRNA-seq seed sequences at positions with predicted modifications.
+        permuter.go()
+
+        # Relate seeds to (meta)genomic tRNA genes.
+        integrator.permuted_seeds_fasta_path = permuter.permuted_seeds_fasta_path
+        integrator.go()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
 def get_args():
