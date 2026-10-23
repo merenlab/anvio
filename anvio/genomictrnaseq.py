@@ -742,10 +742,10 @@ class Integrator(object):
         # Discard (enigmatic) indistinguishable, duplicate hits if they exist.
         hits_df = hits_df.drop_duplicates()
 
-        # Parse seed IDs and permutation info.
-        hits_df[['seed_contig_name', 'seed_permutation']] = \
-            hits_df['qseqid'].str.split('|', expand=True)
-        hits_df['seed_permutation'] = hits_df['seed_permutation'].fillna('')
+        # Parse seed IDs and permutation info. The IDs of unpermuted seeds lack permutation info.
+        qseqid_parts = hits_df['qseqid'].str.split('|', n=1)
+        hits_df['seed_contig_name'] = qseqid_parts.str[0]
+        hits_df['seed_permutation'] = qseqid_parts.str[1].fillna('')
         hits_df = hits_df.drop('qseqid', axis=1)
 
         # Extract information on each hit.
