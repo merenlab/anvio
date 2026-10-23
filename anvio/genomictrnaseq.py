@@ -1197,6 +1197,9 @@ class Integrator(object):
                 modification_candidate_df['seed_alignment_start'],
                 modification_candidate_df['gene_alignment_start'],
                 modification_candidate_df['gene_sequence']):
+                if seed_position < seed_alignment_start:
+                    # The seed position is not aligned to the gene, e.g., G-1 of tRNA-His.
+                    continue
                 # The alignment starts past the 5' end of the gene when the seed lacks nucleotides
                 # at the 5' end of the gene.
                 gene_nt = gene_sequence[
@@ -1208,8 +1211,10 @@ class Integrator(object):
                 else:
                     unmodified_nt = gene_nt
             else:
-                modification_keys.append(group_key)
-                unmodified_nts.append(unmodified_nt)
+                # Ignore a seed position that is not aligned to any gene.
+                if unmodified_nt:
+                    modification_keys.append(group_key)
+                    unmodified_nts.append(unmodified_nt)
         modifications_df = modifications_df.set_index(['seed_contig_name', 'seed_position'])
         modifications_df = modifications_df.loc[modification_keys]
         unmodified_nt_df = modifications_df.merge(
