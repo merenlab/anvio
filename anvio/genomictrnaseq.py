@@ -826,6 +826,17 @@ class Integrator(object):
         hits_df = hits_df[
             hits_df.groupby('seed_contig_name')['bitscore'].transform('max') == hits_df['bitscore']]
 
+        if hits_df.empty:
+            if self.full_gene:
+                full_gene_text = ", starting at the 5' end of the gene as required by `--full-gene`"
+            else:
+                full_gene_text = ""
+            raise ConfigError(
+                "No tRNA-seq seed aligned to a tRNA gene over the length of the seed and through "
+                "the 3' end of the gene (or up to a 3'-CCA in the gene) with at most "
+                f"{self.max_mismatches} mismatches{full_gene_text}. The tRNA-seq contigs database "
+                "was not changed.")
+
         ##################################################
         # Now add information on internal genomes of interest that contain the tRNA genes. Note that
         # external genomes derived from the same metagenome can contain the same tRNA gene: hits to
@@ -942,6 +953,13 @@ class Integrator(object):
                     if bin_id is not None:
                         retained_index.append(key)
                 hits_df = hits_df.loc[retained_index]
+
+            if hits_df.empty:
+                raise ConfigError(
+                    "Every tRNA-seq seed aligned equally well to tRNA genes in more than one "
+                    "genome or in unbinned contigs, so none was kept with "
+                    "`--unambiguous-genome-assignment`. The tRNA-seq contigs database was not "
+                    "changed.")
         ##################################################
 
         # Multiple permutations of the same seed may be retained after filtering by score. There are
@@ -1114,6 +1132,11 @@ class Integrator(object):
                 filter_multiple_hits_to_gene)
         hits_df = hits_df[
             hits_df['seed_contig_name'].isin(coverage_df['seed_contig_name'].unique())]
+
+        if hits_df.empty:
+            raise ConfigError(
+                "tRNA-seq seeds aligned to tRNA genes, but in choosing one seed per gene, no seed "
+                "was chosen for any gene. The tRNA-seq contigs database was not changed.")
         ##################################################
 
         # Add seed gene callers IDs to the table. (Both seed "contig" names and gene callers IDs are
