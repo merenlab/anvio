@@ -736,6 +736,27 @@ then
     exit 1
 fi
 
+# Bars can run up the height of their boxes in place of across them. The top of a vertical bar would
+# run behind the label of its box, so these boxes drop their labels, and the key table of unlabeled
+# boxes names them on each drawn map. The bar keys have their rulers beside their boxes.
+INFO "Drawing vertical bars"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+                        --reaction-bar-column coverage \
+                        --reaction-bar-sample-summary mean \
+                        --reaction-bar-orientation vertical \
+                        --output-dir draw_txt_samples_kos_vertical_bars \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+if [ "$(sed 1d draw_txt_samples_kos_vertical_bars/label_key_reactions.txt | cut -f2 | uniq \
+    | tr '\n' ' ')" != "unified SAMPLE_1 SAMPLE_2 SAMPLE_3 " ] \
+    || [ ! -s draw_txt_samples_kos_vertical_bars/bar_key_reactions_samples.pdf ]
+then
+    echo "ERROR: a run with vertical bars should have listed its boxes and keyed its bars."
+    exit 1
+fi
+
 # A bar column with values on both sides of 0 draws bars that grow both ways from a gray zero line.
 # The boxes on such a scale drop their labels, which would hide the zero line, and a key table names
 # them by their accessions.

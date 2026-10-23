@@ -46,7 +46,7 @@ def check_package_dependencies():
 check_package_dependencies()
 
 from anvio.keggmapping import (
-    AGGREGATION_FUNCTIONS, BAR_STRIP_HEIGHT, BAR_STYLES, CATEGORICAL_RULES,
+    AGGREGATION_FUNCTIONS, BAR_ORIENTATIONS, BAR_STRIP_HEIGHT, BAR_STYLES, CATEGORICAL_RULES,
     CATEGORICAL_RULES_PHRASE, DEFAULT_BORDER_COLORMAP, DEFAULT_BORDER_COLORMAP_LIMITS,
     DEFAULT_BORDER_VALUE_COLORS, DEFAULT_CATEGORICAL_SEED, DEFAULT_CENTERED_COLORMAP,
     DEFAULT_GROUP_TINT_SPAN, DEFAULT_VALUE_COLORS, ELEMENT_NORMALIZATION_PHRASE,
@@ -141,10 +141,10 @@ BORDER_FLAGS = {
 # needs the bar column ('--reaction-bar-column'). Only the reaction layer has bars.
 BAR_FLAGS = {
     'reaction': (
-        '--reaction-bar-column', '--reaction-bar-style', '--reaction-bar-gene-aggregation',
-        '--reaction-bar-accession-aggregation', '--reaction-bar-sample-summary',
-        '--reaction-bar-group-summary', '--reaction-bar-value-limits',
-        '--reaction-bar-individual-value-limits'
+        '--reaction-bar-column', '--reaction-bar-style', '--reaction-bar-orientation',
+        '--reaction-bar-gene-aggregation', '--reaction-bar-accession-aggregation',
+        '--reaction-bar-sample-summary', '--reaction-bar-group-summary',
+        '--reaction-bar-value-limits', '--reaction-bar-individual-value-limits'
     ),
     'compound': ()
 }
@@ -632,22 +632,24 @@ def get_args() -> Namespace:
         '--reaction-bar-column', metavar='COLUMN', help=
         "The column of the reaction file whose values set the lengths of bars in reaction boxes on "
         "standard maps. A bar runs from 0 toward its value. Where the values are 0 or more, 0 is "
-        "the left side of the box, and the right side is the top of the bar scale. In the default "
-        "style, the bar is drawn in the color of the fill of the box, and the rest of the box "
-        "shows a gray track, so that a bar of 0 differs from a box without data. The column is "
-        "left out of the search for the value column, so a file whose only other column is this "
-        "one colors its fills by presence, and the bars take the colors of presence. It cannot be "
-        "'accession', 'gene_id', 'sample', the column of '--reaction-slice-weights', or the border "
-        "column. A row can leave its cell empty, and then it has no bar value. A bar value can be "
-        "negative. Where every value is negative, 0 is the right side of the box. Where the bar "
-        "scale of a map has values on both sides of 0, bars grow both ways from a gray zero line, "
-        "and the boxes of the 'fill' style drop their labels, which 'label_key_reactions.txt' "
-        "lists. On a map that shows bars, a box with a fill and no bar value is left uncolored, "
-        "and a warning counts such boxes. Strips are the exception ('--reaction-bar-style'). "
-        "Reaction lines take no bars. The bars take keys of their own, 'bar_key_reactions.pdf' and "
-        "'bar_key_reactions_samples.pdf' or 'bar_key_reactions_groups.pdf', labeled with the "
-        "column and ' (bar)'. Every other '--reaction-bar-*' option needs this one. Bars cannot be "
-        "drawn in slices yet, so '--reaction-slice-by' is refused with this option."
+        "the left side of the box, and the right side is the top of the bar scale, or the bottom "
+        "and the top for vertical bars ('--reaction-bar-orientation'). In the default style, the "
+        "bar is drawn in the color of the fill of the box, and the rest of the box shows a gray "
+        "track, so that a bar of 0 differs from a box without data. The column is left out of the "
+        "search for the value column, so a file whose only other column is this one colors its "
+        "fills by presence, and the bars take the colors of presence. It cannot be 'accession', "
+        "'gene_id', 'sample', the column of '--reaction-slice-weights', or the border column. A "
+        "row can leave its cell empty, and then it has no bar value. A bar value can be negative. "
+        "Where every value is negative, 0 is the right side of the box, or its top for vertical "
+        "bars. Where the bar scale of a map has values on both sides of 0, bars grow both ways "
+        "from a gray zero line, and the boxes of the 'fill' style drop their labels, which "
+        "'label_key_reactions.txt' lists. On a map that shows bars, a box with a fill and no bar "
+        "value is left uncolored, and a warning counts such boxes. Strips are the exception "
+        "('--reaction-bar-style'). Reaction lines take no bars. The bars take keys of their own, "
+        "'bar_key_reactions.pdf' and 'bar_key_reactions_samples.pdf' or "
+        "'bar_key_reactions_groups.pdf', labeled with the column and ' (bar)'. Every other "
+        "'--reaction-bar-*' option needs this one. Bars cannot be drawn in slices yet, so "
+        "'--reaction-slice-by' is refused with this option."
     )
     groupBAR.add_argument(
         '--reaction-bar-style', choices=list(BAR_STYLES), help=
@@ -660,6 +662,18 @@ def get_args() -> Namespace:
         f"values then stay readable. A box with a fill and no bar value keeps its whole fill "
         f"without a strip, which cannot be read as a value, since a strip of 0 is white. The bar "
         f"keys of strips are white boxes rather than gray ones."
+    )
+    groupBAR.add_argument(
+        '--reaction-bar-orientation', choices=list(BAR_ORIENTATIONS), help=
+        "Which way bars run in their boxes. With 'horizontal', the default, a bar runs across its "
+        "box. With 'vertical', it runs up its box from the bottom, or down from the top where "
+        "every bar value is negative. A box is about a third as high as it is wide, so 1%% of the "
+        "bar scale is 0.33 points up a box, or 0.27 points inside a ring, where a horizontal bar "
+        "has 0.91 or 0.85 points. The top of a vertical bar would run behind the label of its box, "
+        "so a box with a vertical bar is drawn without its label, and 'label_key_reactions.txt' "
+        "lists such boxes. The key of vertical bars has its ruler beside its box rather than under "
+        "it. A strip lies along the bottom of its box, so 'vertical' is refused with "
+        "'--reaction-bar-style strip'."
     )
     groupBAR.add_argument(
         '--reaction-bar-gene-aggregation', metavar='NAME', help=
@@ -1023,12 +1037,12 @@ def get_args() -> Namespace:
         "kinds given replace the default, so list 'standard' among them to keep the labels of "
         "boxes on standard maps. Without a label, a box is blank, since its fill hides the text of "
         "the base map. Every reaction element of a map of a given kind is labeled, with or without "
-        "data, except a box with a bar of the default style on a scale with values on both sides "
-        "of 0 ('--reaction-bar-column'). A label is KEGG's name for the element. That is the first "
-        "KO of the element, followed by '...' if the element stands for several KOs. The label is "
-        "a KO even when '--reaction-txt' holds KEGG reaction IDs, and it may name a KO that is not "
-        "in the data. On global maps, the labels are small and crowded, and they can be read only "
-        "when the map is zoomed in."
+        "data, except a box with a vertical bar, or with a bar of the default style on a scale "
+        "with values on both sides of 0 ('--reaction-bar-column'). A label is KEGG's name for the "
+        "element. That is the first KO of the element, followed by '...' if the element stands for "
+        "several KOs. The label is a KO even when '--reaction-txt' holds KEGG reaction IDs, and it "
+        "may name a KO that is not in the data. On global maps, the labels are small and crowded, "
+        "and they can be read only when the map is zoomed in."
     )
     groupLABEL.add_argument(
         '--compound-labels', nargs='+', choices=[*MAP_KINDS, LABELS_NONE], metavar='MAP_KIND', help=
@@ -3367,8 +3381,8 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
     # The options of the bars go to the mapper in the same way, keyed as the mapper's 'BAR_OPTIONS'.
     bar = {}
     for option in (
-        'column', 'style', 'gene_aggregation', 'accession_aggregation', 'sample_summary',
-        'group_summary'
+        'column', 'style', 'orientation', 'gene_aggregation', 'accession_aggregation',
+        'sample_summary', 'group_summary'
     ):
         value = getattr(args, f'reaction_bar_{option}')
         if value is not None:

@@ -4734,6 +4734,20 @@ then
     exit 1
 fi
 
+# A vertical bar runs behind the label of its box, so the box drops its label even on a scale whose
+# values are all 0 or more. Map 00010 draws K00844 in the boxes of entries 69 and 75. K01810 has no
+# bar value, so its boxes are left uncolored and keep their labels.
+INFO "Testing vertical bars"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_empty_cell.reaction.txt \
+    --reaction-bar-column level --reaction-bar-orientation vertical \
+    --output-dir draw_txt_bar_vertical --pathway-numbers $pathway_numbers --no-progress
+if [ "$(sed 1d draw_txt_bar_vertical/label_key_reactions.txt | cut -f3,7 | tr '\t\n' '  ')" \
+    != "69 K00844 75 K00844 " ]
+then
+    echo "ERROR: the key table of unlabeled boxes should list the two boxes of K00844."
+    exit 1
+fi
+
 # A scale whose values are all below 0 puts 0 at the right side of each box, with no zero line
 # inside it, so its boxes keep their labels.
 INFO "Testing bars whose values are all below 0"
@@ -4823,6 +4837,22 @@ if ! tr -d ' \n' < draw_txt_bar_style_without_column.log \
     | grep -q "'--reaction-bar-style'appliestothebarsofthereactionlayer"
 then
     echo "ERROR: a bar style without the bar column was refused for another reason."
+    exit 1
+fi
+
+# A strip lies along the bottom of its box, so it cannot run up the box.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_signed.reaction.txt \
+    --reaction-bar-column level --reaction-bar-style strip --reaction-bar-orientation vertical \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_vertical_strip.log 2>&1
+then
+    echo "ERROR: vertical strips should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_vertical_strip.log | grep -q "soastripisalwayshorizontal"
+then
+    echo "ERROR: vertical strips were refused for another reason."
     exit 1
 fi
 

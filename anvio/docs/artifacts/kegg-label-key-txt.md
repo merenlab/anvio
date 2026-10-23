@@ -1,6 +1,6 @@
 This artifact is a TAB-delimited text file written by %(anvi-draw-kegg-pathways)s. It lists the reaction boxes drawn without their labels on %(kegg-pathway-map)s files, because of the bars inside them.
 
-With `--reaction-bar-column`, a map whose bar scale has values on both sides of 0 draws bars that grow both ways from a gray zero line. The label of a box fills its upper half, where it would hide the zero line and the ends of short bars, so the boxes of the default `fill` style are drawn without their labels. This table says what each of these boxes stands for. The program writes it as `label_key_reactions.txt` at the top of the output directory, beside the bar keys. One file covers every map of the run. It is written where the bar scale of the `unified` map, or the scale shared by the maps of the samples or groups, has values on both sides of 0. Boxes of the `strip` style keep their labels, so a run of strips writes no table. See %(anvi-draw-kegg-pathways)s for how bars are drawn.
+With `--reaction-bar-column`, a map whose bar scale has values on both sides of 0 draws bars that grow both ways from a gray zero line. The label of a box fills its upper half, where it would hide the zero line and the ends of short bars, so the boxes of the default `fill` style are drawn without their labels. A box whose bar runs up its height, with `--reaction-bar-orientation vertical`, is drawn without its label too, since the top of its bar would run behind the label. This table says what each of these boxes stands for. The program writes it as `label_key_reactions.txt` at the top of the output directory, beside the bar keys. One file covers every map of the run. It is written where the bars are vertical, or where the bar scale of the `unified` map, or the scale shared by the maps of the samples or groups, has values on both sides of 0. Boxes of the `strip` style keep their labels, so a run of strips writes no table. See %(anvi-draw-kegg-pathways)s for how bars are drawn.
 
 ## File format
 
@@ -21,7 +21,7 @@ The file has a header line and these columns:
 
 Each row is one box on one drawn map. The rows are sorted by `map`, then by `drawn_map`, then by entry ID. The `unified` map comes first, and the maps of the samples or groups follow in the order in which they are drawn. Rows name maps, not files. A map drawn only as a panel of a grid is listed under its sample or group, like any other.
 
-A box is listed on a drawn map only where its bar scale has values on both sides of 0. The `unified` map and the maps of the samples or groups have bar scales of their own, so a box can be listed on one and labeled on the other. A box left uncolored for want of a bar value keeps its label and is not listed. Boxes are listed whether or not `--reaction-labels` labels standard maps.
+A box is listed on a drawn map only where its bar is vertical or its bar scale has values on both sides of 0. The `unified` map and the maps of the samples or groups have bar scales of their own, so a box can be listed on one and labeled on the other. A box left uncolored for want of a bar value keeps its label and is not listed. Boxes are listed whether or not `--reaction-labels` labels standard maps.
 
 ## Examples
 

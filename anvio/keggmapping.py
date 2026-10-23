@@ -80,8 +80,10 @@ bar
     The channel of the reaction bar column, and a layer's 'bars' is a list holding its model. A bar
     is drawn inside a box on a standard map, and it runs from 0 to its value. Its style
     ('BAR_STYLES') draws it in the fill's color over a gray track, or as a dark bar on a white strip
-    under the whole fill. On a scale with values on both sides of 0, bars grow both ways from a zero
-    line, and the boxes of the 'fill' style drop their labels. "Bar" can also mean a colorbar.
+    under the whole fill. Its orientation ('BAR_ORIENTATIONS') runs it along the width of its box,
+    or up its height. On a scale with values on both sides of 0, bars grow both ways from a zero
+    line. Boxes of the 'fill' style drop their labels there, and wherever their bars are vertical.
+    "Bar" can also mean a colorbar.
 
 model
     The dict that says how one channel of a layer is colored, or measured for bars, in each context,
@@ -654,12 +656,13 @@ REACTION_BORDER_OPTIONS: Tuple[str, ...] = ('gene_aggregation', 'slice_by')
 
 # The options of the bars of the reaction layer ('map_kegg_pathways_txt'). 'column' names the bar
 # column of the reaction file ('--reaction-bar-column'). 'style' is how a bar is drawn in its box
-# ('BAR_STYLES'). Every other key is the bar version of an option of the fill, such as
-# 'sample_summary' for '--reaction-bar-sample-summary'. Bars take numbers only, so they take no
-# value type, period, colormap, center, or normalization.
+# ('BAR_STYLES'), and 'orientation' which way it runs ('BAR_ORIENTATIONS'). Every other key is the
+# bar version of an option of the fill, such as 'sample_summary' for
+# '--reaction-bar-sample-summary'. Bars take numbers only, so they take no value type, period,
+# colormap, center, or normalization.
 BAR_OPTIONS: Tuple[str, ...] = (
-    'column', 'style', 'gene_aggregation', 'accession_aggregation', 'sample_summary',
-    'group_summary', 'value_limits', 'individual_value_limits'
+    'column', 'style', 'orientation', 'gene_aggregation', 'accession_aggregation',
+    'sample_summary', 'group_summary', 'value_limits', 'individual_value_limits'
 )
 
 # How a bar is drawn in its box ('--reaction-bar-style'). A 'fill' bar is drawn in the color of the
@@ -668,6 +671,14 @@ BAR_OPTIONS: Tuple[str, ...] = (
 # strip keeps both values readable, while a 'fill' bar weights the color of the fill by its length.
 # 'fill' is the default.
 BAR_STYLES: Tuple[str, ...] = ('fill', 'strip')
+
+# Which way a bar runs in its box ('--reaction-bar-orientation'). A 'horizontal' bar runs along the
+# width of the box, and a 'vertical' bar up its height, which is about a third as long. 1% of a bar
+# scale is then 0.33 points, or 0.27 inside a ring. The top of a vertical bar would run behind the
+# label of its box, so a box with a vertical bar drops its label ('LABEL_KEY_COLUMNS'). Bars are
+# horizontal unless the option says otherwise. A strip lies along the bottom of its box, so it is
+# always horizontal.
+BAR_ORIENTATIONS: Tuple[str, ...] = ('horizontal', 'vertical')
 
 # The track of a bar, which is the part of the fill that a bar does not cover. A gray track tells a
 # bar of 0 from a box without data, which is white. The end line is drawn centered on the free end
@@ -712,9 +723,9 @@ SLICE_KEY_COLUMNS: Tuple[str, ...] = (
 )
 
 # The columns of the key table that lists the boxes that are drawn without their labels
-# ('_write_label_keys'). A box of the 'fill' style on a bar scale with values on both sides of 0
-# drops its label. The table names the box by its accessions in the layer's file, joined by commas
-# in KGML order, and gives its bar value.
+# ('_write_label_keys'). A box of the 'fill' style with a vertical bar, or on a bar scale with
+# values on both sides of 0, drops its label. The table names the box by its accessions in the
+# layer's file, joined by commas in KGML order, and gives its bar value.
 LABEL_KEY_COLUMNS: Tuple[str, ...] = (
     'map', 'drawn_map', 'entry_id', 'x', 'y', 'label', 'accession', 'bar'
 )
@@ -802,6 +813,19 @@ MIN_TICK_SEPARATION_FRACTION = 0.08
 # the ruler rather than one above another, so a label of a limit, such as '≥ 35', needs about twice
 # the room.
 MIN_LENGTH_TICK_SEPARATION_FRACTION = 0.16
+
+# The same for the ruler beside the box of a key of bar lengths, which keys vertical bars. Its
+# labels sit one above another, as those of a colorbar do. The box is 0.37 times as tall as a
+# colorbar, so the gap between labels on a colorbar would take 0.22 of it. A little more keeps the
+# few labels of the ruler clearly apart.
+MIN_VERTICAL_LENGTH_TICK_SEPARATION_FRACTION = 0.25
+
+# How far the label of 0 on the ruler under a key of bar lengths must stay from the label of an end
+# of a scale with values on both sides of 0, as a fraction of the size of the labels. A gray line
+# marks 0, so the label of 0 is left out where it would come closer ('draw_length'). On the ruler
+# beside the key, the labels sit one above another, and the space above and below their digits keeps
+# them apart wherever they do not overlap.
+MIN_LENGTH_ZERO_LABEL_GAP_FRACTION = 0.25
 
 # Subdirectories of the output directory, one per role a map file can have: the map unifying every
 # source, the map of one individual source, and the grid comparing them. A fourth holds those
@@ -5728,11 +5752,13 @@ class Mapper:
         Every option of the bars needs the bar column, and that column needs the reaction file. A
         bar is drawn in a box whose fill is colored, in the color of the fill unless it is a strip
         ('BAR_STYLES'), so fills left uncolored are refused. The reference map's colors are refused
-        too, since a renderer of their own draws them, and it draws no bars. Bars in the slices of
-        boxes are not supported yet. The builder of the model of the bars checks the rest
-        ('_build_txt_model'). The command line makes these checks too, and these repeat them for
-        programmatic callers. Where a bar column is named, the private methods of Biopython that
-        draw bars are checked too ('kgml.SlicedKGMLCanvas.check_biopython').
+        too, since a renderer of their own draws them, and it draws no bars. A strip is always
+        horizontal ('BAR_ORIENTATIONS'), so a vertical orientation is refused with strips. Bars in
+        the slices of boxes are not supported yet. The builder of the model of the bars checks the
+        rest ('_build_txt_model'). The command line makes the checks of the column, the colors, and
+        slicing too, and these repeat them for programmatic callers. Where a bar column is named,
+        the private methods of Biopython that draw bars are checked too
+        ('kgml.SlicedKGMLCanvas.check_biopython').
 
         Parameters
         ==========
@@ -5782,6 +5808,18 @@ class Mapper:
             raise ConfigError(
                 f"'--reaction-bar-style' takes {' or '.join(repr(name) for name in BAR_STYLES)}, "
                 f"not '{style}'."
+            )
+        orientation = reaction_bar.get('orientation')
+        if orientation is not None and orientation not in BAR_ORIENTATIONS:
+            raise ConfigError(
+                f"'--reaction-bar-orientation' takes "
+                f"{' or '.join(repr(name) for name in BAR_ORIENTATIONS)}, not '{orientation}'."
+            )
+        if style == 'strip' and orientation == 'vertical':
+            raise ConfigError(
+                "'--reaction-bar-style strip' draws each bar along a strip at the bottom of its "
+                "box, so a strip is always horizontal. '--reaction-bar-orientation vertical' "
+                "cannot be combined with it. Please drop one of the two options."
             )
         # A strip is dark on any fill, but it is drawn only in a colored box, as a bar of the fill
         # style is.
@@ -6683,16 +6721,18 @@ class Mapper:
             bar in each reaction box on standard maps, drawn in the color of the fill of the box
             over a gray track ('BAR_TRACK_COLOR'). With a 'style' of 'strip', the fill is drawn
             whole, and the bar is a dark bar on a white strip along the bottom of the box
-            ('BAR_STYLES'). The other keys are the bar versions of the options of the fill. A bar
-            shows values only, so its summaries take no presence names. Without a summary, the
-            'unified' map of a file with samples shows no bars, and its fills are drawn whole. The
-            aggregations default to 'mean'. Each scale of bars includes 0, and limits that leave 0
-            out are refused. On a scale with values on both sides of 0, bars grow both ways from a
-            zero line, and boxes of the 'fill' style drop their labels ('label_key_reactions.txt').
-            On a map that shows bars, a box with a fill and no bar value is left uncolored, or keeps
-            its whole fill without a strip. The bars are built by the builder of the fill
-            ('_build_txt_model', '_txt_channel'). Options left out are None. '--original-color', a
-            'reaction_color' of 'none', and 'reaction_slice_by' are refused.
+            ('BAR_STYLES'). With an 'orientation' of 'vertical', bars run up their boxes, which then
+            drop their labels ('BAR_ORIENTATIONS'). The other keys are the bar versions of the
+            options of the fill. A bar shows values only, so its summaries take no presence names.
+            Without a summary, the 'unified' map of a file with samples shows no bars, and its fills
+            are drawn whole. The aggregations default to 'mean'. Each scale of bars includes 0, and
+            limits that leave 0 out are refused. On a scale with values on both sides of 0, bars
+            grow both ways from a zero line, and boxes of the 'fill' style drop their labels
+            ('label_key_reactions.txt'). On a map that shows bars, a box with a fill and no bar
+            value is left uncolored, or keeps its whole fill without a strip. The bars are built by
+            the builder of the fill ('_build_txt_model', '_txt_channel'). Options left out are None.
+            '--original-color', a 'reaction_color' of 'none', 'reaction_slice_by', and vertical
+            strips are refused.
 
         Notes
         =====
@@ -6950,6 +6990,7 @@ class Mapper:
                     channel=channel
                 )
                 bar_model['style'] = style
+                bar_model['orientation'] = bar['orientation'] or 'horizontal'
                 model['bars'] = [bar_model]
             if model['border'] is None and not model['bars']:
                 continue
@@ -6986,6 +7027,7 @@ class Mapper:
                 self.run.info(f"{label} rows without a border value", data['border_empty'])
             if model['bars']:
                 self.run.info(f"{label} bar style", model['bars'][0]['style'])
+                self.run.info(f"{label} bar orientation", model['bars'][0]['orientation'])
                 self.run.info(f"{label} rows without a bar value", data['bar_empty'])
             if model['border'] is not None and border['slice_by'] is not None:
                 self.run.info(
@@ -10274,7 +10316,7 @@ class Mapper:
             of the models of its bar columns, which holds one model. These have the keys of a
             'quantitative' layer, except that a bar has no colormap. Their mode is None on a map
             that shows none of their values. A bar also has 'style', how it is drawn in its box
-            ('BAR_STYLES').
+            ('BAR_STYLES'), and 'orientation', which way it runs ('BAR_ORIENTATIONS').
 
         output_dir : str
             Path to the output directory in which pathway map and colorbar PDF files are drawn.
@@ -11046,17 +11088,26 @@ class Mapper:
                     f"{', '.join(sorted(lines)[:10])}{', and more' if len(lines) > 10 else ''}."
                 )
 
-        # A bar scale of the 'fill' style with values on both sides of 0 drops the labels of the
-        # boxes on its maps ('_stage_entry_bar'). The key table of unlabeled boxes is written for
-        # such bars ('_write_label_keys'), and whether it can be written is checked before anything
-        # is drawn.
+        # Bars of the 'fill' style drop the labels of their boxes where they run vertically, or
+        # where a bar scale has values on both sides of 0 ('_stage_entry_bar'). The key table of
+        # unlabeled boxes is written for such bars ('_write_label_keys'), and whether it can be
+        # written is checked before anything is drawn. Only the scales of the maps that are drawn
+        # count.
         for bar in bars:
-            bar_ranges = [bar.get('_unified_range'), bar.get('_individual_range')]
-            bar['_signed'] = bar['style'] == 'fill' and any(
-                bar_range[0] < 0 < bar_range[1] for bar_range in bar_ranges
+            drawn_ranges = [
+                bar.get(f'_{context}_range') for context, drawn in (
+                    ('unified', draw_unified_maps), ('individual', draw_individual_maps)
+                ) if drawn
+            ]
+            bar_ranges = [
+                bar_range for bar_range in drawn_ranges
                 if bar_range is not None and bar_range[0] is not None
+            ]
+            signed = any(vmin < 0 < vmax for vmin, vmax in bar_ranges)
+            bar['_drops_labels'] = bar['style'] == 'fill' and bool(bar_ranges) and (
+                signed or bar['orientation'] == 'vertical'
             )
-            if bar['_signed']:
+            if bar['_drops_labels']:
                 filesnpaths.is_output_file_writable(
                     os.path.join(output_dir, f"label_key_{bar['name']}.txt"),
                     ok_if_exists=self.overwrite_output
@@ -11449,6 +11500,7 @@ class Mapper:
                 'bar_value': entry_value,
                 'bar_norm': norm,
                 'bar_style': bar['style'],
+                'bar_orientation': bar['orientation'],
                 'bar_map': 'unified' if individual is None else individual,
                 'bar_rank': 0 if individual is None else slice_ranks[individual],
                 'bar_missing': bar['_missing'],
@@ -11628,8 +11680,9 @@ class Mapper:
         # type of its border, since a player shows it only beside the maps that can show the
         # border's rings ('_map_shows_borders'). Bars are keyed by length in files of their own,
         # such as 'bar_key_reactions.pdf' ('ColorbarDrawer.draw_length'). A bar key is labeled with
-        # the bar column and '(bar)'. Bar keys are listed for players as the keys of borders are,
-        # since bars take the shapes that rings take.
+        # the bar column and '(bar)', and it has a ruler for the orientation of its bars. Bar keys
+        # are listed for players as the keys of borders are, since bars take the shapes that rings
+        # take.
         individual_keys: List[Tuple[str, Union[str, None]]] = []
         for layer in models:
             if _role(layer) == 'bar':
@@ -11660,7 +11713,8 @@ class Mapper:
                         clamped_low=clamped_low, clamped_high=clamped_high,
                         track_color=(
                             BAR_STRIP_TRACK_COLOR if layer['style'] == 'strip' else BAR_TRACK_COLOR
-                        )
+                        ),
+                        orientations=(layer['orientation'],)
                     )
                     if keys_individual_maps:
                         individual_keys.append((key_path, layer['element_type']))
@@ -12529,26 +12583,26 @@ class Mapper:
         """
         Write the key table of the boxes that bars drew without their labels.
 
-        A box of the 'fill' style on a bar scale with values on both sides of 0 drops its label
-        ('_stage_entry_bar'). The key table lists each such box on each drawn map
-        ('LABEL_KEY_COLUMNS'), so that a box can still be told by its accessions. Its name is
+        A box of the 'fill' style with a vertical bar, or on a bar scale with values on both sides
+        of 0, drops its label ('_stage_entry_bar'). The key table lists each such box on each drawn
+        map ('LABEL_KEY_COLUMNS'), so that a box can still be told by its accessions. Its name is
         'label_key_<name>.txt', such as 'label_key_reactions.txt', in the output directory. It is
-        written for the bars of the 'fill' style whose scale on the 'unified' map or on the
-        individual maps has values on both sides of 0, as '_map_elements' found before drawing. The
-        rows are sorted as those of the key table of slices ('_write_slice_keys'): by KEGG map, by
-        drawn map in the order the maps are drawn, and by entry ID.
+        written for the bars of the 'fill' style that are vertical, or whose scale on the 'unified'
+        map or on the individual maps has values on both sides of 0, as '_map_elements' found before
+        drawing. The rows are sorted as those of the key table of slices ('_write_slice_keys'): by
+        KEGG map, by drawn map in the order the maps are drawn, and by entry ID.
 
         Parameters
         ==========
         bars : List[dict]
-            The bar models of the run. Each says in '_signed' whether its table is written, and
-            keeps the rows of the drawn maps in '_unlabeled'.
+            The bar models of the run. Each says in '_drops_labels' whether its table is written,
+            and keeps the rows of the drawn maps in '_unlabeled'.
 
         output_dir : str
             The output directory.
         """
         for bar in bars:
-            if not bar['_signed']:
+            if not bar['_drops_labels']:
                 continue
             unlabeled = bar['_unlabeled']
             path = os.path.join(output_dir, f"label_key_{bar['name']}.txt")
@@ -14966,6 +15020,7 @@ class Mapper:
             - 'bar_norm': the norm of the bar scale of the map, or None for a scale of a single
               value ('_bar_extent').
             - 'bar_style': how the bars are drawn in their boxes ('BAR_STYLES').
+            - 'bar_orientation': which way the bars run in their boxes ('BAR_ORIENTATIONS').
             - 'bar_map': what the warning about boxes without a bar value, and the key table of
               boxes without labels, call the map, 'unified' or the name of a sample or group.
             - 'bar_rank': where the map comes in the key table of boxes without labels, 0 for the
@@ -15147,17 +15202,20 @@ class Mapper:
         ('_shows_border'). Each such box gets a glyph ('kgml.Graphics.glyph') in the style of the
         bars ('BAR_STYLES'). In the 'fill' style, its one cell is the gray track
         ('BAR_TRACK_COLOR'). A mark over it, in the color of the fill, runs from 0 to the value of
-        the bar along the length of the box. In the 'strip' style, its one cell is the whole fill.
-        Two marks lie in a band along its bottom ('BAR_STRIP_HEIGHT'): the white track of the strip,
-        and the dark bar over it from 0 to the value. An end line is centered on the free end of the
-        bar, at 0 and at the full length too ('BAR_END_LINE_COLOR'). The fill color stays in the fg
-        and bg colors of the Entry, so color priority, recoloring, and the colors that compounds
-        derive from reactions see only the fill.
+        the bar. In the 'strip' style, its one cell is the whole fill. Two marks lie in a band along
+        its bottom ('BAR_STRIP_HEIGHT'): the white track of the strip, and the dark bar over it from
+        0 to the value. An end line is centered on the free end of the bar, at 0 and at the full
+        length too ('BAR_END_LINE_COLOR'). The fill color stays in the fg and bg colors of the
+        Entry, so color priority, recoloring, and the colors that compounds derive from reactions
+        see only the fill.
 
-        Where 0 lies inside the bar scale of the map, the bars grow both ways from it, and a zero
-        line is drawn under the end line ('BAR_ZERO_LINE_COLOR'). A box of the 'fill' style then
-        drops its label, which is recorded for the key table of unlabeled boxes
-        ('_write_label_keys'). A strip lies below the label, so it keeps it.
+        A bar runs along the width of its box, or with a 'vertical' orientation along its height
+        ('BAR_ORIENTATIONS'). It starts at 0, which is the left side or the bottom of the box where
+        the values are 0 or more, and the right side or the top where they are all negative. Where 0
+        lies inside the bar scale of the map, the bars grow both ways from it, and a zero line is
+        drawn under the end line ('BAR_ZERO_LINE_COLOR'). A box of the 'fill' style then drops its
+        label, as a box with a vertical bar does. Such a box is recorded for the key table of
+        unlabeled boxes ('_write_label_keys'). A strip lies below the label, so it keeps it.
 
         In the 'fill' style, a box without a bar value on the map is left uncolored. A whole fill
         would read as a full bar, and a bare track as a bar of 0. The box is recorded for a warning
@@ -15215,24 +15273,26 @@ class Mapper:
             return False
         zero, end = self._bar_extent(value, spec['bar_norm'])
         start, stop = min(zero, end), max(zero, end)
+        vertical = spec['bar_orientation'] == 'vertical'
+        axis = 'y' if vertical else 'x'
         if strip:
             band = BAR_STRIP_HEIGHT
             cells = [(color_hexcode, 1.0)]
             marks = [
-                (0, 'x', 0.0, 1.0, BAR_STRIP_TRACK_COLOR, band),
-                (0, 'x', start, stop, BAR_STRIP_COLOR, band)
+                (0, axis, 0.0, 1.0, BAR_STRIP_TRACK_COLOR, band),
+                (0, axis, start, stop, BAR_STRIP_COLOR, band)
             ]
         else:
             band = None
             cells = [(BAR_TRACK_COLOR, 1.0)]
-            marks = [(0, 'x', start, stop, color_hexcode, None)]
+            marks = [(0, axis, start, stop, color_hexcode, None)]
         signed = 0 < zero < 1
         rules = []
         if signed:
-            rules.append((0, 'x', zero, BAR_ZERO_LINE_COLOR, BAR_ZERO_LINE_WIDTH, band))
-        rules.append((0, 'x', end, BAR_END_LINE_COLOR, BAR_END_LINE_WIDTH, band))
+            rules.append((0, axis, zero, BAR_ZERO_LINE_COLOR, BAR_ZERO_LINE_WIDTH, band))
+        rules.append((0, axis, end, BAR_END_LINE_COLOR, BAR_END_LINE_WIDTH, band))
         glyph = {'cells': cells, 'marks': marks, 'rules': rules}
-        if signed and not strip:
+        if (signed or vertical) and not strip:
             glyph['label'] = False
             if slice_records is not None:
                 x, y, label = self._slice_label_point(pathway, entry)
@@ -17014,19 +17074,26 @@ class ColorbarDrawer:
         label: str = None,
         clamped_low: bool = False,
         clamped_high: bool = False,
-        track_color: str = BAR_TRACK_COLOR
+        track_color: str = BAR_TRACK_COLOR,
+        orientations: Iterable[str] = ('horizontal',)
     ) -> None:
         """
         Save a standalone key of a bar scale to a file.
 
         A bar scale keys lengths, not colors. The key is a box in the color of the track of bars,
-        with a ruler under it. The width of the box stands for the scale. A bar starts at 0, which
-        is always on the scale ('Mapper._bar_extent'), so 0 is always labeled. Both ends of the
-        scale are labeled too, since a full bar stands for its end, whether the data or a limit sets
-        it. An end is marked '≤' or '≥' where values lie past a limit, as on a continuous colorbar
-        ('draw_continuous'). A scale with values on both sides of 0 marks 0 with a gray line across
-        the box, as its bars do ('BAR_ZERO_LINE_COLOR'). A scale whose one value is 0 is drawn as a
-        box labeled 0 alone, since its bars have no length.
+        about the shape of a reaction box ('length_figsize'). It has a ruler for each orientation of
+        the bars it keys ('BAR_ORIENTATIONS'): one under the box for horizontal bars, and one beside
+        it for vertical bars. A bar is then read against the ruler that runs its way, which is as
+        long against the box as the bar is against its own box.
+
+        A bar starts at 0, which is always on the scale ('Mapper._bar_extent'), so 0 is labeled.
+        Both ends of the scale are labeled too, since a full bar stands for its end, whether the
+        data or a limit sets it. An end is marked '≤' or '≥' where values lie past a limit, as on a
+        continuous colorbar ('draw_continuous'). A scale with values on both sides of 0 marks 0 with
+        a gray line across the box, as its bars do ('BAR_ZERO_LINE_COLOR'). Where an end of such a
+        scale lies so close to 0 that their labels would overlap, the line marks 0 without a label.
+        A scale whose one value is 0 is drawn as a box labeled 0 alone, since its bars have no
+        length.
 
         Parameters
         ==========
@@ -17040,7 +17107,7 @@ class ColorbarDrawer:
             Path to PDF output file.
 
         label : str, None
-            The label of the key.
+            The label of the key, under the box.
 
         clamped_low, clamped_high : bool, False
             As in 'draw_continuous'.
@@ -17048,6 +17115,9 @@ class ColorbarDrawer:
         track_color : str, BAR_TRACK_COLOR
             The color of the box: the gray track of bars, or the white track of strips
             ('BAR_STRIP_TRACK_COLOR').
+
+        orientations : Iterable[str], ('horizontal',)
+            The orientations of the bars that the key serves, each of which takes a ruler.
         """
         fig = Figure(figsize=self.length_figsize)
         ax = fig.subplots()
@@ -17057,48 +17127,108 @@ class ColorbarDrawer:
         for spine in ax.spines.values():
             spine.set_color('#000000')
             spine.set_linewidth(1)
-        ax.yaxis.set_visible(False)
-        # The labels take the size of the labels of colorbars. They are sized before the automatic
-        # ticks are found, which are then spaced to fit them.
-        ax.tick_params(
-            axis='x', labelsize=(
-                self.max_tick_fontsize if self.tick_fontsize is None else self.tick_fontsize
-            )
-        )
-        if vmin == vmax:
-            ax.set_xlim(vmin, vmin + 1)
-            ticks = [vmin]
-            tick_labels = self._limit_tick_labels(
-                ax.xaxis.get_major_formatter(), ticks, 1, False, False
-            )
-        else:
-            ax.set_xlim(vmin, vmax)
-            # The line at 0 is as wide as the outline of the box, so that it shows at the size of
-            # the key.
-            if vmin < 0 < vmax:
-                ax.axvline(0, color=BAR_ZERO_LINE_COLOR, linewidth=1)
-            span = vmax - vmin
-            # The start of the bars and the ends of the scale are the labels a reader needs, so an
-            # automatic tick all but on top of one of them is dropped.
-            marked = sorted({0.0, vmin, vmax})
-            kept = [
-                tick for tick in ax.get_xticks()
-                if vmin <= tick <= vmax and all(
-                    abs(tick - value) >= MIN_LENGTH_TICK_SEPARATION_FRACTION * span
-                    for value in marked
-                )
-            ]
-            ticks = sorted(kept + marked)
-            tick_labels = self._limit_tick_labels(
-                ax.xaxis.get_major_formatter(), ticks, span, clamped_low, clamped_high
-            )
-        ax.set_xticks(ticks)
-        ax.set_xticklabels(tick_labels)
+        # A key of horizontal bars alone has no ruler beside the box, and a key of vertical bars
+        # alone none under it, though its label stays there.
+        if 'vertical' not in orientations:
+            ax.yaxis.set_visible(False)
+        if 'horizontal' not in orientations:
+            ax.set_xticks([])
+        for orientation in BAR_ORIENTATIONS:
+            if orientation in orientations:
+                self._draw_length_ruler(ax, orientation, vmin, vmax, clamped_low, clamped_high)
         if label:
             ax.set_xlabel(label, labelpad=self.labelpad, fontsize=self.label_fontsize)
 
         filesnpaths.is_output_file_writable(out_path, ok_if_exists=self.overwrite_output)
         fig.savefig(out_path, format='pdf', bbox_inches='tight')
+
+    def _draw_length_ruler(
+        self,
+        ax,
+        orientation: Literal['horizontal', 'vertical'],
+        vmin: float,
+        vmax: float,
+        clamped_low: bool,
+        clamped_high: bool
+    ) -> None:
+        """
+        Draw one ruler of a key of bar lengths, and the line at 0 that goes with it ('draw_length').
+
+        Parameters
+        ==========
+        ax : matplotlib.axes.Axes
+            The box of the key.
+
+        orientation : Literal['horizontal', 'vertical']
+            The orientation of the bars that the ruler keys. Horizontal bars take a ruler under the
+            box, and vertical bars one beside it.
+
+        vmin, vmax, clamped_low, clamped_high
+            As in 'draw_length'.
+        """
+        horizontal = orientation == 'horizontal'
+        axis = ax.xaxis if horizontal else ax.yaxis
+        set_limits = ax.set_xlim if horizontal else ax.set_ylim
+        tick_fontsize = self.max_tick_fontsize if self.tick_fontsize is None else self.tick_fontsize
+        # The labels take the size of the labels of colorbars. They are sized before the automatic
+        # ticks are found, which are then spaced to fit them.
+        ax.tick_params(axis='x' if horizontal else 'y', labelsize=tick_fontsize)
+        signed = vmin < 0 < vmax
+        if vmin == vmax:
+            set_limits(vmin, vmin + 1)
+            ticks = [vmin]
+            tick_labels = self._limit_tick_labels(
+                axis.get_major_formatter(), ticks, 1, False, False
+            )
+        else:
+            set_limits(vmin, vmax)
+            # The line at 0 is as wide as the outline of the box, so that it shows at the size of
+            # the key.
+            if signed:
+                zero_line = ax.axvline if horizontal else ax.axhline
+                zero_line(0, color=BAR_ZERO_LINE_COLOR, linewidth=1)
+            span = vmax - vmin
+            separation = span * (
+                MIN_LENGTH_TICK_SEPARATION_FRACTION if horizontal
+                else MIN_VERTICAL_LENGTH_TICK_SEPARATION_FRACTION
+            )
+            # The start of the bars and the ends of the scale are the labels a reader needs, so an
+            # automatic tick all but on top of one of them is dropped.
+            marked = sorted({0.0, vmin, vmax})
+            kept = [
+                tick for tick in axis.get_ticklocs()
+                if vmin <= tick <= vmax and all(
+                    abs(tick - value) >= separation for value in marked
+                )
+            ]
+            ticks = sorted(kept + marked)
+            tick_labels = self._limit_tick_labels(
+                axis.get_major_formatter(), ticks, span, clamped_low, clamped_high
+            )
+        axis.set_ticks(ticks)
+        axis.set_ticklabels(tick_labels)
+        if not signed:
+            return
+        # On a scale with values on both sides of 0, the gray line marks 0. The label of 0 gives way
+        # to the label of an end where the two would come too close, which depends on how many
+        # digits and marks the labels have. The labels are measured where the figure lays them out.
+        ax.figure.draw_without_rendering()
+        extents = [tick_label.get_window_extent() for tick_label in axis.get_ticklabels()]
+        gap = tick_fontsize * ax.figure.dpi / 72 * MIN_LENGTH_ZERO_LABEL_GAP_FRACTION if (
+            horizontal
+        ) else 0
+
+        def apart(first, second) -> bool:
+            if horizontal:
+                return first.x1 + gap <= second.x0 or second.x1 + gap <= first.x0
+            return first.y1 + gap <= second.y0 or second.y1 + gap <= first.y0
+
+        zero_index = ticks.index(0.0)
+        if not (apart(extents[zero_index], extents[0]) and apart(extents[zero_index], extents[-1])):
+            ticks = ticks[:zero_index] + ticks[zero_index + 1:]
+            tick_labels = tick_labels[:zero_index] + tick_labels[zero_index + 1:]
+            axis.set_ticks(ticks)
+            axis.set_ticklabels(tick_labels)
 
 class PDFGridDrawer:
     """
