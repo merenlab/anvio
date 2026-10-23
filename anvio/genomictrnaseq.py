@@ -512,6 +512,12 @@ class Integrator(object):
         filesnpaths.is_file_exists(self.modifications_txt_path)
 
         # Do basic checks of the combinations of (meta)genomic input arguments.
+        if not (self.genomic_contigs_db_path or
+                self.internal_genomes_path or
+                self.external_genomes_path):
+            raise ConfigError("A (meta)genomic input is required: `--contigs-db`, "
+                              "`--internal-genomes`, or `--external-genomes`.")
+
         if (self.genomic_contigs_db_path and
             (self.internal_genomes_path or self.external_genomes_path)):
             raise ConfigError("`--internal-genomes` and `--external-genomes` cannot be used with "
