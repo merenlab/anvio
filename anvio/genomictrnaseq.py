@@ -1323,12 +1323,11 @@ class Integrator(object):
         # Either clear the table of seed/gene matches with `self.remove_previous_matches` or append
         # to the table, replacing previous matches of the genomes being integrated.
         row_count = trnaseq_contigs_db.get_row_counts_from_table(tables.trna_gene_hits_table_name)
-        print()
         if self.remove_previous_matches:
             trnaseq_contigs_db._exec(f'''DELETE FROM {tables.trna_gene_hits_table_name}''')
             self.run.info_single(
                 f"{pp(row_count)} seed/gene matches dropped from the tRNA-seq contigs database",
-                cut_after=0)
+                cut_after=0, nl_before=1)
         else:
             replaced_genome_keys = set()
             for genome_info in self.genome_info_dict.values():
@@ -1353,12 +1352,12 @@ class Integrator(object):
                 self.run.info_single(
                     f"{pp(row_count - retained_row_count)} seed/gene matches previously stored for "
                     "the genomes being integrated dropped from the tRNA-seq contigs database",
-                    cut_after=0)
+                    cut_after=0, nl_before=1)
             if retained_row_count:
                 self.run.info_single(
                     f"Appending to the {pp(retained_row_count)} seed/gene matches previously stored "
                     "for other genomes in the tRNA-seq contigs database",
-                    cut_after=0)
+                    cut_after=0, nl_before=1)
 
         # Add the unmodified nucleotides to the rows of the table.
         table_entries = []
