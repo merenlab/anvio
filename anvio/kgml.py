@@ -1267,7 +1267,9 @@ class Graphics(Element):
           the axis is given in fractions of that part ('SlicedKGMLCanvas._draw_box_marks').
         - 'rules': lines over the marks, such as the end lines of bars, as (cell, axis, position,
           color, line_width, band) tuples in the same part of a column.
-        A rectangle without a glyph is one column in its bg color. Drawer draws glyphs with
+        A glyph can also hold 'label': False, which draws the rectangle without its label, where the
+        label would hide what the glyph shows. Without this key, the rectangle is labeled as any
+        other. A rectangle without a glyph is one column in its bg color. Drawer draws glyphs with
         'SlicedKGMLCanvas'. This attribute is not part of KGML, and XMLOps does not write it.
 
     border : Union[str, Tuple[str, list]], None
@@ -2202,9 +2204,9 @@ class SlicedKGMLCanvas(KGMLCanvas):
 
     A rectangle with a glyph is drawn from that display list ('Graphics.glyph'). Its cells are
     columns, left to right, with a thin gray line between columns. It has one outline, and one label
-    where ortholog entries are labeled ('label_orthologs'). A sliced line is drawn as repeating
-    dashes with no gaps, one dash per slice in each cycle. The dashes fill the part of the line that
-    compound circles leave visible.
+    where ortholog entries are labeled ('label_orthologs'), unless its glyph drops the label. A
+    sliced line is drawn as repeating dashes with no gaps, one dash per slice in each cycle. The
+    dashes fill the part of the line that compound circles leave visible.
 
     A ring colors the border of a rectangle or a compound circle ('Graphics.border'). It lies just
     inside the black outline, with a thin black line between the ring and the fill
@@ -2324,7 +2326,7 @@ class SlicedKGMLCanvas(KGMLCanvas):
         Draw ortholog entries as Biopython does, except for Graphics with glyphs, slices, or rings.
 
         Only rectangles take glyphs and rings, and only lines take slices. Anything else is drawn as
-        Biopython draws it.
+        Biopython draws it. A rectangle whose glyph drops its label is drawn without one.
         """
         for ortholog in self.pathway.orthologs:
             graphics_glyphs = self.entry_glyphs.get(ortholog.id)
@@ -2342,7 +2344,8 @@ class SlicedKGMLCanvas(KGMLCanvas):
                     self._draw_sliced_line(g, slices)
                 else:
                     self._KGMLCanvas__add_graphics(g)
-                if self.label_orthologs:
+                # A glyph can drop the label of its rectangle.
+                if self.label_orthologs and (glyph is None or glyph.get('label', True)):
                     # The label is drawn in a darker shade of the fg color, as Biopython does.
                     self.drawing.setFillColor(darken(g.fgcolor))
                     self._KGMLCanvas__add_labels(g)
@@ -3032,7 +3035,8 @@ class Drawer:
                 By default, Drawer sets to False for global and overview maps to reduce clutter next
                 to reaction arrows and to True for standard maps. Setting to True labels each
                 ortholog entry with the name of its Graphics element. In KO KGML, that is the first
-                KO of the entry, followed by '...' when the entry has several.
+                KO of the entry, followed by '...' when the entry has several. A rectangle whose
+                glyph drops its label is not labeled ('Graphics.glyph').
 
             label_reaction_entries : bool
                 By default, Drawer sets to False for KO maps and for global and overview maps. Other

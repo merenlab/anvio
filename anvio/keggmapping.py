@@ -80,7 +80,8 @@ bar
     The channel of the reaction bar column, and a layer's 'bars' is a list holding its model. A bar
     is drawn inside a box on a standard map, and it runs from 0 to its value. Its style
     ('BAR_STYLES') draws it in the fill's color over a gray track, or as a dark bar on a white strip
-    under the whole fill. "Bar" can also mean a colorbar.
+    under the whole fill. On a scale with values on both sides of 0, bars grow both ways from a zero
+    line, and the boxes of the 'fill' style drop their labels. "Bar" can also mean a colorbar.
 
 model
     The dict that says how one channel of a layer is colored, or measured for bars, in each context,
@@ -138,8 +139,9 @@ derived compound colors
 key (file)
     A colorbar, a legend of categorical values, or a bar key: a file named from its model's 'name'
     ('ColorbarDrawer'), or from its group for a group's count colorbar. The key table is the text
-    file that lists the slices of fills and rings ('_write_slice_keys'). Elsewhere a key is usually
-    a dict key, or one of the key columns of a text file.
+    file that lists the slices of fills and rings ('_write_slice_keys'). The key table of unlabeled
+    boxes lists the boxes that bars drew without their labels ('_write_label_keys'). Elsewhere a key
+    is usually a dict key, or one of the key columns of a text file.
 """
 
 import os
@@ -675,6 +677,13 @@ BAR_TRACK_COLOR = '#E5E5E5'
 BAR_END_LINE_COLOR = '#4D4D4D'
 BAR_END_LINE_WIDTH = 0.75
 
+# The zero line of a bar scale with values on both sides of 0. Its bars grow both ways from 0, so a
+# thin gray line marks 0 inside each box, under the end line. The label of a box of the 'fill' style
+# on such a scale is dropped, since the label would hide the zero line and the ends of short bars
+# ('LABEL_KEY_COLUMNS'). A strip lies below the label and keeps it. The width is in points.
+BAR_ZERO_LINE_COLOR = '#808080'
+BAR_ZERO_LINE_WIDTH = 0.5
+
 # The strip of the 'strip' style, along the bottom of the fill of a box, below its label. Its white
 # track means 0 only inside a colored fill, and a box without data is white throughout. The bar is
 # dark on every fill, and it takes the same end line. The height is in points.
@@ -700,6 +709,14 @@ MAX_RING_SLICES = 11
 SLICE_KEY_COLUMNS: Tuple[str, ...] = (
     'map', 'drawn_map', 'entry_id', 'x', 'y', 'label', 'slice', 'accession', 'gene_id', 'value',
     'share', 'color', 'drawn_whole'
+)
+
+# The columns of the key table that lists the boxes that are drawn without their labels
+# ('_write_label_keys'). A box of the 'fill' style on a bar scale with values on both sides of 0
+# drops its label. The table names the box by its accessions in the layer's file, joined by commas
+# in KGML order, and gives its bar value.
+LABEL_KEY_COLUMNS: Tuple[str, ...] = (
+    'map', 'drawn_map', 'entry_id', 'x', 'y', 'label', 'accession', 'bar'
 )
 
 # The header of the color column of a kegg-membership-colors-txt file and of a kegg-value-colors-txt
@@ -1273,9 +1290,8 @@ class Mapper:
         column, as a border column is, so a file with a bar column and no other value column colors
         its fills by presence. It cannot be a key column, the column of slice weights, or the border
         column. A row can leave its bar cell empty, and then it has no bar value. A column with no
-        bar value at all is refused. A bar value must be a finite number. Negative values are
-        refused for now, since bars that grow both ways from 0 are not drawn yet. A file with a bar
-        column is read as text, as a file with a border column is.
+        bar value at all is refused. A bar value must be a finite number, which can be negative. A
+        file with a bar column is read as text, as a file with a border column is.
 
         Parameters
         ==========
@@ -1711,9 +1727,8 @@ class Mapper:
             df = df.assign(__border_value=border_values)
 
         # A row can leave its bar cell empty. It then has no bar value, and its other columns are
-        # read as usual. A bar value must be a finite number. Negative values are refused for now,
-        # since bars that grow both ways from 0 are not drawn yet. A bar column with no value at all
-        # sets no bar, so it is refused.
+        # read as usual. A bar value must be a finite number. A negative value grows its bar the
+        # other way from 0. A bar column with no value at all sets no bar, so it is refused.
         bar_empty = 0
         if bar_column is not None:
             bar_text = df[bar_column].fillna('').astype(str).str.strip()
@@ -1727,27 +1742,17 @@ class Mapper:
                 )
             bar_empty = int((~has_bar).sum())
             bar_values = pd.to_numeric(bar_text.where(has_bar, ''), errors='coerce')
-            for rows, rule, problem in (
-                (
-                    has_bar & ~np.isfinite(bar_values), "a finite number",
-                    "something other than a finite number, such as text or 'NA'"
-                ),
-                (
-                    has_bar & (bar_values < 0),
-                    "0 or more, since bars that grow both ways from 0 are not supported yet",
-                    "a negative number"
-                )
-            ):
-                if not rows.any():
-                    continue
+            rows = has_bar & ~np.isfinite(bar_values)
+            if rows.any():
                 bad = sorted(set(df.loc[rows, '__accession']))[:5]
                 self.progress.end()
                 raise ConfigError(
                     f"The bar column '{bar_column}' of the kegg-{element_type}-txt file at "
-                    f"'{path}' sets the lengths of bars, so each of its values must be {rule}. "
-                    f"{int(rows.sum())} {'rows have' if rows.sum() > 1 else 'row has'} {problem}. "
-                    f"Their accessions include these: {', '.join(bad)}. A row without a bar value "
-                    f"can leave its cell empty."
+                    f"'{path}' sets the lengths of bars, so each of its values must be a finite "
+                    f"number. {int(rows.sum())} {'rows have' if rows.sum() > 1 else 'row has'} "
+                    f"something other than a finite number, such as text or 'NA'. Their accessions "
+                    f"include these: {', '.join(bad)}. A row without a bar value can leave its "
+                    f"cell empty."
                 )
             df = df.assign(__bar_value=bar_values)
 
@@ -4482,7 +4487,8 @@ class Mapper:
         )
         # A bar grows from 0, so each of its scales always includes 0 ('TXT_CHANNEL_ROLES'). Limits
         # that leave 0 out would draw bars that start elsewhere, and their lengths would misstate
-        # the values. Scales that reach below 0 are not supported yet.
+        # the values. A scale can reach below 0. Where it reaches above 0 too, its bars grow both
+        # ways from 0.
         baseline = channel['baseline']
         for limits, flag in (
             (value_limits, value_limits_flag),
@@ -4500,20 +4506,6 @@ class Mapper:
                     f"from {baseline:g}, so its scale always includes {baseline:g}, and a bar that "
                     f"started elsewhere would misstate its value. Please give limits that include "
                     f"{baseline:g}, or leave an end open."
-                )
-            if (limit_min is not None and limit_min < baseline) or (
-                limit_max is not None and limit_max <= baseline
-            ):
-                given = (
-                    f"limits that reach below {baseline:g}"
-                    if limit_min is not None and limit_min < baseline
-                    else f"a maximum of {baseline:g}"
-                )
-                raise ConfigError(
-                    f"'{flag}' was given {given}: {shown}. Bars that grow both ways from "
-                    f"{baseline:g} are not supported yet, so a bar scale runs from {baseline:g} up "
-                    f"to a maximum above it. Please give a minimum of {baseline:g} or leave it "
-                    f"open, and a maximum above {baseline:g}."
                 )
         # A period says that the values repeat, as clock times do every 24 hours. It is resolved
         # before the normalization, which it rules out.
@@ -6695,11 +6687,12 @@ class Mapper:
             shows values only, so its summaries take no presence names. Without a summary, the
             'unified' map of a file with samples shows no bars, and its fills are drawn whole. The
             aggregations default to 'mean'. Each scale of bars includes 0, and limits that leave 0
-            out are refused. On a map that shows bars, a box with a fill and no bar value is left
-            uncolored, or keeps its whole fill without a strip. The bars are built by the builder of
-            the fill ('_build_txt_model', '_txt_channel'). Options left out are None. Negative bar
-            values, '--original-color', a 'reaction_color' of 'none', and 'reaction_slice_by' are
-            refused.
+            out are refused. On a scale with values on both sides of 0, bars grow both ways from a
+            zero line, and boxes of the 'fill' style drop their labels ('label_key_reactions.txt').
+            On a map that shows bars, a box with a fill and no bar value is left uncolored, or keeps
+            its whole fill without a strip. The bars are built by the builder of the fill
+            ('_build_txt_model', '_txt_channel'). Options left out are None. '--original-color', a
+            'reaction_color' of 'none', and 'reaction_slice_by' are refused.
 
         Notes
         =====
@@ -8452,6 +8445,14 @@ class Mapper:
         if baseline is not None:
             vmin = min(vmin, baseline) if limit_min is None else vmin
             vmax = max(vmax, baseline) if limit_max is None else vmax
+            # A value a rounding error past the baseline, such as the mean of values that cancel
+            # out, does not carry the scale past it. Its bar has no length, and the scale is not
+            # taken to have values on both sides of the baseline ('_stage_entry_bar').
+            tolerance = 1e-9 * (vmax - vmin)
+            if limit_min is None and 0 < baseline - vmin <= tolerance:
+                vmin = baseline
+            if limit_max is None and 0 < vmax - baseline <= tolerance:
+                vmax = baseline
         if (limit_min is not None and limit_min > data_max) or (
             limit_max is not None and limit_max < data_min
         ):
@@ -10699,7 +10700,8 @@ class Mapper:
         # draws as lines, which show no ring. A border with sliced rings finds what its rings show
         # from the fill of its layer ('_ring_result'). Bars are drawn in the boxes that take rings,
         # so a bar scale spans only those, and bars record their lines too. A map with bars records
-        # the boxes it leaves uncolored for want of a bar value ('_stage_entry_bar').
+        # the boxes it leaves uncolored for want of a bar value, and the boxes it draws without
+        # their labels ('_stage_entry_bar').
         ring_layers = [
             layer for layer in borders
             if 'categorical' in (layer['unified_mode'], layer['individual_mode'])
@@ -10710,6 +10712,7 @@ class Mapper:
         for layer in bars:
             layer['_line_entries'] = {}
             layer['_missing'] = {}
+            layer['_unlabeled'] = {}
         fills = {id(layer['border']): layer for layer in layers if layer.get('border') is not None}
         fills.update({id(bar): layer for layer in layers for bar in layer.get('bars', [])})
 
@@ -10934,21 +10937,6 @@ class Mapper:
                         f"for every map element — the standard deviation of a single value, for "
                         f"instance."
                     )
-                # Bars grow from 0 in one direction only, for now. The bar values of the file are 0
-                # or more ('_read_element_txt'), but some aggregations, such as 'skew', can still
-                # reduce them below 0.
-                negative = [
-                    value for value in layer['_unified_vals'] + layer['_individual_vals']
-                    if value < 0
-                ]
-                if _role(layer) == 'bar' and negative:
-                    raise ConfigError(
-                        f"The aggregations and summaries of the '{layer['value_column']}' bar "
-                        f"column of the {layer['element_type']} layer reduce its values to numbers "
-                        f"below 0 on the drawn maps, down to {min(negative):g}. Bars that grow "
-                        f"both ways from 0 are not supported yet. Please reduce the bar values in "
-                        f"a way that keeps them at 0 or more, such as with 'mean'."
-                    )
                 # A period fixes each scale of values to run from 0 to the period. The limits are
                 # set here, not in the layer model. The checks on limits read a limit in the model
                 # as one that was given, and these were not. A spread on the 'unified' map runs from
@@ -11056,6 +11044,22 @@ class Mapper:
                     f"{layer['channel']['values']} in the column '{layer['value_column']}' are "
                     f"drawn as lines. Lines show {shown}. The maps are these: "
                     f"{', '.join(sorted(lines)[:10])}{', and more' if len(lines) > 10 else ''}."
+                )
+
+        # A bar scale of the 'fill' style with values on both sides of 0 drops the labels of the
+        # boxes on its maps ('_stage_entry_bar'). The key table of unlabeled boxes is written for
+        # such bars ('_write_label_keys'), and whether it can be written is checked before anything
+        # is drawn.
+        for bar in bars:
+            bar_ranges = [bar.get('_unified_range'), bar.get('_individual_range')]
+            bar['_signed'] = bar['style'] == 'fill' and any(
+                bar_range[0] < 0 < bar_range[1] for bar_range in bar_ranges
+                if bar_range is not None and bar_range[0] is not None
+            )
+            if bar['_signed']:
+                filesnpaths.is_output_file_writable(
+                    os.path.join(output_dir, f"label_key_{bar['name']}.txt"),
+                    ok_if_exists=self.overwrite_output
                 )
 
         # A context colored by membership needs its by-count/by-membership color scheme over the
@@ -11419,10 +11423,10 @@ class Mapper:
                 'border_slice_unshown': border['_slice_unshown']
             }
 
-        # A layer with bars adds a function to the spec of each map that shows them. It finds where
-        # the bar of an Entry starts and ends on the bar scale of the map ('_bar_extent'), or gives
-        # None where the Entry has no bar value there. The boxes of such a map are drawn as bars in
-        # the colors of their fills, or with strips under whole fills, by the style of the bars
+        # A layer with bars adds a function to the spec of each map that shows them. It gives the
+        # bar value of an Entry on the map, or None where the Entry has none there, and the spec
+        # gets the bar scale of the map too. The boxes of such a map are drawn as bars in the colors
+        # of their fills, or with strips under whole fills, by the style of the bars
         # ('_stage_entry_bar'). A map that shows no bar values, such as the 'unified' map without a
         # bar summary, draws its fills whole. The bars of a layer are a list of one model.
         def _with_bars(spec, layer, individual=None):
@@ -11440,16 +11444,15 @@ class Mapper:
             else:
                 def entry_value(entry):
                     return self._summarize_entry_values(entry, bar)[0].get(individual)
-
-            def bar_extent(entry):
-                value = entry_value(entry)
-                return None if value is None else self._bar_extent(value, norm)
             return {
                 **spec,
-                'bar_extent': bar_extent,
+                'bar_value': entry_value,
+                'bar_norm': norm,
                 'bar_style': bar['style'],
                 'bar_map': 'unified' if individual is None else individual,
-                'bar_missing': bar['_missing']
+                'bar_rank': 0 if individual is None else slice_ranks[individual],
+                'bar_missing': bar['_missing'],
+                'bar_unlabeled': bar['_unlabeled']
             }
 
         # The spec of a layer on the 'unified' map, or on the map of an individual, colors its fills,
@@ -11790,6 +11793,7 @@ class Mapper:
 
         if not draw_individuals:
             self._warn_missing_bars(bars)
+            self._write_label_keys(bars, output_dir)
             self._write_slice_keys(models, output_dir)
             self._report_categorical_choices(
                 models, draw_unified_maps, draw_individuals,
@@ -11913,6 +11917,7 @@ class Mapper:
                 self.progress.end()
 
         self._warn_missing_bars(bars)
+        self._write_label_keys(bars, output_dir)
         self._write_slice_keys(models, output_dir)
         self._report_categorical_choices(
             models, draw_unified_maps, draw_individuals,
@@ -12519,6 +12524,39 @@ class Mapper:
                 f"bar value where none of its accessions has one on the map, or where reducing "
                 f"their bar values is undefined."
             )
+
+    def _write_label_keys(self, bars: List[dict], output_dir: str) -> None:
+        """
+        Write the key table of the boxes that bars drew without their labels.
+
+        A box of the 'fill' style on a bar scale with values on both sides of 0 drops its label
+        ('_stage_entry_bar'). The key table lists each such box on each drawn map
+        ('LABEL_KEY_COLUMNS'), so that a box can still be told by its accessions. Its name is
+        'label_key_<name>.txt', such as 'label_key_reactions.txt', in the output directory. It is
+        written for the bars of the 'fill' style whose scale on the 'unified' map or on the
+        individual maps has values on both sides of 0, as '_map_elements' found before drawing. The
+        rows are sorted as those of the key table of slices ('_write_slice_keys'): by KEGG map, by
+        drawn map in the order the maps are drawn, and by entry ID.
+
+        Parameters
+        ==========
+        bars : List[dict]
+            The bar models of the run. Each says in '_signed' whether its table is written, and
+            keeps the rows of the drawn maps in '_unlabeled'.
+
+        output_dir : str
+            The output directory.
+        """
+        for bar in bars:
+            if not bar['_signed']:
+                continue
+            unlabeled = bar['_unlabeled']
+            path = os.path.join(output_dir, f"label_key_{bar['name']}.txt")
+            with open(path, 'w') as key_file:
+                key_file.write('\t'.join(LABEL_KEY_COLUMNS) + '\n')
+                for key in sorted(unlabeled):
+                    key_file.write('\t'.join(unlabeled[key]) + '\n')
+            self.run.info(f"Key table of the {bar['element_type']} boxes without labels", path)
 
     def _write_slice_keys(self, layers: List[dict], output_dir: str) -> None:
         """
@@ -14588,10 +14626,11 @@ class Mapper:
         Find where a bar starts and ends on a bar scale, as fractions of the length of the scale.
 
         A bar runs from 0 to its value. The norm rescales both to fractions of the scale, and
-        'clip=True' keeps them in [0, 1], so a value past a limit reaches that end of the scale. A
-        degenerate scale has no norm. Its one value is 0, which is always on a bar scale, so every
-        bar on it has no length. A degenerate color scale takes its top color instead
-        ('_quantitative_color_priority').
+        'clip=True' keeps them in [0, 1], so a value past a limit reaches that end of the scale. On
+        a scale with values on both sides of 0, the fraction at 0 lies inside the scale, and a bar
+        of a negative value ends before it. A degenerate scale has no norm. Its one value is 0,
+        which is always on a bar scale, so every bar on it has no length. A degenerate color scale
+        takes its top color instead ('_quantitative_color_priority').
 
         Parameters
         ==========
@@ -14922,14 +14961,18 @@ class Mapper:
 
             A layer whose bars show on the map has these keys too ('_with_bars',
             '_stage_entry_bar'):
-            - 'bar_extent': a function that takes an Entry. It returns where the bar of the Entry
-              starts and ends, as fractions of the bar scale of the map ('_bar_extent'), or None
-              where the Entry has no bar value there.
+            - 'bar_value': a function that takes an Entry. It returns the bar value of the Entry on
+              the map, or None where the Entry has none there.
+            - 'bar_norm': the norm of the bar scale of the map, or None for a scale of a single
+              value ('_bar_extent').
             - 'bar_style': how the bars are drawn in their boxes ('BAR_STYLES').
-            - 'bar_map': what the warning about boxes without a bar value calls the map, 'unified'
-              or the name of a sample or group.
-            - 'bar_missing': where the boxes left uncolored for want of a bar value are kept, once
-              the map is drawn. It belongs to the model of the bars.
+            - 'bar_map': what the warning about boxes without a bar value, and the key table of
+              boxes without labels, call the map, 'unified' or the name of a sample or group.
+            - 'bar_rank': where the map comes in the key table of boxes without labels, 0 for the
+              'unified' map.
+            - 'bar_missing' and 'bar_unlabeled': where the boxes left uncolored for want of a bar
+              value, and the rows of the key table of boxes drawn without their labels, are kept,
+              once the map is drawn. They belong to the model of the bars.
 
         output_dir : str
             Path to the output directory in which the map PDF is drawn.
@@ -15074,7 +15117,7 @@ class Mapper:
                 found_entries = True
                 color_hexcode, priority = colored
                 # On a map that shows bars, a box without a bar value is left uncolored.
-                if spec.get('bar_extent') is not None and not self._stage_entry_bar(
+                if spec.get('bar_value') is not None and not self._stage_entry_bar(
                     pathway_number, pathway, entry, spec, color_hexcode, slice_records
                 ):
                     continue
@@ -15111,6 +15154,11 @@ class Mapper:
         and bg colors of the Entry, so color priority, recoloring, and the colors that compounds
         derive from reactions see only the fill.
 
+        Where 0 lies inside the bar scale of the map, the bars grow both ways from it, and a zero
+        line is drawn under the end line ('BAR_ZERO_LINE_COLOR'). A box of the 'fill' style then
+        drops its label, which is recorded for the key table of unlabeled boxes
+        ('_write_label_keys'). A strip lies below the label, so it keeps it.
+
         In the 'fill' style, a box without a bar value on the map is left uncolored. A whole fill
         would read as a full bar, and a bare track as a bar of 0. The box is recorded for a warning
         ('_warn_missing_bars'). In the 'strip' style, such a box keeps its whole fill without a
@@ -15135,8 +15183,8 @@ class Mapper:
             The color of the fill of the Entry.
 
         slice_records : Union[list, None], None
-            Where a box left uncolored is recorded, as in '_stage_entry_slices'. Nothing is recorded
-            with None.
+            Where a box left uncolored or drawn without its label is recorded, as in
+            '_stage_entry_slices'. Nothing is recorded with None.
 
         Returns
         =======
@@ -15148,38 +15196,55 @@ class Mapper:
         shapes = [shape for shape in shapes if self._shows_border(pathway, entry, shape)]
         if not shapes:
             return True
-        extent = spec['bar_extent'](entry)
+        value = spec['bar_value'](entry)
         strip = spec['bar_style'] == 'strip'
-        if extent is None and strip:
+        if value is None and strip:
             return True
-        if extent is None:
+        # The accessions of the box in the layer's file name it in the warning about missing bar
+        # values and in the key table of unlabeled boxes.
+        accessions = [
+            accession for accession in self._get_entry_kegg_ids(
+                entry, spec['use_reaction_attribute']
+            ) if accession in spec['entry_keys']
+        ]
+        if value is None:
             if slice_records is not None:
-                accessions = [
-                    accession for accession in self._get_entry_kegg_ids(
-                        entry, spec['use_reaction_attribute']
-                    ) if accession in spec['entry_keys']
-                ]
                 slice_records.append((
                     spec['bar_missing'], (pathway_number, spec['bar_map'], entry.id), accessions
                 ))
             return False
-        zero, end = extent
+        zero, end = self._bar_extent(value, spec['bar_norm'])
         start, stop = min(zero, end), max(zero, end)
         if strip:
-            glyph = {
-                'cells': [(color_hexcode, 1.0)],
-                'marks': [
-                    (0, 'x', 0.0, 1.0, BAR_STRIP_TRACK_COLOR, BAR_STRIP_HEIGHT),
-                    (0, 'x', start, stop, BAR_STRIP_COLOR, BAR_STRIP_HEIGHT)
-                ],
-                'rules': [(0, 'x', end, BAR_END_LINE_COLOR, BAR_END_LINE_WIDTH, BAR_STRIP_HEIGHT)]
-            }
+            band = BAR_STRIP_HEIGHT
+            cells = [(color_hexcode, 1.0)]
+            marks = [
+                (0, 'x', 0.0, 1.0, BAR_STRIP_TRACK_COLOR, band),
+                (0, 'x', start, stop, BAR_STRIP_COLOR, band)
+            ]
         else:
-            glyph = {
-                'cells': [(BAR_TRACK_COLOR, 1.0)],
-                'marks': [(0, 'x', start, stop, color_hexcode, None)],
-                'rules': [(0, 'x', end, BAR_END_LINE_COLOR, BAR_END_LINE_WIDTH, None)]
-            }
+            band = None
+            cells = [(BAR_TRACK_COLOR, 1.0)]
+            marks = [(0, 'x', start, stop, color_hexcode, None)]
+        signed = 0 < zero < 1
+        rules = []
+        if signed:
+            rules.append((0, 'x', zero, BAR_ZERO_LINE_COLOR, BAR_ZERO_LINE_WIDTH, band))
+        rules.append((0, 'x', end, BAR_END_LINE_COLOR, BAR_END_LINE_WIDTH, band))
+        glyph = {'cells': cells, 'marks': marks, 'rules': rules}
+        if signed and not strip:
+            glyph['label'] = False
+            if slice_records is not None:
+                x, y, label = self._slice_label_point(pathway, entry)
+                key = (
+                    pathway_number, spec['bar_rank'], int(entry.id) if entry.id.isdigit() else -1,
+                    spec['bar_map'], entry.id
+                )
+                row = (
+                    pathway_number, spec['bar_map'], entry.id, x, y, label, ','.join(accessions),
+                    str(float(value))
+                )
+                slice_records.append((spec['bar_unlabeled'], key, row))
         for shape in shapes:
             shape.glyph = glyph
         return True
@@ -16959,8 +17024,9 @@ class ColorbarDrawer:
         is always on the scale ('Mapper._bar_extent'), so 0 is always labeled. Both ends of the
         scale are labeled too, since a full bar stands for its end, whether the data or a limit sets
         it. An end is marked '≤' or '≥' where values lie past a limit, as on a continuous colorbar
-        ('draw_continuous'). A scale whose one value is 0 is drawn as a box labeled 0 alone, since
-        its bars have no length.
+        ('draw_continuous'). A scale with values on both sides of 0 marks 0 with a gray line across
+        the box, as its bars do ('BAR_ZERO_LINE_COLOR'). A scale whose one value is 0 is drawn as a
+        box labeled 0 alone, since its bars have no length.
 
         Parameters
         ==========
@@ -17007,6 +17073,10 @@ class ColorbarDrawer:
             )
         else:
             ax.set_xlim(vmin, vmax)
+            # The line at 0 is as wide as the outline of the box, so that it shows at the size of
+            # the key.
+            if vmin < 0 < vmax:
+                ax.axvline(0, color=BAR_ZERO_LINE_COLOR, linewidth=1)
             span = vmax - vmin
             # The start of the bars and the ends of the scale are the labels a reader needs, so an
             # automatic tick all but on top of one of them is dropped.

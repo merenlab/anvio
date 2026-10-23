@@ -203,10 +203,11 @@ printf 'accession\tcoverage\tweight\tstatus\nK00174\t1.5\t0\tup\nK00175\t3.0\t0\
 printf 'accession\tstatus\nK00844\tup\nK01810\tdown\nK00850\t\n' > draw_kos_status_empty_cell.reaction.txt
 # A bar column beside a value column, with an empty bar cell. K01810 then has a fill and no bar value.
 printf 'accession\tcoverage\tlevel\nK00844\t10\t2.5\nK01810\t20\t\n' > draw_kos_bar_empty_cell.reaction.txt
-# Bar values of 0 only, 'NA' among bar values, a negative bar value, and a bar column with no values.
+# Bar values of 0 only, 'NA' among bar values, bar values on both sides of 0, and a bar column with
+# no values.
 printf 'accession\tlevel\nK00844\t0\nK01810\t0\n' > draw_kos_bar_zero.reaction.txt
 printf 'accession\tcoverage\tlevel\nK00844\t10\tNA\nK01810\t20\t3\n' > draw_bad_na_bar.reaction.txt
-printf 'accession\tcoverage\tlevel\nK00844\t10\t-2\nK01810\t20\t3\n' > draw_bad_negative_bar.reaction.txt
+printf 'accession\tcoverage\tlevel\nK00844\t10\t-2\nK01810\t20\t3\n' > draw_kos_bar_signed.reaction.txt
 printf 'accession\tcoverage\tlevel\nK00844\t10\t\nK01810\t20\t\n' > draw_bad_empty_bar.reaction.txt
 # K03850 is drawn as a line on the standard map 00510, and K00844 as a box on 00010.
 printf 'accession\tlevel\nK03850\t2\nK00844\t3\n' > draw_kos_bar_lines.reaction.txt
@@ -248,7 +249,7 @@ for fixture in contigs-db-group-information.txt draw_kos_samples300.reaction.txt
               draw_kos_samples_genes_border.reaction.txt draw_kos_weights_status.reaction.txt \
               draw_kos_status_empty_cell.reaction.txt draw_kos_bar_empty_cell.reaction.txt \
               draw_kos_bar_zero.reaction.txt draw_bad_na_bar.reaction.txt \
-              draw_bad_negative_bar.reaction.txt draw_bad_empty_bar.reaction.txt \
+              draw_kos_bar_signed.reaction.txt draw_bad_empty_bar.reaction.txt \
               draw_kos_bar_lines.reaction.txt
 do
     if [ ! -s $fixture ]
@@ -4665,6 +4666,86 @@ then
     exit 1
 fi
 
+# Bar values on both sides of 0 grow both ways from a zero line. The boxes of the 'fill' style drop
+# their labels, and a key table names them by their accessions. Map 00010 draws K00844 in the boxes
+# of entries 69 and 75, and K01810 in those of entries 66 and 71. Each is listed once.
+INFO "Testing bars on both sides of 0"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_signed.reaction.txt \
+    --reaction-bar-column level --output-dir draw_txt_bar_signed \
+    --pathway-numbers $pathway_numbers --no-progress
+label_key=draw_txt_bar_signed/label_key_reactions.txt
+if [ "$(head -1 $label_key | tr '\t' ' ')" != "map drawn_map entry_id x y label accession bar" ] \
+    || [ "$(sed 1d $label_key | cut -f1-3,7,8 | tr '\t\n' '  ')" != "00010 unified 66 K01810 3.0 \
+00010 unified 69 K00844 -2.0 00010 unified 71 K01810 3.0 00010 unified 75 K00844 -2.0 " ]
+then
+    echo "ERROR: the key table of unlabeled boxes should list the four boxes of K00844 and K01810."
+    exit 1
+fi
+
+# The table lists the boxes whose bars drop their labels, whether or not '--reaction-labels' labels
+# the other boxes.
+INFO "Testing the key table of unlabeled boxes on maps without labels"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_signed.reaction.txt \
+    --reaction-bar-column level --reaction-labels none \
+    --output-dir draw_txt_bar_signed_no_labels --pathway-numbers $pathway_numbers --no-progress
+if ! cmp -s draw_txt_bar_signed/label_key_reactions.txt \
+    draw_txt_bar_signed_no_labels/label_key_reactions.txt
+then
+    echo "ERROR: '--reaction-labels none' should not change the key table of unlabeled boxes."
+    exit 1
+fi
+
+# A strip lies below the label of its box, so it keeps the label on a scale with values on both
+# sides of 0, and no box is listed.
+INFO "Testing strips on both sides of 0"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_signed.reaction.txt \
+    --reaction-bar-column level --reaction-bar-style strip \
+    --output-dir draw_txt_bar_signed_strip --pathway-numbers $pathway_numbers --no-progress
+if [ -e draw_txt_bar_signed_strip/label_key_reactions.txt ]
+then
+    echo "ERROR: strips should keep the labels of their boxes."
+    exit 1
+fi
+
+# Limits can reach below 0, as long as they include it. Limits of -5 and 5 put 0 in the middle of
+# the box. The one bar value of this file is 2.5, so the scale has a side below 0 only through the
+# limits, and only they drop the labels of the boxes of K00844.
+INFO "Testing bar limits on both sides of 0"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_empty_cell.reaction.txt \
+    --reaction-bar-column level --reaction-bar-value-limits -5 5 \
+    --output-dir draw_txt_bar_signed_limits --pathway-numbers $pathway_numbers --no-progress
+if [ ! -s draw_txt_bar_signed_limits/bar_key_reactions.pdf ] \
+    || [ "$(sed 1d draw_txt_bar_signed_limits/label_key_reactions.txt | cut -f7 | sort -u)" \
+    != "K00844" ]
+then
+    echo "ERROR: bar limits on both sides of 0 should have dropped the labels of K00844."
+    exit 1
+fi
+
+# An aggregation can reduce bar values of 0 or more below 0, as the skewness of the coverage of
+# genes does. The bars then grow both ways from 0.
+INFO "Testing bar values that a summary reduces below 0"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --reaction-bar-sample-summary skew \
+    --output-dir draw_txt_bar_skew --pathway-numbers $pathway_numbers --no-progress
+if [ ! -s draw_txt_bar_skew/label_key_reactions.txt ]
+then
+    echo "ERROR: bar values reduced below 0 should have grown both ways and dropped labels."
+    exit 1
+fi
+
+# A scale whose values are all below 0 puts 0 at the right side of each box, with no zero line
+# inside it, so its boxes keep their labels.
+INFO "Testing bars whose values are all below 0"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_negative.reaction.txt \
+    --reaction-bar-column log_abundance --output-dir draw_txt_bar_negative \
+    --pathway-numbers $pathway_numbers --no-progress
+if [ -e draw_txt_bar_negative/label_key_reactions.txt ]
+then
+    echo "ERROR: bars on a scale whose values are all below 0 should keep the labels of boxes."
+    exit 1
+fi
+
 # Bar values of 0 alone draw bars of no length, and a key labeled 0 alone.
 INFO "Testing a bar scale whose only value is 0"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_zero.reaction.txt --reaction-bar-column level \
@@ -4897,51 +4978,20 @@ then
     exit 1
 fi
 
-# Bars that grow both ways from 0 are not supported yet.
-if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
-    --reaction-bar-column coverage --reaction-bar-sample-summary mean \
-    --reaction-bar-value-limits -5 100 --pathway-numbers $pathway_numbers \
-    --output-dir draw_txt_bad --overwrite-output-destinations \
-    --no-progress > draw_txt_bar_limits_negative.log 2>&1
-then
-    echo "ERROR: bar limits below 0 should have failed but did not."
-    exit 1
-fi
-if ! tr -d ' \n' < draw_txt_bar_limits_negative.log \
-    | grep -q "limitsthatreachbelow0"
-then
-    echo "ERROR: bar limits below 0 was refused for another reason."
-    exit 1
-fi
-
-if anvi-draw-kegg-pathways --reaction-txt draw_bad_negative_bar.reaction.txt \
-    --reaction-bar-column level --pathway-numbers $pathway_numbers \
-    --output-dir draw_txt_bad --overwrite-output-destinations \
-    --no-progress > draw_txt_bar_negative_values.log 2>&1
-then
-    echo "ERROR: a negative bar value should have failed but did not."
-    exit 1
-fi
-if ! tr -d ' \n' < draw_txt_bar_negative_values.log \
-    | grep -q "mustbe0ormore,sincebarsthatgrowbothwaysfrom0arenotsupportedyet"
-then
-    echo "ERROR: a negative bar value was refused for another reason."
-    exit 1
-fi
-
-if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
-    --reaction-bar-column coverage --reaction-bar-sample-summary skew \
+# Limits wholly below 0 leave it out as well.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_signed.reaction.txt \
+    --reaction-bar-column level --reaction-bar-value-limits -10 -1 \
     --pathway-numbers $pathway_numbers \
     --output-dir draw_txt_bad --overwrite-output-destinations \
-    --no-progress > draw_txt_bar_aggregation_negative.log 2>&1
+    --no-progress > draw_txt_bar_limits_below_zero.log 2>&1
 then
-    echo "ERROR: bar values reduced below 0 should have failed but did not."
+    echo "ERROR: bar limits below 0 that leave out 0 should have failed but did not."
     exit 1
 fi
-if ! tr -d ' \n' < draw_txt_bar_aggregation_negative.log \
-    | grep -q "reduceitsvaluestonumbersbelow0"
+if ! tr -d ' \n' < draw_txt_bar_limits_below_zero.log \
+    | grep -q "limitsthatleaveout0"
 then
-    echo "ERROR: bar values reduced below 0 was refused for another reason."
+    echo "ERROR: bar limits below 0 that leave out 0 were refused for another reason."
     exit 1
 fi
 

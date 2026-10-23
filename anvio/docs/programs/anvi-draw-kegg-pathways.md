@@ -68,7 +68,7 @@ anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s \
                         -o output_dir
 {{ codestop }}
 
-Every element of a map of a given kind is labeled, with or without data. A reaction element is labeled with KEGG's name for it. That is the first KO of the element, followed by `...` when the element stands for several KOs. The label may therefore name a KO that is not in your data. It is a KO even when a %(kegg-reaction-txt)s file holds KEGG reaction IDs. A compound circle is labeled with the KEGG ID of its compound, glycan, or drug, or with the first of several IDs, followed by `...`.
+Every element of a map of a given kind is labeled, with or without data. The exception is a reaction box with a bar of the default style on a scale with values on both sides of 0 (see [Bars on both sides of 0](#bars-on-both-sides-of-0)). A reaction element is labeled with KEGG's name for it. That is the first KO of the element, followed by `...` when the element stands for several KOs. The label may therefore name a KO that is not in your data. It is a KO even when a %(kegg-reaction-txt)s file holds KEGG reaction IDs. A compound circle is labeled with the KEGG ID of its compound, glycan, or drug, or with the first of several IDs, followed by `...`.
 
 A compound label is wider than its circle and sits above its center. It can cover nearby lines, arrowheads, boxes, and the compound names printed on the base map. A compound that takes part in no reaction on the map is labeled in faint gray. On maps without reactions, such as many signaling maps, that is every compound. The labels of global maps are small and crowded, and they can be read only when the map is zoomed in.
 
@@ -97,6 +97,7 @@ Colorbars, which are keys to the colors of every map in the run, are written at 
 |`colorbar_reactions_border_samples.pdf` or `colorbar_reactions_border_groups.pdf`|The borders of the maps of the individual samples or groups, which share this key.|
 |`bar_key_reactions.pdf`|The lengths of the bars of the `unified` map, or of every map for a file without a `sample` column (see [Draw bars in boxes](#draw-bars-in-boxes)).|
 |`bar_key_reactions_samples.pdf` or `bar_key_reactions_groups.pdf`|The lengths of the bars of the maps of the individual samples or groups, which share this key.|
+|`label_key_reactions.txt`|A %(kegg-label-key-txt)s that lists each box drawn without its label, since the bar scale of its map has values on both sides of 0 (see [Bars on both sides of 0](#bars-on-both-sides-of-0)).|
 |`slice_key_reactions.txt`|A %(kegg-slice-key-txt)s that lists each slice drawn with `--reaction-slice-by` (see [Draw elements in slices](#draw-elements-in-slices)).|
 |`slice_key_reactions_border.txt`|A %(kegg-slice-key-txt)s that lists each slice of the rings drawn with `--reaction-border-slice-by` (see [Slice rings](#slice-rings)).|
 
@@ -1107,7 +1108,7 @@ The layer writes no key of its fills, such as `colorbar_compounds.pdf`. Its bord
 
 ### Draw bars in boxes
 
-A reaction file can hold a column whose values set the lengths of bars, the bar column. Each reaction box on a standard map then shows a bar in the color of its fill. The bar grows from the left side of the box, at 0, toward the right side, which stands for the top of the bar scale. The rest of the box shows a gray track (`#E5E5E5`), so that a bar of 0 differs from a box without data, which is white. A thin dark line (0.75 points, `#4D4D4D`) marks the end of every bar, at 0 and at the full length too. The line is what shows the end of a pale bar, whose color differs from the track by little more than its hue. The value column still sets the color of the fill, so a box shows one value by its color and another by its length.
+A reaction file can hold a column whose values set the lengths of bars, the bar column. Each reaction box on a standard map then shows a bar in the color of its fill. The bar grows from 0 toward its value. Where the values are 0 or more, 0 is the left side of the box, and the right side stands for the top of the bar scale. Negative values are described under [Bars on both sides of 0](#bars-on-both-sides-of-0). The rest of the box shows a gray track (`#E5E5E5`), so that a bar of 0 differs from a box without data, which is white. A thin dark line (0.75 points, `#4D4D4D`) marks the end of every bar, at 0 and at the full length too. The line is what shows the end of a pale bar, whose color differs from the track by little more than its hue. The value column still sets the color of the fill, so a box shows one value by its color and another by its length.
 
 The bar column is named with `--reaction-bar-column`. In the reaction file below, `expression` is the value column, and `coverage` is the bar column.
 
@@ -1138,7 +1139,7 @@ In the strip style, a box with a fill and no bar value keeps its whole fill and 
 
 #### Read the bar column
 
-The bar column can have any name, but it cannot be `accession`, `gene_id`, `sample`, the column of `--reaction-slice-weights`, or the border column. It is left out of the search for the value column, as the border column is. A row can leave its bar cell empty, and then it has no bar value. A bar column with no values at all is refused. Each bar value must be a finite number, so `NA` or other text is refused. Bar values must also be 0 or more for now, since bars that grow both ways from 0 are not drawn yet. A file with a bar column is read as text, as a file with a border column is, and no two of its rows may describe the same accession, gene, and sample. The run reports the bar column, the aggregations that reduce its values, and the number of rows without a bar value.
+The bar column can have any name, but it cannot be `accession`, `gene_id`, `sample`, the column of `--reaction-slice-weights`, or the border column. It is left out of the search for the value column, as the border column is. A row can leave its bar cell empty, and then it has no bar value. A bar column with no values at all is refused. Each bar value must be a finite number, so `NA` or other text is refused. A bar value can be negative, and its bar then grows the other way from 0. A file with a bar column is read as text, as a file with a border column is, and no two of its rows may describe the same accession, gene, and sample. The run reports the bar column, the aggregations that reduce its values, and the number of rows without a bar value.
 
 #### Bar options
 
@@ -1158,7 +1159,13 @@ The `unified` map and the maps of the samples or groups have bar scales of their
 
 #### The bar scale
 
-A bar grows from 0, so its scale always includes 0. Without limits, the scale runs from 0 to the largest bar value on the drawn maps. `--reaction-bar-value-limits` and `--reaction-bar-individual-value-limits` set its ends, as the limits of a color scale do. Limits that leave 0 out, such as `10 100`, are refused, since a bar that does not start at 0 misstates its value. A bar of a value past the maximum reaches the end of its box, and the key marks that end `≥`. Where every bar value is 0, every bar has no length.
+A bar grows from 0, so its scale always includes 0. Without limits, the scale runs from the smallest bar value on the drawn maps to the largest, widened where needed to include 0. `--reaction-bar-value-limits` and `--reaction-bar-individual-value-limits` set its ends, as the limits of a color scale do. Limits that leave 0 out, such as `10 100` or `-10 -1`, are refused, since a bar that does not start at 0 misstates its value. A bar of a value past a limit reaches that end of its box, and the key marks the end `≤` or `≥`. Where every bar value is 0, every bar has no length.
+
+#### Bars on both sides of 0
+
+Where the bar scale of a map has values on both sides of 0, 0 lies inside each box, and a thin gray line (0.5 points, `#808080`) marks it, under the end line. A bar of a positive value grows from that line to the right, and a bar of a negative value to the left. Limits such as `-2 2` put 0 in the middle of the box, so that bars have as much room on one side as on the other. Where every value is negative, 0 is the right side of the box, and every bar grows to the left from it. Log ratios and other changes from a reference suit such bars.
+
+The label of a box fills its upper half, where it would hide the zero line and the ends of short bars. On a map whose bar scale has values on both sides of 0, the boxes of the `fill` style are therefore drawn without their labels. The program writes a %(kegg-label-key-txt)s named `label_key_reactions.txt` beside the bar keys, with one row per box drawn without its label on each drawn map. A row gives the KEGG map, the drawn map, the KGML entry, the position and label of the box, its accessions in the file on that map, and its bar value. The `unified` map and the maps of the samples or groups have bar scales of their own, so a box can be unlabeled on one and labeled on another. Strips lie below the labels, so the boxes of the `strip` style keep them, and their strips grow both ways from a zero line of their own. A scale whose values all lie on one side of 0 has no zero line inside the boxes, and its boxes keep their labels. `--reaction-labels` still decides which kinds of map label their other boxes.
 
 #### Where bars are drawn
 
@@ -1174,7 +1181,7 @@ Rings and bars combine. Bars cannot be drawn in slices yet, so `--reaction-slice
 
 #### Bar keys
 
-Bars are keyed by length, in files of their own. `bar_key_reactions.pdf` keys the bars of the `unified` map, or of every map for a file without a `sample` column. `bar_key_reactions_samples.pdf` or `bar_key_reactions_groups.pdf` keys the bar scale shared by the maps of the samples or groups. A key is a gray box with a ruler under it, whose width stands for the scale. The key of strips is a white box, as the track of a strip is white. 0 is always labeled, and so are both ends of the scale, which stand for full bars. The key is labeled with the bar column and `(bar)`, such as `coverage (bar)`. Bar keys are written only at the top of the output directory, and `--skip-unified-maps` drops the key of the `unified` map by the rule for colorbars. A player shows a bar key only beside the maps that can show bars.
+Bars are keyed by length, in files of their own. `bar_key_reactions.pdf` keys the bars of the `unified` map, or of every map for a file without a `sample` column. `bar_key_reactions_samples.pdf` or `bar_key_reactions_groups.pdf` keys the bar scale shared by the maps of the samples or groups. A key is a gray box with a ruler under it, whose width stands for the scale. The key of strips is a white box, as the track of a strip is white. A key of a scale with values on both sides of 0 marks 0 with a gray line across the box. 0 is always labeled, and so are both ends of the scale, which stand for full bars. The key is labeled with the bar column and `(bar)`, such as `coverage (bar)`. Bar keys are written only at the top of the output directory, and `--skip-unified-maps` drops the key of the `unified` map by the rule for colorbars. A player shows a bar key only beside the maps that can show bars.
 
 ### Mixed coloring across reaction and compound layers
 

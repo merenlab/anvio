@@ -736,6 +736,26 @@ then
     exit 1
 fi
 
+# A bar column with values on both sides of 0 draws bars that grow both ways from a gray zero line.
+# The boxes on such a scale drop their labels, which would hide the zero line, and a key table names
+# them by their accessions.
+INFO "Drawing bars that grow both ways from 0"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_log_ratio.reaction.txt \
+                        --reaction-bar-column log_ratio \
+                        --reaction-bar-sample-summary mean \
+                        --output-dir draw_txt_samples_kos_signed_bars \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+# Each drawn map lists its own boxes, the 'unified' map first.
+if [ "$(sed 1d draw_txt_samples_kos_signed_bars/label_key_reactions.txt | cut -f2 | uniq \
+    | tr '\n' ' ')" != "unified SAMPLE_1 SAMPLE_2 SAMPLE_3 " ]
+then
+    echo "ERROR: a run with bars on both sides of 0 should have listed the boxes without labels."
+    exit 1
+fi
+
 INFO "Mixing presence coloring of reactions with value coloring of compounds"
 anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
                         --compound-txt draw_compounds.compound.txt \

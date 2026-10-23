@@ -65,7 +65,7 @@ __requires__ = ['kegg-data']
 __can_use__ = ['contigs-db', 'external-genomes', 'pan-db', 'genomes-storage-db',
                'reaction-network-json', 'kegg-reaction-txt', 'kegg-compound-txt',
                'kegg-membership-colors-txt', 'kegg-value-colors-txt']
-__provides__ = ['kegg-pathway-map', 'kegg-slice-key-txt']
+__provides__ = ['kegg-pathway-map', 'kegg-slice-key-txt', 'kegg-label-key-txt']
 __description__ = DESCRIPTION
 
 # Default presence/absence colors, matching the Mapper method defaults. Used as the
@@ -631,17 +631,20 @@ def get_args() -> Namespace:
     groupBAR.add_argument(
         '--reaction-bar-column', metavar='COLUMN', help=
         "The column of the reaction file whose values set the lengths of bars in reaction boxes on "
-        "standard maps. A bar runs from the left side of its box, at 0, toward the right side, at "
-        "the top of the bar scale. In the default style, it is drawn in the color of the fill of "
-        "the box, and the rest of the box shows a gray track, so that a bar of 0 differs from a "
-        "box without data. The column is left out of the search for the value column, so a file "
-        "whose only other column is this one colors its fills by presence, and the bars take the "
-        "colors of presence. It cannot be 'accession', 'gene_id', 'sample', the column of "
-        "'--reaction-slice-weights', or the border column. A row can leave its cell empty, and "
-        "then it has no bar value. Bar values must be numbers of 0 or more for now. On a map that "
-        "shows bars, a box with a fill and no bar value is left uncolored, and a warning counts "
-        "such boxes. Strips are the exception ('--reaction-bar-style'). Reaction lines take no "
-        "bars. The bars take keys of their own, 'bar_key_reactions.pdf' and "
+        "standard maps. A bar runs from 0 toward its value. Where the values are 0 or more, 0 is "
+        "the left side of the box, and the right side is the top of the bar scale. In the default "
+        "style, the bar is drawn in the color of the fill of the box, and the rest of the box "
+        "shows a gray track, so that a bar of 0 differs from a box without data. The column is "
+        "left out of the search for the value column, so a file whose only other column is this "
+        "one colors its fills by presence, and the bars take the colors of presence. It cannot be "
+        "'accession', 'gene_id', 'sample', the column of '--reaction-slice-weights', or the border "
+        "column. A row can leave its cell empty, and then it has no bar value. A bar value can be "
+        "negative. Where every value is negative, 0 is the right side of the box. Where the bar "
+        "scale of a map has values on both sides of 0, bars grow both ways from a gray zero line, "
+        "and the boxes of the 'fill' style drop their labels, which 'label_key_reactions.txt' "
+        "lists. On a map that shows bars, a box with a fill and no bar value is left uncolored, "
+        "and a warning counts such boxes. Strips are the exception ('--reaction-bar-style'). "
+        "Reaction lines take no bars. The bars take keys of their own, 'bar_key_reactions.pdf' and "
         "'bar_key_reactions_samples.pdf' or 'bar_key_reactions_groups.pdf', labeled with the "
         "column and ' (bar)'. Every other '--reaction-bar-*' option needs this one. Bars cannot be "
         "drawn in slices yet, so '--reaction-slice-by' is refused with this option."
@@ -686,8 +689,8 @@ def get_args() -> Namespace:
         '--reaction-bar-value-limits', nargs=2, metavar='LIMIT', help=
         "Like '--reaction-value-limits', but for the bar scale of the 'unified' map, or of every "
         "map of a file without a 'sample' column. A bar grows from 0, so the scale always includes "
-        "0, and limits that leave 0 out are refused. A bar of a value past the maximum reaches the "
-        "end of its box, and the key marks that end '≥'."
+        "0, and limits that leave 0 out are refused. A bar of a value past a limit reaches that "
+        "end of its box, and the key marks that end '≤' or '≥'."
     )
     groupBAR.add_argument(
         '--reaction-bar-individual-value-limits', nargs=2, metavar='LIMIT', help=
@@ -1020,11 +1023,12 @@ def get_args() -> Namespace:
         "kinds given replace the default, so list 'standard' among them to keep the labels of "
         "boxes on standard maps. Without a label, a box is blank, since its fill hides the text of "
         "the base map. Every reaction element of a map of a given kind is labeled, with or without "
-        "data. A label is KEGG's name for the element. That is the first KO of the element, "
-        "followed by '...' if the element stands for several KOs. The label is a KO even when "
-        "'--reaction-txt' holds KEGG reaction IDs, and it may name a KO that is not in the data. "
-        "On global maps, the labels are small and crowded, and they can be read only when the map "
-        "is zoomed in."
+        "data, except a box with a bar of the default style on a scale with values on both sides "
+        "of 0 ('--reaction-bar-column'). A label is KEGG's name for the element. That is the first "
+        "KO of the element, followed by '...' if the element stands for several KOs. The label is "
+        "a KO even when '--reaction-txt' holds KEGG reaction IDs, and it may name a KO that is not "
+        "in the data. On global maps, the labels are small and crowded, and they can be read only "
+        "when the map is zoomed in."
     )
     groupLABEL.add_argument(
         '--compound-labels', nargs='+', choices=[*MAP_KINDS, LABELS_NONE], metavar='MAP_KIND', help=
