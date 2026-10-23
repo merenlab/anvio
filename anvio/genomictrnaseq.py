@@ -353,7 +353,7 @@ class Integrator(object):
         if self.blast_dir is None:
             self.blast_dir = anvio.TMP_DIR if anvio.TMP_DIR else tempfile.gettempdir()
 
-        self.num_threads = A('num_threads') or anvio.K('num_threads')['default']
+        self.num_threads = A('num_threads') or anvio.K('num-threads')['default']
         self.remove_previous_matches = A('remove_previous_matches')
 
         self.trna_genes_fasta_path = os.path.join(self.blast_dir, 'trna_genes.fa')
