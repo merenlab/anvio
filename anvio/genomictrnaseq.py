@@ -871,8 +871,9 @@ class Integrator(object):
             if search_for_bin_of_interest:
                 bin_contig_names_dict = ccollections.GetSplitNamesInBins(args).get_dict()
                 for bin_id, split_names in bin_contig_names_dict.items():
-                    for split_name in split_names:
-                        contig_name = split_name.split('_split_')[0]
+                    # Record the bin once for a contig with multiple splits in the bin.
+                    contig_names = {split_name.split('_split_')[0] for split_name in split_names}
+                    for contig_name in contig_names:
                         try:
                             contig_bin_dict[(contigs_db_hash, contig_name)].append(
                                 (profile_db_sample_id, collection_name, bin_id))
