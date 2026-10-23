@@ -46,13 +46,14 @@ def check_package_dependencies():
 check_package_dependencies()
 
 from anvio.keggmapping import (
-    AGGREGATION_FUNCTIONS, CATEGORICAL_RULES, CATEGORICAL_RULES_PHRASE, DEFAULT_BORDER_COLORMAP,
-    DEFAULT_BORDER_COLORMAP_LIMITS, DEFAULT_BORDER_VALUE_COLORS, DEFAULT_CATEGORICAL_SEED,
-    DEFAULT_CENTERED_COLORMAP, DEFAULT_GROUP_TINT_SPAN, DEFAULT_VALUE_COLORS,
-    ELEMENT_NORMALIZATION_PHRASE, GROUP_COLORMAP_TINT, GROUP_SCHEME_OPTIONS, MAP_KINDS,
-    MAX_DISCRETE_COUNT_BANDS, MAX_RING_SLICES, MIN_ANGULAR_DEVIATION_VALUES, MIN_BOX_SLICE_WIDTH,
-    SLICE_SHARE_SUMMARIES, SLICE_UNITS, SLICE_WEIGHT_AGGREGATIONS, SUMMARY_PRESENCE_PHRASE,
-    SUMMARY_PRESENCE_SCHEMES, TXT_CHANNEL_ROLES, VALUE_TYPES, Mapper
+    AGGREGATION_FUNCTIONS, BAR_STRIP_HEIGHT, BAR_STYLES, CATEGORICAL_RULES,
+    CATEGORICAL_RULES_PHRASE, DEFAULT_BORDER_COLORMAP, DEFAULT_BORDER_COLORMAP_LIMITS,
+    DEFAULT_BORDER_VALUE_COLORS, DEFAULT_CATEGORICAL_SEED, DEFAULT_CENTERED_COLORMAP,
+    DEFAULT_GROUP_TINT_SPAN, DEFAULT_VALUE_COLORS, ELEMENT_NORMALIZATION_PHRASE,
+    GROUP_COLORMAP_TINT, GROUP_SCHEME_OPTIONS, MAP_KINDS, MAX_DISCRETE_COUNT_BANDS, MAX_RING_SLICES,
+    MIN_ANGULAR_DEVIATION_VALUES, MIN_BOX_SLICE_WIDTH, SLICE_SHARE_SUMMARIES, SLICE_UNITS,
+    SLICE_WEIGHT_AGGREGATIONS, SUMMARY_PRESENCE_PHRASE, SUMMARY_PRESENCE_SCHEMES, TXT_CHANNEL_ROLES,
+    VALUE_TYPES, Mapper
 )
 
 
@@ -140,7 +141,7 @@ BORDER_FLAGS = {
 # needs the bar column ('--reaction-bar-column'). Only the reaction layer has bars.
 BAR_FLAGS = {
     'reaction': (
-        '--reaction-bar-column', '--reaction-bar-gene-aggregation',
+        '--reaction-bar-column', '--reaction-bar-style', '--reaction-bar-gene-aggregation',
         '--reaction-bar-accession-aggregation', '--reaction-bar-sample-summary',
         '--reaction-bar-group-summary', '--reaction-bar-value-limits',
         '--reaction-bar-individual-value-limits'
@@ -621,27 +622,41 @@ def get_args() -> Namespace:
         "BAR VALUES",
         "Draw bars in the reaction boxes of standard maps from a column of a draw-kegg-pathways "
         "text file. A bar fills part of the length of its box in the color of the fill, over a "
-        "gray track, and a thin dark line marks its end. The value column still sets the color of "
-        "the fill. Each bar option is like the option of the fill whose name lacks 'bar-', but "
-        "applies to the bar column. Bars take numbers only, so they have no value type, period, "
-        "colormap, center, or normalization."
+        "gray track, or it runs along a white strip under the whole fill ('--reaction-bar-style'). "
+        "A thin dark line marks its end. The value column still sets the color of the fill. Each "
+        "bar option is like the option of the fill whose name lacks 'bar-', but applies to the bar "
+        "column. Bars take numbers only, so they have no value type, period, colormap, center, or "
+        "normalization."
     )
     groupBAR.add_argument(
         '--reaction-bar-column', metavar='COLUMN', help=
         "The column of the reaction file whose values set the lengths of bars in reaction boxes on "
         "standard maps. A bar runs from the left side of its box, at 0, toward the right side, at "
-        "the top of the bar scale, in the color of the fill of the box. The rest of the box shows "
-        "a gray track, so that a bar of 0 differs from a box without data. The column is left out "
-        "of the search for the value column, so a file whose only other column is this one colors "
-        "its fills by presence, and the bars take the colors of presence. It cannot be "
-        "'accession', 'gene_id', 'sample', the column of '--reaction-slice-weights', or the border "
-        "column. A row can leave its cell empty, and then it has no bar value. Bar values must be "
-        "numbers of 0 or more for now. On a map that shows bars, a box with a fill and no bar "
-        "value is left uncolored, and a warning counts such boxes. Reaction lines take no bars. "
-        "The bars take keys of their own, 'bar_key_reactions.pdf' and "
+        "the top of the bar scale. In the default style, it is drawn in the color of the fill of "
+        "the box, and the rest of the box shows a gray track, so that a bar of 0 differs from a "
+        "box without data. The column is left out of the search for the value column, so a file "
+        "whose only other column is this one colors its fills by presence, and the bars take the "
+        "colors of presence. It cannot be 'accession', 'gene_id', 'sample', the column of "
+        "'--reaction-slice-weights', or the border column. A row can leave its cell empty, and "
+        "then it has no bar value. Bar values must be numbers of 0 or more for now. On a map that "
+        "shows bars, a box with a fill and no bar value is left uncolored, and a warning counts "
+        "such boxes. Strips are the exception ('--reaction-bar-style'). Reaction lines take no "
+        "bars. The bars take keys of their own, 'bar_key_reactions.pdf' and "
         "'bar_key_reactions_samples.pdf' or 'bar_key_reactions_groups.pdf', labeled with the "
         "column and ' (bar)'. Every other '--reaction-bar-*' option needs this one. Bars cannot be "
         "drawn in slices yet, so '--reaction-slice-by' is refused with this option."
+    )
+    groupBAR.add_argument(
+        '--reaction-bar-style', choices=list(BAR_STYLES), help=
+        f"How a bar is drawn in its box. With 'fill', the default, the bar is drawn in the color "
+        f"of the fill over a gray track, so the fill shows only as far as the bar reaches. A short "
+        f"bar then leaves a stripe of the fill's color that is hard to match to a colormap, so "
+        f"this style suits a bar that measures support for the fill, such as coverage behind "
+        f"expression. With 'strip', the fill is drawn whole, and the bar is a dark bar on a white "
+        f"strip {BAR_STRIP_HEIGHT} points tall along the bottom of the box, below its label. Both "
+        f"values then stay readable. A box with a fill and no bar value keeps its whole fill "
+        f"without a strip, which cannot be read as a value, since a strip of 0 is white. The bar "
+        f"keys of strips are white boxes rather than gray ones."
     )
     groupBAR.add_argument(
         '--reaction-bar-gene-aggregation', metavar='NAME', help=
@@ -2024,12 +2039,18 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"{unfilled} The {element_type} file has a fill value column. Please drop "
                     f"'{none_flag}' to color the fills by it."
                 )
-            # A bar takes the color of its fill.
+            # A bar takes the color of its fill. A strip is dark on any fill, but it is drawn only
+            # in a colored box too.
             if layer['has_bar']:
+                if getattr(args, f'{element_type}_bar_style', None) == 'strip':
+                    draws = f"draws bars as strips in colored {element_type} boxes"
+                    uncolored = "so no box would show a bar"
+                else:
+                    draws = f"draws bars in the colors of the fills of {element_type} boxes"
+                    uncolored = "so the bars would have no color"
                 raise ConfigError(
-                    f"'--{element_type}-bar-column' draws bars in the colors of the fills of "
-                    f"{element_type} boxes, but '{none_flag}' leaves the fills uncolored, so the "
-                    f"bars would have no color. Please give the fills a color, or drop one of the "
+                    f"'--{element_type}-bar-column' {draws}, but '{none_flag}' leaves the fills "
+                    f"uncolored, {uncolored}. Please give the fills a color, or drop one of the "
                     f"two options."
                 )
             options = [
@@ -3342,7 +3363,8 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
     # The options of the bars go to the mapper in the same way, keyed as the mapper's 'BAR_OPTIONS'.
     bar = {}
     for option in (
-        'column', 'gene_aggregation', 'accession_aggregation', 'sample_summary', 'group_summary'
+        'column', 'style', 'gene_aggregation', 'accession_aggregation', 'sample_summary',
+        'group_summary'
     ):
         value = getattr(args, f'reaction_bar_{option}')
         if value is not None:

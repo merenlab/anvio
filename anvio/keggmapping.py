@@ -78,8 +78,9 @@ border, ring
 
 bar
     The channel of the reaction bar column, and a layer's 'bars' is a list holding its model. A bar
-    is drawn in the fill's color over a gray track inside a box on a standard map, and it runs from
-    0 to its value. "Bar" can also mean a colorbar.
+    is drawn inside a box on a standard map, and it runs from 0 to its value. Its style
+    ('BAR_STYLES') draws it in the fill's color over a gray track, or as a dark bar on a white strip
+    under the whole fill. "Bar" can also mean a colorbar.
 
 model
     The dict that says how one channel of a layer is colored, or measured for bars, in each context,
@@ -650,13 +651,21 @@ BORDER_OPTIONS: Tuple[str, ...] = (
 REACTION_BORDER_OPTIONS: Tuple[str, ...] = ('gene_aggregation', 'slice_by')
 
 # The options of the bars of the reaction layer ('map_kegg_pathways_txt'). 'column' names the bar
-# column of the reaction file ('--reaction-bar-column'). Every other key is the bar version of an
-# option of the fill, such as 'sample_summary' for '--reaction-bar-sample-summary'. Bars take
-# numbers only, so they take no value type, period, colormap, center, or normalization.
+# column of the reaction file ('--reaction-bar-column'). 'style' is how a bar is drawn in its box
+# ('BAR_STYLES'). Every other key is the bar version of an option of the fill, such as
+# 'sample_summary' for '--reaction-bar-sample-summary'. Bars take numbers only, so they take no
+# value type, period, colormap, center, or normalization.
 BAR_OPTIONS: Tuple[str, ...] = (
-    'column', 'gene_aggregation', 'accession_aggregation', 'sample_summary', 'group_summary',
-    'value_limits', 'individual_value_limits'
+    'column', 'style', 'gene_aggregation', 'accession_aggregation', 'sample_summary',
+    'group_summary', 'value_limits', 'individual_value_limits'
 )
+
+# How a bar is drawn in its box ('--reaction-bar-style'). A 'fill' bar is drawn in the color of the
+# fill over a gray track, so the fill shows only as far as the bar reaches. A 'strip' bar is a thin
+# dark bar on a white strip along the bottom of the box, and the fill is drawn whole above it. The
+# strip keeps both values readable, while a 'fill' bar weights the color of the fill by its length.
+# 'fill' is the default.
+BAR_STYLES: Tuple[str, ...] = ('fill', 'strip')
 
 # The track of a bar, which is the part of the fill that a bar does not cover. A gray track tells a
 # bar of 0 from a box without data, which is white. The end line is drawn centered on the free end
@@ -665,6 +674,13 @@ BAR_OPTIONS: Tuple[str, ...] = (
 BAR_TRACK_COLOR = '#E5E5E5'
 BAR_END_LINE_COLOR = '#4D4D4D'
 BAR_END_LINE_WIDTH = 0.75
+
+# The strip of the 'strip' style, along the bottom of the fill of a box, below its label. Its white
+# track means 0 only inside a colored fill, and a box without data is white throughout. The bar is
+# dark on every fill, and it takes the same end line. The height is in points.
+BAR_STRIP_HEIGHT = 5
+BAR_STRIP_COLOR = '#333333'
+BAR_STRIP_TRACK_COLOR = '#FFFFFF'
 
 # The narrowest that a slice of a box may be, in points, where every slice takes the same share. A
 # box with more slices than that allows is drawn whole in one color ('_slice_cap'). Boxes on
@@ -5718,12 +5734,13 @@ class Mapper:
         file.
 
         Every option of the bars needs the bar column, and that column needs the reaction file. A
-        bar takes the color of the fill of its box, so the reference map's colors and fills left
-        uncolored are refused. Bars in the slices of boxes are not supported yet. The builder of the
-        model of the bars checks the rest ('_build_txt_model'). The command line makes these checks
-        too, and these repeat them for programmatic callers. Where a bar column is named, the
-        private methods of Biopython that draw bars are checked too
-        ('kgml.SlicedKGMLCanvas.check_biopython').
+        bar is drawn in a box whose fill is colored, in the color of the fill unless it is a strip
+        ('BAR_STYLES'), so fills left uncolored are refused. The reference map's colors are refused
+        too, since a renderer of their own draws them, and it draws no bars. Bars in the slices of
+        boxes are not supported yet. The builder of the model of the bars checks the rest
+        ('_build_txt_model'). The command line makes these checks too, and these repeat them for
+        programmatic callers. Where a bar column is named, the private methods of Biopython that
+        draw bars are checked too ('kgml.SlicedKGMLCanvas.check_biopython').
 
         Parameters
         ==========
@@ -5768,17 +5785,30 @@ class Mapper:
                 f"'{column_flag}' names the bar column of the reaction file, but no reaction file "
                 f"('--reaction-txt') was provided."
             )
+        style = reaction_bar.get('style')
+        if style is not None and style not in BAR_STYLES:
+            raise ConfigError(
+                f"'--reaction-bar-style' takes {' or '.join(repr(name) for name in BAR_STYLES)}, "
+                f"not '{style}'."
+            )
+        # A strip is dark on any fill, but it is drawn only in a colored box, as a bar of the fill
+        # style is.
+        if style == 'strip':
+            draws = "draws bars as strips in colored reaction boxes"
+            uncolored = "so no box would show a bar"
+        else:
+            draws = "draws bars in the colors of the fills of reaction boxes"
+            uncolored = "so the bars would have no color"
         if reaction_color == 'original':
             raise ConfigError(
-                f"'{column_flag}' draws bars in the colors of the fills of reaction boxes, but "
-                f"'--original-color' takes both the colors and the drawing order of the reactions "
-                f"from the reference map, and it draws no bars. Please use only one of them."
+                f"'{column_flag}' {draws}, but '--original-color' takes both the colors and the "
+                f"drawing order of the reactions from the reference map, and it draws no bars. "
+                f"Please use only one of them."
             )
         if reaction_color == 'none':
             raise ConfigError(
-                f"'{column_flag}' draws bars in the colors of the fills of reaction boxes, but "
-                f"'--reaction-color none' leaves the fills uncolored, so the bars would have no "
-                f"color. Please give the fills a color, or drop one of the two options."
+                f"'{column_flag}' {draws}, but '--reaction-color none' leaves the fills uncolored, "
+                f"{uncolored}. Please give the fills a color, or drop one of the two options."
             )
         if slice_by is not None:
             raise ConfigError(
@@ -6659,14 +6689,17 @@ class Mapper:
             The options of the bars of the reaction layer, keyed by 'BAR_OPTIONS', or None for no
             bars. 'column' names the bar column of the reaction file. Its values set the length of a
             bar in each reaction box on standard maps, drawn in the color of the fill of the box
-            over a gray track ('BAR_TRACK_COLOR'). The other keys are the bar versions of the
-            options of the fill. A bar shows values only, so its summaries take no presence names.
-            Without a summary, the 'unified' map of a file with samples shows no bars, and its fills
-            are drawn whole. The aggregations default to 'mean'. Each scale of bars includes 0, and
-            limits that leave 0 out are refused. On a map that shows bars, a box with a fill and no
-            bar value is left uncolored. The bars are built by the builder of the fill
-            ('_build_txt_model', '_txt_channel'). Options left out are None. Negative bar values,
-            '--original-color', a 'reaction_color' of 'none', and 'reaction_slice_by' are refused.
+            over a gray track ('BAR_TRACK_COLOR'). With a 'style' of 'strip', the fill is drawn
+            whole, and the bar is a dark bar on a white strip along the bottom of the box
+            ('BAR_STYLES'). The other keys are the bar versions of the options of the fill. A bar
+            shows values only, so its summaries take no presence names. Without a summary, the
+            'unified' map of a file with samples shows no bars, and its fills are drawn whole. The
+            aggregations default to 'mean'. Each scale of bars includes 0, and limits that leave 0
+            out are refused. On a map that shows bars, a box with a fill and no bar value is left
+            uncolored, or keeps its whole fill without a strip. The bars are built by the builder of
+            the fill ('_build_txt_model', '_txt_channel'). Options left out are None. Negative bar
+            values, '--original-color', a 'reaction_color' of 'none', and 'reaction_slice_by' are
+            refused.
 
         Notes
         =====
@@ -6909,6 +6942,12 @@ class Mapper:
             if data['bar_column'] is not None:
                 bar = {option: layer['bar'].get(option) for option in BAR_OPTIONS}
                 channel = self._txt_channel(element_type, 'bar')
+                # A box without a bar value keeps its whole fill in the strip style, so the messages
+                # about undefined values say that it shows no strip.
+                style = bar['style'] or 'fill'
+                if style == 'strip':
+                    channel['consequence'] = 'shows no strip'
+                    channel['consequence_plural'] = 'show no strip'
                 bar_model = self._build_txt_model(
                     channel['name'], self._channel_view(data, 'bar'), layer['path'],
                     bar['gene_aggregation'], bar['accession_aggregation'], None, None, None, None,
@@ -6917,6 +6956,7 @@ class Mapper:
                     individual_value_limits=bar['individual_value_limits'], seed=seed,
                     channel=channel
                 )
+                bar_model['style'] = style
                 model['bars'] = [bar_model]
             if model['border'] is None and not model['bars']:
                 continue
@@ -6952,6 +6992,7 @@ class Mapper:
             if model['border'] is not None:
                 self.run.info(f"{label} rows without a border value", data['border_empty'])
             if model['bars']:
+                self.run.info(f"{label} bar style", model['bars'][0]['style'])
                 self.run.info(f"{label} rows without a bar value", data['bar_empty'])
             if model['border'] is not None and border['slice_by'] is not None:
                 self.run.info(
@@ -10231,7 +10272,8 @@ class Mapper:
             A text layer can also have 'border', the model of its border column, and 'bars', a list
             of the models of its bar columns, which holds one model. These have the keys of a
             'quantitative' layer, except that a bar has no colormap. Their mode is None on a map
-            that shows none of their values.
+            that shows none of their values. A bar also has 'style', how it is drawn in its box
+            ('BAR_STYLES').
 
         output_dir : str
             Path to the output directory in which pathway map and colorbar PDF files are drawn.
@@ -11380,9 +11422,9 @@ class Mapper:
         # A layer with bars adds a function to the spec of each map that shows them. It finds where
         # the bar of an Entry starts and ends on the bar scale of the map ('_bar_extent'), or gives
         # None where the Entry has no bar value there. The boxes of such a map are drawn as bars in
-        # the colors of their fills ('_stage_entry_bar'). A map that shows no bar values, such as
-        # the 'unified' map without a bar summary, draws its fills whole. The bars of a layer are a
-        # list of one model.
+        # the colors of their fills, or with strips under whole fills, by the style of the bars
+        # ('_stage_entry_bar'). A map that shows no bar values, such as the 'unified' map without a
+        # bar summary, draws its fills whole. The bars of a layer are a list of one model.
         def _with_bars(spec, layer, individual=None):
             if not layer.get('bars'):
                 return spec
@@ -11405,6 +11447,7 @@ class Mapper:
             return {
                 **spec,
                 'bar_extent': bar_extent,
+                'bar_style': bar['style'],
                 'bar_map': 'unified' if individual is None else individual,
                 'bar_missing': bar['_missing']
             }
@@ -11611,7 +11654,10 @@ class Mapper:
                     key_path = os.path.join(output_dir, basename)
                     self.colorbar_drawer.draw_length(
                         vmin, vmax, key_path, label=f"{layer['colorbar_label']} (bar)",
-                        clamped_low=clamped_low, clamped_high=clamped_high
+                        clamped_low=clamped_low, clamped_high=clamped_high,
+                        track_color=(
+                            BAR_STRIP_TRACK_COLOR if layer['style'] == 'strip' else BAR_TRACK_COLOR
+                        )
                     )
                     if keys_individual_maps:
                         individual_keys.append((key_path, layer['element_type']))
@@ -12449,7 +12495,8 @@ class Mapper:
 
         On a map that shows bars, a box with a fill color and no bar value is left uncolored
         ('_stage_entry_bar'). Each box is counted once on each drawn map, such as the 'unified' map
-        of 00010 or the map of 00010 of one sample.
+        of 00010 or the map of 00010 of one sample. Bars in the 'strip' style leave no box
+        uncolored, since such a box keeps its whole fill without a strip.
 
         Parameters
         ==========
@@ -14878,6 +14925,7 @@ class Mapper:
             - 'bar_extent': a function that takes an Entry. It returns where the bar of the Entry
               starts and ends, as fractions of the bar scale of the map ('_bar_extent'), or None
               where the Entry has no bar value there.
+            - 'bar_style': how the bars are drawn in their boxes ('BAR_STYLES').
             - 'bar_map': what the warning about boxes without a bar value calls the map, 'unified'
               or the name of a sample or group.
             - 'bar_missing': where the boxes left uncolored for want of a bar value are kept, once
@@ -15053,16 +15101,21 @@ class Mapper:
         Stage the bar of an Entry whose fill is colored, on a map that shows bars.
 
         A bar is drawn in the boxes that take rings, which are reaction boxes on standard maps
-        ('_shows_border'). Each such box gets a glyph ('kgml.Graphics.glyph'). Its one cell is the
-        gray track ('BAR_TRACK_COLOR'). A mark over it, in the color of the fill, runs from 0 to the
-        value of the bar along the length of the box. An end line is centered on the free end of the
+        ('_shows_border'). Each such box gets a glyph ('kgml.Graphics.glyph') in the style of the
+        bars ('BAR_STYLES'). In the 'fill' style, its one cell is the gray track
+        ('BAR_TRACK_COLOR'). A mark over it, in the color of the fill, runs from 0 to the value of
+        the bar along the length of the box. In the 'strip' style, its one cell is the whole fill.
+        Two marks lie in a band along its bottom ('BAR_STRIP_HEIGHT'): the white track of the strip,
+        and the dark bar over it from 0 to the value. An end line is centered on the free end of the
         bar, at 0 and at the full length too ('BAR_END_LINE_COLOR'). The fill color stays in the fg
         and bg colors of the Entry, so color priority, recoloring, and the colors that compounds
         derive from reactions see only the fill.
 
-        A box without a bar value on the map is left uncolored. A whole fill would read as a full
-        bar, and a bare track as a bar of 0. The box is recorded for a warning
-        ('_warn_missing_bars'). An Entry drawn as a line takes no bar and keeps its whole fill.
+        In the 'fill' style, a box without a bar value on the map is left uncolored. A whole fill
+        would read as a full bar, and a bare track as a bar of 0. The box is recorded for a warning
+        ('_warn_missing_bars'). In the 'strip' style, such a box keeps its whole fill without a
+        strip, which cannot be read as a value, since a strip of 0 is white. An Entry drawn as a
+        line takes no bar and keeps its whole fill.
 
         Parameters
         ==========
@@ -15096,6 +15149,9 @@ class Mapper:
         if not shapes:
             return True
         extent = spec['bar_extent'](entry)
+        strip = spec['bar_style'] == 'strip'
+        if extent is None and strip:
+            return True
         if extent is None:
             if slice_records is not None:
                 accessions = [
@@ -15108,12 +15164,24 @@ class Mapper:
                 ))
             return False
         zero, end = extent
-        for shape in shapes:
-            shape.glyph = {
+        start, stop = min(zero, end), max(zero, end)
+        if strip:
+            glyph = {
+                'cells': [(color_hexcode, 1.0)],
+                'marks': [
+                    (0, 'x', 0.0, 1.0, BAR_STRIP_TRACK_COLOR, BAR_STRIP_HEIGHT),
+                    (0, 'x', start, stop, BAR_STRIP_COLOR, BAR_STRIP_HEIGHT)
+                ],
+                'rules': [(0, 'x', end, BAR_END_LINE_COLOR, BAR_END_LINE_WIDTH, BAR_STRIP_HEIGHT)]
+            }
+        else:
+            glyph = {
                 'cells': [(BAR_TRACK_COLOR, 1.0)],
-                'marks': [(0, 'x', min(zero, end), max(zero, end), color_hexcode, None)],
+                'marks': [(0, 'x', start, stop, color_hexcode, None)],
                 'rules': [(0, 'x', end, BAR_END_LINE_COLOR, BAR_END_LINE_WIDTH, None)]
             }
+        for shape in shapes:
+            shape.glyph = glyph
         return True
 
     @staticmethod
@@ -16880,18 +16948,19 @@ class ColorbarDrawer:
         out_path: str,
         label: str = None,
         clamped_low: bool = False,
-        clamped_high: bool = False
+        clamped_high: bool = False,
+        track_color: str = BAR_TRACK_COLOR
     ) -> None:
         """
         Save a standalone key of a bar scale to a file.
 
-        A bar scale keys lengths, not colors. The key is a box in the gray of the track of bars
-        ('BAR_TRACK_COLOR'), with a ruler under it. The width of the box stands for the scale. A bar
-        starts at 0, which is always on the scale ('Mapper._bar_extent'), so 0 is always labeled.
-        Both ends of the scale are labeled too, since a full bar stands for its end, whether the
-        data or a limit sets it. An end is marked '≤' or '≥' where values lie past a limit, as on a
-        continuous colorbar ('draw_continuous'). A scale whose one value is 0 is drawn as a box
-        labeled 0 alone, since its bars have no length.
+        A bar scale keys lengths, not colors. The key is a box in the color of the track of bars,
+        with a ruler under it. The width of the box stands for the scale. A bar starts at 0, which
+        is always on the scale ('Mapper._bar_extent'), so 0 is always labeled. Both ends of the
+        scale are labeled too, since a full bar stands for its end, whether the data or a limit sets
+        it. An end is marked '≤' or '≥' where values lie past a limit, as on a continuous colorbar
+        ('draw_continuous'). A scale whose one value is 0 is drawn as a box labeled 0 alone, since
+        its bars have no length.
 
         Parameters
         ==========
@@ -16909,11 +16978,16 @@ class ColorbarDrawer:
 
         clamped_low, clamped_high : bool, False
             As in 'draw_continuous'.
+
+        track_color : str, BAR_TRACK_COLOR
+            The color of the box: the gray track of bars, or the white track of strips
+            ('BAR_STRIP_TRACK_COLOR').
         """
         fig = Figure(figsize=self.length_figsize)
         ax = fig.subplots()
-        # The axes themselves are the box: gray inside, with a black outline as a reaction box has.
-        ax.set_facecolor(BAR_TRACK_COLOR)
+        # The axes themselves are the box: the color of the track inside, with a black outline as a
+        # reaction box has.
+        ax.set_facecolor(track_color)
         for spine in ax.spines.values():
             spine.set_color('#000000')
             spine.set_linewidth(1)

@@ -1130,6 +1130,12 @@ The fills show expression, and the bars show coverage. The map of each sample sh
 
 The part of a box shown in the fill color is proportional to the bar, so a bar weights the fill by its own value. A short bar leaves only a stripe of the fill color, which is hard to match to a colormap. Bars therefore suit a value that measures support for the fill, such as coverage behind expression, or a file whose fill shows presence or a single color. A file whose only column of values is its bar column colors its fills by presence, and its bars then compare the reactions by length alone.
 
+#### Draw bars as strips
+
+`--reaction-bar-style strip` keeps both values readable where they are unrelated. The fill of each box is drawn whole, and the bar is a dark bar (`#333333`) on a white strip 5 points tall along the bottom of the box, below its label. The strip has the same end line. It reads on light and dark fills, and a skewed bar column leaves the colors of the map as they are. The white of the strip means 0 only inside a colored fill, since a box without data is white throughout. The default style is `fill`.
+
+In the strip style, a box with a fill and no bar value keeps its whole fill and shows no strip. A missing strip cannot be read as a value, since a strip of 0 is an empty white strip, so no warning counts such boxes.
+
 #### Read the bar column
 
 The bar column can have any name, but it cannot be `accession`, `gene_id`, `sample`, the column of `--reaction-slice-weights`, or the border column. It is left out of the search for the value column, as the border column is. A row can leave its bar cell empty, and then it has no bar value. A bar column with no values at all is refused. Each bar value must be a finite number, so `NA` or other text is refused. Bar values must also be 0 or more for now, since bars that grow both ways from 0 are not drawn yet. A file with a bar column is read as text, as a file with a border column is, and no two of its rows may describe the same accession, gene, and sample. The run reports the bar column, the aggregations that reduce its values, and the number of rows without a bar value.
@@ -1142,7 +1148,7 @@ The options of bars are versions of options of the fill, with `bar-` after the n
 - `--reaction-bar-sample-summary` and `--reaction-bar-group-summary`
 - `--reaction-bar-value-limits` and `--reaction-bar-individual-value-limits`
 
-Every bar option needs `--reaction-bar-column`. Bars take numbers only, so they have no value type, period, colormap, center, or normalization, and their aggregations and summaries take no rules for categorical values. The aggregations default to `mean`, not `sum`, as those of a border column do. A bar value given once per KO and repeated in the rows of its genes keeps its size under `mean`, but `sum` would multiply it. Only the reaction layer has bars.
+`--reaction-bar-style` has no counterpart among the options of the fill (see [Draw bars as strips](#draw-bars-as-strips)). Every bar option needs `--reaction-bar-column`. Bars take numbers only, so they have no value type, period, colormap, center, or normalization, and their aggregations and summaries take no rules for categorical values. The aggregations default to `mean`, not `sum`, as those of a border column do. A bar value given once per KO and repeated in the rows of its genes keeps its size under `mean`, but `sum` would multiply it. Only the reaction layer has bars.
 
 #### Bars of samples and groups
 
@@ -1158,17 +1164,17 @@ A bar grows from 0, so its scale always includes 0. Without limits, the scale ru
 
 Bars are drawn in the reaction boxes of standard maps, which are the boxes that take rings. Global and overview maps draw reactions as lines, which take no bars, and a warning counts the reaction elements with bar values that standard maps draw as lines. A run is refused when none of its maps is a standard map. The scale of bars spans only the values of boxes.
 
-On a map that shows bars, a box with a fill and no bar value is left uncolored, and a warning counts such boxes. A whole fill there would read as a full bar, and a bare track as a bar of 0. A map that shows no bar values, such as the `unified` map without a bar sample summary, draws its fills whole.
+On a map that shows bars, a box with a fill and no bar value is left uncolored, and a warning counts such boxes. A whole fill there would read as a full bar, and a bare track as a bar of 0. Strips are the exception, as described above. A map that shows no bar values, such as the `unified` map without a bar sample summary, draws its fills whole.
 
-A box with a ring draws its bar inside the black line within the ring, in 85 points of its 92. A box without a ring draws it inside its outline, in 91 points. A bar is read as a fraction of its own box, so the difference does not bias the reading. The label of a box lies in its upper half, so the end of a bar always shows in the lower half.
+A box with a ring draws its bar or strip inside the black line within the ring, in 85 points of its 92. A box without a ring draws it inside its outline, in 91 points. A bar is read as a fraction of its own box, so the difference does not bias the reading. The label of a box lies in its upper half, so the end of a bar always shows in the lower half.
 
-A bar takes the color of the fill of its box, whatever sets that color: values, categorical values, the colors of presence across samples or groups, or a single color from `--reaction-color`. The fill alone decides the order in which overlapping elements are drawn, so `--reaction-reverse-overlay` applies as it does without bars. The check of reserved colors and the colors that compounds take from reactions see only the fills too. `--original-color` and `--reaction-color none` are refused with a bar column, since a bar needs the color of a fill. Runs of contigs databases, a pangenome, or a reaction network JSON file refuse every bar option.
+A bar of the `fill` style takes the color of the fill of its box, whatever sets that color: values, categorical values, the colors of presence across samples or groups, or a single color from `--reaction-color`. The fill alone decides the order in which overlapping elements are drawn, so `--reaction-reverse-overlay` applies as it does without bars. The check of reserved colors and the colors that compounds take from reactions see only the fills too. `--original-color` is refused with a bar column, since it draws the colors of the reference map with a renderer of its own, which draws no bars. `--reaction-color none` is refused too, since a bar of either style is drawn only in a box whose fill is colored. Runs of contigs databases, a pangenome, or a reaction network JSON file refuse every bar option.
 
 Rings and bars combine. Bars cannot be drawn in slices yet, so `--reaction-slice-by` is refused with a bar column. Rings divided on their own with `--reaction-border-slice-by` are drawn around bars as around fills.
 
 #### Bar keys
 
-Bars are keyed by length, in files of their own. `bar_key_reactions.pdf` keys the bars of the `unified` map, or of every map for a file without a `sample` column. `bar_key_reactions_samples.pdf` or `bar_key_reactions_groups.pdf` keys the bar scale shared by the maps of the samples or groups. A key is a gray box with a ruler under it, whose width stands for the scale. 0 is always labeled, and so are both ends of the scale, which stand for full bars. The key is labeled with the bar column and `(bar)`, such as `coverage (bar)`. Bar keys are written only at the top of the output directory, and `--skip-unified-maps` drops the key of the `unified` map by the rule for colorbars. A player shows a bar key only beside the maps that can show bars.
+Bars are keyed by length, in files of their own. `bar_key_reactions.pdf` keys the bars of the `unified` map, or of every map for a file without a `sample` column. `bar_key_reactions_samples.pdf` or `bar_key_reactions_groups.pdf` keys the bar scale shared by the maps of the samples or groups. A key is a gray box with a ruler under it, whose width stands for the scale. The key of strips is a white box, as the track of a strip is white. 0 is always labeled, and so are both ends of the scale, which stand for full bars. The key is labeled with the bar column and `(bar)`, such as `coverage (bar)`. Bar keys are written only at the top of the output directory, and `--skip-unified-maps` drops the key of the `unified` map by the rule for colorbars. A player shows a bar key only beside the maps that can show bars.
 
 ### Mixed coloring across reaction and compound layers
 

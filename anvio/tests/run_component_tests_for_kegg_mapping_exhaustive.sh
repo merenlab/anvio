@@ -4647,6 +4647,24 @@ then
     exit 1
 fi
 
+# In the strip style, a box with a fill and no bar value keeps its whole fill without a strip, so
+# it is not left uncolored, and no warning counts it.
+INFO "Testing a bar column with an empty cell, drawn as strips"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_empty_cell.reaction.txt \
+    --reaction-bar-column level --reaction-bar-style strip \
+    --output-dir draw_txt_bar_empty_cell_strip --pathway-numbers $pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_bar_empty_cell_strip.log
+if ! tr -d ' \n' < draw_txt_bar_empty_cell_strip.log | grep -q "Reactionbarstyle.*strip"
+then
+    echo "ERROR: the run did not report the strip style of its bars."
+    exit 1
+fi
+if tr -d ' \n' < draw_txt_bar_empty_cell_strip.log | grep -q "havenobarvaluefromthe"
+then
+    echo "ERROR: a box without a bar value was left uncolored in the strip style."
+    exit 1
+fi
+
 # Bar values of 0 alone draw bars of no length, and a key labeled 0 alone.
 INFO "Testing a bar scale whose only value is 0"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_zero.reaction.txt --reaction-bar-column level \
@@ -4708,6 +4726,22 @@ if ! tr -d ' \n' < draw_txt_bar_option_without_column.log \
     | grep -q "appliestothebarsofthereactionlayer,butnobarcolumnwasnamed"
 then
     echo "ERROR: a bar option without the bar column was refused for another reason."
+    exit 1
+fi
+
+# The style of bars needs the bar column too.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-style strip --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_style_without_column.log 2>&1
+then
+    echo "ERROR: a bar style without the bar column should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_style_without_column.log \
+    | grep -q "'--reaction-bar-style'appliestothebarsofthereactionlayer"
+then
+    echo "ERROR: a bar style without the bar column was refused for another reason."
     exit 1
 fi
 

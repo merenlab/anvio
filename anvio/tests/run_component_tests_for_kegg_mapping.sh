@@ -711,6 +711,31 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction
                         --draw-individual-files \
                         --no-progress
 
+# The strip style draws the fill of each box whole and the bar as a dark bar on a white strip along
+# the bottom of the box. Both values then stay readable: expression by color, and coverage by
+# length. A ring of a third column lies around both.
+INFO "Drawing bars as strips under whole fills, inside rings"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+                        --reaction-sample-summary mean \
+                        --reaction-bar-column coverage \
+                        --reaction-bar-style strip \
+                        --reaction-bar-sample-summary mean \
+                        --reaction-border-column status \
+                        --reaction-border-value-type categorical \
+                        --reaction-border-value-colors draw-status-colors.txt \
+                        --reaction-border-sample-summary plurality_order \
+                        --output-dir draw_txt_samples_kos_strips_rings \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+if [ ! -s draw_txt_samples_kos_strips_rings/bar_key_reactions.pdf ] \
+    || [ ! -s draw_txt_samples_kos_strips_rings/bar_key_reactions_samples.pdf ]
+then
+    echo "ERROR: a run with strips should have written a key for each bar scale."
+    exit 1
+fi
+
 INFO "Mixing presence coloring of reactions with value coloring of compounds"
 anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
                         --compound-txt draw_compounds.compound.txt \
