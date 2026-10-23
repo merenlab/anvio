@@ -238,14 +238,13 @@ def print_genomes(integrated_genome_dict):
             continue
 
         for profile_db_sample_id, collections_dict in profile_db_dict.items():
-            run.info_single(
-                f"Profile database sample ID: {profile_db_sample_id}", cut_after=0, level=2)
-
             for collection_name, bin_ids in collections_dict.items():
-                run.info_single(f"Collection name: {collection_name}", cut_after=0, level=3)
+                run.info_single(
+                    f"Profile database sample ID: {profile_db_sample_id} ; Collection name: "
+                    f"{collection_name}", cut_after=0, level=2)
 
-                for bin_id in bin_ids:
-                    run.info_single(f"Bin ID: {bin_id}", cut_after=0, level=4)
+                for bin_id in sorted(bin_ids):
+                    run.info_single(f"Bin ID: {bin_id}", cut_after=0, level=3)
     print()
 
 
