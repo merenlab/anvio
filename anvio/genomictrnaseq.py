@@ -389,8 +389,8 @@ class Integrator(object):
         if self.bin_id:
             collect = ccollections.Collections()
             collect.populate_collections_dict(self.genomic_profile_db_path)
-            collect.is_bin_in_collection(bin_id)
-            self.genome_info_dict[bin_id] = genome_info = {}
+            collect.is_bin_in_collection(self.collection_name, self.bin_id)
+            self.genome_info_dict[self.bin_id] = genome_info = {}
             genome_info['contigs_db_info'] = contigs_db_info
             genome_info['profile_db_info'] = profile_db_info
             genome_info['collection_name'] = self.collection_name
@@ -399,7 +399,7 @@ class Integrator(object):
             collect = ccollections.Collections()
             collect.populate_collections_dict(self.genomic_profile_db_path)
             for bin_id in bin_ids:
-                collect.is_bin_in_collection(bin_id)
+                collect.is_bin_in_collection(self.collection_name, bin_id)
                 self.genome_info_dict[bin_id] = genome_info = {}
                 genome_info['contigs_db_info'] = contigs_db_info
                 genome_info['profile_db_info'] = profile_db_info
@@ -409,7 +409,7 @@ class Integrator(object):
             # There is a collection of internal genomes.
             collect = ccollections.Collections()
             collect.populate_collections_dict(self.genomic_profile_db_path)
-            for bin_id in collect.get_bins_info_dict():
+            for bin_id in collect.get_bins_info_dict(self.collection_name):
                 self.genome_info_dict[bin_id] = genome_info = {}
                 genome_info['contigs_db_info'] = contigs_db_info
                 genome_info['profile_db_info'] = profile_db_info
@@ -1629,8 +1629,8 @@ class Affinitizer:
         if self.bin_id:
             collect = ccollections.Collections()
             collect.populate_collections_dict(self.genomic_profile_db_path)
-            collect.is_bin_in_collection(bin_id)
-            self.genome_info_dict[bin_id] = genome_info = {}
+            collect.is_bin_in_collection(self.collection_name, self.bin_id)
+            self.genome_info_dict[self.bin_id] = genome_info = {}
             genome_info['contigs_db_info'] = contigs_db_info
             genome_info['profile_db_info'] = profile_db_info
             genome_info['profile_db_sample_id'] = profile_db_sample_id
@@ -1640,7 +1640,7 @@ class Affinitizer:
             collect = ccollections.Collections()
             collect.populate_collections_dict(self.genomic_profile_db_path)
             for bin_id in bin_ids:
-                collect.is_bin_in_collection(bin_id)
+                collect.is_bin_in_collection(self.collection_name, bin_id)
                 self.genome_info_dict[bin_id] = genome_info = {}
                 genome_info['contigs_db_info'] = contigs_db_info
                 genome_info['profile_db_info'] = profile_db_info
@@ -1651,7 +1651,7 @@ class Affinitizer:
             # There is a collection of internal genomes.
             collect = ccollections.Collections()
             collect.populate_collections_dict(self.genomic_profile_db_path)
-            for bin_id in collect.get_bins_info_dict():
+            for bin_id in collect.get_bins_info_dict(self.collection_name):
                 self.genome_info_dict[bin_id] = genome_info = {}
                 genome_info['contigs_db_info'] = contigs_db_info
                 genome_info['profile_db_info'] = profile_db_info
