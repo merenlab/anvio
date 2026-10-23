@@ -657,6 +657,7 @@ class Integrator(object):
         for genome_info in self.genome_info_dict.values():
             if genome_info['contigs_db_info'].path in contigs_db_paths:
                 continue
+            contigs_db_paths.add(genome_info['contigs_db_info'].path)
             contigs_db_infos.append(genome_info['contigs_db_info'])
 
         for contigs_db_info in contigs_db_infos:
