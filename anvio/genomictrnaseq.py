@@ -1460,7 +1460,8 @@ class Integrator(object):
                                      'gene_contigs_db_hash',
                                      'profile_db_sample_id',
                                      'collection_name',
-                                     'bin_id'])
+                                     'bin_id'],
+                error_if_no_data=False)
         integrated_genome_dict = {}
         for row in trna_gene_hits_df.itertuples(index=False):
             if not row.gene_contigs_db_project_name or not row.gene_contigs_db_hash:
