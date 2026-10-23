@@ -629,7 +629,7 @@ class Integrator(object):
         """Link tRNA-seq seeds to tRNA genes, adding this information to the tRNA-seq contigs
         database."""
         trna_gene_seq_dict = self.write_trna_genes_fasta()
-        self.blast()
+        self.blast(len(trna_gene_seq_dict))
         hits_df = self.filter_hits(trna_gene_seq_dict)
         unmodified_nt_df = self.find_unmodified_nucleotides(hits_df)
         self.update_trnaseq_contigs_database(hits_df, unmodified_nt_df)
@@ -697,8 +697,9 @@ class Integrator(object):
         return trna_gene_seq_dict
 
 
-    def blast(self):
-        """Align tRNA-seq seeds/permuted seeds to tRNA genes."""
+    def blast(self, trna_gene_count):
+        """Align tRNA-seq seeds/permuted seeds to tRNA genes, reporting hits of each query to as
+        many as all of the tRNA genes."""
         blast = BLAST(self.permuted_seeds_fasta_path,
                       self.trna_genes_fasta_path,
                       search_program='blastn',
@@ -709,6 +710,8 @@ class Integrator(object):
         blast.search_output_path = os.path.join(self.blast_dir, 'blast-search-results.txt')
         blast.log_file_path = os.path.join(self.blast_dir, 'blast-log.txt')
         blast.additional_params_for_blast = "-ungapped"
+        # By default, BLAST reports hits of a query to at most 500 subject sequences.
+        blast.max_target_seqs = trna_gene_count
         blast.makedb(dbtype='nucl')
         blast.blast(outputfmt='6 ' + ' '.join(self.blast_search_output_cols))
 
