@@ -632,6 +632,7 @@ class Integrator(object):
         self.blast(len(trna_gene_seq_dict))
         hits_df = self.filter_hits(trna_gene_seq_dict)
         unmodified_nt_df = self.find_unmodified_nucleotides(hits_df)
+        hits_df = self.drop_hits_outside_bins(hits_df)
         self.update_trnaseq_contigs_database(hits_df, unmodified_nt_df)
 
 
@@ -1188,6 +1189,45 @@ class Integrator(object):
         return hits_df
 
 
+    def drop_hits_outside_bins(self, hits_df):
+        """
+        Drop hits to genes outside the bins being integrated from contigs databases that are input
+        only as sources of bins.
+
+        Seeds are matched to all tRNA genes in these contigs databases, so that a seed better
+        matching a gene outside the bins is not assigned to a gene in a bin, and so that a seed
+        matching genes with different nucleotides at a predicted modification position is
+        recognized. The hits to genes outside the bins are not stored, however.
+
+        Parameters
+        ==========
+        hits_df : pandas.core.frame.DataFrame
+            Each row contains a selected hit between a seed and tRNA gene.
+
+        Returns
+        =======
+        hits_df : pandas.core.frame.DataFrame
+            Hits without those to genes outside the bins.
+        """
+        binned_contigs_db_hashes = set()
+        unbinned_contigs_db_hashes = set()
+        for genome_info in self.genome_info_dict.values():
+            if genome_info['bin_id']:
+                binned_contigs_db_hashes.add(genome_info['contigs_db_info'].hash)
+            else:
+                unbinned_contigs_db_hashes.add(genome_info['contigs_db_info'].hash)
+        outside_bins_contigs_db_hashes = binned_contigs_db_hashes - unbinned_contigs_db_hashes
+        hits_df = hits_df[~(hits_df['contigs_db_hash'].isin(outside_bins_contigs_db_hashes) &
+                            (hits_df['bin_id'] == ''))]
+
+        if hits_df.empty:
+            raise ConfigError(
+                "tRNA-seq seeds were only matched to tRNA genes outside the bins being integrated. "
+                "The tRNA-seq contigs database was not changed.")
+
+        return hits_df
+
+
     def find_unmodified_nucleotides(self, hits_df):
         """
         Find the unmodified nucleotides at predicted modification positions in tRNA-seq seeds
@@ -1284,12 +1324,9 @@ class Integrator(object):
                 f"{pp(row_count)} seed/gene matches dropped from the tRNA-seq contigs database",
                 cut_after=0)
         else:
-            # Matches to genes outside the bins being integrated are stored without bin information,
-            # and these are also replaced.
             replaced_genome_keys = set()
             for genome_info in self.genome_info_dict.values():
                 contigs_db_hash = genome_info['contigs_db_info'].hash
-                replaced_genome_keys.add((contigs_db_hash, '', '', ''))
                 if genome_info['bin_id']:
                     profile_db_sample_id = genome_info['profile_db_info'].get_self_table()[
                         'sample_id']
@@ -1297,6 +1334,8 @@ class Integrator(object):
                                               profile_db_sample_id,
                                               genome_info['collection_name'],
                                               genome_info['bin_id']))
+                else:
+                    replaced_genome_keys.add((contigs_db_hash, '', '', ''))
             trnaseq_contigs_db._exec_many(
                 f'''DELETE FROM {tables.trna_gene_hits_table_name} WHERE gene_contigs_db_hash = ? '''
                 '''AND profile_db_sample_id = ? AND collection_name = ? AND bin_id = ?''',

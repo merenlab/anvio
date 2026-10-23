@@ -80,7 +80,11 @@ def get_args():
         "ID. "
         "(4) Internal genomes, or a list of metagenomic bins (can be used with external genomes). "
         "(5) External genomes, or a list of contigs databases representing genomes (can be used "
-        "with internal genomes).")
+        "with internal genomes). "
+        "With bins (2-4), seeds are matched against all tRNA genes in the contigs databases, so "
+        "that a seed better matching a gene outside the bins is not assigned to a gene in a bin, "
+        "but only matches to genes in the bins are stored, unless the contigs database is also "
+        "given as an external genome.")
     group1B.add_argument(
         *anvio.A('contigs-db'), **anvio.K('contigs-db', {
             'required': False,
