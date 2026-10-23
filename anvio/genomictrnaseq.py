@@ -867,7 +867,7 @@ class Integrator(object):
 
             # Note that the same contig may be in different bins, thus the list values of the dict.
             contigs_db_hash = genome_info['contigs_db_info'].hash
-            profile_db_sample_id = genome_info['profile_db_info'].sample_id
+            profile_db_sample_id = genome_info['profile_db_info'].get_self_table()['sample_id']
             if search_for_bin_of_interest:
                 bin_contig_names_dict = ccollections.GetSplitNamesInBins(args).get_dict()
                 for bin_id, split_names in bin_contig_names_dict.items():
