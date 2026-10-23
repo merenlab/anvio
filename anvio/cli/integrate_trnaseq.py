@@ -173,7 +173,8 @@ def get_args():
     group1F.add_argument(
         '-r', '--remove-previous-matches', default=False, action='store_true',
         help="Remove existing tRNA-seq seed assignments to tRNA genes in the tRNA-seq contigs "
-             "database.")
+             "database. Without this flag, new assignments are appended to existing ones, "
+             "replacing any existing assignments to the genomes being integrated.")
 
     group2 = parser.add_argument_group('INFO')
     group2.add_argument(
