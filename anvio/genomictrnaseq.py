@@ -480,7 +480,7 @@ class Integrator(object):
                     f"'{self.trnaseq_contigs_db_path}', does not have the proper number of "
                     "columns, probably because it was created with an obsolete version of the "
                     "program. The table can be deleted and recreated with the proper columns by "
-                    "running the program with `remove_previous_matches`.")
+                    "running the program with `--remove-previous-matches`.")
 
         # Existing seed/gene hits must be willfully overwritten or appended to.
         hit_count = trnaseq_contigs_db.get_row_counts_from_table(
@@ -493,8 +493,8 @@ class Integrator(object):
                     "The seeds from the tRNA-seq contigs database at "
                     f"'{self.trnaseq_contigs_db_path}' have already been associated with tRNA "
                     "genes from one or more (meta)genomic contigs databases. Either use "
-                    "`remove_previous_matches` to clear existing matches, or append to existing "
-                    "matches by not using `unambiguous_genome_assignments`.")
+                    "`--remove-previous-matches` to clear existing matches, or append to existing "
+                    "matches by not using `--unambiguous-genome-assignment`.")
         trnaseq_contigs_db.disconnect()
 
         # The tRNA-seq contigs db version must be up-to-date.
@@ -505,7 +505,7 @@ class Integrator(object):
                 f"v{self.trnaseq_contigs_db_info.version} and your anvi'o installation wants to "
                 f"work with v{required_version}). You can migrate your database without losing any "
                 "data using the program `anvi-migrate` with either of the flags "
-                "`--migrate-dbs-safely` or `--migrate-dbs-quickly`.")
+                "`--migrate-safely` or `--migrate-quickly`.")
 
         # Right now there are no specific checks here on the format of these tables.
         filesnpaths.is_file_exists(self.seeds_specific_txt_path)
@@ -514,22 +514,22 @@ class Integrator(object):
         # Do basic checks of the combinations of (meta)genomic input arguments.
         if (self.genomic_contigs_db_path and
             (self.internal_genomes_path or self.external_genomes_path)):
-            raise ConfigError("`internal_genomes` and `external_genomes` cannot be used with "
-                              "`contigs_db`.")
+            raise ConfigError("`--internal-genomes` and `--external-genomes` cannot be used with "
+                              "`--contigs-db`.")
 
         if ((self.genomic_profile_db_path or self.collection_name) and
             not (self.genomic_contigs_db_path and
                  self.genomic_profile_db_path and
                  self.collection_name)):
-            raise ConfigError("A collection must be provided using `contigs_db`, `profile_db`, and "
-                              "`collection_name`.")
+            raise ConfigError("A collection must be provided using `--contigs-db`, `--profile-db`, "
+                              "and `--collection-name`.")
 
         if (self.bin_id and
             not (self.genomic_contigs_db_path and
                  self.genomic_profile_db_path and
                  self.collection_name)):
-            raise ConfigError("A specific bin provided with `bin_id` also requires `contigs_db`, "
-                              "`profile_db`, and `collection_name`.")
+            raise ConfigError("A specific bin provided with `--bin-id` also requires "
+                              "`--contigs-db`, `--profile-db`, and `--collection-name`.")
 
         # Prevent a confused user from providing a tRNA-seq contigs database in lieu of a
         # (meta)genomic contigs database.
@@ -1412,7 +1412,7 @@ class Integrator(object):
                     "The existing table of seed/gene matches in the tRNA-seq contigs database, "
                     f"'{self.trnaseq_contigs_db_path}', did not have the proper number of columns, "
                     "probably because it was created with an obsolete version of the program, but "
-                    "anvi'o was instructed to clear the table with `remove_previous_matches`, so "
+                    "anvi'o was instructed to clear the table with `--remove-previous-matches`, so "
                     "the table has instead been deleted entirely and replaced by one with the "
                     "proper column structure.")
 
