@@ -1110,7 +1110,8 @@ class Integrator(object):
                     return pd.DataFrame().reindex_like(min_mismatch_df)
 
         coverage_df = coverage_df.groupby(
-            'gene_callers_id', group_keys=False).apply(filter_multiple_hits_to_gene)
+            ['contigs_db_hash', 'gene_callers_id'], group_keys=False).apply(
+                filter_multiple_hits_to_gene)
         hits_df = hits_df[
             hits_df['seed_contig_name'].isin(coverage_df['seed_contig_name'].unique())]
         ##################################################
