@@ -1,5 +1,145 @@
 #!/usr/bin/env python
-"""Make KEGG pathway maps incorporating data sourced from external inputs."""
+"""
+Make KEGG pathway maps incorporating data sourced from external inputs.
+
+Most maps are drawn by the element engine. '_map_elements' builds a spec for each layer of each
+drawn map from the layer's models, as '_element_presence_specs' does for a single fixed color, and
+'_draw_map_elements' stages the specs on each KEGG map and draws it. The terms below are defined as
+the code uses them, those of the data before those of drawing.
+
+Terms
+=====
+map
+    A KEGG pathway map, a 'kgml.Pathway', whose number the code passes as 'pathway_number'. Its kind
+    ('MAP_KINDS') is standard, overview or global, and reactions are drawn as boxes only on standard
+    maps.
+
+accession
+    A KEGG ID of a KO, a KEGG reaction or a compound, given in a layer's input or named by an Entry
+    ('_get_entry_kegg_ids'). Reaction data hold only KO IDs or, with 'use_reaction_attribute', only
+    KEGG reaction IDs.
+
+map element
+    A box, line or circle that stands for a reaction or a compound on a map. It is a Graphics
+    ('kgml.Graphics') of an Entry ('kgml.Entry'), the KGML node that names its accessions in 'name',
+    or in 'reaction' with 'use_reaction_attribute'. The code sometimes calls the Entry itself the
+    element, while 'kgml.Element' and "Graphics element" mean nodes of KGML. A layer's
+    'element_type' is 'reaction' for ortholog Entries and 'compound' for compound Entries.
+
+layer
+    Everything drawn from the input of one element type, such as the text file of a text layer. A
+    run has at most two layers, which are drawn from the bottom up, reaction before compound. The
+    key columns of a text file are 'accession', 'gene_id' and 'sample', and options name its border,
+    bar and weights columns. The one other column, if any, is its value column, and its values are
+    'numeric' or 'categorical' ('VALUE_TYPES').
+
+individual, source
+    A sample, contigs database, or genome that gets a map of its own, any of which is also called a
+    source. In a grouped run the individuals are instead the groups of sources from a groups-txt
+    file. 'individuals' lists the names in color-assignment order, and it is None in a run with a
+    single source of data.
+
+'unified' map, context
+    The 'unified' map summarizes every individual, and it is the only map of a run with a single
+    source of data. A drawn map is the 'unified' map or the map of one individual, as the
+    'drawn_map' column of the key table names it beside the KEGG 'map'. Keys such as 'unified_mode'
+    and 'individual_mode' set apart the two contexts, the 'unified' map and the individual maps, and
+    "kind of map" sometimes means a context rather than a map's kind. The 'context' argument of the
+    slicing and ring code is instead a sample or group, or None for the 'unified' map or a layer
+    without samples.
+
+aggregation, summary
+    The reductions of many values to one. Within a sample, the gene aggregation reduces an
+    accession's rows, and the accession aggregation an element's accessions. The sample summary
+    pools samples into the map of their group, or into the 'unified' map in an ungrouped run. The
+    group summary pools groups into the 'unified' map. Each reduction of categorical values is a
+    rule ('CATEGORICAL_RULES'). A model holds the accession aggregation in 'aggregate' and the
+    summaries in 'sample_aggregate' and 'group_aggregate'. An element normalization rescales the
+    values of individual maps and is not a reduction.
+
+presence
+    Whether an individual contains an element. A source contains it if it has any of the element's
+    accessions, and a group if enough of its sources do ('group_threshold', a fraction). A text
+    layer without a value column shows presence, and so does a fill whose summary is a presence name
+    ('count', 'count_continuous', or 'membership') or is left at its default. How presence is
+    colored is its scheme ('by_count', 'by_count_continuous', or 'by_membership').
+
+channel, role
+    What one column of a text layer drives, named by its role. The value column colors the 'fill' of
+    an element (by presence where there is none), a border column colors its 'border', and a bar
+    column sets the length of its 'bar'. The fill is the inside of a box or circle, or a line
+    itself. '_txt_channel' builds a channel from 'TXT_CHANNEL_ROLES', which gives each role's option
+    stem ('flag_stem'), message words, key-file 'name' and defaults.
+
+border, ring
+    A border is the channel of a border column, and a layer's 'border' holds its model. It is drawn
+    as a ring ('kgml.Graphics.border'), whole or in bands or segments, inside the outline of a box
+    on a standard map or of a circle on a standard or overview map.
+
+bar
+    The channel of the reaction bar column, and a layer's 'bars' is a list holding its model. A bar
+    is drawn in the fill's color over a gray track inside a box on a standard map, and it runs from
+    0 to its value. "Bar" can also mean a colorbar.
+
+model
+    The dict that says how one channel of a layer is colored, or measured for bars, in each context,
+    with the keys that the '_map_elements' docstring lists. '_build_txt_model' builds the models of
+    a text layer, and '_map_element_membership' those of databases and pangenomes, which have no
+    channel and count as fills. A layer is passed as the model of its fill, and the variable 'layer'
+    may hold any model. Keys that start with '_' hold working state.
+
+mode
+    How a model colors its elements in one context ('unified_mode', 'individual_mode'):
+    'quantitative' (numeric values), 'categorical', 'membership' (presence, by count or combination
+    on a map that summarizes sources, or in one color on a source's own map), 'single' or 'static'
+    (one presence color), 'original' (KEGG's reference colors) or 'none' (no fill, only rings).
+    'static' and 'original' are modes of the 'unified' map only. A border or bar model's mode is
+    None, not 'none', in a context whose maps do not show its values. "Membership" also names a
+    presence summary, a scheme, a model key and a colors file.
+
+scale
+    The mapping of values, or of presence counts or combinations, to colors by a 'norm' and a
+    colormap, or of values to the lengths of bars. A value model has one scale for the 'unified' map
+    and one that the individual maps share, which is the same scale in a layer without samples. Each
+    group's presence map has a count scale of its own. A 'norm' is a 'matplotlib.colors.Normalize',
+    not an element normalization.
+
+slice
+    One unit's part of a reaction element's fill, in the color of its own value: a column of a box
+    ('kgml.Graphics.glyph') or a dash along a line ('kgml.Graphics.slices'). The unit is an
+    accession or a gene ('SLICE_UNITS') and takes a share of the element. An element with too many
+    slices is drawn whole in the color of a stand-in value. A ring can be sliced as well, with the
+    fill or on its own ('slice_layout').
+
+spec
+    A drawing instruction for one layer on one drawn map, used on each KEGG map and drawn by
+    '_draw_map_elements', whose docstring lists its keys. '_layer_spec' builds most specs from
+    models, and '_element_presence_specs' those of a single fixed color. Its 'entry_keys' are the
+    accessions the layer touches, which find the Entries to color. Specs are staged in list order,
+    and reactions are drawn beneath compounds whatever the order.
+
+colorer, priority
+    A colorer takes a 'kgml.Entry' and returns '(color_hexcode, priority)', or None to leave it
+    uncolored. Colors of higher priority are drawn on top, and the priority of a quantitative color
+    is the fraction of the scale at its value, reversed by 'reverse_overlay'.
+
+stage
+    To write a map's colors, slices, rings and bars onto a freshly loaded 'kgml.Pathway' and gather
+    their priorities ('_stage_map_elements'). 'kgml.Pathway.set_color_priority' then orders the
+    Entries, derives compound colors, and recolors each Entry left uncolored in a reserved color of
+    its kind of map ('kgml.reserved_recolor_colors').
+
+derived compound colors
+    The colors that compound circles take from the reaction lines that end at them, on a global or
+    overview map where a reaction layer stages fills and no compound layer does
+    ('_derives_compounds'). The spec key 'derived_compound' says how.
+
+key (file)
+    A colorbar, a legend of categorical values, or a bar key: a file named from its model's 'name'
+    ('ColorbarDrawer'), or from its group for a group's count colorbar. The key table is the text
+    file that lists the slices of fills and rings ('_write_slice_keys'). Elsewhere a key is usually
+    a dict key, or one of the key columns of a text file.
+"""
 
 import os
 import re
