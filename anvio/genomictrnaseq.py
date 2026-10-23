@@ -943,7 +943,8 @@ class Integrator(object):
                 hits_df = hits_df[hits_df['bin_id'] != '']
             elif self.internal_genomes_path and self.external_genomes_path:
                 external_genome_contigs_db_hashes = [
-                    genome_info['contigs_db_hash'] for genome_info in self.genome_info_dict.values()
+                    genome_info['contigs_db_info'].hash
+                    for genome_info in self.genome_info_dict.values()
                     if genome_info['bin_id'] is None]
                 retained_index = []
                 for key, contigs_db_hash, bin_id in zip(hits_df.index, hits_df['contigs_db_hash'], hits_df['bin_id']):
