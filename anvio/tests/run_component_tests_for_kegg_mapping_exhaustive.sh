@@ -211,6 +211,9 @@ printf 'accession\tcoverage\tlevel\nK00844\t10\t-2\nK01810\t20\t3\n' > draw_kos_
 printf 'accession\tcoverage\tlevel\nK00844\t10\t\nK01810\t20\t\n' > draw_bad_empty_bar.reaction.txt
 # K03850 is drawn as a line on the standard map 00510, and K00844 as a box on 00010.
 printf 'accession\tlevel\nK03850\t2\nK00844\t3\n' > draw_kos_bar_lines.reaction.txt
+# K01623 and K01624 share the box of entry 18 of map 00010, and only K01623 has a bar value. K00174
+# and K00175 share the box of entry 154, and neither has one. K03850 is a box and a line on 00510.
+printf 'accession\tcoverage\tlevel\nK01623\t10\t2.5\nK01624\t20\t\nK00174\t1\t\nK00175\t2\t\nK03850\t30\t\n' > draw_kos_bar_gaps.reaction.txt
 
 # A test that expects a refusal discards the output of the draw, so a fixture that was never written
 # would make that test pass for the wrong reason. Fail loudly here instead.
@@ -250,7 +253,7 @@ for fixture in contigs-db-group-information.txt draw_kos_samples300.reaction.txt
               draw_kos_status_empty_cell.reaction.txt draw_kos_bar_empty_cell.reaction.txt \
               draw_kos_bar_zero.reaction.txt draw_bad_na_bar.reaction.txt \
               draw_kos_bar_signed.reaction.txt draw_bad_empty_bar.reaction.txt \
-              draw_kos_bar_lines.reaction.txt
+              draw_kos_bar_lines.reaction.txt draw_kos_bar_gaps.reaction.txt
 do
     if [ ! -s $fixture ]
     then
@@ -4760,6 +4763,146 @@ then
     exit 1
 fi
 
+# Sliced boxes show a bar in each column. A column whose accession has a fill value but no bar value
+# is white and keeps its share, and its row of the key table has no bar value. A box none of whose
+# columns has a bar value is left uncolored, and a warning counts it. Lines take no bars and keep
+# their slices, with no bar values in the key table, on standard and overview maps alike. Each box
+# has one accession with a bar value at most, so every bar is horizontal and no box drops its label.
+INFO "Testing sliced boxes and lines without bar values"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_gaps.reaction.txt \
+    --reaction-bar-column level --reaction-slice-by accession \
+    --output-dir draw_txt_bar_gaps --pathway-numbers $pathway_numbers 00510 \
+    --no-progress 2>&1 | tee draw_txt_bar_gaps.log
+table=draw_txt_bar_gaps/slice_key_reactions.txt
+if [ "$(awk -F '\t' '$1 == "00010" && $3 == 18 {print $8 "=" $14}' $table | tr '\n' ' ')" \
+    != "K01623=2.5 K01624= " ]
+then
+    echo "ERROR: the key table should give K01623 its bar value and K01624 none."
+    exit 1
+fi
+if [ -n "$(awk -F '\t' '($1 == "00010" && $3 == 154) || ($1 == "00510" && $3 == 192)' $table)" ] \
+    || ! tr -d ' \n' < draw_txt_bar_gaps.log \
+    | grep -q "2reactionbox(es)withafillcolorhavenobarvalue"
+then
+    echo "ERROR: the boxes of K00174 and K00175 and of K03850 should have been left uncolored."
+    exit 1
+fi
+if [ "$(awk -F '\t' '$1 == "00510" && $3 == 143 {print $8 "=" $10 "=" $14}' $table)" \
+    != "K03850=30.0=" ] \
+    || [ "$(awk -F '\t' '$1 == "01200"' $table | wc -l)" -eq 0 ] \
+    || [ "$(awk -F '\t' '$1 == "01200" && $14 != ""' $table | wc -l)" -ne 0 ]
+then
+    echo "ERROR: lines should keep their slices, with no bar values in the key table."
+    exit 1
+fi
+if [ -e draw_txt_bar_gaps/label_key_reactions.txt ]
+then
+    echo "ERROR: boxes with one accession with a bar value should keep their labels."
+    exit 1
+fi
+
+# The 12 genes of K00844 are more than fit in a box, so it is drawn whole, with one bar of the mean
+# of their bar values. The 12 genes have bar values, so the bar runs up the box, which drops its
+# label. The key table lists the 12 genes with their bar values and the reason. With 11 genes, the
+# box is drawn in columns.
+INFO "Testing sliced bars over the cap"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_genes12_status.reaction.txt \
+    --reaction-value-type categorical --reaction-bar-column coverage --reaction-slice-by gene \
+    --output-dir draw_txt_bar_over_cap --pathway-numbers $pathway_numbers --no-progress
+if [ "$(awk -F '\t' '$13 == "over the cap" && $14 != ""' \
+    draw_txt_bar_over_cap/slice_key_reactions.txt | wc -l)" -ne 24 ] \
+    || [ "$(sed 1d draw_txt_bar_over_cap/label_key_reactions.txt | cut -f8 | sort -u)" != "6.5" ]
+then
+    echo "ERROR: a box over the cap should list its genes and show the mean of their bar values."
+    exit 1
+fi
+anvi-draw-kegg-pathways --reaction-txt draw_kos_genes11_status.reaction.txt \
+    --reaction-value-type categorical --reaction-bar-column coverage --reaction-slice-by gene \
+    --output-dir draw_txt_bar_under_cap --pathway-numbers $pathway_numbers --no-progress
+if [ -n "$(sed 1d draw_txt_bar_under_cap/slice_key_reactions.txt | cut -f13 | sort -u)" ] \
+    || [ "$(awk -F '\t' '$1 == "00010" && $3 == 69 && $7 != ""' \
+    draw_txt_bar_under_cap/slice_key_reactions.txt | wc -l)" -ne 11 ]
+then
+    echo "ERROR: a box of 11 genes should have been drawn in 11 columns."
+    exit 1
+fi
+
+# Weights size the columns of horizontal bars and of strips too. Each is read as a fraction of its
+# own column. The bars of a file without a value column are sliced on their own, and those of a file
+# with one follow the slices of its fill. Either way, the weights give K01622 a small share.
+INFO "Testing horizontal bars and strips in weighted columns"
+for style in fill strip
+do
+    anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+        --reaction-bar-column expression --reaction-slice-weights coverage \
+        --reaction-slice-by accession --reaction-bar-orientation horizontal \
+        --reaction-bar-style $style --output-dir draw_txt_bar_weighted_$style \
+        --pathway-numbers $pathway_numbers --draw-individual-files --no-progress
+done
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+    --reaction-value-type categorical --reaction-bar-column expression \
+    --reaction-slice-weights coverage --reaction-slice-by accession \
+    --reaction-bar-orientation horizontal --output-dir draw_txt_bar_weighted_values \
+    --pathway-numbers $pathway_numbers --draw-individual-files --no-progress
+for output in draw_txt_bar_weighted_fill draw_txt_bar_weighted_strip draw_txt_bar_weighted_values
+do
+    if [ "$(awk -F '\t' '$1 == "00010" && $2 == "SAMPLE_1" && $3 == 18 {print $8 "=" $11}' \
+        $output/slice_key_reactions.txt | tr '\n' ' ')" \
+        != "K01624=0.47619047619047616 K01622=0.047619047619047616 K16306=0.47619047619047616 " ]
+    then
+        echo "ERROR: the columns of bars in '$output' should take their shares from the weights."
+        exit 1
+    fi
+done
+
+# On a map whose fill shows presence, such as the 'unified' map without a sample summary, the fill
+# is not sliced. A box then shows one bar of the mean of the bar values of its accessions. Two or
+# more accessions of entry 18 have bar values, so its bar runs up the box, which drops its label.
+INFO "Testing whole bars on a map whose fill shows presence in a sliced layer"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --reaction-bar-sample-summary mean \
+    --reaction-slice-by accession --output-dir draw_txt_bar_sliced_presence \
+    --pathway-numbers $pathway_numbers --draw-individual-files --no-progress
+if [ "$(awk -F '\t' '$1 == "00010" && $2 == "unified" && $3 == 18 {print $8}' \
+    draw_txt_bar_sliced_presence/label_key_reactions.txt)" != "16.645833333333336" ] \
+    || [ -n "$(awk -F '\t' '$2 == "unified"' \
+    draw_txt_bar_sliced_presence/slice_key_reactions.txt)" ]
+then
+    echo "ERROR: the 'unified' map should show whole bars of the mean of the accessions."
+    exit 1
+fi
+
+# The rings of a file whose only column of values is its bar column are divided on their own, even
+# where they are sliced by the unit of the bars, since its fill is not sliced. The key table of the
+# rings has no 'bar' column.
+INFO "Testing rings beside bars sliced on their own"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_border.reaction.txt \
+    --reaction-bar-column coverage --reaction-border-column status \
+    --reaction-border-value-type categorical --reaction-slice-by accession \
+    --reaction-border-slice-by accession --output-dir draw_txt_bar_alone_rings \
+    --pathway-numbers $pathway_numbers --draw-individual-files \
+    --no-progress 2>&1 | tee draw_txt_bar_alone_rings.log
+if ! tr -d ' \n' < draw_txt_bar_alone_rings.log | grep -q "byaccession,independentofthefill" \
+    || [ "$(head -1 draw_txt_bar_alone_rings/slice_key_reactions_border.txt \
+    | awk -F '\t' '{print NF}')" -ne 13 ]
+then
+    echo "ERROR: rings beside bars sliced on their own should be divided on their own."
+    exit 1
+fi
+
+# The columns of bars sliced on their own take the one color of the fill, which '--reaction-color'
+# can give.
+INFO "Testing bars sliced on their own in a color of their own"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-bar-column coverage --reaction-slice-by accession --reaction-color "#FF8800" \
+    --output-dir draw_txt_bar_sliced_color --pathway-numbers $pathway_numbers --no-progress
+if [ "$(sed 1d draw_txt_bar_sliced_color/slice_key_reactions.txt | cut -f12 | sort -u)" \
+    != "#FF8800" ]
+then
+    echo "ERROR: the columns of bars sliced on their own should take the color of the fill."
+    exit 1
+fi
+
 # Bar values of 0 alone draw bars of no length, and a key labeled 0 alone.
 INFO "Testing a bar scale whose only value is 0"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_zero.reaction.txt --reaction-bar-column level \
@@ -4853,6 +4996,64 @@ fi
 if ! tr -d ' \n' < draw_txt_bar_vertical_strip.log | grep -q "soastripisalwayshorizontal"
 then
     echo "ERROR: vertical strips were refused for another reason."
+    exit 1
+fi
+
+# The aggregations of bars follow the rules of the fill in slices. A numeric bar accession
+# aggregation is refused with slices of accessions, and one that does not return a single value
+# unchanged with slices of genes. The bar gene aggregation is refused with slices of genes.
+for case in "accession-aggregation mean accession" "accession-aggregation std gene" \
+    "gene-aggregation mean gene"
+do
+    read -r option aggregation unit <<< "$case"
+    if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+        --reaction-sample-summary mean --reaction-bar-column coverage \
+        --reaction-bar-sample-summary mean --reaction-bar-$option $aggregation \
+        --reaction-slice-by $unit --pathway-numbers $pathway_numbers --draw-individual-files \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_bar_sliced_${option}_$unit.log 2>&1
+    then
+        echo "ERROR: '--reaction-bar-$option $aggregation' with slices of ${unit}s should have" \
+            "failed but did not."
+        exit 1
+    fi
+done
+for case in "accession-aggregation_accession eachcolumnofaboxshowsthebarvalueofoneaccession" \
+    "accession-aggregation_gene '--reaction-bar-accession-aggregation'wasgivenas'std'" \
+    "gene-aggregation_gene eachcolumnofaboxshowsthebarvalueofonegene"
+do
+    read -r name phrase <<< "$case"
+    if ! tr -d ' \n' < draw_txt_bar_sliced_$name.log | grep -q "$phrase"
+    then
+        echo "ERROR: the case '$name' of sliced bars was refused for another reason."
+        exit 1
+    fi
+done
+
+# A bar accession aggregation that returns one value unchanged is accepted with slices of genes.
+INFO "Testing a bar accession aggregation with slices of genes"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-sample-summary mean --reaction-bar-column coverage \
+    --reaction-bar-sample-summary mean --reaction-bar-accession-aggregation max \
+    --reaction-slice-by gene --output-dir draw_txt_bar_sliced_gene_max \
+    --pathway-numbers $pathway_numbers --draw-individual-files --no-progress
+
+# The bars of a file whose only column of values is its bar column are sliced on the maps that show
+# bars. Without a bar sample summary, no map that pools samples shows them, so a share summary is
+# refused.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+    --reaction-bar-column expression --reaction-slice-weights coverage --reaction-slice-by gene \
+    --reaction-slice-share-summary pooled_sum --pathway-numbers $pathway_numbers \
+    --draw-individual-files --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_alone_share_summary.log 2>&1
+then
+    echo "ERROR: a share summary with no map that pools bars should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_alone_share_summary.log \
+    | grep -q "soitsbarsareslicedontheirown,onthemapsthatshowbars"
+then
+    echo "ERROR: a share summary with no map that pools bars was refused for another reason."
     exit 1
 fi
 
@@ -5086,23 +5287,6 @@ if ! tr -d ' \n' < draw_txt_bar_color_none.log \
     | grep -q "sothebarswouldhavenocolor"
 then
     echo "ERROR: bars with '--reaction-color none' was refused for another reason."
-    exit 1
-fi
-
-# Bars are not drawn in slices yet.
-if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
-    --reaction-bar-column coverage --reaction-slice-by accession \
-    --pathway-numbers $pathway_numbers \
-    --output-dir draw_txt_bad --overwrite-output-destinations \
-    --no-progress > draw_txt_bar_slice_by.log 2>&1
-then
-    echo "ERROR: bars with '--reaction-slice-by' should have failed but did not."
-    exit 1
-fi
-if ! tr -d ' \n' < draw_txt_bar_slice_by.log \
-    | grep -q "cannotbecombinedwith'--reaction-bar-column'yet"
-then
-    echo "ERROR: bars with '--reaction-slice-by' was refused for another reason."
     exit 1
 fi
 

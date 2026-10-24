@@ -337,59 +337,65 @@ def get_args() -> Namespace:
         '--reaction-slice-by', choices=list(SLICE_UNITS), help=
         f"Draw each reaction element in slices, one for each of its accessions or genes with a "
         f"value on the map. Each slice takes the color of its own value. This needs a "
-        f"'--reaction-txt' file with a value column. Maps that show values are sliced, but maps "
-        f"that show presence are drawn whole. With 'accession', a KO file is sliced by KO, and a "
-        f"reaction file by KEGG reaction. Slices follow the order of the accessions in the map's "
-        f"KGML file. With 'gene', an element is sliced by the genes of a 'gene_id' column, and "
-        f"every row needs a gene ID. A gene with rows for two or more accessions of an element is "
-        f"one slice. In each sample, the values of these rows are reduced to their mean, or to "
-        f"their circular mean with '--reaction-value-period'. Without a period, "
-        f"'--reaction-accession-aggregation' can name another aggregation that returns a single "
-        f"value unchanged, such as 'sum' or 'max'. For categorical values, its rule chooses among "
-        f"the rows. Slices of genes are ordered by the first of their accessions in the KGML file, "
-        f"and then by gene ID, with digits compared as numbers. A gene ID must name the same gene "
-        f"in every sample, since the maps of groups and the 'unified' map pool the values of each "
-        f"gene across samples. Gene caller IDs start at 0 in every contigs database, so IDs from "
-        f"separate assemblies must be made unique, for example with a sample prefix. A warning "
-        f"names the gene IDs that have no accession in common between their rows in two samples of "
-        f"a map that pools samples. Such an ID likely names two genes. Another warning names the "
-        f"maps that pool samples where no gene ID occurs in two or more samples. Each gene is a "
-        f"slice of its own, so '--reaction-gene-aggregation' is refused. "
-        f"'--reaction-slice-weight-aggregation' is refused too, unless the rings of a border are "
-        f"sliced by accession ('--reaction-border-slice-by'). A box is cut into columns from left "
-        f"to right, and a line into repeating dashes. The dashes fill the part of the line that "
-        f"compound circles leave visible. The slices of an element are equal unless "
-        f"'--reaction-slice-weights' names a column of weights. A box is drawn whole where an "
-        f"equal slice would be narrower than {MIN_BOX_SLICE_WIDTH} points, and a line where an "
-        f"equal slice of its visible part would be shorter than the line is wide. An element drawn "
-        f"whole takes the mean of its slice values, weighted by their shares. With "
-        f"'--reaction-value-period', this is a circular mean. With '--reaction-value-type "
-        f"categorical', the element takes the value that '--reaction-accession-aggregation' "
-        f"chooses among the accessions or genes of its slices. Each slice shows the value of one "
-        f"accession or gene, so the color scales span the values of single accessions or genes. "
-        f"When numbers are sliced by accession, the weighted mean takes the place of "
-        f"'--reaction-accession-aggregation', which is refused. A sliced element keeps one label "
-        f"on a map whose reaction elements are labeled ('--reaction-labels'), and its slices are "
-        f"not labeled. The file 'slice_key_reactions.txt' in the output directory lists each slice "
-        f"on each map, and each element drawn whole."
+        f"'--reaction-txt' file with a value column or a bar column. Maps that show values are "
+        f"sliced, but maps that show presence are drawn whole. A bar column "
+        f"('--reaction-bar-column') is sliced with the fill, and a file whose only column of "
+        f"values is its bar column has its bars sliced on their own, in the one color of its fill. "
+        f"With 'accession', a KO file is sliced by KO, and a reaction file by KEGG reaction. "
+        f"Slices follow the order of the accessions in the map's KGML file. With 'gene', an "
+        f"element is sliced by the genes of a 'gene_id' column, and every row needs a gene ID. A "
+        f"gene with rows for two or more accessions of an element is one slice. In each sample, "
+        f"the values of these rows are reduced to their mean, or to their circular mean with "
+        f"'--reaction-value-period'. Without a period, '--reaction-accession-aggregation' can name "
+        f"another aggregation that returns a single value unchanged, such as 'sum' or 'max'. For "
+        f"categorical values, its rule chooses among the rows. Slices of genes are ordered by the "
+        f"first of their accessions in the KGML file, and then by gene ID, with digits compared as "
+        f"numbers. A gene ID must name the same gene in every sample, since the maps of groups and "
+        f"the 'unified' map pool the values of each gene across samples. Gene caller IDs start at "
+        f"0 in every contigs database, so IDs from separate assemblies must be made unique, for "
+        f"example with a sample prefix. A warning names the gene IDs that have no accession in "
+        f"common between their rows in two samples of a map that pools samples. Such an ID likely "
+        f"names two genes. Another warning names the maps that pool samples where no gene ID "
+        f"occurs in two or more samples. Each gene is a slice of its own, so "
+        f"'--reaction-gene-aggregation' is refused. '--reaction-slice-weight-aggregation' is "
+        f"refused too, unless the rings of a border are sliced by accession "
+        f"('--reaction-border-slice-by'). A box is cut into columns from left to right, and a line "
+        f"into repeating dashes. The dashes fill the part of the line that compound circles leave "
+        f"visible. The slices of an element are equal unless '--reaction-slice-weights' names a "
+        f"column of weights. A box is drawn whole where an equal slice would be narrower than "
+        f"{MIN_BOX_SLICE_WIDTH} points, and a line where an equal slice of its visible part would "
+        f"be shorter than the line is wide. An element drawn whole takes the mean of its slice "
+        f"values, weighted by their shares. With '--reaction-value-period', this is a circular "
+        f"mean. With '--reaction-value-type categorical', the element takes the value that "
+        f"'--reaction-accession-aggregation' chooses among the accessions or genes of its slices. "
+        f"Each slice shows the value of one accession or gene, so the color scales span the values "
+        f"of single accessions or genes. When numbers are sliced by accession, the weighted mean "
+        f"takes the place of '--reaction-accession-aggregation', which is refused. A sliced "
+        f"element keeps one label on a map whose reaction elements are labeled "
+        f"('--reaction-labels'), and its slices are not labeled. The file "
+        f"'slice_key_reactions.txt' in the output directory lists each slice on each map, and each "
+        f"element drawn whole."
     )
     groupTXT.add_argument(
         '--reaction-slice-weights', metavar='COLUMN', help=
         "The column of the reaction file that holds the weights of slices ('--reaction-slice-by'). "
         "The weights also size the slices of rings that are divided on their own "
-        "('--reaction-border-slice-by'). This option needs '--reaction-slice-by' or "
-        "'--reaction-border-slice-by'. Without this option, the slices of an element are equal. "
-        "This column is never taken for the value column. Every row needs a weight, which is a "
-        "number of 0 or more. Where a map shows one sample, or the file has no 'sample' column, "
-        "the share of a slice is its weight divided by the total weight of the slices drawn. An "
-        "accession or gene with a weight of 0 gets no slice. When slicing by accession with a "
-        "'gene_id' column, the weights of the genes of an accession are added up "
-        "('--reaction-slice-weight-aggregation'). When slicing by gene, a gene takes the mean "
-        "weight of its rows for the accessions of an element, so a gene with two KOs does not take "
-        "twice the space. Group maps and the 'unified' map pool the shares of their samples "
-        "('--reaction-slice-share-summary'). The width of a slice in a box, or its length on a "
-        "line, shows its share of the element, not its weight. The weights do not change the "
-        "colors of slices."
+        "('--reaction-border-slice-by'), and the columns of bars of a file whose only other column "
+        "of values is its bar column ('--reaction-bar-column'). In columns of unequal width, a bar "
+        "is read as a fraction of its own column. Vertical bars compare by height, but the eye "
+        "also compares their areas, and the width of a column shows its share, not an amount. This "
+        "option needs '--reaction-slice-by' or '--reaction-border-slice-by'. Without this option, "
+        "the slices of an element are equal. This column is never taken for the value column. "
+        "Every row needs a weight, which is a number of 0 or more. Where a map shows one sample, "
+        "or the file has no 'sample' column, the share of a slice is its weight divided by the "
+        "total weight of the slices drawn. An accession or gene with a weight of 0 gets no slice. "
+        "When slicing by accession with a 'gene_id' column, the weights of the genes of an "
+        "accession are added up ('--reaction-slice-weight-aggregation'). When slicing by gene, a "
+        "gene takes the mean weight of its rows for the accessions of an element, so a gene with "
+        "two KOs does not take twice the space. Group maps and the 'unified' map pool the shares "
+        "of their samples ('--reaction-slice-share-summary'). The width of a slice in a box, or "
+        "its length on a line, shows its share of the element, not its weight. The weights do not "
+        "change the colors of slices."
     )
     groupTXT.add_argument(
         '--reaction-slice-weight-aggregation', choices=list(SLICE_WEIGHT_AGGREGATIONS), help=
@@ -412,7 +418,8 @@ def get_args() -> Namespace:
         "the element. A sample with more weight counts for more, so use it where the weights are "
         "in the same units in every sample, such as counts at comparable sequencing depth. Slices "
         "of genes are pooled by the same rules, with genes in place of accessions, and so are the "
-        "slices of rings that are divided on their own ('--reaction-border-slice-by'). With "
+        "slices of rings that are divided on their own ('--reaction-border-slice-by') and the "
+        "columns of bars sliced on their own in a file without a value column. With "
         "'--groups-txt', the map of each group pools its samples, and the 'unified' map pools the "
         "groups by the same rule. Under 'share_mean', each group counts once. This option needs "
         "'--reaction-slice-weights', since slices without weights are equal on every map."
@@ -648,8 +655,11 @@ def get_args() -> Namespace:
         "('--reaction-bar-style'). Reaction lines take no bars. The bars take keys of their own, "
         "'bar_key_reactions.pdf' and 'bar_key_reactions_samples.pdf' or "
         "'bar_key_reactions_groups.pdf', labeled with the column and ' (bar)'. Every other "
-        "'--reaction-bar-*' option needs this one. Bars cannot be drawn in slices yet, so "
-        "'--reaction-slice-by' is refused with this option."
+        "'--reaction-bar-*' option needs this one. With '--reaction-slice-by', each column of a "
+        "box shows the bar value of its own accession or gene. A column whose unit has no bar "
+        "value keeps its share, white in the default style, and in its color without a strip in "
+        "the strip style. A file whose only other column is this one slices its bars on their own, "
+        "in the color of the fill. 'slice_key_reactions.txt' gives the bar value of each slice."
     )
     groupBAR.add_argument(
         '--reaction-bar-style', choices=list(BAR_STYLES), help=
@@ -660,38 +670,51 @@ def get_args() -> Namespace:
         f"expression. With 'strip', the fill is drawn whole, and the bar is a dark bar on a white "
         f"strip {BAR_STRIP_HEIGHT} points tall along the bottom of the box, below its label. Both "
         f"values then stay readable. A box with a fill and no bar value keeps its whole fill "
-        f"without a strip, which cannot be read as a value, since a strip of 0 is white. The bar "
-        f"keys of strips are white boxes rather than gray ones."
+        f"without a strip, which cannot be read as a value, since a strip of 0 is white. With "
+        f"'--reaction-slice-by', each column of a box takes a strip of its own, which is read as a "
+        f"fraction of the width of its column. A column without a bar value keeps its color "
+        f"without a strip, and a box none of whose columns has one keeps its fill in columns. The "
+        f"bar keys of strips are white boxes rather than gray ones."
     )
     groupBAR.add_argument(
         '--reaction-bar-orientation', choices=list(BAR_ORIENTATIONS), help=
-        "Which way bars run in their boxes. With 'horizontal', the default, a bar runs across its "
-        "box. With 'vertical', it runs up its box from the bottom, or down from the top where "
-        "every bar value is negative. A box is about a third as high as it is wide, so 1%% of the "
-        "bar scale is 0.33 points up a box, or 0.27 points inside a ring, where a horizontal bar "
-        "has 0.91 or 0.85 points. The top of a vertical bar would run behind the label of its box, "
-        "so a box with a vertical bar is drawn without its label, and 'label_key_reactions.txt' "
-        "lists such boxes. The key of vertical bars has its ruler beside its box rather than under "
-        "it. A strip lies along the bottom of its box, so 'vertical' is refused with "
+        "Which way bars run in their boxes. With 'horizontal', a bar runs across its box. With "
+        "'vertical', it runs up its box from the bottom, or down from the top where every bar "
+        "value is negative. Without this option, bars are horizontal, except with "
+        "'--reaction-slice-by'. The bars of an element are then vertical where two or more of its "
+        "accessions or genes have bar values in the file, so that its columns of bars stand side "
+        "by side, and horizontal otherwise. An element drawn whole, with one slice or more than "
+        "fit, takes one bar of its orientation. A box is about a third as high as it is wide, so "
+        "1%% of the bar scale is 0.33 points up a box, or 0.27 points inside a ring, where a "
+        "horizontal bar has 0.91 or 0.85 points. The top of a vertical bar would run behind the "
+        "label of its box, so a box with a vertical bar is drawn without its label, and "
+        "'label_key_reactions.txt' lists such boxes. A bar key has a ruler under its box for "
+        "horizontal bars, beside it for vertical bars, and both where the bars run both ways. A "
+        "strip lies along the bottom of its box, so 'vertical' is refused with "
         "'--reaction-bar-style strip'."
     )
     groupBAR.add_argument(
         '--reaction-bar-gene-aggregation', metavar='NAME', help=
         "Like '--reaction-gene-aggregation', but for the bar column. The default is 'mean', not "
         "'sum'. A bar value given once per KO and repeated in the rows of its genes keeps its size "
-        "under 'mean'."
+        "under 'mean'. It is refused with '--reaction-slice-by gene', where each gene is a column "
+        "of its own."
     )
     groupBAR.add_argument(
         '--reaction-bar-accession-aggregation', metavar='NAME', help=
         "Like '--reaction-accession-aggregation', but for the bar column. The default is 'mean', "
-        "not 'sum'."
+        "not 'sum'. As for the fill, it is refused with '--reaction-slice-by accession', since "
+        "each column shows the bar value of one accession, and a box drawn whole takes the mean of "
+        "the bar values of its columns, weighted by their shares. With '--reaction-slice-by gene', "
+        "it reduces the rows of a gene for the accessions of an element, and it must return a "
+        "single value unchanged."
     )
     groupBAR.add_argument(
         '--reaction-bar-sample-summary', metavar='NAME', help=
         f"Like '--reaction-sample-summary', but for the bar column. There is no default. Without "
-        f"it, the 'unified' map shows no bars and draws its fills whole, and with '--groups-txt', "
-        f"no map of a group shows bars either. A bar shows values only, so the presence names "
-        f"{SUMMARY_PRESENCE_PHRASE} are refused."
+        f"it, the 'unified' map shows no bars and draws its fills without them, and with "
+        f"'--groups-txt', no map of a group shows bars either. A bar shows values only, so the "
+        f"presence names {SUMMARY_PRESENCE_PHRASE} are refused."
     )
     groupBAR.add_argument(
         '--reaction-bar-group-summary', metavar='NAME', help=
@@ -1833,13 +1856,6 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
     # Skip the flag guards if a provided file is malformed/ambiguous, so the reader raises the
     # definitive file error rather than a guard reporting a misleading secondary problem.
     if not any(layer['mode'] is None for layer in present):
-        # Bars are not drawn in slices yet. This is checked first, since the guards of slices below
-        # take a file with a bar column and no value column to be one without values.
-        if args.reaction_slice_by is not None and args.reaction_bar_column is not None:
-            raise ConfigError(
-                "'--reaction-slice-by' cannot be combined with '--reaction-bar-column' yet. Bars "
-                "in the slices of boxes are not supported. Please use only one of them."
-            )
         # Slicing draws reaction elements in slices, so every slicing option needs the reaction
         # file. The options that size slices also need '--reaction-slice-by', or rings sliced on
         # their own ('--reaction-border-slice-by'). A column of weights is left out when the value
@@ -1879,11 +1895,12 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"slice elements, give {units}. To slice the rings of the border column, give "
                     f"{units.replace('-slice-by', '-border-slice-by')}. Otherwise, drop '{flag}'."
                 )
-        # Slices by gene need the genes of a 'gene_id' column. A file without a value column skips
-        # this check, so that the refusal of slices of presence below comes first. A layer given
-        # '--reaction-color none' skips it too, since its own refusals come below.
+        # Slices by gene need the genes of a 'gene_id' column. A file without a value column or a
+        # bar column skips this check, so that the refusal of slices of presence below comes first.
+        # A layer given '--reaction-color none' skips it too, since its own refusals come below.
         if (
-            args.reaction_slice_by == 'gene' and reaction['mode'] in VALUE_MODES
+            args.reaction_slice_by == 'gene'
+            and (reaction['mode'] in VALUE_MODES or reaction['has_bar'])
             and not reaction['has_gene_id'] and args.reaction_color != 'none'
         ):
             raise ConfigError(
@@ -1920,10 +1937,11 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"of slices, but the reaction file has no column with that header."
                 )
             # Weights can size the slices of rings without a value column. The border column then
-            # colors them. A layer given '--reaction-color none' is refused below.
+            # colors them. They can size the columns of bars too, which take the one color of the
+            # fill. A layer given '--reaction-color none' is refused below.
             sliced_rings = reaction['has_border'] and args.reaction_border_slice_by is not None
             if (
-                reaction['mode'] not in VALUE_MODES and not sliced_rings
+                reaction['mode'] not in VALUE_MODES and not sliced_rings and not reaction['has_bar']
                 and args.reaction_color != 'none'
             ):
                 key_columns = "'accession', 'gene_id', and 'sample'"
@@ -3009,9 +3027,26 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         # and a drawn map that shows them. Without a 'sample' column, every map shows the values.
         # With one, the map of each sample shows them. The map of a group and the 'unified' map show
         # them only where their summary pools values or chooses a value with a rule. Maps that show
-        # presence are drawn whole. The mapper repeats these checks for programmatic callers.
+        # presence are drawn whole. A file whose only column of values is its bar column is the
+        # exception. Its bars are sliced in the one color of its fill, on the maps that show bars,
+        # and the checks of bars find these maps. The mapper repeats these checks for programmatic
+        # callers.
         fill_pooled = False
-        if args.reaction_slice_by is not None:
+        bars_alone = (
+            args.reaction_slice_by is not None and reaction['mode'] not in VALUE_MODES
+            and reaction['has_bar']
+        )
+        if bars_alone:
+            has_sample = reaction['has_sample']
+            grouped = has_sample and args.groups_txt is not None
+            bar_unified_summary = (
+                args.reaction_bar_group_summary if grouped else args.reaction_bar_sample_summary
+            )
+            fill_pooled = has_sample and (
+                (grouped and draw_individual_maps and args.reaction_bar_sample_summary is not None)
+                or (not args.skip_unified_maps and bar_unified_summary is not None)
+            )
+        elif args.reaction_slice_by is not None:
             if reaction['mode'] not in VALUE_MODES:
                 raise ConfigError(
                     f"'--reaction-slice-by' gives each slice the color of its own value, but the "
@@ -3123,7 +3158,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
             grouped = has_sample and args.groups_txt is not None
             independent = (
                 reaction['has_border'] and args.reaction_border_slice_by is not None
-                and args.reaction_border_slice_by != args.reaction_slice_by
+                and (args.reaction_border_slice_by != args.reaction_slice_by or bars_alone)
             )
             border_unified_summary = (
                 args.reaction_border_group_summary if grouped
@@ -3135,6 +3170,20 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     and args.reaction_border_sample_summary is not None
                 )
                 or (not args.skip_unified_maps and border_unified_summary is not None)
+            )
+            # The bars of a file whose only column of values is its bar column are sliced on the
+            # maps that show bars. A bar summary gives a map that pools samples its bar values.
+            bars_reason = (
+                "The fill of the reaction file shows presence, so its bars are sliced on their "
+                "own, on the maps that show bars. "
+                + (
+                    "The maps of groups show bars where they are drawn and "
+                    "'--reaction-bar-sample-summary' gives their bar values, and the 'unified' map "
+                    "where '--reaction-bar-group-summary' gives them."
+                    if grouped else
+                    "Without groups, only the 'unified' map pools the samples. It shows bars where "
+                    "'--reaction-bar-sample-summary' gives their bar values."
+                )
             )
             if independent and not (ring_pooled or fill_pooled):
                 alternative = "Please drop '--reaction-slice-share-summary'."
@@ -3150,14 +3199,17 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                         "takes its shares from the weights of that sample."
                     )
                 else:
-                    reason = (
+                    fill_reason = bars_reason if bars_alone else (
                         "The fill shows slices on such a map only where '--reaction-slice-by' is "
                         "given and the summary of that map pools values or chooses them with a "
-                        "rule. The rings show slices on such a map only where it is drawn and a "
-                        "border summary gives its border values. The maps of groups take them from "
-                        "'--reaction-border-sample-summary', and the 'unified' map from "
-                        "'--reaction-border-group-summary' with groups, or from "
-                        "'--reaction-border-sample-summary' without them."
+                        "rule."
+                    )
+                    reason = (
+                        f"{fill_reason} The rings show slices on such a map only where it is drawn "
+                        f"and a border summary gives its border values. The maps of groups take "
+                        f"them from '--reaction-border-sample-summary', and the 'unified' map from "
+                        f"'--reaction-border-group-summary' with groups, or from "
+                        f"'--reaction-border-sample-summary' without them."
                     )
                     alternative = (
                         "Please drop '--reaction-slice-share-summary', or show slices on such a "
@@ -3175,6 +3227,11 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                         "map takes its shares from the weights in the file."
                     )
                     alternative = "Please drop '--reaction-slice-share-summary'."
+                elif bars_alone:
+                    reason = bars_reason
+                    alternative = (
+                        "Please show bars on such a map, or drop '--reaction-slice-share-summary'."
+                    )
                 elif args.skip_unified_maps:
                     reason = (
                         "Without groups, only the 'unified' map pools the samples, and "

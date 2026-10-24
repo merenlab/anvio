@@ -757,6 +757,75 @@ then
     exit 1
 fi
 
+# Sliced boxes show a bar in each column, of the bar value of its own accession. An element with two
+# or more accessions with bar values runs its bars up its columns, and its box drops its label. The
+# key table of slices gives the bar value of each slice in a last column.
+INFO "Drawing bars in the slices of boxes"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+                        --reaction-sample-summary mean \
+                        --reaction-bar-column coverage \
+                        --reaction-bar-sample-summary mean \
+                        --reaction-slice-by accession \
+                        --output-dir draw_txt_samples_kos_sliced_bars \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+# Each column of entry 18 on the 'unified' map shows the mean bar value of its accession. Two or
+# more accessions of entries 18 and 154 have bar values in the file, so these boxes drop their
+# labels on every map, even where one accession shows, as K00174 does on the map of SAMPLE_2.
+table=draw_txt_samples_kos_sliced_bars/slice_key_reactions.txt
+labels=draw_txt_samples_kos_sliced_bars/label_key_reactions.txt
+if [ "$(head -1 $table | cut -f14)" != "bar" ] \
+    || [ "$(awk -F '\t' '$1 == "00010" && $2 == "unified" && $3 == 18 {print $14}' $table \
+    | tr '\n' ' ')" != "13.333333333333334 21.0 17.25 15.0 " ]
+then
+    echo "ERROR: the key table should end with a 'bar' column of the bar values of the slices."
+    exit 1
+fi
+if [ "$(awk -F '\t' '$1 == "00010" && $2 == "unified" {print $3}' $labels | tr '\n' ' ')" \
+    != "18 154 " ] \
+    || [ "$(awk -F '\t' '$2 == "SAMPLE_2" && $3 == 154 {print $7 "=" $8}' $labels)" \
+    != "K00174=7.5" ]
+then
+    echo "ERROR: boxes with two or more accessions with bar values should drop their labels."
+    exit 1
+fi
+
+# A file whose only other column of values is its bar column colors its fills by presence. With
+# slices, its bars are sliced on their own, here by gene and with shares from a column of weights,
+# and each box becomes a bar chart of its genes in the one color of the fill.
+INFO "Drawing bars sliced on their own by gene, with weights"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+                        --reaction-bar-column expression \
+                        --reaction-slice-weights coverage \
+                        --reaction-slice-by gene \
+                        --output-dir draw_txt_samples_kos_bars_by_gene \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+# The same with slices of accessions, from a file without samples.
+INFO "Drawing bars sliced on their own by accession"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+                        --reaction-bar-column coverage \
+                        --reaction-slice-by accession \
+                        --output-dir draw_txt_kos_bars_by_accession \
+                        --pathway-numbers $pathway_numbers \
+                        --no-progress
+
+for table in draw_txt_samples_kos_bars_by_gene/slice_key_reactions.txt \
+             draw_txt_kos_bars_by_accession/slice_key_reactions.txt
+do
+    # The fill shows presence, so the 'value' column is blank, and the 'bar' column holds values.
+    if [ -n "$(sed 1d $table | cut -f10 | sort -u)" ] \
+        || [ -z "$(sed 1d $table | cut -f14 | sort -u)" ]
+    then
+        echo "ERROR: the key table at '$table' should list columns of bars without fill values."
+        exit 1
+    fi
+done
+
 # A bar column with values on both sides of 0 draws bars that grow both ways from a gray zero line.
 # The boxes on such a scale drop their labels, which would hide the zero line, and a key table names
 # them by their accessions.

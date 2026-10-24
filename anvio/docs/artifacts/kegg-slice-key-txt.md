@@ -23,6 +23,7 @@ The file has a header line and these columns:
 |`share`|The share of the element's width or length that the slice takes. The shares of an element on a drawn map sum to 1.|
 |`color`|The color of the slice, as a hex code. For an element drawn whole, it is the color of the whole element.|
 |`drawn_whole`|Blank for a slice that is drawn. For an element drawn whole, it gives the reason, `over the cap` for a box or `line too short` for a line. A ring can also be drawn whole for the reason `fill not sliced`.|
+|`bar`|Only in the table of a layer with a bar column (`--reaction-bar-column`). The bar value of the accession or gene on the drawn map, which its column of the box shows as a bar. A box drawn whole lists the bar values of the slices it would have had. The column is blank where the slice has no bar value, for the slices of lines, which take no bars, and on a map that shows no bars, such as the `unified` map without `--reaction-bar-sample-summary`. A column without a bar value is white in the default style, and keeps its color without a strip in the `strip` style.|
 
 ## Rows
 
@@ -63,11 +64,32 @@ Here are the first three of the 14 rows of a box drawn whole, from a run without
 |00190|unified|255|960|772|K00234...||K00235||7.5|0.12121212121212122|#c33d80|over the cap|
 |00190|unified|255|960|772|K00234...||K00236||21.5|0.030303030303030304|#c33d80|over the cap|
 
+## Columns of bars
+
+With `--reaction-bar-column`, the table of the layer has the column `bar` at the end. Each column of a box shows the bar of its own accession or gene, so the bar value belongs to the slice of its row. A box drawn whole shows one bar, the mean of the bar values of its slices, weighted by their shares, and that mean is not listed. Here are rows for the box of the first example from a file with `expression` as its value column and `coverage` as its bar column, on the `unified` map, where `--reaction-sample-summary mean` and `--reaction-bar-sample-summary mean` pool the samples.
+
+|map|drawn_map|entry_id|x|y|label|slice|accession|gene_id|value|share|color|drawn_whole|bar|
+|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|
+|00010|unified|18|966|814|K01623...|1|K01623||6.0|0.25|#f79143||13.333333333333334|
+|00010|unified|18|966|814|K01623...|2|K01624||7.666666666666667|0.25|#e56a5d||21.0|
+|00010|unified|18|966|814|K01623...|3|K01622||16.0|0.25|#0d0887||17.25|
+|00010|unified|18|966|814|K01623...|4|K16306||2.5|0.25|#f0f921||15.0|
+
+A file whose only column of values is its bar column colors its fills by presence. Its bars are sliced on their own, among the accessions or genes with bar values, and its table lists these columns. Their `value` is blank, since the fill has none, and their `color` is the one color of the fill. Here are rows of the same box from such a file, with `coverage` as its bar column and no samples.
+
+|map|drawn_map|entry_id|x|y|label|slice|accession|gene_id|value|share|color|drawn_whole|bar|
+|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|
+|00010|unified|18|966|814|K01623...|1|K01624|||0.3333333333333333|#2ca02c||33.5|
+|00010|unified|18|966|814|K01623...|2|K01622|||0.3333333333333333|#2ca02c||36.5|
+|00010|unified|18|966|814|K01623...|3|K16306|||0.3333333333333333|#2ca02c||23.0|
+
+The tables of layers without a bar column, and the tables of rings, have no `bar` column.
+
 ## Slices of rings
 
 The table of the slices of rings, `slice_key_reactions_border.txt`, has the same columns. `value` and `color` are those of the border column, and `drawn_whole` gives why a ring is drawn whole. The rings of a run are either aligned with the slices of the fill or divided on their own, and the positions and shares depend on which.
 
-- **Aligned with the fill.** Where `--reaction-slice-by` and `--reaction-border-slice-by` name the same unit, each column of the fill takes the border value of its own accession or gene, as bands above and below it. A row lists such a column. Its `slice` and `share` are those of the column in `slice_key_reactions.txt`. A column without a border value has no row.
+- **Aligned with the fill.** Where `--reaction-slice-by` and `--reaction-border-slice-by` name the same unit, and the file has a value column for the fill, each column of the fill takes the border value of its own accession or gene, as bands above and below it. A row lists such a column. Its `slice` and `share` are those of the column in `slice_key_reactions.txt`. A column without a border value has no row.
 - **Divided on its own.** Otherwise, each ring is divided among its accessions or genes with border values. The slices count clockwise from the top left corner of the box, and `share` is the share of the ring that a slice takes.
 
 A ring of one slice is drawn whole in the color of that slice, with `slice` 1 and `share` 1.0. Rings can also be drawn whole for these reasons, in the color of a stand-in value:

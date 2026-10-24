@@ -83,7 +83,8 @@ bar
     under the whole fill. Its orientation ('BAR_ORIENTATIONS') runs it along the width of its box,
     or up its height. On a scale with values on both sides of 0, bars grow both ways from a zero
     line. Boxes of the 'fill' style drop their labels there, and wherever their bars are vertical.
-    "Bar" can also mean a colorbar.
+    In a sliced layer, each column of a box shows a bar of its own ('_bar_result'). "Bar" can also
+    mean a colorbar.
 
 model
     The dict that says how one channel of a layer is colored, or measured for bars, in each context,
@@ -113,7 +114,7 @@ slice
     ('kgml.Graphics.glyph') or a dash along a line ('kgml.Graphics.slices'). The unit is an
     accession or a gene ('SLICE_UNITS') and takes a share of the element. An element with too many
     slices is drawn whole in the color of a stand-in value. A ring can be sliced as well, with the
-    fill or on its own ('slice_layout').
+    fill or on its own ('slice_layout'), and so can the bars of a layer.
 
 spec
     A drawing instruction for one layer on one drawn map, used on each KEGG map and drawn by
@@ -675,9 +676,12 @@ BAR_STYLES: Tuple[str, ...] = ('fill', 'strip')
 # Which way a bar runs in its box ('--reaction-bar-orientation'). A 'horizontal' bar runs along the
 # width of the box, and a 'vertical' bar up its height, which is about a third as long. 1% of a bar
 # scale is then 0.33 points, or 0.27 inside a ring. The top of a vertical bar would run behind the
-# label of its box, so a box with a vertical bar drops its label ('LABEL_KEY_COLUMNS'). Bars are
-# horizontal unless the option says otherwise. A strip lies along the bottom of its box, so it is
-# always horizontal.
+# label of its box, so a box with a vertical bar drops its label ('LABEL_KEY_COLUMNS'). Without the
+# option, bars are horizontal, except in a layer sliced by '--reaction-slice-by'. There the
+# orientation is decided once for each map element in a run: its bars are vertical where two or more
+# of its accessions or genes have bar values in the file, so that its columns of bars stand side by
+# side ('_bar_vertical'). A strip lies along the bottom of its box or column, so it is always
+# horizontal.
 BAR_ORIENTATIONS: Tuple[str, ...] = ('horizontal', 'vertical')
 
 # The track of a bar, which is the part of the fill that a bar does not cover. A gray track tells a
@@ -702,6 +706,12 @@ BAR_STRIP_HEIGHT = 5
 BAR_STRIP_COLOR = '#333333'
 BAR_STRIP_TRACK_COLOR = '#FFFFFF'
 
+# The color of a column of a sliced box whose accession or gene has a fill value but no bar value on
+# the map, in the 'fill' style. The column keeps its share, so the slicing of the fill never depends
+# on the bars. It is white, as a box without data is, since a gray track would read as a bar of 0
+# and a column in the color of the fill as a full bar.
+BAR_EMPTY_COLUMN_COLOR = '#FFFFFF'
+
 # The narrowest that a slice of a box may be, in points, where every slice takes the same share. A
 # box with more slices than that allows is drawn whole in one color ('_slice_cap'). Boxes on
 # standard maps are 92 points wide, so they hold up to 11 slices. In a layer with a border column,
@@ -716,7 +726,8 @@ MAX_RING_SLICES = 11
 
 # The columns of the key table that lists the slices of a layer ('_write_slice_keys'). A slice of a
 # gene lists the gene's accessions in the element, joined by commas. 'gene_id' is empty for a slice
-# of an accession.
+# of an accession. The table of a layer with a bar column has one more column at the end, 'bar',
+# with the bar value of each slice on the drawn map, or nothing where it has none.
 SLICE_KEY_COLUMNS: Tuple[str, ...] = (
     'map', 'drawn_map', 'entry_id', 'x', 'y', 'label', 'slice', 'accession', 'gene_id', 'value',
     'share', 'color', 'drawn_whole'
@@ -1289,15 +1300,18 @@ class Mapper:
         A column of slice weights is named, not detected ('--reaction-slice-weights'). It is left
         out of the search for the value column. It cannot be a key column, and the file still needs
         a value column besides it, unless the rings of a border column are sliced
-        ('--reaction-border-slice-by'). Every row needs a weight, a finite number of 0 or more. The
-        weights are read as text first, as every column is, and then converted to numbers.
+        ('--reaction-border-slice-by') or the file has a bar column. The weights then size the
+        slices of the rings or the columns of the bars. Every row needs a weight, a finite number of
+        0 or more. The weights are read as text first, as every column is, and then converted to
+        numbers.
 
         Slices of genes ('--reaction-slice-by gene') need a 'gene_id' column. Every row then needs a
         gene ID. The spaces around each ID are dropped before repeated rows are looked for. Without
         slices of genes, the 'gene_id' column is read as it is. A file without a value column is not
-        checked for gene IDs, since slices of presence are refused ('_build_slice_model'). Rings
-        sliced by gene ('--reaction-border-slice-by gene') need gene IDs in the same way, even in a
-        file without a value column.
+        checked for gene IDs, since slices of presence are refused ('_build_slice_model'), unless it
+        has a bar column, whose bars are then sliced on their own. Rings sliced by gene
+        ('--reaction-border-slice-by gene') need gene IDs in the same way, even in a file without a
+        value column.
 
         A border column is named, not detected ('--reaction-border-column',
         '--compound-border-column'). Its values color the borders of map elements, and the value
@@ -1616,9 +1630,13 @@ class Mapper:
             )
         value_column = value_columns[0] if value_columns else None
         # Slices are colored by their values, so a file with weights needs a value column too. The
-        # weights can instead size the slices of the rings of a border column.
+        # weights can instead size the slices of the rings of a border column, or the columns of the
+        # bars of a bar column, which take the one color of their fill.
         sliced_border = border_column is not None and border_slice_by is not None
-        if slice_weights is not None and value_column is None and not sliced_border:
+        if (
+            slice_weights is not None and value_column is None and not sliced_border
+            and bar_column is None
+        ):
             others = 'its key columns, its border column,' if border_column is not None else (
                 'its key columns'
             )
@@ -1637,11 +1655,12 @@ class Mapper:
 
         # Slices of genes are named by the 'gene_id' column, so every row needs a gene ID. Blanks
         # around an ID are dropped. Without slices of genes, the column is read as it is. A file
-        # without a value column is not checked here. Its layer shows presence, and slicing it is
-        # refused for that reason first ('_build_slice_model'). Rings sliced by gene need gene IDs
-        # too, even in a file without a value column. The messages name the option of the rings only
-        # where the fill is not sliced by gene.
-        fill_genes = slice_by == 'gene' and value_column is not None
+        # without a value column or a bar column is not checked here. Its layer shows presence, and
+        # slicing it is refused for that reason first ('_build_slice_model'). The bars of a file
+        # without a value column are sliced on their own, so they need gene IDs, and so do rings
+        # sliced by gene, even in a file without a value column. The messages name the option of the
+        # rings only where the fill is not sliced by gene.
+        fill_genes = slice_by == 'gene' and (value_column is not None or bar_column is not None)
         ring_genes = sliced_border and border_slice_by == 'gene'
         if fill_genes or ring_genes:
             if fill_genes:
@@ -2586,7 +2605,8 @@ class Mapper:
         A layer sliced by accession is summarized one accession at a time, so its report counts
         accessions. A layer sliced by gene is summarized one slice of a gene at a time. Its report
         counts these slices, and a gene with the same rows in two elements counts once. A border
-        with sliced rings is reported in the same way, in terms of its rings.
+        with sliced rings is reported in the same way, in terms of its rings, and sliced bars in
+        terms of their columns.
 
         Parameters
         ==========
@@ -2627,6 +2647,21 @@ class Mapper:
             slice_noun, value_noun = 'slice of a ring', 'border value'
             unified_effect = "These slices of rings are not drawn on the 'unified' map."
             others = " The other slices of a ring take its length."
+        elif channel['role'] == 'bar' and layer.get('slice_layout') == 'aligned':
+            slice_noun, value_noun = 'column of bars', 'bar value'
+            group_effect = (
+                "On that group's map, its column shows no bar, or it does not count toward a bar "
+                "drawn whole."
+            )
+            unified_effect = (
+                "On the 'unified' map, their columns show no bars, or they do not count toward "
+                "bars drawn whole."
+            )
+            others = ""
+        elif channel['role'] == 'bar':
+            slice_noun, value_noun = 'column of bars', 'bar value'
+            unified_effect = "These columns of bars are not drawn on the 'unified' map."
+            others = " The other columns of a box take its width."
         reports = []
         if grouped:
             consequences = []
@@ -5753,11 +5788,12 @@ class Mapper:
         bar is drawn in a box whose fill is colored, in the color of the fill unless it is a strip
         ('BAR_STYLES'), so fills left uncolored are refused. The reference map's colors are refused
         too, since a renderer of their own draws them, and it draws no bars. A strip is always
-        horizontal ('BAR_ORIENTATIONS'), so a vertical orientation is refused with strips. Bars in
-        the slices of boxes are not supported yet. The builder of the model of the bars checks the
-        rest ('_build_txt_model'). The command line makes the checks of the column, the colors, and
-        slicing too, and these repeat them for programmatic callers. Where a bar column is named,
-        the private methods of Biopython that draw bars are checked too
+        horizontal ('BAR_ORIENTATIONS'), so a vertical orientation is refused with strips. Where
+        boxes are sliced by gene, each column shows the bar value of one gene, so no genes are
+        reduced, and the gene aggregation of the bars is refused. The builder of the model of the
+        bars checks the rest ('_build_txt_model', '_build_slice_model'). The command line makes the
+        checks of the column and the colors too, and these repeat them for programmatic callers.
+        Where a bar column is named, the private methods of Biopython that draw bars are checked too
         ('kgml.SlicedKGMLCanvas.check_biopython').
 
         Parameters
@@ -5773,7 +5809,8 @@ class Mapper:
             'none' where the fills are left uncolored.
 
         slice_by : Union[str, None]
-            What the reaction elements are sliced by ('SLICE_UNITS'), or None.
+            What the reaction elements are sliced by ('SLICE_UNITS'), or None. The bars are then
+            sliced too.
         """
         if not reaction_bar:
             return
@@ -5840,10 +5877,12 @@ class Mapper:
                 f"'{column_flag}' {draws}, but '--reaction-color none' leaves the fills uncolored, "
                 f"{uncolored}. Please give the fills a color, or drop one of the two options."
             )
-        if slice_by is not None:
+        if slice_by == 'gene' and reaction_bar.get('gene_aggregation') is not None:
             raise ConfigError(
-                f"'--reaction-slice-by' cannot be combined with '{column_flag}' yet. Bars in the "
-                f"slices of boxes are not supported. Please use only one of them."
+                "'--reaction-bar-gene-aggregation' reduces the bar values of the genes of an "
+                "accession to one value. With '--reaction-slice-by gene', each column of a box "
+                "shows the bar value of one gene, so the bar values of genes are never reduced. "
+                "Please drop '--reaction-bar-gene-aggregation'."
             )
         # Bars are drawn with private methods of Biopython, which a release can rename. This is
         # checked before anything is written.
@@ -5861,7 +5900,8 @@ class Mapper:
         colormap: Union[bool, str, mcolors.Colormap, None],
         gene_aggregation: Union[str, None] = None,
         border_column: Union[str, None] = None,
-        border_slice_by: Union[str, None] = None
+        border_slice_by: Union[str, None] = None,
+        bar_column: Union[str, None] = None
     ) -> None:
         """
         Check the options that slice reaction elements, as far as that can be done without the file.
@@ -5886,6 +5926,11 @@ class Mapper:
 
         border_slice_by : Union[str, None], None
             What the rings of the reaction border are sliced by, or None.
+
+        bar_column : Union[str, None], None
+            The bar column of the reaction file, or None. A file whose only column of values is its
+            bar column has its bars sliced in the one color of its fill, which '--reaction-color'
+            can give ('_build_slice_model').
 
         Notes
         =====
@@ -6004,7 +6049,7 @@ class Mapper:
                 "slice the rings of the border column, give '--reaction-border-slice-by' in place "
                 "of '--reaction-slice-by'."
             )
-        if colormap is False:
+        if colormap is False and bar_column is None:
             raise ConfigError(
                 "'--reaction-slice-by' colors each slice of a reaction element by its own value, "
                 "but '--reaction-color' gives the reaction layer a single color. Please use only "
@@ -6054,14 +6099,21 @@ class Mapper:
         rings are sliced on their own. Their shares then come from the weights of the rows with a
         border value.
 
+        The bars of a layer are sliced by this method too. Where the file has a value column, the
+        bars are aligned with the columns of the fill, as aligned rings are, and each column shows
+        the bar value of its own unit. Their accession aggregation is checked as that of the fill
+        is. In a file whose only column of values is the bar column, the fill shows presence, so the
+        bars are sliced on their own, among the units with bar values, and their shares come from
+        the weights of these rows ('_bar_result').
+
         Parameters
         ==========
         model : dict
-            The layer model built from the reaction file, or the model of its border
+            The layer model built from the reaction file, or the model of its border or bars
             ('_build_txt_model').
 
         data : dict
-            The '_read_element_txt' result for the reaction file, or its border view
+            The '_read_element_txt' result for the reaction file, or its border or bar view
             ('_channel_view').
 
         slice_by : str
@@ -6089,8 +6141,8 @@ class Mapper:
             True if the maps of individual samples or groups are drawn.
 
         fill : Union[dict, None], None
-            The sliced model of the fill, for a border whose rings are aligned with it. It is None
-            for the fill, and for a border whose rings are sliced on their own.
+            The sliced model of the fill, for a border or bars aligned with it. It is None for the
+            fill, and for a border or bars sliced on their own.
 
         Returns
         =======
@@ -6108,16 +6160,19 @@ class Mapper:
             - '_slice_results': the slices of each element on each map ('_slice_result').
             - '_slice_key' and '_slice_uncolored': what the drawn maps record for the key table
               and the warnings ('_write_slice_keys').
-            A border adds 'slice_layout', which is 'aligned' or 'independent', and '_slice_unshown',
-            where the drawn maps record the units with border values that no column of the fill
-            shows. Slices of genes add the keys of '_build_gene_slice_keys'.
+            A border or bars add 'slice_layout', which is 'aligned' or 'independent'. A border adds
+            '_slice_unshown', where the drawn maps record the units with border values that no
+            column of the fill shows. Slices of genes add the keys of '_build_gene_slice_keys'.
         """
         path = model['path']
         df = data['df']
         channel = model['channel']
-        border = channel['role'] == 'border'
+        role = channel['role']
         flag_stem = channel['flag_stem']
-        slice_flag = f'--{flag_stem}-slice-by'
+        # Bars have no slicing option of their own. They are sliced with the fill.
+        slice_flag = f"--{model['element_type']}-slice-by" if role == 'bar' else (
+            f'--{flag_stem}-slice-by'
+        )
         aggregation_flag = f'--{flag_stem}-accession-aggregation'
         # The view of a border always names its border column as its value column.
         if data['value_column'] is None:
@@ -6127,8 +6182,12 @@ class Mapper:
                 f"presence, and slices of presence are not supported yet. Add a value column to "
                 f"the file, or drop '--reaction-slice-by'."
             )
-        if border:
+        slice_mean = 'the mean of its slice values'
+        if role == 'border':
             each_slice, value, whole = 'each slice of a ring', 'border value', 'A ring drawn whole'
+        elif role == 'bar':
+            each_slice, value, whole = 'each column of a box', 'bar value', 'A box drawn whole'
+            slice_mean = 'the mean of the bar values of its columns'
         else:
             each_slice, value, whole = 'each slice', 'value', 'An element drawn whole'
         # A slice of a gene can stand for rows of several accessions of an element. The accession
@@ -6140,8 +6199,8 @@ class Mapper:
             raise ConfigError(
                 f"'{aggregation_flag}' reduces the {channel['values']} of the accessions of a map "
                 f"element to one value. With '{slice_flag} accession', {each_slice} shows the "
-                f"{value} of one accession. {whole} takes the mean of its slice values, weighted "
-                f"by their shares, in place of this reduction. Please drop '{aggregation_flag}'."
+                f"{value} of one accession. {whole} takes {slice_mean}, weighted by their shares, "
+                f"in place of this reduction. Please drop '{aggregation_flag}'."
             )
         # A gene with one row for an element shows the value of that row ('_build_gene_slice_keys').
         # An aggregation that does not return a single value unchanged, such as 'std' or 'count',
@@ -6161,8 +6220,9 @@ class Mapper:
                     f"'{slice_flag} gene', it reduces the rows of a gene for the accessions of an "
                     f"element to one value. A gene with one such row shows the {value} of that "
                     f"row. '{accession_aggregation}' does not return a single value unchanged, so "
-                    f"genes with several rows would show another kind of value on the same color "
-                    f"scale. Please give 'mean', 'sum', 'max', 'min', or 'median' instead."
+                    f"genes with several rows would show another kind of value on the same "
+                    f"{channel['scale']}. Please give 'mean', 'sum', 'max', 'min', or 'median' "
+                    f"instead."
                 )
         # Rings aligned with the fill take the shares of the fill, so only the fill reads weights
         # then. The weights of genes are reduced only for slices of accessions.
@@ -6183,7 +6243,7 @@ class Mapper:
         grouped = has_sample and group_samples is not None
         unified_values = draw_unified_maps and model['unified_mode'] in value_modes
         individual_values = draw_individual_maps and model['individual_mode'] in value_modes
-        if not border and not (unified_values or individual_values):
+        if role == 'fill' and not (unified_values or individual_values):
             noun = 'groups' if grouped else 'samples'
             suggestion = (
                 "a rule, such as 'plurality_order'" if model.get('value_type') == 'categorical'
@@ -6232,8 +6292,9 @@ class Mapper:
             '_slice_key': {},
             '_slice_uncolored': {}
         }
-        if border:
+        if role != 'fill':
             keys['slice_layout'] = 'independent' if fill is None else 'aligned'
+        if role == 'border':
             keys['_slice_unshown'] = {}
         if weighted:
             keys['slice_share_summary'] = (
@@ -6657,24 +6718,27 @@ class Mapper:
             Slice each reaction element by its accessions ('accession') or by its genes ('gene'), as
             'SLICE_UNITS' lists. Each accession or gene of an element with a value on a map takes a
             slice in the color of its own value. Only the maps that show the values of the reaction
-            layer are sliced. The reaction file needs a value column. Slices of accessions are
-            summarized one accession at a time, so 'reaction_accession_aggregation' is refused for
-            numeric values. Slices of genes need a 'gene_id' column with an ID in every row. One
-            gene ID names the same gene in every sample. For numeric values sliced by gene,
-            'reaction_accession_aggregation' reduces the rows of a gene for the accessions of an
-            element. It is refused if it does not return a single value unchanged.
-            'reaction_gene_aggregation' is refused, since no genes are reduced to an accession.
-            'reaction_slice_weight_aggregation' is refused too, unless the rings of the border are
-            sliced by accession. 'reaction_element_normalization' is not supported with slices yet.
-            The slices drawn are listed in a key table, 'slice_key_reactions.txt', in the output
-            directory. The default of None draws every element whole.
+            layer are sliced. The reaction file needs a value column or a bar column. A file whose
+            only column of values is its bar column has its bars sliced on their own, in the one
+            color of the fill ('reaction_bar'). Slices of accessions are summarized one accession at
+            a time, so 'reaction_accession_aggregation' is refused for numeric values. Slices of
+            genes need a 'gene_id' column with an ID in every row. One gene ID names the same gene
+            in every sample. For numeric values sliced by gene, 'reaction_accession_aggregation'
+            reduces the rows of a gene for the accessions of an element. It is refused if it does
+            not return a single value unchanged. 'reaction_gene_aggregation' is refused, since no
+            genes are reduced to an accession. 'reaction_slice_weight_aggregation' is refused too,
+            unless the rings of the border are sliced by accession. 'reaction_element_normalization'
+            is not supported with slices yet. The slices drawn are listed in a key table,
+            'slice_key_reactions.txt', in the output directory. The default of None draws every
+            element whole.
 
         reaction_slice_weights : str, None
             The column of the reaction file that weighs the slices. The shares of the slices of an
             element then follow the weights. A slice of a gene weighs the mean of the weights of its
             rows for the element's accessions. The weights also size the slices of rings that are
-            sliced on their own ('reaction_border'). It needs 'reaction_slice_by' or the 'slice_by'
-            of the reaction border. The default of None gives every slice on a map the same share.
+            sliced on their own ('reaction_border'), and the columns of bars sliced on their own
+            ('reaction_bar'). It needs 'reaction_slice_by' or the 'slice_by' of the reaction border.
+            The default of None gives every slice on a map the same share.
 
         reaction_slice_weight_aggregation : str, None
             How the weights of the genes of an accession are reduced to the accession's weight, for
@@ -6684,8 +6748,8 @@ class Mapper:
         reaction_slice_share_summary : str, None
             How the shares of slices are pooled on the maps of groups and on the 'unified' map,
             which summarize several samples ('SLICE_SHARE_SUMMARIES'). It needs a column of weights,
-            and such a drawn map that shows slices of elements or of rings sliced on their own. The
-            default of None is 'share_mean'.
+            and such a drawn map that shows slices of elements, slices of rings sliced on their own,
+            or columns of bars sliced on their own. The default of None is 'share_mean'.
 
         compound_element_normalization : Union[str, None], None
             The same normalization for the compound layer.
@@ -6725,14 +6789,15 @@ class Mapper:
             drop their labels ('BAR_ORIENTATIONS'). The other keys are the bar versions of the
             options of the fill. A bar shows values only, so its summaries take no presence names.
             Without a summary, the 'unified' map of a file with samples shows no bars, and its fills
-            are drawn whole. The aggregations default to 'mean'. Each scale of bars includes 0, and
-            limits that leave 0 out are refused. On a scale with values on both sides of 0, bars
-            grow both ways from a zero line, and boxes of the 'fill' style drop their labels
+            are drawn without them. The aggregations default to 'mean'. Each scale of bars includes
+            0, and limits that leave 0 out are refused. On a scale with values on both sides of 0,
+            bars grow both ways from a zero line, and boxes of the 'fill' style drop their labels
             ('label_key_reactions.txt'). On a map that shows bars, a box with a fill and no bar
             value is left uncolored, or keeps its whole fill without a strip. The bars are built by
             the builder of the fill ('_build_txt_model', '_txt_channel'). Options left out are None.
-            '--original-color', a 'reaction_color' of 'none', 'reaction_slice_by', and vertical
-            strips are refused.
+            With 'reaction_slice_by', each column of a box shows the bar value of its own unit, or
+            the bars of a file without a value column are sliced on their own ('_bar_result').
+            '--original-color', a 'reaction_color' of 'none', and vertical strips are refused.
 
         Notes
         =====
@@ -6786,7 +6851,8 @@ class Mapper:
             reaction_element_normalization, reaction_color, reaction_colormap,
             gene_aggregation=reaction_gene_aggregation,
             border_column=reaction_border.get('column'),
-            border_slice_by=reaction_border.get('slice_by')
+            border_slice_by=reaction_border.get('slice_by'),
+            bar_column=reaction_bar.get('column')
         )
 
         raw_layers: List[dict] = []
@@ -6990,7 +7056,12 @@ class Mapper:
                     channel=channel
                 )
                 bar_model['style'] = style
-                bar_model['orientation'] = bar['orientation'] or 'horizontal'
+                # Without an orientation, the bars of a sliced layer are oriented for each element
+                # ('_bar_vertical'), which None says. Other bars, and strips, are horizontal.
+                orientation = bar['orientation']
+                if orientation is None and (reaction_slice_by is None or style == 'strip'):
+                    orientation = 'horizontal'
+                bar_model['orientation'] = orientation
                 model['bars'] = [bar_model]
             if model['border'] is None and not model['bars']:
                 continue
@@ -7013,7 +7084,10 @@ class Mapper:
                     _used(model['border'].get('aggregations'), border['slice_by'])
                 ))
             for bar_model in model['bars']:
-                columns.append(('bar', data['bar_column'], 'numeric', bar_model['aggregations']))
+                columns.append((
+                    'bar', data['bar_column'], 'numeric',
+                    _used(bar_model['aggregations'], layer.get('slice_by'))
+                ))
             for name, column, value_type, aggregations in columns:
                 self.run.info(
                     f"{label} {name} column",
@@ -7027,14 +7101,19 @@ class Mapper:
                 self.run.info(f"{label} rows without a border value", data['border_empty'])
             if model['bars']:
                 self.run.info(f"{label} bar style", model['bars'][0]['style'])
-                self.run.info(f"{label} bar orientation", model['bars'][0]['orientation'])
+                self.run.info(
+                    f"{label} bar orientation", model['bars'][0]['orientation'] or 'by map element'
+                )
                 self.run.info(f"{label} rows without a bar value", data['bar_empty'])
             if model['border'] is not None and border['slice_by'] is not None:
+                # A fill of presence is not sliced, so its rings are divided on their own.
+                aligned = border['slice_by'] == layer.get('slice_by') and (
+                    data['value_column'] is not None or data['bar_column'] is None
+                )
                 self.run.info(
                     f"{label} border slices",
                     f"by {border['slice_by']}, " + (
-                        "aligned with the fill" if border['slice_by'] == layer.get('slice_by')
-                        else "independent of the fill"
+                        "aligned with the fill" if aligned else "independent of the fill"
                     )
                 )
 
@@ -7042,7 +7121,12 @@ class Mapper:
         draw_individual_maps = all_sample_names is not None and (
             draw_individual_files is not False or draw_grid is not False
         )
-        if reaction_slice_by is not None:
+        # A file whose only column of values is its bar column has a fill of presence, so its bars
+        # are sliced on their own below, and the fill is not.
+        bars_alone = reaction_slice_by is not None and bool(models[0]['bars']) and (
+            raw_layers[0]['data']['value_column'] is None
+        )
+        if reaction_slice_by is not None and not bars_alone:
             models[0].update(self._build_slice_model(
                 models[0], raw_layers[0]['data'], reaction_slice_by,
                 reaction_slice_weight_aggregation, reaction_slice_share_summary,
@@ -7050,29 +7134,58 @@ class Mapper:
                 draw_individual_maps
             ))
         # The rings of the reaction border are sliced from the rows with a border value. Where the
-        # fill is sliced by the same unit, the rings are aligned with its columns.
+        # fill is sliced by the same unit, the rings are aligned with its columns. A fill of
+        # presence is not sliced, so the rings of a file whose bars are sliced on their own are
+        # divided on their own.
         border_slice_by = reaction_border.get('slice_by')
         if border_slice_by is not None:
             fill = models[0]
+            aligned = border_slice_by == reaction_slice_by and not bars_alone
             border_slice_model = self._build_slice_model(
                 fill['border'], self._channel_view(raw_layers[0]['data'], 'border'),
                 border_slice_by, reaction_slice_weight_aggregation, reaction_slice_share_summary,
                 reaction_border.get('accession_aggregation'), all_sample_names, group_samples,
-                draw_unified_maps, draw_individual_maps,
-                fill=fill if border_slice_by == reaction_slice_by else None
+                draw_unified_maps, draw_individual_maps, fill=fill if aligned else None
             )
             fill['border'].update(border_slice_model)
+        # The bars of a sliced layer are sliced as well. They are aligned with the columns of a fill
+        # of values. In a file whose only column of values is the bar column, they are sliced on
+        # their own. Each element is oriented once ('_bar_vertical'), from the units with bar values
+        # in the file. Slices of genes count the genes with bar values.
+        if reaction_slice_by is not None and models[0]['bars']:
+            fill = models[0]
+            bar_model = fill['bars'][0]
+            bar_view = self._channel_view(raw_layers[0]['data'], 'bar')
+            bar_slice_model = self._build_slice_model(
+                bar_model, bar_view, reaction_slice_by, reaction_slice_weight_aggregation,
+                reaction_slice_share_summary, reaction_bar.get('accession_aggregation'),
+                all_sample_names, group_samples, draw_unified_maps, draw_individual_maps,
+                fill=None if bars_alone else fill
+            )
+            bar_model.update(bar_slice_model)
+            bar_model['_vertical_cache'] = {}
+            # In a layer with a border column, the columns of a box fit inside its ring.
+            bar_model['slice_ringed'] = fill.get('border') is not None
+            if reaction_slice_by == 'gene':
+                bar_rows = bar_view['df']
+                bar_genes: Dict[str, Set[str]] = {}
+                for accession, gene in zip(bar_rows['__accession'], bar_rows['__gene_id']):
+                    bar_genes.setdefault(accession, set()).add(gene)
+                bar_model['_bar_genes'] = bar_genes
         # Shares are pooled on the maps that summarize several samples. A summary of shares needs
-        # such a map that shows the slices of the fill, or rings that are sliced on their own.
+        # such a map that shows the slices of the fill, rings that are sliced on their own, or bars
+        # that are sliced on their own.
         if reaction_slice_share_summary is not None:
             fill = models[0]
             ring = fill['border'] if border_slice_by is not None else None
+            bar_model = fill['bars'][0] if bars_alone else None
             if not (fill.get('slice_pooled') or (
                 ring is not None and ring['slice_layout'] == 'independent' and ring['slice_pooled']
-            )):
-                shown = "the values of the reaction layer" if ring is None else (
-                    "the values of the reaction layer or the slices of its rings"
-                )
+            ) or (bar_model is not None and bar_model['slice_pooled'])):
+                shown = "the bars" if bar_model is not None else "the values"
+                shown += " of the reaction layer"
+                if ring is not None:
+                    shown += " or the slices of its rings"
                 raise ConfigError(
                     f"'--reaction-slice-share-summary' pools the shares of slices on the maps that "
                     f"summarize several samples, which are the maps of groups and the 'unified' "
@@ -9941,6 +10054,184 @@ class Mapper:
         return _whole([(unit, value, share) for _, unit, value, share in shown], reason, unshown)
 
     @staticmethod
+    def _bar_vertical(accessions: Tuple[str, ...], bar: dict) -> bool:
+        """
+        Say whether the bars of a map element run up its box ('BAR_ORIENTATIONS').
+
+        An orientation given for the bars applies to every element. Otherwise, the bars of a sliced
+        layer are oriented once for each element in a run. They are vertical where two or more units
+        of the element have bar values in some row of the file, whatever map is drawn. The units are
+        accessions, or genes with a row for an accession of the element, as the boxes are sliced.
+        The columns of such an element then stand side by side, and the element is drawn as one
+        column with a vertical bar wherever it is drawn whole. An element with one such unit keeps a
+        horizontal bar, which has about three times the travel. Results are kept in the model's
+        '_vertical_cache', keyed by the accessions.
+
+        Parameters
+        ==========
+        accessions : Tuple[str, ...]
+            The accessions of the element, each once, in KGML order ('_get_entry_kegg_ids').
+
+        bar : dict
+            The model of the bars ('_build_slice_model'). Its 'orientation' is None where each
+            element is oriented on its own.
+
+        Returns
+        =======
+        bool
+            True if the bars of the element are vertical.
+        """
+        if bar['orientation'] is not None:
+            return bar['orientation'] == 'vertical'
+        cache = bar['_vertical_cache']
+        if accessions not in cache:
+            if bar['slice_by'] == 'gene':
+                bar_genes = bar['_bar_genes']
+                units = {
+                    gene for accession in accessions for gene in bar_genes.get(accession, ())
+                }
+            else:
+                units = {accession for accession in accessions if accession in bar['accessions']}
+            cache[accessions] = len(units) >= 2
+        return cache[accessions]
+
+    def _bar_result(
+        self,
+        pathway: kgml.Pathway,
+        entry: kgml.Entry,
+        layer: dict,
+        individual: Union[str, None],
+        count_choices: bool = True
+    ) -> dict:
+        """
+        Find what the sliced bars of a box show on one map ('--reaction-slice-by').
+
+        The range of the bar scale and the staging of bars both ask this, so that the scale spans
+        the bar values that the boxes show. The bars of a layer are aligned with the fill or sliced
+        on their own ('slice_layout').
+
+        Aligned with the fill, the bars follow the fill of the box on the map. Where the fill is
+        drawn in columns, each column shows the bar value of its own accession or gene, or nothing
+        where that unit has no bar value on the map. A box none of whose columns has a bar value has
+        no bar to show. Where the fill has one slice, the box is drawn whole with the bar value of
+        that slice. Where the fill has more slices than fit ('_slice_cap'), the box is drawn whole
+        with a stand-in, the mean of the bar values of its slices, weighted by their shares. Where
+        the fill is not sliced, since the map shows presence, the box is drawn whole with the mean
+        of the bar values of its units. A box whose fill has no value on the map shows no bar.
+
+        Sliced on their own, the bars of a box are divided among the units with bar values and a
+        share above 0, in the order of their slices ('_slice_result'). Each unit takes one column,
+        in the color of the fill. A box with one such unit, or with more than fit, is drawn whole,
+        with the bar value of that unit or the stand-in of all of them.
+
+        Parameters
+        ==========
+        pathway : kgml.Pathway
+            The map.
+
+        entry : kgml.Entry
+            An ortholog Entry of the map with a box that shows bars ('_shows_border').
+
+        layer : dict
+            The model of the fill of a reaction layer. Its 'bars' hold the sliced model of its bars
+            ('_build_slice_model').
+
+        individual : Union[str, None]
+            The sample or group whose map is drawn, or None for the 'unified' map.
+
+        count_choices : bool, True
+            False to count no choice among the categorical values of an aligned fill. The range of
+            the bars asks this way, since no map is drawn then.
+
+        Returns
+        =======
+        dict
+            A dictionary with these keys:
+            - 'kind': 'columns', 'whole', 'missing' where the box has no bar value to show on the
+              map, 'uncolored' where every slice of bars sliced on their own has a share of 0, or
+              'none' where an aligned fill shows nothing on the map.
+            - 'vertical': whether the bars of the box run up it ('_bar_vertical').
+            - 'values': the bar value of each column, or None for a column without one. Only
+              columns have this key.
+            - 'shares': the share of each column. Only the columns of bars sliced on their own have
+              this key, since an aligned fill gives the shares of its own columns.
+            - 'value': the bar value of a box drawn whole. Only a whole box has this key.
+            - 'reason': 'over the cap' for a box drawn whole since it has more slices than fit, or
+              None.
+            - 'unit_values': the bar value of each unit of an aligned fill, for its key table.
+            - 'slices': the rows of the key table of bars sliced on their own, as (position, unit,
+              value, share) tuples, with no position in a box drawn whole for a reason.
+            - 'accessions': the accessions of the Entry.
+        """
+        bar = layer['bars'][0]
+        accessions = tuple(self._get_entry_kegg_ids(entry, bar['use_reaction_attribute']))
+        bar_context = None if bar['sample_values'] is None else individual
+        result = {
+            'vertical': self._bar_vertical(accessions, bar), 'reason': None, 'unit_values': {},
+            'slices': [], 'accessions': accessions
+        }
+        ringed = layer.get('border') is not None
+
+        def _standin(values: List[float], shares: List[float]) -> Union[float, None]:
+            return self._slice_standin_value(values, shares) if values else None
+
+        def _whole(value: Union[float, None], reason: Union[str, None] = None) -> dict:
+            if value is None:
+                return {**result, 'kind': 'missing'}
+            return {**result, 'kind': 'whole', 'value': value, 'reason': reason}
+
+        if bar['slice_layout'] == 'independent':
+            slices = self._slice_result(accessions, bar, bar_context)
+            if slices is None:
+                return {**result, 'kind': 'missing'}
+            if not slices:
+                return {**result, 'kind': 'uncolored'}
+            reason = self._slice_cap(
+                pathway, entry, len(slices), ringed=ringed
+            ) if len(slices) > 1 else None
+            result['slices'] = [
+                (None if reason else position, unit, value, share)
+                for position, (unit, value, share) in enumerate(slices, 1)
+            ]
+            if len(slices) == 1:
+                return _whole(slices[0][1])
+            if reason is not None:
+                return _whole(
+                    _standin([value for _, value, _ in slices], [share for _, _, share in slices]),
+                    reason
+                )
+            return {
+                **result, 'kind': 'columns', 'values': [value for _, value, _ in slices],
+                'shares': [share for _, _, share in slices]
+            }
+
+        # Aligned bars follow the fill of the box on this map. The fill is sliced only on the maps
+        # that show its values ('_sliced').
+        bar_values = self._slice_values(accessions, bar, bar_context)
+        mode = layer['unified_mode'] if individual is None else layer['individual_mode']
+        if mode not in ('quantitative', 'categorical'):
+            return _whole(_standin(list(bar_values.values()), [1.0] * len(bar_values)))
+        fill_context = None if layer['sample_values'] is None else individual
+        fill_slices = self._slice_result(accessions, layer, fill_context, count_choices)
+        if not fill_slices:
+            return {**result, 'kind': 'none'}
+        units = [unit for unit, _, _ in fill_slices]
+        result['unit_values'] = {unit: bar_values[unit] for unit in units if unit in bar_values}
+        if len(fill_slices) == 1:
+            return _whole(result['unit_values'].get(units[0]))
+        reason = self._slice_cap(pathway, entry, len(fill_slices), ringed=ringed)
+        if reason is not None:
+            shown = [(unit, share) for unit, _, share in fill_slices if unit in bar_values]
+            return _whole(
+                _standin([bar_values[unit] for unit, _ in shown], [share for _, share in shown]),
+                reason
+            )
+        values = [result['unit_values'].get(unit) for unit in units]
+        if all(value is None for value in values):
+            return {**result, 'kind': 'missing'}
+        return {**result, 'kind': 'columns', 'values': values}
+
+    @staticmethod
     def _count_slice_choices(
         units: List[Union[str, Tuple[str, Tuple[str, ...]]]],
         layer: dict,
@@ -10316,7 +10607,8 @@ class Mapper:
             of the models of its bar columns, which holds one model. These have the keys of a
             'quantitative' layer, except that a bar has no colormap. Their mode is None on a map
             that shows none of their values. A bar also has 'style', how it is drawn in its box
-            ('BAR_STYLES'), and 'orientation', which way it runs ('BAR_ORIENTATIONS').
+            ('BAR_STYLES'), and 'orientation', which way it runs ('BAR_ORIENTATIONS'), or None where
+            each element of a sliced layer is oriented on its own ('_bar_vertical').
 
         output_dir : str
             Path to the output directory in which pathway map and colorbar PDF files are drawn.
@@ -10755,6 +11047,7 @@ class Mapper:
             layer['_line_entries'] = {}
             layer['_missing'] = {}
             layer['_unlabeled'] = {}
+            layer['_orientations'] = set()
         fills = {id(layer['border']): layer for layer in layers if layer.get('border') is not None}
         fills.update({id(bar): layer for layer in layers for bar in layer.get('bars', [])})
 
@@ -10805,12 +11098,16 @@ class Mapper:
                         and layer['sample_values'] is not None
                     )
                     normalize = layer.get('element_normalize')
-                    # A sliced layer finds the range of each scale from the slices it draws, and a
-                    # border with sliced rings from the slices of its rings.
+                    # A sliced layer finds the range of each scale from the slices it draws, a
+                    # border with sliced rings from the slices of its rings, and sliced bars from
+                    # the columns and boxes that show them.
                     if layer.get('slice_by') is not None:
-                        find_range = (
-                            self._find_ring_range if _is_border(layer) else self._find_slice_range
-                        )
+                        if _role(layer) == 'bar':
+                            find_range = self._find_bar_range
+                        elif _is_border(layer):
+                            find_range = self._find_ring_range
+                        else:
+                            find_range = self._find_slice_range
                         find_range(
                             pathway_number, pathway, fills.get(id(layer), layer), unified_valued,
                             individuals if per_individual and draw_individual_maps else []
@@ -11092,8 +11389,13 @@ class Mapper:
         # where a bar scale has values on both sides of 0 ('_stage_entry_bar'). The key table of
         # unlabeled boxes is written for such bars ('_write_label_keys'), and whether it can be
         # written is checked before anything is drawn. Only the scales of the maps that are drawn
-        # count.
+        # count. Sliced bars recorded their orientations in the range pass ('_find_bar_range'). Bars
+        # that are not sliced all run one way.
         for bar in bars:
+            if bar.get('slice_by') is None and (
+                bar.get('_unified_vals') or bar.get('_individual_vals')
+            ):
+                bar['_orientations'].add(bar['orientation'])
             drawn_ranges = [
                 bar.get(f'_{context}_range') for context, drawn in (
                     ('unified', draw_unified_maps), ('individual', draw_individual_maps)
@@ -11105,7 +11407,7 @@ class Mapper:
             ]
             signed = any(vmin < 0 < vmax for vmin, vmax in bar_ranges)
             bar['_drops_labels'] = bar['style'] == 'fill' and bool(bar_ranges) and (
-                signed or bar['orientation'] == 'vertical'
+                signed or 'vertical' in bar['_orientations']
             )
             if bar['_drops_labels']:
                 filesnpaths.is_output_file_writable(
@@ -11434,7 +11736,9 @@ class Mapper:
                 'slice_uncolored': layer['_slice_uncolored'],
                 # In a layer with a border column, the columns of a box fit inside its ring, so the
                 # cap measures the width inside the ring ('_slice_cap').
-                'slice_ringed': layer.get('border') is not None
+                'slice_ringed': layer.get('border') is not None,
+                # The key table of a layer with bars gives the bar value of each slice.
+                'slice_bars': bool(layer.get('bars'))
             }
 
         # A layer with a border adds the border's colorer to the spec of each map that shows the
@@ -11479,7 +11783,10 @@ class Mapper:
         # gets the bar scale of the map too. The boxes of such a map are drawn as bars in the colors
         # of their fills, or with strips under whole fills, by the style of the bars
         # ('_stage_entry_bar'). A map that shows no bar values, such as the 'unified' map without a
-        # bar summary, draws its fills whole. The bars of a layer are a list of one model.
+        # bar summary, draws its fills without bars. The bars of a layer are a list of one model.
+        # Sliced bars add a bar slicer in place of the function, which finds the columns or the one
+        # bar of each box ('_bar_result'), and bars sliced on their own add the keys of their key
+        # table.
         def _with_bars(spec, layer, individual=None):
             if not layer.get('bars'):
                 return spec
@@ -11488,16 +11795,26 @@ class Mapper:
             if mode != 'quantitative':
                 return spec
             norm = bar['_unified_norm'] if individual is None else bar['_individual_norm']
+            bar_keys = {}
+            if bar.get('slice_by') is not None:
+                def bar_slicer(pathway, entry):
+                    return self._bar_result(pathway, entry, layer, individual)
+                bar_keys['bar_slicer'] = bar_slicer
+                if bar['slice_layout'] == 'independent':
+                    bar_keys['bar_slice_key'] = bar['_slice_key']
+                    bar_keys['bar_slice_uncolored'] = bar['_slice_uncolored']
             # A layer without samples draws the same bars on every map.
-            if individual is None or bar['sample_values'] is None:
+            elif individual is None or bar['sample_values'] is None:
                 def entry_value(entry):
                     return self._summarize_entry_values(entry, bar)[1]
+                bar_keys['bar_value'] = entry_value
             else:
                 def entry_value(entry):
                     return self._summarize_entry_values(entry, bar)[0].get(individual)
+                bar_keys['bar_value'] = entry_value
             return {
                 **spec,
-                'bar_value': entry_value,
+                **bar_keys,
                 'bar_norm': norm,
                 'bar_style': bar['style'],
                 'bar_orientation': bar['orientation'],
@@ -11714,7 +12031,10 @@ class Mapper:
                         track_color=(
                             BAR_STRIP_TRACK_COLOR if layer['style'] == 'strip' else BAR_TRACK_COLOR
                         ),
-                        orientations=(layer['orientation'],)
+                        orientations=[
+                            orientation for orientation in BAR_ORIENTATIONS
+                            if orientation in layer['_orientations']
+                        ] or ['horizontal']
                     )
                     if keys_individual_maps:
                         individual_keys.append((key_path, layer['element_type']))
@@ -12359,6 +12679,73 @@ class Mapper:
                 if individual in border['_individual_maps']:
                     border['_individual_maps'][individual].add(pathway_number)
 
+    def _find_bar_range(
+        self,
+        pathway_number: str,
+        pathway: kgml.Pathway,
+        layer: dict,
+        unified_valued: bool,
+        individuals: List[str]
+    ) -> None:
+        """
+        Collect the bar values that the sliced bars of a layer show on one KEGG map.
+
+        This is the range-finding pass of '_map_elements' for sliced bars, as '_find_ring_range' is
+        for sliced rings. The scales span the bar values of the columns drawn, and the values of the
+        boxes drawn whole with one bar ('_bar_result'). A box drawn whole for having more slices
+        than fit adds only its stand-in. The maps where a box shows a bar are recorded in the
+        model's '_unified_maps' and '_individual_maps', and the orientations of its bars in
+        '_orientations', which the bar keys draw rulers for.
+
+        Parameters
+        ==========
+        pathway_number : str
+            Numeric ID of the map.
+
+        pathway : kgml.Pathway
+            The map.
+
+        layer : dict
+            The model of the fill of a reaction layer whose bars are sliced.
+
+        unified_valued : bool
+            True if the 'unified' bar scale is worked out. The values of the 'unified' map are then
+            collected.
+
+        individuals : List[str]
+            The samples or groups whose values are collected for the bar scale that their maps
+            share. It is empty where those maps show no bar values, or none is drawn.
+        """
+        bar = layer['bars'][0]
+
+        def _shown(result: dict) -> List[float]:
+            if result['kind'] == 'columns':
+                return [value for value in result['values'] if value is not None]
+            return [result['value']] if result['kind'] == 'whole' else []
+
+        for entry in self._find_element_entries(
+            pathway, bar['use_reaction_attribute'], bar['accessions']
+        ):
+            if not self._shows_ring(pathway_number, pathway, bar, entry):
+                continue
+            contexts = [None] if unified_valued else []
+            # Bars without samples draw the values of the 'unified' scale on every map.
+            if bar['sample_values'] is not None:
+                contexts += individuals
+            for individual in contexts:
+                result = self._bar_result(pathway, entry, layer, individual, count_choices=False)
+                values = _shown(result)
+                if not values:
+                    continue
+                bar['_orientations'].add('vertical' if result['vertical'] else 'horizontal')
+                if individual is None:
+                    bar['_unified_maps'].add(pathway_number)
+                    bar['_unified_vals'].extend(values)
+                    continue
+                bar['_individual_vals'].extend(values)
+                if individual in bar['_individual_maps']:
+                    bar['_individual_maps'][individual].add(pathway_number)
+
     def _find_ring_maps(
         self,
         pathway_number: str,
@@ -12436,13 +12823,13 @@ class Mapper:
         where the IDs of separate assemblies were made unique.
 
         A border whose rings are sliced by gene pools the border values of its genes in the same
-        way, so its gene IDs are checked too. The gene IDs and maps that the fill of the same file
-        already reported are not reported again.
+        way, and so do bars sliced by gene, so their gene IDs are checked too. The gene IDs and maps
+        that the fill of the same file already reported are not reported again.
 
         Parameters
         ==========
         layers : List[dict]
-            The layer models and border models. Only models sliced by gene are read.
+            The layer models, border models, and bar models. Only models sliced by gene are read.
 
         draw_unified_maps : bool
             True if the 'unified' map is drawn.
@@ -12505,8 +12892,10 @@ class Mapper:
             reported_genes.update(colliding)
             unshared = [name for name in unshared if name not in reported_maps]
             reported_maps.update(unshared)
-            # The rows of a border are those with a border value ('_channel_view').
-            rows = 'rows' if layer['channel']['role'] == 'fill' else 'rows with border values'
+            # The rows of a border or bars are those with a border or bar value ('_channel_view').
+            rows = {
+                'fill': 'rows', 'border': 'rows with border values', 'bar': 'rows with bar values'
+            }[layer['channel']['role']]
             if colliding:
                 genes = self._sort_values(colliding)
                 several = len(genes) > 1
@@ -12539,6 +12928,9 @@ class Mapper:
             if layer['channel']['role'] == 'fill':
                 ids = f"No gene ID of the {element_type} file at '{path}'"
                 shows = "Each slice of a gene there shows the value of a single sample"
+            elif layer['channel']['role'] == 'bar':
+                ids = f"No gene ID with bar values in the {element_type} file at '{path}'"
+                shows = "Each column of bars there shows the bar value of a single sample"
             else:
                 ids = f"No gene ID with border values in the {element_type} file at '{path}'"
                 shows = "Each slice of a ring there shows the border value of a single sample"
@@ -12637,10 +13029,17 @@ class Mapper:
         the rings left out by shares of 0, and the units with border values that no column of the
         fill shows.
 
+        The table of a layer with a bar column has one more column, 'bar', with the bar value of
+        each slice ('_stage_entry_slices'). Bars aligned with the fill write no table of their own.
+        Bars sliced on their own, in a file whose only column of values is the bar column, write the
+        table of the layer, with no fill values ('_stage_entry_bar'). Its warnings count the boxes
+        drawn whole for having more columns than fit, and the boxes left without a bar by shares of
+        0.
+
         Parameters
         ==========
         layers : List[dict]
-            The layer models and border models. Only sliced models are read.
+            The layer models, border models, and bar models. Only sliced models are read.
 
         output_dir : str
             The output directory.
@@ -12648,11 +13047,15 @@ class Mapper:
         for layer in layers:
             if layer.get('slice_by') is None:
                 continue
+            role = layer['channel']['role']
+            if role == 'bar' and layer['slice_layout'] == 'aligned':
+                continue
             element_type = layer['element_type']
-            border = layer['channel']['role'] == 'border'
+            border = role == 'border'
+            columns = SLICE_KEY_COLUMNS + (('bar',) if role == 'bar' or layer.get('bars') else ())
             path = os.path.join(output_dir, f"slice_key_{layer['name']}.txt")
             with open(path, 'w') as key_file:
-                key_file.write('\t'.join(SLICE_KEY_COLUMNS) + '\n')
+                key_file.write('\t'.join(columns) + '\n')
                 for key in sorted(layer['_slice_key']):
                     for row in layer['_slice_key'][key]:
                         key_file.write('\t'.join(row) + '\n')
@@ -12689,13 +13092,35 @@ class Mapper:
                     f"counts by KEGG map: {by_map}. The key table at '{path}' lists these rings "
                     f"with the reason."
                 )
+            elif whole and role == 'bar':
+                by_map = ', '.join(f"{number} ({count})" for number, count in sorted(whole.items()))
+                # In a layer with a border column, the columns of a box fit inside its ring.
+                inside = (
+                    " The columns of a box fit inside its ring, since the layer has a border "
+                    "column." if layer.get('slice_ringed') else ""
+                )
+                self.run.warning(
+                    f"{sum(whole.values())} {element_type} box(es) had more columns of bars than "
+                    f"fit, so each was drawn whole with one bar. A box is drawn whole where a "
+                    f"column of equal width would be narrower than {MIN_BOX_SLICE_WIDTH} "
+                    f"points.{inside} Its bar shows the mean of the bar values of its columns, "
+                    f"weighted by their shares. A box is counted once on each drawn map. These are "
+                    f"the counts by KEGG map: {by_map}. The key table at '{path}' lists these "
+                    f"boxes with the reason."
+                )
             elif whole:
                 by_map = ', '.join(f"{number} ({count})" for number, count in sorted(whole.items()))
                 # In a layer with a border column, the slices of a box fit inside its ring.
+                # A box drawn whole shows one bar ('_bar_result').
                 inside = (
-                    " The slices of a box fit inside its ring, since the layer has a border column."
-                    if layer.get('border') is not None else ""
+                    " Such a box shows one bar, the mean of the bar values of its slices, weighted "
+                    "by their shares." if layer.get('bars') else ""
                 )
+                if layer.get('border') is not None:
+                    inside += (
+                        " The slices of a box fit inside its ring, since the layer has a border "
+                        "column."
+                    )
                 self.run.warning(
                     f"{sum(whole.values())} {element_type} element(s) had more slices than fit, so "
                     f"each was drawn whole in one color. A box is drawn whole where a slice of "
@@ -12720,6 +13145,13 @@ class Mapper:
                         f"{len(uncolored)} {element_type} element(s) show no border, since every "
                         f"{every} had a weight of 0 on that map. An element is counted once on "
                         f"each drawn map. Their accessions in the file include these: {examples}."
+                    )
+                elif role == 'bar':
+                    self.run.warning(
+                        f"{len(uncolored)} {element_type} box(es) were left uncolored, since every "
+                        f"{units[:-1]} with a bar value had a weight of 0 on that map. A box is "
+                        f"counted once on each drawn map. Their accessions in the file include "
+                        f"these: {examples}."
                     )
                 else:
                     self.run.warning(
@@ -14424,7 +14856,8 @@ class Mapper:
         spec: dict,
         color_priority: dict,
         derives_compounds: bool,
-        slice_records: Union[list, None] = None
+        slice_records: Union[list, None] = None,
+        bar_values: Union[Dict[Union[str, Tuple[str, Tuple[str, ...]]], float], None] = None
     ) -> bool:
         """
         Stage an Entry of a sliced layer in slices, whole, or not at all.
@@ -14473,6 +14906,11 @@ class Mapper:
             Each record is a tuple of the dictionary of the layer that keeps it ('slice_key' or
             'slice_uncolored'), the key of the Entry on this map, and the rows of the Entry or the
             accessions of an uncolored Entry. Nothing is recorded with None.
+
+        bar_values : Union[Dict[Union[str, Tuple[str, Tuple[str, ...]]], float], None], None
+            The bar value of each slice of the Entry on the map, keyed by its unit, for the key
+            table of a layer with bars ('_bar_result'). A slice without one, or a map that shows no
+            bars, leaves the 'bar' column of its row blank.
 
         Returns
         =======
@@ -14550,6 +14988,13 @@ class Mapper:
                 for position, ((unit, value, share, _, _), color)
                 in enumerate(zip(slices, colors))
             ]
+            # The key table of a layer with bars gives the bar value of each slice on the map.
+            if spec.get('slice_bars'):
+                bar_values = bar_values or {}
+                rows = [
+                    row + ('' if unit not in bar_values else str(float(bar_values[unit])),)
+                    for row, (unit, _, _, _, _) in zip(rows, slices)
+                ]
             slice_records.append((spec['slice_key'], key, rows))
         return True
 
@@ -14798,10 +15243,10 @@ class Mapper:
         The sources containing a map element, pooled across the accessions it stands for.
 
         A single line, box or circle can stand for several KOs, reactions or compounds, so the
-        sources it is present in are the union of its accessions' sources. This one definition serves
-        everything that counts an element's sources: the colorer that colors by that count, the pass
-        that finds the highest count on the drawn maps, and the within-group counts of grouped
-        individual maps.
+        sources it is present in are the union of its accessions' sources. This one definition
+        serves everything that counts an element's sources: the colorer that colors by that count,
+        the pass that finds the highest count on the drawn maps, and the within-group counts of
+        grouped individual maps.
 
         Parameters
         ==========
@@ -14993,6 +15438,8 @@ class Mapper:
               layer.
             - 'slice_ringed': True for a layer with a border column. The cap on slices then
               measures the width inside the ring of a box ('_slice_cap').
+            - 'slice_bars': True for a layer with a bar column. Its key table then gives the bar
+              value of each slice.
 
             A layer whose border shows on the map has these keys too ('_with_border',
             '_stage_entry_borders'):
@@ -15016,11 +15463,14 @@ class Mapper:
             A layer whose bars show on the map has these keys too ('_with_bars',
             '_stage_entry_bar'):
             - 'bar_value': a function that takes an Entry. It returns the bar value of the Entry on
-              the map, or None where the Entry has none there.
+              the map, or None where the Entry has none there. Sliced bars have 'bar_slicer' in its
+              place, a function that takes a map and an Entry and finds what the bars of its box
+              show ('_bar_result').
             - 'bar_norm': the norm of the bar scale of the map, or None for a scale of a single
               value ('_bar_extent').
             - 'bar_style': how the bars are drawn in their boxes ('BAR_STYLES').
-            - 'bar_orientation': which way the bars run in their boxes ('BAR_ORIENTATIONS').
+            - 'bar_orientation': which way the bars run in their boxes ('BAR_ORIENTATIONS'), or
+              None where each element of a sliced layer is oriented on its own ('_bar_vertical').
             - 'bar_map': what the warning about boxes without a bar value, and the key table of
               boxes without labels, call the map, 'unified' or the name of a sample or group.
             - 'bar_rank': where the map comes in the key table of boxes without labels, 0 for the
@@ -15028,6 +15478,9 @@ class Mapper:
             - 'bar_missing' and 'bar_unlabeled': where the boxes left uncolored for want of a bar
               value, and the rows of the key table of boxes drawn without their labels, are kept,
               once the map is drawn. They belong to the model of the bars.
+            - 'bar_slice_key' and 'bar_slice_uncolored': where bars sliced on their own keep the
+              rows of the key table of the layer, and the boxes left without a bar by shares of 0.
+              Only these bars have the two keys.
 
         output_dir : str
             Path to the output directory in which the map PDF is drawn.
@@ -15160,11 +15613,37 @@ class Mapper:
                 found_entries = True
             for entry in entries:
                 if spec.get('slicer') is not None:
+                    # A sliced layer with bars finds what the bars of a box show first. A box with a
+                    # fill and no bar to show is left uncolored in the 'fill' style, as an unsliced
+                    # box is ('_stage_entry_bar'). A line takes no bar and keeps its slices.
+                    bar_result = None
+                    takes_bar = spec.get('bar_slicer') is not None and any(
+                        self._shows_border(pathway, entry, pathway.uuid_element_lookup[uuid])
+                        for uuid in entry.children['graphics']
+                    )
+                    if takes_bar:
+                        bar_result = spec['bar_slicer'](pathway, entry)
+                        if bar_result['kind'] == 'missing' and spec['bar_style'] != 'strip':
+                            if slice_records is not None:
+                                slice_records.append((
+                                    spec['bar_missing'],
+                                    (pathway_number, spec['bar_map'], entry.id),
+                                    [
+                                        accession for accession in bar_result['accessions']
+                                        if accession in spec['entry_keys']
+                                    ]
+                                ))
+                            continue
+                    bar_values = None if bar_result is None else bar_result['unit_values']
                     if self._stage_entry_slices(
                         pathway_number, pathway, entry, spec, color_priority, derives_compounds,
-                        slice_records
+                        slice_records, bar_values=bar_values
                     ):
                         found_entries = True
+                        if bar_result is not None:
+                            self._stage_entry_column_bars(
+                                pathway_number, pathway, entry, spec, bar_result, slice_records
+                            )
                     continue
                 colored = spec['colorer'](entry)
                 if colored is None:
@@ -15172,7 +15651,8 @@ class Mapper:
                 found_entries = True
                 color_hexcode, priority = colored
                 # On a map that shows bars, a box without a bar value is left uncolored.
-                if spec.get('bar_value') is not None and not self._stage_entry_bar(
+                shows_bars = spec.get('bar_value') is not None or spec.get('bar_slicer') is not None
+                if shows_bars and not self._stage_entry_bar(
                     pathway_number, pathway, entry, spec, color_hexcode, slice_records
                 ):
                     continue
@@ -15223,6 +15703,13 @@ class Mapper:
         strip, which cannot be read as a value, since a strip of 0 is white. An Entry drawn as a
         line takes no bar and keeps its whole fill.
 
+        Sliced bars find what each box shows with the bar slicer of the spec ('_bar_result'). Here
+        the fill is not sliced, since it shows presence. Bars aligned with a fill of values show one
+        bar in such a box, the mean of the bar values of its units. Bars sliced on their own show a
+        column for each unit with a bar value, in the color of the fill, or one bar where the box is
+        drawn whole. Their columns are recorded for the key table of the layer, and a box whose
+        units all have shares of 0 is recorded for a warning ('_write_slice_keys').
+
         Parameters
         ==========
         pathway_number : str
@@ -15254,60 +15741,259 @@ class Mapper:
         shapes = [shape for shape in shapes if self._shows_border(pathway, entry, shape)]
         if not shapes:
             return True
-        value = spec['bar_value'](entry)
         strip = spec['bar_style'] == 'strip'
-        if value is None and strip:
-            return True
-        # The accessions of the box in the layer's file name it in the warning about missing bar
-        # values and in the key table of unlabeled boxes.
+        # Sliced bars find the columns or the one bar of the box ('_bar_result'). Other bars show
+        # the bar value of the Entry, and all of them run one way.
+        if spec.get('bar_slicer') is not None:
+            result = spec['bar_slicer'](pathway, entry)
+        else:
+            value = spec['bar_value'](entry)
+            result = {
+                'kind': 'missing' if value is None else 'whole', 'value': value,
+                'vertical': spec['bar_orientation'] == 'vertical', 'reason': None, 'slices': []
+            }
+        # The accessions of the box in the layer's file name it in the warnings and in the key table
+        # of unlabeled boxes.
         accessions = [
             accession for accession in self._get_entry_kegg_ids(
                 entry, spec['use_reaction_attribute']
             ) if accession in spec['entry_keys']
         ]
-        if value is None:
-            if slice_records is not None:
+        key = (
+            pathway_number, spec['bar_rank'], int(entry.id) if entry.id.isdigit() else -1,
+            spec['bar_map'], entry.id
+        )
+        if result['kind'] not in ('whole', 'columns'):
+            if strip:
+                return True
+            if slice_records is not None and result['kind'] == 'uncolored':
+                slice_records.append((spec['bar_slice_uncolored'], key, accessions))
+            elif slice_records is not None:
                 slice_records.append((
                     spec['bar_missing'], (pathway_number, spec['bar_map'], entry.id), accessions
                 ))
             return False
-        zero, end = self._bar_extent(value, spec['bar_norm'])
-        start, stop = min(zero, end), max(zero, end)
-        vertical = spec['bar_orientation'] == 'vertical'
-        axis = 'y' if vertical else 'x'
-        if strip:
-            band = BAR_STRIP_HEIGHT
-            cells = [(color_hexcode, 1.0)]
-            marks = [
-                (0, axis, 0.0, 1.0, BAR_STRIP_TRACK_COLOR, band),
-                (0, axis, start, stop, BAR_STRIP_COLOR, band)
-            ]
+        if result['kind'] == 'columns':
+            cells = [(color_hexcode, share) for share in result['shares']]
+            values = result['values']
         else:
-            band = None
-            cells = [(BAR_TRACK_COLOR, 1.0)]
-            marks = [(0, axis, start, stop, color_hexcode, None)]
-        signed = 0 < zero < 1
-        rules = []
-        if signed:
-            rules.append((0, axis, zero, BAR_ZERO_LINE_COLOR, BAR_ZERO_LINE_WIDTH, band))
-        rules.append((0, axis, end, BAR_END_LINE_COLOR, BAR_END_LINE_WIDTH, band))
-        glyph = {'cells': cells, 'marks': marks, 'rules': rules}
-        if (signed or vertical) and not strip:
-            glyph['label'] = False
-            if slice_records is not None:
-                x, y, label = self._slice_label_point(pathway, entry)
-                key = (
-                    pathway_number, spec['bar_rank'], int(entry.id) if entry.id.isdigit() else -1,
-                    spec['bar_map'], entry.id
-                )
-                row = (
-                    pathway_number, spec['bar_map'], entry.id, x, y, label, ','.join(accessions),
-                    str(float(value))
-                )
-                slice_records.append((spec['bar_unlabeled'], key, row))
+            cells = [(color_hexcode, 1.0)]
+            values = [result['value']]
+        extents = [self._bar_extent(value, spec['bar_norm']) for value in values]
+        glyph = self._bar_glyph(cells, extents, result['vertical'], strip)
         for shape in shapes:
             shape.glyph = glyph
+        if slice_records is None:
+            return True
+        if not glyph.get('label', True):
+            self._record_unlabeled_box(
+                pathway_number, pathway, entry, spec, accessions, values, slice_records
+            )
+        # Bars sliced on their own list their columns in the key table of the layer. The fill shows
+        # presence, so it has no value of its own.
+        if spec.get('bar_slice_key') is not None:
+            x, y, label = self._slice_label_point(pathway, entry)
+            rows = [
+                (
+                    pathway_number, spec['bar_map'], entry.id, x, y, label,
+                    '' if position is None else str(position), *self._slice_unit_labels(unit), '',
+                    str(float(share)), color_hexcode, result['reason'] or '', str(float(value))
+                )
+                for position, unit, value, share in result['slices']
+            ]
+            slice_records.append((spec['bar_slice_key'], key, rows))
         return True
+
+    def _stage_entry_column_bars(
+        self,
+        pathway_number: str,
+        pathway: kgml.Pathway,
+        entry: kgml.Entry,
+        spec: dict,
+        result: dict,
+        slice_records: Union[list, None] = None
+    ) -> None:
+        """
+        Stage the bars of an Entry whose fill its slicer staged, in columns or whole.
+
+        The bars of a layer of values are aligned with the slices of the fill ('_bar_result'). The
+        fill staged each box first ('_stage_entry_slices'): its columns as the cells of its glyph,
+        or its one color in its bg color where it is drawn whole. The glyph of each box is then
+        drawn again with the bars in these cells ('_bar_glyph'). A column whose unit has no bar
+        value on the map is left white in the 'fill' style, and keeps its color without a strip in
+        the 'strip' style. A box drawn whole takes one bar. A box with no bar to show was left
+        uncolored before its fill was staged in the 'fill' style ('_stage_map_elements'), and it
+        keeps its fill without strips in the 'strip' style.
+
+        Parameters
+        ==========
+        pathway_number : str
+            Numeric ID of the map.
+
+        pathway : kgml.Pathway
+            The map.
+
+        entry : kgml.Entry
+            An Entry whose fill the spec's slicer staged.
+
+        spec : dict
+            The layer spec, with the keys of bars that '_draw_map_elements' describes.
+
+        result : dict
+            What the bars of the Entry show on the map ('_bar_result').
+
+        slice_records : Union[list, None], None
+            Where a box drawn without its label is recorded, as in '_stage_entry_slices'. Nothing is
+            recorded with None.
+        """
+        if result['kind'] not in ('columns', 'whole'):
+            return
+        shapes = [pathway.uuid_element_lookup[uuid] for uuid in entry.children['graphics']]
+        shapes = [shape for shape in shapes if self._shows_border(pathway, entry, shape)]
+        values = result['values'] if result['kind'] == 'columns' else [result['value']]
+        extents = [
+            None if value is None else self._bar_extent(value, spec['bar_norm'])
+            for value in values
+        ]
+        strip = spec['bar_style'] == 'strip'
+        glyph = None
+        for shape in shapes:
+            if result['kind'] == 'columns':
+                if shape.glyph is None:
+                    continue
+                cells = shape.glyph['cells']
+            else:
+                cells = [(shape.bgcolor, 1.0)]
+            glyph = self._bar_glyph(cells, extents, result['vertical'], strip)
+            shape.glyph = glyph
+        if slice_records is not None and glyph is not None and not glyph.get('label', True):
+            accessions = [
+                accession for accession in result['accessions'] if accession in spec['entry_keys']
+            ]
+            self._record_unlabeled_box(
+                pathway_number, pathway, entry, spec, accessions, values, slice_records
+            )
+
+    def _record_unlabeled_box(
+        self,
+        pathway_number: str,
+        pathway: kgml.Pathway,
+        entry: kgml.Entry,
+        spec: dict,
+        accessions: List[str],
+        values: List[Union[float, None]],
+        slice_records: list
+    ) -> None:
+        """
+        Record a box drawn without its label for the key table of unlabeled boxes.
+
+        The row names the box by its accessions in the layer's file ('LABEL_KEY_COLUMNS'). Its bar
+        value is that of a box drawn whole. A box drawn in columns leaves it blank, since the key
+        table of slices gives the bar value of each column.
+
+        Parameters
+        ==========
+        pathway_number : str
+            Numeric ID of the map.
+
+        pathway : kgml.Pathway
+            The map.
+
+        entry : kgml.Entry
+            The Entry of the box.
+
+        spec : dict
+            The layer spec, with the keys of bars that '_draw_map_elements' describes.
+
+        accessions : List[str]
+            The accessions of the box in the layer's file, in KGML order.
+
+        values : List[Union[float, None]]
+            The bar value of each column of the box, or its one bar value.
+
+        slice_records : list
+            Where the row is recorded, as in '_stage_entry_slices'.
+        """
+        x, y, label = self._slice_label_point(pathway, entry)
+        key = (
+            pathway_number, spec['bar_rank'], int(entry.id) if entry.id.isdigit() else -1,
+            spec['bar_map'], entry.id
+        )
+        bar_text = str(float(values[0])) if len(values) == 1 else ''
+        row = (
+            pathway_number, spec['bar_map'], entry.id, x, y, label, ','.join(accessions), bar_text
+        )
+        slice_records.append((spec['bar_unlabeled'], key, row))
+
+    @staticmethod
+    def _bar_glyph(
+        cells: List[Tuple[str, float]],
+        extents: List[Union[Tuple[float, float], None]],
+        vertical: bool,
+        strip: bool
+    ) -> Dict[str, list]:
+        """
+        Draw the bars of a box into a glyph ('kgml.Graphics.glyph').
+
+        Each column of the box shows one bar, or the box shows one bar in its one column. In the
+        'fill' style, the cell of a column is the gray track ('BAR_TRACK_COLOR'), and a mark over it
+        in the color of the column runs from 0 to its value. In the 'strip' style, the cell keeps
+        the color of the column, and two marks lie in a band along its bottom ('BAR_STRIP_HEIGHT'):
+        the white track of the strip, and the dark bar over it. A column without a bar value is
+        white in the 'fill' style ('BAR_EMPTY_COLUMN_COLOR'), and keeps its color without a strip in
+        the 'strip' style. An end line is centered on the free end of each bar
+        ('BAR_END_LINE_COLOR'), and a zero line lies under it where 0 lies inside the scale
+        ('BAR_ZERO_LINE_COLOR'). A box of the 'fill' style drops its label where its bars run up it,
+        or where the scale has values on both sides of 0, since the label would hide their tops or
+        the zero line.
+
+        Parameters
+        ==========
+        cells : List[Tuple[str, float]]
+            The color and share of each column of the box, or one color and the share 1.
+
+        extents : List[Union[Tuple[float, float], None]]
+            Where the bar of each column starts and ends on the bar scale ('_bar_extent'), or None
+            for a column without a bar value.
+
+        vertical : bool
+            True if the bars run up the box ('BAR_ORIENTATIONS').
+
+        strip : bool
+            True for the 'strip' style ('BAR_STYLES').
+
+        Returns
+        =======
+        Dict[str, list]
+            The glyph.
+        """
+        axis = 'y' if vertical else 'x'
+        band = BAR_STRIP_HEIGHT if strip else None
+        glyph_cells = []
+        marks = []
+        rules = []
+        signed = False
+        for index, ((color, share), extent) in enumerate(zip(cells, extents)):
+            if extent is None:
+                glyph_cells.append((color if strip else BAR_EMPTY_COLUMN_COLOR, share))
+                continue
+            zero, end = extent
+            start, stop = min(zero, end), max(zero, end)
+            if strip:
+                glyph_cells.append((color, share))
+                marks.append((index, axis, 0.0, 1.0, BAR_STRIP_TRACK_COLOR, band))
+                marks.append((index, axis, start, stop, BAR_STRIP_COLOR, band))
+            else:
+                glyph_cells.append((BAR_TRACK_COLOR, share))
+                marks.append((index, axis, start, stop, color, None))
+            if 0 < zero < 1:
+                signed = True
+                rules.append((index, axis, zero, BAR_ZERO_LINE_COLOR, BAR_ZERO_LINE_WIDTH, band))
+            rules.append((index, axis, end, BAR_END_LINE_COLOR, BAR_END_LINE_WIDTH, band))
+        glyph = {'cells': glyph_cells, 'marks': marks, 'rules': rules}
+        if (signed or vertical) and not strip:
+            glyph['label'] = False
+        return glyph
 
     @staticmethod
     def _derives_compounds(pathway: kgml.Pathway, layer_specs: List[dict]) -> bool:
