@@ -846,6 +846,27 @@ then
     exit 1
 fi
 
+# The bars of compounds are pies in the compound circles of standard and overview maps. A pie is a
+# sector in the color of the fill, clockwise from 12 o'clock over a gray track, and a thin dark line
+# marks its free edge. The compound file has no other column of values, so its fills show presence,
+# and its pies show concentrations. The 'unified' map shows pies of the mean concentration of the
+# samples. The pies take keys of their own, each a circle ticked in quarters of its scale.
+INFO "Drawing pies of a bar column in compound circles"
+anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+                        --compound-bar-column concentration \
+                        --compound-bar-sample-summary mean \
+                        --output-dir draw_txt_samples_compounds_pies \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+if [ ! -s draw_txt_samples_compounds_pies/bar_key_compounds.pdf ] \
+    || [ ! -s draw_txt_samples_compounds_pies/bar_key_compounds_samples.pdf ]
+then
+    echo "ERROR: a run with pies should have written a key for each bar scale."
+    exit 1
+fi
+
 INFO "Mixing presence coloring of reactions with value coloring of compounds"
 anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
                         --compound-txt draw_compounds.compound.txt \

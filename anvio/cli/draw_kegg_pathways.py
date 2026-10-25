@@ -51,9 +51,9 @@ from anvio.keggmapping import (
     DEFAULT_BORDER_VALUE_COLORS, DEFAULT_CATEGORICAL_SEED, DEFAULT_CENTERED_COLORMAP,
     DEFAULT_GROUP_TINT_SPAN, DEFAULT_VALUE_COLORS, ELEMENT_NORMALIZATION_PHRASE,
     GROUP_COLORMAP_TINT, GROUP_SCHEME_OPTIONS, MAP_KINDS, MAX_DISCRETE_COUNT_BANDS, MAX_RING_SLICES,
-    MIN_ANGULAR_DEVIATION_VALUES, MIN_BOX_SLICE_WIDTH, SLICE_SHARE_SUMMARIES, SLICE_UNITS,
-    SLICE_WEIGHT_AGGREGATIONS, SUMMARY_PRESENCE_PHRASE, SUMMARY_PRESENCE_SCHEMES, TXT_CHANNEL_ROLES,
-    VALUE_TYPES, Mapper
+    MIN_ANGULAR_DEVIATION_VALUES, MIN_BOX_SLICE_WIDTH, REACTION_BAR_OPTIONS, SLICE_SHARE_SUMMARIES,
+    SLICE_UNITS, SLICE_WEIGHT_AGGREGATIONS, SUMMARY_PRESENCE_PHRASE, SUMMARY_PRESENCE_SCHEMES,
+    TXT_CHANNEL_ROLES, VALUE_TYPES, Mapper
 )
 
 
@@ -138,7 +138,8 @@ BORDER_FLAGS = {
 }
 
 # The options of the bars of each layer, in the order of the help. Every one but the bar column
-# needs the bar column ('--reaction-bar-column'). Only the reaction layer has bars.
+# needs the bar column ('--reaction-bar-column', '--compound-bar-column'). The bars of compounds are
+# pies, which have no style or orientation, and a compound file has no genes.
 BAR_FLAGS = {
     'reaction': (
         '--reaction-bar-column', '--reaction-bar-style', '--reaction-bar-orientation',
@@ -146,7 +147,11 @@ BAR_FLAGS = {
         '--reaction-bar-sample-summary', '--reaction-bar-group-summary',
         '--reaction-bar-value-limits', '--reaction-bar-individual-value-limits'
     ),
-    'compound': ()
+    'compound': (
+        '--compound-bar-column', '--compound-bar-accession-aggregation',
+        '--compound-bar-sample-summary', '--compound-bar-group-summary',
+        '--compound-bar-value-limits', '--compound-bar-individual-value-limits'
+    )
 }
 
 # The options of the channels of a layer other than its fill ('TXT_CHANNEL_ROLES'), keyed by role
@@ -183,10 +188,11 @@ def get_args() -> Namespace:
         "one value ('--reaction-gene-aggregation'). An optional 'sample' column assigns each row "
         "to a sample of origin, enabling comparison across samples (and, with '--groups-txt', "
         "groups of samples) as when using multiple contigs databases. The single column that is "
-        "not 'accession', 'gene_id', 'sample', a column of weights ('--reaction-slice-weights'), "
-        "or a border column ('--reaction-border-column') is auto-detected as the value column. "
-        "With it, reactions are colored by value, and without it, by presence. Its values are "
-        "numbers, or categorical values with '--reaction-value-type categorical'."
+        "not 'accession', 'gene_id', 'sample', a column of weights ('--reaction-slice-weights'), a "
+        "border column ('--reaction-border-column'), or a bar column ('--reaction-bar-column') is "
+        "auto-detected as the value column. With it, reactions are colored by value, and without "
+        "it, by presence. Its values are numbers, or categorical values with "
+        "'--reaction-value-type categorical'."
     )
     groupTXT.add_argument(
         '--compound-txt', type=str, metavar='FILE', help=
@@ -194,9 +200,10 @@ def get_args() -> Namespace:
         "must have an 'accession' column whose values are all KEGG compound IDs ('C' followed by "
         "digits). It must NOT have a 'gene_id' column, since compounds are not gene products. An "
         "optional 'sample' column works as for '--reaction-txt'. The single column that is not "
-        "'accession', 'sample', or a border column ('--compound-border-column') is auto-detected "
-        "as the value column: with it, compounds are colored by value; without it, by presence. "
-        "Its values are numbers, or categorical values with '--compound-value-type categorical'."
+        "'accession', 'sample', a border column ('--compound-border-column'), or a bar column "
+        "('--compound-bar-column') is auto-detected as the value column: with it, compounds are "
+        "colored by value; without it, by presence. Its values are numbers, or categorical values "
+        "with '--compound-value-type categorical'."
     )
     groupTXT.add_argument(
         '--reaction-gene-aggregation', metavar='NAME', help=
@@ -627,13 +634,15 @@ def get_args() -> Namespace:
 
     groupBAR = parser.add_argument_group(
         "BAR VALUES",
-        "Draw bars in the reaction boxes of standard maps from a column of a draw-kegg-pathways "
-        "text file. A bar fills part of the length of its box in the color of the fill, over a "
-        "gray track, or it runs along a white strip under the whole fill ('--reaction-bar-style'). "
-        "A thin dark line marks its end. The value column still sets the color of the fill. Each "
-        "bar option is like the option of the fill whose name lacks 'bar-', but applies to the bar "
-        "column. Bars take numbers only, so they have no value type, period, colormap, center, or "
-        "normalization."
+        "Draw bars in the reaction boxes of standard maps, or pies in the compound circles of "
+        "standard and overview maps, from a column of a draw-kegg-pathways text file. A bar fills "
+        "part of the length of its box in the color of the fill, over a gray track, or it runs "
+        "along a white strip under the whole fill ('--reaction-bar-style'). A pie fills part of a "
+        "turn of its circle in the color of the fill, clockwise from 12 o'clock over a gray track. "
+        "A thin dark line marks the end of a bar or pie. The value column still sets the color of "
+        "the fill. Each bar option is like the option of the fill whose name lacks 'bar-', but "
+        "applies to the bar column. Bars take numbers only, so they have no value type, period, "
+        "colormap, center, or normalization."
     )
     groupBAR.add_argument(
         '--reaction-bar-column', metavar='COLUMN', help=
@@ -660,6 +669,27 @@ def get_args() -> Namespace:
         "value keeps its share, white in the default style, and in its color without a strip in "
         "the strip style. A file whose only other column is this one slices its bars on their own, "
         "in the color of the fill. 'slice_key_reactions.txt' gives the bar value of each slice."
+    )
+    groupBAR.add_argument(
+        '--compound-bar-column', metavar='COLUMN', help=
+        "The column of the compound file whose values set the sizes of pies in the compound "
+        "circles of standard and overview maps. A pie is a sector in the color of the fill of its "
+        "circle, clockwise from 12 o'clock over a gray track. 12 o'clock stands for 0, and a full "
+        "circle for the top of the bar scale. A pie has no zero line, so bar values below 0 are "
+        "refused, and so are aggregations and summaries that reduce them below 0. Global maps do "
+        "not show pies. A circle with a ring shows its pie inside the ring, which leaves 10 points "
+        "across a circle 16 points wide, so its pie reads only when zoomed in. The column is left "
+        "out of the search for the value column, so a file whose only other column is this one "
+        "colors its fills by presence. On global and overview maps, the fills of a compound file "
+        "with a bar column replace the colors that compounds otherwise take from a reaction layer. "
+        "The bar column cannot be 'accession', 'sample', or the border column. A row can leave its "
+        "cell empty, and then it has no bar value. On a map that shows pies, a circle with a fill "
+        "and no bar value is left uncolored, and a warning counts such circles. The pies have keys "
+        "of their own, 'bar_key_compounds.pdf' and 'bar_key_compounds_samples.pdf' or "
+        "'bar_key_compounds_groups.pdf'. Each is a circle ticked in quarters of the scale and "
+        "labeled with the column and '(bar)'. Every other '--compound-bar-*' option needs this "
+        "one. Pies take no style or orientation, and '--reaction-bar-style' and "
+        "'--reaction-bar-orientation' apply only to the bars of reactions."
     )
     groupBAR.add_argument(
         '--reaction-bar-style', choices=list(BAR_STYLES), help=
@@ -710,6 +740,11 @@ def get_args() -> Namespace:
         "single value unchanged."
     )
     groupBAR.add_argument(
+        '--compound-bar-accession-aggregation', metavar='NAME', help=
+        "Like '--compound-accession-aggregation', but for the bar column. The default is 'mean', "
+        "not 'sum'."
+    )
+    groupBAR.add_argument(
         '--reaction-bar-sample-summary', metavar='NAME', help=
         f"Like '--reaction-sample-summary', but for the bar column. There is no default. Without "
         f"it, the 'unified' map shows no bars and draws its fills without them, and with "
@@ -717,10 +752,20 @@ def get_args() -> Namespace:
         f"presence names {SUMMARY_PRESENCE_PHRASE} are refused."
     )
     groupBAR.add_argument(
+        '--compound-bar-sample-summary', metavar='NAME', help=
+        "Like '--compound-sample-summary', but for the bar column. As for "
+        "'--reaction-bar-sample-summary', there is no default, and presence names are refused."
+    )
+    groupBAR.add_argument(
         '--reaction-bar-group-summary', metavar='NAME', help=
         "Like '--reaction-group-summary', but for the bar column. There is no default. Without it, "
         "the 'unified' map of a grouped run shows no bars. It needs "
         "'--reaction-bar-sample-summary', and it takes no presence names."
+    )
+    groupBAR.add_argument(
+        '--compound-bar-group-summary', metavar='NAME', help=
+        "Like '--compound-group-summary', but for the bar column. As for "
+        "'--reaction-bar-group-summary', there is no default, and presence names are refused."
     )
     groupBAR.add_argument(
         '--reaction-bar-value-limits', nargs=2, metavar='LIMIT', help=
@@ -730,9 +775,21 @@ def get_args() -> Namespace:
         "end of its box, and the key marks that end '≤' or '≥'."
     )
     groupBAR.add_argument(
+        '--compound-bar-value-limits', nargs=2, metavar='LIMIT', help=
+        "Like '--reaction-bar-value-limits', but for the pies of the compound layer. A pie has no "
+        "zero line, so its scale runs from 0 up. The lower limit must be 0 and the upper limit "
+        "above 0, or either can be left open. A pie of a value past the upper limit fills its "
+        "circle, and the key marks the top '≥'."
+    )
+    groupBAR.add_argument(
         '--reaction-bar-individual-value-limits', nargs=2, metavar='LIMIT', help=
         "Like '--reaction-individual-value-limits', but for the bar scale shared by the maps of "
         "the individual samples or groups. It too must include 0."
+    )
+    groupBAR.add_argument(
+        '--compound-bar-individual-value-limits', nargs=2, metavar='LIMIT', help=
+        "Like '--compound-bar-value-limits', but for the scale of pies shared by the maps of the "
+        "individual samples or groups."
     )
 
     groupJSON = parser.add_argument_group(
@@ -1090,20 +1147,20 @@ def get_args() -> Namespace:
         "THE COMMAND. This applies to the reaction layer of any input; for multiple databases, "
         "genomes, samples, or groups it overrides dynamic coloring to show simple "
         "presence/absence. For a reaction file with a border column ('--reaction-border-column') "
-        "and no fill value column, the option also takes 'none', which leaves the fills uncolored "
-        "so that only the rings of the border column are drawn. It cannot be combined with "
-        "'--reaction-colormap' (dynamic reaction coloring) or '--original-color'."
+        "and no fill value column or bar column, the option also takes 'none', which leaves the "
+        "fills uncolored so that only the rings of the border column are drawn. It cannot be "
+        "combined with '--reaction-colormap' (dynamic reaction coloring) or '--original-color'."
     )
     groupCOLOR.add_argument(
         '--compound-color', nargs='?', const=DEFAULT_COMPOUND_COLOR, metavar='HEX', help=
         "Like '--reaction-color', but for the fills of the compound layer of a '--compound-txt' "
         "file colored by presence/absence. Used as a flag, the fills take the default color "
         "(pink); or give a quoted color hex code. For a compound file with a border column "
-        "('--compound-border-column') and no fill value column, the option also takes 'none', "
-        "which leaves the fills uncolored so that only rings are drawn. Compounds on global and "
-        "overview maps then keep the fills that they take from a reaction layer. Database, "
-        "pangenome, and reaction-network-JSON inputs have no compound layer, so this applies only "
-        "to a compound text file. It cannot be combined with '--compound-colormap' or "
+        "('--compound-border-column') and no fill value column or bar column, the option also "
+        "takes 'none', which leaves the fills uncolored so that only rings are drawn. Compounds on "
+        "global and overview maps then keep the fills that they take from a reaction layer. "
+        "Database, pangenome, and reaction-network-JSON inputs have no compound layer, so this "
+        "applies only to a compound text file. It cannot be combined with '--compound-colormap' or "
         "'--original-color'."
     )
     groupCOLOR.add_argument(
@@ -1669,9 +1726,10 @@ def _detect_txt_layer(
     '--compound-border-column'). It is left out of value detection too, and 'has_border' says
     whether the file has it. 'border_mode' is the mode of the border, 'categorical' where
     'border_value_type' says so and 'quantitative' otherwise. It is None for a file without the
-    border column. 'bar_column' names the bar column ('--reaction-bar-column'), which is left out of
-    value detection too. 'has_bar' says whether the file has it, and 'bar_mode' is 'quantitative'
-    for a file with it, since bars take numbers only, and None otherwise.
+    border column. 'bar_column' names the bar column ('--reaction-bar-column',
+    '--compound-bar-column'), which is left out of value detection too. 'has_bar' says whether the
+    file has it, and 'bar_mode' is 'quantitative' for a file with it, since bars take numbers only,
+    and None otherwise.
     """
     filesnpaths.is_file_exists(path)
     columns = Mapper._read_txt_header(path)
@@ -1808,7 +1866,7 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
     ) if args.reaction_txt is not None else None
     compound = _detect_txt_layer(
         args.compound_txt, args.compound_value_type, border_column=args.compound_border_column,
-        border_value_type=args.compound_border_value_type
+        border_value_type=args.compound_border_value_type, bar_column=args.compound_bar_column
     ) if args.compound_txt is not None else None
     present = [layer for layer in (reaction, compound) if layer is not None]
     any_sample = any(layer['has_sample'] for layer in present)
@@ -2011,10 +2069,14 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
         for role, role_flags in CHANNEL_FLAGS.items():
             border = role == 'border'
             marks = 'borders' if border else 'bars'
-            does = 'color the borders' if border else 'set the lengths of the bars'
             for element_type, layer in (('reaction', reaction), ('compound', compound)):
                 if not role_flags[element_type]:
                     continue
+                compound_bars = not border and element_type == 'compound'
+                does = 'color the borders' if border else 'size the pies' if compound_bars else (
+                    'set the lengths of the bars'
+                )
+                sizes = 'size pies' if compound_bars else 'set the lengths of bars'
                 column_flag = role_flags[element_type][0]
                 column = getattr(args, column_flag[2:].replace('-', '_'))
                 given = [
@@ -2024,10 +2086,21 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 if column is None:
                     if given:
                         listed = ', '.join(f"'{flag}'" for flag in given)
+                        # The options that only the bars of reactions have may be meant for the pies
+                        # of a compound bar column.
+                        reaction_only = {
+                            '--reaction-bar-style', '--reaction-bar-orientation',
+                            '--reaction-bar-gene-aggregation'
+                        }.intersection(given)
+                        pies = (
+                            " Pies, the bars of compounds, take no style, orientation, or gene "
+                            "aggregation." if reaction_only and args.compound_bar_column is not None
+                            else ""
+                        )
                         raise ConfigError(
                             f"{listed} {'apply' if len(given) > 1 else 'applies'} to the {marks} "
                             f"of the {element_type} layer, but no {role} column was named with "
-                            f"'{column_flag}'. Name the column whose values {does}."
+                            f"'{column_flag}'. Name the column whose values {does}.{pies}"
                         )
                     continue
                 if layer is None:
@@ -2050,8 +2123,8 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 if not border and column == getattr(args, f'{element_type}_border_column'):
                     raise ConfigError(
                         f"'{column_flag}' and '--{element_type}-border-column' both name the "
-                        f"column '{column}'. A column can either set the lengths of bars or color "
-                        f"borders, not both. Please name another column for one of them."
+                        f"column '{column}'. A column can either {sizes} or color borders, not "
+                        f"both. Please name another column for one of them."
                     )
 
         # '--reaction-color none' and '--compound-color none' leave the fills of a layer without
@@ -2075,14 +2148,17 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     f"{unfilled} The {element_type} file has a fill value column. Please drop "
                     f"'{none_flag}' to color the fills by it."
                 )
-            # A bar takes the color of its fill. A strip is dark on any fill, but it is drawn only
-            # in a colored box too.
+            # A bar or a pie takes the color of its fill. A strip is dark on any fill, but it is
+            # drawn only in a colored box too.
             if layer['has_bar']:
-                if getattr(args, f'{element_type}_bar_style', None) == 'strip':
-                    draws = f"draws bars as strips in colored {element_type} boxes"
+                if element_type == 'compound':
+                    draws = "draws pies in the colors of the fills of compound circles"
+                    uncolored = "so the pies would have no color"
+                elif args.reaction_bar_style == 'strip':
+                    draws = "draws bars as strips in colored reaction boxes"
                     uncolored = "so no box would show a bar"
                 else:
-                    draws = f"draws bars in the colors of the fills of {element_type} boxes"
+                    draws = "draws bars in the colors of the fills of reaction boxes"
                     uncolored = "so the bars would have no color"
                 raise ConfigError(
                     f"'--{element_type}-bar-column' {draws}, but '{none_flag}' leaves the fills "
@@ -2208,6 +2284,8 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                     )
                 elif role == 'border':
                     notes.append(f" The border column '{column}' colors only the borders.")
+                elif element_type == 'compound':
+                    notes.append(f" The bar column '{column}' sets only the sizes of pies.")
                 else:
                     notes.append(f" The bar column '{column}' sets only the lengths of bars.")
             return ''.join(notes)
@@ -2792,9 +2870,10 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                         "an aggregation or a rule," if _takes(stem, 'value_type')
                         else "an aggregation, such as 'mean',"
                     )
+                    mark = 'pie' if stem == 'compound-bar' else role
                     raise ConfigError(
                         f"'{flag}' was given as '{summary}', which summarizes presence across the "
-                        f"{level}s. A {role} shows values only, and the fill already shows "
+                        f"{level}s. A {mark} shows values only, and the fill already shows "
                         f"presence. Give {pooled} or drop '{flag}'."
                     )
                 # A categorical rule chooses one categorical value across the samples or groups.
@@ -2901,12 +2980,13 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
                 # has nothing left to do. Without groups, a per-sample map shows one sample, so
                 # neither summary colors it.
                 if args.skip_unified_maps and (level == 'group' or args.groups_txt is None):
+                    marks = 'pies' if stem == 'compound-bar' else 'bars'
                     elsewhere = (
                         f"Each group's own map is colored by '--{stem}-sample-summary'. That "
                         f"option summarizes the group's own samples."
                     ) if level == 'group' and role != 'bar' else (
-                        f"Each group's own map takes its bars from '--{stem}-sample-summary'. That "
-                        f"option summarizes the group's own samples."
+                        f"Each group's own map takes its {marks} from '--{stem}-sample-summary'. "
+                        f"That option summarizes the group's own samples."
                     ) if level == 'group' else (
                         f"The map of an individual sample shows the {role} values of that sample "
                         f"alone."
@@ -3436,20 +3516,24 @@ def map_txt_data(args: Namespace, mapper: Mapper) -> None:
             kwargs[f'{element_type}_border'] = border
 
     # The options of the bars go to the mapper in the same way, keyed as the mapper's 'BAR_OPTIONS'.
-    bar = {}
-    for option in (
-        'column', 'style', 'orientation', 'gene_aggregation', 'accession_aggregation',
-        'sample_summary', 'group_summary'
-    ):
-        value = getattr(args, f'reaction_bar_{option}')
-        if value is not None:
-            bar[option] = value
-    for option in ('value_limits', 'individual_value_limits'):
-        limits = _resolve_value_limits(getattr(args, f'reaction_bar_{option}'))
-        if limits is not None:
-            bar[option] = limits
-    if bar:
-        kwargs['reaction_bar'] = bar
+    for element_type in ('reaction', 'compound'):
+        bar = {}
+        for option in (
+            'column', 'style', 'orientation', 'gene_aggregation', 'accession_aggregation',
+            'sample_summary', 'group_summary'
+        ):
+            # The pies of compounds have no style or orientation, and a compound file has no genes.
+            if element_type == 'compound' and option in REACTION_BAR_OPTIONS:
+                continue
+            value = getattr(args, f'{element_type}_bar_{option}')
+            if value is not None:
+                bar[option] = value
+        for option in ('value_limits', 'individual_value_limits'):
+            limits = _resolve_value_limits(getattr(args, f'{element_type}_bar_{option}'))
+            if limits is not None:
+                bar[option] = limits
+        if bar:
+            kwargs[f'{element_type}_bar'] = bar
 
     kwargs['count_scale_max'] = args.count_scale_max
 

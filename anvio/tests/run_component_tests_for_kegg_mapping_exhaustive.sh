@@ -214,6 +214,26 @@ printf 'accession\tlevel\nK03850\t2\nK00844\t3\n' > draw_kos_bar_lines.reaction.
 # K01623 and K01624 share the box of entry 18 of map 00010, and only K01623 has a bar value. K00174
 # and K00175 share the box of entry 154, and neither has one. K03850 is a box and a line on 00510.
 printf 'accession\tcoverage\tlevel\nK01623\t10\t2.5\nK01624\t20\t\nK00174\t1\t\nK00175\t2\t\nK03850\t30\t\n' > draw_kos_bar_gaps.reaction.txt
+# A bar column of compounds beside a value column, with an empty bar cell. C00668 then has a fill
+# and no bar value. Bar values of 0 only, 'NA' among bar values, a negative bar value, which a pie
+# cannot show, and a bar column with no values.
+printf 'accession\tvalue\tlevel\nC00031\t2\t1.5\nC00668\t5\t\n' > draw_compounds_bar_empty_cell.compound.txt
+printf 'accession\tlevel\nC00031\t0\nC00668\t0\n' > draw_compounds_bar_zero.compound.txt
+printf 'accession\tvalue\tlevel\nC00031\t2\tNA\nC00668\t5\t3\n' > draw_bad_na_bar.compound.txt
+printf 'accession\tvalue\tlevel\nC00031\t2\t-1\nC00668\t5\t3\n' > draw_bad_negative_bar.compound.txt
+printf 'accession\tvalue\tlevel\nC00031\t2\t\nC00668\t5\t\n' > draw_bad_empty_bar.compound.txt
+# Bar values of C00031 in three samples. Each is 0 or more, but their skewness is below 0.
+printf 'accession\tsample\tlevel\nC00031\tS1\t0\nC00031\tS2\t10\nC00031\tS3\t10\n' > draw_compounds_bar_skew.compound.txt
+# Bar values of C00031 in two groups of three samples. The skewness of the values of G1 is below 0,
+# and that of G2 is 0.
+printf 'accession\tsample\tlevel\nC00031\tS1\t0\nC00031\tS2\t9\nC00031\tS3\t9\nC00031\tS4\t1\nC00031\tS5\t2\nC00031\tS6\t3\n' > draw_compounds_bar_skew_groups.compound.txt
+printf 'sample\tgroup\nS1\tG1\nS2\tG1\nS3\tG1\nS4\tG2\nS5\tG2\nS6\tG2\n' > draw-sample-group-information-skew.txt
+# Bar values of C00031 in the same two groups. The skewness of G1 is 0.2 and that of G2 is -0.2, so
+# their mean is 0 but for rounding.
+printf 'accession\tsample\tlevel\nC00031\tS1\t18\nC00031\tS2\t3\nC00031\tS3\t10\nC00031\tS4\t0\nC00031\tS5\t15\nC00031\tS6\t8\n' > draw_compounds_bar_skew_cancel.compound.txt
+# Concentrations of compounds across samples beside categorical border values.
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print $0,"status"} NR>1{split("up down", s, " "); print $0,s[((NR-2)%2)+1]}' \
+draw_compounds_samples.compound.txt > draw_compounds_samples_concentration_status.compound.txt
 
 # A test that expects a refusal discards the output of the draw, so a fixture that was never written
 # would make that test pass for the wrong reason. Fail loudly here instead.
@@ -253,7 +273,13 @@ for fixture in contigs-db-group-information.txt draw_kos_samples300.reaction.txt
               draw_kos_status_empty_cell.reaction.txt draw_kos_bar_empty_cell.reaction.txt \
               draw_kos_bar_zero.reaction.txt draw_bad_na_bar.reaction.txt \
               draw_kos_bar_signed.reaction.txt draw_bad_empty_bar.reaction.txt \
-              draw_kos_bar_lines.reaction.txt draw_kos_bar_gaps.reaction.txt
+              draw_kos_bar_lines.reaction.txt draw_kos_bar_gaps.reaction.txt \
+              draw_compounds_bar_empty_cell.compound.txt draw_compounds_bar_zero.compound.txt \
+              draw_bad_na_bar.compound.txt draw_bad_negative_bar.compound.txt \
+              draw_bad_empty_bar.compound.txt draw_compounds_bar_skew.compound.txt \
+              draw_compounds_bar_skew_groups.compound.txt draw-sample-group-information-skew.txt \
+              draw_compounds_bar_skew_cancel.compound.txt \
+              draw_compounds_samples_concentration_status.compound.txt
 do
     if [ ! -s $fixture ]
     then
@@ -5335,6 +5361,595 @@ if ! tr -d ' \n' < draw_txt_bar_unified_without_summary.log \
     | grep -q "butnomapofthisrunwouldshowitsbars"
 then
     echo "ERROR: bars that no map shows was refused for another reason."
+    exit 1
+fi
+
+# The bars of compounds are pies in the compound circles of standard and overview maps, in the color
+# of the fill. A circle with a fill and no bar value is left uncolored on a map that shows pies, and
+# a warning counts such circles. The global map draws its circles without an outline and shows no
+# pies, so they keep their fills. The warning counts only the circles of the other two maps, and the
+# run reports one map that shows no pies. A file without samples has one scale of pies, and so one
+# key. Pies take no style or orientation, so the run reports neither.
+INFO "Testing a compound bar column with an empty cell beside a value column"
+anvi-draw-kegg-pathways --compound-txt draw_compounds_bar_empty_cell.compound.txt \
+    --compound-bar-column level --output-dir draw_txt_pies_empty_cell \
+    --pathway-numbers $global_pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_pies_empty_cell.log
+for phrase in "Compoundrowswithoutabarvalue" \
+    "compoundcircle(s)withafillcolorhavenobarvaluefromthe'level'barcolumn"
+do
+    if ! tr -d ' \n' < draw_txt_pies_empty_cell.log | grep -q "$phrase"
+    then
+        echo "ERROR: the warning or report that contains '$phrase' was not given."
+        exit 1
+    fi
+done
+if ! tr -d ' \n' < draw_txt_pies_empty_cell.log | grep -q "On2drawnmap(s),2compoundcircle(s)"
+then
+    echo "ERROR: the warning should have counted the circles of the standard and overview maps."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pies_empty_cell.log | grep -q "Mapsthatshownocompoundpies\.*:1[^0-9]"
+then
+    echo "ERROR: the run should have reported one map that shows no pies, the global map."
+    exit 1
+fi
+if tr -d ' \n' < draw_txt_pies_empty_cell.log \
+    | grep -q -e "Compoundbarstyle" -e "Compoundbarorientation"
+then
+    echo "ERROR: the run reported a style or orientation of pies."
+    exit 1
+fi
+if [ ! -s draw_txt_pies_empty_cell/bar_key_compounds.pdf ] \
+    || [ -e draw_txt_pies_empty_cell/bar_key_compounds_samples.pdf ]
+then
+    echo "ERROR: the pies of a file without samples should have written one key."
+    exit 1
+fi
+
+# Bar values of 0 alone draw empty pies, and a key labeled 0 alone.
+INFO "Testing a scale of pies whose only value is 0"
+anvi-draw-kegg-pathways --compound-txt draw_compounds_bar_zero.compound.txt \
+    --compound-bar-column level --output-dir draw_txt_pies_zero \
+    --pathway-numbers $pathway_numbers --no-progress
+if [ ! -s draw_txt_pies_zero/bar_key_compounds.pdf ] \
+    || [ ! -s draw_txt_pies_zero/unified/ko00010.pdf ]
+then
+    echo "ERROR: pies of 0 alone should have been drawn with a key."
+    exit 1
+fi
+
+# A pie lies inside the ring of its circle, which a border column of categorical values colors. The
+# pies and the rings each take a key for the 'unified' map and one for the maps of the samples.
+INFO "Testing pies inside rings"
+anvi-draw-kegg-pathways --compound-txt draw_compounds_samples_concentration_status.compound.txt \
+    --compound-bar-column concentration --compound-bar-sample-summary mean \
+    --compound-border-column status --compound-border-value-type categorical \
+    --compound-border-sample-summary plurality_order --output-dir draw_txt_pies_rings \
+    --pathway-numbers $pathway_numbers --draw-individual-files --no-progress
+for key in bar_key_compounds bar_key_compounds_samples colorbar_compounds_border \
+    colorbar_compounds_border_samples
+do
+    if [ ! -s draw_txt_pies_rings/$key.pdf ]
+    then
+        echo "ERROR: a run with pies inside rings should have written the key '$key.pdf'."
+        exit 1
+    fi
+done
+
+# A compound layer of pies colors the fills of its circles, by presence here, so the compounds of an
+# overview map take no colors from the reactions that touch them. Alone, a layer of categorical
+# reaction values reports the choices its rule makes for the compounds of map 01200, and beside the
+# pies it makes none. The key of the pies shows that the overview map drew them.
+INFO "Testing pies beside a reaction layer on an overview map"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_class.reaction.txt \
+    --reaction-value-type categorical --output-dir draw_txt_pies_reactions_alone \
+    --pathway-numbers 01200 --no-progress 2>&1 | tee draw_txt_pies_reactions_alone.log
+anvi-draw-kegg-pathways --reaction-txt draw_kos_class.reaction.txt \
+    --reaction-value-type categorical --compound-txt draw_compounds_samples.compound.txt \
+    --compound-bar-column concentration --compound-bar-sample-summary mean \
+    --output-dir draw_txt_pies_reactions --pathway-numbers 01200 \
+    --no-progress 2>&1 | tee draw_txt_pies_reactions.log
+phrase="Choicesofareactionvalueamongreactionstouchingacompound"
+if ! tr -d ' \n' < draw_txt_pies_reactions_alone.log | grep -q "$phrase" \
+    || tr -d ' \n' < draw_txt_pies_reactions.log | grep -q "$phrase"
+then
+    echo "ERROR: pies should keep the compounds of map 01200 from taking colors from reactions."
+    exit 1
+fi
+if [ ! -s draw_txt_pies_reactions/bar_key_compounds.pdf ]
+then
+    echo "ERROR: the pies of the overview map should have been keyed."
+    exit 1
+fi
+
+# The bar sample summary pools the samples of each group, and the bar group summary pools the groups
+# for the 'unified' map. The maps of the groups share a scale of pies, which takes a key of its own.
+INFO "Testing the pies of groups"
+anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+    --compound-bar-column concentration --groups-txt draw-sample-group-information.txt \
+    --group-threshold 0.5 --compound-bar-sample-summary mean --compound-bar-group-summary mean \
+    --output-dir draw_txt_pies_groups --pathway-numbers $pathway_numbers \
+    --draw-individual-files --no-progress
+if [ ! -s draw_txt_pies_groups/bar_key_compounds.pdf ] \
+    || [ ! -s draw_txt_pies_groups/bar_key_compounds_groups.pdf ] \
+    || [ -e draw_txt_pies_groups/bar_key_compounds_samples.pdf ]
+then
+    echo "ERROR: a grouped run with pies should have keyed the 'unified' map and the groups."
+    exit 1
+fi
+
+# The scale of pies starts at 0, so a lower limit of 0 is accepted, and so is either end left open.
+# A pie of a value past the upper limit fills its circle.
+INFO "Testing limits of pies at 0 and with either end left open"
+for upper in 40 none
+do
+    anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+        --compound-bar-column concentration --compound-bar-sample-summary mean \
+        --compound-bar-value-limits 0 $upper --compound-bar-individual-value-limits none 40 \
+        --output-dir draw_txt_pies_limits_$upper --pathway-numbers $pathway_numbers \
+        --draw-individual-files --no-progress
+    if [ ! -s draw_txt_pies_limits_$upper/bar_key_compounds.pdf ] \
+        || [ ! -s draw_txt_pies_limits_$upper/bar_key_compounds_samples.pdf ]
+    then
+        echo "ERROR: pies with the limits '0 $upper' and 'none 40' should have been keyed."
+        exit 1
+    fi
+done
+
+# Bars of reactions and pies of compounds can be drawn in one run, each with options of its own. The
+# reaction bars are strips, and the compound layer takes the 'max' accession aggregation, which the
+# reaction layer does not share. The run reports the style of the bars, the accession aggregation of
+# each layer, and no style of the pies.
+INFO "Testing reaction bars and compound pies in one run"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_empty_cell.reaction.txt \
+    --reaction-bar-column level --reaction-bar-style strip \
+    --compound-txt draw_compounds_bar_empty_cell.compound.txt --compound-bar-column level \
+    --compound-bar-accession-aggregation max --output-dir draw_txt_bars_and_pies \
+    --pathway-numbers $pathway_numbers --no-progress 2>&1 | tee draw_txt_bars_and_pies.log
+for phrase in "Reactionbarstyle\.*:strip" "Reactionbaraccessionaggregation\.*:mean" \
+    "Compoundbaraccessionaggregation\.*:max"
+do
+    if ! tr -d ' \n' < draw_txt_bars_and_pies.log | grep -q "$phrase"
+    then
+        echo "ERROR: the run report should have matched '$phrase'."
+        exit 1
+    fi
+done
+if tr -d ' \n' < draw_txt_bars_and_pies.log | grep -q "Compoundbarstyle"
+then
+    echo "ERROR: the run reported a style of pies."
+    exit 1
+fi
+if [ ! -s draw_txt_bars_and_pies/bar_key_reactions.pdf ] \
+    || [ ! -s draw_txt_bars_and_pies/bar_key_compounds.pdf ]
+then
+    echo "ERROR: the bars of reactions and the pies of compounds should each have been keyed."
+    exit 1
+fi
+
+# A player shows the key of pies beside the standard and overview maps, whose circles show pies, and
+# not beside the global map. Skipping the 'unified' map drops its key of pies.
+INFO "Testing the keys of pies in players and without the 'unified' map"
+anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+    --compound-bar-column concentration --skip-unified-maps \
+    --output-dir draw_txt_pies_players --pathway-numbers $global_pathway_numbers \
+    --draw-individual-files --collate-files-by-map --animate-files-by-map \
+    --no-progress
+# A search that finds no key would end the script without a message if its result were assigned, so
+# each search is made inside a test.
+players=draw_txt_pies_players/by_map
+if [ "$(grep -o '<img class="key"' $players/ko00010.html | wc -l)" -ne 1 ] \
+    || [ "$(grep -o '<img class="key"[^>]*' $players/ko01200.html)" \
+    != "$(grep -o '<img class="key"[^>]*' $players/ko00010.html)" ] \
+    || [ ! -s $players/ko01100.html ] \
+    || [ "$(grep -o '<img class="key"' $players/ko01100.html | wc -l)" -ne 0 ]
+then
+    echo "ERROR: a player should show the key of pies only beside maps that show pies."
+    exit 1
+fi
+if [ -e draw_txt_pies_players/bar_key_compounds.pdf ] \
+    || [ ! -s draw_txt_pies_players/bar_key_compounds_samples.pdf ]
+then
+    echo "ERROR: skipping the 'unified' map should drop its pie key and keep that of the samples."
+    exit 1
+fi
+
+INFO "Testing that compound bar columns are refused where they cannot apply"
+
+# Every other compound bar option needs the bar column.
+for bar_option in "--compound-bar-accession-aggregation mean" \
+                  "--compound-bar-sample-summary mean" \
+                  "--compound-bar-group-summary mean" \
+                  "--compound-bar-value-limits 0 10" \
+                  "--compound-bar-individual-value-limits 0 10"
+do
+    if anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+        $bar_option --pathway-numbers $pathway_numbers \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_pie_option_without_column.log 2>&1
+    then
+        echo "ERROR: '$bar_option' without the compound bar column should have failed but did not."
+        exit 1
+    fi
+    if ! tr -d ' \n' < draw_txt_pie_option_without_column.log \
+        | grep -q "'--compound-bar-column'.Namethecolumnwhosevaluessizethepies"
+    then
+        echo "ERROR: '$bar_option' without the compound bar column was refused for another reason."
+        exit 1
+    fi
+done
+
+# Pies take no style, orientation, or gene aggregation. These options apply to the bars of reactions
+# alone, so they need the reaction bar column, even where a compound bar column is named.
+for reaction_option in "--reaction-bar-style strip" "--reaction-bar-orientation vertical" \
+                       "--reaction-bar-gene-aggregation mean"
+do
+    if anvi-draw-kegg-pathways --compound-txt draw_compounds.compound.txt \
+        --compound-bar-column value $reaction_option --pathway-numbers $pathway_numbers \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_pie_reaction_option.log 2>&1
+    then
+        echo "ERROR: '$reaction_option' with only a compound bar column should have failed."
+        exit 1
+    fi
+    if ! tr -d ' \n' < draw_txt_pie_reaction_option.log \
+        | grep -q "Pies,thebarsofcompounds,takenostyle,orientation,orgeneaggregation"
+    then
+        echo "ERROR: '$reaction_option' with only a compound bar column failed for another reason."
+        exit 1
+    fi
+done
+
+# A key column cannot hold bar values, and the bar column must be a column of the file.
+for case in "accession soitcannotholdbarvalues" "sample soitcannotholdbarvalues" \
+    "nothing butthecompoundfilehasnocolumnwiththatheader"
+do
+    read -r column phrase <<< "$case"
+    if anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+        --compound-bar-column $column --pathway-numbers $pathway_numbers \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_pie_column_$column.log 2>&1
+    then
+        echo "ERROR: '$column' as the compound bar column should have failed but did not."
+        exit 1
+    fi
+    if ! tr -d ' \n' < draw_txt_pie_column_$column.log | grep -q "$phrase"
+    then
+        echo "ERROR: '$column' as the compound bar column was refused for another reason."
+        exit 1
+    fi
+done
+
+# One column cannot size pies and color borders.
+if anvi-draw-kegg-pathways \
+    --compound-txt draw_compounds_samples_concentration_status.compound.txt \
+    --compound-bar-column status --compound-border-column status \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_is_border.log 2>&1
+then
+    echo "ERROR: one column as the compound bar and border column should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_is_border.log | grep -q "eithersizepiesorcolorborders"
+then
+    echo "ERROR: one column as the compound bar and border column was refused for another reason."
+    exit 1
+fi
+
+# A pie shows values only, so its summaries take no presence names, at the level of samples or of
+# groups.
+for summary_options in "--compound-bar-sample-summary count" \
+                       "--compound-bar-sample-summary count_continuous" \
+                       "--compound-bar-sample-summary membership" \
+                       "--compound-bar-sample-summary mean --compound-bar-group-summary count"
+do
+    if anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+        --compound-bar-column concentration --groups-txt draw-sample-group-information.txt \
+        --group-threshold 0.5 $summary_options --pathway-numbers $pathway_numbers \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_pie_presence_summary.log 2>&1
+    then
+        echo "ERROR: '$summary_options' for pies should have failed but did not."
+        exit 1
+    fi
+    if ! tr -d ' \n' < draw_txt_pie_presence_summary.log | grep -q "Apieshowsvaluesonly"
+    then
+        echo "ERROR: '$summary_options' for pies was refused for another reason."
+        exit 1
+    fi
+done
+
+# Pies take numbers only, so their summaries take no rules for categorical values, and they take no
+# period.
+for case in "plurality_order Poolthemwithanaggregation" \
+    "circular_mean takenoperiod,sinceapiestartsat12o'clock"
+do
+    read -r summary phrase <<< "$case"
+    if anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+        --compound-bar-column concentration --compound-bar-sample-summary $summary \
+        --pathway-numbers $pathway_numbers \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_pie_summary_$summary.log 2>&1
+    then
+        echo "ERROR: '$summary' as a summary of pies should have failed but did not."
+        exit 1
+    fi
+    if ! tr -d ' \n' < draw_txt_pie_summary_$summary.log | grep -q "$phrase"
+    then
+        echo "ERROR: '$summary' as a summary of pies was refused for another reason."
+        exit 1
+    fi
+done
+
+# A bar group summary needs groups, and a bar sample summary to give each group its value.
+if anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+    --compound-bar-column concentration --compound-bar-sample-summary mean \
+    --compound-bar-group-summary mean --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_group_without_groups.log 2>&1
+then
+    echo "ERROR: a group summary of pies without groups should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_group_without_groups.log \
+    | grep -q "'--compound-bar-group-summary'summarizesgroupsofsamples,butnogroupsweredefined"
+then
+    echo "ERROR: a group summary of pies without groups was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+    --compound-bar-column concentration --groups-txt draw-sample-group-information.txt \
+    --group-threshold 0.5 --compound-bar-group-summary mean --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_group_without_sample.log 2>&1
+then
+    echo "ERROR: a group summary of pies without a sample summary should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_group_without_sample.log \
+    | grep -q "whichpoolsthebarvaluesofthegroups"
+then
+    echo "ERROR: a group summary of pies without a sample summary was refused for another reason."
+    exit 1
+fi
+
+# A pie grows clockwise from 12 o'clock and has no zero line, so its scale runs from 0 up. On either
+# scale, a lower limit other than 0 is refused, and so is an upper limit of 0 or less. The refusal
+# shows an open end as 'open'.
+for case in "value-limits 10 100 10to100" "individual-value-limits 10 100 10to100" \
+    "value-limits -10 -1 -10to-1" "value-limits -5 100 -5to100" \
+    "individual-value-limits -5 100 -5to100" "value-limits none 0 opento0"
+do
+    read -r option low high shown <<< "$case"
+    if anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+        --compound-bar-column concentration --compound-bar-sample-summary mean \
+        --compound-bar-$option $low $high --pathway-numbers $pathway_numbers \
+        --draw-individual-files --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_pie_limits.log 2>&1
+    then
+        echo "ERROR: '--compound-bar-$option $low $high' should have failed but did not."
+        exit 1
+    fi
+    if ! tr -d ' \n' < draw_txt_pie_limits.log \
+        | grep -q "'--compound-bar-$option'wasgiventhelimits$shown\..*sothescaleofapierunsfrom0up"
+    then
+        echo "ERROR: '--compound-bar-$option $low $high' was refused for another reason."
+        exit 1
+    fi
+done
+
+# A pie grows clockwise from 12 o'clock and has no zero line, so a negative bar value is refused.
+if anvi-draw-kegg-pathways --compound-txt draw_bad_negative_bar.compound.txt \
+    --compound-bar-column level --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_negative_values.log 2>&1
+then
+    echo "ERROR: a negative bar value of a compound should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_negative_values.log \
+    | grep -q "setsthesizesofpies.*andhasnozeroline,soeachbarvaluemustbe0ormore"
+then
+    echo "ERROR: a negative bar value of a compound was refused for another reason."
+    exit 1
+fi
+
+# A summary can reduce bar values of 0 or more below 0, as the skewness of the bar values of C00031
+# in its three samples does. A pie cannot show such a value on the 'unified' map, so the summary is
+# refused.
+if anvi-draw-kegg-pathways --compound-txt draw_compounds_bar_skew.compound.txt \
+    --compound-bar-column level --compound-bar-sample-summary skew \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_skew.log 2>&1
+then
+    echo "ERROR: pies of bar values that a summary reduces below 0 should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_skew.log \
+    | grep -q "reduceitsvaluestonumbersbelow0onthe'unified'map,downto-1.73205"
+then
+    echo "ERROR: pies of bar values that a summary reduces below 0 were refused for another reason."
+    exit 1
+fi
+
+# A summary can also reduce the bar values of a group below 0 while the 'unified' map stays at 0 or
+# more. The skewness of the bar values of C00031 is below 0 in G1 and 0 in G2, and the 'unified' map
+# shows the larger of the two. The maps of the groups share a scale that reaches below 0, so drawing
+# them is refused, and a run without them is drawn.
+if anvi-draw-kegg-pathways --compound-txt draw_compounds_bar_skew_groups.compound.txt \
+    --compound-bar-column level --groups-txt draw-sample-group-information-skew.txt \
+    --group-threshold 0.5 --compound-bar-sample-summary skew --compound-bar-group-summary max \
+    --pathway-numbers $pathway_numbers --draw-individual-files \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_skew_groups.log 2>&1
+then
+    echo "ERROR: pies of groups that a summary reduces below 0 should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_skew_groups.log \
+    | grep -q "below0onthescalethatthemapsoftheindividualgroupsshare,downto-1.73205"
+then
+    echo "ERROR: pies of groups that a summary reduces below 0 were refused for another reason."
+    exit 1
+fi
+anvi-draw-kegg-pathways --compound-txt draw_compounds_bar_skew_groups.compound.txt \
+    --compound-bar-column level --groups-txt draw-sample-group-information-skew.txt \
+    --group-threshold 0.5 --compound-bar-sample-summary skew --compound-bar-group-summary max \
+    --output-dir draw_txt_pies_skew_unified --pathway-numbers $pathway_numbers --no-progress
+if [ ! -s draw_txt_pies_skew_unified/bar_key_compounds.pdf ]
+then
+    echo "ERROR: pies that stay at 0 or more on the drawn maps should have been drawn and keyed."
+    exit 1
+fi
+
+# Rounding can leave the mean of two skews that cancel out a hair below 0. Such a value on the
+# 'unified' map is taken for 0, even where no other value shares its scale.
+anvi-draw-kegg-pathways --compound-txt draw_compounds_bar_skew_cancel.compound.txt \
+    --compound-bar-column level --groups-txt draw-sample-group-information-skew.txt \
+    --group-threshold 0.5 --compound-bar-sample-summary skew --compound-bar-group-summary mean \
+    --output-dir draw_txt_pies_skew_cancel --pathway-numbers $pathway_numbers --no-progress
+if [ ! -s draw_txt_pies_skew_cancel/bar_key_compounds.pdf ]
+then
+    echo "ERROR: pies that rounding leaves a hair below 0 should have been drawn and keyed."
+    exit 1
+fi
+
+# Each bar value must be a number, and a bar column needs a value.
+if anvi-draw-kegg-pathways --compound-txt draw_bad_na_bar.compound.txt \
+    --compound-bar-column level --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_na_value.log 2>&1
+then
+    echo "ERROR: 'NA' as a bar value of a compound should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_na_value.log \
+    | grep -q "setsthesizesofpies,soeachofitsvaluesmustbeafinitenumber"
+then
+    echo "ERROR: 'NA' as a bar value of a compound was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --compound-txt draw_bad_empty_bar.compound.txt \
+    --compound-bar-column level --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_empty_column.log 2>&1
+then
+    echo "ERROR: a compound bar column with no values should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_empty_column.log | grep -q "itwouldsetnopie"
+then
+    echo "ERROR: a compound bar column with no values was refused for another reason."
+    exit 1
+fi
+
+# A pie takes the color of its fill, which the reference map's colors and 'none' do not give.
+# '--original-color' takes no compound file at all.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
+    --compound-txt draw_compounds.compound.txt --compound-bar-column value --original-color \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_original_color.log 2>&1
+then
+    echo "ERROR: pies with '--original-color' should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_original_color.log \
+    | grep -q "soitcannotalsotakeanexplicitcompoundfile"
+then
+    echo "ERROR: pies with '--original-color' were refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways \
+    --compound-txt draw_compounds_samples_concentration_status.compound.txt \
+    --compound-bar-column concentration --compound-border-column status \
+    --compound-border-value-type categorical --compound-color none \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_color_none.log 2>&1
+then
+    echo "ERROR: pies with '--compound-color none' should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_color_none.log | grep -q "sothepieswouldhavenocolor"
+then
+    echo "ERROR: pies with '--compound-color none' were refused for another reason."
+    exit 1
+fi
+
+# The compound bar column is a column of the compound file.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt --compound-bar-column value \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_without_compound_file.log 2>&1
+then
+    echo "ERROR: a compound bar column without a compound file should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_without_compound_file.log \
+    | grep -q "namesthebarcolumnofthecompoundfile,butnocompoundfile"
+then
+    echo "ERROR: a compound bar column without a compound file was refused for another reason."
+    exit 1
+fi
+
+# Only a text file has a bar column.
+for bar_input in "--contigs-dbs E_faecalis_6240.db" \
+                 "--external-genomes external-genomes.txt" \
+                 "--pan-db TEST-PAN.db --genomes-storage TEST-GENOMES.db" \
+                 "--reaction-network-json pan-network.json"
+do
+    if anvi-draw-kegg-pathways $bar_input --compound-bar-column value \
+        --pathway-numbers $pathway_numbers \
+        --output-dir draw_db_bad --overwrite-output-destinations \
+        --no-progress > draw_db_pie_column.log 2>&1
+    then
+        echo "ERROR: a compound bar column with '$bar_input' should have failed but did not."
+        exit 1
+    fi
+    if ! tr -d ' \n' < draw_db_pie_column.log \
+        | grep -q "Theseoptionsweregiven:'--compound-bar-column'"
+    then
+        echo "ERROR: a compound bar column with '$bar_input' was refused for another reason."
+        exit 1
+    fi
+done
+
+# Pies are drawn only in the outlined circles of standard and overview maps.
+if anvi-draw-kegg-pathways --compound-txt draw_compounds.compound.txt \
+    --compound-bar-column value --pathway-numbers 01100 \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_only_global.log 2>&1
+then
+    echo "ERROR: pies on the global map alone should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_only_global.log \
+    | grep -q "drawspiesincompoundcirclesonstandardandoverviewmaps.Thisrundrawsnosuchmap"
+then
+    echo "ERROR: pies on the global map alone were refused for another reason."
+    exit 1
+fi
+
+# Without a bar sample summary, the 'unified' map of a file with samples shows no pies.
+if anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+    --compound-bar-column concentration --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_unified_without_summary.log 2>&1
+then
+    echo "ERROR: pies that no map shows should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_unified_without_summary.log \
+    | grep -q "butnomapofthisrunwouldshowitspies"
+then
+    echo "ERROR: pies that no map shows were refused for another reason."
     exit 1
 fi
 

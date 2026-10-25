@@ -67,24 +67,26 @@ presence
 channel, role
     What one column of a text layer drives, named by its role. The value column colors the 'fill' of
     an element (by presence where there is none), a border column colors its 'border', and a bar
-    column sets the length of its 'bar'. The fill is the inside of a box or circle, or a line
-    itself. '_txt_channel' builds a channel from 'TXT_CHANNEL_ROLES', which gives each role's option
-    stem ('flag_stem'), message words, key-file 'name' and defaults.
+    column sets the size of its 'bar'. The fill is the inside of a box or circle, or a line itself.
+    '_txt_channel' builds a channel from 'TXT_CHANNEL_ROLES', which gives each role's option stem
+    ('flag_stem'), message words, key-file 'name' and defaults.
 
 border, ring
     A border is the channel of a border column, and a layer's 'border' holds its model. It is drawn
     as a ring ('kgml.Graphics.border'), whole or in bands or segments, inside the outline of a box
     on a standard map or of a circle on a standard or overview map.
 
-bar
-    The channel of the reaction bar column, and a layer's 'bars' is a list holding its model. A bar
-    is drawn inside a box on a standard map, and it runs from 0 to its value. Its style
-    ('BAR_STYLES') draws it in the fill's color over a gray track, or as a dark bar on a white strip
-    under the whole fill. Its orientation ('BAR_ORIENTATIONS') runs it along the width of its box,
-    or up its height. On a scale with values on both sides of 0, bars grow both ways from a zero
-    line. Boxes of the 'fill' style drop their labels there, and wherever their bars are vertical.
-    In a sliced layer, each column of a box shows a bar of its own ('_bar_result'). "Bar" can also
-    mean a colorbar.
+bar, pie
+    The channel of a bar column, and a layer's 'bars' is a list holding its model. A reaction bar is
+    drawn inside a box on a standard map, and it runs from 0 to its value. Its style ('BAR_STYLES')
+    draws it in the fill's color over a gray track, or as a dark bar on a white strip under the
+    whole fill. Its orientation ('BAR_ORIENTATIONS') runs it along the width of its box, or up its
+    height. On a scale with values on both sides of 0, bars grow both ways from a zero line. Boxes
+    of the 'fill' style drop their labels there, and wherever their bars are vertical. In a sliced
+    layer, each column of a box shows a bar of its own ('_bar_result'). The bars of compounds are
+    pies, drawn in circles on standard and overview maps ('_pie_glyph'). A pie is a sector in the
+    fill's color, clockwise from 12 o'clock over a gray track, and its values cannot be negative.
+    "Bar" can also mean a colorbar.
 
 model
     The dict that says how one channel of a layer is colored, or measured for bars, in each context,
@@ -104,10 +106,10 @@ mode
 
 scale
     The mapping of values, or of presence counts or combinations, to colors by a 'norm' and a
-    colormap, or of values to the lengths of bars. A value model has one scale for the 'unified' map
-    and one that the individual maps share, which is the same scale in a layer without samples. Each
-    group's presence map has a count scale of its own. A 'norm' is a 'matplotlib.colors.Normalize',
-    not an element normalization.
+    colormap, or of values to the lengths of bars or the turns of pies. A value model has one scale
+    for the 'unified' map and one that the individual maps share, which is the same scale in a layer
+    without samples. Each group's presence map has a count scale of its own. A 'norm' is a
+    'matplotlib.colors.Normalize', not an element normalization.
 
 slice
     One unit's part of a reaction element's fill, in the color of its own value: a column of a box
@@ -141,10 +143,11 @@ derived compound colors
 
 key (file)
     A colorbar, a legend of categorical values, or a bar key: a file named from its model's 'name'
-    ('ColorbarDrawer'), or from its group for a group's count colorbar. The key table is the text
-    file that lists the slices of fills and rings ('_write_slice_keys'). The key table of unlabeled
-    boxes lists the boxes that bars drew without their labels ('_write_label_keys'). Elsewhere a key
-    is usually a dict key, or one of the key columns of a text file.
+    ('ColorbarDrawer'), or from its group for a group's count colorbar. The bar key of pies is a
+    circle ('ColorbarDrawer.draw_pie'). The key table is the text file that lists the slices of
+    fills and rings ('_write_slice_keys'). The key table of unlabeled boxes lists the boxes that
+    bars drew without their labels ('_write_label_keys'). Elsewhere a key is usually a dict key, or
+    one of the key columns of a text file.
 """
 
 import os
@@ -177,6 +180,7 @@ from typing import Callable, Dict, Iterable, List, Literal, Set, Tuple, Union
 # are equivalent, never touch a backend, and keep figures out of pyplot's global registry.
 from matplotlib import colormaps
 from matplotlib.figure import Figure
+from matplotlib.patches import Circle
 from matplotlib.cm import ScalarMappable
 
 import anvio.kgml as kgml
@@ -514,11 +518,12 @@ DEFAULT_BORDER_COLORMAP_LIMITS: Tuple[float, float] = (0.2, 1.0)
 # The channels of a layer from a text file, keyed by role ('_txt_channel'). The value column of a
 # file colors the fill of each map element. A border column colors the border of the element instead
 # ('--reaction-border-column', '--compound-border-column'). A bar column sets the length of a bar
-# inside the fill, drawn in the color of the fill ('--reaction-bar-column'). Every channel is built
-# by the same methods ('_build_txt_model'). A channel names the options of its values in messages,
-# and it gives their defaults. The channels have different defaults, so that a color means a value
-# of one column only. A bar takes numbers only, with no colormap, and its scale always includes 0
-# ('baseline'). In the text of a role, '{element_type}' stands for 'reaction' or 'compound'.
+# inside the fill of a box, or the size of a pie inside a compound circle, drawn in the color of the
+# fill ('--reaction-bar-column', '--compound-bar-column'). Every channel is built by the same
+# methods ('_build_txt_model'). A channel names the options of its values in messages, and it gives
+# their defaults. The channels have different defaults, so that a color means a value of one column
+# only. A bar takes numbers only, with no colormap, and its scale always includes 0 ('baseline'). In
+# the text of a role, '{element_type}' stands for 'reaction' or 'compound'.
 TXT_CHANNEL_ROLES: Dict[str, dict] = {
     'fill': {
         'flag_stem': '{element_type}',
@@ -655,16 +660,20 @@ BORDER_OPTIONS: Tuple[str, ...] = (
 # The options of a border that only the reaction layer has.
 REACTION_BORDER_OPTIONS: Tuple[str, ...] = ('gene_aggregation', 'slice_by')
 
-# The options of the bars of the reaction layer ('map_kegg_pathways_txt'). 'column' names the bar
-# column of the reaction file ('--reaction-bar-column'). 'style' is how a bar is drawn in its box
-# ('BAR_STYLES'), and 'orientation' which way it runs ('BAR_ORIENTATIONS'). Every other key is the
-# bar version of an option of the fill, such as 'sample_summary' for
+# The options of the bars of a layer ('map_kegg_pathways_txt'). 'column' names the bar column of the
+# layer's text file ('--reaction-bar-column', '--compound-bar-column'). 'style' is how a bar is
+# drawn in its box ('BAR_STYLES'), and 'orientation' which way it runs ('BAR_ORIENTATIONS'). Every
+# other key is the bar version of an option of the fill, such as 'sample_summary' for
 # '--reaction-bar-sample-summary'. Bars take numbers only, so they take no value type, period,
-# colormap, center, or normalization.
+# colormap, center, or normalization. The bars of compounds are pies ('_pie_glyph'), which have no
+# style or orientation. A compound file has no genes, so its bars take no 'gene_aggregation' either.
 BAR_OPTIONS: Tuple[str, ...] = (
     'column', 'style', 'orientation', 'gene_aggregation', 'accession_aggregation',
     'sample_summary', 'group_summary', 'value_limits', 'individual_value_limits'
 )
+
+# The options of bars that only the reaction layer has.
+REACTION_BAR_OPTIONS: Tuple[str, ...] = ('style', 'orientation', 'gene_aggregation')
 
 # How a bar is drawn in its box ('--reaction-bar-style'). A 'fill' bar is drawn in the color of the
 # fill over a gray track, so the fill shows only as far as the bar reaches. A 'strip' bar is a thin
@@ -687,7 +696,8 @@ BAR_ORIENTATIONS: Tuple[str, ...] = ('horizontal', 'vertical')
 # The track of a bar, which is the part of the fill that a bar does not cover. A gray track tells a
 # bar of 0 from a box without data, which is white. The end line is drawn centered on the free end
 # of every bar, at 0 and at the full length too. A light bar differs from the track by little more
-# than its hue, and the line marks its end. Widths are in points.
+# than its hue, and the line marks its end. A pie in a compound circle takes the same track, and the
+# same end line along the free edge of its sector ('_pie_glyph'). Widths are in points.
 BAR_TRACK_COLOR = '#E5E5E5'
 BAR_END_LINE_COLOR = '#4D4D4D'
 BAR_END_LINE_WIDTH = 0.75
@@ -1323,13 +1333,15 @@ class Mapper:
         every column, as in a file of categorical values. A numeric border value must be a finite
         number.
 
-        A bar column is named, not detected ('--reaction-bar-column'). Its values set the lengths of
-        bars drawn inside the fills of map elements. It is left out of the search for the value
-        column, as a border column is, so a file with a bar column and no other value column colors
-        its fills by presence. It cannot be a key column, the column of slice weights, or the border
-        column. A row can leave its bar cell empty, and then it has no bar value. A column with no
-        bar value at all is refused. A bar value must be a finite number, which can be negative. A
-        file with a bar column is read as text, as a file with a border column is.
+        A bar column is named, not detected ('--reaction-bar-column', '--compound-bar-column'). Its
+        values set the lengths of bars drawn inside the fills of reaction boxes, or the sizes of
+        pies inside compound circles. It is left out of the search for the value column, as a border
+        column is, so a file with a bar column and no other value column colors its fills by
+        presence. It cannot be a key column, the column of slice weights, or the border column. A
+        row can leave its bar cell empty, and then it has no bar value. A column with no bar value
+        at all is refused. A bar value must be a finite number. A reaction bar value can be
+        negative, but a pie has no zero line, so a compound bar value must be 0 or more. A file with
+        a bar column is read as text, as a file with a border column is.
 
         Parameters
         ==========
@@ -1570,6 +1582,11 @@ class Mapper:
                     f"for one of them."
                 )
 
+        mark = 'pie' if element_type == 'compound' else 'bar'
+        sizes = 'size pies' if element_type == 'compound' else 'set the lengths of bars'
+        sets = 'sets the sizes of pies' if element_type == 'compound' else (
+            'sets the lengths of bars'
+        )
         # A bar column is named by an option, as a border column is. It must be a column of the
         # file. It cannot be a key column, and it cannot hold the weights or the border values too.
         bar_flag = f'--{element_type}-bar-column'
@@ -1596,9 +1613,8 @@ class Mapper:
                     self.progress.end()
                     raise ConfigError(
                         f"'{bar_flag}' and '{other_flag}' both name the '{bar_column}' column of "
-                        f"the kegg-{element_type}-txt file at '{path}'. A column can either set "
-                        f"the lengths of bars or {holds}, not both. Please name another column for "
-                        f"one of them."
+                        f"the kegg-{element_type}-txt file at '{path}'. A column can either "
+                        f"{sizes} or {holds}, not both. Please name another column for one of them."
                     )
 
         # Auto-detect the value column: the single column that is not a key column ('accession',
@@ -1619,8 +1635,8 @@ class Mapper:
             )
             if border_column is None:
                 hint += f" If one of them holds border values, name it with '{border_flag}'."
-            if element_type == 'reaction' and bar_column is None:
-                hint += f" If one of them sets the lengths of bars, name it with '{bar_flag}'."
+            if bar_column is None:
+                hint += f" If one of them {sets}, name it with '{bar_flag}'."
             raise ConfigError(
                 f"The kegg-{element_type}-txt file at '{path}' has more than one candidate value "
                 f"column, so it is ambiguous which to color elements by: "
@@ -1771,7 +1787,9 @@ class Mapper:
 
         # A row can leave its bar cell empty. It then has no bar value, and its other columns are
         # read as usual. A bar value must be a finite number. A negative value grows its bar the
-        # other way from 0. A bar column with no value at all sets no bar, so it is refused.
+        # other way from 0, but a pie in a compound circle has no zero line to grow from, so the bar
+        # values of compounds must be 0 or more. A bar column with no value at all sets no bar, so
+        # it is refused.
         bar_empty = 0
         if bar_column is not None:
             bar_text = df[bar_column].fillna('').astype(str).str.strip()
@@ -1781,7 +1799,7 @@ class Mapper:
                 raise ConfigError(
                     f"The bar column '{bar_column}' of the kegg-{element_type}-txt file at "
                     f"'{path}' ('{bar_flag}') has no values. Every cell of it is empty, so it "
-                    f"would set no bar. Name a column that holds bar values."
+                    f"would set no {mark}. Name a column that holds bar values."
                 )
             bar_empty = int((~has_bar).sum())
             bar_values = pd.to_numeric(bar_text.where(has_bar, ''), errors='coerce')
@@ -1791,11 +1809,21 @@ class Mapper:
                 self.progress.end()
                 raise ConfigError(
                     f"The bar column '{bar_column}' of the kegg-{element_type}-txt file at "
-                    f"'{path}' sets the lengths of bars, so each of its values must be a finite "
-                    f"number. {int(rows.sum())} {'rows have' if rows.sum() > 1 else 'row has'} "
-                    f"something other than a finite number, such as text or 'NA'. Their accessions "
-                    f"include these: {', '.join(bad)}. A row without a bar value can leave its "
-                    f"cell empty."
+                    f"'{path}' {sets}, so each of its values must be a finite number. "
+                    f"{int(rows.sum())} {'rows have' if rows.sum() > 1 else 'row has'} something "
+                    f"other than a finite number, such as text or 'NA'. Their accessions include "
+                    f"these: {', '.join(bad)}. A row without a bar value can leave its cell empty."
+                )
+            rows = has_bar & (bar_values < 0)
+            if element_type == 'compound' and rows.any():
+                bad = sorted(set(df.loc[rows, '__accession']))[:5]
+                self.progress.end()
+                raise ConfigError(
+                    f"The bar column '{bar_column}' of the kegg-compound-txt file at '{path}' sets "
+                    f"the sizes of pies in compound circles. A pie grows clockwise from 12 o'clock "
+                    f"and has no zero line, so each bar value must be 0 or more. {int(rows.sum())} "
+                    f"{'rows have' if rows.sum() > 1 else 'row has'} a negative value. Their "
+                    f"accessions include these: {', '.join(bad)}."
                 )
             df = df.assign(__bar_value=bar_values)
 
@@ -2002,11 +2030,13 @@ class Mapper:
             )
         if aggregation in CIRCULAR_AGGREGATIONS + CIRCULAR_SPREADS:
             if not channel['period']:
+                start = "a pie starts at 12 o'clock" if channel['element_type'] == 'compound' else (
+                    'the length of a bar starts at 0'
+                )
                 raise ConfigError(
                     f"'{flag}' was given as '{aggregation}', which is for values that repeat after "
                     f"a period, such as clock times. The {channel['values']} take no period, since "
-                    f"the length of a bar starts at 0. Give an aggregation, such as 'mean', "
-                    f"instead."
+                    f"{start}. Give an aggregation, such as 'mean', instead."
                 )
             if period is None:
                 raise ConfigError(
@@ -3356,12 +3386,13 @@ class Mapper:
         voters = 'groups' if flag.endswith('-group-summary') else 'samples'
         # A border or a bar shows values only. Its fill already shows presence.
         if summary in SUMMARY_PRESENCE_SCHEMES and not channel['presence']:
+            pies = channel['role'] == 'bar' and channel['element_type'] == 'compound'
+            mark = 'pie' if pies else channel['role']
             raise ConfigError(
                 f"'{flag}' was given as '{summary}', which summarizes presence across the "
-                f"{voters}. A {channel['role']} shows values only, and the fill already shows "
-                f"presence. Give an aggregation, such as "
-                f"'{'mean' if period is None else 'circular_mean'}', to pool the "
-                f"{channel['values']}, or drop '{flag}'."
+                f"{voters}. A {mark} shows values only, and the fill already shows presence. Give "
+                f"an aggregation, such as '{'mean' if period is None else 'circular_mean'}', to "
+                f"pool the {channel['values']}, or drop '{flag}'."
             )
         if summary in SUMMARY_PRESENCE_SCHEMES:
             return 'presence', None, SUMMARY_PRESENCE_SCHEMES[summary]
@@ -4557,6 +4588,21 @@ class Mapper:
                 continue
             limit_min, limit_max = limits
             shown = ' to '.join('open' if limit is None else f'{limit:g}' for limit in limits)
+            # A pie grows clockwise from 12 o'clock, where its scale starts, and it has no zero line
+            # inside its circle. Its scale runs from 0 up, and an upper limit of 0 would leave it
+            # the one value 0, which draws every pie empty.
+            if channel['role'] == 'bar' and channel['element_type'] == 'compound':
+                if (limit_min is not None and limit_min != baseline) or (
+                    limit_max is not None and limit_max <= baseline
+                ):
+                    raise ConfigError(
+                        f"'{flag}' was given the limits {shown}. The bars of compounds are pies, "
+                        f"which grow clockwise from 12 o'clock and have no zero line, so the scale "
+                        f"of a pie runs from {baseline:g} up. Please give a lower limit of "
+                        f"{baseline:g} and an upper limit above {baseline:g}, or leave either end "
+                        f"open."
+                    )
+                continue
             if (limit_min is not None and limit_min > baseline) or (
                 limit_max is not None and limit_max < baseline
             ):
@@ -5042,7 +5088,9 @@ class Mapper:
         # of its own and their messages would name that center rather than what put it there.
         # A border shows no ring, and a bar no bar, on a map without a summary, as their summaries
         # take no presence names. Their messages say so.
-        absent = 'no border' if channel['role'] == 'border' else 'no bars'
+        absent = 'no border' if channel['role'] == 'border' else (
+            'no pies' if channel['element_type'] == 'compound' else 'no bars'
+        )
         scale_of = (
             f"{channel['scale']} of {channel['values']}" if channel['role'] == 'border'
             else channel['scale']
@@ -5776,117 +5824,145 @@ class Mapper:
     @staticmethod
     def _check_bar_options(
         reaction_txt: Union[str, None],
+        compound_txt: Union[str, None],
         reaction_bar: Union[Dict[str, object], None],
+        compound_bar: Union[Dict[str, object], None],
         reaction_color: Union[str, None],
+        compound_color: Union[str, None],
         slice_by: Union[str, None]
     ) -> None:
         """
-        Check the options of the bars of the reaction layer, as far as that can be done without the
-        file.
+        Check the options of the bars of the two layers, as far as that can be done without the
+        files.
 
-        Every option of the bars needs the bar column, and that column needs the reaction file. A
-        bar is drawn in a box whose fill is colored, in the color of the fill unless it is a strip
-        ('BAR_STYLES'), so fills left uncolored are refused. The reference map's colors are refused
-        too, since a renderer of their own draws them, and it draws no bars. A strip is always
-        horizontal ('BAR_ORIENTATIONS'), so a vertical orientation is refused with strips. Where
-        boxes are sliced by gene, each column shows the bar value of one gene, so no genes are
-        reduced, and the gene aggregation of the bars is refused. The builder of the model of the
-        bars checks the rest ('_build_txt_model', '_build_slice_model'). The command line makes the
-        checks of the column and the colors too, and these repeat them for programmatic callers.
-        Where a bar column is named, the private methods of Biopython that draw bars are checked too
-        ('kgml.SlicedKGMLCanvas.check_biopython').
+        Every option of bars needs the bar column of its layer, and that column needs the layer's
+        file. A bar is drawn in an element whose fill is colored, in the color of the fill unless it
+        is a strip ('BAR_STYLES'), so fills left uncolored are refused. The reference map's colors
+        are refused too, since a renderer of their own draws them, and it draws no bars. A strip is
+        always horizontal ('BAR_ORIENTATIONS'), so a vertical orientation is refused with strips.
+        Where boxes are sliced by gene, each column shows the bar value of one gene, so no genes are
+        reduced, and the gene aggregation of the bars is refused. The bars of compounds are pies,
+        which take no style, orientation, or gene aggregation ('REACTION_BAR_OPTIONS'). The builder
+        of the model of the bars checks the rest ('_build_txt_model', '_build_slice_model'). The
+        command line makes the checks of the columns and the colors too, and these repeat them for
+        programmatic callers. Where a bar column is named, the private methods of Biopython that
+        draw bars are checked too ('kgml.SlicedKGMLCanvas.check_biopython').
 
         Parameters
         ==========
-        reaction_txt : Union[str, None]
-            Path to the reaction file, or None.
+        reaction_txt, compound_txt : Union[str, None]
+            Paths to the two files, or None.
 
-        reaction_bar : Union[Dict[str, object], None]
-            The options of the bars, keyed by 'BAR_OPTIONS', or None.
+        reaction_bar, compound_bar : Union[Dict[str, object], None]
+            The options of the bars of the two layers, keyed by 'BAR_OPTIONS', or None.
 
-        reaction_color : Union[str, None]
-            The presence color of the reaction layer. It is 'original' for '--original-color', and
-            'none' where the fills are left uncolored.
+        reaction_color, compound_color : Union[str, None]
+            The presence colors of the two layers. The reaction color is 'original' for
+            '--original-color'. Either is 'none' where the fills of its layer are left uncolored.
 
         slice_by : Union[str, None]
             What the reaction elements are sliced by ('SLICE_UNITS'), or None. The bars are then
             sliced too.
         """
-        if not reaction_bar:
-            return
-        unknown = [option for option in reaction_bar if option not in BAR_OPTIONS]
-        if unknown:
-            raise ConfigError(
-                f"The options of the reaction bars include "
-                f"{', '.join(repr(option) for option in unknown)}, which "
-                f"{'is not an option' if len(unknown) == 1 else 'are not options'} of reaction "
-                f"bars. They take these: {', '.join(repr(option) for option in BAR_OPTIONS)}."
-            )
-        column_flag = '--reaction-bar-column'
-        given = [
-            f"'--reaction-bar-{option.replace('_', '-')}'" for option in BAR_OPTIONS
-            if option != 'column' and reaction_bar.get(option) is not None
-        ]
-        if reaction_bar.get('column') is None:
-            if given:
-                raise ConfigError(
-                    f"{', '.join(given)} {'apply' if len(given) > 1 else 'applies'} to the bars of "
-                    f"the reaction layer, but no bar column was named with '{column_flag}'. Name "
-                    f"the column whose values set the lengths of the bars."
+        barred = False
+        for element_type, txt, bar, color in (
+            ('reaction', reaction_txt, reaction_bar, reaction_color),
+            ('compound', compound_txt, compound_bar, compound_color)
+        ):
+            if not bar:
+                continue
+            allowed = [
+                option for option in BAR_OPTIONS
+                if element_type == 'reaction' or option not in REACTION_BAR_OPTIONS
+            ]
+            unknown = [option for option in bar if option not in allowed]
+            if unknown:
+                pies = (
+                    " The bars of compounds are pies, which take no style or orientation, and a "
+                    "compound file has no genes." if element_type == 'compound' else ""
                 )
-            return
-        if reaction_txt is None:
-            raise ConfigError(
-                f"'{column_flag}' names the bar column of the reaction file, but no reaction file "
-                f"('--reaction-txt') was provided."
-            )
-        style = reaction_bar.get('style')
-        if style is not None and style not in BAR_STYLES:
-            raise ConfigError(
-                f"'--reaction-bar-style' takes {' or '.join(repr(name) for name in BAR_STYLES)}, "
-                f"not '{style}'."
-            )
-        orientation = reaction_bar.get('orientation')
-        if orientation is not None and orientation not in BAR_ORIENTATIONS:
-            raise ConfigError(
-                f"'--reaction-bar-orientation' takes "
-                f"{' or '.join(repr(name) for name in BAR_ORIENTATIONS)}, not '{orientation}'."
-            )
-        if style == 'strip' and orientation == 'vertical':
-            raise ConfigError(
-                "'--reaction-bar-style strip' draws each bar along a strip at the bottom of its "
-                "box, so a strip is always horizontal. '--reaction-bar-orientation vertical' "
-                "cannot be combined with it. Please drop one of the two options."
-            )
-        # A strip is dark on any fill, but it is drawn only in a colored box, as a bar of the fill
-        # style is.
-        if style == 'strip':
-            draws = "draws bars as strips in colored reaction boxes"
-            uncolored = "so no box would show a bar"
-        else:
-            draws = "draws bars in the colors of the fills of reaction boxes"
-            uncolored = "so the bars would have no color"
-        if reaction_color == 'original':
-            raise ConfigError(
-                f"'{column_flag}' {draws}, but '--original-color' takes both the colors and the "
-                f"drawing order of the reactions from the reference map, and it draws no bars. "
-                f"Please use only one of them."
-            )
-        if reaction_color == 'none':
-            raise ConfigError(
-                f"'{column_flag}' {draws}, but '--reaction-color none' leaves the fills uncolored, "
-                f"{uncolored}. Please give the fills a color, or drop one of the two options."
-            )
-        if slice_by == 'gene' and reaction_bar.get('gene_aggregation') is not None:
-            raise ConfigError(
-                "'--reaction-bar-gene-aggregation' reduces the bar values of the genes of an "
-                "accession to one value. With '--reaction-slice-by gene', each column of a box "
-                "shows the bar value of one gene, so the bar values of genes are never reduced. "
-                "Please drop '--reaction-bar-gene-aggregation'."
-            )
+                raise ConfigError(
+                    f"The options of the {element_type} bars include "
+                    f"{', '.join(repr(option) for option in unknown)}, which "
+                    f"{'is not an option' if len(unknown) == 1 else 'are not options'} of "
+                    f"{element_type} bars. They take these: "
+                    f"{', '.join(repr(option) for option in allowed)}.{pies}"
+                )
+            column_flag = f'--{element_type}-bar-column'
+            given = [
+                f"'--{element_type}-bar-{option.replace('_', '-')}'" for option in allowed
+                if option != 'column' and bar.get(option) is not None
+            ]
+            if bar.get('column') is None:
+                if given:
+                    does = 'size the pies' if element_type == 'compound' else (
+                        'set the lengths of the bars'
+                    )
+                    raise ConfigError(
+                        f"{', '.join(given)} {'apply' if len(given) > 1 else 'applies'} to the "
+                        f"bars of the {element_type} layer, but no bar column was named with "
+                        f"'{column_flag}'. Name the column whose values {does}."
+                    )
+                continue
+            barred = True
+            if txt is None:
+                raise ConfigError(
+                    f"'{column_flag}' names the bar column of the {element_type} file, but no "
+                    f"{element_type} file ('--{element_type}-txt') was provided."
+                )
+            style = bar.get('style')
+            if style is not None and style not in BAR_STYLES:
+                raise ConfigError(
+                    f"'--reaction-bar-style' takes "
+                    f"{' or '.join(repr(name) for name in BAR_STYLES)}, not '{style}'."
+                )
+            orientation = bar.get('orientation')
+            if orientation is not None and orientation not in BAR_ORIENTATIONS:
+                raise ConfigError(
+                    f"'--reaction-bar-orientation' takes "
+                    f"{' or '.join(repr(name) for name in BAR_ORIENTATIONS)}, not '{orientation}'."
+                )
+            if style == 'strip' and orientation == 'vertical':
+                raise ConfigError(
+                    "'--reaction-bar-style strip' draws each bar along a strip at the bottom of "
+                    "its box, so a strip is always horizontal. '--reaction-bar-orientation "
+                    "vertical' cannot be combined with it. Please drop one of the two options."
+                )
+            # A strip is dark on any fill, but it is drawn only in a colored box, as a bar of the
+            # fill style is. A pie takes the color of the fill of its circle.
+            if element_type == 'compound':
+                draws = "draws pies in the colors of the fills of compound circles"
+                uncolored = "so the pies would have no color"
+            elif style == 'strip':
+                draws = "draws bars as strips in colored reaction boxes"
+                uncolored = "so no box would show a bar"
+            else:
+                draws = "draws bars in the colors of the fills of reaction boxes"
+                uncolored = "so the bars would have no color"
+            if reaction_color == 'original':
+                marks = 'pies' if element_type == 'compound' else 'bars'
+                raise ConfigError(
+                    f"'{column_flag}' {draws}, but '--original-color' takes both the colors and "
+                    f"the drawing order of the reactions from the reference map, and it draws no "
+                    f"{marks}. Please use only one of them."
+                )
+            if color == 'none':
+                raise ConfigError(
+                    f"'{column_flag}' {draws}, but '--{element_type}-color none' leaves the fills "
+                    f"uncolored, {uncolored}. Please give the fills a color, or drop one of the "
+                    f"two options."
+                )
+            if slice_by == 'gene' and bar.get('gene_aggregation') is not None:
+                raise ConfigError(
+                    "'--reaction-bar-gene-aggregation' reduces the bar values of the genes of an "
+                    "accession to one value. With '--reaction-slice-by gene', each column of a box "
+                    "shows the bar value of one gene, so the bar values of genes are never "
+                    "reduced. Please drop '--reaction-bar-gene-aggregation'."
+                )
         # Bars are drawn with private methods of Biopython, which a release can rename. This is
         # checked before anything is written.
-        kgml.SlicedKGMLCanvas.check_biopython()
+        if barred:
+            kgml.SlicedKGMLCanvas.check_biopython()
 
     @staticmethod
     def _check_slice_options(
@@ -6534,6 +6610,7 @@ class Mapper:
         reaction_border: Union[Dict[str, object], None] = None,
         compound_border: Union[Dict[str, object], None] = None,
         reaction_bar: Union[Dict[str, object], None] = None,
+        compound_bar: Union[Dict[str, object], None] = None,
         group_colormap: Union[str, mcolors.Colormap, None] = None,
         group_colormap_limits: Tuple[float, float] = None,
         group_reverse_overlay: bool = False,
@@ -6799,6 +6876,16 @@ class Mapper:
             the bars of a file without a value column are sliced on their own ('_bar_result').
             '--original-color', a 'reaction_color' of 'none', and vertical strips are refused.
 
+        compound_bar : Union[Dict[str, object], None], None
+            The same for the compound layer, whose bars are pies in compound circles on standard and
+            overview maps ('_pie_glyph'). A pie is a sector in the color of the fill, clockwise from
+            12 o'clock over the gray track, with the end line along its free edge. It takes no
+            'style', 'orientation', or 'gene_aggregation' ('REACTION_BAR_OPTIONS'). A pie has no
+            zero line, so negative bar values are refused, as are aggregations and summaries that
+            reduce them below 0. The lower limit of pies must be 0 or open, and the upper limit
+            above 0 or open. A circle with a fill and no bar value on a map that shows pies is left
+            uncolored. '--original-color' and a 'compound_color' of 'none' are refused.
+
         Notes
         =====
         The remaining parameters carry the shared groups, per-layer colors/colormaps, and drawing
@@ -6842,7 +6929,11 @@ class Mapper:
         )
         # The options of bars are checked the same way.
         reaction_bar = dict(reaction_bar or {})
-        self._check_bar_options(reaction_txt, reaction_bar, reaction_color, reaction_slice_by)
+        compound_bar = dict(compound_bar or {})
+        self._check_bar_options(
+            reaction_txt, compound_txt, reaction_bar, compound_bar, reaction_color, compound_color,
+            reaction_slice_by
+        )
         # The options that slice reaction elements are checked as far as they can be before the file
         # is read.
         self._check_slice_options(
@@ -6898,10 +6989,11 @@ class Mapper:
                 'data': self._read_element_txt(
                     compound_txt, 'compound', compound_value_type,
                     border_column=compound_border.get('column'),
-                    border_value_type=compound_border.get('value_type') or 'numeric'
+                    border_value_type=compound_border.get('value_type') or 'numeric',
+                    bar_column=compound_bar.get('column')
                 ),
                 'border': compound_border,
-                'bar': {},
+                'bar': compound_bar,
                 # A compound file has one row per accession per sample, so the gene level is a
                 # reduction over a single value. Left unset, it takes the layer's default. A period
                 # makes that default circular, and a period would refuse a 'sum' here.
@@ -7042,8 +7134,9 @@ class Mapper:
                 bar = {option: layer['bar'].get(option) for option in BAR_OPTIONS}
                 channel = self._txt_channel(element_type, 'bar')
                 # A box without a bar value keeps its whole fill in the strip style, so the messages
-                # about undefined values say that it shows no strip.
-                style = bar['style'] or 'fill'
+                # about undefined values say that it shows no strip. The pies of compounds have no
+                # style or orientation.
+                style = None if element_type == 'compound' else bar['style'] or 'fill'
                 if style == 'strip':
                     channel['consequence'] = 'shows no strip'
                     channel['consequence_plural'] = 'show no strip'
@@ -7057,9 +7150,12 @@ class Mapper:
                 )
                 bar_model['style'] = style
                 # Without an orientation, the bars of a sliced layer are oriented for each element
-                # ('_bar_vertical'), which None says. Other bars, and strips, are horizontal.
+                # ('_bar_vertical'), which None says. Other bars, and strips, are horizontal. Pies
+                # keep None.
                 orientation = bar['orientation']
-                if orientation is None and (reaction_slice_by is None or style == 'strip'):
+                if style is not None and orientation is None and (
+                    reaction_slice_by is None or style == 'strip'
+                ):
                     orientation = 'horizontal'
                 bar_model['orientation'] = orientation
                 model['bars'] = [bar_model]
@@ -7099,11 +7195,12 @@ class Mapper:
                     self.run.info(f"{label} {name} {level} aggregation", aggregation)
             if model['border'] is not None:
                 self.run.info(f"{label} rows without a border value", data['border_empty'])
-            if model['bars']:
+            if model['bars'] and model['bars'][0]['style'] is not None:
                 self.run.info(f"{label} bar style", model['bars'][0]['style'])
                 self.run.info(
                     f"{label} bar orientation", model['bars'][0]['orientation'] or 'by map element'
                 )
+            if model['bars']:
                 self.run.info(f"{label} rows without a bar value", data['bar_empty'])
             if model['border'] is not None and border['slice_by'] is not None:
                 # A fill of presence is not sliced, so its rings are divided on their own.
@@ -10608,7 +10705,8 @@ class Mapper:
             'quantitative' layer, except that a bar has no colormap. Their mode is None on a map
             that shows none of their values. A bar also has 'style', how it is drawn in its box
             ('BAR_STYLES'), and 'orientation', which way it runs ('BAR_ORIENTATIONS'), or None where
-            each element of a sliced layer is oriented on its own ('_bar_vertical').
+            each element of a sliced layer is oriented on its own ('_bar_vertical'). The bars of
+            compounds are pies, whose 'style' and 'orientation' are None ('_pie_glyph').
 
         output_dir : str
             Path to the output directory in which pathway map and colorbar PDF files are drawn.
@@ -11033,9 +11131,10 @@ class Mapper:
         # for it. Every border records the reaction elements with border values that a standard map
         # draws as lines, which show no ring. A border with sliced rings finds what its rings show
         # from the fill of its layer ('_ring_result'). Bars are drawn in the boxes that take rings,
-        # so a bar scale spans only those, and bars record their lines too. A map with bars records
-        # the boxes it leaves uncolored for want of a bar value, and the boxes it draws without
-        # their labels ('_stage_entry_bar').
+        # and the pies of compounds in the circles that take rings, so a bar scale spans only those,
+        # and bars record their lines too. A map with bars records the boxes or circles it leaves
+        # uncolored for want of a bar value, and the boxes it draws without their labels
+        # ('_stage_entry_bar').
         ring_layers = [
             layer for layer in borders
             if 'categorical' in (layer['unified_mode'], layer['individual_mode'])
@@ -11250,10 +11349,11 @@ class Mapper:
                 elif not layer['_unified_vals'] and not layer['_individual_vals'] and (
                     _role(layer) == 'bar'
                 ):
+                    mark = 'pie' if layer['element_type'] == 'compound' else 'bar'
                     self.run.warning(
-                        f"No map shows a bar from the '{layer['value_column']}' bar column of the "
-                        f"{layer['element_type']} layer, so no bar key was drawn for it. Either "
-                        f"none of the drawn maps shows a bar for its accessions, or the "
+                        f"No map shows a {mark} from the '{layer['value_column']}' bar column of "
+                        f"the {layer['element_type']} layer, so no bar key was drawn for it. "
+                        f"Either none of the drawn maps shows a {mark} for its accessions, or the "
                         f"aggregation reducing them is undefined for every map element, as the "
                         f"standard deviation of a single value is."
                     )
@@ -11276,6 +11376,35 @@ class Mapper:
                         f"for every map element — the standard deviation of a single value, for "
                         f"instance."
                     )
+                # The bar values of a compound file are 0 or more ('_read_element_txt'), but some
+                # aggregations, such as 'skew', can reduce them below 0, and a pie has no zero line.
+                # The scale that the maps of the individual samples or groups share spans all of
+                # them, drawn or not. Rounding can leave a value a hair below 0, as the mean of two
+                # skews that cancel out is. A value less than a trillionth below 0, or less than a
+                # billionth of the largest value of its scale, is taken for 0.
+                if _role(layer) == 'bar' and layer['element_type'] == 'compound':
+                    unified_where = "the drawn maps" if layer['sample_values'] is None else (
+                        "the 'unified' map"
+                    )
+                    scales = [(unified_where, layer['_unified_vals'])]
+                    if draw_individual_maps:
+                        scales.append((
+                            f"the scale that the maps of the individual {individual_noun}s share",
+                            layer['_individual_vals']
+                        ))
+                    for where, values in scales:
+                        lowest = min(values, default=0.0)
+                        largest = max(abs(value) for value in values or [0.0])
+                        if lowest < -max(1e-12, 1e-9 * largest):
+                            raise ConfigError(
+                                f"The aggregations and summaries of the '{layer['value_column']}' "
+                                f"bar column of the compound layer reduce its values to numbers "
+                                f"below 0 on {where}, down to {lowest:g}. The bars of compounds "
+                                f"are pies, which grow clockwise from 12 o'clock and have no zero "
+                                f"line. Please reduce the bar values in a way that keeps them at 0 "
+                                f"or more, such as with 'mean'."
+                            )
+                        values[:] = [max(value, 0.0) for value in values]
                 # A period fixes each scale of values to run from 0 to the period. The limits are
                 # set here, not in the layer model. The checks on limits read a limit in the model
                 # as one that was given, and these were not. A spread on the 'unified' map runs from
@@ -11781,12 +11910,12 @@ class Mapper:
         # A layer with bars adds a function to the spec of each map that shows them. It gives the
         # bar value of an Entry on the map, or None where the Entry has none there, and the spec
         # gets the bar scale of the map too. The boxes of such a map are drawn as bars in the colors
-        # of their fills, or with strips under whole fills, by the style of the bars
-        # ('_stage_entry_bar'). A map that shows no bar values, such as the 'unified' map without a
-        # bar summary, draws its fills without bars. The bars of a layer are a list of one model.
-        # Sliced bars add a bar slicer in place of the function, which finds the columns or the one
-        # bar of each box ('_bar_result'), and bars sliced on their own add the keys of their key
-        # table.
+        # of their fills, or with strips under whole fills, by the style of the bars, and its
+        # compound circles as pies ('_stage_entry_bar'). A map that shows no bar values, such as the
+        # 'unified' map without a bar summary, draws its fills without bars. The bars of a layer are
+        # a list of one model. Sliced bars add a bar slicer in place of the function, which finds
+        # the columns or the one bar of each box ('_bar_result'), and bars sliced on their own add
+        # the keys of their key table.
         def _with_bars(spec, layer, individual=None):
             if not layer.get('bars'):
                 return spec
@@ -11997,9 +12126,10 @@ class Mapper:
         # type of its border, since a player shows it only beside the maps that can show the
         # border's rings ('_map_shows_borders'). Bars are keyed by length in files of their own,
         # such as 'bar_key_reactions.pdf' ('ColorbarDrawer.draw_length'). A bar key is labeled with
-        # the bar column and '(bar)', and it has a ruler for the orientation of its bars. Bar keys
-        # are listed for players as the keys of borders are, since bars take the shapes that rings
-        # take.
+        # the bar column and '(bar)', and it has a ruler for the orientation of its bars. The bars
+        # of compounds are pies, keyed by a circle ticked in quarters ('ColorbarDrawer.draw_pie').
+        # Bar keys are listed for players as the keys of borders are, since bars take the shapes
+        # that rings take.
         individual_keys: List[Tuple[str, Union[str, None]]] = []
         for layer in models:
             if _role(layer) == 'bar':
@@ -12025,17 +12155,25 @@ class Mapper:
                         continue
                     clamped_low, clamped_high = layer[f'_{context}_clamped']
                     key_path = os.path.join(output_dir, basename)
-                    self.colorbar_drawer.draw_length(
-                        vmin, vmax, key_path, label=f"{layer['colorbar_label']} (bar)",
-                        clamped_low=clamped_low, clamped_high=clamped_high,
-                        track_color=(
-                            BAR_STRIP_TRACK_COLOR if layer['style'] == 'strip' else BAR_TRACK_COLOR
-                        ),
-                        orientations=[
-                            orientation for orientation in BAR_ORIENTATIONS
-                            if orientation in layer['_orientations']
-                        ] or ['horizontal']
-                    )
+                    key_label = f"{layer['colorbar_label']} (bar)"
+                    if layer['element_type'] == 'compound':
+                        self.colorbar_drawer.draw_pie(
+                            vmin, vmax, key_path, label=key_label, clamped_low=clamped_low,
+                            clamped_high=clamped_high
+                        )
+                    else:
+                        self.colorbar_drawer.draw_length(
+                            vmin, vmax, key_path, label=key_label, clamped_low=clamped_low,
+                            clamped_high=clamped_high,
+                            track_color=(
+                                BAR_STRIP_TRACK_COLOR if layer['style'] == 'strip'
+                                else BAR_TRACK_COLOR
+                            ),
+                            orientations=[
+                                orientation for orientation in BAR_ORIENTATIONS
+                                if orientation in layer['_orientations']
+                            ] or ['horizontal']
+                        )
                     if keys_individual_maps:
                         individual_keys.append((key_path, layer['element_type']))
                 continue
@@ -12439,10 +12577,11 @@ class Mapper:
 
         A reaction border needs a standard map, where reactions are boxes. A compound border needs a
         standard or an overview map ('_map_shows_borders'). Bars are drawn in the boxes that take
-        rings. A border or a bar also needs a drawn map that shows its values. One of samples shows
-        none on the 'unified' map without a sample or group summary, and none on the maps of groups
-        without a sample summary. These refusals come from the options alone. Where the data leave
-        every ring or bar empty, the run warns instead.
+        rings, and the pies of compounds in the circles that take rings. A border or a bar also
+        needs a drawn map that shows its values. One of samples shows none on the 'unified' map
+        without a sample or group summary, and none on the maps of groups without a sample summary.
+        These refusals come from the options alone. Where the data leave every ring or bar empty,
+        the run warns instead.
 
         Parameters
         ==========
@@ -12469,11 +12608,10 @@ class Mapper:
         for model in channels:
             element_type = model['element_type']
             channel = model['channel']
-            noun = channel['noun']
             border = channel['role'] == 'border'
             column_flag = f"--{channel['flag_stem']}-column"
             # What the channel draws, and what a map without its values shows of it.
-            marks = 'borders' if border else 'bars'
+            marks = 'borders' if border else 'pies' if element_type == 'compound' else 'bars'
             showing = [
                 number for number in pathway_numbers
                 if self._map_shows_borders(element_type, number)
@@ -12498,13 +12636,17 @@ class Mapper:
                     f"draws." if border and element_type in (unfilled or set())
                     else f"Draw a map that shows {marks}, or drop '{column_flag}'."
                 )
-                draws = f"colors the borders of {shapes}" if border else f"draws bars in {shapes}"
+                draws = f"colors the borders of {shapes}" if border else (
+                    f"draws {marks} in {shapes}"
+                )
                 raise ConfigError(
                     f"'{column_flag}' {draws}. This run draws no such map. Its maps are these: "
                     f"{listed}{more}. {others} {remedy}"
                 )
             if len(showing) < len(pathway_numbers):
-                self.run.info(f"Maps that show no {noun}s", len(pathway_numbers) - len(showing))
+                self.run.info(
+                    f"Maps that show no {element_type} {marks}", len(pathway_numbers) - len(showing)
+                )
             unified = draw_unified_maps and model['unified_mode'] in value_modes
             individual = draw_individual_maps and model['individual_mode'] in value_modes
             if unified or individual:
@@ -12513,7 +12655,9 @@ class Mapper:
             grouped = model.get('group_samples') is not None
             unified_flag = f"--{stem}-{'group' if grouped else 'sample'}-summary"
             sample_flag = f"--{stem}-sample-summary"
-            shows, absent = ('shows a border', 'no border') if border else ('shows bars', 'no bars')
+            shows, absent = ('shows a border', 'no border') if border else (
+                f'shows {marks}', f'no {marks}'
+            )
             # A border takes a rule for categorical values, and a bar takes numbers only.
             summary = 'an aggregation or a rule' if channel['categorical'] else 'an aggregation'
             # The values of a group come from the sample summary. Without it, no map shows a border
@@ -12942,17 +13086,20 @@ class Mapper:
 
     def _warn_missing_bars(self, bars: List[dict]) -> None:
         """
-        Warn about the boxes that the maps with bars left uncolored for want of a bar value.
+        Warn about the boxes and circles that the maps with bars left uncolored for want of a bar
+        value.
 
         On a map that shows bars, a box with a fill color and no bar value is left uncolored
-        ('_stage_entry_bar'). Each box is counted once on each drawn map, such as the 'unified' map
-        of 00010 or the map of 00010 of one sample. Bars in the 'strip' style leave no box
-        uncolored, since such a box keeps its whole fill without a strip.
+        ('_stage_entry_bar'), and so is a compound circle on a map that shows pies. Each box or
+        circle is counted once on each drawn map, such as the 'unified' map of 00010 or the map of
+        00010 of one sample. Bars in the 'strip' style leave no box uncolored, since such a box
+        keeps its whole fill without a strip.
 
         Parameters
         ==========
         bars : List[dict]
-            The bar models of the run. Each keeps the boxes of the drawn maps in '_missing'.
+            The bar models of the run. Each keeps the boxes or circles of the drawn maps in
+            '_missing'.
         """
         for bar in bars:
             missing = bar['_missing']
@@ -12962,13 +13109,17 @@ class Mapper:
             examples = ', '.join(sorted({
                 accession for accessions in missing.values() for accession in accessions
             })[:5])
+            compound = bar['element_type'] == 'compound'
+            shape, shapes, mark = ('circle', 'circle(s)', 'pie') if compound else (
+                'box', 'box(es)', 'bar'
+            )
             self.run.warning(
-                f"On {len(maps)} drawn map(s), {len(missing)} {bar['element_type']} box(es) with a "
-                f"fill color have no bar value from the '{bar['value_column']}' bar column, so "
-                f"they were left uncolored. A whole fill would read as a full bar, and a bare "
-                f"track as a bar of 0. Their accessions include these: {examples}. A box has no "
-                f"bar value where none of its accessions has one on the map, or where reducing "
-                f"their bar values is undefined."
+                f"On {len(maps)} drawn map(s), {len(missing)} {bar['element_type']} {shapes} with "
+                f"a fill color have no bar value from the '{bar['value_column']}' bar column, so "
+                f"they were left uncolored. A whole fill would read as a full {mark}, and a bare "
+                f"track as a {mark} of 0. Their accessions include these: {examples}. A {shape} "
+                f"has no bar value where none of its accessions has one on the map, or where "
+                f"reducing their bar values is undefined."
             )
 
     def _write_label_keys(self, bars: List[dict], output_dir: str) -> None:
@@ -15468,16 +15619,19 @@ class Mapper:
               show ('_bar_result').
             - 'bar_norm': the norm of the bar scale of the map, or None for a scale of a single
               value ('_bar_extent').
-            - 'bar_style': how the bars are drawn in their boxes ('BAR_STYLES').
-            - 'bar_orientation': which way the bars run in their boxes ('BAR_ORIENTATIONS'), or
-              None where each element of a sliced layer is oriented on its own ('_bar_vertical').
-            - 'bar_map': what the warning about boxes without a bar value, and the key table of
-              boxes without labels, call the map, 'unified' or the name of a sample or group.
+            - 'bar_style': how the bars are drawn in their boxes ('BAR_STYLES'), or None for the
+              pies of compounds ('_pie_glyph').
+            - 'bar_orientation': which way the bars run in their boxes ('BAR_ORIENTATIONS'), or None
+              where each element of a sliced layer is oriented on its own ('_bar_vertical'), and for
+              pies.
+            - 'bar_map': what the warning about boxes or circles without a bar value, and the key
+              table of boxes without labels, call the map, 'unified' or the name of a sample or
+              group.
             - 'bar_rank': where the map comes in the key table of boxes without labels, 0 for the
               'unified' map.
-            - 'bar_missing' and 'bar_unlabeled': where the boxes left uncolored for want of a bar
-              value, and the rows of the key table of boxes drawn without their labels, are kept,
-              once the map is drawn. They belong to the model of the bars.
+            - 'bar_missing' and 'bar_unlabeled': where the boxes or circles left uncolored for want
+              of a bar value, and the rows of the key table of boxes drawn without their labels, are
+              kept, once the map is drawn. They belong to the model of the bars.
             - 'bar_slice_key' and 'bar_slice_uncolored': where bars sliced on their own keep the
               rows of the key table of the layer, and the boxes left without a bar by shares of 0.
               Only these bars have the two keys.
@@ -15703,6 +15857,11 @@ class Mapper:
         strip, which cannot be read as a value, since a strip of 0 is white. An Entry drawn as a
         line takes no bar and keeps its whole fill.
 
+        The bars of compounds are pies in the circles that take rings, which are compound circles on
+        standard and overview maps. Each such circle gets a pie glyph ('_pie_glyph'), and a circle
+        without a bar value on the map is left uncolored and recorded for the warning, as a box of
+        the 'fill' style is. A circle on a global map takes no pie and keeps its whole fill.
+
         Sliced bars find what each box shows with the bar slicer of the spec ('_bar_result'). Here
         the fill is not sliced, since it shows presence. Bars aligned with a fill of values show one
         bar in such a box, the mean of the bar values of its units. Bars sliced on their own show a
@@ -15780,7 +15939,10 @@ class Mapper:
             cells = [(color_hexcode, 1.0)]
             values = [result['value']]
         extents = [self._bar_extent(value, spec['bar_norm']) for value in values]
-        glyph = self._bar_glyph(cells, extents, result['vertical'], strip)
+        if spec['element_type'] == 'compound':
+            glyph = self._pie_glyph(color_hexcode, extents[0])
+        else:
+            glyph = self._bar_glyph(cells, extents, result['vertical'], strip)
         for shape in shapes:
             shape.glyph = glyph
         if slice_records is None:
@@ -15994,6 +16156,37 @@ class Mapper:
         if (signed or vertical) and not strip:
             glyph['label'] = False
         return glyph
+
+    @staticmethod
+    def _pie_glyph(color: str, extent: Tuple[float, float]) -> Dict[str, Union[str, list]]:
+        """
+        Draw the pie of a compound circle into a glyph ('kgml.Graphics.glyph').
+
+        The circle is the gray track ('BAR_TRACK_COLOR'). A wedge over it in the color of the fill
+        runs clockwise from 12 o'clock, over the part of a turn from 0 to the value. The end line
+        lies along the free edge of the wedge ('BAR_END_LINE_COLOR'), at 0 and at a full turn too.
+        The scale of a pie always starts at 0, since its values and limits cannot be negative, so
+        every wedge starts at 12 o'clock.
+
+        Parameters
+        ==========
+        color : str
+            The color of the fill of the circle.
+
+        extent : Tuple[float, float]
+            Where the pie starts and ends on the bar scale ('_bar_extent'), as fractions of a turn.
+
+        Returns
+        =======
+        Dict[str, Union[str, list]]
+            The glyph.
+        """
+        start, end = extent
+        return {
+            'track': BAR_TRACK_COLOR,
+            'wedges': [(start, end, color)],
+            'rules': [(end, BAR_END_LINE_COLOR, BAR_END_LINE_WIDTH)]
+        }
 
     @staticmethod
     def _derives_compounds(pathway: kgml.Pathway, layer_specs: List[dict]) -> bool:
@@ -17435,6 +17628,15 @@ class ColorbarDrawer:
     length_figsize : Tuple[float, float]
         Dimensions in inches of the figure of a key of bar lengths ('draw_length'). The box of the
         key has about the shape of a reaction box.
+
+    pie_diameter : float
+        The diameter in inches of the circle of a key of pies ('draw_pie').
+
+    pie_tick_length : float
+        The length in points of the ticks outside the circle of a key of pies.
+
+    pie_label_gap : float
+        The gap in points between a tick of a key of pies and its label.
     """
     def __init__(self, overwrite_output: bool = FORCE_OVERWRITE) -> None:
         """
@@ -17455,6 +17657,9 @@ class ColorbarDrawer:
         self.labelpad: int = 30
         self.max_integer_ticks: int = 6
         self.length_figsize: Tuple[float, float] = (6, 2.2)
+        self.pie_diameter: float = 2.6
+        self.pie_tick_length: float = 8
+        self.pie_label_gap: float = 6
 
     def draw_discrete(
         self,
@@ -17915,6 +18120,113 @@ class ColorbarDrawer:
             tick_labels = tick_labels[:zero_index] + tick_labels[zero_index + 1:]
             axis.set_ticks(ticks)
             axis.set_ticklabels(tick_labels)
+
+    def draw_pie(
+        self,
+        vmin: float,
+        vmax: float,
+        out_path: str,
+        label: str = None,
+        clamped_low: bool = False,
+        clamped_high: bool = False
+    ) -> None:
+        """
+        Save a standalone key of the bar scale of pies to a file.
+
+        The bar scale of pies keys parts of a turn ('Mapper._pie_glyph'). The key is a circle in the
+        color of the track of pies, with a black outline as a compound circle has. Ticks outside it
+        mark the quarters of the scale, clockwise from 12 o'clock, where every pie starts, and each
+        tick is labeled with its value. A pie of the top of the scale fills its circle, so 12
+        o'clock stands for both ends of the scale. The bottom is labeled to the right of its tick,
+        where pies start, and the top to the left, where full pies end. An end is marked '≤' or '≥'
+        where values lie past a limit, as on a continuous colorbar ('draw_continuous'). A scale
+        whose one value is 0 is drawn as a circle labeled 0 alone, since its pies are empty.
+
+        Parameters
+        ==========
+        vmin : float
+            The bottom of the scale, which is 0.
+
+        vmax : float
+            The top of the scale.
+
+        out_path : str
+            Path to PDF output file.
+
+        label : str, None
+            The label of the key, under the circle.
+
+        clamped_low, clamped_high : bool, False
+            As in 'draw_continuous'.
+        """
+        diameter = self.pie_diameter
+        fig = Figure(figsize=(diameter, diameter))
+        # The axes fill the figure, and the circle fills the axes, so a point is a known part of the
+        # radius. The ticks and labels lie outside the axes, and the saved figure grows to hold
+        # them.
+        ax = fig.add_axes((0, 0, 1, 1))
+        ax.set_xlim(-1, 1)
+        ax.set_ylim(-1, 1)
+        ax.set_axis_off()
+        ax.add_patch(Circle(
+            (0, 0), 1, facecolor=BAR_TRACK_COLOR, edgecolor='#000000', linewidth=1, clip_on=False
+        ))
+        radius_points = diameter * 72 / 2
+        tick_length = self.pie_tick_length / radius_points
+        label_gap = self.pie_label_gap
+        tick_fontsize = self.max_tick_fontsize if self.tick_fontsize is None else self.tick_fontsize
+        if vmin == vmax:
+            ticks = [vmin]
+        else:
+            ticks = [vmin + (vmax - vmin) * quarter / 4 for quarter in range(5)]
+        # The labels are typeset by a formatter of the scale, as the labels of a ruler are
+        # ('draw_length').
+        span = vmax - vmin if vmax > vmin else 1
+        formatter = mticker.ScalarFormatter()
+        formatter.create_dummy_axis()
+        formatter.axis.set_view_interval(vmin, vmin + span)
+        tick_labels = self._limit_tick_labels(formatter, ticks, span, clamped_low, clamped_high)
+        # Clockwise from 12 o'clock, each tick points away from the center, and its label lies past
+        # its outer end. The labels of the two ends sit on either side of the tick at 12 o'clock,
+        # which runs up between them, so that they do not read as one label.
+        if len(ticks) == 1:
+            placements = [((0, label_gap), 'center', 'bottom')]
+        else:
+            placements = [
+                ((label_gap, label_gap), 'left', 'bottom'),
+                ((label_gap, 0), 'left', 'center'),
+                ((0, -label_gap), 'center', 'top'),
+                ((-label_gap, 0), 'right', 'center'),
+                ((-label_gap, label_gap), 'right', 'bottom')
+            ]
+        outer = 1 + tick_length
+        for quarter, (tick_label, (offset, ha, va)) in enumerate(zip(tick_labels, placements)):
+            angle = math.pi / 2 - quarter * math.pi / 2
+            x, y = math.cos(angle), math.sin(angle)
+            if quarter < 4:
+                end = outer
+                # Digits stand about 0.8 of the font size tall.
+                if quarter == 0 and len(ticks) > 1:
+                    end += (label_gap + tick_fontsize * 0.8) / radius_points
+                ax.plot(
+                    [x, end * x], [y, end * y], color='#000000', linewidth=1,
+                    solid_capstyle='butt', clip_on=False
+                )
+            ax.annotate(
+                tick_label, (outer * x, outer * y), xytext=offset, textcoords='offset points',
+                ha=ha, va=va, fontsize=tick_fontsize, annotation_clip=False
+            )
+        if label:
+            # The label lies under the tick label at 6 o'clock, whose line is about 1.2 times the
+            # font size tall, as far below it as the label of a ruler lies below its tick labels.
+            below = label_gap + tick_fontsize * 1.2 + self.labelpad
+            ax.annotate(
+                label, (0, -1 - tick_length), xytext=(0, -below), textcoords='offset points',
+                ha='center', va='top', fontsize=self.label_fontsize, annotation_clip=False
+            )
+
+        filesnpaths.is_output_file_writable(out_path, ok_if_exists=self.overwrite_output)
+        fig.savefig(out_path, format='pdf', bbox_inches='tight')
 
 class PDFGridDrawer:
     """
