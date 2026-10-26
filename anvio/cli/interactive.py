@@ -115,8 +115,12 @@ def get_args():
                                     a distance metric and a linkage method using --linkage and --distance parameters if\
                                     you want!"}))
 
-    groupB = parser.add_argument_group('MANUAL INPUTS', "Mandatory input parameters to start the interactive interface\
-                                                         without anvi'o databases.")
+    groupB = parser.add_argument_group('MANUAL INPUTS', "Input parameters to start the interactive interface without anvi'o\
+                                                         databases. When you provide these without a contigs database,\
+                                                         anvi'o will start the interface in manual mode automatically.\
+                                                         You still need to provide a profile database path, which does\
+                                                         not need to exist: anvi'o will create an empty one for you to\
+                                                         store your states and collections.")
     groupB.add_argument(*anvio.A('manual-mode'), **anvio.K('manual-mode'))
     groupB.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file'))
     groupB.add_argument(*anvio.A('view-data'), **anvio.K('view-data'))
