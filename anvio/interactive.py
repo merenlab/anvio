@@ -220,7 +220,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                           f"It may be the case that you already have used `anvi-display-codon-frequencies` "
                                           f"with a profile-db PATH to generate the file at '{self.profile_db_path}'. In this "
                                           f"case, you should use the program `anvi-interactive` to visualize the data stored "
-                                          f"in that file by running `anvi-interactive -p {self.profile_db_path} --manual`")
+                                          f"in that file by running `anvi-interactive -p {self.profile_db_path}`")
                 else:
                     utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
@@ -1174,7 +1174,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         run.warning("Your profile database to visualize the codon frequency data is ready, and stored in the "
                     "output directory shown below. If you store a different state file, or collections into "
                     "the profil database anvi'o is about to show you, you can always re-visualize the same "
-                    "data by running `anvi-interactive` on that profile database with `--manual` flag.",
+                    "data by running `anvi-interactive` on that profile database.",
                     header="YOUR PROFILE-DB IS READY", lc="cyan")
         run.info("Profile database path", self.profile_db_path, nl_after=1)
 
@@ -1207,7 +1207,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                               f"you must provide a profile database that actually does not exist. Yeah, we know "
                               f"it doesn't make sense, but actually it does, but really very difficult to "
                               f"explain. If you really want to re-display your existing profile database with "
-                              f"functions, you should run `anvi-interactive -p {self.profile_db_path} --manual`. "
+                              f"functions, you should run `anvi-interactive -p {self.profile_db_path}`. "
                               f"Now, that should work like a charm.")
 
         # initialize all functions from wherever.
@@ -1602,8 +1602,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                               "an empty one for you to store your states and collections.")
 
         if not self.contigs_db_path:
-            raise ConfigError("Anvi'o needs the contigs database to make sense of this run (or maybe you "
-                               "should use the `--manual` flag if that's what your intention).")
+            raise ConfigError("Anvi'o needs the contigs database to make sense of this run, since the profile database "
+                               "you provided is associated with one. Please provide it with the `-c` parameter.")
 
         if not self.profile_db_path:
             raise ConfigError("So you want to run anvi'o in full mode, but without a profile database? "
@@ -3615,7 +3615,7 @@ class AdHocRunGenerator:
         self.add_state('default')
 
         self.run.info_single("Good news, your data is ready.", nl_before=1, mc='green')
-        self.run.info_single("Please run 'anvi-interactive --manual -p %s --tree %s --view-data %s'" % (self.profile_db_path, tree_path, view_data_path), cut_after=0, nl_after=1, mc='green')
+        self.run.info_single("Please run 'anvi-interactive -p %s --tree %s --view-data %s'" % (self.profile_db_path, tree_path, view_data_path), cut_after=0, nl_after=1, mc='green')
 
 
     def add_state(self, state_name, state_json=None, state_path=None):
