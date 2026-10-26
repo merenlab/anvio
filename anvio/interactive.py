@@ -262,6 +262,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # if the mode has not been set from within the arguments, we will set something up here:
         if not self.mode:
             if self.manual_mode:
+                # the user explicitly asked for it with the old `--manual` flag, which is no longer
+                # necessary, but we will continue to respect it so old commands don't break.
                 self.mode = 'manual'
             elif self.gene_mode:
                 # collection mode and gene view mode both uses collection_name
@@ -269,6 +271,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 self.mode = 'gene'
             elif self.collection_name or self.list_collections:
                 self.mode = 'collection'
+            elif self.is_ad_hoc_display_request():
+                self.mode = 'manual'
+                self.run.warning("Since you did not provide a contigs database, and your profile database is either "
+                                 "not there yet or is not associated with a contigs database, anvi'o will start the "
+                                 "interactive interface in 'manual' mode, and will use the input files you provided "
+                                 "to visualize your data.", header="AD HOC DISPLAY 📊", lc='green')
             elif self.contigs_db_variant == 'trnaseq':
                 self.mode = 'trnaseq'
             else:
@@ -622,6 +630,26 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.progress.end()
 
 
+    def is_ad_hoc_display_request(self):
+        """Returns True if the user is trying to visualize ad hoc data rather than anvi'o databases.
+
+        This is what used to require the `--manual` flag. We consider a request to be an ad hoc one
+        if there is no contigs-db or pan-db, and the profile-db either does not exist yet (in which
+        case `load_manual_mode` will create an empty one), or exists but is not associated with a
+        contigs-db (i.e., it was created by an earlier ad hoc display). Full mode can't run under
+        either of these conditions anyway, so there is no ambiguity here.
+        """
+
+        if self.contigs_db_path or self.pan_db_path or not self.profile_db_path:
+            return False
+
+        if not os.path.exists(self.profile_db_path):
+            return True
+
+        from anvio.dbinfo import DBInfo
+        return not DBInfo(self.profile_db_path).hash
+
+
     def load_manual_mode(self):
         if self.contigs_db_path:
             raise ConfigError("When you want to use the interactive interface in manual mode, you must "
@@ -675,8 +703,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 
         if not self.tree and not self.view_data_path and not tree_order_found_in_db:
-            raise ConfigError("You must be joking Mr. Feynman. No tree file, and no data file, and no tree order in the "
-                              "database? What is it that anvi'o supposed to visualize? :(")
+            if not os.path.exists(self.profile_db_path):
+                raise ConfigError(f"There is no profile database at '{self.profile_db_path}', and you did not provide a "
+                                  f"contigs database either, so anvi'o assumed that you wanted to visualize some ad hoc "
+                                  f"data. But you did not provide a tree file or a data file to visualize :/ If you were "
+                                  f"trying to visualize an existing profile database, please make sure the path is "
+                                  f"correct and provide its contigs database with `-c`. If you were trying to visualize "
+                                  f"your own data, please provide a `--tree` and/or a `--view-data` file.")
+            else:
+                raise ConfigError("You must be joking Mr. Feynman. No tree file, and no data file, and no tree order in the "
+                                  "database? What is it that anvi'o supposed to visualize? :(")
 
         if not self.tree and not tree_order_found_in_db:
             self.run.warning("You haven't declared a tree file and there was no tree order in the database. Anvi'o will "
