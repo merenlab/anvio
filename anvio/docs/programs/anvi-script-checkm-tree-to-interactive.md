@@ -8,6 +8,5 @@ anvi-script-checkm-tree-to-interactive -t CheckM_concatenated.tree \
 cd OUTPUT_PATH/
 anvi-interactive -p PROFILE.db \
                  -t newick.tree \
-                 -d view_data.txt \
-                 --manual
+                 -d view_data.txt
 {{ codestop }}

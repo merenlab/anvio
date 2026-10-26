@@ -346,8 +346,7 @@ Be sure to change the `--min-seq-id` of the `cluster_X_percent_sim_mmseqs` rule 
 PROTEIN="" # Replace with name of protein from hmm_list.txt
 anvi-interactive -t 05_TREES/"${PROTEIN}"/"${PROTEIN}"_renamed.nwk \
                  -p 05_TREES/"${PROTEIN}"/"${PROTEIN}"-PROFILE.db \
-                 --fasta 05_TREES/"${PROTEIN}"/"${PROTEIN}"_renamed.faa \
-                 --manual
+                 --fasta 05_TREES/"${PROTEIN}"/"${PROTEIN}"_renamed.faa
 ```
 
 ## profile-mode: Insights into the ecological and evolutionary patterns of target genes and environments
@@ -375,8 +374,7 @@ To visualize the output of [profile-mode](#profile-mode-insights-into-the-ecolog
 ```bash
 PROTEIN="" # Replace with name of protein from hmm_list.txt
 anvi-interactive -p METAGENOMICS_WORKFLOW/06_MERGED/"${PROTEIN}"/PROFILE.db \
-                 -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}".db \
-                 --manual
+                 -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}".db
 ```
 
 
@@ -386,8 +384,7 @@ Just want a quick look at the tree without read recruitment results?
 PROTEIN="" # Replace with name of protein from hmm_list.txt
 anvi-interactive -t 05_TREES/"${PROTEIN}"/"${PROTEIN}"_renamed.nwk \
                  -p 05_TREES/"${PROTEIN}"/"${PROTEIN}"-PROFILE.db \
-                 --fasta 05_TREES/"${PROTEIN}"/"${PROTEIN}"_renamed.faa \
-                 --manual
+                 --fasta 05_TREES/"${PROTEIN}"/"${PROTEIN}"_renamed.faa
 ```
 
 ## Manual curation of the ecophylo phylogeny
