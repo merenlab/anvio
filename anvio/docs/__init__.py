@@ -306,6 +306,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user":True
     },
+    "sra-metadata-txt": {
+        "name": "SRA METADATA TXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user":True
+    },
     "primers-txt": {
         "name": "PRIMERS TXT",
         "type": "TXT",
@@ -1031,6 +1037,42 @@ ANVIO_ARTIFACTS ={
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user":True
+    },
+    "kegg-reaction-txt": {
+        "name": "KEGG REACTION TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "kegg-compound-txt": {
+        "name": "KEGG COMPOUND TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "kegg-membership-colors-txt": {
+        "name": "KEGG MEMBERSHIP COLORS TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "kegg-value-colors-txt": {
+        "name": "KEGG VALUE COLORS TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "kegg-slice-key-txt": {
+        "name": "KEGG SLICE KEY TXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "kegg-label-key-txt": {
+        "name": "KEGG LABEL KEY TXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "enzymes-list-for-module": {
         "name": "ENZYMES LIST",

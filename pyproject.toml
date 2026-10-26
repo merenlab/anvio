@@ -69,13 +69,15 @@ dependencies = [
     "pandas==1.4.4",
     "snakemake",
     "multiprocess",
-    "plotext",
+    "plotext>=5,<6",
     "networkx==3.1",
     "pyrodigal_gv",
     "pulp==2.7.0",
     "biopython",
     "reportlab",
+    "rl_accel",
     "pymupdf",
+    "pillow",
     "tomli==2.2.1",
     "pyyaml"
 ]
@@ -220,6 +222,7 @@ Contact = "https://anvio.org/people"
 "anvi-run-globdb-functions"                         = "anvio.cli.run_globdb_functions:main"
 "anvi-run-ncbi-cogs"                                = "anvio.cli.run_ncbi_cogs:main"
 "anvi-run-pfams"                                    = "anvio.cli.run_pfams:main"
+"anvi-run-antismash"                                = "anvio.cli.run_antismash:main"
 "anvi-run-scg-taxonomy"                             = "anvio.cli.run_scg_taxonomy:main"
 "anvi-run-trna-taxonomy"                            = "anvio.cli.run_trna_taxonomy:main"
 "anvi-run-workflow"                                 = "anvio.cli.run_workflow:main"
@@ -264,6 +267,7 @@ Contact = "https://anvio.org/people"
 "anvi-script-fix-homopolymer-indels"                     = "anvio.cli.fix_homopolymer_indels:main"
 "anvi-script-gen-CPR-classifier"                         = "anvio.cli.gen_CPR_classifier:main"
 "anvi-script-gen-defense-finder-models-to-hmm-directory" = "anvio.cli.gen_defense_finder_models_to_hmm_directory:main"
+"anvi-script-gen-antismash-matrix"                       = "anvio.cli.gen_antismash_matrix:main"
 "anvi-script-gen-distribution-of-genes-in-a-bin"         = "anvio.cli.gen_distribution_of_genes_in_a_bin:main"
 "anvi-script-gen-function-matrix-across-genomes"         = "anvio.cli.gen_function_matrix_across_genomes:main"
 "anvi-script-gen-functions-per-group-stats-output"       = "anvio.cli.gen_functions_per_group_stats_output:main"
@@ -280,6 +284,7 @@ Contact = "https://anvio.org/people"
 "anvi-script-get-collection-info"                        = "anvio.cli.get_collection_info:main"
 "anvi-script-get-coverage-from-bam"                      = "anvio.cli.get_coverage_from_bam:main"
 "anvi-script-get-hmm-hits-per-gene-call"                 = "anvio.cli.get_hmm_hits_per_gene_call:main"
+"anvi-script-get-sra-metadata"                           = "anvio.cli.get_sra_metadata:main"
 "anvi-script-hmm-to-hmm-directory"                       = "anvio.cli.hmm_to_hmm_directory:main"
 "anvi-script-kofam-accessions-to-hmms-directory"         = "anvio.cli.kofam_accessions_to_hmms_directory:main"
 "anvi-script-merge-collections"                          = "anvio.cli.merge_collections:main"
@@ -296,6 +301,7 @@ Contact = "https://anvio.org/people"
 "anvi-script-variability-to-vcf"                         = "anvio.cli.variability_to_vcf:main"
 "anvi-script-gen-fasta-txt"                              = "anvio.cli.gen_fasta_txt:main"
 "anvi-script-mod-config-json"                            = "anvio.cli.mod_config_json:main"
+"anvi-script-gen-pan-graph-video"                        = "anvio.cli.gen_pan_graph_video:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -315,6 +321,7 @@ script-files = [
 anvio = [
     "cli/**/*",
     "data/**/*",
+    "data/interactive/.npmrc",
     "docs/**/*",
     "drivers/**/*",
     "migrations/**/*",

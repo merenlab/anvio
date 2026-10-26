@@ -15,6 +15,8 @@ edge-reversal step is needed.
 import csv
 import os
 import random
+
+from heapq import heappush, heappop
 from argparse import Namespace
 from collections import Counter, defaultdict, deque
 
@@ -60,14 +62,18 @@ def parse_external_genomes(path):
 
 
 def split_anvio_id(seq_id):
-    """``hash<8>_<gene_callers_id>`` → (hash, gene_callers_id_int).
+    """``<genome_hash>_<gene_callers_id>`` → (genome_hash, gene_callers_id_int).
+
+    The genome hash is the contigs-db hash, which used to be ``hash<8 hex>`` and is now a
+    plain hex digest, so any non-empty hash is accepted here; hashes that belong to no
+    genome are caught later by the ``hash_to_genome`` lookup.
 
     Returns ``(None, None)`` if the format doesn't match.
     """
     if "_" not in seq_id:
         return None, None
     hash_part, gid_part = seq_id.rsplit("_", 1)
-    if not hash_part.startswith("hash") or not gid_part.isdigit():
+    if not hash_part or not gid_part.isdigit():
         return None, None
     return hash_part, int(gid_part)
 
@@ -1239,6 +1245,8 @@ class PangenomeGraphEngine():
         n_kept_dir = 0
         n_not_candidate = 0
         n_below_prefilter = 0
+        n_matched = 0               # rows whose two ids both resolve to genomes in the storage
+        unmatched_example = None    # the first sequence id that didn't, for the error below
 
         with open(self.diamond_search_results) as f:
             for line in f:
@@ -1268,12 +1276,15 @@ class PangenomeGraphEngine():
                 s_hash, s_gid = split_anvio_id(sseqid)
                 if q_hash is None or s_hash is None:
                     n_bad_format += 1
+                    unmatched_example = unmatched_example or (qseqid if q_hash is None else sseqid)
                     continue
                 q_genome = hash_to_genome.get(q_hash)
                 s_genome = hash_to_genome.get(s_hash)
                 if q_genome is None or s_genome is None:
                     n_unknown_hash += 1
+                    unmatched_example = unmatched_example or (qseqid if q_genome is None else sseqid)
                     continue
+                n_matched += 1
                 if q_genome == s_genome:
                     n_self_genome += 1
                     continue
@@ -1338,6 +1349,26 @@ class PangenomeGraphEngine():
                 edges[key] = w_avg
 
         self.progress.end()
+
+        # Genomes share gene clusters, so DIAMOND must have rows between them. If not a single row
+        # can be matched to the genomes in the storage, the file doesn't belong to this pangenome
+        # (or its ids are in a format we can't read), and going on would quietly give every genome
+        # its own graph component.
+        if candidate_edges and not n_matched:
+            known_hash = next(iter(hash_to_genome), None)
+            example = (f"For instance, the sequence id '{unmatched_example}' matches no genome, while the "
+                       f"genome hashes in your genomes storage look like '{known_hash}'. "
+                       if unmatched_example else "")
+            raise ConfigError(f"Anvi'o could not match a single row of your DIAMOND search results "
+                              f"('{self.diamond_search_results}') to the genomes in your genomes storage: "
+                              f"{pp(n_bad_format)} rows were not proper DIAMOND tabular output or had sequence "
+                              f"ids that are not in the `<genome_hash>_<gene_callers_id>` format, and "
+                              f"{pp(n_unknown_hash)} rows had genome hashes that are not in the genomes "
+                              f"storage. {example}This usually means the DIAMOND file comes from a different "
+                              f"pangenome than this genomes storage. Please use the `diamond-search-results.txt` "
+                              f"that `anvi-pan-genome` wrote with this genomes storage, or run this program "
+                              f"without `--diamond-search-results` to build the graph from gene cluster "
+                              f"membership alone :/")
 
         self.run.info('DIAMOND rows read', pp(n_rows))
         self.run.info('Self-row hits skipped', pp(n_self_row))
@@ -1715,33 +1746,112 @@ class PangenomeGraphEngine():
             pool.append([u, v, w, score, support, mean, li_u, li_v])
         pool.sort(key=lambda r: r[5], reverse=True)
 
-        def take_bucket(must_touch_g):
-            bucket, indices = [], []
-            for idx, row in enumerate(pool):
-                if must_touch_g and (row[6] not in in_g_lines
-                                     and row[7] not in in_g_lines):
-                    continue
-                bucket.append(row)
-                indices.append(idx)
-                if len(bucket) >= top_k:
-                    break
-            return bucket, indices
+        # Pool index! `take_bucket` has to yield the first `top_k` surviving
+        # rows *in ranking order* whose endpoint lines touch the frontier, and
+        # a naive rescan from position 0 re-examines the same un-usable head
+        # rows on every iteration: rows whose BOTH endpoints are still off the
+        # graph are skipped but never consumed, so on a dense pangenome the
+        # head can hold tens of thousands of such rows and the loop degrades
+        # to O(len(pool) * head_depth), taking HOURS of scanning a graph that
+        # takes seconds to build :/ Meren ran into this issue when he was working
+        # with a pangemoe of around 3,000 loci with only four genes. Even though
+        # every single edge betwen two nodes were pixel-percect, the loop wouldn't
+        # end.
+        #
+        # The solution below is a hybrid:
+        #
+        #   * rows_of_line  : line -> ranking positions of its rows, so a line
+        #                     joining the graph can hand its rows to the frontier
+        #   * frontier      : min-heap of ranking positions that touch in_g_lines,
+        #                     popping in ranking order exactly as the scan did
+        #   * alive         : tombstones. Consumed rows are marked, not popped,
+        #                     which also drops the O(n) list.pop(idx) memmove
+        #   * cursor        : monotone pointer for the must_touch_g=False fallback
+        #
+        # Deep down I know that there is a much better solution here, but since
+        # the current one is simple enough to address the problem that we will
+        # rarely end up dealing with, and it is working much faster than the naive scan,
+        # I will leave it in its current form rather than trying to optimize it further.
+        n_rows = len(pool)
+        alive = bytearray([1]) * n_rows
+        n_alive = n_rows
+        rows_of_line = defaultdict(list)
+        for idx, row in enumerate(pool):
+            rows_of_line[row[6]].append(idx)
+            rows_of_line[row[7]].append(idx)
 
-        total_pool = len(pool)
+        frontier = []
+        queued = bytearray(n_rows)
+        cursor = 0
+
+        def line_joined(li):
+            """Hand a newly committed line's surviving rows to the frontier."""
+            for idx in rows_of_line.get(li, ()):
+                if alive[idx] and not queued[idx]:
+                    queued[idx] = 1
+                    heappush(frontier, idx)
+
+        def take_bucket_touching():
+            """First `top_k` surviving rows, in ranking order, touching the frontier."""
+            picked = []
+            while frontier and len(picked) < top_k:
+                idx = heappop(frontier)
+                queued[idx] = 0
+                if alive[idx]:
+                    picked.append(idx)
+            return picked
+
+        def take_bucket_any():
+            """First `top_k` surviving rows, in ranking order, ignoring the frontier."""
+            nonlocal cursor
+            picked = []
+            idx = cursor
+            while idx < n_rows and len(picked) < top_k:
+                if alive[idx]:
+                    picked.append(idx)
+                idx += 1
+            while cursor < n_rows and not alive[cursor]:
+                cursor += 1
+            return picked
+
+        seen_lines = set()
+        n_seen = 0
+
+        total_pool = n_rows
         self.progress.new("Pangenome fusion", progress_total_items=total_pool)
         processed = 0
-        while pool:
+        while n_alive:
+            # Lines commit in several branches below -- including inside
+            # _try_commit_tie_line -- so instead of hooking every call site we
+            # diff the set whenever its size changed and hand the newly
+            # committed lines' rows to the frontier. The diff runs at most
+            # len(lines) times over the whole loop.
+            if len(in_g_lines) != n_seen:
+                for li in (in_g_lines - seen_lines):
+                    line_joined(li)
+                seen_lines = set(in_g_lines)
+                n_seen = len(in_g_lines)
+
             if not in_g_lines:
-                bucket, indices = take_bucket(must_touch_g=False)
+                bucket = take_bucket_any()
             else:
-                bucket, indices = take_bucket(must_touch_g=True)
+                bucket = take_bucket_touching()
                 if not bucket:
-                    bucket, indices = take_bucket(must_touch_g=False)
+                    bucket = take_bucket_any()
                     if not bucket:
                         break
             pick = rng.randrange(len(bucket))
-            u, v, w, score, support, mean, li_u, li_v = bucket[pick]
-            pool.pop(indices[pick])
+            chosen = bucket[pick]
+            for idx in bucket:
+                # Only the picked row is consumed; the rest stay in the pool.
+                if idx != chosen and not queued[idx]:
+                    queued[idx] = 1
+                    heappush(frontier, idx)
+            u, v, w, score, support, mean, li_u, li_v = pool[chosen]
+            alive[chosen] = 0
+            n_alive -= 1
+            while cursor < n_rows and not alive[cursor]:
+                cursor += 1
             processed += 1
             if processed & 0x3FF == 0:
                 self.progress.update(f"lines {pp(len(in_g_lines))}/{pp(len(lines))}  "

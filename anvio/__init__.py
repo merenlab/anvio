@@ -192,6 +192,13 @@ D = {
              'required': True,
              'help': "Anvi'o pan database"}
                 ),
+    'pan-or-pan-graph-db': (
+            ['-p', '--pan-or-pan-graph-db'],
+            {'metavar': "PAN_OR_PAN_GRAPH_DB",
+             'required': True,
+             'help': "An anvi'o pan-db or pan-graph-db. Which one it is is worked out from the database "
+                     "itself, so either may be given here."}
+                ),
     'pan-or-profile-db': (
             ['-p', '--pan-or-profile-db'],
             {'metavar': "PAN_OR_PROFILE_DB",
@@ -1045,6 +1052,90 @@ D = {
              'type': str,
              'help': "The directory path for your Pfam setup. Anvi'o will try to use the default path "
                      "if you do not specify anything."}
+                ),
+    'antismash-dir': (
+            ['--antismash-dir'],
+            {'default': None,
+             'type': str,
+             'metavar': 'DIR_PATH',
+             'help': "The directory antiSMASH is installed in (its conda environment), e.g. "
+                     "~/miniforge3/envs/antismash. You usually do NOT need this: anvi'o first looks for "
+                     "'antismash' on your PATH, and failing that automatically searches your conda "
+                     "environments for it. If anvi'o cannot find antiSMASH on its own, or if you have "
+                     "several antiSMASH installations and would like to point to a specific one you can "
+                     "use this flag."}
+                ),
+    'antismash-data-dir': (
+            ['--antismash-data-dir'],
+            {'default': None,
+             'type': str,
+             'metavar': 'DIR_PATH',
+             'help': "This points to the antiSMASH database and you only need this flag if you did not "
+                     "store the database in the default directory, in which case the program does not know "
+                     "where to look."}
+                ),
+    'antismash-taxon': (
+            ['--taxon'],
+            {'default': 'bacteria',
+             'type': str,
+             'choices': ['bacteria', 'fungi'],
+             'help': "Source organism kingdom for antiSMASH. Default: %(default)s. You can change it to fungi."}
+                ),
+    'antismash-add-on': (
+            ['--antismash-add-on'],
+            {'default': '',
+             'type': str,
+             'metavar': 'ANTISMASH_FLAGS',
+             'help': "Using this flag you can ask anvi-run-antismash to include additional analyses "
+                     "available in antiSMASH, including --fullhmmer, --clusterhmmer, --tigrfam, --pfam2go, "
+                     "--tfbs and --cassis. Please use the '=' form with quotes, e.g., --antismash-add-on=\"--fullhmmer --tfbs\", so "
+                     "they are not mistaken for flags of the anvi'o program itself. Flags "
+                     "anvi'o already sets for you (such as --cpus or --taxon) are not allowed here."}
+                ),
+    'include-detailed-antismash-output': (
+            ['--include-detailed-output'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "To include ClusterBlast and MIBiG analysis, smCOG trees as well as the per-region "
+                     "GenBank (.gbk) files (useful as input to tools like BiG-SCAPE), the raw JSON, and "
+                     "the comparison tabs. This slows down the analysis and generates quite a few files, "
+                     "but gives you a more comprehensive output of which we can't judge if it is useful "
+                     "to you or not."}
+                ),
+    'antismash-regions-output': (
+            ['--regions-output'],
+            {'default': None,
+             'type': str,
+             'metavar': 'FILE_PATH',
+             'help': "Can be used to set the path for the per-region dataframe. The default is to include "
+                     "it as antismash_regions.txt inside the report directory. This is only relevant if you "
+                     "run anvi-run-antismash on a single database, if you use an external-genomes.txt "
+                     "anvi-run-antismash creates individual directories automatically."}
+                ),
+    'antismash-work-dir': (
+            ['--work-dir'],
+            {'default': None,
+             'type': str,
+             'metavar': 'DIR_PATH',
+             'help': "You can use this directory to store the intermediates instead of a tempdir "
+                     "(helpful for debugging). This is only relevant if you run anvi-run-antismash on a "
+                     "single database."}
+                ),
+    'antismash-genes-matrix': (
+            ['--genes'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Build a per-gene matrix: rows are distinct gene signatures (role, function, "
+                     "smCOG and domains as separate columns), columns are genomes, and each cell is "
+                     "how many genes in that genome match the signature."}
+                ),
+    'antismash-regions-matrix': (
+            ['--regions'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Build a per-cluster matrix: rows are BGC product types (terpene, NRPS, ...), "
+                     "columns are genomes, and each cell is how many regions (clusters) of that type "
+                     "the genome has."}
                 ),
     'pdb-database-path': (
             ['--pdb-database-path'],
@@ -2363,6 +2454,15 @@ D = {
              'required': False,
              'help': "Nodes in an anvi'o pangenome graph database..",
              'type': str}
+                ),
+    'reset-gene-caller-ids': (
+            ['--reset-gene-caller-ids'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, the gene caller ids in the resulting contigs databases will match those "
+                     "in the source contigs databases, so you can trace each gene back to where it came from. "
+                     "If you use this flag, anvi'o will instead reset the gene caller ids so they start from 0 "
+                     "in each output database (which was the historical default behavior)."}
                 ),
     'region-id': (
             ['--region-id'],
@@ -4239,6 +4339,21 @@ D = {
              'help': "Set the minimum number of codons required in a gene. When functions are returned "
                      "rather than genes, this filter is applied to genes before grouping them as "
                      "functions."}
+        ),
+    'ignore-start-codons': (
+            ['--ignore-start-codons'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Ignore start codons in the analysis. Besides ATG, GTG and TTG are notable minority "
+                     "start codons in bacteria and archaea. With start codons removed, frequencies only "
+                     "represent elongation codons. This makes codon usage bias calculations more accurate, "
+                     "because initiation GTG and TTG, like ATG, encode fMet in bacteria and Met in archaea "
+                     "and eukaryotes, but anvi'o treats them like elongation codons encoding Val and Leu, "
+                     "respectively, in the standard genetic code. ATG does not contribute to codon usage "
+                     "bias given the standard genetic code, because it lacks synonymous codons, being the "
+                     "only Met codon. Note that `--ignore-start-codons` removes start codons from genes in "
+                     "the earliest steps of the analysis, which influences `--gene-min-codons`: the number "
+                     "of codons in a gene never counts the start codon."}
         ),
     'relative': (
             ['--relative'],

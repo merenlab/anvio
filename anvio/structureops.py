@@ -1857,7 +1857,7 @@ class StructureSuperclass(object):
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
         if not num_with_structure:
-            raise ConfigError("Well this is really sad. No structures were modelled, so there is nothing to do. Bye :'(")
+            self.warn_no_structures_modelled()
 
         self.structure_db.disconnect()
 
@@ -1914,11 +1914,18 @@ class StructureSuperclass(object):
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
         if not num_with_structure:
-            raise ConfigError("Well this is really sad. No structures were modelled, so there is nothing to do. Bye :'(")
+            self.warn_no_structures_modelled()
 
         self.structure_db.disconnect()
 
         self.run.info("Structure database", self.structure_db_path)
+
+
+    def warn_no_structures_modelled(self):
+        """A structure database without any structure is a valid outcome, so we only let the user know."""
+        self.run.warning("None of your genes of interest got a structure. Anvi'o will still finish the structure "
+                         "database, which records the genes it tried.",
+                         header="NO STRUCTURES")
 
 
     def msg(self):
