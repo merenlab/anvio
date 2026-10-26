@@ -5,7 +5,7 @@ The massage of the data is being taken care of in the interactive module,
 and this file implements the bottle callbacks."""
 
 import sys
-from anvio.argparse import ArgumentParser
+from anvio.argparse import ArgumentParser, PopulateAnvioDBArgs
 
 import anvio
 import anvio.utils as utils
@@ -38,6 +38,7 @@ def main():
     run = terminal.Run()
 
     try:
+        args = fill_in_anvio_dbs(args)
         utils.is_all_npm_packages_installed()
         d = interactive.Interactive(args)
         args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
@@ -63,6 +64,37 @@ def main():
         sys.exit(-4)
 
 
+def fill_in_anvio_dbs(args):
+    """Fill in missing anvi'o databases from the work directory, unless the user is visualizing ad hoc data.
+
+    When the user provides a tree or a view data file without a profile or contigs database, they
+    may want to visualize those files alone, or may want to see them on top of anvi'o databases that
+    happen to be in the work directory. We have no way of knowing which one, so if the search finds
+    anvi'o databases in such cases, we ask the user to be precise rather than guessing.
+    """
+
+    # if the user explicitly asked for the manual mode, guessing databases is never the right thing to do
+    if args.manual_mode:
+        return args
+
+    ad_hoc_inputs = [f for f, v in [('--tree', args.tree), ('--view-data', args.view_data)] if v]
+    may_be_ad_hoc = bool(ad_hoc_inputs) and not args.profile_db and not args.contigs_db
+
+    args = PopulateAnvioDBArgs(args, lazy_init=not anvio.DEBUG_AUTO_FILL_ANVIO_DBS).get_updated_args()
+
+    if may_be_ad_hoc and args.profile_db:
+        dbs_found = ' and '.join([f"'{db}'" for db in [args.profile_db, args.contigs_db] if db])
+        raise ConfigError(f"You provided {' and '.join([f'`{f}`' for f in ad_hoc_inputs])} without a profile or contigs "
+                          f"database, BUT anvi'o found {dbs_found} in your work directory, and now it is not sure "
+                          f"what you want. If you would like to visualize your files ALONE, please use the flag "
+                          f"`--manual-mode` along with a profile database path to store your states and collections "
+                          f"(i.e., `-p MY-DISPLAY.db`, which does not need to exist). If you would like to visualize "
+                          f"your files ALONG WITH the anvi'o databases anvi'o found, please provide them explicitly "
+                          f"with `-p` and `-c` parameters.")
+
+    return args
+
+
 def get_args():
     parser = ArgumentParser(description=__description__)
 
@@ -70,7 +102,7 @@ def get_args():
                                                           anvi'o databases. The default use assumes you have your\
                                                           profile and contigs database, however, it is also possible\
                                                           to start the interface using ad hoc input files. See 'MANUAL\
-                                                          INPUT' section for required parameters.")
+                                                          INPUTS' section for those parameters.")
     groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupA.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'help':
@@ -83,8 +115,12 @@ def get_args():
                                     a distance metric and a linkage method using --linkage and --distance parameters if\
                                     you want!"}))
 
-    groupB = parser.add_argument_group('MANUAL INPUTS', "Mandatory input parameters to start the interactive interface\
-                                                         without anvi'o databases.")
+    groupB = parser.add_argument_group('MANUAL INPUTS', "Input parameters to start the interactive interface without anvi'o\
+                                                         databases. When you provide these without a contigs database,\
+                                                         anvi'o will start the interface in manual mode automatically.\
+                                                         You still need to provide a profile database path, which does\
+                                                         not need to exist: anvi'o will create an empty one for you to\
+                                                         store your states and collections.")
     groupB.add_argument(*anvio.A('manual-mode'), **anvio.K('manual-mode'))
     groupB.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file'))
     groupB.add_argument(*anvio.A('view-data'), **anvio.K('view-data'))
@@ -142,7 +178,9 @@ def get_args():
     groupG.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
     groupG.add_argument(*anvio.A('user-server-shutdown'), **anvio.K('user-server-shutdown'))
 
-    return parser.get_args(parser, auto_fill_anvio_dbs=True)
+    # we will fill in missing anvi'o databases in `main` ourselves, since we need to know what the
+    # user provided explicitly before we do that (see `fill_in_anvio_dbs` for details)
+    return parser.get_args(parser)
 
 
 if __name__ == '__main__':

@@ -58,7 +58,6 @@ anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.d
 INFO "A round of dry run to get the profile db created for Bin_1"
 anvi-interactive -p $output_dir/mock_profile_Bin_1.db \
                  -d $output_dir/SAMPLES-MERGED-SUMMARY/bin_by_bin/Bin_1/Bin_1-gene_coverages.txt \
-                 --manual \
                  --dry-run
 
 INFO "Importing a default state into newly generated profile database"
@@ -77,5 +76,4 @@ anvi-import-misc-data $output_dir/TEST-Bin_1-samples-information.txt \
 INFO "Firing up the interactive interface for genes in Bin 1"
 anvi-interactive -p $output_dir/mock_profile_Bin_1.db \
                  -d $output_dir/SAMPLES-MERGED-SUMMARY/bin_by_bin/Bin_1/Bin_1-gene_coverages.txt \
-                 --title "Alon's gene classifier" \
-                 --manual
+                 --title "Alon's gene classifier"

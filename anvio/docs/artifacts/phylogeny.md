@@ -17,8 +17,8 @@ Secondly, as done in the [Phylogenetics tutorial](http://merenlab.org/2017/06/07
 
 {{ codestart }}
 anvi-interactive -t %(phylogeny)s \
-                 --title "Phylogenomics Tutorial" \
-                 --manual
+                 -p phylogeny-PROFILE.db \
+                 --title "Phylogenomics Tutorial"
 {{ codestop }}
 
-This will create an empty %(profile-db)s to store any %(bin)ss you create and other such data. You can also add various information, such as taxonomy hits, as done in that same [Phylogenetics tutorial](http://merenlab.org/2017/06/07/phylogenomics/#working-with-fasta-files).
+Since `phylogeny-PROFILE.db` does not exist yet, this will create an empty %(profile-db)s to store any %(bin)ss you create and other such data. You can also add various information, such as taxonomy hits, as done in that same [Phylogenetics tutorial](http://merenlab.org/2017/06/07/phylogenomics/#working-with-fasta-files).
