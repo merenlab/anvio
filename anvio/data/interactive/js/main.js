@@ -1941,7 +1941,7 @@ function buildLayersTable(order, settings)
 
                 $('#tbody_layers').append(template);
 
-                $('#tbody_layers .input-center:last').on('input', function() {
+                $('#tbody_layers .input-center:last').on('input change', function() {
                     var picker_start = $(this).closest('tr').find('.picker_start');
                     var layer_type = $(this).closest('tr').find('.type').val();
                     if ($(this).val() !== '' || layer_type === 'intensity') {
