@@ -674,6 +674,199 @@ then
 fi
 
 ## PRESENCE COLORING
+# A bar column sets the length of a bar in each reaction box on standard maps, while the value
+# column still sets the color of its fill. A bar is drawn in the color of the fill over a gray track,
+# and a thin dark line marks its end. Here the fills show the expression of each sample, and the
+# bars show its coverage. The 'unified' map shows bars too, since a bar sample summary pools the
+# coverage of the samples. The bars take keys of their own.
+INFO "Drawing bars of a second column in boxes whose fills are colored by values"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+                        --reaction-bar-column coverage \
+                        --reaction-bar-sample-summary mean \
+                        --output-dir draw_txt_samples_kos_bars \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
+if [ ! -s draw_txt_samples_kos_bars/bar_key_reactions.pdf ] \
+    || [ ! -s draw_txt_samples_kos_bars/bar_key_reactions_samples.pdf ]
+then
+    echo "ERROR: a run with bars should have written a key for each bar scale."
+    exit 1
+fi
+
+# A file whose only other column of values is its bar column colors its fills by presence, and its
+# bars take the colors of presence. A ring of a border column lies around the bar.
+INFO "Drawing bars inside rings, in boxes whose fills show presence"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+                        --reaction-bar-column coverage \
+                        --reaction-bar-sample-summary mean \
+                        --reaction-border-column status \
+                        --reaction-border-value-type categorical \
+                        --reaction-border-value-colors draw-status-colors.txt \
+                        --reaction-border-sample-summary plurality_order \
+                        --output-dir draw_txt_samples_kos_bars_rings \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+# The strip style draws the fill of each box whole and the bar as a dark bar on a white strip along
+# the bottom of the box. Both values then stay readable: expression by color, and coverage by
+# length. A ring of a third column lies around both.
+INFO "Drawing bars as strips under whole fills, inside rings"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+                        --reaction-sample-summary mean \
+                        --reaction-bar-column coverage \
+                        --reaction-bar-style strip \
+                        --reaction-bar-sample-summary mean \
+                        --reaction-border-column status \
+                        --reaction-border-value-type categorical \
+                        --reaction-border-value-colors draw-status-colors.txt \
+                        --reaction-border-sample-summary plurality_order \
+                        --output-dir draw_txt_samples_kos_strips_rings \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+if [ ! -s draw_txt_samples_kos_strips_rings/bar_key_reactions.pdf ] \
+    || [ ! -s draw_txt_samples_kos_strips_rings/bar_key_reactions_samples.pdf ]
+then
+    echo "ERROR: a run with strips should have written a key for each bar scale."
+    exit 1
+fi
+
+# Bars can run up the height of their boxes in place of across them. The top of a vertical bar would
+# run behind the label of its box, so these boxes drop their labels, and the key table of unlabeled
+# boxes names them on each drawn map. The bar keys have their rulers beside their boxes.
+INFO "Drawing vertical bars"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+                        --reaction-bar-column coverage \
+                        --reaction-bar-sample-summary mean \
+                        --reaction-bar-orientation vertical \
+                        --output-dir draw_txt_samples_kos_vertical_bars \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+if [ "$(sed 1d draw_txt_samples_kos_vertical_bars/label_key_reactions.txt | cut -f2 | uniq \
+    | tr '\n' ' ')" != "unified SAMPLE_1 SAMPLE_2 SAMPLE_3 " ] \
+    || [ ! -s draw_txt_samples_kos_vertical_bars/bar_key_reactions_samples.pdf ]
+then
+    echo "ERROR: a run with vertical bars should have listed its boxes and keyed its bars."
+    exit 1
+fi
+
+# Sliced boxes show a bar in each column, of the bar value of its own accession. An element with two
+# or more accessions with bar values runs its bars up its columns, and its box drops its label. The
+# key table of slices gives the bar value of each slice in a last column.
+INFO "Drawing bars in the slices of boxes"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+                        --reaction-sample-summary mean \
+                        --reaction-bar-column coverage \
+                        --reaction-bar-sample-summary mean \
+                        --reaction-slice-by accession \
+                        --output-dir draw_txt_samples_kos_sliced_bars \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+# Each column of entry 18 on the 'unified' map shows the mean bar value of its accession. Two or
+# more accessions of entries 18 and 154 have bar values in the file, so these boxes drop their
+# labels on every map, even where one accession shows, as K00174 does on the map of SAMPLE_2.
+table=draw_txt_samples_kos_sliced_bars/slice_key_reactions.txt
+labels=draw_txt_samples_kos_sliced_bars/label_key_reactions.txt
+if [ "$(head -1 $table | cut -f14)" != "bar" ] \
+    || [ "$(awk -F '\t' '$1 == "00010" && $2 == "unified" && $3 == 18 {print $14}' $table \
+    | tr '\n' ' ')" != "13.333333333333334 21.0 17.25 15.0 " ]
+then
+    echo "ERROR: the key table should end with a 'bar' column of the bar values of the slices."
+    exit 1
+fi
+if [ "$(awk -F '\t' '$1 == "00010" && $2 == "unified" {print $3}' $labels | tr '\n' ' ')" \
+    != "18 154 " ] \
+    || [ "$(awk -F '\t' '$2 == "SAMPLE_2" && $3 == 154 {print $7 "=" $8}' $labels)" \
+    != "K00174=7.5" ]
+then
+    echo "ERROR: boxes with two or more accessions with bar values should drop their labels."
+    exit 1
+fi
+
+# A file whose only other column of values is its bar column colors its fills by presence. With
+# slices, its bars are sliced on their own, here by gene and with shares from a column of weights,
+# and each box becomes a bar chart of its genes in the one color of the fill.
+INFO "Drawing bars sliced on their own by gene, with weights"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+                        --reaction-bar-column expression \
+                        --reaction-slice-weights coverage \
+                        --reaction-slice-by gene \
+                        --output-dir draw_txt_samples_kos_bars_by_gene \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+# The same with slices of accessions, from a file without samples.
+INFO "Drawing bars sliced on their own by accession"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+                        --reaction-bar-column coverage \
+                        --reaction-slice-by accession \
+                        --output-dir draw_txt_kos_bars_by_accession \
+                        --pathway-numbers $pathway_numbers \
+                        --no-progress
+
+for table in draw_txt_samples_kos_bars_by_gene/slice_key_reactions.txt \
+             draw_txt_kos_bars_by_accession/slice_key_reactions.txt
+do
+    # The fill shows presence, so the 'value' column is blank, and the 'bar' column holds values.
+    if [ -n "$(sed 1d $table | cut -f10 | sort -u)" ] \
+        || [ -z "$(sed 1d $table | cut -f14 | sort -u)" ]
+    then
+        echo "ERROR: the key table at '$table' should list columns of bars without fill values."
+        exit 1
+    fi
+done
+
+# A bar column with values on both sides of 0 draws bars that grow both ways from a gray zero line.
+# The boxes on such a scale drop their labels, which would hide the zero line, and a key table names
+# them by their accessions.
+INFO "Drawing bars that grow both ways from 0"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_log_ratio.reaction.txt \
+                        --reaction-bar-column log_ratio \
+                        --reaction-bar-sample-summary mean \
+                        --output-dir draw_txt_samples_kos_signed_bars \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+# Each drawn map lists its own boxes, the 'unified' map first.
+if [ "$(sed 1d draw_txt_samples_kos_signed_bars/label_key_reactions.txt | cut -f2 | uniq \
+    | tr '\n' ' ')" != "unified SAMPLE_1 SAMPLE_2 SAMPLE_3 " ]
+then
+    echo "ERROR: a run with bars on both sides of 0 should have listed the boxes without labels."
+    exit 1
+fi
+
+# The bars of compounds are pies in the compound circles of standard and overview maps. A pie is a
+# sector in the color of the fill, clockwise from 12 o'clock over a gray track, and a thin dark line
+# marks its free edge. The compound file has no other column of values, so its fills show presence,
+# and its pies show concentrations. The 'unified' map shows pies of the mean concentration of the
+# samples. The pies take keys of their own, each a circle ticked in quarters of its scale.
+INFO "Drawing pies of a bar column in compound circles"
+anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+                        --compound-bar-column concentration \
+                        --compound-bar-sample-summary mean \
+                        --output-dir draw_txt_samples_compounds_pies \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+if [ ! -s draw_txt_samples_compounds_pies/bar_key_compounds.pdf ] \
+    || [ ! -s draw_txt_samples_compounds_pies/bar_key_compounds_samples.pdf ]
+then
+    echo "ERROR: a run with pies should have written a key for each bar scale."
+    exit 1
+fi
+
 INFO "Mixing presence coloring of reactions with value coloring of compounds"
 anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
                         --compound-txt draw_compounds.compound.txt \

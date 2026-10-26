@@ -1068,6 +1068,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "kegg-label-key-txt": {
+        "name": "KEGG LABEL KEY TXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "enzymes-list-for-module": {
         "name": "ENZYMES LIST",
         "type": "TXT",
