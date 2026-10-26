@@ -1146,8 +1146,14 @@ class Integrator(object):
         coverage_df = coverage_df.groupby(
             ['contigs_db_hash', 'gene_callers_id'], group_keys=False).apply(
                 filter_multiple_hits_to_gene)
-        hits_df = hits_df[
-            hits_df['seed_contig_name'].isin(coverage_df['seed_contig_name'].unique())]
+        # Keep each gene's hit to its chosen seed, but not hits of that seed to genes for which other
+        # seeds were chosen. Genes for which no seed was chosen have rows of NaN.
+        chosen_seed_gene_df = coverage_df[
+            ['seed_contig_name', 'contigs_db_hash', 'gene_callers_id']].dropna()
+        chosen_seed_gene_pairs = set(chosen_seed_gene_df.itertuples(index=False, name=None))
+        seed_gene_pairs = zip(
+            hits_df['seed_contig_name'], hits_df['contigs_db_hash'], hits_df['gene_callers_id'])
+        hits_df = hits_df[[seed_gene_pair in chosen_seed_gene_pairs for seed_gene_pair in seed_gene_pairs]]
 
         if hits_df.empty:
             raise ConfigError(
@@ -1202,7 +1208,7 @@ class Integrator(object):
 
         Seeds are matched to all tRNA genes in these contigs databases, so that a seed better
         matching a gene outside the bins is not assigned to a gene in a bin, and so that a seed
-        matching genes with different nucleotides at a predicted modification position is
+        assigned to genes with different nucleotides at a predicted modification position is
         recognized. The hits to genes outside the bins are not stored, however.
 
         Parameters
