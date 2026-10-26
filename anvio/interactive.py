@@ -1594,6 +1594,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 
     def load_full_mode(self):
+        if not self.contigs_db_path and not self.profile_db_path:
+            raise ConfigError("Anvi'o needs a profile database to make sense of this run. If you are trying to visualize "
+                              "an anvi'o profile database, please provide it with the `-p` parameter (along with its contigs "
+                              "database with `-c`). If you are trying to visualize your own data files, you still need to "
+                              "provide a profile database path with `-p`, but it does not need to exist: anvi'o will create "
+                              "an empty one for you to store your states and collections.")
+
         if not self.contigs_db_path:
             raise ConfigError("Anvi'o needs the contigs database to make sense of this run (or maybe you "
                                "should use the `--manual` flag if that's what your intention).")
