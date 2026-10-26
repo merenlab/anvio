@@ -102,7 +102,7 @@ def get_args():
                                                           anvi'o databases. The default use assumes you have your\
                                                           profile and contigs database, however, it is also possible\
                                                           to start the interface using ad hoc input files. See 'MANUAL\
-                                                          INPUT' section for required parameters.")
+                                                          INPUTS' section for those parameters.")
     groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupA.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'help':
