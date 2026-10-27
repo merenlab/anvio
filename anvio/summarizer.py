@@ -97,8 +97,6 @@ class ArgsTemplateForSummarizerClass:
         self.window_length = None
         self.window_length_as_percentage = None
         self.min_window_length = None
-        self.foldrange_lower = 0.5
-        self.foldrange_upper = 2.0
         self.alpha = 0.5
         self.discov_formula = 'linear'
         self.skip_check_collection_name = False
@@ -148,8 +146,6 @@ class SummarizerSuperClass(object):
         self.discov_window_length = A('window_length')
         self.discov_window_percentage = A('window_length_as_percentage')
         self.discov_min_window_length = A('min_window_length')
-        self.discov_foldrange_lower = A('foldrange_lower')
-        self.discov_foldrange_upper = A('foldrange_upper')
         self.discov_alpha = A('alpha')
         self.discov_formula = A('discov_formula')
         self.output_directory = A('output_dir')
@@ -214,8 +210,7 @@ class SummarizerSuperClass(object):
 
         if self.report_discov:
             utils.validate_discov_params(self.discov_window_length, self.discov_window_percentage,
-                                         self.discov_min_window_length, self.discov_foldrange_lower,
-                                         self.discov_foldrange_upper, self.discov_alpha, self.discov_formula,
+                                         self.discov_min_window_length, self.discov_alpha, self.discov_formula,
                                          require_window_param=False)
 
 
@@ -1352,7 +1347,6 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         else:
             self.run.info('DisCov window length (bins)', f"{bin_wlen} bp")
             self.run.info('DisCov window length (contigs)', f"{contig_wpct}% of sequence, min {contig_minlen} bp")
-        self.run.info('DisCov fold-range', f"{self.discov_foldrange_lower}x to {self.discov_foldrange_upper}x of median nonzero coverage")
         self.run.info('DisCov alpha value', self.discov_alpha)
         self.run.info('DisCov formula', self.discov_formula)
 
@@ -1421,8 +1415,6 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                                   discov_window_length=contig_wlen,
                                                   discov_window_percentage=contig_wpct,
                                                   discov_min_window_len=contig_minlen,
-                                                  discov_foldrange_lower=self.discov_foldrange_lower,
-                                                  discov_foldrange_upper=self.discov_foldrange_upper,
                                                   discov_alpha=self.discov_alpha,
                                                   discov_formula=self.discov_formula)
                     contig_level_rows.append({'bin_name': bin_id,
@@ -1430,8 +1422,11 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                               'sample_name': sample_name,
                                               'length': len(contig_array),
                                               'num_windows': c_stats.num_windows,
-                                              'prop_windows_covered': c_stats.prop_win_covered,
-                                              'fold_range_coverage_depth': c_stats.fold_range_coverage_depth,
+                                              'actual_prop_windows_covered': c_stats.prop_win_covered,
+                                              'expected_prop_windows_covered': c_stats.spread_expected,
+                                              'normalized_spread': c_stats.spread_norm,
+                                              'window_depth_evenness': c_stats.window_depth_evenness,
+                                              'spread_evenness_score': c_stats.spread_evenness_score,
                                               'dis_cov': c_stats.discov})
 
                 # Compute bin-level DisCov; reuse contig arrays
@@ -1443,16 +1438,17 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                               discov_window_length=bin_wlen,
                                               discov_window_percentage=bin_wpct,
                                               discov_min_window_len=bin_minlen,
-                                              discov_foldrange_lower=self.discov_foldrange_lower,
-                                              discov_foldrange_upper=self.discov_foldrange_upper,
                                               discov_alpha=self.discov_alpha,
                                               discov_formula=self.discov_formula)
                 bin_level_rows.append({'bin_name': bin_id,
                                        'sample_name': sample_name,
                                        'length': len(bin_array),
                                        'num_windows': b_stats.num_windows,
-                                       'prop_windows_covered': b_stats.prop_win_covered,
-                                       'fold_range_coverage_depth': b_stats.fold_range_coverage_depth,
+                                       'actual_prop_windows_covered': b_stats.prop_win_covered,
+                                       'expected_prop_windows_covered': b_stats.spread_expected,
+                                       'normalized_spread': b_stats.spread_norm,
+                                       'window_depth_evenness': b_stats.window_depth_evenness,
+                                       'spread_evenness_score': b_stats.spread_evenness_score,
                                        'dis_cov': b_stats.discov})
 
                 # When careful Q2Q3 was also requested, extract it from the bin-level stats here (it was skipped
@@ -1465,7 +1461,8 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         # Write bin-level output. Integer keys provide stable row order; the key column itself
         # is suppressed so the file starts directly with the data columns.
         bin_headers = ['key', 'bin_name', 'sample_name', 'length', 'num_windows',
-                       'prop_windows_covered', 'fold_range_coverage_depth', 'dis_cov']
+                       'actual_prop_windows_covered', 'expected_prop_windows_covered', 'normalized_spread',
+                       'window_depth_evenness', 'spread_evenness_score', 'dis_cov']
         output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix=DISCOV_BINS_OUTPUT)
         utils.store_dict_as_TAB_delimited_file({i: row for i, row in enumerate(bin_level_rows)},
                                                None,
@@ -1475,7 +1472,8 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
         # Write contig-level output
         contig_headers = ['key', 'bin_name', 'contig_name', 'sample_name', 'length', 'num_windows',
-                          'prop_windows_covered', 'fold_range_coverage_depth', 'dis_cov']
+                          'actual_prop_windows_covered', 'expected_prop_windows_covered', 'normalized_spread',
+                          'window_depth_evenness', 'spread_evenness_score', 'dis_cov']
         output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix=DISCOV_CONTIGS_OUTPUT)
         utils.store_dict_as_TAB_delimited_file({i: row for i, row in enumerate(contig_level_rows)},
                                                None,
