@@ -827,6 +827,43 @@ class DB:
                                                 splits_basic_info, log_norm_numeric_values)
 
 
+    def get_zero_value_tables_for_view_table(self, view_table_name):
+        """Returns the names of the tables that list (item, layer) pairs with zero values for a view table.
+
+        Profile databases do not store rows with zero values in view tables (and in tables that follow the
+        same structure, such as the number of reads tables). Instead, such (item, layer) pairs are listed in
+        dedicated tables, and `get_view_data` uses the tables returned by this function to add the zeros back.
+        Items with zero coverage are listed in zero_coverage tables, and apply to all view tables. Splits with
+        no reads assigned to them but nonzero coverage are listed in the zero_num_reads_assigned_splits table, and only apply to
+        the number of reads table for splits (every contig with coverage has at least one read).
+        """
+
+        if view_table_name.endswith('_splits'):
+            zero_value_tables = [tables.zero_coverage_splits_table_name]
+        elif view_table_name.endswith('_contigs'):
+            zero_value_tables = [tables.zero_coverage_contigs_table_name]
+        else:
+            return []
+
+        if view_table_name == tables.num_reads_assigned_splits_table_name:
+            zero_value_tables.append(tables.zero_num_reads_assigned_splits_table_name)
+
+        return zero_value_tables
+
+
+    def get_zero_value_dict_for_view_table(self, view_table_name, items_of_interest=None):
+        """Returns {item: set_of_layers} for all (item, layer) pairs with zero values for a view table."""
+
+        result = {}
+        for zero_value_table_name in self.get_zero_value_tables_for_view_table(view_table_name):
+            for item, layers in self._get_zero_cov_dict(zero_value_table_name, items_of_interest).items():
+                if item not in result:
+                    result[item] = set()
+                result[item].update(layers)
+
+        return result
+
+
     def _get_zero_cov_dict(self, zero_cov_table_name, items_of_interest=None):
         """Read a zero_coverage table and return {item: set_of_layers}.
 
@@ -862,16 +899,8 @@ class DB:
         coverage (whose rows are not stored in the view table).
         """
 
-        # Determine which zero-coverage table to consult, if any
-        if view_table_name.endswith('_splits'):
-            zero_cov_table = 'zero_coverage_splits'
-        elif view_table_name.endswith('_contigs'):
-            zero_cov_table = 'zero_coverage_contigs'
-        else:
-            zero_cov_table = None
-
-        # Read zero-coverage entries: {item: {layer1, layer2, ...}}
-        zero_cov = self._get_zero_cov_dict(zero_cov_table, split_names_of_interest) if zero_cov_table else {}
+        # Read zero-value entries: {item: {layer1, layer2, ...}}
+        zero_cov = self.get_zero_value_dict_for_view_table(view_table_name, split_names_of_interest)
 
         if split_names_of_interest:
             split_names_formatted = ', '.join([f"'{split_name}'" for split_name in split_names_of_interest])
@@ -946,7 +975,7 @@ class DB:
             contig_names_of_interest = None
 
         # Read zero-coverage contigs
-        zero_cov = self._get_zero_cov_dict('zero_coverage_contigs', contig_names_of_interest)
+        zero_cov = self.get_zero_value_dict_for_view_table(view_table_name, contig_names_of_interest)
 
         # Query view table for non-zero contig data
         if contig_names_of_interest:
