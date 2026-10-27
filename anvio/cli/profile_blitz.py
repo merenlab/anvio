@@ -89,10 +89,10 @@ def get_args():
     groupD.add_argument(*anvio.A('gen-window-level-output'), **anvio.K('gen-window-level-output'))
 
     groupE = parser.add_argument_group('DISCOV SCORE', "Parameters related to computing the distribution of coverage score "
-                                        "(DisCov), where S = proportion of windows with coverage and E = proportion of covered "
-                                        "bases within a fold-range of the median nonzero coverage. These can be combined as "
-                                        "DisCov = αS + (1-α)E (linear) or DisCov = S^α * E^(1-α) (geometric). Does not apply "
-                                        "to --gene-mode.")
+                                        "(discov), where S = proportion of windows with coverage (normalized by the proportion expected "
+                                        "if reads were placed randomly) and E = evenness of mean coverage depth across windows. These "
+                                        "are combined into a spread-evenness score C = αS + (1-α)E (linear) or C = S^α * E^(1-α) "
+                                        "(geometric), and discov = min(1, C + detection^2). Does not apply to --gene-mode.")
     groupE.add_argument(*anvio.A('window-length'), **anvio.K('window-length', {'help': f"How long to make the windows "
                         f"for computing the spread metric: S = # windows with coverage / # windows. For genome/bin-level stats, "
                         f"this is the default when no window length parameters are provided, and the default window size is "
@@ -108,8 +108,6 @@ def get_args():
     groupE.add_argument(*anvio.A('min-window-length'), **anvio.K('min-window-length', {'help': f"Use with "
                         f"--window-length-as-percentage to ensure that percentage-based window lengths never fall below this value. "
                         f"This parameter is set by default to {CONTIG_MIN_WLEN_DEFAULT} for contig-level stats."}))
-    groupE.add_argument(*anvio.A('foldrange-lower'), **anvio.K('foldrange-lower'))
-    groupE.add_argument(*anvio.A('foldrange-upper'), **anvio.K('foldrange-upper'))
     groupE.add_argument(*anvio.A('alpha'), **anvio.K('alpha'))
     groupE.add_argument(*anvio.A('discov-formula'), **anvio.K('discov-formula'))
 

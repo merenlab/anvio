@@ -3147,10 +3147,10 @@ D = {
             ['--report-discov'],
             {'default': False,
              'action': 'store_true',
-             'help': "Compute the Distribution of Coverage (DisCov) metric for each bin and each contig within each bin. "
-                     "DisCov combines a spread score S (proportion of windows with at least some coverage) "
-                     "and an evenness score E (proportion of covered bases within a fold-range of the median nonzero "
-                     "coverage). Requires access to the auxiliary data file (AUXILIARY-DATA.db). Results are written to "
+             'help': "Compute the Distribution of Coverage (discov) metric for each bin and each contig within each bin. "
+                     "Discov combines a spread score S (proportion of windows with at least some coverage) "
+                     "and an evenness score E (based on the coefficient of variation of mean coverage depth across "
+                     "windows). Requires access to the auxiliary data file (AUXILIARY-DATA.db). Results are written to "
                      "'bins_across_samples/discov_bins.txt' (one row per bin x sample) and "
                      "'bins_across_samples/discov_contigs.txt' (one row per contig x sample)."}
                 ),
@@ -4465,25 +4465,26 @@ D = {
             {'default': 0.5,
              'type': float,
              'metavar': 'FLOAT',
-             'help': "How much to weight S over E in the DisCov score. Should be a value in the range [0,1]. The default "
-                     "is '%(default)s'."}
+             'help': "How much to weight S over E when combining them into the spread-evenness score (C) that underlies "
+                     "the discov score. Should be a value in the range [0,1]. The default is '%(default)s'."}
     ),
     'discov-formula': (
             ['--discov-formula'],
             {'default': 'linear',
              'type': str,
              'metavar': 'STRING',
-             'help': "Which formula to use when combining S and E into the DisCov score. Options are 'linear' "
-                     "(DisCov = αS + (1-α)E) and 'geometric' (DisCov = S^α * E^(1-α)). The default is '%(default)s'."}
+             'help': "Which formula to use when combining S and E into the spread-evenness score (C) that underlies the "
+                     "discov score. Options are 'linear' (C = αS + (1-α)E) and 'geometric' (C = S^α * E^(1-α)). The "
+                     "default is '%(default)s'."}
     ),
     'gen-window-level-output': (
             ['--gen-window-level-output'],
             {'default': False,
              'action': 'store_true',
              'help': "Generate an additional output file with per-window coverage statistics. For each window used to "
-                     "compute the DisCov metric, the output includes the window's start/stop positions in the "
-                     "sequence, its length, whether it has any coverage, and the number of bases within the fold-range "
-                     "of the median nonzero coverage. The file is named after the main output file with '-WINDOWS' "
+                     "compute the discov metric, the output includes the window's start/stop positions in the "
+                     "sequence, its length, whether it has any coverage, its mean coverage, and the number of bases with "
+                     "nonzero coverage. The file is named after the main output file with '-WINDOWS' "
                      "inserted before the extension. Not compatible with --gene-mode or --report-minimal."}
     ),
 }
