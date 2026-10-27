@@ -3,6 +3,7 @@
 
 
 import sys
+import shutil
 
 import anvio
 import anvio.terminal as terminal
@@ -50,6 +51,10 @@ def main():
         # Relate seeds to (meta)genomic tRNA genes.
         integrator.permuted_seeds_fasta_path = permuter.permuted_seeds_fasta_path
         integrator.go()
+
+        # Remove the temporary directory of permuted seeds, which BLAST needed until now.
+        if permuter.tmp_dir:
+            shutil.rmtree(permuter.tmp_dir)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
@@ -173,9 +178,10 @@ def get_args():
         "By default, temporary files are produced: "
         "(1) A FASTA file of permuted tRNA-seq seed sequences and "
         "(2) BLAST databases and output tables from searching permuted seeds against tRNA genes. "
-        "The global anvi'o option, `--tmp-dir`, allows the user to provide a single output "
-        "directory for all of these. Alternatively, program-specific options give more control "
-        "over temp file storage.")
+        "Each run writes these to new directories in the system's temporary directory, or in the "
+        "directory given by the global anvi'o option, `--tmp-dir`, and removes them after "
+        "finishing successfully. Alternatively, program-specific options give more control "
+        "over temp file storage, and files written to paths given by these options are kept.")
     group1E.add_argument(
         '-u', '--permuted-seeds-fasta', metavar='FILE_PATH', type=str, default=None,
         help="FASTA file of original and permuted tRNA-seq seed sequences.")

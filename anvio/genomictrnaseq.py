@@ -2,6 +2,7 @@
 """tRNA-seq integration with (meta)genomics"""
 
 import os
+import shutil
 import argparse
 import tempfile
 import numpy as np
@@ -29,7 +30,7 @@ from anvio.genomedescriptions import GenomeDescriptions
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2022, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2026, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __maintainer__ = "Samuel Miller"
@@ -96,10 +97,9 @@ class SeedPermuter(object):
 
         # paths for output files
         self.permuted_seeds_fasta_path = A('permuted_seeds_fasta')
+        # Without a FASTA path, `go` writes the file to a new temporary directory, so that
+        # concurrent runs do not overwrite each other's files.
         self.tmp_dir = None
-        if self.permuted_seeds_fasta_path is None:
-            self.tmp_dir = anvio.TMP_DIR if anvio.TMP_DIR else tempfile.gettempdir()
-            self.permuted_seeds_fasta_path = os.path.join(self.tmp_dir, "permuted_seeds.fa")
 
         self.run = r
         self.progress = p
@@ -137,11 +137,16 @@ class SeedPermuter(object):
                 "The specified maximum number of variable positions in a permuted sequence is "
                 f"'{self.max_variable_positions}', but it needs to be a positive integer.")
 
-        filesnpaths.is_output_file_writable(self.permuted_seeds_fasta_path)
+        if self.permuted_seeds_fasta_path:
+            filesnpaths.is_output_file_writable(self.permuted_seeds_fasta_path)
 
 
     def go(self):
         """Permute tRNA seed sequences at predicted sites of modification-induced substitutions."""
+        if self.permuted_seeds_fasta_path is None:
+            self.tmp_dir = tempfile.mkdtemp(dir=anvio.TMP_DIR)
+            self.permuted_seeds_fasta_path = os.path.join(self.tmp_dir, 'permuted_seeds.fa')
+
         with self.contigs_db_info.load_db() as contigs_db:
             seed_contig_names_seqs = contigs_db.get_table_as_list_of_tuples('contig_sequences')
 
@@ -357,13 +362,12 @@ class Integrator(object):
 
         self.permuted_seeds_fasta_path = A('permuted_seeds_fasta')
         self.blast_dir = A('blast_dir')
-        if self.blast_dir is None:
-            self.blast_dir = anvio.TMP_DIR if anvio.TMP_DIR else tempfile.gettempdir()
+        # Without a BLAST directory, `go` uses a new temporary directory, so that concurrent runs do
+        # not overwrite each other's files, and removes it at the end.
+        self.tmp_dir = None
 
         self.num_threads = A('num_threads') or anvio.K('num-threads')['default']
         self.remove_previous_matches = A('remove_previous_matches')
-
-        self.trna_genes_fasta_path = os.path.join(self.blast_dir, 'trna_genes.fa')
 
         self.run = r
         self.run_quiet = rq
@@ -631,11 +635,12 @@ class Integrator(object):
                 "The maximum number of mismatches allowed in a seed-gene alignment must be a "
                 f"non-negative integer, not the provided value of {self.max_mismatches}")
 
-        # Like `--tmp-dir`, the BLAST directory is created if needed in an existing directory.
-        if not os.path.exists(self.blast_dir):
-            filesnpaths.is_output_dir_writable(os.path.dirname(os.path.abspath(self.blast_dir)))
-            os.mkdir(self.blast_dir)
-        filesnpaths.is_output_dir_writable(self.blast_dir)
+        if self.blast_dir:
+            # Like `--tmp-dir`, the BLAST directory is created if needed in an existing directory.
+            if not os.path.exists(self.blast_dir):
+                filesnpaths.is_output_dir_writable(os.path.dirname(os.path.abspath(self.blast_dir)))
+                os.mkdir(self.blast_dir)
+            filesnpaths.is_output_dir_writable(self.blast_dir)
 
         # Ignore this sanity check when using `genomictrnaseq.Permuter` FASTA output.
         if check_permuted_seeds_fasta:
@@ -649,12 +654,19 @@ class Integrator(object):
     def go(self):
         """Link tRNA-seq seeds to tRNA genes, adding this information to the tRNA-seq contigs
         database."""
+        if self.blast_dir is None:
+            self.tmp_dir = self.blast_dir = tempfile.mkdtemp(dir=anvio.TMP_DIR)
+        self.trna_genes_fasta_path = os.path.join(self.blast_dir, 'trna_genes.fa')
+
         trna_gene_seq_dict = self.write_trna_genes_fasta()
         self.blast(len(trna_gene_seq_dict))
         hits_df = self.filter_hits(trna_gene_seq_dict)
         unmodified_nt_df = self.find_unmodified_nucleotides(hits_df)
         hits_df = self.drop_hits_outside_bins(hits_df)
         self.update_trnaseq_contigs_database(hits_df, unmodified_nt_df)
+
+        if self.tmp_dir:
+            shutil.rmtree(self.tmp_dir)
 
 
     def write_trna_genes_fasta(self):
