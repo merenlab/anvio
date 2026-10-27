@@ -641,14 +641,13 @@ class CoverageStats:
         Can be 'linear' or 'geometric', to choose which formula to use.
     num_reads : int, None
         Number of reads mapping to the sequence, needed to compute the normalized spread
+    report_discov : boolean
+        Whether or not to compute discov and its sub-metrics. All discov-related attributes are None otherwise
     """
 
     def __init__(self, coverage, skip_outliers=False, discov_window_length=10000, discov_window_percentage=None,
                 discov_min_window_len=500, discov_foldrange_lower=0.25, discov_foldrange_upper=4, discov_alpha=0.5,
-                return_window_info=False, discov_formula='geometric', num_reads=None):
-        if discov_min_window_len is None:
-            discov_min_window_len = 0
-
+                return_window_info=False, discov_formula='geometric', num_reads=None, report_discov=False):
         self.num_reads = num_reads
 
         self.min: float = np.amin(coverage)
@@ -670,6 +669,26 @@ class CoverageStats:
             self.is_outlier = None
         else:
             self.is_outlier = get_list_of_outliers(coverage, median=self.median) # this is an array not a list
+
+        self.num_windows = None
+        self.prop_win_covered = None
+        self.window_depth_evenness = None
+        self.spread_expected = None
+        self.spread_norm = None
+        self.spread_evenness_score = None
+        self.discov = None
+        self.windows = None
+
+        if report_discov:
+            self.compute_discov_stats(coverage, discov_window_length, discov_window_percentage, discov_min_window_len, discov_alpha, discov_formula,
+                                      return_window_info, discov_foldrange_lower, discov_foldrange_upper)
+
+
+    def compute_discov_stats(self, coverage, discov_window_length, discov_window_percentage, discov_min_window_len, discov_alpha, discov_formula, return_window_info, discov_foldrange_lower, discov_foldrange_upper):
+        """Computes discov and its sub-metrics (see the class docstring), and sets them as attributes of this object."""
+
+        if discov_min_window_len is None:
+            discov_min_window_len = 0
 
         # divide reference sequence into non-overlapping windows
         if discov_window_percentage:
@@ -702,8 +721,6 @@ class CoverageStats:
 
         if return_window_info:
             self.windows = self._get_window_info(coverage, windows, nonzero_coverage, discov_foldrange_lower, discov_foldrange_upper)
-        else:
-            self.windows = None
 
 
     def get_window_regions(self, coverage, window_length):
