@@ -2638,6 +2638,34 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                                  view_name=None,
                                                  append_mode=True)
 
+        # the number of reads per split and contig are stored like atomic data. zero values
+        # are not stored: zero-coverage contigs and splits are already skipped (and every contig with coverage
+        # has at least one read), but a split with coverage may still have no reads assigned to it (if all reads
+        # covering it have most of their aligned bases in neighboring splits). those splits go into the
+        # zero_num_reads_assigned_splits table instead
+        num_reads_assigned_splits, num_reads_mapped_contigs = contigops.get_atomic_data(self.sample_id, self.contigs, 'num_reads',
+                                                                                      zero_cov_splits=zero_cov_split_names,
+                                                                                      zero_cov_contigs=zero_cov_contig_names)
+        TablesForViews(self.profile_db_path,
+                       progress=self.progress) \
+                            .create_new_view(view_data=[d for d in num_reads_assigned_splits if d[2] > 0],
+                                             table_name=t.num_reads_assigned_splits_table_name,
+                                             view_name=None,
+                                             append_mode=True)
+
+        TablesForViews(self.profile_db_path,
+                       progress=self.progress) \
+                            .create_new_view(view_data=num_reads_mapped_contigs,
+                                             table_name=t.num_reads_mapped_contigs_table_name,
+                                             view_name=None,
+                                             append_mode=True)
+
+        zero_num_reads_assigned_split_rows = [(item, layer) for item, layer, value in num_reads_assigned_splits if value == 0]
+        if zero_num_reads_assigned_split_rows:
+            profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
+            profile_db.db._exec_many('INSERT INTO %s VALUES (?,?)' % t.zero_num_reads_assigned_splits_table_name, zero_num_reads_assigned_split_rows)
+            profile_db.disconnect()
+
 
     def check_contigs(self, num_contigs=None):
         if not num_contigs:
