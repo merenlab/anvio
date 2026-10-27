@@ -2584,21 +2584,35 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.generate_indels_table()
         self.store_split_coverages()
 
-        # Identify zero-coverage splits within covered contigs. These splits belong to
-        # contigs that DID have reads, but the reads did not cover every split. Instead
-        # of writing zero rows to all 12 view tables, we record them in
-        # zero_coverage_splits and skip them during atomic data generation.
+        # Identify zero-coverage contigs and splits. A contig can have zero coverage despite being
+        # profiled if none of its reads survived (e.g., all were removed by read filters, or the BAM
+        # index counted alignments without a CIGAR or sequence). Such contigs, and all of their splits,
+        # are recorded in the zero_coverage tables just like the contigs skipped by the BAM index
+        # prefilter. Splits within covered contigs may also have zero coverage if the reads did not
+        # cover every split. Instead of writing zero rows to all view tables, we record all of these
+        # in zero_coverage tables and skip them during atomic data generation.
+        zero_cov_contig_names = set()
         zero_cov_split_names = set()
         for contig in self.contigs:
+            if contig.coverage.mean == 0:
+                zero_cov_contig_names.add(contig.name)
+                zero_cov_split_names.update(split.name for split in contig.splits)
+                continue
+
             for split in contig.splits:
                 if split.coverage.mean == 0:
                     zero_cov_split_names.add(split.name)
 
-        if zero_cov_split_names:
+        if zero_cov_contig_names or zero_cov_split_names:
             profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
-            profile_db.db._exec_many(
-                'INSERT INTO %s VALUES (?,?)' % t.zero_coverage_splits_table_name,
-                [(name, self.sample_id) for name in zero_cov_split_names])
+            if zero_cov_contig_names:
+                profile_db.db._exec_many(
+                    'INSERT INTO %s VALUES (?,?)' % t.zero_coverage_contigs_table_name,
+                    [(name, self.sample_id) for name in zero_cov_contig_names])
+            if zero_cov_split_names:
+                profile_db.db._exec_many(
+                    'INSERT INTO %s VALUES (?,?)' % t.zero_coverage_splits_table_name,
+                    [(name, self.sample_id) for name in zero_cov_split_names])
             profile_db.disconnect()
 
         # the crux of the profiling
