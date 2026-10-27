@@ -382,7 +382,9 @@ class Integrator(object):
             bin_ids = []
             with open(self.bin_ids_path) as bin_ids_file:
                 for line in bin_ids_file:
-                    bin_ids.append(line.rstrip())
+                    bin_id = line.rstrip()
+                    if bin_id:
+                        bin_ids.append(bin_id)
         else:
             bin_ids = None
 
@@ -1798,7 +1800,9 @@ class Affinitizer:
             bin_ids = []
             with open(self.bin_ids_path) as bin_ids_file:
                 for line in bin_ids_file:
-                    bin_ids.append(line.rstrip())
+                    bin_id = line.rstrip()
+                    if bin_id:
+                        bin_ids.append(bin_id)
         else:
             bin_ids = None
 
