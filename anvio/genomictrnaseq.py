@@ -707,6 +707,20 @@ class Integrator(object):
     def blast(self, trna_gene_count):
         """Align tRNA-seq seeds/permuted seeds to tRNA genes, reporting hits of each query to as
         many as all of the tRNA genes."""
+        min_query_length = None
+        fasta = fastalib.SequenceSource(self.permuted_seeds_fasta_path)
+        while next(fasta):
+            if min_query_length is None or len(fasta.seq) < min_query_length:
+                min_query_length = len(fasta.seq)
+        fasta.close()
+        # An ungapped alignment of L nucleotides with m mismatches contains a run of at least
+        # (L - m) / (m + 1) matching nucleotides, so a word no longer than that hits the diagonal of
+        # every seed aligning to a gene within the allowed mismatches, though the hit must still
+        # pass the e-value cutoff. The word is kept between the minimum for blastn, 4, and its
+        # default, 11.
+        word_size = (min_query_length - self.max_mismatches) // (self.max_mismatches + 1)
+        word_size = min(max(word_size, 4), 11)
+
         blast = BLAST(self.permuted_seeds_fasta_path,
                       self.trna_genes_fasta_path,
                       search_program='blastn',
@@ -716,11 +730,11 @@ class Integrator(object):
         blast.tmp_dir = self.blast_dir
         blast.search_output_path = os.path.join(self.blast_dir, 'blast-search-results.txt')
         blast.log_file_path = os.path.join(self.blast_dir, 'blast-log.txt')
-        blast.additional_params_for_blast = "-ungapped"
+        blast.additional_params_for_blast = "-task blastn -ungapped"
         # By default, BLAST reports hits of a query to at most 500 subject sequences.
         blast.max_target_seqs = trna_gene_count
         blast.makedb(dbtype='nucl')
-        blast.blast(outputfmt='6 ' + ' '.join(self.blast_search_output_cols))
+        blast.blast(outputfmt='6 ' + ' '.join(self.blast_search_output_cols), word_size=word_size)
 
 
     def filter_hits(self, trna_gene_seq_dict):
@@ -744,12 +758,6 @@ class Integrator(object):
         hits_df = pd.read_csv(
             search_output_path, sep='\t', header=None, names=self.blast_search_output_cols)
 
-        # Discard alignments with too many mismatches.
-        hits_df = hits_df[hits_df['mismatch'] <= self.max_mismatches]
-        if self.full_gene:
-            # Discard alignments that do not start at the beginning of the gene.
-            hits_df = hits_df[hits_df['sstart'] == 1]
-
         # Discard (enigmatic) indistinguishable, duplicate hits if they exist.
         hits_df = hits_df.drop_duplicates()
 
@@ -757,7 +765,6 @@ class Integrator(object):
         qseqid_parts = hits_df['qseqid'].str.split('|', n=1)
         hits_df['seed_contig_name'] = qseqid_parts.str[0]
         hits_df['seed_permutation'] = qseqid_parts.str[1].fillna('')
-        hits_df = hits_df.drop('qseqid', axis=1)
 
         # Extract information on each hit.
         contigs_db_project_names = []
@@ -798,16 +805,29 @@ class Integrator(object):
         hits_df['gene_stop_in_contig'] = gene_stops
         hits_df['gene_sequence'] = gene_sequences
 
-        # Filter individual alignments.
+        # BLAST alignments are local, stopping short of mismatches near the ends of the seed, so the
+        # whole seed/permuted seed is placed on the diagonal of each alignment, and mismatches are
+        # counted over the placement.
+        query_seq_dict = {}
+        fasta = fastalib.SequenceSource(self.permuted_seeds_fasta_path)
+        while next(fasta):
+            query_seq_dict[fasta.id] = fasta.seq
+        fasta.close()
         retained_indices = []
+        seed_alignment_starts = []
+        gene_alignment_starts = []
+        gene_alignment_stops = []
+        mismatches = []
         for (index,
+             query_id,
              decoded_amino_acid,
-             seed_alignment_start,
+             hsp_seed_start,
              seed_length,
-             gene_alignment_start,
-             gene_alignment_end,
+             hsp_gene_start,
+             hsp_gene_end,
              gene_sequence,
              gene_length) in zip(hits_df.index,
+                                 hits_df['qseqid'],
                                  hits_df['decoded_amino_acid'],
                                  hits_df['qstart'],
                                  hits_df['qlen'],
@@ -815,27 +835,68 @@ class Integrator(object):
                                  hits_df['send'],
                                  hits_df['gene_sequence'],
                                  hits_df['slen']):
-            if ((gene_length - gene_alignment_end == 0) or
-                ((gene_length - gene_alignment_end == 3) and gene_sequence[-3: ] == 'CCA')):
-                # The alignment ends at the end of the gene or just short of a 3'-CCA acceptor in
-                # the gene (the seed/permuted seed should never contain the 3'-CCA acceptor).
-                if ((seed_alignment_start == 1) and
-                    (gene_alignment_end - gene_alignment_start == seed_length - 1)):
-                    # The alignment starts at the beginning of the seed/permuted seed and spans the
-                    # entire query.
-                    retained_indices.append(index)
-                elif ((decoded_amino_acid == 'His') and
-                      (seed_alignment_start == 2) and
-                      (gene_alignment_end - gene_alignment_start == seed_length - 2)):
-                    # The alignment starts at the second position of the tRNA-His seed/permuted seed
-                    # sequence, which has a post-transcriptional G at the 5' end, and spans the
-                    # remaining length of the query.
-                    retained_indices.append(index)
+            if hsp_gene_end < hsp_gene_start:
+                # The seed aligns to the reverse complement of the gene.
+                continue
+            # This is the index in the gene of the first nucleotide of the seed.
+            seed_offset = hsp_gene_start - hsp_seed_start
+            gene_alignment_stop = seed_offset + seed_length
+            if not ((gene_alignment_stop == gene_length) or
+                    ((gene_alignment_stop == gene_length - 3) and gene_sequence[-3: ] == 'CCA')):
+                # The seed must end at the end of the gene or just short of a 3'-CCA acceptor in the
+                # gene (the seed/permuted seed should never contain the 3'-CCA acceptor).
+                continue
+            if seed_offset >= 0:
+                seed_alignment_start = 0
+            elif seed_offset == -1 and decoded_amino_acid == 'His':
+                # The post-transcriptional G at the 5' end of the tRNA-His seed precedes the gene.
+                seed_alignment_start = 1
+            else:
+                continue
+            gene_alignment_start = seed_offset + seed_alignment_start
+            seed_sequence = query_seq_dict[query_id]
+            mismatch = 0
+            for seed_nt, gene_nt in zip(seed_sequence[seed_alignment_start: ],
+                                        gene_sequence[gene_alignment_start: gene_alignment_stop]):
+                if seed_nt != gene_nt:
+                    mismatch += 1
+            retained_indices.append(index)
+            seed_alignment_starts.append(seed_alignment_start)
+            gene_alignment_starts.append(gene_alignment_start)
+            gene_alignment_stops.append(gene_alignment_stop)
+            mismatches.append(mismatch)
         hits_df = hits_df.loc[retained_indices]
+        hits_df = hits_df.assign(seed_alignment_start=seed_alignment_starts,
+                                 gene_alignment_start=gene_alignment_starts,
+                                 gene_alignment_stop=gene_alignment_stops,
+                                 mismatch=mismatches)
 
-        # Retain each seed/permuted seed's top-scoring hits.
+        # Discard alignments with too many mismatches.
+        hits_df = hits_df[hits_df['mismatch'] <= self.max_mismatches]
+        if self.full_gene:
+            # Discard alignments that do not start at the beginning of the gene.
+            hits_df = hits_df[hits_df['gene_alignment_start'] == 0]
+
+        # Keep one placement of a seed/permuted seed per gene. Alignments on the same diagonal give
+        # the same placement, kept with the highest bitscore. A seed placed both at the end of the
+        # gene and just short of a 3'-CCA is kept where it has fewer mismatches, or else short of
+        # the CCA. Then restore the BLAST order of hits, which breaks ties between seed permutations
+        # below.
+        hits_df = hits_df.sort_values(
+            ['mismatch', 'gene_alignment_stop', 'bitscore'], ascending=[True, True, False])
+        hits_df = hits_df.drop_duplicates(['qseqid', 'sseqid'])
+        hits_df = hits_df.sort_index()
+        hits_df = hits_df.drop(['qseqid', 'qstart', 'qlen', 'sseqid', 'sstart', 'send', 'slen'],
+                               axis=1)
+
+        # Retain the hits of each seed, over its permutations, with the fewest mismatches, and then
+        # with the longest alignments (the first nucleotide of a tRNA-His seed may not be aligned).
         hits_df = hits_df[
-            hits_df.groupby('seed_contig_name')['bitscore'].transform('max') == hits_df['bitscore']]
+            hits_df.groupby('seed_contig_name')['mismatch'].transform('min') == hits_df['mismatch']]
+        alignment_lengths = hits_df['gene_alignment_stop'] - hits_df['gene_alignment_start']
+        hits_df = hits_df[
+            alignment_lengths.groupby(hits_df['seed_contig_name']).transform('max') ==
+            alignment_lengths]
 
         if hits_df.empty:
             if self.full_gene:
@@ -921,18 +982,18 @@ class Integrator(object):
             contig_bin_df, how='left', on=['contigs_db_hash', 'gene_contig_name'])
         ##################################################
 
-        # Multiple permutations of the same seed may be retained after filtering by score. There are
-        # two and possibly more ways that this can occur. (1) The unmodified nucleotide at a
-        # modified position has a very low frequency and so was not used in the permuted sequences.
-        # The permuted sequences, none of which contain the correct nucleotide, mismatch this
-        # nucleotide in genes equally well. (2) A permutation is introduced at a predicted
-        # modification position that is actually a nucleotide variant, and different versions of the
-        # variant occur in different (meta)genomic contigs. The following procedure resolves both of
-        # these possibilities, with the last step being the one that resolves the first possibility.
-        # (1) Choose the permutation hitting the greatest number of genes. (2) If not resolved,
-        # choose the permutation with the fewest permuted positions. (3) If not resolved, break the
-        # tie by choosing the first permutation in the table, which will favor permutations toward
-        # the 5' end.
+        # Multiple permutations of the same seed may be retained after filtering by mismatches and
+        # alignment length. There are two and possibly more ways that this can occur. (1) The
+        # unmodified nucleotide at a modified position has a very low frequency and so was not used
+        # in the permuted sequences. The permuted sequences, none of which contain the correct
+        # nucleotide, mismatch this nucleotide in genes equally well. (2) A permutation is
+        # introduced at a predicted modification position that is actually a nucleotide variant, and
+        # different versions of the variant occur in different (meta)genomic contigs. The following
+        # procedure resolves both of these possibilities, with the last step being the one that
+        # resolves the first possibility. (1) Choose the permutation hitting the greatest number of
+        # genes. (2) If not resolved, choose the permutation with the fewest permuted positions. (3)
+        # If not resolved, break the tie by choosing the first permutation in the table, which will
+        # favor permutations toward the 5' end.
         are_permutations_unresolved = True
         if hits_df.groupby('seed_contig_name').ngroups == hits_df.groupby(
             ['seed_contig_name', 'seed_permutation']).ngroups:
@@ -1062,8 +1123,8 @@ class Integrator(object):
                                    coverage_df['seed_permutation'],
                                    coverage_df['seed_anticodon_start'],
                                    coverage_df['seed_anticodon_wobble_nucleotide'],
-                                   coverage_df['qstart'] - 1,
-                                   coverage_df['sstart'] - 1,
+                                   coverage_df['seed_alignment_start'],
+                                   coverage_df['gene_alignment_start'],
                                    coverage_df['gene_sequence']):
             if anticodon[0] != 'A' or pd.isna(seed_anticodon_start):
                 effective_mismatches.append(mismatch)
@@ -1191,11 +1252,7 @@ class Integrator(object):
         hits_df = hits_df.merge(seed_id_df, how='left', on='seed_contig_name')
 
         # Polish the columns. Order them how they will appear in the hits table in the database.
-        hits_df['seed_alignment_start'] = hits_df['qstart'] - 1
-        hits_df['gene_alignment_start'] = hits_df['sstart'] - 1
-        hits_df = hits_df.drop(['qstart', 'qlen', 'sseqid', 'sstart'], axis=1)
-        hits_df = hits_df.rename(
-            {'gene_callers_id': 'gene_gene_callers_id', 'send': 'gene_alignment_stop'}, axis=1)
+        hits_df = hits_df.rename({'gene_callers_id': 'gene_gene_callers_id'}, axis=1)
         hits_df = hits_df[['seed_gene_callers_id', # seed info
                            'seed_contig_name',
                            'seed_permutation',

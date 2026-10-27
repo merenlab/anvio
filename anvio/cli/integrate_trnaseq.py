@@ -149,7 +149,8 @@ def get_args():
         '-x', '--max-mismatches', metavar='INT', type=int,
         default=genomictrnaseq.Integrator.default_max_mismatches,
         help="The maximum number of mismatches allowed in a gapless alignment between a permuted "
-             "or non-permuted tRNA-seq seed and a tRNA gene.")
+             "or non-permuted tRNA-seq seed and a tRNA gene. Mismatches are counted over the whole "
+             "length of the seed, including its 5' and 3' ends.")
     group1D.add_argument(
         '-f', '--full-gene', default=False, action='store_true',
         help="Use this flag to only retain tRNA-seq seeds that align with a full tRNA gene, "
