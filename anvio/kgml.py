@@ -70,6 +70,9 @@ RING_LINE_WIDTH = 0.5
 RING_LINE_COLOR = '#000000'
 BOX_OUTLINE_HALF_WIDTH = 0.5
 
+# The kinds of a box glyph that draw a plot, in the order they are painted ('Graphics.glyph').
+BOX_PLOT_KINDS = ('tiles', 'polygons', 'polylines', 'dots')
+
 # The largest width and height of a box or circle that Drawer leaves unlabeled, in pixels of the
 # base image ('Drawer._unlabel_tiny_graphics'). A shape this small cannot be seen, but Biopython
 # would still draw its label. KEGG puts boxes of 2 x 2 pixels in the top left corner of a few 2x
@@ -1267,6 +1270,19 @@ class Graphics(Element):
           the axis is given in fractions of that part ('SlicedKGMLCanvas._draw_box_marks').
         - 'rules': lines over the marks, such as the end lines of bars, as (cell, axis, position,
           color, line_width, band) tuples in the same part of a column.
+        The kinds of a plot follow, over the whole part of the rectangle that it shows, in its frame
+        ('SlicedKGMLCanvas._draw_box_plot'). Positions are fractions of the frame, x from the left
+        and y from the bottom.
+        - 'tiles': rectangles, such as the cells of a heat map, as (x0, x1, y0, y1, color) tuples.
+          An edge of None lies on the edge of the part the rectangle shows.
+        - 'polygons': filled shapes, such as the area under a line, as (points, color) pairs, with
+          points a list of (x, y) pairs.
+        - 'polylines': lines through points, such as the line of a plot, as (points, color,
+          line_width) tuples.
+        - 'dots': filled circles as (x, y, diameter, color) tuples, the diameter in points.
+        The frame is that part of the rectangle, inset on the left, right, and top by 'inset' points
+        where the glyph gives 'inset', so that lines and dots near those edges are drawn whole.
+        Colors of 9 characters ('#RRGGBBAA') are drawn with their alpha.
         A glyph can also hold 'label': False, which draws the rectangle without its label, where the
         label would hide what the glyph shows. Without this key, the rectangle is labeled as any
         other. A rectangle without a glyph is one column in its bg color. The glyph of a circle,
@@ -2229,7 +2245,8 @@ class SlicedKGMLCanvas(KGMLCanvas):
 
     A rectangle with a glyph is drawn from that display list ('Graphics.glyph'). Its cells are
     columns, left to right, with a thin gray line between columns. It has one outline, and one label
-    where ortholog entries are labeled ('label_orthologs'), unless its glyph drops the label. A
+    where ortholog entries are labeled ('label_orthologs'), unless its glyph drops the label. A plot
+    in the glyph is drawn over the columns, in the part of the rectangle that the box shows. A
     compound circle with a glyph is drawn from its track, wedges, and rules, inside its ring and its
     outline. A sliced line is drawn as repeating dashes with no gaps, one dash per slice in each
     cycle. The dashes fill the part of the line that compound circles leave visible.
@@ -2545,9 +2562,10 @@ class SlicedKGMLCanvas(KGMLCanvas):
         the box shows: inside the outline, or inside the black line within the ring. An edge of a
         mark that lies on the edge of that part reaches 0.5 pt past it, under the outline or the
         black line, so that no seam shows there. Its other edges are exact, so a bar keeps its exact
-        length. Rules are drawn with square ends that stop at their own ends.
+        length. Rules are drawn with square ends that stop at their own ends. A plot is drawn over
+        the marks and rules ('_draw_box_plot').
 
-        The ring is drawn over the columns, marks, and rules. Then come the gray lines between
+        The ring is drawn over the columns, marks, rules, and plot. Then come the gray lines between
         columns, the black line inside the ring, and the outline.
 
         Parameters
@@ -2602,6 +2620,9 @@ class SlicedKGMLCanvas(KGMLCanvas):
             self._draw_box_marks(
                 x0, y0, graphics.width, graphics.height, columns, glyph, border is not None
             )
+
+        if glyph is not None and any(glyph.get(kind) for kind in BOX_PLOT_KINDS):
+            self._draw_box_plot(x0, y0, graphics.width, graphics.height, glyph, border is not None)
 
         if isinstance(border, str):
             self._draw_box_ring(x0, y0, graphics.width, graphics.height, border)
@@ -2729,6 +2750,130 @@ class SlicedKGMLCanvas(KGMLCanvas):
             else:
                 y = area_y1 - position * (area_y1 - area_y0)
                 drawing.line(area_x0, y, area_x1, y)
+
+    def _draw_box_plot(
+        self,
+        x0: float,
+        y0: float,
+        width: float,
+        height: float,
+        glyph: Dict[str, list],
+        ringed: bool
+    ) -> None:
+        """
+        Draw the plot of the glyph of a rectangle: its tiles, polygons, polylines, and dots.
+
+        The plot lies in the part of the rectangle that the box shows: inside the outline, or inside
+        the black line within the ring. It is clipped to that part, grown as far as an edge of a
+        mark reaches under that line ('_draw_box_marks'). An edge of a tile on or past the edge of
+        that part, and a point of a polygon at the bottom of the frame, reach under the line, so
+        that no seam shows there. Lines are drawn with square ends that stop at their own ends, and
+        with round joins. A polygon of fewer than 3 points, a line of fewer than 2, and a tile
+        without area are not drawn.
+
+        Parameters
+        ==========
+        x0, y0 : float
+            The corner of the rectangle with the smallest coordinates.
+
+        width, height : float
+            The size of the rectangle.
+
+        glyph : Dict[str, list]
+            The display list of the rectangle ('Graphics.glyph'). Its plot kinds are drawn, in the
+            frame that its 'inset' gives:
+            - 'tiles': [(x0, x1, y0, y1, color), ...], rectangles. An edge of None lies on the edge
+              of the part the rectangle shows.
+            - 'polygons': [(points, color), ...], filled shapes through (x, y) points.
+            - 'polylines': [(points, color, line_width), ...], lines through (x, y) points.
+            - 'dots': [(x, y, diameter, color), ...], filled circles.
+
+        ringed : bool
+            True if the rectangle has a ring.
+        """
+        drawing = self.drawing
+        # The plot shows the same part of the rectangle as marks do ('_draw_box_marks').
+        if ringed:
+            inset = BOX_OUTLINE_HALF_WIDTH + BOX_RING_WIDTH + RING_LINE_WIDTH
+            reach = RING_LINE_WIDTH
+        else:
+            inset = BOX_OUTLINE_HALF_WIDTH
+            reach = BOX_OUTLINE_HALF_WIDTH
+        shown_x0, shown_x1 = x0 + inset, x0 + width - inset
+        shown_y0, shown_y1 = y0 + inset, y0 + height - inset
+        # The y axis of the canvas points down, so the top of the frame is its smallest y.
+        frame_inset = glyph.get('inset', 0)
+        frame_x0, frame_x1 = shown_x0 + frame_inset, shown_x1 - frame_inset
+        frame_y0, frame_y1 = shown_y0 + frame_inset, shown_y1
+
+        def point(fx: float, fy: float) -> Tuple[float, float]:
+            return frame_x0 + fx * (frame_x1 - frame_x0), frame_y1 - fy * (frame_y1 - frame_y0)
+
+        drawing.saveState()
+        clip = drawing.beginPath()
+        clip.rect(
+            shown_x0 - reach, shown_y0 - reach, shown_x1 - shown_x0 + 2 * reach,
+            shown_y1 - shown_y0 + 2 * reach
+        )
+        drawing.clipPath(clip, stroke=0, fill=0)
+
+        for tile_x0, tile_x1, tile_y0, tile_y1, color in glyph.get('tiles', []):
+            edge_x0 = shown_x0 if tile_x0 is None else point(tile_x0, 0)[0]
+            edge_x1 = shown_x1 if tile_x1 is None else point(tile_x1, 0)[0]
+            edge_y0 = shown_y1 if tile_y0 is None else point(0, tile_y0)[1]
+            edge_y1 = shown_y0 if tile_y1 is None else point(0, tile_y1)[1]
+            left, right = min(edge_x0, edge_x1), max(edge_x0, edge_x1)
+            top, bottom = min(edge_y0, edge_y1), max(edge_y0, edge_y1)
+            if left == right or top == bottom:
+                continue
+            # An edge on the edge of the shown fill reaches under the line that bounds it.
+            if left <= shown_x0:
+                left = shown_x0 - reach
+            if right >= shown_x1:
+                right = shown_x1 + reach
+            if top <= shown_y0:
+                top = shown_y0 - reach
+            if bottom >= shown_y1:
+                bottom = shown_y1 + reach
+            drawing.setFillColor(color_to_reportlab(color))
+            drawing.rect(left, top, right - left, bottom - top, stroke=0, fill=1)
+
+        for points, color in glyph.get('polygons', []):
+            if len(points) < 3:
+                continue
+            path = drawing.beginPath()
+            for index, (fx, fy) in enumerate(points):
+                x, y = point(fx, fy)
+                if fy <= 0:
+                    y = shown_y1 + reach
+                if index == 0:
+                    path.moveTo(x, y)
+                else:
+                    path.lineTo(x, y)
+            path.close()
+            drawing.setFillColor(color_to_reportlab(color))
+            drawing.drawPath(path, stroke=0, fill=1)
+
+        drawing.setLineCap(0)
+        drawing.setLineJoin(1)
+        for points, color, line_width in glyph.get('polylines', []):
+            if len(points) < 2:
+                continue
+            path = drawing.beginPath()
+            for index, (fx, fy) in enumerate(points):
+                if index == 0:
+                    path.moveTo(*point(fx, fy))
+                else:
+                    path.lineTo(*point(fx, fy))
+            drawing.setLineWidth(line_width)
+            drawing.setStrokeColor(color_to_reportlab(color))
+            drawing.drawPath(path, stroke=1, fill=0)
+
+        for fx, fy, diameter, color in glyph.get('dots', []):
+            x, y = point(fx, fy)
+            drawing.setFillColor(color_to_reportlab(color))
+            drawing.circle(x, y, diameter * 0.5, stroke=0, fill=1)
+        drawing.restoreState()
 
     def _draw_box_ring(self, x0: float, y0: float, width: float, height: float, color: str) -> None:
         """
