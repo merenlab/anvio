@@ -980,16 +980,19 @@ class Integrator(object):
         # relative 3' abundances of 0.02 and 0.03 in the two samples and the other seed has
         # abundances of 0.0006 and 0.00008, then the hit to the former seed will be the only one
         # retained for this gene.
-        # II. The selection of the lowest mismatch seed (see the previous section) can create an
-        # unintended side effect. The A -> I34 wobble position modification is typically nearly 100%
-        # complete. I is detected as G in tRNA-seq reads, so the correct seed matching the gene
-        # should have at least one alignment mismatch, G/A at position 34. In very deeply sequenced
-        # samples, however, a seed with A34 can sometimes be detected from rare tRNA molecules
-        # lacking the modification. `anvi-merge-trnaseq` would not merge the A34 and G34 seeds due
-        # to the absence of a third or fourth mutated nucleotide at position 34 and the miniscule
-        # frequency of A. Therefore, in this case, the lowest mismatch seed should not be selected;
-        # rather, select the lowest mismatch seed with G34. The algorithm also confirms that the G34
-        # seed is >10x more abundant than the A34 seed.
+        # II. The selection of the lowest mismatch seed (see the previous section) needs two
+        # adjustments for genes with A34. The A -> I34 wobble position modification is typically
+        # nearly 100% complete. I is detected as G in tRNA-seq reads, so G at position 34 of the
+        # aligned seed sequence (permuted or not) is not counted as a mismatch to A34 in the gene.
+        # In very deeply sequenced samples, a seed with A34 can also be detected from rare tRNA
+        # molecules lacking the modification, such as precursors. `anvi-merge-trnaseq` would not
+        # merge the A34 and G34 seeds due to the absence of a third or fourth mutated nucleotide at
+        # position 34 and the miniscule frequency of A. The A34 seed can match the gene better than
+        # the seed of the mature tRNA, which can mismatch the gene at another nearly completely
+        # modified position, e.g., m1I37 in eukaryotic tRNA-Ala-AGC. Therefore, if the seed selected
+        # for a gene with A34 does not have G34 (seeds with C or U34 being transcripts of other
+        # isoacceptors), the lowest mismatch seed with G34 is selected instead if it is at least 10x
+        # more abundant.
         coverage_df = pd.read_csv(self.seeds_specific_txt_path, sep='\t', header=0, skiprows=[1, 2])
         coverage_df = coverage_df[['contig_name', 'sample_name', 'relative_discriminator_coverage']]
         coverage_df = coverage_df.rename({'contig_name': 'seed_contig_name'}, axis=1)
@@ -1040,69 +1043,81 @@ class Integrator(object):
             anticodon_wobble_nucleotides.append(seed_consensus_sequence[anticodon_start])
         seed_wobble_df['seed_anticodon_wobble_nucleotide'] = anticodon_wobble_nucleotides
 
-        def filter_multiple_hits_to_gene(gene_df): # inner function used in groupby apply
-            min_mismatch_df = gene_df[gene_df['mismatch'] == gene_df['mismatch'].min()]
-            if min_mismatch_df['seed_contig_name'].nunique() > 1:
-                min_mismatch_df = min_mismatch_df[
-                    min_mismatch_df['seed_contig_name'] == min_mismatch_df.groupby(
-                        'seed_contig_name')['relative_discriminator_coverage'].mean().sort_values(
-                            ascending=False).index[0]]
-            if gene_df['anticodon'].iloc[0][0] != 'A':
-                return min_mismatch_df
+        # Count G at position 34 of the aligned seed sequence as I34 matching A34 in the gene. The
+        # nucleotide is that of the seed consensus sequence unless the position was permuted.
+        coverage_df = coverage_df.merge(
+            seed_wobble_df[
+                ['seed_contig_name', 'seed_anticodon_start', 'seed_anticodon_wobble_nucleotide']],
+            how='left', on='seed_contig_name')
+        effective_mismatches = []
+        for (mismatch,
+             anticodon,
+             seed_permutation,
+             seed_anticodon_start,
+             seed_anticodon_wobble_nucleotide,
+             seed_alignment_start,
+             gene_alignment_start,
+             gene_sequence) in zip(coverage_df['mismatch'],
+                                   coverage_df['anticodon'],
+                                   coverage_df['seed_permutation'],
+                                   coverage_df['seed_anticodon_start'],
+                                   coverage_df['seed_anticodon_wobble_nucleotide'],
+                                   coverage_df['qstart'] - 1,
+                                   coverage_df['sstart'] - 1,
+                                   coverage_df['gene_sequence']):
+            if anticodon[0] != 'A' or pd.isna(seed_anticodon_start):
+                effective_mismatches.append(mismatch)
+                continue
+            seed_anticodon_start = int(seed_anticodon_start)
+            query_wobble_nucleotide = seed_anticodon_wobble_nucleotide
+            permutations = seed_permutation.split('_') if seed_permutation else []
+            for permutation in permutations:
+                if int(permutation[: -1]) == seed_anticodon_start:
+                    query_wobble_nucleotide = permutation[-1]
+            gene_wobble_position = (
+                seed_anticodon_start - seed_alignment_start + gene_alignment_start)
+            if (query_wobble_nucleotide == 'G' and
+                0 <= gene_wobble_position < len(gene_sequence) and
+                gene_sequence[gene_wobble_position] == 'A'):
+                effective_mismatches.append(mismatch - 1)
             else:
-                # Case II: Address possibility that seed with I34 is neglected.
-                max_coverage_seed_contig_name = gene_df.groupby('seed_contig_name')[
-                        'relative_discriminator_coverage'].mean().sort_values(
-                            ascending=False).index[0]
-                min_mismatch_seed_contig_name = min_mismatch_df['seed_contig_name'].iloc[0]
-                if min_mismatch_seed_contig_name == max_coverage_seed_contig_name:
-                    # The seed with the fewest mismatches also has the highest average discriminator
-                    # coverage.
-                    return min_mismatch_df
-                wobble_df = gene_df.merge(seed_wobble_df, how='left', on='seed_contig_name')
-                min_mismatch_seed_wobble_nucleotide = wobble_df[
-                    wobble_df['seed_contig_name'] == min_mismatch_seed_contig_name][
-                        'anticodon'].iloc[0][0]
-                if min_mismatch_seed_wobble_nucleotide != 'A':
-                    # The seed with the fewest mismatches (and which does not have the highest
-                    # average discriminator coverage) does not have an A at position 34. A seed is
-                    # not matched to the gene.
-                    return pd.DataFrame().reindex_like(min_mismatch_df)
-                wobble_df = wobble_df[wobble_df['seed_anticodon_wobble_nucleotide'] == 'G']
-                wobble_df = wobble_df[wobble_df['mismatch'] == wobble_df['mismatch'].min()]
-                max_coverage_G34_seed_contig_name = wobble_df.groupby('seed_contig_name')[
-                    'relative_discriminator_coverage'].mean().sort_values(ascending=False).index[0]
-                if (wobble_df[wobble_df['seed_contig_name'] == max_coverage_G34_seed_contig_name][
-                    'relative_discriminator_coverage'].mean() >= 10 * min_mismatch_df[
-                        'relative_discriminator_coverage'].mean()):
-                    # The seed with the fewest mismatches and a G at position 34 has an average
-                    # discriminator coverage at least an order of magnitude higher than the the seed
-                    # with the fewest mismatches and an A at position 34. Match the former seed to
-                    # the gene instead of the latter.
-                    return gene_df[gene_df['seed_contig_name'] == max_coverage_G34_seed_contig_name]
-                else:
-                    # The seed with the fewest mismatches and a G at position 34 does not have an
-                    # average discriminator coverage at least an order of magnitude higher than the
-                    # the seed with the fewest mismatches and an A at position 34. A seed is not
-                    # matched to the gene.
-                    return pd.DataFrame().reindex_like(min_mismatch_df)
+                effective_mismatches.append(mismatch)
+        coverage_df['effective_mismatch'] = effective_mismatches
+
+        def get_lowest_mismatch_seed(gene_df):
+            # Select the seed with the fewest mismatches, and then the highest average discriminator
+            # coverage.
+            min_mismatch_df = gene_df[
+                gene_df['effective_mismatch'] == gene_df['effective_mismatch'].min()]
+            return min_mismatch_df.groupby('seed_contig_name')[
+                'relative_discriminator_coverage'].mean().sort_values(ascending=False).index[0]
+
+        def filter_multiple_hits_to_gene(gene_df): # inner function used in groupby apply
+            seed_contig_name = get_lowest_mismatch_seed(gene_df)
+            seed_df = gene_df[gene_df['seed_contig_name'] == seed_contig_name]
+            if (gene_df['anticodon'].iloc[0][0] == 'A' and
+                seed_df['seed_anticodon_wobble_nucleotide'].iloc[0] != 'G'):
+                # Case II: Address possibility that the seed with I34 has more mismatches.
+                g34_df = gene_df[gene_df['seed_anticodon_wobble_nucleotide'] == 'G']
+                if len(g34_df):
+                    g34_seed_contig_name = get_lowest_mismatch_seed(g34_df)
+                    g34_seed_df = g34_df[g34_df['seed_contig_name'] == g34_seed_contig_name]
+                    if (g34_seed_df['relative_discriminator_coverage'].mean() >=
+                        10 * seed_df['relative_discriminator_coverage'].mean()):
+                        return g34_seed_df
+            return seed_df
 
         coverage_df = coverage_df.groupby(
             ['contigs_db_hash', 'gene_callers_id'], group_keys=False).apply(
                 filter_multiple_hits_to_gene)
         # Keep each gene's hit to its chosen seed, but not hits of that seed to genes for which other
-        # seeds were chosen. Genes for which no seed was chosen have rows of NaN.
+        # seeds were chosen.
         chosen_seed_gene_df = coverage_df[
-            ['seed_contig_name', 'contigs_db_hash', 'gene_callers_id']].dropna()
+            ['seed_contig_name', 'contigs_db_hash', 'gene_callers_id']]
         chosen_seed_gene_pairs = set(chosen_seed_gene_df.itertuples(index=False, name=None))
         seed_gene_pairs = zip(
             hits_df['seed_contig_name'], hits_df['contigs_db_hash'], hits_df['gene_callers_id'])
         hits_df = hits_df[[seed_gene_pair in chosen_seed_gene_pairs for seed_gene_pair in seed_gene_pairs]]
-
-        if hits_df.empty:
-            raise ConfigError(
-                "tRNA-seq seeds aligned to tRNA genes, but in choosing one seed per gene, no seed "
-                "was chosen for any gene. The tRNA-seq contigs database was not changed.")
         ##################################################
 
         ##################################################
