@@ -44,7 +44,7 @@ var help_contents = {
     'layer-margin': "Margin with the previous layer",
     'layer-min': "A value below which will be assumed zero during vizualization",
     'layer-max': "A value above which will be treated as maximum during vizualization",
-    'layer-center': "A value around which data will diverge during visualization (e.g., 0 for z-scores or fold changes). Values below the center use the left color, values above the right color. Leave empty to turn it off. With log or square root normalization, the center refers to the normalized values",
+    'layer-center': "A value around which data will diverge during visualization (e.g., 0 for z-scores or fold changes). Values below the center use the left color, values above the right color. Leave empty to turn it off. With log or sqrt normalization, the center refers to the normalized values",
     'edit-multiple-layers': "Select layers by their names using the input box belpw, or by clicking checkboxes next to them, and edit attributes of all selected layers by changing corresponding input items.",
     'draw-button': "This draws the tree on the right side of the screen. It may take a while for large datasets",
     "zoom-in": "Zoom in",

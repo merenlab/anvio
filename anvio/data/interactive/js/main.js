@@ -2192,6 +2192,34 @@ function serializeSettings(use_layer_names) {
     return state;
 }
 
+function getLayersNormalizationCannotHandle(settings) {
+    // log10(x + 1) is undefined for values of -1 or lower, and sqrt for negative values
+    var layer_names = [];
+
+    for (var i = 0; i < layer_order.length; i++) {
+        var layer_id = layer_order[i];
+
+        if (layer_types[layer_id] != 3 || settings['layers'][layer_id]['visible'] === false)
+            continue;
+
+        var normalization = settings['views'][current_view][layer_id]['normalization'];
+
+        if (normalization != 'log' && normalization != 'sqrt')
+            continue;
+
+        for (var j = 1; j < layerdata.length; j++) {
+            var value = parseFloat(layerdata[j][layer_id]);
+
+            if ((normalization == 'log' && value <= -1) || (normalization == 'sqrt' && value < 0)) {
+                layer_names.push(getPrettyName(getLayerName(layer_id)));
+                break;
+            }
+        }
+    }
+
+    return layer_names;
+}
+
 function drawTree() {
     var defer = $.Deferred();
     var settings = serializeSettings();
@@ -2226,6 +2254,20 @@ function drawTree() {
                     if (layer_order.length === 0) {
                         waitingDialog.hide();
                         toastr.warning("No layers to draw. Please check at least one item data group.");
+                        return;
+                    }
+
+                    // stop drawing if a normalization would silently turn values into NaN
+                    let unsuitable_layers = getLayersNormalizationCannotHandle(settings);
+                    if (unsuitable_layers.length > 0) {
+                        waitingDialog.hide();
+                        let layer_list = unsuitable_layers.slice(0, 5).map(name => `'${name}'`).join(', ');
+                        if (unsuitable_layers.length > 5) {
+                            layer_list += `, and ${unsuitable_layers.length - 5} more`;
+                        }
+                        toastr.error(`Some layers have values that their normalization can't handle (log: −1 or lower, sqrt: below 0). ` +
+                                     `Please choose a different normalization for these layers and draw again: ${layer_list}.`,
+                                     "Nothing was drawn");
                         return;
                     }
                     drawer = new Drawer(settings);
