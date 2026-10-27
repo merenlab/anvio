@@ -5352,6 +5352,9 @@ class ProfileDatabase:
         self.db.create_table(t.metabolite_abundances_table_name, t.metabolite_abundances_table_structure, t.metabolite_abundances_table_types)
         self.db.create_table(t.zero_coverage_splits_table_name, t.zero_coverage_splits_table_structure, t.zero_coverage_splits_table_types)
         self.db.create_table(t.zero_coverage_contigs_table_name, t.zero_coverage_contigs_table_structure, t.zero_coverage_contigs_table_types)
+        self.db.create_table(t.num_reads_assigned_splits_table_name, t.view_table_structure, t.view_table_types)
+        self.db.create_table(t.num_reads_mapped_contigs_table_name, t.view_table_structure, t.view_table_types)
+        self.db.create_table(t.zero_num_reads_assigned_splits_table_name, t.zero_num_reads_assigned_splits_table_structure, t.zero_num_reads_assigned_splits_table_types)
 
         return self.db
 
