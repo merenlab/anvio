@@ -523,7 +523,7 @@ def tar_extract_file(input_file_path, output_file_path=None, keep_original=True)
         os.remove(input_file_path)
 
 
-def validate_discov_params(window_length, window_length_as_percentage, min_window_length, foldrange_lower, foldrange_upper, alpha, discov_formula, require_window_param=True):
+def validate_discov_params(window_length, window_length_as_percentage, min_window_length, alpha, discov_formula, require_window_param=True):
     """Validate Distribution of Coverage (DisCov) parameters and raise ConfigError for any invalid combination.
 
     Parameters
@@ -534,10 +534,6 @@ def validate_discov_params(window_length, window_length_as_percentage, min_windo
         Window length as a percentage of the sequence length.
     min_window_length : int or None
         Minimum window length when using window_length_as_percentage.
-    foldrange_lower : float
-        Lower fold-range boundary for evenness score E.
-    foldrange_upper : float
-        Upper fold-range boundary for evenness score E.
     alpha : float
         Weight of S in the DisCov score. Must be in [0, 1].
     discov_formula : str
@@ -568,22 +564,15 @@ def validate_discov_params(window_length, window_length_as_percentage, min_windo
     if min_window_length and min_window_length < 0:
         raise ConfigError("The --min-window-length parameter has to be a positive integer.")
 
-    if foldrange_lower is None or foldrange_upper is None or alpha is None:
+    if alpha is None:
         raise ConfigError("You'd better be a programmer messing with stuff, because it is not supposed to be possible "
-                          "to pass None values for DisCov foldrange or alpha parameters. Nor is it advisable (because it will "
+                          "to pass a None value for the DisCov alpha parameter. Nor is it advisable (because it will "
                           "throw off the calculation), so we are stopping the show right here.")
-
-    if foldrange_lower < 0 or foldrange_upper < 0:
-        raise ConfigError("Please provide positive numbers for the fold-range boundary values.")
-
-    if foldrange_lower >= foldrange_upper:
-        raise ConfigError(f"The --foldrange-lower value ({foldrange_lower}) cannot be greater than the --foldrange-upper value "
-                          f"({foldrange_upper}).")
 
     if alpha < 0 or alpha > 1:
         raise ConfigError("The --alpha parameter for DisCov should take a value between 0 and 1 (inclusive). Keep in "
-                          "mind that it is going to be used in the following equation: DisCov = αS + (1-α)E. Hopefully "
-                          "that helps explain these restrictions :)")
+                          "mind that it is going to be used to combine S and E into the spread-evenness score as either "
+                          "C = αS + (1-α)E or C = S^α * E^(1-α). Hopefully that helps explain these restrictions :)")
 
     if discov_formula not in ('linear', 'geometric'):
         raise ConfigError(f"The --discov-formula parameter must be either 'linear' or 'geometric', but you provided "
@@ -646,7 +635,7 @@ class CoverageStats:
     """
 
     def __init__(self, coverage, skip_outliers=False, discov_window_length=10000, discov_window_percentage=None,
-                discov_min_window_len=500, discov_foldrange_lower=0.25, discov_foldrange_upper=4, discov_alpha=0.5,
+                discov_min_window_len=500, discov_alpha=0.5,
                 return_window_info=False, discov_formula='geometric', num_reads=None, report_discov=False):
         self.num_reads = num_reads
 
@@ -681,10 +670,10 @@ class CoverageStats:
 
         if report_discov:
             self.compute_discov_stats(coverage, discov_window_length, discov_window_percentage, discov_min_window_len, discov_alpha, discov_formula,
-                                      return_window_info, discov_foldrange_lower, discov_foldrange_upper)
+                                      return_window_info)
 
 
-    def compute_discov_stats(self, coverage, discov_window_length, discov_window_percentage, discov_min_window_len, discov_alpha, discov_formula, return_window_info, discov_foldrange_lower, discov_foldrange_upper):
+    def compute_discov_stats(self, coverage, discov_window_length, discov_window_percentage, discov_min_window_len, discov_alpha, discov_formula, return_window_info):
         """Computes discov and its sub-metrics (see the class docstring), and sets them as attributes of this object."""
 
         if discov_min_window_len is None:

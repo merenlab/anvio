@@ -4460,24 +4460,6 @@ D = {
              'metavar': 'INTEGER',
              'help': "Use with --window-length-as-percentage to ensure that percentage-based window lengths never fall below this value."}
     ),
-    'foldrange-lower': (
-            ['--foldrange-lower'],
-            {'default': 0.5,
-             'type': float,
-             'metavar': 'FLOAT',
-             'help': "When computing evenness of coverage depth (E), count any bases with coverage OVER this value * the "
-                     "median nonzero coverage. In typical use-cases, this value will be the inverse of --foldrange-upper. "
-                     "The default is '%(default)s'."}
-    ),
-    'foldrange-upper': (
-            ['--foldrange-upper'],
-            {'default': 2.0,
-             'type': float,
-             'metavar': 'FLOAT',
-             'help': "When computing evenness of coverage depth (E), count any bases with coverage UNDER this value * the "
-                     "median nonzero coverage. In typical use-cases, this value will be the inverse of --foldrange-lower. "
-                     "The default is '%(default)s'."}
-    ),
     'alpha': (
             ['--alpha'],
             {'default': 0.5,

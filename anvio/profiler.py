@@ -405,8 +405,6 @@ class BAMProfilerQuick:
         self.window_length = A('window_length')
         self.window_length_as_percentage = A('window_length_as_percentage')
         self.min_window_length = A('min_window_length')
-        self.foldrange_lower = A('foldrange_lower')
-        self.foldrange_upper = A('foldrange_upper')
         self.alpha = A('alpha')
         self.discov_formula = A('discov_formula')
         self.gen_window_level_output = A('gen_window_level_output')
@@ -428,7 +426,6 @@ class BAMProfilerQuick:
             self.run.info('DisCov window length', self.window_length if self.window_length else f"{self.window_length_as_percentage}% of sequence")
             if self.window_length_as_percentage:
                 self.run.info('Minimum window length', self.min_window_length)
-            self.run.info('DisCov fold-range', f"{self.foldrange_lower}x to {self.foldrange_upper}x of median nonzero coverage")
             self.run.info('DisCov alpha value', self.alpha)
             self.run.info('DisCov formula', self.discov_formula)
         if self.gen_window_level_output:
@@ -508,11 +505,10 @@ class BAMProfilerQuick:
                 raise ConfigError(f"The gene caller '{self.gene_caller}' is not among those that are found in "
                                   f"the contigs database (and shown above for your convenience).")
 
-        # DisCov parameter sanity checks
+        # discov parameter sanity checks
         if not self.report_minimal and not self.gene_level_stats:
             utils.validate_discov_params(self.window_length, self.window_length_as_percentage,
-                                         self.min_window_length, self.foldrange_lower, self.foldrange_upper,
-                                         self.alpha, self.discov_formula, require_window_param=True)
+                                         self.min_window_length, self.alpha, self.discov_formula, require_window_param=True)
 
         if self.gen_window_level_output:
             if self.gene_level_stats:
@@ -921,7 +917,6 @@ class BAMProfilerQuick:
         else:
             C = utils.CoverageStats(coverage_array, skip_outliers=True, discov_window_length=self.window_length,
                         discov_window_percentage = self.window_length_as_percentage, discov_min_window_len = self.min_window_length,
-                        discov_foldrange_lower=self.foldrange_lower, discov_foldrange_upper=self.foldrange_upper,
                         discov_alpha=self.alpha, discov_formula=self.discov_formula, return_window_info=window_output is not None, num_reads=num_reads, report_discov=True)
             output.write(f"{bin_name}\t"
                          f"{bam_file_name}\t"
@@ -970,7 +965,6 @@ class BAMProfilerQuick:
         else:
             C = utils.CoverageStats(coverage_obj.c, skip_outliers=True, discov_window_length=self.window_length,
                         discov_window_percentage = self.window_length_as_percentage, discov_min_window_len = self.min_window_length,
-                        discov_foldrange_lower=self.foldrange_lower, discov_foldrange_upper=self.foldrange_upper,
                         discov_alpha=self.alpha, discov_formula=self.discov_formula, return_window_info=window_output is not None, num_reads=coverage_obj.num_reads, report_discov=True)
             output.write(f"{contig_name}\t"
                          f"{bam_file_name}\t"
