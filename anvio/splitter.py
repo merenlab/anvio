@@ -688,6 +688,11 @@ class BinSplitter(summarizer.Bin, XSplitter):
                 else:
                     tables[new_table_name] = ('item', self.split_names)
 
+        # the number of reads tables follow the same structure as view tables (and are already created by `touch`)
+        tables[t.num_reads_assigned_splits_table_name] = ('item', self.split_names)
+        tables[t.num_reads_mapped_contigs_table_name] = ('item', contig_names_in_bin)
+        tables[t.zero_num_reads_assigned_splits_table_name] = ('item', self.split_names)
+
         # copy zero_coverage tables for splits/contigs in this bin
         tables[t.zero_coverage_splits_table_name] = ('item', self.split_names)
         tables[t.zero_coverage_contigs_table_name] = ('item', contig_names_in_bin)

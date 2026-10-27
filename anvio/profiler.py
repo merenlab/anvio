@@ -1415,6 +1415,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'SNVs_profiled': not self.skip_SNV_profiling,
                        'SCVs_profiled': self.profile_SCVs,
                        'INDELs_profiled': not self.skip_INDEL_profiling,
+                       'num_reads_mapped_stored': not self.blank,
                        'min_percent_identity': self.min_percent_identity or 0,
                        'fetch_filter': self.fetch_filter,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
@@ -2584,27 +2585,42 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.generate_indels_table()
         self.store_split_coverages()
 
-        # Identify zero-coverage splits within covered contigs. These splits belong to
-        # contigs that DID have reads, but the reads did not cover every split. Instead
-        # of writing zero rows to all 12 view tables, we record them in
-        # zero_coverage_splits and skip them during atomic data generation.
+        # Identify zero-coverage contigs and splits. A contig can have zero coverage despite being
+        # profiled if none of its reads survived (e.g., all were removed by read filters, or the BAM
+        # index counted alignments without a CIGAR or sequence). Such contigs, and all of their splits,
+        # are recorded in the zero_coverage tables just like the contigs skipped by the BAM index
+        # prefilter. Splits within covered contigs may also have zero coverage if the reads did not
+        # cover every split. Instead of writing zero rows to all view tables, we record all of these
+        # in zero_coverage tables and skip them during atomic data generation.
+        zero_cov_contig_names = set()
         zero_cov_split_names = set()
         for contig in self.contigs:
+            if contig.coverage.mean == 0:
+                zero_cov_contig_names.add(contig.name)
+                zero_cov_split_names.update(split.name for split in contig.splits)
+                continue
+
             for split in contig.splits:
                 if split.coverage.mean == 0:
                     zero_cov_split_names.add(split.name)
 
-        if zero_cov_split_names:
+        if zero_cov_contig_names or zero_cov_split_names:
             profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
-            profile_db.db._exec_many(
-                'INSERT INTO %s VALUES (?,?)' % t.zero_coverage_splits_table_name,
-                [(name, self.sample_id) for name in zero_cov_split_names])
+            if zero_cov_contig_names:
+                profile_db.db._exec_many(
+                    'INSERT INTO %s VALUES (?,?)' % t.zero_coverage_contigs_table_name,
+                    [(name, self.sample_id) for name in zero_cov_contig_names])
+            if zero_cov_split_names:
+                profile_db.db._exec_many(
+                    'INSERT INTO %s VALUES (?,?)' % t.zero_coverage_splits_table_name,
+                    [(name, self.sample_id) for name in zero_cov_split_names])
             profile_db.disconnect()
 
         # the crux of the profiling
         for atomic_data_field in self.essential_data_fields_for_anvio_profiles:
             view_data_splits, view_data_contigs = contigops.get_atomic_data(self.sample_id, self.contigs, atomic_data_field,
-                                                                            zero_cov_splits=zero_cov_split_names)
+                                                                            zero_cov_splits=zero_cov_split_names,
+                                                                            zero_cov_contigs=zero_cov_contig_names)
 
             table_name = '_'.join([atomic_data_field, 'splits'])
             TablesForViews(self.profile_db_path,
@@ -2621,6 +2637,34 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                                  table_name=table_name,
                                                  view_name=None,
                                                  append_mode=True)
+
+        # the number of reads per split and contig are stored like atomic data. zero values
+        # are not stored: zero-coverage contigs and splits are already skipped (and every contig with coverage
+        # has at least one read), but a split with coverage may still have no reads assigned to it (if all reads
+        # covering it have most of their aligned bases in neighboring splits). those splits go into the
+        # zero_num_reads_assigned_splits table instead
+        num_reads_assigned_splits, num_reads_mapped_contigs = contigops.get_atomic_data(self.sample_id, self.contigs, 'num_reads',
+                                                                                      zero_cov_splits=zero_cov_split_names,
+                                                                                      zero_cov_contigs=zero_cov_contig_names)
+        TablesForViews(self.profile_db_path,
+                       progress=self.progress) \
+                            .create_new_view(view_data=[d for d in num_reads_assigned_splits if d[2] > 0],
+                                             table_name=t.num_reads_assigned_splits_table_name,
+                                             view_name=None,
+                                             append_mode=True)
+
+        TablesForViews(self.profile_db_path,
+                       progress=self.progress) \
+                            .create_new_view(view_data=num_reads_mapped_contigs,
+                                             table_name=t.num_reads_mapped_contigs_table_name,
+                                             view_name=None,
+                                             append_mode=True)
+
+        zero_num_reads_assigned_split_rows = [(item, layer) for item, layer, value in num_reads_assigned_splits if value == 0]
+        if zero_num_reads_assigned_split_rows:
+            profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
+            profile_db.db._exec_many('INSERT INTO %s VALUES (?,?)' % t.zero_num_reads_assigned_splits_table_name, zero_num_reads_assigned_split_rows)
+            profile_db.disconnect()
 
 
     def check_contigs(self, num_contigs=None):
