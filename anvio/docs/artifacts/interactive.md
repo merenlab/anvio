@@ -100,7 +100,7 @@ This is one of the most frequently used tabs in the interface, and there are mul
 If you want to remove a layer from the interface, simply change the height to a value of 0.
 
 {:.notice}
-Setting a __center__ value for a layer (e.g., 0 for z-scores or log fold changes) displays its data as diverging around that value: bars and lines extend in both directions from the middle of the layer, and intensity layers use a three-color scale that is white at the center. Values below the center are drawn in the left color, values above in the right color. The left color picker becomes available once a center is set. The scale is symmetric, and is determined by the value that is furthest from the center. When a center is set, min and max values are not used for that layer, and any normalization (log, square root) is applied before values are compared to the center. Leave the field empty to return to the regular display.
+Setting a __center__ value for a layer (e.g., 0 for z-scores or log fold changes) displays its data as diverging around that value: bars and lines extend in both directions from the middle of the layer, and intensity layers use a three-color scale that is white at the center. Values below the center are drawn in the left color, values above in the right color. The left color picker becomes available once a center is set. The scale is symmetric, and is determined by the value that is furthest from the center. When a center is set, min and max values are not used for that layer, and any normalization (log, square root) is applied first, so the center refers to the normalized values. Leave the field empty to return to the regular display.
 
 - #### Layers subsection
 
