@@ -1415,6 +1415,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'SNVs_profiled': not self.skip_SNV_profiling,
                        'SCVs_profiled': self.profile_SCVs,
                        'INDELs_profiled': not self.skip_INDEL_profiling,
+                       'num_reads_mapped_stored': not self.blank,
                        'min_percent_identity': self.min_percent_identity or 0,
                        'fetch_filter': self.fetch_filter,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
