@@ -2257,19 +2257,20 @@ function drawTree() {
                         return;
                     }
 
-                    // stop drawing if a normalization would silently turn values into NaN
+                    // warn (but still draw) if a normalization would silently turn values into NaN
                     let unsuitable_layers = getLayersNormalizationCannotHandle(settings);
                     if (unsuitable_layers.length > 0) {
-                        waitingDialog.hide();
                         let layer_list = unsuitable_layers.slice(0, 5).map(name => `'${name}'`).join(', ');
                         if (unsuitable_layers.length > 5) {
                             layer_list += `, and ${unsuitable_layers.length - 5} more`;
                         }
-                        toastr.error(`Some layers have values that their normalization can't handle (log: −1 or lower, sqrt: below 0). ` +
-                                     `Please choose a different normalization for these layers and draw again: ${layer_list}.`,
-                                     "Nothing was drawn");
-                        return;
+                        let one_layer = (unsuitable_layers.length == 1);
+                        toastr.warning(`${one_layer ? 'One layer has' : 'Some layers have'} values that the current normalization can't handle (log: ≤ −1, sqrt: < 0). ` +
+                                       `These values will be missing from your plot. To see them, choose 'none' or a different normalization ` +
+                                       `for ${one_layer ? 'this layer' : 'these layers'}: ${layer_list}.`,
+                                       "Oops, some bars may be missing");
                     }
+
                     drawer = new Drawer(settings);
                     drawer.draw();
                     refreshCollapsedNodesTable();
