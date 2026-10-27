@@ -1056,9 +1056,9 @@ class BAMProfilerQuick:
                                'window_stop': w['stop'] - ctg_offset,
                                'window_length': w['length'],
                                'has_coverage': w['has_coverage'],
-                               'num_bases_with_coverage': w['num_bases_with_coverage'],
-                               'num_bases_within_foldrange': w['num_bases_within_foldrange']}
-            headers = ['key', 'bin', 'contig', 'sample', 'window_start', 'window_stop', 'window_length', 'has_coverage', 'num_bases_with_coverage', 'num_bases_within_foldrange']
+                               'mean_coverage': w['mean_coverage'],
+                               'num_bases_with_coverage': w['num_bases_with_coverage']}
+            headers = ['key', 'bin', 'contig', 'sample', 'window_start', 'window_stop', 'window_length', 'has_coverage', 'mean_coverage', 'num_bases_with_coverage']
         else:
             # contig mode: positions are already relative to the contig
             enriched = {}
@@ -1069,9 +1069,9 @@ class BAMProfilerQuick:
                                'window_stop': w['stop'],
                                'window_length': w['length'],
                                'has_coverage': w['has_coverage'],
-                               'num_bases_with_coverage': w['num_bases_with_coverage'],
-                               'num_bases_within_foldrange': w['num_bases_within_foldrange']}
-            headers = ['key', 'contig', 'sample', 'window_start', 'window_stop', 'window_length', 'has_coverage', 'num_bases_with_coverage', 'num_bases_within_foldrange']
+                               'mean_coverage': w['mean_coverage'],
+                               'num_bases_with_coverage': w['num_bases_with_coverage']}
+            headers = ['key', 'contig', 'sample', 'window_start', 'window_stop', 'window_length', 'has_coverage', 'mean_coverage', 'num_bases_with_coverage']
 
         window_output.append(enriched, headers=headers, do_not_write_key_column=True)
 

@@ -720,7 +720,7 @@ class CoverageStats:
         self.discov = self.compute_discov(C=self.spread_evenness_score, D=self.detection)
 
         if return_window_info:
-            self.windows = self._get_window_info(coverage, windows, nonzero_coverage, discov_foldrange_lower, discov_foldrange_upper)
+            self.windows = self._get_window_info(coverage, windows)
 
 
     def get_window_regions(self, coverage, window_length):
@@ -752,7 +752,7 @@ class CoverageStats:
         return windows
 
 
-    def _get_window_info(self, coverage, windows, nonzero_coverage, fold_lower, fold_upper):
+    def _get_window_info(self, coverage, windows):
         """Return a dict-of-dicts with per-window stats for optional window-level output.
 
         Parameters
@@ -761,39 +761,19 @@ class CoverageStats:
             Full nucleotide-level coverage array.
         windows : list
             List of (start, stop, mean_coverage) tuples from get_window_regions().
-        nonzero_coverage : array
-            coverage[coverage > 0], pre-computed by the caller.
-        fold_lower : float
-            Lower fold-range boundary (same as discov_foldrange_lower).
-        fold_upper : float
-            Upper fold-range boundary (same as discov_foldrange_upper).
 
         Returns
         =======
         window_info : dict
             Dict-of-dicts keyed by sequential integer index. Each inner dict has keys:
-            start, stop, length, has_coverage, num_bases_within_foldrange,
+            start, stop, length, has_coverage, mean_coverage,
             num_bases_with_coverage.
         """
         window_info = {}
-
-        if not len(nonzero_coverage):
-            for i, (start, stop, _) in enumerate(windows):
-                window_info[i] = {'start': start, 'stop': stop, 'length': stop - start,
-                                  'has_coverage': 0, 'num_bases_within_foldrange': 0,
-                                  'num_bases_with_coverage': 0}
-            return window_info
-
-        global_median = np.median(nonzero_coverage)
-        lower_bound = fold_lower * global_median
-        upper_bound = fold_upper * global_median
-
         for i, (start, stop, mean_cov) in enumerate(windows):
-            window_cov = coverage[start:stop]
-            num_within = int(np.sum((window_cov >= lower_bound) & (window_cov <= upper_bound)))
             window_info[i] = {'start': start, 'stop': stop, 'length': stop - start,
-                              'has_coverage': int(mean_cov > 0), 'num_bases_within_foldrange': num_within,
-                              'num_bases_with_coverage': int(np.count_nonzero(window_cov))}
+                              'has_coverage': int(mean_cov > 0), 'mean_coverage': mean_cov,
+                              'num_bases_with_coverage': int(np.count_nonzero(coverage[start:stop]))}
 
         return window_info
 
