@@ -157,11 +157,12 @@ def get_args():
     group1D.add_argument(
         '--unambiguous-genome-assignment', default=False, action='store_true',
         help="Use this flag to prevent tRNA-seq seeds from being assigned to tRNA genes in "
-             "multiple genomes or in a single genome and unbinned contigs. Consider what happens "
-             "with two bins. With this flag, if a seed matches genes in both bins, the seed is "
-             "disregarded; if a seed matches genes in one bin and also matches genes in unbinned "
-             "contigs, the seed is also disregarded. The seed can only match one or more genes in "
-             "a single bin. Note that running this program again without this flag appends new "
+             "multiple genomes or in a single genome and unbinned contigs. Each gene is assigned "
+             "the seed that best matches it. Consider what happens with two bins. With this flag, "
+             "if a seed is assigned to genes in both bins, the seed is disregarded; if a seed is "
+             "assigned to genes in one bin and also to genes in unbinned contigs, the seed is also "
+             "disregarded. The seed can only be assigned to one or more genes in a single bin. "
+             "Note that running this program again without this flag appends new "
              "seed/gene assignments to existing ones in the database. With this flag, new results "
              "cannot be appended to existing ones and an error is thrown (unless "
              "`--remove-previous-matches` is used to discard existing assignments).")

@@ -919,62 +919,6 @@ class Integrator(object):
         # which breaks ties between seed permutations below.
         hits_df = hits_df.merge(
             contig_bin_df, how='left', on=['contigs_db_hash', 'gene_contig_name'])
-
-        # For the sake of clarity, here is what happens to each of the different possible
-        # (meta)genomic sources with "unambiguous" tRNA gene assignment.
-        # 1. Single contigs database without bins: The existence of genomes is not assumed, so no
-        #    hits are disregarded.
-        # 2. Single contigs database with collection of bins: disregard seeds with equally strong
-        #    hits that are not confined to a single bin.
-        # 3. Single contigs database with specified bin: disregard seeds with equally strong hits
-        #    that are not confined to the bin.
-        # 4. One or more contigs databases input as "external" genomes: disregard seeds with equally
-        #    strong hits that are not confined to a single contigs database.
-        # 5. "Internal" genomes (bins) from one or more contigs databases: disregard seeds with
-        #    equally strong hits that are not confined to a single bin.
-        # 6. A combination of "internal" and "external" genomes (4 + 5): disregard seeds with
-        #    equally strong hits that are not confined to a single internal genome bin or external
-        #    genome contigs database.
-        if self.genomic_contigs_db_path and not self.collection_name and not self.bin_id: # (1)
-            is_simple_contigs_db_input = True
-        else:
-            is_simple_contigs_db_input = False
-        if self.unambiguous_genome_assignment and not is_simple_contigs_db_input:
-            # Drop hits to genes in multiple bins: partly takes care of (2), (5), and (6).
-            hits_df = hits_df.groupby('seed_contig_name').filter(
-                lambda seed_df: len(seed_df[['contigs_db_hash',
-                                             'profile_db_sample_id',
-                                             'collection_name',
-                                             'bin_id']].drop_duplicates()) == 1)
-            # Drop hits to genes in multiple contigs databases: takes care of (4), partly takes care
-            # of (5) and (6).
-            hits_df = hits_df.groupby('seed_contig_name').filter(
-                lambda seed_df: len(seed_df['contigs_db_hash'].drop_duplicates()) == 1)
-            # Drop hits to genes in unbinned contigs: takes care of (3), finishes taking care of
-            # (2), (5), and (6).
-            if (self.collection_name or
-                (self.internal_genomes_path and not self.external_genomes_path)):
-                hits_df = hits_df[hits_df['bin_id'] != '']
-            elif self.internal_genomes_path and self.external_genomes_path:
-                external_genome_contigs_db_hashes = [
-                    genome_info['contigs_db_info'].hash
-                    for genome_info in self.genome_info_dict.values()
-                    if genome_info['bin_id'] is None]
-                retained_index = []
-                for key, contigs_db_hash, bin_id in zip(hits_df.index, hits_df['contigs_db_hash'], hits_df['bin_id']):
-                    if contigs_db_hash in external_genome_contigs_db_hashes:
-                        retained_index.append(key)
-                        continue
-                    if bin_id != '':
-                        retained_index.append(key)
-                hits_df = hits_df.loc[retained_index]
-
-            if hits_df.empty:
-                raise ConfigError(
-                    "Every tRNA-seq seed aligned equally well to tRNA genes in more than one "
-                    "genome or in unbinned contigs, so none was kept with "
-                    "`--unambiguous-genome-assignment`. The tRNA-seq contigs database was not "
-                    "changed.")
         ##################################################
 
         # Multiple permutations of the same seed may be retained after filtering by score. There are
@@ -1159,6 +1103,67 @@ class Integrator(object):
             raise ConfigError(
                 "tRNA-seq seeds aligned to tRNA genes, but in choosing one seed per gene, no seed "
                 "was chosen for any gene. The tRNA-seq contigs database was not changed.")
+        ##################################################
+
+        ##################################################
+        # For the sake of clarity, here is what happens to each of the different possible
+        # (meta)genomic sources with "unambiguous" tRNA gene assignment. Seeds are judged by the
+        # genes for which they were chosen, so that a seed is not disregarded for equally strong
+        # hits to genes for which other seeds were chosen, and so that a worse seed is not chosen
+        # for a gene in place of a disregarded seed.
+        # 1. Single contigs database without bins: The existence of genomes is not assumed, so no
+        #    hits are disregarded.
+        # 2. Single contigs database with collection of bins: disregard seeds chosen for genes that
+        #    are not confined to a single bin.
+        # 3. Single contigs database with specified bin: disregard seeds chosen for genes that are
+        #    not confined to the bin.
+        # 4. One or more contigs databases input as "external" genomes: disregard seeds chosen for
+        #    genes that are not confined to a single contigs database.
+        # 5. "Internal" genomes (bins) from one or more contigs databases: disregard seeds chosen
+        #    for genes that are not confined to a single bin.
+        # 6. A combination of "internal" and "external" genomes (4 + 5): disregard seeds chosen for
+        #    genes that are not confined to a single internal genome bin or external genome contigs
+        #    database.
+        if self.genomic_contigs_db_path and not self.collection_name and not self.bin_id: # (1)
+            is_simple_contigs_db_input = True
+        else:
+            is_simple_contigs_db_input = False
+        if self.unambiguous_genome_assignment and not is_simple_contigs_db_input:
+            # Drop seeds chosen for genes in multiple bins: partly takes care of (2), (5), and (6).
+            hits_df = hits_df.groupby('seed_contig_name').filter(
+                lambda seed_df: len(seed_df[['contigs_db_hash',
+                                             'profile_db_sample_id',
+                                             'collection_name',
+                                             'bin_id']].drop_duplicates()) == 1)
+            # Drop seeds chosen for genes in multiple contigs databases: takes care of (4), partly
+            # takes care of (5) and (6).
+            hits_df = hits_df.groupby('seed_contig_name').filter(
+                lambda seed_df: len(seed_df['contigs_db_hash'].drop_duplicates()) == 1)
+            # Drop hits to genes in unbinned contigs: takes care of (3), finishes taking care of
+            # (2), (5), and (6).
+            if (self.collection_name or
+                (self.internal_genomes_path and not self.external_genomes_path)):
+                hits_df = hits_df[hits_df['bin_id'] != '']
+            elif self.internal_genomes_path and self.external_genomes_path:
+                external_genome_contigs_db_hashes = [
+                    genome_info['contigs_db_info'].hash
+                    for genome_info in self.genome_info_dict.values()
+                    if genome_info['bin_id'] is None]
+                retained_index = []
+                for key, contigs_db_hash, bin_id in zip(
+                    hits_df.index, hits_df['contigs_db_hash'], hits_df['bin_id']):
+                    if contigs_db_hash in external_genome_contigs_db_hashes:
+                        retained_index.append(key)
+                        continue
+                    if bin_id != '':
+                        retained_index.append(key)
+                hits_df = hits_df.loc[retained_index]
+
+            if hits_df.empty:
+                raise ConfigError(
+                    "Every tRNA-seq seed was chosen for tRNA genes in more than one genome or in "
+                    "unbinned contigs, so none was kept with `--unambiguous-genome-assignment`. "
+                    "The tRNA-seq contigs database was not changed.")
         ##################################################
 
         # Add seed gene callers IDs to the table. (Both seed "contig" names and gene callers IDs are
