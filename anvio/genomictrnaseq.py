@@ -373,6 +373,9 @@ class Integrator(object):
         self.run_quiet = rq
         self.progress = p
 
+        # The combination of (meta)genomic input arguments determines how databases are accessed.
+        self.check_genomic_input_args()
+
         self.trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path, expecting='contigs')
 
         # Store information on accessing (meta)genomes.
@@ -473,6 +476,37 @@ class Integrator(object):
             self.sanity_check()
 
 
+    def check_genomic_input_args(self):
+        """Check the combination of (meta)genomic input arguments."""
+        if not (self.genomic_contigs_db_path or
+                self.internal_genomes_path or
+                self.external_genomes_path):
+            raise ConfigError("A (meta)genomic input is required: `--contigs-db`, "
+                              "`--internal-genomes`, or `--external-genomes`.")
+
+        if (self.genomic_contigs_db_path and
+            (self.internal_genomes_path or self.external_genomes_path)):
+            raise ConfigError("`--internal-genomes` and `--external-genomes` cannot be used with "
+                              "`--contigs-db`.")
+
+        if ((self.genomic_profile_db_path or self.collection_name) and
+            not (self.genomic_contigs_db_path and
+                 self.genomic_profile_db_path and
+                 self.collection_name)):
+            raise ConfigError("A collection must be provided using `--contigs-db`, `--profile-db`, "
+                              "and `--collection-name`.")
+
+        if self.bin_id and self.bin_ids_path:
+            raise ConfigError("`--bin-id` and `--bin-ids-file` cannot be used together.")
+
+        if ((self.bin_id or self.bin_ids_path) and
+            not (self.genomic_contigs_db_path and
+                 self.genomic_profile_db_path and
+                 self.collection_name)):
+            raise ConfigError("Bins provided with `--bin-id` or `--bin-ids-file` also require "
+                              "`--contigs-db`, `--profile-db`, and `--collection-name`.")
+
+
     def sanity_check(self, check_permuted_seeds_fasta=False):
         """Check the feasibility of args from initialization."""
         if self.trnaseq_contigs_db_info.variant != 'trnaseq':
@@ -523,32 +557,6 @@ class Integrator(object):
         # Right now there are no specific checks here on the format of these tables.
         filesnpaths.is_file_exists(self.seeds_specific_txt_path)
         filesnpaths.is_file_exists(self.modifications_txt_path)
-
-        # Do basic checks of the combinations of (meta)genomic input arguments.
-        if not (self.genomic_contigs_db_path or
-                self.internal_genomes_path or
-                self.external_genomes_path):
-            raise ConfigError("A (meta)genomic input is required: `--contigs-db`, "
-                              "`--internal-genomes`, or `--external-genomes`.")
-
-        if (self.genomic_contigs_db_path and
-            (self.internal_genomes_path or self.external_genomes_path)):
-            raise ConfigError("`--internal-genomes` and `--external-genomes` cannot be used with "
-                              "`--contigs-db`.")
-
-        if ((self.genomic_profile_db_path or self.collection_name) and
-            not (self.genomic_contigs_db_path and
-                 self.genomic_profile_db_path and
-                 self.collection_name)):
-            raise ConfigError("A collection must be provided using `--contigs-db`, `--profile-db`, "
-                              "and `--collection-name`.")
-
-        if (self.bin_id and
-            not (self.genomic_contigs_db_path and
-                 self.genomic_profile_db_path and
-                 self.collection_name)):
-            raise ConfigError("A specific bin provided with `--bin-id` also requires "
-                              "`--contigs-db`, `--profile-db`, and `--collection-name`.")
 
         # Prevent a confused user from providing a tRNA-seq contigs database in lieu of a
         # (meta)genomic contigs database.
