@@ -1059,6 +1059,15 @@ class Integrator(object):
         coverage_df = coverage_df.rename({'contig_name': 'seed_contig_name'}, axis=1)
         coverage_df = coverage_df[
             coverage_df['seed_contig_name'].isin(hits_df['seed_contig_name'].unique())]
+        missing_seed_contig_names = sorted(
+            set(hits_df['seed_contig_name']) - set(coverage_df['seed_contig_name']))
+        if missing_seed_contig_names:
+            raise ConfigError(
+                f"{len(missing_seed_contig_names)} tRNA-seq seeds aligned to tRNA genes are not in "
+                f"the table of seed coverages, '{self.seeds_specific_txt_path}', e.g., "
+                f"'{missing_seed_contig_names[0]}'. The table should be made by "
+                "`anvi-tabulate-trnaseq` from the same tRNA-seq contigs database. The tRNA-seq "
+                "contigs database was not changed.")
         coverage_df = hits_df.merge(coverage_df, on='seed_contig_name')
 
         # Isolate the nucleotide at wobble position 34 in seeds that hit tRNAs with A34.
