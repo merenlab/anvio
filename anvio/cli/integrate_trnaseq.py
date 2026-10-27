@@ -168,10 +168,12 @@ def get_args():
              "if a seed is assigned to genes in both bins, the seed is disregarded; if a seed is "
              "assigned to genes in one bin and also to genes in unbinned contigs, the seed is also "
              "disregarded. The seed can only be assigned to one or more genes in a single bin. "
-             "Note that running this program again without this flag appends new "
-             "seed/gene assignments to existing ones in the database. With this flag, new results "
-             "cannot be appended to existing ones and an error is thrown (unless "
-             "`--remove-previous-matches` is used to discard existing assignments).")
+             "This flag requires bins, internal genomes, or external genomes: a contigs database "
+             "alone is treated as a single (meta)genome. Note that running this program again "
+             "without this flag appends new seed/gene assignments to existing ones in the "
+             "database. With this flag, new results cannot be appended to existing ones and an "
+             "error is thrown (unless `--remove-previous-matches` is used to discard existing "
+             "assignments).")
 
     group1E = parser.add_argument_group(
         'TEMPORARY FILES',

@@ -506,6 +506,15 @@ class Integrator(object):
             raise ConfigError("Bins provided with `--bin-id` or `--bin-ids-file` also require "
                               "`--contigs-db`, `--profile-db`, and `--collection-name`.")
 
+        if (self.unambiguous_genome_assignment and
+            self.genomic_contigs_db_path and
+            not self.collection_name):
+            raise ConfigError(
+                "`--unambiguous-genome-assignment` requires bins (`--collection-name`, optionally "
+                "with `--bin-id` or `--bin-ids-file`), internal genomes, or external genomes. With "
+                "a contigs database alone, all of its tRNA genes are treated as one (meta)genome, "
+                "so no seed can be assigned to genes in more than one genome.")
+
 
     def sanity_check(self, check_permuted_seeds_fasta=False):
         """Check the feasibility of args from initialization."""
@@ -1231,8 +1240,8 @@ class Integrator(object):
         # genes for which they were chosen, so that a seed is not disregarded for equally strong
         # hits to genes for which other seeds were chosen, and so that a worse seed is not chosen
         # for a gene in place of a disregarded seed.
-        # 1. Single contigs database without bins: The existence of genomes is not assumed, so no
-        #    hits are disregarded.
+        # 1. Single contigs database without bins: The existence of genomes is not assumed, so
+        #    unambiguous assignment is refused (see `check_genomic_input_args`).
         # 2. Single contigs database with collection of bins: disregard seeds chosen for genes that
         #    are not confined to a single bin.
         # 3. Single contigs database with specified bin: disregard seeds chosen for genes that are
@@ -1244,11 +1253,7 @@ class Integrator(object):
         # 6. A combination of "internal" and "external" genomes (4 + 5): disregard seeds chosen for
         #    genes that are not confined to a single internal genome bin or external genome contigs
         #    database.
-        if self.genomic_contigs_db_path and not self.collection_name and not self.bin_id: # (1)
-            is_simple_contigs_db_input = True
-        else:
-            is_simple_contigs_db_input = False
-        if self.unambiguous_genome_assignment and not is_simple_contigs_db_input:
+        if self.unambiguous_genome_assignment:
             # Drop seeds chosen for genes in multiple bins: partly takes care of (2), (5), and (6).
             hits_df = hits_df.groupby('seed_contig_name').filter(
                 lambda seed_df: len(seed_df[['contigs_db_hash',
