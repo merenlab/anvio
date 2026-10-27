@@ -118,6 +118,13 @@ class SeedPermuter(object):
                 f"The database at '{self.contigs_db_path}' was a '{contigs_db_info.variant}' "
                 "variant, not the required 'trnaseq' variant.")
 
+        with contigs_db_info.load_db() as contigs_db:
+            seed_count = contigs_db.get_row_counts_from_table(tables.contig_sequences_table_name)
+        if not seed_count:
+            raise ConfigError(
+                f"The tRNA-seq contigs database at '{self.contigs_db_path}' does not contain any "
+                "seeds.")
+
         filesnpaths.is_file_exists(self.modifications_txt_path)
 
         if not (0 <= self.min_nt_frequency < 1):
