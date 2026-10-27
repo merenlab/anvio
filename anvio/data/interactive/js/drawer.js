@@ -1352,6 +1352,18 @@ Drawer.prototype.calculate_font_size_for_text_layer = function(layer) {
     }
 };
 
+// position of the center of a diverging layer: an x coordinate for phylograms, a radius for circle phylograms.
+// bars and the split layer background both use it, so they always agree on where the center is
+Drawer.prototype.get_diverging_center_position = function(layer) {
+    var half_height = parseFloat(layer.get_visual_attribute('height')) / 2;
+
+    if (this.settings['tree-type'] == 'phylogram') {
+        return this.layer_boundaries[layer.order][1] - half_height;
+    } else {
+        return this.layer_boundaries[layer.order][0] + half_height;
+    }
+};
+
 Drawer.prototype.draw_layer_backgrounds = function() {
     this.iterate_layers(function(layer) {
         createBin('tree_bin', 'layer_background_' + layer.order);
@@ -1398,8 +1410,38 @@ Drawer.prototype.draw_layer_backgrounds = function() {
             _opacity = parseFloat(this.settings['background-opacity']);
         }
 
+        // diverging bar layers get a split background: left color below the center, right color above it
+        var center = layer.get_visual_attribute('center');
+        var is_diverging_bar = (layer.is_numerical && layer.get_visual_attribute('type') == 'bar' && center !== '' && center !== undefined && !isNaN(parseFloat(center)));
+
         // draw backgrounds
-        if (this.settings['tree-type']=='phylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') == 'bar') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text')))
+        if (this.settings['tree-type']=='phylogram' && is_diverging_bar)
+        {
+            var center_x = this.get_diverging_center_position(layer);
+
+            // above center: from the center towards the start of the layer
+            drawPhylogramRectangle('layer_background_' + layer.order,
+                'all',
+                this.layer_boundaries[layer.order][0],
+                this.width / 2,
+                this.width,
+                center_x - this.layer_boundaries[layer.order][0],
+                layer.get_visual_attribute('color'),
+                _opacity,
+                false);
+
+            // below center: from the center towards the end of the layer
+            drawPhylogramRectangle('layer_background_' + layer.order,
+                'all',
+                center_x,
+                this.width / 2,
+                this.width,
+                this.layer_boundaries[layer.order][1] - center_x,
+                layer.get_visual_attribute('color-start'),
+                _opacity,
+                false);
+        }
+        else if (this.settings['tree-type']=='phylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') == 'bar') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text')))
         {
             drawPhylogramRectangle('layer_background_' + layer.order,
                 'all',
@@ -1413,7 +1455,38 @@ Drawer.prototype.draw_layer_backgrounds = function() {
         }
 
 
-        if (this.settings['tree-type'] == 'circlephylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') == 'bar') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text')))
+        if (this.settings['tree-type'] == 'circlephylogram' && is_diverging_bar)
+        {
+            var _first = this.tree.leaves[0];
+            var _last = this.tree.leaves[this.tree.leaves.length - 1];
+            var _large_arc_flag = (Math.abs(_last.angle - _first.angle) + _first.size / 2 + _last.size / 2 > Math.PI) ? 1:0;
+            var center_radius = this.get_diverging_center_position(layer);
+
+            // below center: inner part of the ring
+            drawPie('layer_background_' + layer.order,
+                'all',
+                _first.angle - _first.size / 2,
+                _last.angle + _last.size / 2,
+                this.layer_boundaries[layer.order][0],
+                center_radius,
+                _large_arc_flag,
+                layer.get_visual_attribute('color-start'),
+                _opacity,
+                false);
+
+            // above center: outer part of the ring
+            drawPie('layer_background_' + layer.order,
+                'all',
+                _first.angle - _first.size / 2,
+                _last.angle + _last.size / 2,
+                center_radius,
+                this.layer_boundaries[layer.order][1],
+                _large_arc_flag,
+                layer.get_visual_attribute('color'),
+                _opacity,
+                false);
+        }
+        else if (this.settings['tree-type'] == 'circlephylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') == 'bar') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text')))
         {
             var _first = this.tree.leaves[0];
             var _last = this.tree.leaves[this.tree.leaves.length - 1];
@@ -1514,7 +1587,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                 else if (is_diverging && layer.get_visual_attribute('type') == 'line')
                 {
                     // diverging line: continuous path, all points drawn relative to center anchor
-                    var center_x = this.layer_boundaries[layer.order][1] - half_height;
+                    var center_x = this.get_diverging_center_position(layer);
                     var signed_px = this.layerdata_dict[q.label][layer.index];
 
                     if (i == 0) {
@@ -1528,7 +1601,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                 else if (is_diverging)
                 {
                     // diverging bar: draw from center anchor in both directions
-                    var center_x = this.layer_boundaries[layer.order][1] - half_height;
+                    var center_x = this.get_diverging_center_position(layer);
                     var signed_px = this.layerdata_dict[q.label][layer.index];
                     var abs_px = Math.abs(signed_px);
 
@@ -1631,7 +1704,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                 else if (is_diverging && layer.get_visual_attribute('type') == 'line')
                 {
                     // diverging line circular: continuous arc through center radius
-                    var center_radius = this.layer_boundaries[layer.order][0] + half_height;
+                    var center_radius = this.get_diverging_center_position(layer);
                     var signed_px = this.layerdata_dict[q.label][layer.index];
                     var point_radius = center_radius + signed_px;
                     var start_angle = q.angle - q.size / 2;
@@ -1653,7 +1726,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                 else if (is_diverging)
                 {
                     // diverging bar circular: draw from center radius in both directions
-                    var center_radius = this.layer_boundaries[layer.order][0] + half_height;
+                    var center_radius = this.get_diverging_center_position(layer);
                     var signed_px = this.layerdata_dict[q.label][layer.index];
                     var abs_px = Math.abs(signed_px);
 
