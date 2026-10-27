@@ -182,7 +182,7 @@ def get_args():
     group1E.add_argument(
         '-d', '--blast-dir', metavar='DIRECTORY_PATH', type=str, default=None,
         help="Directory to store BLAST databases and tables generated in searching original and "
-             "permuted seeds against tRNA genes.")
+             "permuted seeds against tRNA genes. The directory is created if it does not exist.")
 
     group1F = parser.add_argument_group('OTHER')
     group1F.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))

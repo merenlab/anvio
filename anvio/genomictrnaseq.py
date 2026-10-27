@@ -631,6 +631,10 @@ class Integrator(object):
                 "The maximum number of mismatches allowed in a seed-gene alignment must be a "
                 f"non-negative integer, not the provided value of {self.max_mismatches}")
 
+        # Like `--tmp-dir`, the BLAST directory is created if needed in an existing directory.
+        if not os.path.exists(self.blast_dir):
+            filesnpaths.is_output_dir_writable(os.path.dirname(os.path.abspath(self.blast_dir)))
+            os.mkdir(self.blast_dir)
         filesnpaths.is_output_dir_writable(self.blast_dir)
 
         # Ignore this sanity check when using `genomictrnaseq.Permuter` FASTA output.
