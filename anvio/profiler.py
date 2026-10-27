@@ -770,7 +770,7 @@ class BAMProfilerQuick:
             if self.report_minimal:
                 return ['bin', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov']
             else:
-                return ['bin', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov', 'num_windows', 'prop_windows_covered', 'prop_cov_within_foldrange', 'dis_cov']
+                return ['bin', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov', 'num_windows', 'actual_prop_windows_covered', 'expected_prop_windows_covered', 'normalized_spread', 'window_depth_evenness', 'spread_evenness_score', 'dis_cov']
 
         elif reporting_genes:
             if self.report_minimal:
@@ -782,7 +782,7 @@ class BAMProfilerQuick:
             if self.report_minimal:
                 return ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov']
             else:
-                return ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov', 'num_windows', 'prop_windows_covered', 'prop_cov_within_foldrange', 'dis_cov']
+                return ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov', 'num_windows', 'actual_prop_windows_covered', 'expected_prop_windows_covered', 'normalized_spread', 'window_depth_evenness', 'spread_evenness_score', 'dis_cov']
 
         raise ConfigError("This function reached a point it should have never :(")
 
@@ -922,7 +922,7 @@ class BAMProfilerQuick:
             C = utils.CoverageStats(coverage_array, skip_outliers=True, discov_window_length=self.window_length,
                         discov_window_percentage = self.window_length_as_percentage, discov_min_window_len = self.min_window_length,
                         discov_foldrange_lower=self.foldrange_lower, discov_foldrange_upper=self.foldrange_upper,
-                        discov_alpha=self.alpha, discov_formula=self.discov_formula, return_window_info=window_output is not None)
+                        discov_alpha=self.alpha, discov_formula=self.discov_formula, return_window_info=window_output is not None, num_reads=num_reads)
             output.write(f"{bin_name}\t"
                          f"{bam_file_name}\t"
                          f"{bin_data['length']}\t"
@@ -937,7 +937,10 @@ class BAMProfilerQuick:
                          f"{C.std:.4}\t"
                          f"{C.num_windows}\t"
                          f"{C.prop_win_covered:.4}\t"
-                         f"{C.fold_range_coverage_depth:.4}\t"
+                         f"{C.spread_expected:.4}\t"
+                         f"{C.spread_norm:.4}\t"
+                         f"{C.window_depth_evenness:.4}\t"
+                         f"{C.spread_evenness_score:.4}\t"
                          f"{C.discov:.4}\n")
             if window_output:
                 self._write_window_rows(window_output, bam_file_name, C.windows, bin_name=bin_name, contig_boundaries=contig_boundaries)
@@ -968,7 +971,7 @@ class BAMProfilerQuick:
             C = utils.CoverageStats(coverage_obj.c, skip_outliers=True, discov_window_length=self.window_length,
                         discov_window_percentage = self.window_length_as_percentage, discov_min_window_len = self.min_window_length,
                         discov_foldrange_lower=self.foldrange_lower, discov_foldrange_upper=self.foldrange_upper,
-                        discov_alpha=self.alpha, discov_formula=self.discov_formula, return_window_info=window_output is not None)
+                        discov_alpha=self.alpha, discov_formula=self.discov_formula, return_window_info=window_output is not None, num_reads=coverage_obj.num_reads)
             output.write(f"{contig_name}\t"
                          f"{bam_file_name}\t"
                          f"{self.contigs_basic_info[contig_name]['length']}\t"
@@ -983,7 +986,10 @@ class BAMProfilerQuick:
                          f"{C.std:.4}\t"
                          f"{C.num_windows}\t"
                          f"{C.prop_win_covered:.4}\t"
-                         f"{C.fold_range_coverage_depth:.4}\t"
+                         f"{C.spread_expected:.4}\t"
+                         f"{C.spread_norm:.4}\t"
+                         f"{C.window_depth_evenness:.4}\t"
+                         f"{C.spread_evenness_score:.4}\t"
                          f"{C.discov:.4}\n")
             if window_output:
                 self._write_window_rows(window_output, bam_file_name, C.windows, contig_name=contig_name)
