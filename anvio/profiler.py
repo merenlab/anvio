@@ -2618,7 +2618,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # the crux of the profiling
         for atomic_data_field in self.essential_data_fields_for_anvio_profiles:
             view_data_splits, view_data_contigs = contigops.get_atomic_data(self.sample_id, self.contigs, atomic_data_field,
-                                                                            zero_cov_splits=zero_cov_split_names)
+                                                                            zero_cov_splits=zero_cov_split_names,
+                                                                            zero_cov_contigs=zero_cov_contig_names)
 
             table_name = '_'.join([atomic_data_field, 'splits'])
             TablesForViews(self.profile_db_path,
