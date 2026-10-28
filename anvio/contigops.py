@@ -180,7 +180,7 @@ class Split:
 class Auxiliary:
     def __init__(self, split, min_coverage_for_variability=10, report_variability_full=False,
                  profile_SCVs=False, skip_INDEL_profiling=False, skip_SNV_profiling=False,
-                 min_percent_identity=None, skip_edges=0):
+                 min_percent_identity=None, skip_edges=0, skip_SNV_storage=False, min_indel_length=0):
 
         if anvio.DEBUG:
             self.run = terminal.Run()
@@ -194,6 +194,13 @@ class Auxiliary:
         self.skip_INDEL_profiling = skip_INDEL_profiling
         self.report_variability_full = report_variability_full
         self.skip_edges = skip_edges
+        # SNVs are still computed (the split's variation density stays identical), but their
+        # per-position rows are dropped instead of being returned for storage
+        self.skip_SNV_storage = skip_SNV_storage
+        # indels shorter than this are skipped as they are encountered in reads. A stored indel row
+        # depends only on that indel and the split's coverage array, so the rows that are kept are
+        # identical to those of a full profile filtered afterwards.
+        self.min_indel_length = min_indel_length or 0
 
         # used during array processing
         self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
@@ -503,6 +510,9 @@ class Auxiliary:
                 read.vectorize()
 
                 for ins_segment in read.iterate_blocks_by_mapping_type(mapping_type=1):
+                    if ins_segment.shape[0] < self.min_indel_length:
+                        continue
+
                     # Get the position and sequence of the insertion, create hash as a key for storage
                     ins_seq = ''.join([chr(x) for x in ins_segment[:, 1]])
                     ins_pos = ins_segment[0, 0] - self.split.start
@@ -521,6 +531,9 @@ class Auxiliary:
                 for del_segment in read.iterate_blocks_by_mapping_type(mapping_type=2):
                     # Get the position and length of the deletion, create hash as a key for storage
                     del_len = del_segment.shape[0]
+                    if del_len < self.min_indel_length:
+                        continue
+
                     del_pos = del_segment[0, 0] - self.split.start
                     indel_hash = hash((del_pos, del_len))
 
@@ -565,6 +578,11 @@ class Auxiliary:
         self.split.num_SNV_entries = len(nt_profile.d['coverage'])
         self.split.num_INDEL_entries = len(self.split.INDEL_profiles)
         self.variation_density = self.split.num_SNV_entries * 1000.0 / self.split.length
+
+        if self.skip_SNV_storage:
+            # the density above is kept; the rows are not
+            self.split.SNV_profiles = {}
+            self.split.num_SNV_entries = 0
 
         if anvio.DEBUG:
             self.run.info_single('%d SNVs to report' % (self.split.num_SNV_entries), nl_before=0, nl_after=0, level=2)

@@ -578,6 +578,26 @@ D = {
                      "having this information, you can skip storing this information by providing this flag. Note: If "
                      "--skip-SNV-profiling is provided, --skip-INDEL-profiling will automatically be enforced."}
                 ),
+    'skip-SNV-storage': (
+            ['--skip-SNV-storage'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Compute single-nucleotide variants as usual (so the split-level 'variability' view is "
+                     "identical), but do not store the per-position SNV rows in the profile database. The "
+                     "variable nucleotides table will be empty. Useful when only indels are needed downstream "
+                     "(e.g., `anvi-report-indels`) and the SNV table would be enormous, which is the case "
+                     "with long reads and --report-variability-full. Indel profiling is not affected."}
+                ),
+    'min-indel-length': (
+            ['--min-indel-length'],
+            {'metavar': 'INT',
+             'default': 0,
+             'type': int,
+             'help': "Only store indels of at least this length (in bp). Shorter indels are discarded as they "
+                     "are encountered in reads, which saves a lot of memory and time with error-prone long "
+                     "reads. The stored indels are identical to what you would get by filtering a full "
+                     "profile afterwards. The default, 0, stores all indels."}
+                ),
     'return-AA-frequencies-instead': (
             ['--return-AA-frequencies-instead'],
             {'default': False,

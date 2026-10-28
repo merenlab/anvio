@@ -964,6 +964,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.skip_SNV_profiling = A('skip_SNV_profiling')
         self.skip_INDEL_profiling = A('skip_INDEL_profiling')
+        self.skip_SNV_storage = A('skip_SNV_storage') or False
+        self.min_indel_length = int(A('min_indel_length') or 0)
         self.profile_SCVs = A('profile_SCVs')
         self.min_percent_identity = A('min_percent_identity')
         self.fetch_filter = A('fetch_filter')
@@ -999,6 +1001,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         # whether the profile database is a blank (without any BAM files or reads):
         self.blank = A('blank_profile')
+
+        if self.min_indel_length < 0:
+            raise ConfigError("The minimum indel length (--min-indel-length) can't be negative.")
 
         if self.skip_SNV_profiling and self.skip_edges > 0:
             raise ConfigError(f"You can't ask anvi'o to skip profiling of SNVs and also ask to ignore {self.skip_edges} "
@@ -1250,6 +1255,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'SNVs_profiled': not self.skip_SNV_profiling,
                        'SCVs_profiled': self.profile_SCVs,
                        'INDELs_profiled': not self.skip_INDEL_profiling,
+                       'SNVs_stored': (not self.skip_SNV_profiling) and (not self.skip_SNV_storage),
+                       'min_indel_length': self.min_indel_length,
                        'min_percent_identity': self.min_percent_identity or 0,
                        'fetch_filter': self.fetch_filter,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
@@ -1318,6 +1325,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.run.info(' - How many edge nts ignore for SNV profiling?', self.skip_edges, mc='red')
         self.run.info('Profile single-codon variants (SCVs/+SAAVs)?', self.profile_SCVs)
         self.run.info('Profile insertion/deletions (INDELs)?', not self.skip_INDEL_profiling)
+        self.run.info('Store SNV rows?', not (self.skip_SNV_profiling or self.skip_SNV_storage))
+        self.run.info('Minimum indel length to store', self.min_indel_length)
         self.run.info('Minimum coverage to calculate SNVs', self.min_coverage_for_variability)
         self.run.info('Report FULL variability data?', self.report_variability_full)
 
@@ -1657,6 +1666,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # Profiling flags
         ctx.skip_SNV_profiling = self.skip_SNV_profiling
         ctx.skip_INDEL_profiling = self.skip_INDEL_profiling
+        ctx.skip_SNV_storage = self.skip_SNV_storage
+        ctx.min_indel_length = self.min_indel_length
         ctx.profile_SCVs = self.profile_SCVs
         ctx.min_coverage_for_variability = self.min_coverage_for_variability
         ctx.report_variability_full = self.report_variability_full
@@ -1993,6 +2004,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                                       profile_SCVs=self.profile_SCVs,
                                                       skip_INDEL_profiling=self.skip_INDEL_profiling,
                                                       skip_SNV_profiling=self.skip_SNV_profiling,
+                                                      skip_SNV_storage=self.skip_SNV_storage,
+                                                      min_indel_length=self.min_indel_length,
                                                       min_coverage_for_variability=self.min_coverage_for_variability,
                                                       report_variability_full=self.report_variability_full,
                                                       min_percent_identity=self.min_percent_identity,
@@ -2479,7 +2492,8 @@ class WorkerContext:
         contig_name_to_genes, genes_in_contigs_dict, nt_positions_info,
         a_meta, sample_id, skip_SNV_profiling, skip_INDEL_profiling,
         profile_SCVs, min_coverage_for_variability, report_variability_full,
-        min_percent_identity, skip_edges, input_file_path, fetch_filter,
+        min_percent_identity, skip_edges, skip_SNV_storage, min_indel_length,
+        input_file_path, fetch_filter,
         contig_names, contig_lengths
 
     If process_contig or its callees are modified to access new attributes,
