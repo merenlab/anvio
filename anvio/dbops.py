@@ -5156,7 +5156,7 @@ class ProfileSuperclass(object):
             table_data, _ = profile_db.db.get_view_data(f'{table_name}_splits')
 
             for bin_id in collection:
-                # if we also have to report DisCov, we'll need to call CoverageStats on these arrays later anyway, so we skip it here
+                # if we also have to report discov, we'll need to call CoverageStats on these arrays later anyway, so we skip it here
                 if calculate_Q2Q3_carefully and table_name == 'mean_coverage_Q2Q3' and not report_discov:
                     self.collection_profile[bin_id][table_name] = {}
                     # we need to do something specific here.

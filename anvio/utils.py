@@ -524,7 +524,7 @@ def tar_extract_file(input_file_path, output_file_path=None, keep_original=True)
 
 
 def validate_discov_params(window_length, window_length_as_percentage, min_window_length, alpha, discov_formula, require_window_param=True):
-    """Validate Distribution of Coverage (DisCov) parameters and raise ConfigError for any invalid combination.
+    """Validate distribution of coverage (discov) parameters and raise ConfigError for any invalid combination.
 
     Parameters
     ==========
@@ -535,7 +535,7 @@ def validate_discov_params(window_length, window_length_as_percentage, min_windo
     min_window_length : int or None
         Minimum window length when using window_length_as_percentage.
     alpha : float
-        Weight of S in the DisCov score. Must be in [0, 1].
+        Weight of S in the discov score. Must be in [0, 1].
     discov_formula : str
         Combination formula. Must be 'linear' or 'geometric'.
     require_window_param : bool
@@ -544,7 +544,7 @@ def validate_discov_params(window_length, window_length_as_percentage, min_windo
         defaults when the user omits both flags.
     """
     if require_window_param and not window_length and not window_length_as_percentage:
-        raise ConfigError("In order to compute distribution of coverage (DisCov), we need you to specify a scheme "
+        raise ConfigError("In order to compute distribution of coverage (discov), we need you to specify a scheme "
                           "for setting the window length. Either provide an exact length using --window-length or a "
                           "percentage value (as an integer) using --window-length-as-percentage.")
 
@@ -552,7 +552,7 @@ def validate_discov_params(window_length, window_length_as_percentage, min_windo
         raise ConfigError("Please choose either --window-length or --window-length-as-percentage, not both.")
 
     if (window_length and window_length <= 0) or (window_length_as_percentage and window_length_as_percentage <= 0):
-        raise ConfigError("A positive window length (or percentage) is required for computing distribution of coverage (DisCov).")
+        raise ConfigError("A positive window length (or percentage) is required for computing distribution of coverage (discov).")
 
     if window_length_as_percentage and window_length_as_percentage > 100:
         raise ConfigError("We cannot work with windows that are longer than 100% of a given sequence. Please change your "
@@ -566,11 +566,11 @@ def validate_discov_params(window_length, window_length_as_percentage, min_windo
 
     if alpha is None:
         raise ConfigError("You'd better be a programmer messing with stuff, because it is not supposed to be possible "
-                          "to pass a None value for the DisCov alpha parameter. Nor is it advisable (because it will "
+                          "to pass a None value for the discov alpha parameter. Nor is it advisable (because it will "
                           "throw off the calculation), so we are stopping the show right here.")
 
     if alpha < 0 or alpha > 1:
-        raise ConfigError("The --alpha parameter for DisCov should take a value between 0 and 1 (inclusive). Keep in "
+        raise ConfigError("The --alpha parameter for discov should take a value between 0 and 1 (inclusive). Keep in "
                           "mind that it is going to be used to combine S and E into the spread-evenness score as either "
                           "C = αS + (1-α)E or C = S^α * E^(1-α). Hopefully that helps explain these restrictions :)")
 
@@ -609,7 +609,7 @@ class CoverageStats:
     Finally, we compute discov by adding detection on top of the spread-evenness score. The boost
     provided by the detection value is modulated so that large values yield a disproportionately larger
     boost than small values (since small detection does not necessarily imply absence).
-    Discov = min(1, C + D^2)
+    discov = min(1, C + D^2)
 
     Parameters
     ==========
@@ -625,7 +625,7 @@ class CoverageStats:
         Specifies the minimum window length when discov_window_percentage is used. If None is passed, it will
         be converted to 0
     discov_alpha : float
-        A value in [0,1] that indicates how much to weight S over E in the Discov score
+        A value in [0,1] that indicates how much to weight S over E in the discov score
     discov_formula : string
         Can be 'linear' or 'geometric', to choose which formula to use.
     num_reads : int, None

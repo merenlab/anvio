@@ -33,7 +33,7 @@ CONTIG_PERCENTAGE_LEN_DEFAULT = constants.discov_default_contig_window_percentag
 def main():
     args = get_args()
 
-    # set default window size for DisCov if no related arguments are provided
+    # set default window size for discov if no related arguments are provided
     if not args.window_length and not args.window_length_as_percentage:
         if args.collection_txt:
             args.window_length = COLLECTION_WLEN_DEFAULT

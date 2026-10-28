@@ -103,8 +103,8 @@ def get_args():
                                         are summarizing a standard profile).")
     groupE = parser.add_argument_group('COMMONS', "Common parameters for both pan and standard profile summaries.")
     groupF = parser.add_argument_group('EXTRA', "Extra stuff because you're extra.")
-    groupG = parser.add_argument_group('DISTRIBUTION OF COVERAGE (DISCOV)', "Parameters for computing the DisCov metric \
-                                        as part of the summary (requires `--report-discov`). DisCov quantifies coverage spread \
+    groupG = parser.add_argument_group('DISTRIBUTION OF COVERAGE (DISCOV)', "Parameters for computing the discov metric \
+                                        as part of the summary (requires `--report-discov`). Discov quantifies coverage spread \
                                         (S) and evenness (E) and combines them into a single score.")
 
     groupA.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))

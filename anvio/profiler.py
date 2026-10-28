@@ -422,12 +422,12 @@ class BAMProfilerQuick:
         self.run.info('Contigs DB', self.contigs_db_path)
         self.run.info('Num BAM files', len(self.bam_file_paths))
         self.run.info('Reporting', 'MINIMAL' if self.report_minimal else 'EVERYTHING', mc="red" if self.report_minimal else "green")
-        if not self.report_minimal and not self.gene_level_stats: # report parameters for DisCov
-            self.run.info('DisCov window length', self.window_length if self.window_length else f"{self.window_length_as_percentage}% of sequence")
+        if not self.report_minimal and not self.gene_level_stats: # report parameters for discov
+            self.run.info('Discov window length', self.window_length if self.window_length else f"{self.window_length_as_percentage}% of sequence")
             if self.window_length_as_percentage:
                 self.run.info('Minimum window length', self.min_window_length)
-            self.run.info('DisCov alpha value', self.alpha)
-            self.run.info('DisCov formula', self.discov_formula)
+            self.run.info('Discov alpha value', self.alpha)
+            self.run.info('Discov formula', self.discov_formula)
         if self.gen_window_level_output:
             self.run.info('Window-level output', self.window_output_file_path)
 
@@ -515,7 +515,7 @@ class BAMProfilerQuick:
                 raise ConfigError("The flag `--gen-window-level-output` is not compatible with `--gene-mode`, as there "
                                   "are no windows to report for gene-level stats.")
             if self.report_minimal:
-                raise ConfigError("The flag `--gen-window-level-output` requires full output (the DisCov windows must "
+                raise ConfigError("The flag `--gen-window-level-output` requires full output (the discov windows must "
                                   "be computed), and is therefore not compatible with `--report-minimal`.")
             if self.window_output_file_path:
                 filesnpaths.is_output_file_writable(self.window_output_file_path, ok_if_exists=False)
@@ -548,7 +548,7 @@ class BAMProfilerQuick:
         if self.collection_txt_path:
             self.init_collection_bins()
         elif self.window_length:
-            # sanity check contig lengths for DisCov
+            # sanity check contig lengths for discov
             contigs_smaller_than_window = []
             for cname in self.contig_names_to_process:
                 if self.contigs_basic_info[cname]['length'] < self.window_length:
@@ -556,8 +556,8 @@ class BAMProfilerQuick:
             if contigs_smaller_than_window:
                 self.run.warning(f"{len(contigs_smaller_than_window)} out of {len(self.contig_names_to_process)} contigs "
                                  f"({(len(contigs_smaller_than_window)/len(self.contig_names_to_process)):.2f}%) are smaller "
-                                 f"than the requested window size for the DisCov metric. These contigs will not be split into "
-                                 f"multiple windows when computing DisCov, and hence their spread (S) score will become BINARY "
+                                 f"than the requested window size for the discov metric. These contigs will not be split into "
+                                 f"multiple windows when computing discov, and hence their spread (S) score will become BINARY "
                                  f"(0 if no reads mapped, or 1 if any reads mapped to the contig). Just so you know. In case "
                                  f"the percentage of affected contigs is very high, you probably want to consider using a "
                                  f"percentage-based window length instead (ie, with `--window-length-as-percentage`). Here "
