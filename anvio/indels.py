@@ -418,6 +418,15 @@ class Indels:
                     sample_seen.add(sample_id)
                     sample_order.append(sample_id)
 
+        # Put rows in a canonical, content-only order. Row order in a profile-db's indels table is
+        # whatever order the profiler's worker processes happened to finish contigs in, so it differs
+        # between two runs on the same BAM. Every later step (row indices, mmseqs2 input order and
+        # representatives, cluster and locus numbering, the running-mean locus merge) depends on this
+        # order, so without sorting the report is not reproducible.
+        all_rows.sort(key=lambda e: (e['contig_name'], e['pos_in_contig'], e['type'], e['length'], e['sequence'],
+                                     e['sample_id'], e['split_name'], e['count'], e['coverage'],
+                                     e['corresponding_gene_call'], e['reference'], e['profile_db']))
+
         self.indels = all_rows
         self.samples = sample_order
         self.progress.end()
@@ -505,7 +514,9 @@ class Indels:
 
         MMSEQS_MIN_LEN = 15  # default nucleotide k-mer size in mmseqs2
 
-        for (label, min_id), idxs in bins.items():
+        # iterate tiers in their defined order (not dict insertion order) so cluster numbering is canonical
+        for label, _, min_id in tiers:
+            idxs = bins.get((label, min_id), [])
             if not idxs:
                 continue
 
@@ -547,13 +558,18 @@ class Indels:
 
             sub_clusters = m.get_clusters_dict(name_prefix=f"TIER{label.upper()}")
 
+            # member ids look like '<idx>|sample|contig|pos|type|length' — pull the leading idx back out.
+            # Number clusters by their smallest member index (canonical once rows are sorted), and keep
+            # members sorted, instead of relying on the order mmseqs2 output was parsed in.
+            parsed = []
             for sub_cid, members in sub_clusters.items():
+                member_idxs = sorted(int(name.split('|', 1)[0]) for name in members)
+                parsed.append((member_idxs, m.representatives.get(sub_cid)))
+            for member_idxs, rep in sorted(parsed, key=lambda x: x[0][0]):
                 cluster_counter += 1
                 cluster_id = f"C_{cluster_counter:08d}"
-                # member ids look like '<idx>|sample|contig|pos|type|length' — pull the leading idx back out
-                member_idxs = [int(name.split('|', 1)[0]) for name in members]
                 all_clusters[cluster_id] = member_idxs
-                all_reps[cluster_id] = m.representatives.get(sub_cid)
+                all_reps[cluster_id] = rep
 
             m.cleanup()
 
@@ -577,9 +593,11 @@ class Indels:
             for idx in member_idxs:
                 by_contig[self.indels[idx]['contig_name']].append(idx)
 
-            for contig, idxs in by_contig.items():
-                # sort by pos_in_contig, sweep, merge while within tolerance of running mean
-                idxs.sort(key=lambda i: self.indels[i]['pos_in_contig'])
+            for contig in sorted(by_contig):
+                idxs = by_contig[contig]
+                # sort by pos_in_contig (ties by canonical row index), sweep, merge while within
+                # tolerance of running mean
+                idxs.sort(key=lambda i: (self.indels[i]['pos_in_contig'], i))
 
                 current_members = []
                 current_positions = []
