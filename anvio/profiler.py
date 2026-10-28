@@ -1005,6 +1005,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.min_indel_length < 0:
             raise ConfigError("The minimum indel length (--min-indel-length) can't be negative.")
 
+        if self.skip_SNV_storage and self.profile_SCVs:
+            raise ConfigError("SCV profiling (--profile-SCVs) works from the per-position SNV rows, so it can't be "
+                              "combined with --skip-SNV-storage.")
+
         if self.skip_SNV_profiling and self.skip_edges > 0:
             raise ConfigError(f"You can't ask anvi'o to skip profiling of SNVs and also ask to ignore {self.skip_edges} "
                               f"nucleotides from the beginning and the end of short reads while profiling of SNVs. You "
@@ -1415,7 +1419,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def generate_variable_nts_table(self):
-        if self.skip_SNV_profiling:
+        if self.skip_SNV_profiling or self.skip_SNV_storage:
             return
 
         for contig in self.contigs:
@@ -2013,7 +2017,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                 split.auxiliary.process(bam_file)
 
-                if split.num_SNV_entries == 0:
+                if split.num_SNV_entries == 0 or self.skip_SNV_storage:
                     continue
 
                 # Add these redundant data ad-hoc

@@ -373,6 +373,17 @@ class Indels:
                 pdb.db.disconnect()
                 continue
 
+            # Profiles made with `anvi-profile --min-indel-length N` contain no indels shorter than N.
+            # Reporting below that threshold would silently look like those events are absent.
+            stored_min = int(pdb.meta.get('min_indel_length') or 0)
+            if stored_min > self.min_length:
+                self.progress.reset()
+                pdb.db.disconnect()
+                raise ConfigError(f"The profile-db '{path}' was generated with `--min-indel-length {stored_min}`, so "
+                                  f"it does not contain indels shorter than {stored_min} bp. You asked for indels "
+                                  f"of at least {self.min_length} bp (--min-length), which would make every shorter "
+                                  f"event look absent in this sample. Please use --min-length {stored_min} or larger.")
+
             # Record every sample known to this profile-db (even those with no indel rows
             # passing our filter) so they appear as columns in the matrix.
             for s in sorted(pdb.samples):

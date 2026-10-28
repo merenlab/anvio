@@ -4898,7 +4898,7 @@ class ProfileDatabase:
         for key in ['min_contig_length', 'SNVs_profiled', 'SCVs_profiled', 'INDELs_profiled',
                     'merged', 'blank', 'items_ordered', 'report_variability_full', 'num_contigs',
                     'min_coverage_for_variability', 'max_contig_length', 'num_splits',
-                    'total_length', 'skip_edges_for_variant_profiling']:
+                    'total_length', 'skip_edges_for_variant_profiling', 'SNVs_stored', 'min_indel_length']:
             try:
                 self.meta[key] = int(self.meta[key])
             except:
