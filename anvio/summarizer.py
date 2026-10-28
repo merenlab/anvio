@@ -1287,6 +1287,9 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         utils.CoverageStats exactly once per contig and once per bin per sample. Contig arrays
         are reused to assemble the bin array to avoid multiple reads of the auxiliary DB per split.
 
+        The number of reads for each contig and bin is the sum of the number of reads assigned to
+        their splits (self.num_reads_per_split, loaded in init_collection_profile).
+
         When calculate_Q2Q3_carefully is also True, the bin-level CoverageStats result
         is additionally used to update self.collection_profile with accurate Q2Q3 mean
         coverage values.
@@ -1408,14 +1411,16 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                         break  # no need to fetch remaining splits for this contig
 
             for sample_name in self.p_meta['samples']:
-                # assemble per-contig arrays from the cached per-split coverage dicts
+                # assemble per-contig arrays from the cached per-split coverage dicts, and per-contig number of reads
                 contig_arrays = {}
+                contig_num_reads = {}
                 for contig_name in sorted_contigs:
                     if contig_name in failed_contigs:
                         continue
                     arrays = [split_coverages[split_name][sample_name]
                               for split_name in splits_by_contig[contig_name]]
                     contig_arrays[contig_name] = numpy.concatenate(arrays)
+                    contig_num_reads[contig_name] = sum([self.num_reads_per_split[split_name][sample_name] for split_name in splits_by_contig[contig_name]])
 
                 if not contig_arrays:
                     continue
@@ -1428,11 +1433,14 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                                   discov_window_percentage=contig_wpct,
                                                   discov_min_window_len=contig_minlen,
                                                   discov_alpha=self.discov_alpha,
-                                                  discov_formula=self.discov_formula)
+                                                  discov_formula=self.discov_formula,
+                                                  num_reads=contig_num_reads[contig_name],
+                                                  report_discov=True)
                     contig_level_rows.append({'bin_name': bin_id,
                                               'contig_name': contig_name,
                                               'sample_name': sample_name,
                                               'length': len(contig_array),
+                                              'num_reads': contig_num_reads[contig_name],
                                               'num_windows': c_stats.num_windows,
                                               'actual_prop_windows_covered': c_stats.prop_win_covered,
                                               'expected_prop_windows_covered': c_stats.spread_expected,
