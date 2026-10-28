@@ -1296,7 +1296,9 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
         Writes two tab-delimited files to the bins_across_samples sub-directory:
           discov_bins.txt    – one row per bin x sample
-          discov_contigs.txt – one row per contig x sample
+          discov_contigs.txt – one row per contig x sample. If the splits of a contig are in different bins,
+                               each of these bins gets a row for the part of the contig that is in it (see the
+                               partial_contig_in_bin column)
 
         Note that the DisCov parameters are established via self.discov_* attributes in SummarizerSuperClass.
         """
@@ -1439,6 +1441,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                     contig_level_rows.append({'bin_name': bin_id,
                                               'contig_name': contig_name,
                                               'sample_name': sample_name,
+                                              'partial_contig_in_bin': int(len(splits_by_contig[contig_name]) < self.contigs_basic_info[contig_name]['num_splits']),
                                               'length': len(contig_array),
                                               'num_reads': contig_num_reads[contig_name],
                                               'num_windows': c_stats.num_windows,
@@ -1494,7 +1497,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                                do_not_write_key_column=True)
 
         # Write contig-level output
-        contig_headers = ['key', 'bin_name', 'contig_name', 'sample_name', 'length', 'num_reads', 'num_windows',
+        contig_headers = ['key', 'bin_name', 'contig_name', 'sample_name', 'partial_contig_in_bin', 'length', 'num_reads', 'num_windows',
                           'actual_prop_windows_covered', 'expected_prop_windows_covered', 'normalized_spread',
                           'window_depth_evenness', 'spread_evenness_score', 'dis_cov']
         output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix=DISCOV_CONTIGS_OUTPUT)
