@@ -122,13 +122,18 @@ MGE_OUTPUT/
 ├── INDELS-ITEMS-ORDER.newick      ← items-order dendrogram built from the matrix (Ward linkage)
 ├── INDELS-LOCI-LONG.txt           ← long-format audit trail: one row per individual indel observation
 │                                    mapped to its cluster and locus
-└── INDELS-CLUSTERS.fa             ← FASTA of representative sequences, one entry per final element
-                                    family (cluster), ready to BLAST / HMM-search downstream
+├── INDELS-CLUSTERS.fa             ← FASTA of representative sequences, one entry per final element
+│                                    family (cluster), ready to BLAST / HMM-search downstream
+└── INDELS-CLUSTERS.txt            ← per-cluster metadata (length, event-type breakdown, read, locus,
+                                     and sample counts, representative id)
 ```
 
 A few decoration columns worth knowing about in `INDELS-ITEMS-ADDITIONAL.txt`:
 
 * `cluster_id`: same value for all loci belonging to one element family.
+* `cluster_size_median_nt`: the median length of all events in the cluster. All loci of a cluster report the same value.
+* `n_loci_in_cluster`: how many loci the cluster has after all filters. Sort by this in the interface to find elements that occur at many loci.
+* `locus_size_median_nt`: the median length of the events at this particular locus.
 * `locus_type`: `INS` or `DEL`, indicating which path produced the matrix values for this row.
 * `n_supporting_reads`: total reads supporting the locus, summed across every member event and every sample (the biologically meaningful read count, robust to anvi-profile splitting one biological event into many unique-sequence rows).
 * `n_events`: how many individual indel rows from the profile-db indels table feed this locus. Inflated by HiFi-error variants; `n_supporting_reads` is usually the more useful number.
@@ -138,14 +143,16 @@ A few decoration columns worth knowing about in `INDELS-ITEMS-ADDITIONAL.txt`:
 
 `INDELS-LOCI-LONG.txt` lists every accepted indel observation with its `cluster_id`, `locus_id`, sample, position, length, count, coverage, and per-event allele frequency. This is the file to consult when something in the matrix looks odd.
 
-`INDELS-CLUSTERS.fa` carries one FASTA entry per **final cluster** (element families that have at least one locus surviving every filter). Each header captures the cluster identity, length, event-type breakdown, and event/locus/sample counts, while the body is the representative's actual nucleotide sequence (the mmseqs2 cluster representative, or the first member for exact-match singletons):
+`INDELS-CLUSTERS.fa` carries one FASTA entry per **final cluster** (element families that have at least one locus surviving every filter). The defline is only the cluster id (`>C_00000001`), so the file can be given as is to %(anvi-gen-contigs-database)s. The body is the representative's actual nucleotide sequence (the mmseqs2 cluster representative, or the first member for exact-match singletons):
 
 ```
->C_00000001 length=435 cluster_type=mixed n_supporting_reads=210 n_loci=3 n_samples=2 representative=6|S03|c_000000000001|100434|INS|435
+>C_00000001
 TTCAAAAAAATGCGTGGGATTGCCCAAGGCATCAGTGGTGGTGTGAATTTTCGTACTTAA
 GCCACCTCTAGAACGACCAATCGCTTCCTGCTCTGCTGAGCTGTGTTTGGCTCCAGCACT
 [...]
 ```
+
+`INDELS-CLUSTERS.txt` carries the metadata that used to be crammed into the defline: for each cluster, its `length`, `cluster_type` (`INS`, `DEL`, or `mixed`), `n_supporting_reads`, `n_loci`, `n_samples_supporting`, and `representative_id`.
 
 This file is meant to be a drop-in input for downstream sequence-level analyses, e.g. BLAST against NCBI or a curated MGE database, HMM scans (ISfinder, IS-family models), translated annotation with %(anvi-run-pfams)s / %(anvi-run-ncbi-cogs)s after gene calling, or simple inspection in an alignment viewer.
 

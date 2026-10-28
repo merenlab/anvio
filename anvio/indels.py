@@ -382,10 +382,7 @@ class Indels:
                 self.sample_to_profile_path[s] = path
 
             try:
-                cursor = pdb.db._exec(f"SELECT {select_clause} FROM {t.indels_table_name} WHERE {where}")
-                rows = cursor.fetchall()
-            except Exception:
-                rows = []
+                rows = pdb.db._exec(f"SELECT {select_clause} FROM {t.indels_table_name} WHERE {where}").fetchall()
             finally:
                 pdb.db.disconnect()
 
@@ -878,6 +875,12 @@ class Indels:
         self.progress.new('Building per-locus decoration data', progress_total_items=n_loci)
         self.progress.update('...')
 
+        # per-cluster values are computed once, over every member of the cluster, so that all loci of a
+        # cluster report the same value (a per-locus median would give one cluster several different ones)
+        loci_per_cluster = Counter(info['cluster_id'] for info in self.loci.values())
+        cluster_median_length = {cid: int(statistics.median(self.indels[i]['length'] for i in self.clusters_to_members[cid]))
+                                 for cid in loci_per_cluster}
+
         update_every = max(1, n_loci // 200)
         for i, (locus_id, info) in enumerate(self.loci.items()):
             if i % update_every == 0:
@@ -900,7 +903,9 @@ class Indels:
                 'contig_name': info['contig_name'],
                 'mean_pos_in_contig': mean_pos,
                 'pos_range': f"{info['min_pos']}-{info['max_pos']}",
-                'cluster_size_median_nt': int(statistics.median(lengths)),
+                'cluster_size_median_nt': cluster_median_length[info['cluster_id']],
+                'n_loci_in_cluster': loci_per_cluster[info['cluster_id']],
+                'locus_size_median_nt': int(statistics.median(lengths)),
                 'n_events': len(members),
                 'n_supporting_reads': n_supporting_reads,
                 'n_samples_supporting': len(sample_counts),
@@ -973,6 +978,7 @@ class Indels:
         tree_path = os.path.join(self.output_dir, 'INDELS-ITEMS-ORDER.newick')
         long_path = os.path.join(self.output_dir, 'INDELS-LOCI-LONG.txt')
         clusters_fa_path = os.path.join(self.output_dir, 'INDELS-CLUSTERS.fa')
+        clusters_txt_path = os.path.join(self.output_dir, 'INDELS-CLUSTERS.txt')
 
         self.progress.new('Writing outputs')
 
@@ -987,7 +993,7 @@ class Indels:
         # items-additional-data
         decoration_cols = [
             'cluster_id', 'locus_type', 'contig_name', 'mean_pos_in_contig', 'pos_range',
-            'cluster_size_median_nt', 'n_events', 'n_supporting_reads', 'n_samples_supporting',
+            'cluster_size_median_nt', 'n_loci_in_cluster', 'locus_size_median_nt', 'n_events', 'n_supporting_reads', 'n_samples_supporting',
             'in_orf', 'gene_caller_id',
             'gene_function_source', 'gene_function_accession', 'gene_function',
             'representative_id',
@@ -1062,16 +1068,19 @@ class Indels:
                 'n_samples_supporting': len(samples),
             }
 
+        cluster_cols = ['length', 'cluster_type', 'n_supporting_reads', 'n_loci', 'n_samples_supporting', 'representative_id']
+        clusters_txt_dict = {cid: {c: cluster_meta[cid][c] for c in cluster_cols}
+                             for cid in final_cluster_ids if cid in cluster_meta and cluster_meta[cid]['sequence']}
+        utils.store_dict_as_TAB_delimited_file(clusters_txt_dict, clusters_txt_path, headers=['cluster_id'] + cluster_cols)
+
         with open(clusters_fa_path, 'w') as f:
             for cid in final_cluster_ids:
                 m = cluster_meta.get(cid)
                 if not m or not m['sequence']:
                     continue
-                header = (f">{cid} length={m['length']} cluster_type={m['cluster_type']} "
-                          f"n_supporting_reads={m['n_supporting_reads']} "
-                          f"n_loci={m['n_loci']} n_samples={m['n_samples_supporting']} "
-                          f"representative={m['representative_id']}")
-                f.write(header + "\n")
+                # the defline is just the cluster id so that this file can go straight into
+                # `anvi-gen-contigs-database`; the rest of the metadata is in INDELS-CLUSTERS.txt
+                f.write(f">{cid}\n")
                 seq = m['sequence']
                 for i in range(0, len(seq), 70):
                     f.write(seq[i:i + 70] + "\n")
@@ -1087,6 +1096,7 @@ class Indels:
             self.run.info('Items-order tree (newick)', 'skipped (< 3 loci)', mc='yellow')
         self.run.info('Per-event audit (long format)', long_path, mc='green')
         self.run.info('Cluster representatives (FASTA)', clusters_fa_path, mc='green')
+        self.run.info('Cluster representatives (metadata)', clusters_txt_path, mc='green')
 
         manual_profile = os.path.join(self.output_dir, 'manual-profile.db')
         invocation = [

@@ -87,6 +87,13 @@ anvi-report-indels -c 02_CONTIGS/CONTIGS.db \
 SHOW_FILE INDELS_DEFAULT/INDELS-VIEW-DATA.txt
 SHOW_FILE INDELS_DEFAULT/INDELS-ITEMS-ADDITIONAL.txt
 SHOW_FILE INDELS_DEFAULT/INDELS-LOCI-LONG.txt
+SHOW_FILE INDELS_DEFAULT/INDELS-CLUSTERS.txt
+
+INFO "The cluster representatives FASTA must be usable as is by anvi-gen-contigs-database"
+anvi-gen-contigs-database -f INDELS_DEFAULT/INDELS-CLUSTERS.fa \
+                          -o INDELS_DEFAULT/CLUSTERS-CONTIGS.db \
+                          --skip-gene-calling \
+                          --quiet
 
 INFO "Running anvi-report-indels against multiple single profile-dbs via -p (repeated)"
 anvi-report-indels -c 02_CONTIGS/CONTIGS.db \
