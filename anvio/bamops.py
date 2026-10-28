@@ -476,12 +476,19 @@ class Read:
         ==========
         start, end : int
             The region, in reference coordinates (end exclusive)
+
+        Yields
+        ======
+        position, length : tuple
+            The reference position of a deletion and its length
         """
 
         ref = self.untrimmed_reference_start
         del_start = None
         for operation, length in self.untrimmed_cigartuples:
-            if operation in (2, 3):
+            consumes_read, consumes_reference = constants.cigar_consumption[operation]
+
+            if consumes_reference and not consumes_read:
                 if del_start is None:
                     del_start = ref
                 ref += length
@@ -492,7 +499,7 @@ class Read:
                     yield del_start, ref - del_start
                 del_start = None
 
-            if operation in (0, 7, 8):
+            if consumes_reference:
                 ref += length
 
         if del_start is not None and start <= del_start < end:
