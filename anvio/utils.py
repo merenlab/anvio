@@ -597,10 +597,10 @@ class CoverageStats:
     so it will be closer to 1 if reads truly distribute randomly and the observed proportion of covered windows
     is as high (or higher) than we expect.
 
-    E is a 0-1 evenness score that computes the coefficient of variation (CV) on the mean coverages for
-    the same non-overlapping, equal-sized windows used in S. E = 1 / (1 + CV). If mean coverages are all 0,
-    E = 0. And if there are fewer than 3 windows (which can happen on short contigs), we cannot compute CV so
-    E also gets set to 0 (maximum unevenness).
+    E is a 0-1 evenness score that computes the coefficient of variation (CV) on the nonzero mean coverages
+    of the same non-overlapping, equal-sized windows used in S. E = 1 / (1 + CV). If fewer than 3 windows have
+    coverage (which can happen on short or poorly covered sequences), we do not compute CV and E is set to 0
+    (maximum unevenness).
 
     We combine (normalized) S and E into a 'spread-evenness score'. They can be combined linearly
     with a weight α following the formula: C = αS_norm + (1-α)E. Or, they can be combined by
