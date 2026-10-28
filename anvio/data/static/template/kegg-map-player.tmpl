@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!--
+This page is filled in by 'HTMLPlayerDrawer' in 'anvio/keggmapping.py'. Each name in capitals
+between double underscores is replaced. The images are written in at the two comments in the body.
+The page loads no other file, so it can be opened from the disk and passed around as one file. The
+first frame is shown without the script, as in the preview of a file browser that runs no script.
+-->
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="anvi-draw-kegg-pathways">
+
+    <title>__TITLE__</title>
+
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            color: #222;
+            font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+                sans-serif;
+        }
+
+        /* The header: the line of titles above the line of controls. */
+        header {
+            flex: none;
+            padding: 8px 16px;
+            border-bottom: 1px solid #ddd;
+        }
+        /* The line of titles does not wrap, so its height is the same on every frame and the map
+           does not move as the label and the note change. A long title is cut short instead. */
+        #titles {
+            display: flex;
+            align-items: baseline;
+            gap: 16px;
+            margin: 0 0 6px;
+            white-space: nowrap;
+        }
+        h1, #label {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        h1 {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #label, #note {
+            flex: none;
+        }
+        #label {
+            font-variant-numeric: tabular-nums;
+        }
+        #note {
+            color: #a40;
+        }
+        #controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+        #play {
+            min-width: 4.5em;
+        }
+        #slider {
+            flex: 1 1 200px;
+            min-width: 120px;
+        }
+        #seconds {
+            width: 4.5em;
+        }
+        button[aria-pressed="true"] {
+            background: #dde6f5;
+        }
+
+        /* The map beside the column of keys. */
+        main {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+        }
+        #map {
+            flex: 1;
+            min-width: 0;
+            overflow: auto;
+        }
+        /* Every frame is placed in the same cell, and all but one are hidden. */
+        #stack {
+            display: grid;
+        }
+        #stack > img {
+            grid-area: 1 / 1;
+        }
+        #map.fit #stack {
+            height: 100%;
+            grid-template: 100% / 100%;
+        }
+        #map.fit #stack > img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        [hidden] {
+            display: none !important;
+        }
+
+        /* The column of keys is left out where the run has no keys. */
+        #keys {
+            flex: none;
+            max-width: 25%;
+            overflow: auto;
+            padding: 8px 16px;
+            border-left: 1px solid #ddd;
+        }
+        #keys:empty {
+            display: none;
+        }
+        /* A key is shown at one CSS pixel per point, but no taller than about a third of the
+           window. Its image has twice as many pixels, which its 'srcset' declares, so it stays
+           sharp on a display with two device pixels per CSS pixel. The keys are stacked as blocks
+           rather than flex items, so each keeps its shape. As flex items, keys are stretched to the
+           width of the column. Setting 'align-items: flex-start' stops the stretch, but in a narrow
+           window Safari then narrows a key without making it shorter. */
+        #keys img {
+            display: block;
+            width: auto;
+            height: auto;
+            max-width: 100%;
+            max-height: 35vh;
+        }
+        #keys > * + * {
+            margin-top: 12px;
+        }
+        /* The keys that change from frame to frame share one cell. A hidden key still takes up
+           space, so a wider key does not move the map. */
+        #frame-keys {
+            display: grid;
+        }
+        #frame-keys > img {
+            grid-area: 1 / 1;
+        }
+        #frame-keys > img[hidden] {
+            display: block !important;
+            visibility: hidden;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div id="titles">
+            <h1>__TITLE__</h1>
+            <span id="label">__LABEL__</span>
+            <span id="note">__NOTE__</span>
+        </div>
+
+        <div id="controls">
+            <button id="play" type="button" title="Play or pause (space bar)">Play</button>
+            <button id="prev" type="button" title="Previous frame (left arrow)">Previous</button>
+            <input id="slider" type="range" min="0" max="__LAST__" step="1" value="0"
+                aria-label="Frame">
+            <button id="next" type="button" title="Next frame (right arrow)">Next</button>
+            <label>
+                Seconds per frame
+                <input id="seconds" type="number" min="0.1" step="0.1" value="__SECONDS__">
+            </label>
+            <button id="loop" type="button" aria-pressed="__LOOP__"
+                title="Start again after the last frame">Loop</button>
+            <button id="actual" type="button" aria-pressed="false"
+                title="Show one pixel of the map per CSS pixel">Actual size</button>
+        </div>
+    </header>
+
+    <main>
+        <div id="map" class="fit">
+            <div id="stack">
+<!--FRAMES-->
+            </div>
+        </div>
+        <!-- The keys are written with no space around them, which ':empty' above needs. -->
+        <aside id="keys"><!--KEYS--></aside>
+    </main>
+
+    <script id="frames" type="application/json">__FRAMES__</script>
+
+    <script>
+        "use strict";
+
+        // Each frame names its label, the index of its image, the index of its own key or null,
+        // and a note shown beside the label.
+        const frames = JSON.parse(document.getElementById("frames").textContent);
+        const images = document.querySelectorAll("#stack > img");
+        const frameKeys = document.querySelectorAll("#frame-keys > img");
+        const $ = (id) => document.getElementById(id);
+        const slider = $("slider"), playButton = $("play"), loopButton = $("loop");
+        let current = 0, timer = null, playing = false, run = 0;
+
+        function show(i) {
+            i = Math.max(0, Math.min(frames.length - 1, i));
+            const was = frames[current], now = frames[i];
+            images[was.image].hidden = true;
+            images[now.image].hidden = false;
+            if (was.key !== null) frameKeys[was.key].hidden = true;
+            if (now.key !== null) frameKeys[now.key].hidden = false;
+            current = i;
+            slider.value = i;
+            const label = now.label + " (" + (i + 1) + " of " + frames.length + ")";
+            $("label").textContent = label;
+            $("note").textContent = now.note;
+            slider.setAttribute("aria-valuetext", label);
+        }
+
+        function looping() {
+            return loopButton.getAttribute("aria-pressed") === "true";
+        }
+
+        function seconds() {
+            const value = parseFloat($("seconds").value);
+            return Math.max(0.1, Number.isFinite(value) ? value : 1);
+        }
+
+        // The next image is decoded before it is shown, so a slow decode makes a frame last longer
+        // rather than showing it half drawn. Each run of playback has its own number, so a run
+        // that was paused while an image decoded does not go on.
+        function tick(token) {
+            if (token !== run) return;
+            if (current === frames.length - 1 && !looping()) return pause();
+            const next = (current + 1) % frames.length;
+            images[frames[next].image].decode().catch(() => null).then(() => {
+                if (token !== run) return;
+                show(next);
+                timer = setTimeout(() => tick(token), seconds() * 1000);
+            });
+        }
+
+        function play() {
+            if (current === frames.length - 1 && !looping()) show(0);
+            playing = true;
+            run += 1;
+            playButton.textContent = "Pause";
+            const token = run;
+            timer = setTimeout(() => tick(token), seconds() * 1000);
+        }
+
+        function pause() {
+            playing = false;
+            run += 1;
+            clearTimeout(timer);
+            playButton.textContent = "Play";
+        }
+
+        // Any step taken by hand pauses playback, so the timer does not change the frame while the
+        // slider is dragged.
+        function go(i) {
+            pause();
+            show(i);
+        }
+
+        function toggle(button) {
+            const on = button.getAttribute("aria-pressed") !== "true";
+            button.setAttribute("aria-pressed", on);
+            return on;
+        }
+
+        playButton.onclick = () => (playing ? pause() : play());
+        $("prev").onclick = () => go(current - 1);
+        $("next").onclick = () => go(current + 1);
+        slider.oninput = () => go(Number(slider.value));
+        loopButton.onclick = () => toggle(loopButton);
+        $("actual").onclick = (e) => $("map").classList.toggle("fit", !toggle(e.target));
+
+        // The space bar, the left and right arrow keys, Home, and End work wherever the focus is.
+        // In the box of seconds, only the space bar does, since the other keys move the cursor
+        // there. The keys are handled here, and their default action is prevented, so a focused
+        // slider or button does not act on the same key press a second time.
+        document.addEventListener("keydown", (e) => {
+            if (e.altKey || e.ctrlKey || e.metaKey) return;
+            if (e.target.id === "seconds" && e.key !== " ") return;
+            const steps = {
+                ArrowLeft: current - 1,
+                ArrowRight: current + 1,
+                Home: 0,
+                End: frames.length - 1
+            };
+            if (e.key === " ") playButton.click();
+            else if (e.key in steps) go(steps[e.key]);
+            else return;
+            e.preventDefault();
+        });
+
+        show(0);
+    </script>
+</body>
+
+</html>

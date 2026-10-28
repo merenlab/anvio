@@ -15,8 +15,9 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
+__requires__ = ["contigs-db"]
+__can_use__ = ["splits-txt", "profile-db", "collection"]
 __provides__ = ["aa-frequencies-txt"]
-__requires__ = ["splits-txt", "contigs-db", "profile-db", "collection"]
 __description__ = ("Fetches the number of times each amino acid occurs from a contigs database in a "
                    "given bin, set of contigs, or set of genes")
 

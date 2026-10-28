@@ -106,7 +106,6 @@ import sys
 import math
 import time
 import queue
-import random
 import shutil
 import argparse
 import numpy as np
@@ -5345,7 +5344,7 @@ class DatabaseMerger(object):
         self.out_dir = os.path.abspath(self.out_dir)
 
         self.contigs_db_path = os.path.join(self.out_dir, 'CONTIGS.db')
-        self.contigs_db_hash = 'hash' + str('%08x' % random.randrange(16**8))
+        self.contigs_db_hash = utils.get_random_hash()
 
         self.spec_out_dir = filesnpaths.check_output_directory(os.path.join(self.out_dir, 'SPECIFIC_COVERAGE'), ok_if_exists=self.overwrite_out_dest)
         self.spec_profile_db_path = os.path.join(self.spec_out_dir, 'PROFILE.db')

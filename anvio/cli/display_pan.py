@@ -22,7 +22,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
 __requires__ = ['pan-db', 'genomes-storage-db']
-__provides__ = ['collection', 'bin', 'interactive', 'svg', 'gene-cluster-inspection']
+__provides__ = ['interactive']
+__can_provide__ = ['svg', 'collection', 'bin', 'gene-cluster-inspection']
 __resources__ = [("See this program in action on the pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/#displaying-the-pan-genome")]
 __description__ = "Start an anvi'o server to display a pan-genome"
 

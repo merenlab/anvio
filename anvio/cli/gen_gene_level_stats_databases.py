@@ -22,7 +22,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['profile-db', 'contigs-db', 'collection', 'bin',]
+__requires__ = ['profile-db', 'contigs-db']
+__can_use__ = ['collection', 'bin']
 __provides__ = ['genes-db',]
 __description__ = ("A program to compute genes databases for a ginen set of bins stored in "
                    "an anvi'o collection. Genes databases store gene-level coverage and "

@@ -40,16 +40,32 @@ def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT FILES')
-    groupA.add_argument('--fasta-txt', required=True,
+    groupA.add_argument('-f', '--fasta-txt', required=True,
                         help="Two-column TAB-delimited file with genome name and FASTA file path.")
     groupA.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
 
     groupRef = parser.add_argument_group('SELECTION & PROCESSING OF REFERENCE',
-                                         "If you do not set --reference, the program will auto-select a reference by "
-                                         "choosing the genome with the fewest contigs; ties are broken by the largest "
-                                         "total length. This mirrors how anvi'o tools often prioritize more complete assemblies.")
+                                         "IMPORTANT: the reference MUST be a single contig, since orienting and ordering "
+                                         "contigs requires a single continuous coordinate system to work against, and "
+                                         "coordinates from different contigs of a fragmented reference do not form one "
+                                         "axis. The program will STOP WITH AN ERROR otherwise. Please note that this is a "
+                                         "separate matter from circularity: the reference additionally needs to be a "
+                                         "COMPLETE, CIRCULAR sequence if anvi'o is going to ROTATE it, which happens when "
+                                         "the reference is auto-selected, or when --use-dnaa-for-reference-orientation is "
+                                         "used, since rotating a linear sequence or a fragment of a chromosome is "
+                                         "biologically meaningless. If your reference is a genomic locus rather than a "
+                                         "complete chromosome, name it explicitly with --reference, which never rotates "
+                                         "anything. If you do not set --reference, the program will auto-select a reference "
+                                         "by choosing the genome with the fewest contigs (ties are broken by the largest "
+                                         "total length), and it will refuse to continue if even that genome turns out to "
+                                         "have more than one contig. The only way to work with a fragmented reference is "
+                                         "--use-auto-reference-as-is, which skips all steps of rotation over the reference, "
+                                         "and uses it as is.")
     groupRef.add_argument('--reference', required=False,
-                          help="Genome name in fasta-txt to use as the reference orientation. If omitted, auto-selection applies.")
+                          help="Name of the entry in fasta-txt to use as the reference orientation. It must be a single "
+                               "contig, but it does not have to be a complete circular genome: a single contig covering a "
+                               "genomic locus of interest works just as well, since anvi'o never rotates a reference you "
+                               "name explicitly here. If omitted, auto-selection applies.")
     groupRef.add_argument('--use-auto-reference-as-is', action='store_true',
                           help="When anvi'o selects the reference genome automatically (i.e., when `--reference` parameter is not "
                                "used) it first chooses the genome with the fewest contigs and then longest among those that have "
@@ -58,14 +74,21 @@ def get_args():
                                "tinker with the auto-picked reference orientation. This is most useful when the collection of "
                                "genomes (or contigs) all start with an evolutionarily meaningful positions, and all you want to "
                                "do is to reverse complement those that need it so all genomes (or contigs) have the same "
-                               "orientation. This flag is obviously not compatible with `--reference` and "
+                               "orientation. This is ALSO the only supported way to move forward when none of the genomes in "
+                               "your fasta-txt file is a single contig -- but please be aware of what you are giving up: since "
+                               "coordinates that come from different contigs of a fragmented reference do not form a single "
+                               "continuous axis, the contig ordering, the scaffolding output, and the reported start positions "
+                               "will not be trustworthy. This flag is obviously not compatible with `--reference` and "
                                "`--use-dnaa-for-reference-orientation`.")
     groupRef.add_argument('--use-dnaa-for-reference-orientation', action='store_true',
                           help="Use DnaA gene location to orient the reference genome. The program will identify the DnaA "
                                "gene using an HMM profile (Bac_DnaA_C from Pfam), and rotate the reference to start near "
-                               "the DnaA gene, which typically marks the origin of replication in bacterial genomes. This "
+                               "the DnaA gene, which typically marks the origin of replication in bacterial genomes. Since "
+                               "this rotates the reference, it requires the reference genome to be a single contig. This "
                                "option is useful for bacterial genomes but may not work well for plasmids or viral genomes "
-                               "without DnaA.")
+                               "without DnaA, or fragments from genomes such as specific genomic loci you are interested in "
+                               "(for such cases you should certainly consider naming your reference explicitly with "
+                               "`--reference`, which never rotates it, or using `--use-auto-reference-as-is`).")
 
     groupScaffold = parser.add_argument_group('SCAFFOLDING OPTIONS',
                                               "These options control how multi-contig (fragmented) genomes are ordered "
@@ -78,8 +101,34 @@ def get_args():
                                     "simply concatenated in order without gap padding.")
     groupScaffold.add_argument('--min-contig-length', type=int, default=1000,
                                help="Minimum contig length (in bp) to include in scaffolding. Contigs shorter than "
-                                    "this threshold are excluded from alignment and will not appear in output. "
-                                    "Default: %(default)s bp.")
+                                    "this threshold are excluded from alignment and will not appear in output. This "
+                                    "threshold also serves as the smallest fragment anvi'o is willing to create when it "
+                                    "cuts a contig that runs past the ends of the reference, which keeps the handful of "
+                                    "nucleotides `minimap2` routinely soft-clips off the end of a divergent alignment "
+                                    "from being promoted into contigs of their own. Default: %(default)s bp.")
+    groupScaffold.add_argument('--keep-query-contigs-intact', action='store_true',
+                               help="Never cut or rotate a query contig, even when keeping it in one piece misrepresents how it "
+                                    "aligns to the reference. By default anvi'o keeps your contigs intact whenever it "
+                                    "can, but it will cut one into fragments when the contig runs past the beginning or "
+                                    "the end of the reference. This is becasue such a contig will have no single position "
+                                    "on the reference to be placed at, since one part of it belongs to the very start of "
+                                    "the reference coordinates and another part of it to the very end (which is exactly what happens "
+                                    "when your reference and your query genome were circularized at different "
+                                    "positions), or because one of its ends hangs off the reference with too little "
+                                    "reference left over for that sequence to sit on. Anvi'o cuts such contigs, aligns each "
+                                    "fragment on its own merit, and tells you about it. Which means the output FASTA file for a "
+                                    "genome may have MORE contigs than the input FASTA did! If your downstream analyses cannot "
+                                    "tolerate that, or you are doing an analysis that requires your contigs to be kept intact, "
+                                    "then you can use this flag if you promise that you will keep in mind the tradeoff: your "
+                                    "contigs will survive in one piece, and in exchange parts of them will not actually be "
+                                    "aligned to the reference even though the output file will look like they are. This flag "
+                                    "will ALSO suppress the rotation of circularly permuted contigs (contigs an assembler cut "
+                                    "out of a cycle in its assembly graph at an arbitrary point, which anvi'o will recognize "
+                                    "because their two ends are neighbours on the reference and will rotates back into co-linearity). "
+                                    "The cost of preventing this step is that a large part of such a contig will sit in the "
+                                    "wrong place. Long story short, anvi'o will report every contig as they were in the query genome "
+                                    "apart from reverse-complementing them when necessary, and re-ordering them to match the order "
+                                    "of the reference.")
 
     groupViz = parser.add_argument_group('VISUALIZATION',
                                          "By default, the program will generate synteny ribbon plots showing "
@@ -97,8 +146,23 @@ def get_args():
                           help="Height of alignment plots in characters. Default: %(default)s")
 
     groupB = parser.add_argument_group('ADVANCED')
+    groupB.add_argument('--minimap2-preset', default='asm5', choices=['asm5', 'asm10', 'asm20'],
+                        help="The `minimap2` preset anvi'o will use to align your genomes to the reference. Each preset "
+                             "puts a ceiling on how much sequence divergence an alignment is allowed to have before "
+                             "`minimap2` stops reporting it altogether: 'asm5' tolerates up to about 5%%, 'asm10' up to "
+                             "about 10%%, and 'asm20' up to about 20%%. The default is a good fit for genomes that are "
+                             "nearly identical to one another, but if your genomes are more distant than that (say, "
+                             "populations recovered from different samples, or phages from different stations), the "
+                             "default will quietly find nothing to align and anvi'o will not be able to reorient them. "
+                             "Loosening this is the first thing to try in that case. Default: %(default)s.")
     groupB.add_argument('--threads', type=int, default=1,
                         help="Number of threads for minimap2.")
+    groupB.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it', {'help': "By default anvi'o aligns every genome "
+                        "in your fasta-txt file to the reference before it gets to work, and stops with an error if any "
+                        "of them do not align to the reference at all, since there is nothing this program can do for a "
+                        "genome that shares no sequence with the reference. Use this flag if you know that already, and "
+                        "want anvi'o to go ahead with the rest of your genomes anyway. Those that do not align will be "
+                        "reported as FAILED at the end."}))
     groupB.add_argument('--log-file-path',
                         help="Write a detailed log to this file (otherwise only concise reporting is printed).")
 
