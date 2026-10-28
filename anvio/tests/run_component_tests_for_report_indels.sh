@@ -158,7 +158,7 @@ anvi-report-indels -c 02_CONTIGS/CONTIGS.db \
                    -o INDELS_MULTI_P_SHUFFLED \
                    $thread_controller
 
-for f in INDELS-VIEW-DATA.txt INDELS-ITEMS-ADDITIONAL.txt INDELS-LOCI-LONG.txt INDELS-CLUSTERS.fa INDELS-ITEMS-ORDER.newick
+for f in INDELS-VIEW-DATA.txt INDELS-ITEMS-ADDITIONAL.txt INDELS-LOCI-LONG.txt INDELS-CLUSTERS.fa INDELS-CLUSTERS.txt INDELS-ITEMS-ORDER.newick
 do
     if ! cmp -s INDELS_MULTI_P/$f INDELS_MULTI_P_SHUFFLED/$f
     then
