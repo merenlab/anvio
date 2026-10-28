@@ -1472,6 +1472,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('Minimum percent identity of reads to be profiled', self.min_percent_identity, mc='green')
         self.run.info('Fetch filter engaged', self.fetch_filter, mc='green', nl_after=1)
 
+        if self.min_percent_identity or self.fetch_filter:
+            self.run.warning("Please keep in mind that the read filtering you have requested (via `--min-percent-identity` "
+                             "and/or `--fetch-filter`) will not only affect the coverage values stored in your profile and "
+                             "auxiliary databases, but also the number of reads per split and per contig that anvi'o stores "
+                             "in the profile database. Therefore, any downstream calculations that rely on these numbers, such "
+                             "as the distribution of coverage (discov) scores, will be computed from the filtered reads only, and "
+                             "will not be directly comparable to those computed from unfiltered reads (i.e., by "
+                             "`anvi-profile-blitz`). YOU HAVE BEEN WARNED.")
+
         self.run.info('Is merged profile?', False)
         self.run.info('Is blank profile?', self.blank)
         self.run.info('Skip contigs shorter than', self.min_contig_length)
