@@ -115,3 +115,48 @@ anvi-report-indels -c 02_CONTIGS/CONTIGS.db \
                    --min-length 400 \
                    -o INDELS_INS_ONLY \
                    $thread_controller
+
+INFO "Reproducibility: the report must not depend on the order of rows in the indels tables"
+# The profiler stores indel rows in whatever order its worker processes finish contigs, so two
+# profiles of the same BAM can hold the same rows in different orders. Shuffle the rows in copies
+# of the single-sample profile-dbs and require byte-identical report outputs.
+mkdir -p 04_PROFILE_SHUFFLED
+for sample in S01 S02 S03
+do
+    mkdir -p 04_PROFILE_SHUFFLED/${sample}
+    cp 04_PROFILE/${sample}/PROFILE.db 04_PROFILE/${sample}/AUXILIARY-DATA.db 04_PROFILE_SHUFFLED/${sample}/
+done
+python3 - <<'PYEOF'
+import random, sqlite3
+random.seed(1)
+for sample in ['S01', 'S02', 'S03']:
+    db = sqlite3.connect(f'04_PROFILE_SHUFFLED/{sample}/PROFILE.db')
+    rows = db.execute('SELECT * FROM indels').fetchall()
+    original = list(rows)
+    random.shuffle(rows)
+    if len(rows) > 1 and rows == original:
+        rows = rows[1:] + rows[:1]   # make sure the order actually changed
+    db.execute('DELETE FROM indels')
+    if rows:
+        db.executemany(f"INSERT INTO indels VALUES ({','.join('?' * len(rows[0]))})", rows)
+    db.commit()
+    db.close()
+PYEOF
+anvi-report-indels -c 02_CONTIGS/CONTIGS.db \
+                   -p 04_PROFILE_SHUFFLED/S01/PROFILE.db \
+                   -p 04_PROFILE_SHUFFLED/S02/PROFILE.db \
+                   -p 04_PROFILE_SHUFFLED/S03/PROFILE.db \
+                   --min-samples 1 \
+                   --min-length 400 \
+                   -o INDELS_MULTI_P_SHUFFLED \
+                   $thread_controller
+
+for f in INDELS-VIEW-DATA.txt INDELS-ITEMS-ADDITIONAL.txt INDELS-LOCI-LONG.txt INDELS-CLUSTERS.fa INDELS-ITEMS-ORDER.newick
+do
+    if ! cmp -s INDELS_MULTI_P/$f INDELS_MULTI_P_SHUFFLED/$f
+    then
+        echo "anvi-report-indels output $f depends on the order of indel rows in the profile-dbs"
+        exit 1
+    fi
+done
+INFO "Reproducibility check passed: identical outputs after shuffling indel rows"
