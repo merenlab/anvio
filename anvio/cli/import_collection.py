@@ -20,8 +20,9 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['contigs-db', 'profile-db', 'pan-db', 'pan-graph-db', 'collection-txt',]
-__provides__ = ['collection',]
+__requires__ = ['contigs-db', 'collection-txt']
+__can_use__ = ['profile-db', 'pan-db', 'pan-graph-db']
+__provides__ = ['collection']
 __description__ = "Import an external binning result into anvi'o"
 __resources__ = [("Another description as part of the metagenomic workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-import-collection")]
 

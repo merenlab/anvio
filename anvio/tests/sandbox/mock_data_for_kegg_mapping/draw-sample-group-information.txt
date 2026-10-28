@@ -1,0 +1,4 @@
+sample	group
+SAMPLE_1	G1
+SAMPLE_2	G2
+SAMPLE_3	G2

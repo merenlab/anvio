@@ -17,7 +17,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ekiefl', 'ozcan']
-__requires__ = ['structure-db', 'variability-profile-txt', 'contigs-db', 'profile-db', 'splits-txt', 'genes-of-interest-txt']
+__requires__ = ['structure-db']
+__can_use__ = ['variability-profile-txt', 'contigs-db', 'profile-db', 'splits-txt', 'genes-of-interest-txt']
 __provides__ = ['interactive']
 __resources__ = [("The overview page from the release", "http://merenlab.org/software/anvio-structure/"),
                  ("The section of the Infant Gut Tutorial focused on anvi-display-structure", "http://merenlab.org/tutorials/infant-gut/#chapter-vii-from-single-amino-acid-variants-to-protein-structures"),

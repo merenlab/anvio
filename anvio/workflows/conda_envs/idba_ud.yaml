@@ -1,0 +1,9 @@
+# Standalone conda environment for the 'idba_ud' rule (short-read assembly; provides idba_ud).
+# Point a workflow config at this file via: "idba_ud": {"conda_yaml": ".../idba_ud.yaml"}
+# and run the workflow with `--use-conda` so Snakemake builds and uses this env.
+name: anvio-idba
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - idba=1.1.3

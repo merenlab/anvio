@@ -51,7 +51,7 @@ OUTPUT_MODES = {'modules': {
 The below dictionary describes the type of information we can output
 - the dictionary key corresponds to the header's key in the output dictionary (ie, as returned from generate_output_dict_for_modules() function)
 - 'cdict_key' is the header's key in modules or kofams data dictionary (if any)
-- 'mode_type' indicates which category of output modes (modules or kofams) this header can be used for. If both, this is 'all'
+- 'mode_type' indicates which category of output modes (modules or hits) this header can be used for. If both, this is 'all'
 - 'description' is printed when --list-available-output-headers parameter is used
 """
 OUTPUT_HEADERS = {'module' : {
@@ -151,7 +151,7 @@ OUTPUT_HEADERS = {'module' : {
                         },
                   'gene_caller_id': {
                         'cdict_key': None,
-                        'mode_type': 'kofams',
+                        'mode_type': 'hits',
                         'description': "Gene caller ID of a single enzyme in the contigs DB"
                         },
                   'enzyme_hits_in_module' : {
@@ -161,12 +161,12 @@ OUTPUT_HEADERS = {'module' : {
                         },
                   'enzyme_hit' : {
                         'cdict_key': 'kofam_hits',
-                        'mode_type': 'kofams',
+                        'mode_type': 'hits',
                         'description': "Enzyme identifier for a single annotation (KO, COG, etc)"
                         },
                   'contig' : {
                         'cdict_key': 'genes_to_contigs',
-                        'mode_type': 'kofams',
+                        'mode_type': 'hits',
                         'description': "Contig that an enzyme annotation is found on"
                         },
                   'path_id' : {
@@ -214,17 +214,17 @@ OUTPUT_HEADERS = {'module' : {
                         },
                   'enzyme' : {
                         'cdict_key': None,
-                        'mode_type': 'kofams',
+                        'mode_type': 'hits',
                         'description': 'Identifier for an enzyme that is annotated in your database(s), ie a KO or COG number'
                         },
                   'modules_with_enzyme': {
                         'cdict_key': 'modules',
-                        'mode_type': 'kofams',
+                        'mode_type': 'hits',
                         'description': 'A comma-separated list of modules that the enzyme belongs to'
                         },
                   'enzyme_definition': {
                         'cdict_key': None,
-                        'mode_type': 'kofams',
+                        'mode_type': 'hits',
                         'description': 'The functional annotation associated with the enzyme'
                         },
                   }

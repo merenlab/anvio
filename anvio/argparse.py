@@ -133,13 +133,18 @@ class ArgumentParser(argparse.ArgumentParser):
 
         requires_and_provides_statements = []
 
-        program = Program(self.prog)
-        requires = [v.id for v in program.meta_info['requires']['value']]
-        provides = [v.id for v in program.meta_info['provides']['value']]
+        def _get_values_for(statement):
+            return [v.id for v in program.meta_info[statement]['value']]
 
-        def get_block(statement, header):
+        program = Program(self.prog)
+        requires = _get_values_for('requires')
+        provides = _get_values_for('provides')
+        can_use = _get_values_for('can_use')
+        can_provide = _get_values_for('can_provide')
+
+        def get_block(statement, header=None, extra_items=None, extra_verb=''):
             blocks = []
-            if len(requires):
+            if len(statement):
                 split = []
                 for item in statement:
                     addition = [item, " / "] if statement[-1] != item else [item]
@@ -152,6 +157,9 @@ class ArgumentParser(argparse.ArgumentParser):
                 blocks.append(split)
                 blocks.append([''])
 
+            # index of the last content block (before the trailing empty one)
+            suffix_block_idx = len(blocks) - 2 if extra_items and len(blocks) >= 2 else None
+
             for i in range(0, len(blocks)):
                 block = blocks[i]
                 if atty:
@@ -162,12 +170,21 @@ class ArgumentParser(argparse.ArgumentParser):
                 if len(block) > 1:
                     block.insert(0, '   ')
 
+                # build suffix with artifact names colored, surrounding text plain
+                if i == suffix_block_idx:
+                    if atty:
+                        colored = [fg('red') + item + attr('reset') for item in extra_items]
+                    else:
+                        colored = extra_items
+                    block.append(f' (can also {extra_verb} {" / ".join(colored)})')
+
                 blocks[i] = block
 
-            if atty:
-                blocks.insert(0, attr('bold') + header + attr('reset'))
-            else:
-                blocks.insert(0, header)
+            if header:
+                if atty:
+                    blocks.insert(0, attr('bold') + header + attr('reset'))
+                else:
+                    blocks.insert(0, header)
 
             blocks.insert(1, "")
 
@@ -176,8 +193,8 @@ class ArgumentParser(argparse.ArgumentParser):
             return '\n'.join(blocks)
 
 
-        requires_and_provides_statements.append(get_block(requires, """🧀 Can consume:"""))
-        requires_and_provides_statements.append(get_block(provides, """🍕 Can provide:"""))
+        requires_and_provides_statements.append(get_block(requires, """🧀 Requires:""", extra_items=can_use, extra_verb='use'))
+        requires_and_provides_statements.append(get_block(provides, """🍕 Provides:""", extra_items=can_provide, extra_verb='generate'))
 
         return '\n' + '\n'.join(requires_and_provides_statements)
 
@@ -443,6 +460,23 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
             return self.__args_failed('pan_db', 'None around :/')
 
 
+    def fill_in_pan_graph_db(self):
+        if 'pan_graph_db' not in self.args:
+            return
+
+        FindAnvioDBs.__init__(self, run=self.run, progress=self.progress) if not self.anvio_dbs_found else None
+        if 'pan-graph' not in self.anvio_dbs:
+            return self.__args_failed.append(('pan_graph_db', 'No pan-graph databases around :/'))
+
+        pan_graph_dbs = self.anvio_dbs['pan-graph']
+
+        if len(pan_graph_dbs):
+            self.set_arg('pan_graph_db', pan_graph_dbs[0].path)
+            self.fill_in_genomes_storage_db(db_hash=pan_graph_dbs[0].hash)
+        else:
+            return self.__args_failed('pan_graph_db', 'None around :/')
+
+
     def get_updated_args(self):
         if anvio.DEBUG_AUTO_FILL_ANVIO_DBS:
             self.run.warning(None, header="ANVI'O DBs FOUND", lc="yellow")
@@ -457,6 +491,8 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
             self.fill_in_profile_db()
         elif 'pan_db' in self.args and not self.args.pan_db:
             self.fill_in_pan_db()
+        elif 'pan_graph_db' in self.args and not self.args.pan_graph_db:
+            self.fill_in_pan_graph_db()
 
         if len(self.__args_set):
             self.run.warning(None, header=f"ANVI'O FILLED IN THE {len(self.__args_set)} {P('ARG', len(self.__args_set), alt='ARGS')} BELOW AUTOMATICALLY", lc='yellow')

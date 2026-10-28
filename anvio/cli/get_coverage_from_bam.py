@@ -17,8 +17,9 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ekiefl']
+__requires__ = ["bam-file"]
+__can_use__ = ["collection-txt"]
 __provides__ = ["coverages-txt"]
-__requires__ = ["bam-file", "collection-txt",]
 __description__ = ("Get nucleotide-level, contig-level, or bin-level coverage values from a BAM file "
                    "very rapidly. For other anvi'o programs that are designed to profile BAM files, "
                    "see `anvi-profile` and `anvi-profile-blitz`")

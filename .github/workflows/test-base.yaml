@@ -1,0 +1,82 @@
+name: Anvi'o Base Workflow
+
+on:
+  workflow_call:
+    inputs:
+      test-name:
+        description: Name of the test suite (e.g., "Component Tests")
+        required: true
+        type: string
+      test-commands:
+        description: Multiline shell commands to execute
+        required: true
+        type: string
+      python-version:
+        description: Python version to use (e.g., "3.10")
+        required: false
+        default: "3.10"
+        type: string
+      miniconda-version:
+        description: Miniconda version to use (e.g., "py310_26.1.1-1")
+        required: false
+        default: "py310_26.1.1-1"
+        type: string
+
+jobs:
+  run:
+    name: ${{ inputs.test-name }} (Python ${{ inputs.python-version }})
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: "Checkout"
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        persist-credentials: false
+
+    - name: "Set up Miniconda (${{ inputs.miniconda-version }}) and Anvi'o environment"
+      uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5 # v4.0.1
+      with:
+        # FIXME:
+        #   The next version (26.3.2-2) causes https://github.com/merenlab/anvio/issues/2590
+        #   Release notes: https://www.anaconda.com/docs/getting-started/miniconda/release-notes
+        #   Available versions: https://repo.continuum.io/miniconda/
+        miniconda-version: ${{ env.MINICONDA_VERSION }}
+        auto-update-conda: true
+        activate-environment: anvio_env
+        environment-file: .conda/environment.yaml
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: "Export Python paths"
+      shell: bash -l {0}
+      # TODO: Consider using platlib/purelib: https://docs.python.org/3/library/sysconfig.html#installation-paths
+      run: |
+        SITE_PACKAGES=$(python -c 'import site; print(site.getsitepackages()[0])')
+        echo "SITE_PACKAGES_PATH=$SITE_PACKAGES" >> $GITHUB_ENV
+
+    - name: "Conda environment summary"
+      shell: bash -l {0}
+      run: |
+        conda info
+        conda list
+
+    - name: "Install Bioconductor qvalue package for R"
+      shell: bash -l {0}
+      run: |
+        Rscript -e 'install.packages("BiocManager", repos="https://cran.rstudio.com"); BiocManager::install("qvalue")'
+
+    - name: "Install anvi'o from the codebase"
+      shell: bash -l {0}
+      run: |
+        pip install uv
+        uv pip install .
+
+    - name: "Install npm dependencies for Anvi'o interactive interfaces"
+      shell: bash -l {0}
+      working-directory: ${{ env.SITE_PACKAGES_PATH }}/anvio/data/interactive
+      run: |
+        npm install
+
+    - name: Run tests
+      shell: bash -l {0}
+      run: |
+        ${{ inputs.test-commands }}

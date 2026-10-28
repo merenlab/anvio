@@ -19,12 +19,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['semiller10', 'meren']
-__requires__ = ['contigs-db',
-                'profile-db',
-                'collection',
-                'bin',
-                'internal-genomes',
-                'external-genomes']
+__requires__ = ['contigs-db']
+__can_use__ = ['profile-db', 'collection', 'bin', 'internal-genomes', 'external-genomes']
 __provides__ = ['codon-frequencies-txt', 'aa-frequencies-txt']
 __description__ = (
     "Get codon or amino acid frequency statistics from genomes, genes, and functions")
@@ -325,6 +321,7 @@ def get_args():
     groupF.add_argument(*anvio.A('sequence-min-amino-acids'), **anvio.K('sequence-min-amino-acids'))
     groupF.add_argument(*anvio.A('pansequence-min-amino-acids'), **anvio.K('pansequence-min-amino-acids'))
     groupF.add_argument(*anvio.A('min-codon-filter'), **anvio.K('min-codon-filter'))
+    groupF.add_argument(*anvio.A('ignore-start-codons'), **anvio.K('ignore-start-codons'))
     groupF.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
 
     return parser.get_args(parser)

@@ -38,3 +38,6 @@ anvio/data/misc/ModelSEED/
 anvio/data/misc/Interacdome/
 anvio/data/misc/MODELLER/db/
 anvio/data/misc/TRNA_TAXONOMY/
+
+# LLM configuration files
+CLAUDE.md
