@@ -1,0 +1,32 @@
+{
+    "general_params": {
+        "project_name":    {"type": "str", "default": null},
+        "internal_genomes":{"type": "str", "default": null},
+        "external_genomes":{"type": "str", "default": null}
+    },
+    "rules": {
+        "anvi_get_sequences_for_hmm_hits": {
+            "threads":                           {"type": "int",  "default": 1},
+            "--return-best-hit":                 {"type": "bool", "default": true},
+            "--separator":                       {"type": "str",  "default": null},
+            "--align-with":                      {"type": "str",  "default": "famsa"},
+            "--min-num-bins-gene-occurs":        {"type": "int",  "default": null},
+            "--max-num-genes-missing-from-bin":  {"type": "int",  "default": null},
+            "--concatenate-genes":               {"type": "bool", "default": true},
+            "--get-aa-sequences":                {"type": "bool", "default": true},
+            "--gene-names":                      {"type": "str",  "default": null},
+            "--hmm-sources":                     {"type": "str",  "default": "Bacteria_71"}
+        },
+        "trimal": {
+            "threads":           {"type": "int",   "default": 1},
+            "-gt":               {"type": "float", "default": 0.5},
+            "additional_params": {"type": "str",   "default": ""}
+        },
+        "iqtree": {
+            "threads":           {"type": "int", "default": 8},
+            "-m":                {"type": "str", "default": "WAG"},
+            "-bb":               {"type": "int", "default": 1000},
+            "additional_params": {"type": "str", "default": ""}
+        }
+    }
+}

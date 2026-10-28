@@ -93,11 +93,11 @@ The core data model. Each analysis type has its own versioned SQLite database fi
 | `profile` | 40 | `ProfileDatabase` | Per-sample coverage/variability from BAM files |
 | `pan` | 21 | `PanDatabase` | Gene clusters from pangenomics |
 | `genes` | 6 | `GenesDatabase` | Gene-level stats split out from profile |
-| `structure` | 2 | `StructureDatabase` | Protein 3D structure predictions |
+| `structure` | 4 | `StructureDatabase` | Protein 3D structure predictions |
 | `trnaseq` | 2 | `TRNASeqDatabase` | tRNA-seq profiling |
 | `genomestorage` | 7 | (HDF5-based) | Multi-genome storage for pangenomics |
 
-Version numbers live in `anvio/version.py`. Changing them without a corresponding migration script in `anvio/migrations/` will break existing databases.
+Version numbers live in `anvio/version.py`. Changing them without a corresponding migration script in `anvio/migrations/` will break existing databases (see note on implementation consdierations for migration scripts later in this document).
 
 ### 2. CLI Programs (`anvio/cli/`)
 
@@ -280,13 +280,59 @@ Every CLI module has these module-level variables:
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__   = "GPL 3.0"
 __version__   = anvio.__version__
-__authors__   = ['meren', 'ekiefl']          # GitHub handles
-__requires__  = ['contigs-db', 'profile-db'] # anvi'o artifact types consumed
-__provides__  = ['collection']               # anvi'o artifact types produced
+__authors__   = ['meren', 'ekiefl']          # GitHub handles of people who have developed this program
+__requires__  = ['contigs-db', 'profile-db'] # artifacts the program always needs
+__provides__  = ['collection']               # artifacts the program always produces
+__can_use__   = ['external-genomes']         # artifacts the program can optionally consume
+__can_provide__ = ['misc-data-items-order']  # artifacts the program may optionally produce
 __description__ = "One-sentence description of what this program does"
 ```
 
-`__requires__` and `__provides__` are used by `anvi-help` and the programs network graph.
+All four lists feed `anvi-help`, the programs network graph, and `anvio/programs.py`, which builds a global map of artifact/program relationships. They control how artifacts and programs are connected in the dependency graph shown at `https://anvio.org/help/` (which simply serves the output of `anvi-script-gen-help-pages`).
+
+### `__requires__` vs `__can_use__`
+
+`__requires__` lists artifacts the program **always needs**, as in it cannot run without them and will immediately fail if they are absent. `__can_use__` lists artifacts the program **optionally accepts**: they unlock additional behavior or modes when present, but the program runs fine without them.
+
+Real examples from the codebase:
+
+```python
+# anvi-get-sequences-for-hmm-hits: always needs a contigs-db and HMM data,
+# but can optionally work across multiple genomes via external/internal genomes files
+__requires__  = ['contigs-db', 'hmm-source', 'hmm-hits']
+__can_use__   = ['profile-db', 'external-genomes', 'internal-genomes']
+
+# anvi-estimate-metabolism: always needs a contigs-db and KEGG data,
+# but can accept profile/collection/bin info, genome lists, and more
+__requires__  = ['contigs-db', 'kegg-data', 'kegg-functions']
+__can_use__   = ['profile-db', 'collection', 'bin', 'external-genomes',
+                 'internal-genomes', 'metagenomes', 'pan-db', 'genomes-storage-db']
+```
+
+### `__provides__` vs `__can_provide__`
+
+The same distinction applies to outputs. `__provides__` lists artifacts the program **always produces**. `__can_provide__` lists artifacts it **may produce** depending on flags or input.
+
+```python
+# anvi-get-sequences-for-hmm-hits always produces a genes-fasta,
+# but only produces a concatenated alignment when --concatenate-genes is used
+__provides__     = ['genes-fasta']
+__can_provide__  = ['concatenated-gene-alignment-fasta']
+```
+
+### Resolving hard cases
+
+Some programs accept several different input combinations that are all functionally equivalent. For instance, a single `contigs-db`, or an `external-genomes` file, and/or an `internal-genomes` file. Deciding what goes in `__requires__` vs `__can_use__` requires judgment:
+
+**Rule of thumb:** put the most common / most atomic input in `__requires__`, and put the alternative or enriching inputs in `__can_use__`. A practical example:
+
+- A program that works on a single genome via `--contigs-db` **or** many genomes via `--external-genomes` / `--internal-genomes` should list `contigs-db` in `__requires__` and the genomes-file artifacts in `__can_use__`. This is intentionally imprecise. The program technically requires *one of* several combinations, but it keeps the dependency graph readable and matches the program's most basic usage.
+
+- A program that accepts a `profile-db` to enable per-sample operations, but works on raw contigs without it, should leave `profile-db` out of `__requires__` and put it in `__can_use__`.
+
+- When an artifact is needed only together with another optional artifact (e.g., `bin` only makes sense when `collection` is also provided), list both in `__can_use__` rather than promoting either to `__requires__`.
+
+The goal is a dependency graph where `__requires__` edges represent hard blockers and `__can_use__` edges represent enrichments. Erring toward putting things in `__can_use__` is better than polluting `__requires__` with artifacts that only apply to one of several operating modes.
 
 ---
 
@@ -626,7 +672,7 @@ Users group splits into "bins" and name groups of bins "collections". Stored in 
 
 2. **The `self` table is a key-value store.** Every database has a `self` table. Access it with `db.get_meta_value('key')` and `db.set_meta_value('key', value)`. It holds DB type, version, creation date, and analysis-specific metadata.
 
-3. **Database version bumps require migration scripts.** Version numbers are in `anvio/version.py`. Any schema change that increments a version needs a migration script in `anvio/migrations/` and must be wired into `anvi-migrate`. Do not increment versions casually.
+3. **Database version bumps require migration scripts.** Version numbers are in `anvio/version.py`. Any schema change that increments a version needs a migration script in `anvio/migrations/` and must be wired into `anvi-migrate`. Do not increment versions casually, and prepare an appropriate migration script if you change the databse version. Extremely important note: try not to import anything from anvi'o API, and NEVER import anything from `anvio.tables`. The sole purpose of migration scripts is to make sure they will remain relevant to upgrade an ancient database step-by-step to its most modern forms. If migration scripts depend on database structures from the code itself, then when the code changes, they no longer can update old databases. Make migration scripts not dependent on anvi'o codebase as much as possible.
 
 4. **`ROWID` prepending.** For tables where the first column is not unique, `db.py` automatically prepends `ROWID as "entry_id"` when reading. This is controlled by `tables.is_table_requires_unique_entry_id(table_name)`. This means some tables get an implicit `entry_id` column on read that doesn't exist in the schema definition.
 

@@ -45,14 +45,57 @@ class TablesForGeneCalls(Table):
             filesnpaths.is_file_fasta_formatted(self.contigs_fasta)
 
 
+    def normalize_gene_calls_dict_integer_types(self, gene_calls_dict):
+        """Return a copy of `gene_calls_dict` with integer-like values as Python ints."""
+        if not isinstance(gene_calls_dict, type({})):
+            raise ConfigError("Gene calls dict must be a dict instance :/")
+
+        integer_fields = ['start', 'stop', 'partial', 'call_type']
+        normalized_gene_calls_dict = {}
+
+        for gene_callers_id, gene_call in gene_calls_dict.items():
+            normalized_gene_callers_id = self.normalize_gene_call_integer_value(gene_callers_id, 'gene_callers_id')
+            normalized_gene_call = dict(gene_call)
+
+            if normalized_gene_callers_id in normalized_gene_calls_dict:
+                raise ConfigError(f"Multiple gene calls in your gene calls dict resolve to the same gene_callers_id "
+                                  f"after integer normalization: {normalized_gene_callers_id}.")
+
+            for field_name in integer_fields:
+                if field_name not in normalized_gene_call:
+                    continue
+
+                normalized_gene_call[field_name] = self.normalize_gene_call_integer_value(normalized_gene_call[field_name], field_name)
+
+            normalized_gene_calls_dict[normalized_gene_callers_id] = normalized_gene_call
+
+        return normalized_gene_calls_dict
+
+
+    def normalize_gene_call_integer_value(self, value, field_name):
+        """Return `value` as a native Python int if it is an integer-like scalar."""
+        if isinstance(value, (bool, numpy.bool_)):
+            raise ConfigError(f"The value for '{field_name}' in a gene calls dict must be an integer, not a boolean.")
+
+        if isinstance(value, (int, numpy.integer)):
+            return int(value)
+
+        if isinstance(value, str):
+            value = value.strip()
+            try:
+                return int(value)
+            except ValueError:
+                raise ConfigError(f"The value for '{field_name}' in a gene calls dict must be an integer.")
+
+        raise ConfigError(f"The value for '{field_name}' in a gene calls dict must be an integer, not '{type(value).__name__}'.")
+
+
     def check_gene_calls_dict(self, gene_calls_dict):
         if not isinstance(gene_calls_dict, type({})):
             raise ConfigError("Gene calls dict must be a dict instance :/")
 
-        try:
-            [int(g) for g in list(gene_calls_dict.keys())]
-        except ValueError:
-            raise ConfigError("Keys of a gene calls dict must be integers!")
+        for gene_callers_id in gene_calls_dict:
+            self.normalize_gene_call_integer_value(gene_callers_id, 'gene_callers_id')
 
         if False in [x['direction'] in ['f', 'r'] for x in list(gene_calls_dict.values())]:
             raise ConfigError("The values in 'direction' column can't be anything but 'f' (for forward) "
@@ -192,6 +235,8 @@ class TablesForGeneCalls(Table):
                                                                          expected_fields=expected_fields,
                                                                          only_expected_fields=True,
                                                                          column_mapping=column_mapping)
+            # NOTE: no need to normalize integer types here since `column_mapping` above already
+            #       casts the gene caller ids and integer fields to native Python ints via `int`.
 
             if not len(gene_calls_dict):
                 raise ConfigError("You provided an external gene calls file, but it returned zero gene calls. Assuming that "
@@ -203,6 +248,11 @@ class TablesForGeneCalls(Table):
 
             self.run.info("External gene calls", "%d gene calls recovered and will be processed." % len(gene_calls_dict))
         else:
+            # a caller passed us a `gene_calls_dict` directly (rather than a file). Its integer-like
+            # values may be numpy scalars (e.g. when built from a pandas/numpy source), which SQLite
+            # cannot bind, so we normalize them to native Python ints here.
+            gene_calls_dict = self.normalize_gene_calls_dict_integer_types(gene_calls_dict)
+
             # FIXME: we need to make sure the gene caller ids in the incoming directory is not going to
             #        overwrite an existing gene call. Something like this would have returned the
             #        current max, which could be cross-checked with what's in the dict:

@@ -110,8 +110,13 @@ def migrate(db_path):
         progress.update(f"Validating {len(zero_pairs)} zero-coverage {target} across all fields")
 
         # Step 2: Validate consistency across all other view tables.
-        # For each zero-detection (item, layer) pair, every other field must also be 0.
-        # We also verify that zero-detection pairs exist in every view table (no missing rows).
+        # For each zero-detection (item, layer) pair, every other field should also be 0.
+        # Extremely old databases may violate this invariant, but we keep them around for
+        # historical reasons (also see migration script from 40 to 41). So here we collect
+        # inconsistent pairs and exclude them from the zero_coverage movement rather than
+        # aborting. They stay in the view tables as-is.
+        inconsistent_pairs = set()
+
         for field in essential_data_fields:
             if field == 'detection':
                 continue
@@ -133,22 +138,25 @@ def migrate(db_path):
                 if pair in zero_pairs:
                     zero_pairs_found.add(pair)
                     if value != 0 and value != 0.0:
-                        raise ConfigError(
-                            f"Data integrity problem: {target[:-1]} '{item}' in layer '{layer}' "
-                            f"has detection=0 but {field}={value} (expected 0). "
-                            f"The migration cannot proceed safely."
-                        )
+                        inconsistent_pairs.add(pair)
 
-            # Verify all zero-detection pairs exist in this table
-            missing_pairs = zero_pairs - zero_pairs_found
+            # Check that all zero-detection pairs have a row in this table.
+            # Missing rows mean the data is incomplete; exclude those pairs too.
+            truly_zero = zero_pairs - inconsistent_pairs
+            missing_pairs = truly_zero - zero_pairs_found
             if missing_pairs:
-                example = next(iter(missing_pairs))
-                raise ConfigError(
-                    f"Data integrity problem: {len(missing_pairs)} zero-detection pair(s) are missing "
-                    f"from '{table_name}'. For example, {target[:-1]} '{example[0]}' in layer "
-                    f"'{example[1]}' has detection=0 in '{detection_table}' but has no row in "
-                    f"'{table_name}'. The migration cannot proceed safely."
-                )
+                inconsistent_pairs.update(missing_pairs)
+
+        if inconsistent_pairs:
+            run.warning(f"This profile database had a historical data inconsistency: {len(inconsistent_pairs)} "
+                        f"zero-detection {target[:-1]} pair(s) had non-zero values in other fields, or were "
+                        f"missing rows in some view tables. This is a known bug from very early versions of "
+                        f"anvi'o. These pairs will be left in the view tables as-is and will NOT be moved "
+                        f"into the zero_coverage table. The migration will proceed normally.")
+            zero_pairs -= inconsistent_pairs
+
+        if not zero_pairs:
+            continue
 
         # Step 3: Queue inserts into the zero_coverage table
         zero_cov_rows = list(zero_pairs)

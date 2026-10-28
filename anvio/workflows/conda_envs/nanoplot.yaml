@@ -1,0 +1,12 @@
+# Standalone conda environment for the 'nanoplot' rule (long-read QC; provides NanoPlot).
+# Point a workflow config at this file via: "nanoplot": {"conda_yaml": ".../nanoplot.yaml"}
+# and run the workflow with `--use-conda` so Snakemake builds and uses this env.
+#
+# Only the NanoPlot version is pinned; its dependency tree is left to the solver, which
+# resolves an importable environment. Pinning python/kaleido here breaks the solve.
+name: anvio-nanoplot
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - nanoplot=1.47.1

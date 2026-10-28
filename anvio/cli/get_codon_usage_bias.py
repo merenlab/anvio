@@ -21,12 +21,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['semiller10']
-__requires__ = ['contigs-db',
-                'profile-db',
-                'collection',
-                'bin',
-                'internal-genomes',
-                'external-genomes']
+__requires__ = ['contigs-db']
+__can_use__ = ['profile-db', 'collection', 'bin', 'internal-genomes', 'external-genomes']
 __provides__ = []
 __description__ = ("Get codon usage bias (CUB) statistics of genes and functions")
 
@@ -560,6 +556,7 @@ def get_args():
         help="Only allow CUB to calculated for a query if it has at least this number of "
              "synonymous codons that will be analyzed. For reference-dependent CUB metrics, "
              "analyzed codons are those with reference compositions.")
+    groupG.add_argument(*anvio.A('ignore-start-codons'), **anvio.K('ignore-start-codons'))
 
     groupH = parser.add_argument_group(
         'FILTER REFERENCE',

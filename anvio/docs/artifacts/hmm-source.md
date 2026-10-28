@@ -64,7 +64,7 @@ It is also possible to generate an anvi'o compatible HMMs directory for a given 
 
 {{ codestart }}
 %(anvi-script-pfam-accessions-to-hmms-directory)s --pfam-accessions-list PF00705 PF00706 \
-                                               -O AD_HOC_HMMs
+                                               -o AD_HOC_HMMs
 {{ codestop }}
 
 These IDs can be given through the command line as a list, or through an input file where every line is a unique accession id.
@@ -79,7 +79,7 @@ One can run this command:
 
 {{ codestart }}
 %(anvi-script-pfam-accessions-to-hmms-directory)s --pfam-accessions-list PF06603 \
-                                                -O UpxZ
+                                                -o UpxZ
 {{ codestop }}
 
 which would createa a directory called `UpxZ`. Then, one would run this command to find matches to this model in a given contigs database:
