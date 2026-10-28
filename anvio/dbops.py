@@ -4294,6 +4294,7 @@ class ProfileSuperclass(object):
         self.item_orders = {}
         self.views = {}
         self.collection_profile = {}
+        self.num_reads_per_split = {}
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.profile_db_path = A('profile_db')
@@ -5192,6 +5193,12 @@ class ProfileSuperclass(object):
                         averages[sample_name] = numpy.average([a or 0 for a in averages[sample_name]], weights=weights)
 
                     self.collection_profile[bin_id][table_name] = averages
+
+        # discov needs the number of reads assigned to each split in the collection
+        if report_discov and not self.p_meta['blank']:
+            self.progress.update("Reading the number of reads assigned to splits")
+            split_names_in_collection = set([split_name for bin_id in collection for split_name in collection[bin_id]])
+            self.num_reads_per_split, _ = profile_db.db.get_view_data(t.num_reads_assigned_splits_table_name, split_names_of_interest=split_names_in_collection)
 
         # generating precent recruitment of each bin plus __splits_not_binned__ in each sample:
         self.bin_percent_recruitment_per_sample = {}
