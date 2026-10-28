@@ -1281,7 +1281,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
 
     def compute_discov_stats(self):
-        """Compute Distribution of Coverage (DisCov) stats for each bin and each contig.
+        """Compute distribution of coverage (discov) stats for each bin and each contig.
 
         Combines per-nucleotide coverage arrays taken from the auxiliary database and calls
         utils.CoverageStats exactly once per contig and once per bin per sample. Contig arrays
@@ -1300,32 +1300,32 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                each of these bins gets a row for the part of the contig that is in it (see the
                                partial_contig_in_bin column)
 
-        Note that the DisCov parameters are established via self.discov_* attributes in SummarizerSuperClass.
+        Note that the discov parameters are established via self.discov_* attributes in SummarizerSuperClass.
         """
 
         if self.p_meta['blank']:
-            self.run.warning("DisCov calculation was requested, but this is a blank profile with "
-                             "no coverage data. Skipping DisCov output.")
+            self.run.warning("Discov calculation was requested, but this is a blank profile with "
+                             "no coverage data. Skipping discov output.")
             return
 
         if not self.auxiliary_profile_data_available:
             q2q3_str = " and careful Q2Q3 calculation" if self.calculate_Q2Q3_carefully else ""
-            self.run.warning(f"DisCov calculation was requested (--report-discov), but the auxiliary "
+            self.run.warning(f"Discov calculation was requested (--report-discov), but the auxiliary "
                              f"data file could not be found at '{self.auxiliary_data_path}'. "
-                             f"Skipping DisCov output{q2q3_str}. All other summary output is unaffected.",
+                             f"Skipping discov output{q2q3_str}. All other summary output is unaffected.",
                              header="AUXILIARY DATA NOT FOUND")
             return
 
         if self.calculate_Q2Q3_carefully:
             self.run.warning("Since both --report-discov and --calculate-Q2Q3-carefully were requested, "
-                             "anvi'o will compute careful Q2Q3 mean coverage values and DisCov scores simultaneously, "
+                             "anvi'o will compute careful Q2Q3 mean coverage values and discov scores simultaneously, "
                              "using the same auxiliary coverage data. Depending on the size of your dataset and the number "
                              "of contigs in your bins this step can take much much longer than usual, since anvi'o "
                              "will have to do a lot of sorting of very large arrays. But be reassured that you will get the "
                              "most complete summary possible at the end of this journey.",
                              header="💀 THINGS WILL TAKE LONGER 💀")
         else:
-            self.run.warning("Since --report-discov was requested, anvi'o will compute DisCov scores using the "
+            self.run.warning("Since --report-discov was requested, anvi'o will compute discov scores using the "
                              "coverage data in the auxiliary database. Depending on the size of your dataset and the number "
                              "of contigs in your bins this step can take much much longer than usual, since anvi'o "
                              "will have to do a lot of sorting of very large arrays. But at least you will receive EVEN MOAR "
@@ -1358,21 +1358,21 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                 contig_minlen = self.discov_min_window_length
 
         if user_specified_window:
-            self.run.info('DisCov window length', bin_wlen if bin_wlen else f"{bin_wpct}% of sequence")
+            self.run.info('Discov window length', bin_wlen if bin_wlen else f"{bin_wpct}% of sequence")
             if bin_wpct:
                 self.run.info('Minimum window length', bin_minlen)
         else:
-            self.run.info('DisCov window length (bins)', f"{bin_wlen} bp")
-            self.run.info('DisCov window length (contigs)', f"{contig_wpct}% of sequence, min {contig_minlen} bp")
-        self.run.info('DisCov alpha value', self.discov_alpha)
-        self.run.info('DisCov formula', self.discov_formula)
+            self.run.info('Discov window length (bins)', f"{bin_wlen} bp")
+            self.run.info('Discov window length (contigs)', f"{contig_wpct}% of sequence, min {contig_minlen} bp")
+        self.run.info('Discov alpha value', self.discov_alpha)
+        self.run.info('Discov formula', self.discov_formula)
 
         bin_level_rows = []
         contig_level_rows = []
         DISCOV_BINS_OUTPUT='discov_bins.txt'
         DISCOV_CONTIGS_OUTPUT='discov_contigs.txt'
 
-        self.progress.new('Computing DisCov', progress_total_items=len(self.collection_dict))
+        self.progress.new('Computing discov', progress_total_items=len(self.collection_dict))
 
         for bin_id in self.collection_dict:
             self.progress.update(f"'{bin_id}'")
@@ -1405,8 +1405,8 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                         self.run.warning(f"Anvi'o failed to retrieve the coverage arrays for split '{split_name}' "
                                          f"in contig '{contig_name}' (bin '{bin_id}') from the auxiliary DB. Here is the "
                                          f"error, in case it means anything to you: {e}.\n"
-                                         f"This contig will be excluded from contig-level DisCov output, and the bin it "
-                                         f"belongs to will be excluded from bin-level DisCov output (since its coverage "
+                                         f"This contig will be excluded from contig-level discov output, and the bin it "
+                                         f"belongs to will be excluded from bin-level discov output (since its coverage "
                                          f"array would be incomplete). Please investigate why this happened as it could "
                                          f"be symptomatic of a more serious issue affecting your data.")
                         failed_contigs.add(contig_name)
@@ -1427,7 +1427,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                 if not contig_arrays:
                     continue
 
-                # Compute contig-level DisCov (one CoverageStats call per contig)
+                # Compute contig-level discov (one CoverageStats call per contig)
                 for contig_name, contig_array in contig_arrays.items():
                     c_stats = utils.CoverageStats(contig_array,
                                                   skip_outliers=True, # we don't need the self.is_outlier attribute
@@ -1452,7 +1452,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                               'spread_evenness_score': c_stats.spread_evenness_score,
                                               'dis_cov': c_stats.discov})
 
-                # Compute bin-level DisCov; reuse contig arrays
+                # Compute bin-level discov; reuse contig arrays
                 if failed_contigs: # unless one of the contig lookups failed; we don't want to compute based on partial bins
                     continue
                 bin_array = numpy.concatenate([contig_arrays[c] for c in sorted_contigs if c in contig_arrays])
@@ -1507,8 +1507,8 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                                file_obj=output_file_obj,
                                                do_not_write_key_column=True)
 
-        self.run.info('DisCov output (bins)', os.path.join(self.output_directory, 'bins_across_samples', DISCOV_BINS_OUTPUT))
-        self.run.info('DisCov output (contigs)', os.path.join(self.output_directory, 'bins_across_samples', DISCOV_CONTIGS_OUTPUT))
+        self.run.info('Discov output (bins)', os.path.join(self.output_directory, 'bins_across_samples', DISCOV_BINS_OUTPUT))
+        self.run.info('Discov output (contigs)', os.path.join(self.output_directory, 'bins_across_samples', DISCOV_CONTIGS_OUTPUT))
 
 
     def process(self):
@@ -1519,7 +1519,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
             raise ConfigError("It seems the summarizer class have been inherited without an `output_directory` argument :/ Show stopper "
                               "mistake stopped the show. Bye!")
 
-        # if requested, compute DisCov from the coverage arrays in the aux DB. We do this first because it will also re-do Q2Q3
+        # if requested, compute discov from the coverage arrays in the aux DB. We do this first because it will also re-do Q2Q3
         # if --calculate-Q2Q3-carefully was used
         if self.report_discov:
             self.compute_discov_stats()
