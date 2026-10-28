@@ -78,14 +78,24 @@ def get_atomic_data(sample_id, contigs, atomic_data_field, zero_cov_splits=None)
 
 
 def cigar_has_indel_block_of_length(cigartuples, min_length):
-    """True if a read's vectorized form (bamops._vectorize_read) would contain an insertion-type or
-    deletion-type block of at least `min_length` rows.
+    """True if a read's vectorized form would contain an indel block of at least `min_length` rows.
 
-    Mirrors _vectorize_read exactly: ops consuming only the read (I, S) are type 1, ops consuming only
-    the reference (D, N) are type 2, ops consuming both are type 0, and ops consuming neither (H, P)
-    still occupy rows of type -1 and so break blocks. Consecutive ops of the same type form one block;
-    zero-length ops add no rows. Reads without such a block contribute no indel >= min_length, so
-    vectorizing them can be skipped without changing any stored indel.
+    This mirrors `bamops._vectorize_read` exactly: ops consuming only the read (I, S) are type 1, ops consuming
+    only the reference (D, N) are type 2, ops consuming both are type 0, and ops consuming neither (H, P) still
+    occupy rows of type -1 and so break blocks. Consecutive ops of the same type form one block, and zero-length
+    ops add no rows. Reads without such a block contribute no indel >= min_length, so vectorizing them can be
+    skipped without changing any stored indel.
+
+    Parameters
+    ==========
+    cigartuples : list
+        The (operation, length) tuples of the read's CIGAR string.
+    min_length : int
+        The minimum length of an insertion-type or deletion-type block.
+
+    Returns
+    =======
+    result : bool
     """
     if cigartuples is None or len(cigartuples) == 0:
         return False

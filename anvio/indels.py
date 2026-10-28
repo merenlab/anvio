@@ -377,7 +377,7 @@ class Indels:
             # Reporting below that threshold would silently look like those events are absent.
             stored_min = int(pdb.meta.get('min_indel_length') or 0)
             if stored_min > self.min_length:
-                self.progress.reset()
+                self.progress.end()
                 pdb.db.disconnect()
                 raise ConfigError(f"The profile-db '{path}' was generated with `--min-indel-length {stored_min}`, so "
                                   f"it does not contain indels shorter than {stored_min} bp. You asked for indels "

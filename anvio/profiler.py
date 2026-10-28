@@ -1142,6 +1142,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.min_indel_length < 0:
             raise ConfigError("The minimum indel length (--min-indel-length) can't be negative.")
 
+        if self.skip_SNV_storage and self.skip_SNV_profiling:
+            raise ConfigError("--skip-SNV-storage has no effect with --skip-SNV-profiling, since no SNVs are "
+                              "computed in the first place. Please remove one of these flags and try again.")
+
+        if self.min_indel_length and self.skip_INDEL_profiling:
+            raise ConfigError("--min-indel-length has no effect with --skip-INDEL-profiling, since no indels are "
+                              "profiled in the first place. Please remove one of these flags and try again.")
+
         if self.skip_SNV_storage and self.profile_SCVs:
             raise ConfigError("SCV profiling (--profile-SCVs) works from the per-position SNV rows, so it can't be "
                               "combined with --skip-SNV-storage.")
