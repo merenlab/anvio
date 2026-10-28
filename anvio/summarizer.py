@@ -1459,10 +1459,13 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                               discov_window_percentage=bin_wpct,
                                               discov_min_window_len=bin_minlen,
                                               discov_alpha=self.discov_alpha,
-                                              discov_formula=self.discov_formula)
+                                              discov_formula=self.discov_formula,
+                                              num_reads=sum(contig_num_reads.values()),
+                                              report_discov=True)
                 bin_level_rows.append({'bin_name': bin_id,
                                        'sample_name': sample_name,
                                        'length': len(bin_array),
+                                       'num_reads': sum(contig_num_reads.values()),
                                        'num_windows': b_stats.num_windows,
                                        'actual_prop_windows_covered': b_stats.prop_win_covered,
                                        'expected_prop_windows_covered': b_stats.spread_expected,
@@ -1480,7 +1483,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
         # Write bin-level output. Integer keys provide stable row order; the key column itself
         # is suppressed so the file starts directly with the data columns.
-        bin_headers = ['key', 'bin_name', 'sample_name', 'length', 'num_windows',
+        bin_headers = ['key', 'bin_name', 'sample_name', 'length', 'num_reads', 'num_windows',
                        'actual_prop_windows_covered', 'expected_prop_windows_covered', 'normalized_spread',
                        'window_depth_evenness', 'spread_evenness_score', 'dis_cov']
         output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix=DISCOV_BINS_OUTPUT)
@@ -1491,7 +1494,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                                do_not_write_key_column=True)
 
         # Write contig-level output
-        contig_headers = ['key', 'bin_name', 'contig_name', 'sample_name', 'length', 'num_windows',
+        contig_headers = ['key', 'bin_name', 'contig_name', 'sample_name', 'length', 'num_reads', 'num_windows',
                           'actual_prop_windows_covered', 'expected_prop_windows_covered', 'normalized_spread',
                           'window_depth_evenness', 'spread_evenness_score', 'dis_cov']
         output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix=DISCOV_CONTIGS_OUTPUT)
