@@ -1118,7 +1118,7 @@ class Integrator(object):
         trnaseq_contigs_db = self.trnaseq_contigs_db_info.load_db()
         # Convert seed contigs names to gene callers IDs.
         seed_contig_names_string = ','.join(
-            ['"%s"' % seed_contig_name for seed_contig_name in
+            ["'%s'" % seed_contig_name for seed_contig_name in
              hits_df[hits_df['anticodon'].str[0] == 'A']['seed_contig_name'].unique()])
         contigs_where_clause = f'''contig IN ({seed_contig_names_string})'''
         seed_id_df = trnaseq_contigs_db.get_table_as_dataframe(
@@ -1129,7 +1129,7 @@ class Integrator(object):
         seed_id_df = seed_id_df.rename(
             {'gene_callers_id': 'seed_gene_callers_id', 'contig': 'seed_contig_name'}, axis=1)
         # Find the index of position 34 in each of the seed sequences.
-        seed_ids_string = ','.join(['"%s"' % seed_gene_callers_id for seed_gene_callers_id in
+        seed_ids_string = ','.join([str(int(seed_gene_callers_id)) for seed_gene_callers_id in
                                     seed_id_df['seed_gene_callers_id'].unique()])
         ids_where_clause = f'''gene_callers_id IN ({seed_ids_string})'''
         seed_wobble_df = trnaseq_contigs_db.get_table_as_dataframe(
@@ -2629,7 +2629,7 @@ class Affinitizer:
 
         ##################################################
         # Find the nucleotide at anticodon wobble position 34 in each seed consensus sequence.
-        seed_ids_string = ','.join(['"%s"' % gene_callers_id for gene_callers_id in
+        seed_ids_string = ','.join([str(int(gene_callers_id)) for gene_callers_id in
                                     trna_gene_hits_df['seed_gene_callers_id'].unique()])
         ids_where_clause = f'''gene_callers_id IN ({seed_ids_string})'''
         wobble_position_df = trnaseq_contigs_db.get_table_as_dataframe(
@@ -2643,7 +2643,7 @@ class Affinitizer:
         trna_gene_hits_df = trna_gene_hits_df.merge(
             wobble_position_df, on='seed_gene_callers_id')
 
-        seed_contig_names_string = ','.join(['"%s"' % seed_contig_name for seed_contig_name in
+        seed_contig_names_string = ','.join(["'%s'" % seed_contig_name for seed_contig_name in
                                                 trna_gene_hits_df['seed_contig_name'].unique()])
         contigs_where_clause = f'''contig IN ({seed_contig_names_string})'''
         seed_consensus_sequence_df = trnaseq_contigs_db.get_table_as_dataframe(
