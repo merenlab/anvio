@@ -1398,7 +1398,6 @@ class Integrator(object):
             how='left', on='seed_contig_name')
         modification_keys = []
         unmodified_nts = []
-        variant_keys = []
         for group_key, modification_candidate_df in modification_candidates_df.groupby(
             ['seed_contig_name', 'seed_position'], as_index=False):
             unmodified_nt = ''
@@ -1416,7 +1415,6 @@ class Integrator(object):
                     int(seed_position - seed_alignment_start + gene_alignment_start)]
                 if unmodified_nt:
                     if gene_nt != unmodified_nt:
-                        variant_keys.append(group_key)
                         break
                 else:
                     unmodified_nt = gene_nt
