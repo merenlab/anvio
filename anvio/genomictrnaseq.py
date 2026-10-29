@@ -486,25 +486,25 @@ class Integrator(object):
 
         if (self.genomic_contigs_db_path and
             (self.internal_genomes_path or self.external_genomes_path)):
-            raise ConfigError("`--internal-genomes` and `--external-genomes` cannot be used with "
-                              "`--contigs-db`.")
+            raise ConfigError("`internal_genomes` and `external_genomes` cannot be used with "
+                              "`contigs_db`.")
 
         if ((self.genomic_profile_db_path or self.collection_name) and
             not (self.genomic_contigs_db_path and
                  self.genomic_profile_db_path and
                  self.collection_name)):
-            raise ConfigError("A collection must be provided using `--contigs-db`, `--profile-db`, "
-                              "and `--collection-name`.")
+            raise ConfigError("A collection must be provided using `contigs_db`, `profile_db`, and "
+                              "`collection_name`.")
 
         if self.bin_id and self.bin_ids_path:
-            raise ConfigError("`--bin-id` and `--bin-ids-file` cannot be used together.")
+            raise ConfigError("`bin_id` and `bin_ids_file` cannot be used together.")
 
         if ((self.bin_id or self.bin_ids_path) and
             not (self.genomic_contigs_db_path and
                  self.genomic_profile_db_path and
                  self.collection_name)):
-            raise ConfigError("Bins provided with `--bin-id` or `--bin-ids-file` also require "
-                              "`--contigs-db`, `--profile-db`, and `--collection-name`.")
+            raise ConfigError("Bins provided with `bin_id` or `bin_ids_file` also require "
+                              "`contigs_db`, `profile_db`, and `collection_name`.")
 
         if (self.unambiguous_genome_assignment and
             self.genomic_contigs_db_path and
