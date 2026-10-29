@@ -2292,6 +2292,10 @@ def generate_general_codon_frequencies(args, affinities_dict):
                     return_functions=not args.gene_affinity,
                     function_accessions=function_accession_dict,
                     function_names=function_name_dict)
+                if args.gene_affinity:
+                    # `MultiGenomeCodonUsage.get_frequencies` cannot select genes by ID.
+                    codon_frequency_df = codon_frequency_df[
+                        codon_frequency_df.index.isin(gene_caller_ids, level='gene_caller_id')]
             if not multi_genome_info_dict:
                 # An index column consisting of the single provided genome name must be added to the
                 # table returned for a single genome.
