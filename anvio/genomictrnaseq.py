@@ -2975,7 +2975,6 @@ class Affinitizer:
         args.contigs_db = self.genomic_contigs_db_path
         args.profile_db = self.genomic_profile_db_path
         args.collection_name = self.collection_name
-        args.bin_id = self.bin_id
         args.internal_genomes = self.internal_genomes_path
         args.external_genomes = self.external_genomes_path
         args.function_sources = self.function_sources
@@ -2986,22 +2985,40 @@ class Affinitizer:
         args.codon_to_amino_acid = None
 
         if self.genomic_contigs_db_path:
-            codon_usage = codonusage.SingleGenomeCodonUsage(
-                args, r=self.run, rq=self.run_quiet, p=self.progress)
-            codon_frequency_df = codon_usage.get_frequencies(
-                from_function_sources=not self.gene_affinity,
-                return_functions=not self.gene_affinity,
-                gene_caller_ids=self.gene_caller_ids,
-                function_accessions=self.function_accessions_dict,
-                function_names=self.function_names_dict,
-                gene_min_codons=self.gene_min_total_codons,
-                function_min_codons=self.function_min_total_codons,
-                drop_amino_acids=self.exclude_amino_acids)
-            # Match single- and multi-genome table formats by adding genome name to the index.
-            new_index_cols = ['genome_name'] + codon_frequency_df.index.names
-            codon_frequency_df = codon_frequency_df.reset_index()
-            codon_frequency_df['genome_name'] = list(self.genome_info_dict)[0]
-            codon_frequency_df = codon_frequency_df.set_index(new_index_cols)
+            codon_frequency_dfs = []
+            unfound_gene_caller_ids = set(self.gene_caller_ids or [])
+            for genome_name, genome_info in self.genome_info_dict.items():
+                self.run.info("Genome", genome_name)
+                genome_args = argparse.Namespace(**vars(args), bin_id=genome_info['bin_id'])
+                codon_usage = codonusage.SingleGenomeCodonUsage(
+                    genome_args, r=self.run, rq=self.run_quiet, p=self.progress)
+                genome_gene_caller_ids = [
+                    gene_caller_id for gene_caller_id in self.gene_caller_ids or []
+                    if gene_caller_id in codon_usage.gene_caller_ids]
+                # Don't pass an empty list, which would select every gene in the genome.
+                if self.gene_caller_ids and not genome_gene_caller_ids:
+                    continue
+                unfound_gene_caller_ids.difference_update(genome_gene_caller_ids)
+                codon_frequency_df = codon_usage.get_frequencies(
+                    from_function_sources=not self.gene_affinity,
+                    return_functions=not self.gene_affinity,
+                    gene_caller_ids=genome_gene_caller_ids,
+                    function_accessions=self.function_accessions_dict,
+                    function_names=self.function_names_dict,
+                    gene_min_codons=self.gene_min_total_codons,
+                    function_min_codons=self.function_min_total_codons,
+                    drop_amino_acids=self.exclude_amino_acids)
+                # Match single- and multi-genome table formats by adding genome name to the index.
+                new_index_cols = ['genome_name'] + codon_frequency_df.index.names
+                codon_frequency_df = codon_frequency_df.reset_index()
+                codon_frequency_df['genome_name'] = genome_name
+                codon_frequency_df = codon_frequency_df.set_index(new_index_cols)
+                codon_frequency_dfs.append(codon_frequency_df)
+            if unfound_gene_caller_ids:
+                raise ConfigError(
+                    "The following gene caller IDs were not found in any input genome: "
+                    f"{sorted(unfound_gene_caller_ids)}")
+            codon_frequency_df = pd.concat(codon_frequency_dfs)
         else:
             codon_usage = codonusage.MultiGenomeCodonUsage(
                 args, r=self.run, rq=self.run_quiet, p=self.progress)
