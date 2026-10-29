@@ -1814,6 +1814,9 @@ class Affinitizer:
         self.run_quiet = rq
         self.progress = p
 
+        # The combination of (meta)genomic input arguments determines how databases are accessed.
+        self.check_genomic_input_args()
+
         self.trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path, expecting='contigs')
 
         # Store information on accessing (meta)genomes.
@@ -2049,6 +2052,35 @@ class Affinitizer:
                 self.nucleotide_decoding_dict[derived_anticodon] = decoded_codons
 
 
+    def check_genomic_input_args(self):
+        """Check the combination of (meta)genomic input arguments."""
+        if (self.genomic_contigs_db_path and
+            (self.internal_genomes_path or self.external_genomes_path)):
+            raise ConfigError(
+                "`internal_genomes` and `external_genomes` cannot be used with `contigs_db`.")
+
+        if ((self.genomic_profile_db_path or self.collection_name) and
+            not (
+                self.genomic_contigs_db_path and
+                self.genomic_profile_db_path and
+                self.collection_name)):
+            raise ConfigError(
+                "A collection must be provided using `contigs_db`, `profile_db`, and "
+                "`collection_name`.")
+
+        if self.bin_id and self.bin_ids_path:
+            raise ConfigError("`bin_id` and `bin_ids_file` cannot be used together.")
+
+        if ((self.bin_id or self.bin_ids_path) and
+            not (
+                self.genomic_contigs_db_path and
+                self.genomic_profile_db_path and
+                self.collection_name)):
+            raise ConfigError(
+                "Bins provided with `bin_id` or `bin_ids_file` also require `contigs_db`, "
+                "`profile_db`, and `collection_name`.")
+
+
     def sanity_check(self):
         """Check the feasibility of args from initialization."""
         if self.trnaseq_contigs_db_info.variant != 'trnaseq':
@@ -2125,30 +2157,6 @@ class Affinitizer:
                 f"`analyzed_samples`, the only sample in '{self.seeds_specific_txt_path}' is "
                 "the reference itself. Provide more samples or specify `analyzed_samples`.")
         ##################################################
-
-        # Do basic checks of the combinations of (meta)genomic input arguments.
-        if (self.genomic_contigs_db_path and
-            (self.internal_genomes_path or self.external_genomes_path)):
-            raise ConfigError(
-                "`internal_genomes` and `external_genomes` cannot be used with `contigs_db`.")
-
-        if ((self.genomic_profile_db_path or self.collection_name) and
-            not (
-                self.genomic_contigs_db_path and
-                self.genomic_profile_db_path and
-                self.collection_name)):
-            raise ConfigError(
-                "A collection must be provided using `contigs_db`, `profile_db`, and "
-                "`collection_name`.")
-
-        if (self.bin_id and
-            not (
-                self.genomic_contigs_db_path and
-                self.genomic_profile_db_path and
-                self.collection_name)):
-            raise ConfigError(
-                "A specific bin provided with `bin_id` also requires `contigs_db`, `profile_db`, "
-                "and `collection_name`.")
 
         ##################################################
         # Check that the (meta)genomic inputs correspond to tRNA genes linked to seeds in the
