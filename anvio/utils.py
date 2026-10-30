@@ -694,7 +694,7 @@ class CoverageStats:
         nonzero_window_means = [x[2] for x in windows if x[2] > 0]
         self.num_windows = len(windows)
         self.prop_win_covered = len(nonzero_window_means) / self.num_windows
-        cv_of_means = self.compute_CV(nonzero_window_means) if len(nonzero_window_means) >= 3 else None # same min windows as MAD
+        cv_of_means = self.compute_CV(nonzero_window_means) if len(nonzero_window_means) >= 3 else None
         if cv_of_means is not None:
             self.window_depth_evenness = 1 / (1 + cv_of_means)
         else:
