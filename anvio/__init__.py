@@ -4470,7 +4470,7 @@ D = {
     ),
     'discov-formula': (
             ['--discov-formula'],
-            {'default': 'linear',
+            {'default': 'geometric',
              'type': str,
              'metavar': 'STRING',
              'help': "Which formula to use when combining S and E into the spread-evenness score (C) that underlies the "

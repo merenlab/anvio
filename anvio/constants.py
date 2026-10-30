@@ -739,6 +739,6 @@ anvio_news_url = "https://raw.githubusercontent.com/merenlab/anvio/master/NEWS.m
 # produce windows too large to be informative.
 # Contig-level stats use a percentage-based window to adapt to the wide size distribution of
 # individual contigs, with a floor to prevent degenerate windows on very short contigs.
-discov_default_bin_window_length = 1000      # fixed bp window for bin/genome-level discov
+discov_default_bin_window_length = 10000      # fixed bp window for bin/genome-level discov
 discov_default_contig_window_percentage = 1  # 1% of contig length for contig-level discov
 discov_default_contig_min_window_length = 300  # minimum window length for contig percentage mode
