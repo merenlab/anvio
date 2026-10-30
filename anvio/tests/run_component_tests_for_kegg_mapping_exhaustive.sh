@@ -85,11 +85,11 @@ minimal_enzymes_input.txt > draw_kos_constant_coverage.reaction.txt
 # every map of an individual sample blank.
 awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","sample","log_abundance"} NR>1{s=((NR-2)%3)+1; print $1,$2,sprintf("SAMPLE_%d",s),$3}' \
 draw_kos_negative.reaction.txt > draw_kos_samples_negative.reaction.txt
-printf 'category\tcolor\nSAMPLE_1\t#1f77b4\nSAMPLE_2\t#ff7f0e\nSAMPLE_3\t#2ca02c\nSAMPLE_1, SAMPLE_2\t#7d5ba6\n' > draw-sample-colors-combo.txt
-printf 'category\tcolor\nSAMPLE_1\t#1f77b4\nSAMPLE_2\t#ff7f0e\n' > draw-sample-colors-incomplete.txt
+printf 'sample\tcolor\nSAMPLE_1\t#1f77b4\nSAMPLE_2\t#ff7f0e\nSAMPLE_3\t#2ca02c\nSAMPLE_1, SAMPLE_2\t#7d5ba6\n' > draw-sample-colors-combo.txt
+printf 'sample\tcolor\nSAMPLE_1\t#1f77b4\nSAMPLE_2\t#ff7f0e\n' > draw-sample-colors-incomplete.txt
 # Two samples given the same color, so that two of the seven combinations of three samples come out
 # the same and the membership scale cannot label its bands.
-printf 'category\tcolor\nSAMPLE_1\t#1f77b4\nSAMPLE_2\t#ff7f0e\nSAMPLE_3\t#1f77b4\n' > draw-sample-colors-clashing.txt
+printf 'sample\tcolor\nSAMPLE_1\t#1f77b4\nSAMPLE_2\t#ff7f0e\nSAMPLE_3\t#1f77b4\n' > draw-sample-colors-clashing.txt
 # Samples named after the output directory's own subdirectories and after a BRITE category: these
 # are drawn under 'individual', so they cannot collide with anything anvi'o creates for itself.
 printf 'accession\tsample\nK00844\tMetabolism\nK00845\tall_maps\nK02358\tgrid\nK00844\tunified\nK02358\tby_map\n' > draw_kos_awkward_sample_names.reaction.txt
@@ -102,6 +102,138 @@ printf 'accession\tgene_id\tcoverage\nK00844\tgene_1\t10\nK00844\tgene_1\t30\n' 
 printf 'accession\tcol_a\tcol_b\nK00844\t1\t2\n' > draw_bad_two_values.reaction.txt
 printf 'accession\tgene_id\nC00031\tgene_1\n' > draw_bad_compound_gene_id.compound.txt
 printf 'accession\tconcentration\nC00031\t10\nC00031\t30\n' > draw_bad_repeated_compounds.compound.txt
+# Two columns of one name, which pandas would read as 'coverage' and 'coverage.1', or as 'sample'
+# and 'sample.1'. A column name that starts with '__', like the columns that anvi'o adds as it reads
+# a file.
+printf 'accession\tcoverage\tcoverage\nK00844\t1\t10\nK01810\t2\t20\n' > draw_bad_repeated_weights.reaction.txt
+printf 'accession\tsample\tsample\nK00844\tS1\tup\nK01810\tS2\tdown\n' > draw_bad_repeated_sample.reaction.txt
+printf 'accession\t__accession\nK00844\t5\nK01810\t7\n' > draw_bad_reserved_header.reaction.txt
+# A number with a stray opening quote.
+printf 'accession\tcoverage\nK00844\t"10\nK01810\t20\n' > draw_bad_stray_quote_number.reaction.txt
+# Categorical values without a 'sample' column, so that one map shows them. Each row cycles through
+# three classes, so the genes of an accession and the KOs of an element often differ.
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","class"} NR>1{split("alpha beta gamma", c, " "); print $1,$2,c[((NR-2)%3)+1]}' \
+draw_kos.reaction.txt > draw_kos_class.reaction.txt
+# Categorical values of compounds across samples.
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","sample","status"} NR>1{split("up down", s, " "); print $1,$2,s[((NR-2)%2)+1]}' \
+draw_compounds_samples.compound.txt > draw_compounds_samples_status.compound.txt
+# Eighteen different values, as many as anvi'o has default colors for.
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","class"} NR>1{print $1,$2,sprintf("class %d",((NR-2)%18)+1)}' \
+draw_kos.reaction.txt > draw_kos_class18.reaction.txt
+# Nineteen different values, one more than anvi'o has default colors for.
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","class"} NR>1{print $1,$2,sprintf("class %d",((NR-2)%19)+1)}' \
+draw_kos.reaction.txt > draw_kos_class19.reaction.txt
+# The same nineteen values across samples.
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print "accession","gene_id","sample","class"} NR>1{print $1,$2,$3,sprintf("class %d",((NR-2)%19)+1)}' \
+draw_kos_samples.reaction.txt > draw_kos_samples_class19.reaction.txt
+# A colors file missing a value, and one giving two values the same color.
+printf 'status\tcolor\nup\t#d62728\ndown\t#1f77b4\n' > draw-status-colors-incomplete.txt
+printf 'status\tcolor\nup\t#d62728\ndown\t#d62728\nsame\t#bcbd22\n' > draw-status-colors-shared.txt
+# A row without a categorical value, and two rows giving one accession and gene different values.
+printf 'accession\tstatus\nK00844\tup\nK00845\t\n' > draw_bad_blank_status.reaction.txt
+printf 'accession\tgene_id\tstatus\nK00844\tgene_1\tup\nK00844\tgene_1\tdown\n' > draw_bad_repeated_status.reaction.txt
+# A file of categorical values with a header and no rows.
+printf 'accession\tstatus\n' > draw_kos_header_only_status.reaction.txt
+# One KO with a different value in each of two samples, so that 'plurality' ties across them.
+printf 'accession\tsample\tstatus\nK00845\tS2\tup\nK00845\tS3\tdown\n' > draw_kos_tie.reaction.txt
+# Two KOs that share a map element in 00010. One KO has two genes with the value 'up'. The other has
+# one gene with the value 'down'.
+printf 'accession\tgene_id\tstatus\nK01623\tgene_1\tup\nK01623\tgene_2\tup\nK01624\tgene_3\tdown\n' > draw_kos_gene_votes.reaction.txt
+# A value with a stray opening quote and a value with a stray closing quote, and a colors file that
+# names the values with their quotes.
+printf 'accession\tstatus\nK00844\t"high\nK01810\tlow"\nK00850\tmid\n' > draw_kos_stray_quote.reaction.txt
+printf 'status\tcolor\n"high\t#d62728\nlow"\t#1f77b4\nmid\t#bcbd22\n' > draw-stray-quote-colors.txt
+# Every field in double quotes, as R's write.table writes a file by default.
+printf '"accession"\t"status"\n"K00844"\t"up"\n"K01810"\t"down"\n' > draw_kos_quoted_fields.reaction.txt
+# A stray opening quote in the name of a column of categorical values and of a column of numbers.
+printf 'accession\t"status\nK00844\tup\nK01810\tdown\n' > draw_kos_header_quote_status.reaction.txt
+printf 'accession\t"coverage\nK00844\t10\nK01810\t20\n' > draw_kos_header_quote_coverage.reaction.txt
+# Weights without a 'sample' column. Element 18 of map 00010 is sliced between K01624 and K01622,
+# since K16306 has a weight of 0. Both KOs of element 154 have a weight of 0, so that element is
+# left uncolored.
+printf 'accession\tcoverage\tweight\nK00174\t1.5\t0\nK00175\t3.0\t0\nK01624\t2.0\t3\nK01622\t4.0\t1\nK16306\t6.0\t0\n' > draw_kos_weights.reaction.txt
+# Four of the five KOs of entry 6838 of the global map, a line too short for four slices, the three
+# KOs of entry 1327, a line whose visible part is too short for three slices, and KOs that share
+# longer lines of that map.
+printf 'accession\tcoverage\nK08907\t1\nK08908\t2\nK08909\t3\nK08910\t4\nK16043\t5\nK16044\t6\nK22230\t7\nK00174\t8\nK00175\t9\nK01624\t10\nK01622\t11\nK16306\t12\n' > draw_kos_global_slices.reaction.txt
+# A negative weight.
+printf 'accession\tcoverage\tweight\nK00174\t1.5\t-1\nK00175\t3.0\t2\n' > draw_bad_negative_weight.reaction.txt
+# A row without a gene ID.
+printf 'accession\tgene_id\tcoverage\nK00844\tgene_1\t10\nK00845\t\t30\n' > draw_bad_blank_gene_id.reaction.txt
+# Gene caller IDs of two assemblies, used as they are. Gene 0 has K01623 in S1 and K01624 in S2, so
+# the ID names two genes. Gene 1 has K01622 in both samples.
+printf 'accession\tgene_id\tsample\tcoverage\nK01623\t0\tS1\t1\nK01624\t0\tS2\t9\nK01622\t1\tS1\t2\nK01622\t1\tS2\t4\n' > draw_kos_gene_id_collision.reaction.txt
+# Genes with rows for one or two KOs of element 18 of map 00010. The values are numbers, categorical
+# values across samples, and clock times.
+printf 'accession\tgene_id\tcoverage\nK01623\tgene_1\t2\nK01624\tgene_1\t5\nK01622\tgene_2\t4\n' > draw_kos_genes_coverage.reaction.txt
+printf 'accession\tgene_id\tsample\tstatus\nK01623\tgene_1\tS1\tup\nK01624\tgene_1\tS1\tdown\nK01622\tgene_2\tS1\tup\nK01622\tgene_2\tS2\tup\nK01624\tgene_2\tS3\tdown\nK01622\tgene_2\tS3\tdown\nK01622\tgene_3\tS1\tdown\nK01624\tgene_3\tS1\tup\n' > draw_kos_samples_genes_status.reaction.txt
+printf 'accession\tgene_id\tclocktime\nK01623\tgene_1\t23\nK01624\tgene_1\t3\nK01622\tgene_2\t12\n' > draw_kos_genes_clocktime.reaction.txt
+# A value column and a border column, with an empty border cell, and a file with one more column.
+printf 'accession\tcoverage\tstatus\nK00844\t10\tup\nK01810\t20\tdown\nK00850\t30\t\n' > draw_kos_coverage_status.reaction.txt
+printf 'accession\tcoverage\tstatus\textra\nK00844\t10\tup\t1\n' > draw_bad_three_columns.reaction.txt
+# A border column named twice, a border column named with '__', and a border column with no values.
+printf 'accession\tstatus\tstatus\nK00844\tup\tdown\n' > draw_bad_repeated_border.reaction.txt
+printf 'accession\t__status\nK00844\tup\n' > draw_bad_reserved_border.reaction.txt
+printf 'accession\tcoverage\tstatus\nK00844\t10\t\nK01810\t20\t\n' > draw_bad_empty_border.reaction.txt
+# 'NA' in a column of numeric border values, and two rows of one KO with only a border column.
+printf 'accession\tcoverage\tlevel\nK00844\t10\t2.5\nK01810\t20\tNA\n' > draw_bad_na_border.reaction.txt
+printf 'accession\tstatus\nK00844\tup\nK00844\tdown\n' > draw_bad_repeated_border_rows.reaction.txt
+# Eight categorical border values, one more than the default border colors.
+printf 'accession\tstatus\nK00844\tv1\nK00845\tv2\nK01810\tv3\nK00850\tv4\nK16370\tv5\nK01623\tv6\nK01624\tv7\nK01803\tv8\n' > draw_kos_border_class8.reaction.txt
+# A stray quote in a categorical border value of a file whose fill values are numbers.
+printf 'accession\tcoverage\tstatus\nK00844\t10\t"high\nK01810\t20\tlow\n' > draw_kos_border_stray_quote.reaction.txt
+# K00844 has one gene, so the standard deviation of its genes gives it no fill value. Its border
+# value is the mean of its genes. It is the only KO of the file on map 00010.
+printf 'accession\tgene_id\tcoverage\tlevel\nK00844\tgene_1\t10\t4\n' > draw_kos_border_no_fill.reaction.txt
+# K03850 is drawn as a line on the standard map 00510, and K00844 as a box on 00010.
+printf 'accession\tstatus\nK03850\tup\nK00844\tdown\n' > draw_kos_border_lines.reaction.txt
+# Twelve and eleven genes of K00844, which boxes 69 and 75 of map 00010 stand for, with border
+# values. A ring of 12 slices is over the cap of 11, and a fill of 11 slices inside a ring is over
+# the cap of 10.
+awk 'BEGIN {OFS = "\t"; print "accession", "gene_id", "coverage", "status"; split("up down same", s, " "); for (i = 1; i <= 12; i++) print "K00844", "gene_" i, i, s[i % 3 + 1]}' > draw_kos_genes12_status.reaction.txt
+awk 'NR <= 12' draw_kos_genes12_status.reaction.txt > draw_kos_genes11_status.reaction.txt
+# The mock of weights and border values without its value column, and without its weights too.
+cut -f 1-3,5,6 draw_kos_samples_weights_status.reaction.txt > draw_kos_samples_weights_border.reaction.txt
+cut -f 1-3,6 draw_kos_samples_weights_status.reaction.txt > draw_kos_samples_genes_border.reaction.txt
+# Weights of 0 with border values. K16306 of box 18 of map 00010 has no slice of the fill, but it
+# has a border value. Both KOs of box 154 have a weight of 0.
+printf 'accession\tcoverage\tweight\tstatus\nK00174\t1.5\t0\tup\nK00175\t3.0\t0\tdown\nK01624\t2.0\t3\tup\nK01622\t4.0\t1\tdown\nK16306\t6.0\t0\tsame\n' > draw_kos_weights_status.reaction.txt
+# A border column alone, with an empty border cell. K00844, K01810, and K00850 are boxes of map
+# 00010.
+printf 'accession\tstatus\nK00844\tup\nK01810\tdown\nK00850\t\n' > draw_kos_status_empty_cell.reaction.txt
+# A bar column beside a value column, with an empty bar cell. K01810 then has a fill and no bar value.
+printf 'accession\tcoverage\tlevel\nK00844\t10\t2.5\nK01810\t20\t\n' > draw_kos_bar_empty_cell.reaction.txt
+# Bar values of 0 only, 'NA' among bar values, bar values on both sides of 0, and a bar column with
+# no values.
+printf 'accession\tlevel\nK00844\t0\nK01810\t0\n' > draw_kos_bar_zero.reaction.txt
+printf 'accession\tcoverage\tlevel\nK00844\t10\tNA\nK01810\t20\t3\n' > draw_bad_na_bar.reaction.txt
+printf 'accession\tcoverage\tlevel\nK00844\t10\t-2\nK01810\t20\t3\n' > draw_kos_bar_signed.reaction.txt
+printf 'accession\tcoverage\tlevel\nK00844\t10\t\nK01810\t20\t\n' > draw_bad_empty_bar.reaction.txt
+# K03850 is drawn as a line on the standard map 00510, and K00844 as a box on 00010.
+printf 'accession\tlevel\nK03850\t2\nK00844\t3\n' > draw_kos_bar_lines.reaction.txt
+# K01623 and K01624 share the box of entry 18 of map 00010, and only K01623 has a bar value. K00174
+# and K00175 share the box of entry 154, and neither has one. K03850 is a box and a line on 00510.
+printf 'accession\tcoverage\tlevel\nK01623\t10\t2.5\nK01624\t20\t\nK00174\t1\t\nK00175\t2\t\nK03850\t30\t\n' > draw_kos_bar_gaps.reaction.txt
+# A bar column of compounds beside a value column, with an empty bar cell. C00668 then has a fill
+# and no bar value. Bar values of 0 only, 'NA' among bar values, a negative bar value, which a pie
+# cannot show, and a bar column with no values.
+printf 'accession\tvalue\tlevel\nC00031\t2\t1.5\nC00668\t5\t\n' > draw_compounds_bar_empty_cell.compound.txt
+printf 'accession\tlevel\nC00031\t0\nC00668\t0\n' > draw_compounds_bar_zero.compound.txt
+printf 'accession\tvalue\tlevel\nC00031\t2\tNA\nC00668\t5\t3\n' > draw_bad_na_bar.compound.txt
+printf 'accession\tvalue\tlevel\nC00031\t2\t-1\nC00668\t5\t3\n' > draw_bad_negative_bar.compound.txt
+printf 'accession\tvalue\tlevel\nC00031\t2\t\nC00668\t5\t\n' > draw_bad_empty_bar.compound.txt
+# Bar values of C00031 in three samples. Each is 0 or more, but their skewness is below 0.
+printf 'accession\tsample\tlevel\nC00031\tS1\t0\nC00031\tS2\t10\nC00031\tS3\t10\n' > draw_compounds_bar_skew.compound.txt
+# Bar values of C00031 in two groups of three samples. The skewness of the values of G1 is below 0,
+# and that of G2 is 0.
+printf 'accession\tsample\tlevel\nC00031\tS1\t0\nC00031\tS2\t9\nC00031\tS3\t9\nC00031\tS4\t1\nC00031\tS5\t2\nC00031\tS6\t3\n' > draw_compounds_bar_skew_groups.compound.txt
+printf 'sample\tgroup\nS1\tG1\nS2\tG1\nS3\tG1\nS4\tG2\nS5\tG2\nS6\tG2\n' > draw-sample-group-information-skew.txt
+# Bar values of C00031 in the same two groups. The skewness of G1 is 0.2 and that of G2 is -0.2, so
+# their mean is 0 but for rounding.
+printf 'accession\tsample\tlevel\nC00031\tS1\t18\nC00031\tS2\t3\nC00031\tS3\t10\nC00031\tS4\t0\nC00031\tS5\t15\nC00031\tS6\t8\n' > draw_compounds_bar_skew_cancel.compound.txt
+# Concentrations of compounds across samples beside categorical border values.
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{print $0,"status"} NR>1{split("up down", s, " "); print $0,s[((NR-2)%2)+1]}' \
+draw_compounds_samples.compound.txt > draw_compounds_samples_concentration_status.compound.txt
 
 # A test that expects a refusal discards the output of the draw, so a fixture that was never written
 # would make that test pass for the wrong reason. Fail loudly here instead.
@@ -114,7 +246,40 @@ for fixture in contigs-db-group-information.txt draw_kos_samples300.reaction.txt
               draw_kos_awkward_sample_names.reaction.txt draw_kos_unusable_sample_names.reaction.txt \
               draw_bad_mixed_kr.reaction.txt draw_bad_repeated_rows.reaction.txt \
               draw_bad_two_values.reaction.txt draw_bad_compound_gene_id.compound.txt \
-              draw_bad_repeated_compounds.compound.txt
+              draw_bad_repeated_compounds.compound.txt draw_kos_class.reaction.txt \
+              draw_bad_repeated_weights.reaction.txt draw_bad_repeated_sample.reaction.txt \
+              draw_bad_reserved_header.reaction.txt draw_bad_stray_quote_number.reaction.txt \
+              draw_compounds_samples_status.compound.txt draw_kos_class19.reaction.txt \
+              draw-status-colors-incomplete.txt draw-status-colors-shared.txt \
+              draw_bad_blank_status.reaction.txt draw_kos_tie.reaction.txt \
+              draw_kos_class18.reaction.txt draw_kos_samples_class19.reaction.txt \
+              draw_bad_repeated_status.reaction.txt draw_kos_header_only_status.reaction.txt \
+              draw_kos_gene_votes.reaction.txt draw_kos_stray_quote.reaction.txt \
+              draw-stray-quote-colors.txt draw_kos_quoted_fields.reaction.txt \
+              draw_kos_header_quote_status.reaction.txt \
+              draw_kos_header_quote_coverage.reaction.txt \
+              draw_kos_weights.reaction.txt draw_kos_global_slices.reaction.txt \
+              draw_bad_negative_weight.reaction.txt draw_bad_blank_gene_id.reaction.txt \
+              draw_kos_gene_id_collision.reaction.txt draw_kos_genes_coverage.reaction.txt \
+              draw_kos_samples_genes_status.reaction.txt draw_kos_genes_clocktime.reaction.txt \
+              draw_kos_coverage_status.reaction.txt draw_bad_three_columns.reaction.txt \
+              draw_bad_repeated_border.reaction.txt draw_bad_reserved_border.reaction.txt \
+              draw_bad_empty_border.reaction.txt draw_bad_na_border.reaction.txt \
+              draw_bad_repeated_border_rows.reaction.txt draw_kos_border_class8.reaction.txt \
+              draw_kos_border_stray_quote.reaction.txt draw_kos_border_no_fill.reaction.txt \
+              draw_kos_border_lines.reaction.txt draw_kos_genes12_status.reaction.txt \
+              draw_kos_genes11_status.reaction.txt draw_kos_samples_weights_border.reaction.txt \
+              draw_kos_samples_genes_border.reaction.txt draw_kos_weights_status.reaction.txt \
+              draw_kos_status_empty_cell.reaction.txt draw_kos_bar_empty_cell.reaction.txt \
+              draw_kos_bar_zero.reaction.txt draw_bad_na_bar.reaction.txt \
+              draw_kos_bar_signed.reaction.txt draw_bad_empty_bar.reaction.txt \
+              draw_kos_bar_lines.reaction.txt draw_kos_bar_gaps.reaction.txt \
+              draw_compounds_bar_empty_cell.compound.txt draw_compounds_bar_zero.compound.txt \
+              draw_bad_na_bar.compound.txt draw_bad_negative_bar.compound.txt \
+              draw_bad_empty_bar.compound.txt draw_compounds_bar_skew.compound.txt \
+              draw_compounds_bar_skew_groups.compound.txt draw-sample-group-information-skew.txt \
+              draw_compounds_bar_skew_cancel.compound.txt \
+              draw_compounds_samples_concentration_status.compound.txt
 do
     if [ ! -s $fixture ]
     then
@@ -131,7 +296,7 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
                         --reaction-gene-aggregation mean \
                         --reaction-sample-summary mean \
                         --reaction-value-limits 0 200 \
-                        --reaction-category-value-limits 0 200 \
+                        --reaction-individual-value-limits 0 200 \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \
@@ -176,9 +341,9 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_log_ratio.reaction.txt \
                         --reaction-sample-summary mean \
                         --reaction-colormap RdBu_r \
                         --reaction-value-center \
-                        --reaction-category-value-center \
+                        --reaction-individual-value-center \
                         --reaction-value-limits none 3 \
-                        --reaction-category-value-limits none 3 \
+                        --reaction-individual-value-limits none 3 \
                         --pathway-numbers $pathway_numbers \
                         --draw-grid \
                         --no-progress
@@ -193,9 +358,9 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_log_ratio.reaction.txt \
                         --reaction-sample-summary mean \
                         --reaction-colormap RdBu_r \
                         --reaction-value-center \
-                        --reaction-category-value-center \
+                        --reaction-individual-value-center \
                         --reaction-value-limits -3 3 \
-                        --reaction-category-value-limits -3 3 \
+                        --reaction-individual-value-limits -3 3 \
                         --pathway-numbers $pathway_numbers \
                         --draw-grid \
                         --no-progress
@@ -360,10 +525,10 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
 # A row of the colors file that names a combination of samples, which sets that combination's color
 # directly in place of the blend of its members' colors.
 INFO "Testing a row of the colors file that names a combination of samples"
-# Draws the global map too, for colors given per category, blends included.
+# Also draws the global map, in the colors of the samples and their blends.
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
-                        --reaction-category-colors draw-sample-colors-combo.txt \
-                        --output-dir draw_txt_samples_category_colors_combo \
+                        --reaction-membership-colors draw-sample-colors-combo.txt \
+                        --output-dir draw_txt_samples_membership_colors_combo \
                         --pathway-numbers $global_pathway_numbers \
                         --no-progress 2>&1 | tee draw_txt_samples_combo.log
 # A combination whose members do not parse back to the run's samples is reported and ignored rather
@@ -381,9 +546,9 @@ fi
 INFO "Testing that colors given per sample also color a compound layer"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
                         --compound-txt draw_compounds_samples.compound.txt \
-                        --reaction-category-colors draw-sample-colors.txt \
-                        --compound-category-colors draw-sample-colors-combo.txt \
-                        --output-dir draw_txt_two_layers_category_colors \
+                        --reaction-membership-colors draw-sample-colors.txt \
+                        --compound-membership-colors draw-sample-colors-combo.txt \
+                        --output-dir draw_txt_two_layers_membership_colors \
                         --pathway-numbers $pathway_numbers \
                         --no-progress
 
@@ -393,10 +558,10 @@ INFO "Testing the same group ramps with an explicit span"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
                         --groups-txt draw-sample-group-information.txt \
                         --group-threshold 0.5 \
-                        --reaction-category-colors draw-group-colors.txt \
-                        --group-colormap category 0.4 0.95 \
+                        --reaction-membership-colors draw-group-colors.txt \
+                        --group-colormap tint 0.4 0.95 \
                         --group-reverse-overlay \
-                        --output-dir draw_txt_groups_category_ramps_span \
+                        --output-dir draw_txt_groups_tint_ramps_span \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --no-progress
@@ -408,8 +573,8 @@ INFO "Testing '--group-colormap-scheme by_count_continuous'"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
                         --groups-txt draw-sample-group-information.txt \
                         --group-threshold 0.5 \
-                        --reaction-category-colors draw-group-colors.txt \
-                        --group-colormap category \
+                        --reaction-membership-colors draw-group-colors.txt \
+                        --group-colormap tint \
                         --group-colormap-scheme by_count_continuous \
                         --output-dir draw_txt_groups_scheme_continuous \
                         --pathway-numbers $pathway_numbers \
@@ -537,9 +702,9 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
                         --reaction-sample-summary mean \
                         --compound-sample-summary max \
                         --reaction-value-limits 5 35 \
-                        --reaction-category-value-limits 5 35 \
+                        --reaction-individual-value-limits 5 35 \
                         --compound-value-limits 55 none \
-                        --compound-category-value-limits 20 40 \
+                        --compound-individual-value-limits 20 40 \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \
@@ -551,21 +716,21 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
 INFO "Testing that each layer's TWO colormaps are chosen on their own as well"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
                         --compound-txt draw_compounds_samples.compound.txt \
-                        --output-dir draw_txt_both_layers_category_colormap \
+                        --output-dir draw_txt_both_layers_individual_colormap \
                         --reaction-gene-aggregation mean \
                         --reaction-sample-summary std \
                         --compound-sample-summary std \
                         --reaction-colormap viridis \
-                        --reaction-category-colormap RdYlGn \
+                        --reaction-individual-colormap RdYlGn \
                         --compound-colormap cividis \
-                        --compound-category-colormap PuOr \
+                        --compound-individual-colormap PuOr \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --no-progress
 
 for colorbar in reactions reactions_samples compounds compounds_samples
 do
-    if [ ! -s draw_txt_both_layers_category_colormap/colorbar_$colorbar.pdf ]
+    if [ ! -s draw_txt_both_layers_individual_colormap/colorbar_$colorbar.pdf ]
     then
         echo "ERROR: two layers with two colormaps each should have written four colorbars."
         exit 1
@@ -577,8 +742,8 @@ done
 INFO "Testing the reversed anvi'o colormap 'clocktime_r'"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
                         --output-dir draw_txt_samples_kos_clocktime_r \
-                        --reaction-category-colormap clocktime_r \
-                        --reaction-category-value-limits 0 24 \
+                        --reaction-individual-colormap clocktime_r \
+                        --reaction-individual-value-limits 0 24 \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --no-progress
@@ -757,6 +922,32 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_awkward_sample_names.reaction.tx
                         --draw-grid \
                         --no-progress
 
+# The players of the same samples. Samples 'grid' and 'by_map' have no data on the map. The grid
+# draws blank maps for them and deletes them, and the player draws its own, so it still has a frame
+# for each of the five samples.
+INFO "Writing players for samples whose names match the output directory's own subdirectories"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_awkward_sample_names.reaction.txt \
+                        --categorize-files \
+                        --output-dir draw_txt_awkward_sample_names_animated \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --collate-files-by-map \
+                        --animate-files-by-map \
+                        --no-progress
+
+player=draw_txt_awkward_sample_names_animated/by_map/Metabolism/Carbohydrate_metabolism/ko00010.html
+if [ "$(grep -o '"label":' $player | wc -l)" -ne 5 ]
+then
+    echo "ERROR: the player should hold a frame for each of the five samples."
+    exit 1
+fi
+if [ "$(grep -o 'No data on this map' $player | wc -l)" -ne 2 ]
+then
+    echo "ERROR: the player should show the bare map for the two samples without data."
+    exit 1
+fi
+
 # A sample whose name cannot be a directory name, which is summarized on the 'unified' map by color
 # alone and so never becomes a path.
 INFO "Testing a sample whose name cannot be a directory name"
@@ -790,6 +981,48 @@ if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: gathering by map for a file with no 'sample' column should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --draw-individual-files --animate-files-by-map \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_animate_no_collate.log 2>&1
+then
+    echo "ERROR: a player without gathering by map should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_animate_no_collate.log | grep -q "but that flag was not given"
+then
+    echo "ERROR: a player without gathering by map was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --draw-individual-files SAMPLE_1 --collate-files-by-map --animate-files-by-map \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_animate_one_sample.log 2>&1
+then
+    echo "ERROR: a player of one sample's maps should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_animate_one_sample.log | grep -q "so each player would hold"
+then
+    echo "ERROR: a player of one sample's maps was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
+    --reaction-labels none standard \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_labels_none_and_kind.log 2>&1
+then
+    echo "ERROR: labels given as 'none' and a kind of map should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_labels_none_and_kind.log | grep -q "'none' labels no map"
+then
+    echo "ERROR: labels given as 'none' and a kind of map were refused for another reason."
     exit 1
 fi
 
@@ -872,6 +1105,37 @@ then
     exit 1
 fi
 
+# A column name that starts with '__' could clash with a column that anvi'o adds as it reads the
+# file, such as '__accession'.
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_reserved_header.reaction.txt \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_reserved_header.log 2>&1
+then
+    echo "ERROR: a column named '__accession' should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_reserved_header.log \
+    | grep -q "Names that start with '__' are kept for"
+then
+    echo "ERROR: a column named '__accession' was refused for another reason."
+    exit 1
+fi
+
+# A stray quote stays in its field, so a number that holds one is refused. The quote does not join
+# the rows up to the next quote into one field.
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_stray_quote_number.reaction.txt \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_stray_quote_number.log 2>&1
+then
+    echo "ERROR: a number with a stray quote should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_stray_quote_number.log | grep -q "must contain a finite number"
+then
+    echo "ERROR: a number with a stray quote was refused for another reason."
+    exit 1
+fi
+
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt --reaction-color "#FF8800" \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
@@ -925,7 +1189,7 @@ then
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
-    --reaction-category-colors draw-sample-colors-incomplete.txt \
+    --reaction-membership-colors draw-sample-colors-incomplete.txt \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: a colors file leaving a sample of the run uncolored should have failed."
@@ -933,7 +1197,7 @@ then
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
-    --reaction-category-colors draw-sample-colors-clashing.txt \
+    --reaction-membership-colors draw-sample-colors-clashing.txt \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: a colors file whose combinations cannot be told apart should have failed."
@@ -941,32 +1205,32 @@ then
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
-    --reaction-category-colors draw-sample-colors.txt --reaction-colormap tab10 \
+    --reaction-membership-colors draw-sample-colors.txt --reaction-colormap tab10 \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: colors given per category together with a colormap should have failed."
+    echo "ERROR: a membership colors file together with a colormap should have failed."
     exit 1
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
-    --reaction-category-colors draw-sample-colors.txt --reaction-sample-summary count \
+    --reaction-membership-colors draw-sample-colors.txt --reaction-sample-summary count \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: colors given per category with a count summary should have failed."
+    echo "ERROR: a membership colors file with a count summary should have failed."
     exit 1
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
-    --reaction-category-colors draw-sample-colors.txt \
+    --reaction-membership-colors draw-sample-colors.txt \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: colors given per category for a layer with no 'sample' column should have failed."
+    echo "ERROR: a membership colors file for a layer with no 'sample' column should have failed."
     exit 1
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
     --groups-txt draw-sample-group-information.txt --group-threshold 0.5 --draw-individual-files \
-    --group-colormap category \
+    --group-colormap tint \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: group ramps built from each group's own color, with no colors given, should have failed."
@@ -978,7 +1242,7 @@ fi
 # the drawing code partway through.
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
     --groups-txt draw-sample-group-information.txt --group-threshold 0.5 --draw-individual-files \
-    --reaction-category-colors draw-group-colors.txt --group-colormap category 0.0 1.0 \
+    --reaction-membership-colors draw-group-colors.txt --group-colormap tint 0.0 1.0 \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: a group ramp running all the way to white should have failed."
@@ -1181,7 +1445,7 @@ fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
     --reaction-value-period 24 --reaction-element-normalization difference_from_circular_mean \
-    --reaction-category-value-limits 0 24 --draw-individual-files \
+    --reaction-individual-value-limits 0 24 --draw-individual-files \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: limits other than -12 and 12 for offsets from a circular mean should have failed."
@@ -1190,7 +1454,7 @@ fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
     --reaction-value-period 24 --reaction-element-normalization difference_from_circular_mean \
-    --reaction-category-value-center 0 --draw-individual-files \
+    --reaction-individual-value-center 0 --draw-individual-files \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: a center for offsets from a circular mean should have failed."
@@ -1216,7 +1480,7 @@ fi
 # A period fixes each scale of values to run from 0 to the period, so it takes no other limits and
 # no center.
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
-    --reaction-value-period 24 --reaction-category-value-limits 6 18 --draw-individual-files \
+    --reaction-value-period 24 --reaction-individual-value-limits 6 18 --draw-individual-files \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: limits other than 0 and the period, with a period, should have failed."
@@ -1318,7 +1582,7 @@ then
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
-    --reaction-color "#ffffffff" \
+    --reaction-color "#FFFFFF" \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: another spelling of a reserved color should have failed but did not."
@@ -1397,7 +1661,7 @@ then
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
-    --reaction-category-value-limits 5 40 \
+    --reaction-individual-value-limits 5 40 \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: limits on the individual maps' scale where the file has no 'sample' column should have failed."
@@ -1405,7 +1669,7 @@ then
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
-    --reaction-category-value-limits 5 40 --pathway-numbers $pathway_numbers \
+    --reaction-individual-value-limits 5 40 --pathway-numbers $pathway_numbers \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: limits on the individual maps' scale where no individual map is drawn should have failed."
@@ -1458,7 +1722,7 @@ then
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
-    --reaction-category-value-center \
+    --reaction-individual-value-center \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: a center on the individual maps' scale where the file has no 'sample' column should have failed."
@@ -1466,7 +1730,7 @@ then
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
-    --reaction-category-value-center --pathway-numbers $pathway_numbers \
+    --reaction-individual-value-center --pathway-numbers $pathway_numbers \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: a center on the individual maps' scale where no individual map is drawn should have failed."
@@ -1555,26 +1819,26 @@ fi
 # scale to color: no file, no value column, no 'sample' column, or a scale that is not colored by
 # value.
 if anvi-draw-kegg-pathways --compound-txt draw_compounds.compound.txt \
-    --reaction-category-colormap viridis \
+    --reaction-individual-colormap viridis \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: a category colormap for a layer with no file should have failed but did not."
+    echo "ERROR: '--reaction-individual-colormap' for a layer with no file should have failed but did not."
     exit 1
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
-    --reaction-category-colormap viridis --pathway-numbers $pathway_numbers \
+    --reaction-individual-colormap viridis --pathway-numbers $pathway_numbers \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: a category colormap for a layer with no value column should have failed."
+    echo "ERROR: '--reaction-individual-colormap' for a layer with no value column should have failed."
     exit 1
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
-    --reaction-category-colormap viridis \
+    --reaction-individual-colormap viridis \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: a category colormap where the file has no 'sample' column should have failed."
+    echo "ERROR: '--reaction-individual-colormap' where the file has no 'sample' column should have failed."
     exit 1
 fi
 
@@ -1582,29 +1846,29 @@ fi
 # summarized by presence they show within-group sample counts, which '--group-colormap' styles.
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
     --groups-txt draw-sample-group-information.txt --group-threshold 0.5 \
-    --reaction-category-colormap viridis --pathway-numbers $pathway_numbers \
+    --reaction-individual-colormap viridis --pathway-numbers $pathway_numbers \
     --draw-individual-files \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: a category colormap for group maps colored by presence should have failed."
+    echo "ERROR: '--reaction-individual-colormap' for group maps colored by presence should have failed."
     exit 1
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
-    --reaction-category-colormap viridis 0.9 0.1 --pathway-numbers $pathway_numbers \
+    --reaction-individual-colormap viridis 0.9 0.1 --pathway-numbers $pathway_numbers \
     --draw-individual-files \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: category colormap fractions the wrong way around should have failed."
+    echo "ERROR: '--reaction-individual-colormap' fractions the wrong way around should have failed."
     exit 1
 fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
-    --reaction-category-colormap viridis 0.1 0.5 0.9 --pathway-numbers $pathway_numbers \
+    --reaction-individual-colormap viridis 0.1 0.5 0.9 --pathway-numbers $pathway_numbers \
     --draw-individual-files \
     --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: a category colormap given three numbers should have failed but did not."
+    echo "ERROR: '--reaction-individual-colormap' given three numbers should have failed but did not."
     exit 1
 fi
 
@@ -1671,10 +1935,10 @@ fi
 # Nor is there one for a second colormap to color: a database run's individual maps show one
 # database or genome each, in a single color rather than along a scale.
 if anvi-draw-kegg-pathways --external-genomes external-genomes.txt --draw-individual-files \
-    --reaction-category-colormap viridis \
+    --reaction-individual-colormap viridis \
     --output-dir draw_db_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
-    echo "ERROR: a category colormap on a database run should have failed but did not."
+    echo "ERROR: '--reaction-individual-colormap' on a database run should have failed but did not."
     exit 1
 fi
 
@@ -1693,6 +1957,23 @@ if anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db \
     --output-dir draw_db_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
 then
     echo "ERROR: gathering by map for a single contigs database should have failed."
+    exit 1
+fi
+
+# A reaction network JSON file is a single source drawn in one color, so it has no individual maps
+# for a player to show.
+if anvi-draw-kegg-pathways --reaction-network-json pan-network.json \
+    --animate-files-by-map --pathway-numbers $pathway_numbers \
+    --output-dir draw_db_bad --overwrite-output-destinations \
+    --no-progress > draw_json_animate.log 2>&1
+then
+    echo "ERROR: a player of a reaction network JSON should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_json_animate.log \
+    | grep -q "single source drawn in one color): '--animate-files-by-map'"
+then
+    echo "ERROR: a player of a reaction network JSON was refused for another reason."
     exit 1
 fi
 
@@ -1766,13 +2047,13 @@ fi
 INFO "Testing the names a normalization cannot be given"
 # Each of these is a name that does the wrong thing with a set of values, and each is caught by a
 # different probe. A reduction such as 'mean' summarizes samples rather than rescaling each of them,
-# which is what '--reaction-sample-summary' is for. A name that reorders the categories would hand a
-# sample another sample's value. A name that reads one category against its neighbors reads an order
-# that is an artifact of how the samples happen to be named. 'duplicated' answers for one of two
-# equal samples according to which came first, which values that all differ never reveal. 'squeeze'
-# returns a bare number for the single value that an element found in one sample alone gives it,
-# which is commonplace and would otherwise fail in the middle of drawing. 'convert_dtypes' answers
-# in a nullable dtype, whose missing value no array of plain floats holds.
+# which is what '--reaction-sample-summary' is for. A name that reorders the samples would give a
+# sample another sample's value. A name that compares one sample with its neighbors depends on their
+# order. That order comes only from how the samples happen to be named. 'duplicated' answers for one
+# of two equal samples according to which came first, which values that all differ never reveal.
+# 'squeeze' returns a bare number for the single value that an element found in one sample alone
+# gives it, which is commonplace and would otherwise fail in the middle of drawing. 'convert_dtypes'
+# answers in a nullable dtype, whose missing value no array of plain floats holds.
 for normalization in not_a_pandas_method mean idxmax sort_values cumsum pct_change duplicated \
                      squeeze convert_dtypes
 do
@@ -1797,7 +2078,7 @@ fi
 # A normalization whose neutral value is zero centers the rescaled scale there, which means the run
 # holds a center that nobody asked for. Wherever that center is reported, the message has to name
 # the normalization that supplied it rather than the option for giving one by hand: naming
-# '--reaction-category-value-center' would send the reader to an option they never used. It is
+# '--reaction-individual-value-center' would send the reader to an option they never used. It is
 # reported in four places. The first is a per-group scale that is not colored by value at all. The
 # second is a scale whose limits leave no room for the center. The third is a scale whose two limits
 # do not have the center as their midpoint. The fourth is a limit that centering would move.
@@ -1818,7 +2099,7 @@ then
     exit 1
 fi
 if tr '\n' ' ' < draw_txt_normalization_grouped.log \
-    | grep -q "reaction-category-value-center"
+    | grep -q "reaction-individual-value-center"
 then
     echo "ERROR: the refusal over presence-summarized groups blamed a center nobody gave."
     exit 1
@@ -1826,7 +2107,7 @@ fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
     --reaction-element-normalization relative_to_mean \
-    --reaction-category-value-limits 1 5 --draw-individual-files \
+    --reaction-individual-value-limits 1 5 --draw-individual-files \
     --output-dir draw_txt_bad --overwrite-output-destinations \
     --no-progress > draw_txt_normalization_center.log 2>&1
 then
@@ -1842,7 +2123,7 @@ fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
     --reaction-element-normalization relative_to_mean \
-    --reaction-category-value-limits -0.5 1 --draw-individual-files \
+    --reaction-individual-value-limits -0.5 1 --draw-individual-files \
     --output-dir draw_txt_bad --overwrite-output-destinations \
     --no-progress > draw_txt_normalization_midpoint.log 2>&1
 then
@@ -1857,7 +2138,7 @@ fi
 
 if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
     --reaction-element-normalization relative_to_mean \
-    --reaction-category-value-limits -0.5 none --draw-individual-files \
+    --reaction-individual-value-limits -0.5 none --draw-individual-files \
     --pathway-numbers $pathway_numbers \
     --output-dir draw_txt_bad --overwrite-output-destinations \
     --no-progress > draw_txt_normalization_moved_limit.log 2>&1
@@ -1876,15 +2157,3811 @@ then
     exit 1
 fi
 
+# Categorical values on a global map. A compound there takes the value that the accession rule
+# chooses among the reactions touching it. The run reports how many choices the rule made.
+INFO "Testing categorical values on a global map, where compounds take a value from their reactions"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_class.reaction.txt \
+    --reaction-value-type categorical \
+    --output-dir draw_txt_kos_categorical_global \
+    --pathway-numbers $global_pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_categorical_global.log
+if ! tr '\n' ' ' < draw_txt_categorical_global.log \
+    | grep -q "Choices of a reaction value among reactions touching a compound"
+then
+    echo "ERROR: a run of categorical values on a global map did not report choices for compounds."
+    exit 1
+fi
+
+INFO "Testing categorical values of compounds across samples"
+anvi-draw-kegg-pathways --compound-txt draw_compounds_samples_status.compound.txt \
+    --compound-value-type categorical \
+    --output-dir draw_txt_compounds_categorical \
+    --pathway-numbers $pathway_numbers --draw-grid \
+    --no-progress
+
+# The compound file has the values 'up' and 'down'. The colors file also names 'same', which the run
+# reports and ignores.
+INFO "Testing a colors file that names a categorical value the compound file lacks"
+anvi-draw-kegg-pathways --compound-txt draw_compounds_samples_status.compound.txt \
+    --compound-value-type categorical \
+    --compound-value-colors draw-status-colors.txt \
+    --output-dir draw_txt_compounds_categorical_colors \
+    --pathway-numbers $pathway_numbers --draw-grid \
+    --no-progress 2>&1 | tee draw_txt_compounds_categorical_colors.log
+if ! tr '\n' ' ' < draw_txt_compounds_categorical_colors.log \
+    | grep -q "The value is 'same'. It is ignored."
+then
+    echo "ERROR: a value in a colors file that the compound file lacks was not reported."
+    exit 1
+fi
+
+# Each value takes one of the default colors.
+INFO "Testing as many categorical values as anvi'o has default colors for"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_class18.reaction.txt \
+    --reaction-value-type categorical \
+    --output-dir draw_txt_kos_categorical_default_colors \
+    --pathway-numbers $pathway_numbers \
+    --no-progress
+
+# Where map elements overlap, the first value is drawn on top. '--reaction-reverse-overlay' draws
+# the last value on top instead.
+INFO "Testing categorical values with the last value drawn on top"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_class.reaction.txt \
+    --reaction-value-type categorical \
+    --reaction-reverse-overlay \
+    --output-dir draw_txt_kos_categorical_reverse_overlay \
+    --pathway-numbers $pathway_numbers \
+    --no-progress
+
+# A stray quote is part of a categorical value, as it is in a colors file, so it does not join the
+# rows up to the next quote into one value. Joined rows would make a value that the colors file
+# lacks, and the run would fail.
+INFO "Testing that a stray quote is part of a categorical value"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_stray_quote.reaction.txt \
+    --reaction-value-type categorical \
+    --reaction-value-colors draw-stray-quote-colors.txt \
+    --output-dir draw_txt_kos_categorical_quotes \
+    --pathway-numbers $pathway_numbers \
+    --no-progress
+
+# A pair of quotes enclosing a whole field is dropped, so a file written with every field quoted
+# still has an 'accession' column.
+INFO "Testing a file of categorical values with every field in quotes"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_quoted_fields.reaction.txt \
+    --reaction-value-type categorical \
+    --output-dir draw_txt_kos_categorical_quoted_fields \
+    --pathway-numbers $pathway_numbers \
+    --no-progress
+
+# A stray quote in a column name is part of the name, so it does not join the rows up to the next
+# quote into the header line. This holds for a column of categorical values and of numbers.
+INFO "Testing a stray quote in the name of a column of categorical values"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_header_quote_status.reaction.txt \
+    --reaction-value-type categorical \
+    --output-dir draw_txt_kos_categorical_header_quote \
+    --pathway-numbers $pathway_numbers \
+    --no-progress
+
+INFO "Testing a stray quote in the name of a column of numbers"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_header_quote_coverage.reaction.txt \
+    --output-dir draw_txt_kos_header_quote \
+    --pathway-numbers $pathway_numbers \
+    --no-progress
+
+# A file of categorical values with a header and no rows has nothing to color, and the run says so.
+INFO "Testing a file of categorical values with a header and no rows"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_header_only_status.reaction.txt \
+    --reaction-value-type categorical \
+    --output-dir draw_txt_categorical_header_only \
+    --pathway-numbers $pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_categorical_header_only.log
+if ! tr '\n' ' ' < draw_txt_categorical_header_only.log | grep -q "has a header but no rows"
+then
+    echo "ERROR: a file of categorical values with a header and no rows was not reported."
+    exit 1
+fi
+
+# 'plurality' gives no value where values tie, and 'majority' none where no value has more than
+# half of the votes. Elements given no value are left uncolored, and a warning says how many.
+INFO "Testing categorical rules that can give no value"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical \
+    --reaction-accession-aggregation plurality \
+    --reaction-sample-summary majority \
+    --output-dir draw_txt_categorical_no_value \
+    --pathway-numbers $pathway_numbers --draw-grid \
+    --no-progress 2>&1 | tee draw_txt_categorical_no_value.log
+if ! tr '\n' ' ' < draw_txt_categorical_no_value.log | grep -q "plurality' gave no value to"
+then
+    echo "ERROR: elements given no value by 'plurality' were not reported."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_categorical_no_value.log | grep -q "majority' gave no value to"
+then
+    echo "ERROR: elements given no value by 'majority' were not reported."
+    exit 1
+fi
+
+# A map element gets one vote from each KO, not from each gene. The KO with two genes valued 'up'
+# and the KO with one gene valued 'down' each give one vote, so 'plurality' gives the element no
+# value.
+INFO "Testing that a map element gets one vote from each KO, not from each gene"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_gene_votes.reaction.txt \
+    --reaction-value-type categorical \
+    --reaction-accession-aggregation plurality \
+    --output-dir draw_txt_categorical_ko_votes \
+    --pathway-numbers 00010 \
+    --no-progress 2>&1 | tee draw_txt_categorical_ko_votes.log
+if ! tr '\n' ' ' < draw_txt_categorical_ko_votes.log \
+    | grep -q "plurality' gave no value to 1 map element"
+then
+    echo "ERROR: a map element did not get one vote from each KO."
+    exit 1
+fi
+
+# A map where a rule gives no value to any element has nothing to color, so it is not drawn, as a
+# map lacking data is not.
+INFO "Testing that a map with no categorical value to color is not drawn"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_tie.reaction.txt \
+    --reaction-value-type categorical \
+    --reaction-sample-summary plurality \
+    --output-dir draw_txt_categorical_tie \
+    --pathway-numbers 00010 \
+    --no-progress
+if [ -e draw_txt_categorical_tie/unified/ko00010.pdf ]
+then
+    echo "ERROR: a map with no categorical value to color should not have been drawn."
+    exit 1
+fi
+
+# A map grid is drawn even where the 'unified' map is not. The grid has a blank panel in its place.
+# The blank map is drawn only for the grid, so it is not kept.
+INFO "Testing that a map grid is drawn where the 'unified' map has no categorical value to color"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_tie.reaction.txt \
+    --reaction-value-type categorical \
+    --reaction-sample-summary plurality \
+    --output-dir draw_txt_categorical_tie_grid \
+    --pathway-numbers 00010 --draw-grid \
+    --no-progress
+if [ ! -s draw_txt_categorical_tie_grid/grid/ko00010.pdf ]
+then
+    echo "ERROR: a map grid should have been drawn with a blank panel for the 'unified' map."
+    exit 1
+fi
+if [ -e draw_txt_categorical_tie_grid/unified/ko00010.pdf ]
+then
+    echo "ERROR: the blank 'unified' map drawn for a map grid should have been removed."
+    exit 1
+fi
+
+# Grouped, each group's map counts the group's samples unless a rule chooses among them. The
+# values then color nothing, which is worth a warning. No legend of the values is written.
+INFO "Testing grouped categorical values without a rule among the samples of each group"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0 \
+    --output-dir draw_txt_groups_categorical_counts \
+    --pathway-numbers $pathway_numbers --draw-grid \
+    --no-progress 2>&1 | tee draw_txt_groups_categorical_counts.log
+if ! tr '\n' ' ' < draw_txt_groups_categorical_counts.log \
+    | grep -q "With groups of samples, each group's map counts"
+then
+    echo "ERROR: grouped categorical values coloring nothing did not warn."
+    exit 1
+fi
+if [ -e draw_txt_groups_categorical_counts/colorbar_reactions_groups.pdf ]
+then
+    echo "ERROR: grouped categorical values without a rule should have written no legend."
+    exit 1
+fi
+
+# Without a rule among each group's samples, no map shows the values. They need no colors, so there
+# can be more of them than anvi'o has default colors for.
+INFO "Testing grouped categorical values without a rule, more of them than there are default colors"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_class19.reaction.txt \
+    --reaction-value-type categorical \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0 \
+    --output-dir draw_txt_groups_categorical_counts_many \
+    --pathway-numbers $pathway_numbers --draw-grid \
+    --no-progress
+
+# The choices across the groups are reported with the others.
+INFO "Testing that choices of a categorical value across groups are reported"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical \
+    --groups-txt draw-sample-group-information.txt \
+    --reaction-sample-summary plurality_order --reaction-group-summary plurality_order \
+    --output-dir draw_txt_groups_categorical_report \
+    --pathway-numbers $pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_groups_categorical_report.log
+if ! tr '\n' ' ' < draw_txt_groups_categorical_report.log | grep -q "value among groups"
+then
+    echo "ERROR: choices of a categorical value across groups were not reported."
+    exit 1
+fi
+
+# The 'unified' map of a layer with samples shows presence by default. Drawing it alone colors
+# nothing by the values, which is worth a warning, whether the values are names or numbers.
+INFO "Testing the warning that a value column colors nothing where only the 'unified' map is drawn"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical \
+    --output-dir draw_txt_categorical_unified_only \
+    --pathway-numbers $pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_categorical_unified_only.log
+if ! tr '\n' ' ' < draw_txt_categorical_unified_only.log \
+    | grep -q "nothing on the maps is colored by it"
+then
+    echo "ERROR: categorical values coloring nothing did not warn."
+    exit 1
+fi
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --output-dir draw_txt_values_unified_only \
+    --pathway-numbers $pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_values_unified_only.log
+if ! tr '\n' ' ' < draw_txt_values_unified_only.log | grep -q "nothing on the maps is colored by it"
+then
+    echo "ERROR: numeric values coloring nothing did not warn."
+    exit 1
+fi
+
+# A column of names read as numbers is refused, and the refusal says how to read it as names.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_names_as_numbers.log 2>&1
+then
+    echo "ERROR: a column of names read as numbers should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_names_as_numbers.log | grep -q "If the column holds categorical values"
+then
+    echo "ERROR: refusing a column of names read as numbers did not say how to read it as names."
+    exit 1
+fi
+
+# Categorical values are refused wherever an option expects numbers, or expects something they do
+# not have (each command below is expected to fail).
+INFO "Testing that categorical values are refused where they cannot apply"
+# Categorical values take colors of their own, not a scale of numbers.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-value-limits 0 1 \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: value limits on categorical values should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-value-period 24 \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a period for categorical values should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-element-normalization z_score --draw-grid \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a normalization of categorical values should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-individual-colormap viridis --draw-grid \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: '--reaction-individual-colormap' for categorical values should have failed but did not."
+    exit 1
+fi
+
+# Categorical values cannot be averaged, across samples or within one.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-sample-summary mean \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: averaging categorical values across samples should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-accession-aggregation mean \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: averaging categorical values within an element should have failed but did not."
+    exit 1
+fi
+
+# With groups, a rule across the groups needs a rule among each group's samples. Without one,
+# the groups have no values to choose among.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0 \
+    --reaction-group-summary plurality_order \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a rule across groups without a rule among their samples should have failed."
+    exit 1
+fi
+
+# A rule across the groups leaves no group presence for a threshold to decide.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0 \
+    --reaction-sample-summary plurality_order --reaction-group-summary plurality_order \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a group threshold with a rule across the groups should have failed."
+    exit 1
+fi
+
+# Grouped, the values reach a map only through a rule among each group's samples, so a colors
+# file of values without one would color nothing.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-value-colors draw-status-colors.txt \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0 \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: value colors for grouped samples without a rule should have failed."
+    exit 1
+fi
+
+# A seed with no rule that chooses at random would change nothing. An error indents its wrapped
+# lines, so the refusal is matched by a phrase from its first line. The test of a random rule for
+# numbers below checks that its refusal lacks this phrase.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --seed 1 \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_seed_without_random_rule.log 2>&1
+then
+    echo "ERROR: a seed without a random rule should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_seed_without_random_rule.log | grep -q "'--seed' sets the seed"
+then
+    echo "ERROR: the refusal of a seed without a random rule did not name the seed."
+    exit 1
+fi
+
+# Categorical values take colors of their own, not one presence color.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-color \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a static color for categorical values should have failed but did not."
+    exit 1
+fi
+
+# Every value needs a color, and no two values can share one.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-value-colors draw-status-colors-incomplete.txt \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a colors file missing a value should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-value-colors draw-status-colors-shared.txt \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a colors file giving two values one color should have failed but did not."
+    exit 1
+fi
+
+# A layer without samples shows its values on its one map, so no colormap colors presence.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_class.reaction.txt \
+    --reaction-value-type categorical --reaction-colormap viridis \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a colormap for categorical values without samples should have failed."
+    exit 1
+fi
+
+# More values than anvi'o has default colors for need a colors file.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_class19.reaction.txt \
+    --reaction-value-type categorical \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: nineteen categorical values without a colors file should have failed."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_blank_status.reaction.txt \
+    --reaction-value-type categorical \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a row without a categorical value should have failed but did not."
+    exit 1
+fi
+
+# An accession and gene can have only one categorical value.
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_repeated_status.reaction.txt \
+    --reaction-value-type categorical \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: two categorical values for one accession and gene should have failed but did not."
+    exit 1
+fi
+
+# Pandas would read a second 'sample' column as 'sample.1' and take it for the value column.
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_repeated_sample.reaction.txt \
+    --reaction-value-type categorical \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_repeated_sample.log 2>&1
+then
+    echo "ERROR: two columns named 'sample' should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_repeated_sample.log | grep -q "A name may appear only once"
+then
+    echo "ERROR: two columns named 'sample' were refused for another reason."
+    exit 1
+fi
+
+# A categorical value type needs a value column to read.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --reaction-value-type categorical \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a categorical value type for a file without values should have failed."
+    exit 1
+fi
+
+# Numbers are reduced with an aggregation. A rule chooses only among categorical values.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-sample-summary plurality_order \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a categorical rule for numeric values across samples should have failed but did not."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-accession-aggregation order \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a categorical rule for numeric values within an element should have failed but did not."
+    exit 1
+fi
+
+# Colors per value need categorical values.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-value-colors draw-status-colors.txt \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: colors per value for numeric values should have failed but did not."
+    exit 1
+fi
+
+# A random rule given to numbers is refused for the rule. The seed given with it is not blamed.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-accession-aggregation random --seed 5 \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_random_rule_numbers.log 2>&1
+then
+    echo "ERROR: a random rule for numeric values should have failed but did not."
+    exit 1
+fi
+if tr '\n' ' ' < draw_txt_random_rule_numbers.log | grep -q "'--seed' sets the seed"
+then
+    echo "ERROR: the refusal of a random rule for numeric values blamed the seed."
+    exit 1
+fi
+
+# Only a text file has a value column, so a database run has no values to read as names.
+if anvi-draw-kegg-pathways --external-genomes external-genomes.txt \
+    --reaction-value-type categorical \
+    --output-dir draw_db_bad --overwrite-output-destinations --no-progress > /dev/null 2>&1
+then
+    echo "ERROR: a value type on a database run should have failed but did not."
+    exit 1
+fi
+
+# A column of weights gives the slices their shares, and the key table lists them. Element 154 of
+# map 00010 stands for K00174 and K00175. Their weights are 90 and 10 in SAMPLE_1, where K00174 has
+# two genes of 60 and 30. They are 1 and 9 in SAMPLE_2, and SAMPLE_3 has K00174 alone. The shares of
+# the two KOs are therefore 0.9 and 0.1 in SAMPLE_1, 0.1 and 0.9 in SAMPLE_2, and 1 and 0 in
+# SAMPLE_3. Group G1 holds SAMPLE_1 alone and takes its shares. Group G2 averages the shares of
+# SAMPLE_2 and SAMPLE_3 to 0.55 and 0.45. The 'unified' map averages the groups to 0.725 and 0.275.
+INFO "Testing the shares of weighted slices averaged within groups and across them"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+                        --groups-txt draw-sample-group-information.txt \
+                        --reaction-sample-summary mean \
+                        --reaction-group-summary mean \
+                        --reaction-slice-by accession \
+                        --reaction-slice-weights coverage \
+                        --output-dir draw_txt_slices_share_mean \
+                        --pathway-numbers 00010 \
+                        --draw-individual-files \
+                        --no-progress
+
+slice_key=draw_txt_slices_share_mean/slice_key_reactions.txt
+if [ "$(head -n 1 $slice_key | tr '\t' ' ')" \
+     != "map drawn_map entry_id x y label slice accession gene_id value share color drawn_whole" ]
+then
+    echo "ERROR: the key table of slices does not have the expected header."
+    exit 1
+fi
+# A slice of a KO names no gene, so its 'gene_id' is empty, though the file has a 'gene_id' column.
+if awk -F'\t' 'NR > 1 && $9 != "" {found = 1} END {exit !found}' $slice_key
+then
+    echo "ERROR: a slice of a KO named a gene in the key table."
+    exit 1
+fi
+shares=$(awk -F'\t' '$3 == "154" {printf "%s %s %.3f\n", $2, $8, $11}' $slice_key)
+expected_shares=$(printf '%s\n' "unified K00174 0.725" "unified K00175 0.275" \
+                  "G1 K00174 0.900" "G1 K00175 0.100" "G2 K00174 0.550" "G2 K00175 0.450")
+if [ "$shares" != "$expected_shares" ]
+then
+    echo "ERROR: the shares of weighted slices were not averaged within groups and across them."
+    exit 1
+fi
+# Slices follow the order of the KOs in the KGML file, where K00172 comes before K00171.
+if [ "$(awk -F'\t' '$2 == "G2" && $3 == "133" {print $8}' $slice_key | tr '\n' ' ')" \
+     != "K00169 K00170 K00172 K00171 " ]
+then
+    echo "ERROR: the slices of an element did not follow the order of its KOs in the KGML file."
+    exit 1
+fi
+
+# 'pooled_sum' adds up the weights of each KO across the samples and divides each sum by the total
+# of the element. On the 'unified' map, K00174 has 96 of the 115 units of weight of element 154, and
+# K00175 has 19.
+INFO "Testing the shares of weighted slices pooled by the sum of their weights"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+                        --reaction-sample-summary mean \
+                        --reaction-slice-by accession \
+                        --reaction-slice-weights coverage \
+                        --reaction-slice-share-summary pooled_sum \
+                        --output-dir draw_txt_slices_pooled_sum \
+                        --pathway-numbers 00010 \
+                        --no-progress
+
+shares=$(awk -F'\t' '$3 == "154" {printf "%s %s %.3f\n", $2, $8, $11}' \
+         draw_txt_slices_pooled_sum/slice_key_reactions.txt)
+if [ "$shares" != "$(printf '%s\n' "unified K00174 0.835" "unified K00175 0.165")" ]
+then
+    echo "ERROR: the shares of weighted slices were not pooled by the sum of their weights."
+    exit 1
+fi
+
+# The weights of the genes of a KO are added up by default. With 'mean', K00174 has a weight of 45
+# in SAMPLE_1, the mean of its two genes, and K00175 has a weight of 10.
+INFO "Testing the weights of the genes of a KO reduced by their mean"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+                        --reaction-slice-by accession \
+                        --reaction-slice-weights coverage \
+                        --reaction-slice-weight-aggregation mean \
+                        --output-dir draw_txt_slices_weight_mean \
+                        --pathway-numbers 00010 \
+                        --draw-individual-files \
+                        --no-progress
+
+shares=$(awk -F'\t' '$2 == "SAMPLE_1" && $3 == "154" {printf "%s %.3f\n", $8, $11}' \
+         draw_txt_slices_weight_mean/slice_key_reactions.txt)
+if [ "$shares" != "$(printf '%s\n' "K00174 0.818" "K00175 0.182")" ]
+then
+    echo "ERROR: the weights of the genes of a KO were not reduced by their mean."
+    exit 1
+fi
+
+# A KO with a weight of 0 gets no slice. Element 18 of map 00010 is sliced between K01624 and K01622
+# in the shares 0.75 and 0.25. Both KOs of element 154 have a weight of 0, so the element is left
+# uncolored. It has no rows in the key table, and a warning counts it.
+INFO "Testing that a KO with a weight of 0 gets no slice"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_weights.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights weight \
+    --output-dir draw_txt_slices_zero_weights --pathway-numbers 00010 \
+    --no-progress 2>&1 | tee draw_txt_slices_zero_weights.log
+if ! tr '\n' ' ' < draw_txt_slices_zero_weights.log | grep -q "were left uncolored, since every"
+then
+    echo "ERROR: an element whose KOs all have a weight of 0 was not reported as uncolored."
+    exit 1
+fi
+shares=$(awk -F'\t' '$3 == "18" || $3 == "154" {printf "%s %s %.3f\n", $3, $8, $11}' \
+         draw_txt_slices_zero_weights/slice_key_reactions.txt)
+if [ "$shares" != "$(printf '%s\n' "18 K01624 0.750" "18 K01622 0.250")" ]
+then
+    echo "ERROR: a KO with a weight of 0 was given a slice."
+    exit 1
+fi
+
+# Lines on the global map keep the widths of the KGML file. Entry 6838 is a line 20 points long and
+# 6 points wide. A quarter of it is shorter than it is wide, so its four KOs with values do not fit
+# as slices. The line is drawn whole, and a warning says so. The key table lists the slices the line
+# would have had, with the reason. Other KOs share longer lines of the map, which are sliced.
+INFO "Testing slices on the global map, where a line too short for its slices is drawn whole"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_global_slices.reaction.txt \
+    --reaction-slice-by accession \
+    --output-dir draw_txt_slices_global --pathway-numbers $global_pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_slices_global.log
+if ! tr '\n' ' ' < draw_txt_slices_global.log | grep -q "had more slices than fit"
+then
+    echo "ERROR: a line too short for its slices was not reported as drawn whole."
+    exit 1
+fi
+slice_key=draw_txt_slices_global/slice_key_reactions.txt
+if [ "$(awk -F'\t' '$3 == "6838" && $7 == "" && $13 == "line too short" {n++} END {print n + 0}' \
+       $slice_key)" != 4 ]
+then
+    echo "ERROR: the key table did not list the four slices of a line drawn whole."
+    exit 1
+fi
+# Entry 1327 is a line 32 points long. Compound circles cover 19 points of its ends, and 13 points
+# stay visible. A third of its whole length would fit as a slice, but a third of its visible part is
+# shorter than the line is wide, so the line is drawn whole.
+if [ "$(awk -F'\t' '$1 == "01100" && $3 == "1327" && $13 == "line too short" {n++}
+                    END {print n + 0}' $slice_key)" != 3 ]
+then
+    echo "ERROR: a line whose visible part is too short for its slices was not drawn whole."
+    exit 1
+fi
+if ! awk -F'\t' '$1 == "01100" && $7 == "2" {found = 1} END {exit !found}' $slice_key
+then
+    echo "ERROR: no line of the global map was sliced."
+    exit 1
+fi
+
+# A summary can be undefined for a slice, as the standard deviation is for a KO found in one sample.
+# Such a slice is not drawn, and the warning about undefined summaries counts it.
+INFO "Testing the warning that a summary was undefined for slices"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-slice-by accession --reaction-sample-summary std \
+    --output-dir draw_txt_slices_std --pathway-numbers $pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_slices_std.log
+if ! tr '\n' ' ' < draw_txt_slices_std.log | grep -q "These slices are not drawn on the"
+then
+    echo "ERROR: slices with an undefined summary were not reported."
+    exit 1
+fi
+
+# Element 18 of map 00010 stands for K01623, K01624, K01622, K11645, K16305, and K16306. Its slices
+# of genes are ordered by the first of these KOs that each gene has a row for, and then by gene ID,
+# with digits compared as numbers. gene_2 therefore comes before gene_10, and gene_10 before gene_1.
+# gene_5 has rows for K01624 and K01622, so it is one slice that lists both KOs. In SAMPLE_1, these
+# rows have values of 2 and 6 and weights of 30 and 10. The slice takes their means, a value of 4
+# and a weight of 20. The slices of the element there weigh 10, 20, 20, and 50.
+INFO "Testing slices of genes, ordered by KO and then by gene ID"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-sample-summary mean --reaction-slice-by gene --reaction-slice-weights coverage \
+    --output-dir draw_txt_slices_genes --pathway-numbers 00010 --draw-individual-files \
+    --no-progress 2>&1 | tee draw_txt_slices_genes.log
+slice_key=draw_txt_slices_genes/slice_key_reactions.txt
+slices=$(awk -F'\t' '$2 == "unified" && $3 == "18" {print $9, $8}' $slice_key)
+expected_slices=$(printf '%s\n' "gene_2 K01623" "gene_10 K01623" "gene_1 K01624" \
+                  "gene_5 K01624,K01622" "gene_3 K01622" "gene_4 K16306")
+if [ "$slices" != "$expected_slices" ]
+then
+    echo "ERROR: the slices of genes were not ordered by KO and then by gene ID."
+    exit 1
+fi
+slices=$(awk -F'\t' '$2 == "SAMPLE_1" && $3 == "18" {printf "%s %.3f %.3f\n", $9, $10, $11}' \
+         $slice_key)
+expected_slices=$(printf '%s\n' "gene_2 1.000 0.100" "gene_10 5.000 0.200" "gene_5 4.000 0.200" \
+                  "gene_3 8.000 0.500")
+if [ "$slices" != "$expected_slices" ]
+then
+    echo "ERROR: a gene with rows for two KOs of an element did not take the means of its rows."
+    exit 1
+fi
+# Element 64 lists K01622 but not K01624, so gene_5 there stands for its rows of K01622 alone. The
+# 'unified' map takes the mean of the values of a gene in the samples where it has rows for the
+# element. gene_10 has rows in SAMPLE_1 and SAMPLE_3 alone, with values of 5 and 7, so its mean is
+# 6. In element 18, gene_5 has values of 4, 6, and 8 in the three samples, so its mean is 6. It has
+# no row for K01622 in SAMPLE_3, so SAMPLE_3 is skipped in element 64. There its values of 6 and 9
+# give a mean of 7.5.
+values=$(awk -F'\t' '$2 == "unified" && ($9 == "gene_5" || $9 == "gene_10") {
+                     printf "%s %s %s %.3f\n", $3, $9, $8, $10}' $slice_key)
+expected_values=$(printf '%s\n' "18 gene_10 K01623 6.000" "18 gene_5 K01624,K01622 6.000" \
+                  "64 gene_5 K01622 7.500")
+if [ "$values" != "$expected_values" ]
+then
+    echo "ERROR: the values of a gene were not pooled from its own rows in each element."
+    exit 1
+fi
+# Several genes of this file occur in two or more samples, so the warning that none do is not given.
+# gene_5 has K01624 and K01622 in SAMPLE_1 and SAMPLE_2, but K01624 alone in SAMPLE_3. Its rows in
+# any two samples share K01624, so its ID is not named as one that may name two genes.
+for phrase in "Each slice of a gene there shows the value of a single sample" \
+              "suggest that one ID names two genes"
+do
+    if tr '\n' ' ' < draw_txt_slices_genes.log | grep -q "$phrase"
+    then
+        echo "ERROR: the gene IDs of a file whose genes are shared were reported ($phrase)."
+        exit 1
+    fi
+done
+
+# '--reaction-accession-aggregation' reduces the rows of a gene for the KOs of an element when it
+# is given. gene_1 has rows for K01623 and K01624 of element 18, with values of 2 and 5. 'sum' gives
+# its slice a value of 7, where the default, 'mean', would give 3.5. gene_2 has one row, for K01622,
+# and takes its value of 4.
+INFO "Testing the rows of a gene reduced by their sum"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_genes_coverage.reaction.txt \
+    --reaction-slice-by gene --reaction-accession-aggregation sum \
+    --output-dir draw_txt_slices_genes_sum --pathway-numbers 00010 --no-progress
+values=$(awk -F'\t' '$3 == "18" {printf "%s %s %.3f\n", $9, $8, $10}' \
+         draw_txt_slices_genes_sum/slice_key_reactions.txt)
+if [ "$values" != "$(printf '%s\n' "gene_1 K01623,K01624 7.000" "gene_2 K01622 4.000")" ]
+then
+    echo "ERROR: the rows of a gene for the KOs of an element were not reduced by their sum."
+    exit 1
+fi
+
+# With '--reaction-value-period', the rows of a gene for the KOs of an element are reduced by their
+# circular mean by default. gene_1 has rows for K01623 and K01624 of element 18 at 23 and 3 hours,
+# an hour before and three hours after midnight. Their circular mean is 1, the hour halfway between
+# them across midnight. Their arithmetic mean would be 13. The circular mean can differ from 1 by a
+# tiny amount, so it is read to three decimal places. gene_2 has one row, for K01622, and takes its
+# value of 12.
+INFO "Testing the rows of a gene reduced by their circular mean by default"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_genes_clocktime.reaction.txt \
+    --reaction-value-period 24 --reaction-slice-by gene \
+    --output-dir draw_txt_slices_genes_period --pathway-numbers 00010 --no-progress
+values=$(awk -F'\t' '$3 == "18" {printf "%s %s %.3f\n", $9, $8, $10}' \
+         draw_txt_slices_genes_period/slice_key_reactions.txt)
+if [ "$values" != "$(printf '%s\n' "gene_1 K01623,K01624 1.000" "gene_2 K01622 12.000")" ]
+then
+    echo "ERROR: the rows of a gene with a period were not reduced by their circular mean."
+    exit 1
+fi
+
+# A categorical slice of a gene takes the value that the accession rule chooses among the rows of
+# the gene for the element in a sample. In S1, gene_1 has rows for K01623 and K01624 of element 18,
+# valued 'up' and 'down'. Each row gives one vote, and 'plurality_order', the default rule, breaks
+# the tie by the order of the values. Without a colors file, the values are sorted, so 'down' comes
+# first and gene_1 takes it. gene_1 has no rows in S2 and S3, so it has no slice there. gene_2 takes
+# the value of its one row in S1 and S2, 'up'. Its two rows in S3 are both 'down'. gene_3 ties in S1
+# as gene_1 does, but its 'down' row comes first, so the check fails if a gene takes its last row.
+INFO "Testing the categorical values of slices of genes in samples and across them"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes_status.reaction.txt \
+    --reaction-value-type categorical --reaction-sample-summary plurality_order \
+    --reaction-slice-by gene --output-dir draw_txt_slices_genes_categorical \
+    --pathway-numbers 00010 --draw-individual-files --no-progress
+slice_key=draw_txt_slices_genes_categorical/slice_key_reactions.txt
+values=$(awk -F'\t' '$2 != "unified" && $3 == "18" {print $2, $9, $10}' $slice_key)
+expected_values=$(printf '%s\n' "S1 gene_1 down" "S1 gene_2 up" "S1 gene_3 down" "S2 gene_2 up" \
+                  "S3 gene_2 down")
+if [ "$values" != "$expected_values" ]
+then
+    echo "ERROR: the accession rule did not choose the value of a gene among its rows."
+    exit 1
+fi
+# On the 'unified' map, '--reaction-sample-summary' chooses among the values of a gene in the
+# samples where it has rows for the element, and each sample gives one vote. gene_2 has 'up' in S1
+# and S2 and 'down' in S3, so 'plurality_order' gives it 'up', though 'down' comes first in the
+# order of the values. If each row voted, 'up' and 'down' would tie at two votes, and the tie would
+# go to 'down'. gene_1 and gene_3 have rows in S1 alone and keep 'down'.
+values=$(awk -F'\t' '$2 == "unified" && $3 == "18" {print $9, $10}' $slice_key)
+if [ "$values" != "$(printf '%s\n' "gene_1 down" "gene_2 up" "gene_3 down")" ]
+then
+    echo "ERROR: the sample rule did not choose the value of a gene among the samples."
+    exit 1
+fi
+
+# No gene ID of this file occurs in two or more samples. On a map that pools samples, each slice of
+# a gene then shows the value of a single sample, and a warning names these maps. Group G1 holds
+# SAMPLE_1 alone, so its map pools nothing and is not named.
+INFO "Testing the warning that no gene ID occurs in two or more samples of a map that pools them"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --groups-txt draw-sample-group-information.txt --reaction-sample-summary mean \
+    --reaction-group-summary mean --reaction-slice-by gene \
+    --output-dir draw_txt_slices_genes_unshared --pathway-numbers 00010 --draw-individual-files \
+    --no-progress 2>&1 | tee draw_txt_slices_genes_unshared.log
+for phrase in "Each slice of a gene there shows the value of a single sample" \
+              "'unified' map and the map of group 'G2'"
+do
+    if ! tr '\n' ' ' < draw_txt_slices_genes_unshared.log | grep -q "$phrase"
+    then
+        echo "ERROR: maps that pool no gene across samples were misreported ($phrase)."
+        exit 1
+    fi
+done
+if tr '\n' ' ' < draw_txt_slices_genes_unshared.log | grep -q "'G1'"
+then
+    echo "ERROR: the map of a group of one sample was named in the warning about gene IDs."
+    exit 1
+fi
+
+# Gene caller IDs start at 0 in every contigs database. Here gene 0 of one assembly has K01623 in
+# S1, and gene 0 of another has K01624 in S2, so its rows in the two samples share no KO. The
+# 'unified' map would pool them as one gene, so a warning names the ID. Gene 1 has the same KO in
+# both samples and is not named.
+INFO "Testing the warning that a gene ID has no KO in common between two samples"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_gene_id_collision.reaction.txt \
+    --reaction-sample-summary mean --reaction-slice-by gene \
+    --output-dir draw_txt_slices_genes_collision --pathway-numbers 00010 \
+    --no-progress 2>&1 | tee draw_txt_slices_genes_collision.log
+for phrase in "1 gene ID of the reaction file" \
+              "no accession in common between its rows in two samples" \
+              "'0'. A gene of one contigs database is annotated once"
+do
+    if ! tr '\n' ' ' < draw_txt_slices_genes_collision.log | grep -q "$phrase"
+    then
+        echo "ERROR: a gene ID with no KO in common between two samples was misreported ($phrase)."
+        exit 1
+    fi
+done
+
+# Slicing is refused where it has no values to slice or where another option rules it out (each
+# command below is expected to fail).
+INFO "Testing that slicing is refused where it cannot apply"
+# Only a text file has values to slice, not a database run or a reaction network JSON.
+if anvi-draw-kegg-pathways --external-genomes external-genomes.txt --reaction-slice-by accession \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_db_bad --overwrite-output-destinations \
+    --no-progress > draw_db_slice_by.log 2>&1
+then
+    echo "ERROR: '--reaction-slice-by' on a database run should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_db_slice_by.log | grep -q "These options were given: '--reaction-slice-by'"
+then
+    echo "ERROR: '--reaction-slice-by' on a database run was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-network-json pan-network.json \
+    --reaction-slice-weights coverage --pathway-numbers $pathway_numbers \
+    --output-dir draw_db_bad --overwrite-output-destinations \
+    --no-progress > draw_json_slice_weights.log 2>&1
+then
+    echo "ERROR: slice weights on a reaction network JSON should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_json_slice_weights.log \
+    | grep -q "These options were given: '--reaction-slice-weights'"
+then
+    echo "ERROR: slice weights on a reaction network JSON were refused for another reason."
+    exit 1
+fi
+
+# Slicing applies to the reaction layer alone.
+if anvi-draw-kegg-pathways --compound-txt draw_compounds.compound.txt \
+    --reaction-slice-by accession --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_no_reaction_txt.log 2>&1
+then
+    echo "ERROR: '--reaction-slice-by' with no reaction file should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_no_reaction_txt.log \
+    | grep -q "no reaction file ('--reaction-txt') was provided"
+then
+    echo "ERROR: '--reaction-slice-by' with no reaction file was refused for another reason."
+    exit 1
+fi
+
+# The options that size and pool slices need '--reaction-slice-by'.
+for slice_option in "--reaction-slice-weights coverage" "--reaction-slice-weight-aggregation mean" \
+                    "--reaction-slice-share-summary pooled_sum"
+do
+    if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+        $slice_option --pathway-numbers $pathway_numbers \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_slice_option_alone.log 2>&1
+    then
+        echo "ERROR: '$slice_option' without '--reaction-slice-by' should have failed but did not."
+        exit 1
+    fi
+    if ! tr '\n' ' ' < draw_txt_slice_option_alone.log | grep -q "was not given, so no element"
+    then
+        echo "ERROR: '$slice_option' without '--reaction-slice-by' was refused for another reason."
+        exit 1
+    fi
+done
+
+# A column of weights cannot be one of the columns that identify a row. It has to exist, and it
+# cannot be the only column that could hold values, since the slices then have no values to color.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights sample \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_weights_key_column.log 2>&1
+then
+    echo "ERROR: weights in the 'sample' column should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_weights_key_column.log \
+    | grep -q "one of the columns that identify a row"
+then
+    echo "ERROR: weights in the 'sample' column were refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights weight \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_weights_missing.log 2>&1
+then
+    echo "ERROR: weights in a column the file lacks should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_weights_missing.log | grep -q "has no column with that header"
+then
+    echo "ERROR: weights in a column the file lacks were refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights coverage --draw-individual-files \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_weights_only_column.log 2>&1
+then
+    echo "ERROR: weights in the only column that could hold values should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_weights_only_column.log \
+    | grep -q "so it would otherwise be the value column"
+then
+    echo "ERROR: weights in the only column that could hold values were refused for another reason."
+    exit 1
+fi
+
+# Every weight is a number of 0 or more.
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_negative_weight.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights weight \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_negative_weight.log 2>&1
+then
+    echo "ERROR: a negative weight should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_negative_weight.log \
+    | grep -q "A weight is a finite number of 0 or more"
+then
+    echo "ERROR: a negative weight was refused for another reason."
+    exit 1
+fi
+
+# Pandas would read a second 'coverage' column as 'coverage.1'. The weights would then come from the
+# first column and the values from the second.
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_repeated_weights.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights coverage \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_repeated_weights.log 2>&1
+then
+    echo "ERROR: two columns named 'coverage' should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_repeated_weights.log | grep -q "A name may appear only once"
+then
+    echo "ERROR: two columns named 'coverage' were refused for another reason."
+    exit 1
+fi
+
+# Reducing the weights of the genes of a KO needs weights and genes.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weight-aggregation mean \
+    --draw-individual-files --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_weight_aggregation_no_weights.log 2>&1
+then
+    echo "ERROR: a weight aggregation without weights should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_weight_aggregation_no_weights.log \
+    | grep -q "no column of weights was named"
+then
+    echo "ERROR: a weight aggregation without weights was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_weights.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights weight \
+    --reaction-slice-weight-aggregation mean --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_weight_aggregation_no_genes.log 2>&1
+then
+    echo "ERROR: a weight aggregation without a 'gene_id' column should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_weight_aggregation_no_genes.log \
+    | grep -q "has no 'gene_id' column naming"
+then
+    echo "ERROR: a weight aggregation without a 'gene_id' column was refused for another reason."
+    exit 1
+fi
+
+# Pooling the shares of slices needs weights, since without them the slices are equal on every map.
+# It also needs a drawn map that pools samples and shows values. A file without a 'sample' column
+# has no such map. Without groups, only the 'unified' map pools samples, so it has to be drawn and
+# show values.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-share-summary pooled_sum \
+    --reaction-sample-summary mean --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_share_summary_no_weights.log 2>&1
+then
+    echo "ERROR: a share summary without weights should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_share_summary_no_weights.log \
+    | grep -q "no column of weights was named"
+then
+    echo "ERROR: a share summary without weights was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_weights.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights weight \
+    --reaction-slice-share-summary pooled_sum --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_share_summary_no_samples.log 2>&1
+then
+    echo "ERROR: a share summary for a file with no 'sample' column should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_share_summary_no_samples.log \
+    | grep -q "has no 'sample' column, so no map pools samples"
+then
+    echo "ERROR: a share summary for a file with no 'sample' column was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights coverage \
+    --reaction-slice-share-summary pooled_sum --draw-individual-files \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_share_summary_presence.log 2>&1
+then
+    echo "ERROR: a share summary for a 'unified' map of presence should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_share_summary_presence.log \
+    | grep -q "are therefore drawn whole"
+then
+    echo "ERROR: a share summary for a 'unified' map of presence was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights coverage \
+    --reaction-slice-share-summary pooled_sum --draw-individual-files --skip-unified-maps \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_share_summary_skip_unified.log 2>&1
+then
+    echo "ERROR: a share summary for a skipped 'unified' map should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_share_summary_skip_unified.log \
+    | grep -q "draws no 'unified' map"
+then
+    echo "ERROR: a share summary for a skipped 'unified' map was refused for another reason."
+    exit 1
+fi
+
+# Each slice takes the color of its own value, so the layer cannot take one color.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --original-color --reaction-slice-by accession --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_original_color.log 2>&1
+then
+    echo "ERROR: '--reaction-slice-by' with '--original-color' should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_original_color.log \
+    | grep -q "These options were given along with '--original-color': '--reaction-slice-by'"
+then
+    echo "ERROR: '--reaction-slice-by' with '--original-color' was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-color --reaction-slice-by accession --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_reaction_color.log 2>&1
+then
+    echo "ERROR: '--reaction-slice-by' with '--reaction-color' should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_reaction_color.log \
+    | grep -q "sets a single presence color"
+then
+    echo "ERROR: '--reaction-slice-by' with '--reaction-color' was refused for another reason."
+    exit 1
+fi
+
+# A file without a value column is colored by presence, which is not sliced yet. Rescaling each
+# slice on its own is not supported yet either.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+    --reaction-slice-by accession --draw-individual-files --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_presence.log 2>&1
+then
+    echo "ERROR: slicing a file with no value column should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_presence.log | grep -q "of presence are not supported yet"
+then
+    echo "ERROR: slicing a file with no value column was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-slice-by accession --reaction-element-normalization relative_to_mean \
+    --draw-individual-files --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_normalization.log 2>&1
+then
+    echo "ERROR: slicing with a normalization should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_normalization.log \
+    | grep -q "Rescaling each slice on its own is not supported"
+then
+    echo "ERROR: slicing with a normalization was refused for another reason."
+    exit 1
+fi
+
+# A slice of a KO shows the value of that KO. An element drawn whole takes the weighted mean of its
+# slice values in place of an aggregation of numbers across its KOs.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-slice-by accession --reaction-accession-aggregation mean \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_accession_aggregation.log 2>&1
+then
+    echo "ERROR: slicing with an accession aggregation of numbers should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_accession_aggregation.log \
+    | grep -q "in place of this reduction"
+then
+    echo "ERROR: slicing with an accession aggregation of numbers was refused for another reason."
+    exit 1
+fi
+
+# Slicing needs a drawn map that shows values. The refusal names an option that would draw one, in
+# words that fit the run: without groups, with group maps of values, and with group maps of
+# presence, drawn or not.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --reaction-slice-by accession --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_no_value_maps.log 2>&1
+then
+    echo "ERROR: slicing with no drawn map of values should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_no_value_maps.log \
+    | grep -q "The map of each sample shows values, but none were"
+then
+    echo "ERROR: slicing with no drawn map of values was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0.5 \
+    --reaction-sample-summary mean --reaction-slice-by accession \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_no_value_maps_groups.log 2>&1
+then
+    echo "ERROR: slicing with no drawn group map of values should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_no_value_maps_groups.log \
+    | grep -q "The map of each group shows values"
+then
+    echo "ERROR: slicing with no drawn group map of values was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0.5 \
+    --draw-individual-files --reaction-slice-by accession \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_group_presence.log 2>&1
+then
+    echo "ERROR: slicing group maps of presence should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_group_presence.log \
+    | grep -q "The map of each group counts its samples"
+then
+    echo "ERROR: slicing group maps of presence was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0.5 \
+    --reaction-slice-by accession --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_group_presence_no_maps.log 2>&1
+then
+    echo "ERROR: slicing undrawn group maps of presence should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_group_presence_no_maps.log \
+    | grep -q "Then either draw those maps"
+then
+    echo "ERROR: slicing undrawn group maps of presence was refused for another reason."
+    exit 1
+fi
+
+# The refusal names an option that fits the values. Categorical values need a rule, and values with
+# a period need a circular mean.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-value-type categorical --reaction-slice-by accession \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_no_value_maps_categorical.log 2>&1
+then
+    echo "ERROR: slicing categorical values with no drawn map of values should have failed."
+    exit 1
+fi
+for phrase in "no drawn map of the reaction layer" "a rule such as 'plurality_order'"
+do
+    if ! tr '\n' ' ' < draw_txt_slice_no_value_maps_categorical.log | grep -q "$phrase"
+    then
+        echo "ERROR: slicing categorical values with no map of values was misreported ($phrase)."
+        exit 1
+    fi
+done
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_clocktime.reaction.txt \
+    --reaction-value-period 24 --reaction-slice-by accession \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_no_value_maps_period.log 2>&1
+then
+    echo "ERROR: slicing values with a period and no drawn map of values should have failed."
+    exit 1
+fi
+for phrase in "no drawn map of the reaction layer" "an aggregation such as 'circular_mean'"
+do
+    if ! tr '\n' ' ' < draw_txt_slice_no_value_maps_period.log | grep -q "$phrase"
+    then
+        echo "ERROR: slicing values with a period and no map of values was misreported ($phrase)."
+        exit 1
+    fi
+done
+
+# Slices of genes need a 'gene_id' column, and a gene ID in every row.
+if anvi-draw-kegg-pathways --reaction-txt draw_reactions.reaction.txt \
+    --reaction-slice-by gene --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_genes_no_gene_id.log 2>&1
+then
+    echo "ERROR: slicing by gene without a 'gene_id' column should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_genes_no_gene_id.log \
+    | grep -q "draws each gene of a reaction element as a slice"
+then
+    echo "ERROR: slicing by gene without a 'gene_id' column was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_blank_gene_id.reaction.txt \
+    --reaction-slice-by gene --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_genes_blank_gene_id.log 2>&1
+then
+    echo "ERROR: slicing by gene with a row without a gene ID should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_genes_blank_gene_id.log | grep -q "in its 'gene_id' column"
+then
+    echo "ERROR: slicing by gene with a row without a gene ID was refused for another reason."
+    exit 1
+fi
+
+# Each gene is a slice of its own, so the values and the weights of the genes of a KO are never
+# reduced to those of the KO.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-slice-by gene --reaction-gene-aggregation mean \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_genes_gene_aggregation.log 2>&1
+then
+    echo "ERROR: slicing by gene with a gene aggregation should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_genes_gene_aggregation.log \
+    | grep -q "so no values of genes are reduced to an accession"
+then
+    echo "ERROR: slicing by gene with a gene aggregation was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+    --reaction-slice-by gene --reaction-slice-weights coverage \
+    --reaction-slice-weight-aggregation mean --draw-individual-files \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_genes_weight_aggregation.log 2>&1
+then
+    echo "ERROR: slicing by gene with a weight aggregation should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_genes_weight_aggregation.log \
+    | grep -q "so no weights are reduced to an accession"
+then
+    echo "ERROR: slicing by gene with a weight aggregation was refused for another reason."
+    exit 1
+fi
+
+# A gene with one row for an element shows the value of that row. 'std' does not return a single
+# value unchanged, so it cannot reduce the rows of a gene.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-slice-by gene --reaction-accession-aggregation std \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_slice_genes_std.log 2>&1
+then
+    echo "ERROR: slicing by gene with 'std' over a gene's rows should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_slice_genes_std.log \
+    | grep -q "return a single value unchanged, so genes with several rows"
+then
+    echo "ERROR: slicing by gene with 'std' over a gene's rows was refused for another reason."
+    exit 1
+fi
+
+# A border column colors a ring inside the outline of each box on standard maps, and of each
+# compound circle on standard and overview maps. A row with an empty border cell has no border
+# value, and the other rows still color their rings.
+INFO "Testing a border column with an empty cell beside a value column"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --output-dir draw_txt_border_empty_cell --pathway-numbers $pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_border_empty_cell.log
+if ! tr '\n' ' ' < draw_txt_border_empty_cell.log | grep -q "Reaction rows without a border value"
+then
+    echo "ERROR: the rows without a border value were not counted."
+    exit 1
+fi
+if [ ! -s draw_txt_border_empty_cell/colorbar_reactions_border.pdf ]
+then
+    echo "ERROR: a categorical border should have written a legend of its own."
+    exit 1
+fi
+
+# A stray quote in a categorical border value is part of the value. The file is read as text, even
+# though its fill values are numbers.
+INFO "Testing a stray quote in a categorical border value of a file of numbers"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_border_stray_quote.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --output-dir draw_txt_border_stray_quote --pathway-numbers $pathway_numbers \
+    --no-progress
+
+# K00844 has no fill value, since the standard deviation of one gene is undefined. Its border value
+# still draws a ring, so map 00010 is drawn though nothing on it has a fill color.
+INFO "Testing an element with a border and no fill color"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_border_no_fill.reaction.txt \
+    --reaction-gene-aggregation std --reaction-border-column level \
+    --output-dir draw_txt_border_no_fill --pathway-numbers 00010 \
+    --no-progress
+if [ ! -s draw_txt_border_no_fill/unified/ko00010.pdf ]
+then
+    echo "ERROR: a map with a ring and no fill color should have been drawn."
+    exit 1
+fi
+
+# Rings are drawn on circles of standard and overview maps, not on the global map. The run counts
+# the maps that show no compound border.
+INFO "Testing a compound border on maps of every kind"
+anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+    --compound-border-column concentration --compound-border-sample-summary mean \
+    --output-dir draw_txt_compound_border_global --pathway-numbers $global_pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_compound_border_global.log
+if ! tr '\n' ' ' < draw_txt_compound_border_global.log \
+    | grep -q "Maps that show no compound borders"
+then
+    echo "ERROR: the maps without compound borders were not counted."
+    exit 1
+fi
+
+# A player shows the key of a border only beside a map that can show its rings. The player of the
+# standard map shows the keys of the coverage, the reaction border, and the compound border, in that
+# order. The overview map shows compound rings but no reaction rings, and the global map shows no
+# rings, so their players leave out the keys of the borders they lack. A key is an image that holds
+# its data, so the same key is the same element in every player.
+INFO "Testing the keys of borders in the players of maps of every kind"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --compound-txt draw_compounds_samples.compound.txt --compound-border-column concentration \
+    --output-dir draw_txt_border_players --pathway-numbers $global_pathway_numbers \
+    --draw-individual-files --collate-files-by-map --animate-files-by-map \
+    --no-progress
+players=draw_txt_border_players/by_map
+standard_keys=$(grep -o '<img class="key"[^>]*' $players/ko00010.html)
+overview_keys=$(grep -o '<img class="key"[^>]*' $players/ko01200.html)
+global_keys=$(grep -o '<img class="key"[^>]*' $players/ko01100.html)
+if [ "$(echo "$standard_keys" | wc -l)" -ne 3 ] \
+    || [ "$overview_keys" != "$(echo "$standard_keys" | sed -n '1p;3p')" ] \
+    || [ "$global_keys" != "$(echo "$standard_keys" | sed -n 1p)" ]
+then
+    echo "ERROR: a player should show the key of a border only beside maps that show its rings."
+    exit 1
+fi
+
+# Lines show no ring. A reaction element that a standard map draws as a line is reported.
+INFO "Testing the warning that reaction lines on a standard map show no border"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_border_lines.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --output-dir draw_txt_border_lines --pathway-numbers 00010 00510 \
+    --no-progress 2>&1 | tee draw_txt_border_lines.log
+if ! tr '\n' ' ' < draw_txt_border_lines.log | grep -q "Lines show no border"
+then
+    echo "ERROR: reaction lines with border values on a standard map were not reported."
+    exit 1
+fi
+
+# A border summary that is undefined for an element leaves it without a ring.
+INFO "Testing the warning that a border summary was undefined"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-border-column coverage --reaction-value-type categorical \
+    --reaction-border-sample-summary std \
+    --output-dir draw_txt_border_std --pathway-numbers $pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_border_std.log
+if ! tr '\n' ' ' < draw_txt_border_std.log | grep -q "show no border on the 'unified' map"
+then
+    echo "ERROR: elements with an undefined border summary were not reported."
+    exit 1
+fi
+
+# Choices among categorical border values are reported apart from those of the fill.
+INFO "Testing that choices of a categorical border value are reported"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-sample-summary plurality_random --seed 2 \
+    --output-dir draw_txt_border_choices --pathway-numbers $pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_border_choices.log
+if ! tr '\n' ' ' < draw_txt_border_choices.log | grep -q "Choices of a reaction border value among"
+then
+    echo "ERROR: the choices of categorical border values were not reported."
+    exit 1
+fi
+
+# Skipping the 'unified' map drops the key of its border and keeps the key of the sample maps.
+INFO "Testing that skipping the 'unified' map drops its border key"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --output-dir draw_txt_border_skip_unified --pathway-numbers $pathway_numbers \
+    --skip-unified-maps --draw-grid \
+    --no-progress
+if [ -e draw_txt_border_skip_unified/colorbar_reactions_border.pdf ]
+then
+    echo "ERROR: the border key of the skipped 'unified' map was drawn."
+    exit 1
+fi
+if [ ! -s draw_txt_border_skip_unified/colorbar_reactions_border_samples.pdf ]
+then
+    echo "ERROR: skipping the 'unified' map should keep the border key of the sample maps."
+    exit 1
+fi
+
+# Border keys stay at the top of the output directory, so gathering maps by map leaves them out.
+INFO "Testing that gathering maps by map gathers no border key"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --output-dir draw_txt_border_collate --pathway-numbers $pathway_numbers \
+    --draw-individual-files --collate-files-by-map \
+    --no-progress
+if ls -R draw_txt_border_collate/by_map | grep -q "colorbar"
+then
+    echo "ERROR: a border key was gathered by map as if it were a map."
+    exit 1
+fi
+
+INFO "Testing that border columns are refused where they cannot apply"
+# A border column is read like the column of weights. It must be a column of the file, and it
+# cannot be a key column, a name given twice, or a name that starts with '__'.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage_status.reaction.txt \
+    --reaction-border-column nothing --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_missing.log 2>&1
+then
+    echo "ERROR: a border column that the file lacks should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_missing.log | grep -q "as the border column, but"
+then
+    echo "ERROR: a border column that the file lacks was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage_status.reaction.txt \
+    --reaction-border-column sample --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_key_column.log 2>&1
+then
+    echo "ERROR: a key column as the border column should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_key_column.log | grep -q "key column, which cannot hold border values"
+then
+    echo "ERROR: a key column as the border column was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_repeated_border.reaction.txt \
+    --reaction-border-column status --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_repeated.log 2>&1
+then
+    echo "ERROR: a border column named twice should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_repeated.log | grep -q "more than once"
+then
+    echo "ERROR: a border column named twice was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_reserved_border.reaction.txt \
+    --reaction-border-column __status --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_reserved.log 2>&1
+then
+    echo "ERROR: a border column named with '__' should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_reserved.log | grep -q "that start with '__'"
+then
+    echo "ERROR: a border column named with '__' was refused for another reason."
+    exit 1
+fi
+
+# One column cannot hold both the weights of slices and the border values.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights coverage \
+    --reaction-border-column coverage --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_weights.log 2>&1
+then
+    echo "ERROR: one column as both weights and border should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_weights.log | grep -q "can either color borders or hold"
+then
+    echo "ERROR: one column as both weights and border was refused for another reason."
+    exit 1
+fi
+
+# A border column leaves two other candidate value columns in this file.
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_three_columns.reaction.txt \
+    --reaction-border-column status --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_three_columns.log 2>&1
+then
+    echo "ERROR: a file with two value columns besides its border column should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_three_columns.log | grep -q "is ambiguous which to color elements by"
+then
+    echo "ERROR: a file with two value columns besides its border column failed for another reason."
+    exit 1
+fi
+
+# The values of a border column: none at all, 'NA' among numbers, more categorical values than
+# default colors, and repeated rows in a file whose only values are border values.
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_empty_border.reaction.txt \
+    --reaction-border-column status --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_empty.log 2>&1
+then
+    echo "ERROR: a border column without values should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_empty.log | grep -q "has no values"
+then
+    echo "ERROR: a border column without values was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_na_border.reaction.txt \
+    --reaction-border-column level --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_na.log 2>&1
+then
+    echo "ERROR: 'NA' in a column of numeric border values should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_na.log | grep -q "such as text or 'NA'"
+then
+    echo "ERROR: 'NA' in a column of numeric border values was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_border_class8.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_class8.log 2>&1
+then
+    echo "ERROR: more categorical border values than default colors should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_class8.log | grep -q "default colors for"
+then
+    echo "ERROR: more categorical border values than default colors failed for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_repeated_border_rows.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_repeated_rows.log 2>&1
+then
+    echo "ERROR: repeated rows of a file with only border values should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_repeated_rows.log | grep -q "only one border value"
+then
+    echo "ERROR: repeated rows of a file with only border values failed for another reason."
+    exit 1
+fi
+
+# Every other border option needs the border column of its layer.
+for border_option in "--reaction-border-value-type categorical" \
+                     "--reaction-border-value-colors draw-status-colors.txt" \
+                     "--reaction-border-value-period 24" \
+                     "--reaction-border-gene-aggregation mean" \
+                     "--reaction-border-accession-aggregation mean" \
+                     "--reaction-border-sample-summary mean" \
+                     "--reaction-border-group-summary mean" \
+                     "--reaction-border-colormap viridis" \
+                     "--reaction-border-individual-colormap viridis" \
+                     "--reaction-border-value-limits 0 1" \
+                     "--reaction-border-individual-value-limits 0 1" \
+                     "--reaction-border-value-center" \
+                     "--reaction-border-individual-value-center" \
+                     "--reaction-border-element-normalization z_score" \
+                     "--reaction-border-slice-by accession" \
+                     "--compound-border-sample-summary mean"
+do
+    if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+        $border_option --pathway-numbers $pathway_numbers \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_border_option_alone.log 2>&1
+    then
+        echo "ERROR: '$border_option' without a border column should have failed but did not."
+        exit 1
+    fi
+    if ! tr '\n' ' ' < draw_txt_border_option_alone.log | grep -q "no border column was named"
+    then
+        echo "ERROR: '$border_option' without a border column was refused for another reason."
+        exit 1
+    fi
+done
+
+# A border shows values only, so its summaries take no presence names.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-sample-summary count --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_presence_summary.log 2>&1
+then
+    echo "ERROR: a presence summary of a border should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_presence_summary.log | grep -q "A border shows values only"
+then
+    echo "ERROR: a presence summary of a border was refused for another reason."
+    exit 1
+fi
+
+# The colormap of a border colors numbers only.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-colormap viridis --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_categorical_colormap.log 2>&1
+then
+    echo "ERROR: a colormap of categorical border values should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_categorical_colormap.log \
+    | grep -q "colors numeric border values"
+then
+    echo "ERROR: a colormap of categorical border values was refused for another reason."
+    exit 1
+fi
+
+# A colors file needs categorical border values.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-value-type categorical --reaction-border-column coverage \
+    --reaction-border-value-colors draw-status-colors.txt --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_numeric_colors.log 2>&1
+then
+    echo "ERROR: colors for numeric border values should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_numeric_colors.log | grep -q "Give it to read the border column as categorical"
+then
+    echo "ERROR: colors for numeric border values were refused for another reason."
+    exit 1
+fi
+
+# The border value of a group comes from the border sample summary, so a group summary needs one.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-value-type categorical --reaction-border-column coverage \
+    --groups-txt draw-sample-group-information.txt --group-threshold 0.5 \
+    --reaction-border-group-summary mean --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_group_summary.log 2>&1
+then
+    echo "ERROR: a border group summary without a border sample summary should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_group_summary.log | grep -q "which was not given"
+then
+    echo "ERROR: a border group summary without a border sample summary failed for another reason."
+    exit 1
+fi
+
+# The reference map's colors leave no colors for values, and they are drawn without rings.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt --original-color \
+    --reaction-border-column coverage --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_original.log 2>&1
+then
+    echo "ERROR: '--original-color' with a border column should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_original.log | grep -q "along with '--original-color'"
+then
+    echo "ERROR: '--original-color' with a border column was refused for another reason."
+    exit 1
+fi
+
+# A border that no drawn map can show. Reaction borders need a standard map, and compound borders a
+# standard or an overview map.
+for border_map in 01200 01100
+do
+    if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+        --reaction-border-column status --reaction-border-value-type categorical \
+        --reaction-border-sample-summary plurality_order --pathway-numbers $border_map \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_border_map_kind.log 2>&1
+    then
+        echo "ERROR: a reaction border drawn only on map $border_map should have failed."
+        exit 1
+    fi
+    if ! tr '\n' ' ' < draw_txt_border_map_kind.log | grep -q "This run draws no such map"
+    then
+        echo "ERROR: a reaction border drawn only on map $border_map failed for another reason."
+        exit 1
+    fi
+done
+
+if anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+    --compound-border-column concentration --compound-border-sample-summary mean \
+    --pathway-numbers 01100 \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_compound_border_map_kind.log 2>&1
+then
+    echo "ERROR: a compound border drawn only on map 01100 should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_compound_border_map_kind.log | grep -q "This run draws no such map"
+then
+    echo "ERROR: a compound border drawn only on map 01100 was refused for another reason."
+    exit 1
+fi
+
+# The options alone can leave the border off every map. Here the 'unified' map shows no border
+# without a border summary, and no map of a sample is drawn.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_no_map.log 2>&1
+then
+    echo "ERROR: a border that no map shows should have failed but did not."
+    exit 1
+fi
+
+# A database run has no text file and no border column.
+if anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db --reaction-border-column status \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_db_bad --overwrite-output-destinations \
+    --no-progress > draw_db_border.log 2>&1
+then
+    echo "ERROR: a border column on a database run should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_db_border.log \
+    | grep -q "These options were given: '--reaction-border-column'"
+then
+    echo "ERROR: a border column on a database run was refused for another reason."
+    exit 1
+fi
+
+# Messages from four places name the options of the border, not those of the fill: the builder of
+# a border model, the check of the maps that show a border, a guard of the command line looped over
+# the borders, and the check of a normalization. ConfigError breaks its lines after hyphens, so the
+# spaces and line breaks are deleted before the flags are matched.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-value-type categorical --reaction-border-column coverage \
+    --reaction-border-value-limits 0 1 --draw-individual-files \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_message_builder.log 2>&1
+then
+    echo "ERROR: limits on a 'unified' map that shows no border should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_border_message_builder.log \
+    | grep -q "since'--reaction-border-sample-summary'wasnotgiven"
+then
+    echo "ERROR: limits on a 'unified' map without a border named the wrong option."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_border_no_map.log \
+    | grep -q "'--reaction-border-sample-summary'wasnotgiven,sothe'unified'mapshowsnoborder"
+then
+    echo "ERROR: a border that no map shows named the wrong option."
+    exit 1
+fi
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-individual-value-limits 0 1 --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_message_guard.log 2>&1
+then
+    echo "ERROR: limits of categorical border values should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_border_message_guard.log \
+    | grep -q "('--reaction-border-value-typecategorical')"
+then
+    echo "ERROR: limits of categorical border values named the wrong option."
+    exit 1
+fi
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-value-type categorical --reaction-border-column coverage \
+    --reaction-border-element-normalization mean --draw-individual-files \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_message_normalization.log 2>&1
+then
+    echo "ERROR: a border normalization that reduces values should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_border_message_normalization.log \
+    | grep -q "belongsto'--reaction-border-sample-summary'instead"
+then
+    echo "ERROR: a border normalization that reduces values named the wrong option."
+    exit 1
+fi
+
+# '--reaction-border-slice-by gene' divides each ring among the genes of its box. With
+# '--reaction-slice-by gene', the rings are aligned with the fill, so each slice of a ring is a
+# column of the fill. Its position, accession, gene, and share are those of the column.
+INFO "Testing rings sliced by gene and aligned with fills sliced by gene"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+    --reaction-sample-summary mean --reaction-slice-by gene --reaction-slice-weights coverage \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-sample-summary plurality_order --reaction-border-slice-by gene \
+    --output-dir draw_txt_border_slices_genes_aligned --pathway-numbers 00010 \
+    --draw-individual-files \
+    --no-progress
+if [ "$(awk -F'\t' 'FNR > 1 && $9 != ""' \
+    draw_txt_border_slices_genes_aligned/slice_key_reactions_border.txt | wc -l)" -eq 0 ]
+then
+    echo "ERROR: rings sliced by gene should have listed the genes of their slices."
+    exit 1
+fi
+if awk -F'\t' 'NR == FNR {fill[$1 FS $2 FS $3 FS $7 FS $8 FS $9 FS $11]; next}
+    FNR > 1 && !(($1 FS $2 FS $3 FS $7 FS $8 FS $9 FS $11) in fill) {bad++} END {exit !bad}' \
+    draw_txt_border_slices_genes_aligned/slice_key_reactions.txt \
+    draw_txt_border_slices_genes_aligned/slice_key_reactions_border.txt
+then
+    echo "ERROR: an aligned ring has a slice that no column of the fill has."
+    exit 1
+fi
+
+# A file without a value column colors its fills by presence. Its rings can still be sliced by
+# gene, each on its own.
+INFO "Testing rings sliced by gene in a file without a value column"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes_border.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-slice-by gene \
+    --output-dir draw_txt_border_slices_genes_no_fill --pathway-numbers 00010 \
+    --draw-individual-files \
+    --no-progress 2>&1 | tee draw_txt_border_slices_genes_no_fill.log
+if ! tr '\n' ' ' < draw_txt_border_slices_genes_no_fill.log \
+    | grep -q "by gene, independent of the fill"
+then
+    echo "ERROR: rings sliced by gene without a value column were not sliced on their own."
+    exit 1
+fi
+if [ "$(awk -F'\t' 'FNR > 1 && $9 != ""' \
+    draw_txt_border_slices_genes_no_fill/slice_key_reactions_border.txt | wc -l)" -eq 0 ]
+then
+    echo "ERROR: rings sliced by gene without a value column should have listed their genes."
+    exit 1
+fi
+
+# The weights size the slices of rings that are sliced on their own, so a file needs no value
+# column for them. 'pooled_sum' adds up the weights of the rows with a border value. On the
+# 'unified' map, K00174 weighs 96 and K00175 weighs 19 in box 154, so K00174 takes 96 / 115 of the
+# ring.
+INFO "Testing weights that size the slices of rings in a file without a value column"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_border.reaction.txt \
+    --reaction-slice-weights coverage --reaction-slice-share-summary pooled_sum \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-sample-summary plurality_order --reaction-border-slice-by accession \
+    --output-dir draw_txt_border_slices_weights --pathway-numbers 00010 \
+    --no-progress
+if [ "$(awk -F'\t' '$2 == "unified" && $3 == "154" && $8 == "K00174" {print $11}' \
+    draw_txt_border_slices_weights/slice_key_reactions_border.txt)" != "0.8347826086956521" ]
+then
+    echo "ERROR: the weights of the rows with border values did not size the slice of a ring."
+    exit 1
+fi
+
+# The weights of the genes of an accession are reduced where the rings are sliced by accession,
+# even where the fill is sliced by gene.
+INFO "Testing a weight aggregation for rings sliced by accession around fills sliced by gene"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+    --reaction-sample-summary mean --reaction-slice-by gene --reaction-slice-weights coverage \
+    --reaction-slice-weight-aggregation mean --reaction-border-column status \
+    --reaction-border-value-type categorical --reaction-border-sample-summary plurality_order \
+    --reaction-border-slice-by accession \
+    --output-dir draw_txt_border_slices_weight_aggregation --pathway-numbers 00010 \
+    --draw-individual-files \
+    --no-progress
+if [ ! -s draw_txt_border_slices_weight_aggregation/slice_key_reactions_border.txt ]
+then
+    echo "ERROR: rings sliced by accession around fills sliced by gene should have been drawn."
+    exit 1
+fi
+
+# The fill of a box inside an aligned ring holds up to 10 slices, so a fill of 11 genes is drawn
+# whole, and so is its ring. A ring sliced on its own holds up to 11 slices.
+INFO "Testing the caps of sliced rings"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_genes11_status.reaction.txt \
+    --reaction-slice-by gene --reaction-border-column status \
+    --reaction-border-value-type categorical --reaction-border-slice-by gene \
+    --output-dir draw_txt_border_slices_cap_aligned --pathway-numbers 00010 \
+    --no-progress
+if [ "$(awk -F'\t' '$13 == "over the cap"' \
+    draw_txt_border_slices_cap_aligned/slice_key_reactions_border.txt | wc -l)" -ne 22 ]
+then
+    echo "ERROR: aligned rings around fills over the cap were not drawn whole."
+    exit 1
+fi
+anvi-draw-kegg-pathways --reaction-txt draw_kos_genes11_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-slice-by gene \
+    --output-dir draw_txt_border_slices_cap_fits --pathway-numbers 00010 \
+    --no-progress
+if [ "$(awk -F'\t' '$7 == "11"' \
+    draw_txt_border_slices_cap_fits/slice_key_reactions_border.txt | wc -l)" -ne 2 ]
+then
+    echo "ERROR: rings of 11 slices sliced on their own should have been drawn in slices."
+    exit 1
+fi
+anvi-draw-kegg-pathways --reaction-txt draw_kos_genes12_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-slice-by gene \
+    --output-dir draw_txt_border_slices_cap_over --pathway-numbers 00010 \
+    --no-progress 2>&1 | tee draw_txt_border_slices_cap_over.log
+if ! tr '\n' ' ' < draw_txt_border_slices_cap_over.log | grep -q "have had more than 11 slices"
+then
+    echo "ERROR: rings of 12 slices were not reported as drawn whole."
+    exit 1
+fi
+
+# The 'unified' map shows presence in its fills here, so its fills are not sliced. Its aligned
+# rings are drawn whole, while the rings of the maps of the samples are sliced with the fills.
+INFO "Testing whole rings around fills that are not sliced"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights coverage \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-sample-summary plurality_order --reaction-border-slice-by accession \
+    --output-dir draw_txt_border_slices_not_sliced --pathway-numbers 00010 \
+    --draw-individual-files \
+    --no-progress
+if [ "$(awk -F'\t' '$2 == "unified" && $13 != "fill not sliced"' \
+    draw_txt_border_slices_not_sliced/slice_key_reactions_border.txt | wc -l)" -ne 0 ]
+then
+    echo "ERROR: the rings of a 'unified' map whose fills are not sliced were not drawn whole."
+    exit 1
+fi
+if [ "$(awk -F'\t' '$2 == "SAMPLE_1" && $7 == "2"' \
+    draw_txt_border_slices_not_sliced/slice_key_reactions_border.txt | wc -l)" -eq 0 ]
+then
+    echo "ERROR: the rings of the map of a sample should have been sliced with the fills."
+    exit 1
+fi
+
+# Weights of 0 leave out slices. An aligned ring cannot show a border value whose accession has
+# no slice of the fill, and a ring all of whose slices weigh 0 is not drawn.
+INFO "Testing border values that no column shows, and rings left out by weights of 0"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_weights_status.reaction.txt \
+    --reaction-slice-by accession --reaction-slice-weights weight \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-slice-by accession \
+    --output-dir draw_txt_border_slices_zero_aligned --pathway-numbers 00010 \
+    --no-progress 2>&1 | tee draw_txt_border_slices_zero_aligned.log
+for phrase in "so no band shows their border values" "every slice of the fill had a weight"
+do
+    if ! tr '\n' ' ' < draw_txt_border_slices_zero_aligned.log | grep -q "$phrase"
+    then
+        echo "ERROR: the warning that contains '$phrase' was not given."
+        exit 1
+    fi
+done
+anvi-draw-kegg-pathways --reaction-txt draw_kos_weights_status.reaction.txt \
+    --reaction-slice-weights weight --reaction-border-column status \
+    --reaction-border-value-type categorical --reaction-border-slice-by accession \
+    --output-dir draw_txt_border_slices_zero_independent --pathway-numbers 00010 \
+    --no-progress 2>&1 | tee draw_txt_border_slices_zero_independent.log
+if ! tr '\n' ' ' < draw_txt_border_slices_zero_independent.log \
+    | grep -q "every accession with a border value"
+then
+    echo "ERROR: a ring all of whose slices weigh 0 was not reported."
+    exit 1
+fi
+
+INFO "Testing that sliced rings are refused where they cannot apply"
+# Rings sliced by gene need a 'gene_id' column.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-slice-by gene --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_slices_no_genes.log 2>&1
+then
+    echo "ERROR: rings sliced by gene without a 'gene_id' column should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_slices_no_genes.log \
+    | grep -q "has no 'gene_id' column naming genes"
+then
+    echo "ERROR: rings sliced by gene without a 'gene_id' column were refused for another reason."
+    exit 1
+fi
+
+# Each gene is a slice of its own, so no border values of genes are reduced to an accession.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes_border.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-gene-aggregation plurality_order --reaction-border-slice-by gene \
+    --draw-individual-files --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_slices_gene_aggregation.log 2>&1
+then
+    echo "ERROR: a border gene aggregation for rings sliced by gene should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_slices_gene_aggregation.log \
+    | grep -q "so no border values of genes are reduced"
+then
+    echo "ERROR: a border gene aggregation for rings sliced by gene was refused for another reason."
+    exit 1
+fi
+
+# Each slice of a ring sliced by accession shows the border value of one accession.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-value-type categorical --reaction-border-column coverage \
+    --reaction-border-sample-summary mean --reaction-border-accession-aggregation max \
+    --reaction-border-slice-by accession --draw-individual-files \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_slices_accession_aggregation.log 2>&1
+then
+    echo "ERROR: a border accession aggregation for rings sliced by accession did not fail."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_slices_accession_aggregation.log \
+    | grep -q "each slice of a ring shows the border value of one accession"
+then
+    echo "ERROR: a border accession aggregation for rings sliced by accession failed otherwise."
+    exit 1
+fi
+
+# The slices of rings cannot be normalized yet.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-value-type categorical --reaction-border-column coverage \
+    --reaction-border-element-normalization z_score --reaction-border-slice-by accession \
+    --draw-individual-files --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_slices_normalization.log 2>&1
+then
+    echo "ERROR: a border normalization with sliced rings should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_slices_normalization.log \
+    | grep -q "Rescaling each slice of a ring on its own"
+then
+    echo "ERROR: a border normalization with sliced rings was refused for another reason."
+    exit 1
+fi
+
+# A gene with one row shows the border value of that row, so an aggregation of the rows of a gene
+# must return a single value unchanged. The mapper refuses 'std'.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-value-type categorical --reaction-border-column coverage \
+    --reaction-border-sample-summary mean --reaction-border-accession-aggregation std \
+    --reaction-border-slice-by gene --draw-individual-files \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_slices_genes_std.log 2>&1
+then
+    echo "ERROR: rings sliced by gene with 'std' over a gene's rows should have failed but did not."
+    exit 1
+fi
+
+# A reaction border slices the rings of boxes, which only standard maps draw.
+for pathway_number in 01200 01100
+do
+    if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes_border.reaction.txt \
+        --reaction-border-column status --reaction-border-value-type categorical \
+        --reaction-border-slice-by accession --draw-individual-files \
+        --pathway-numbers $pathway_number \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_border_slices_map_kind.log 2>&1
+    then
+        echo "ERROR: rings sliced on map $pathway_number alone should have failed but did not."
+        exit 1
+    fi
+    if ! tr '\n' ' ' < draw_txt_border_slices_map_kind.log | grep -q "This run draws no such map"
+    then
+        echo "ERROR: rings sliced on map $pathway_number alone were refused for another reason."
+        exit 1
+    fi
+done
+
+# The weights size the slices of elements or of rings, so they need one kind of slicing.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+    --reaction-slice-weights coverage --reaction-border-column status \
+    --reaction-border-value-type categorical --draw-individual-files \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_slices_weights_neither.log 2>&1
+then
+    echo "ERROR: weights with neither kind of slicing should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_slices_weights_neither.log \
+    | grep -q "so no element or ring is sliced"
+then
+    echo "ERROR: weights with neither kind of slicing were refused for another reason."
+    exit 1
+fi
+
+# The weights of the genes of an accession are reduced only where something is sliced by accession.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+    --reaction-slice-by gene --reaction-slice-weights coverage \
+    --reaction-slice-weight-aggregation mean --reaction-border-column status \
+    --reaction-border-value-type categorical --reaction-border-slice-by gene \
+    --draw-individual-files --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_slices_weight_aggregation_genes.log 2>&1
+then
+    echo "ERROR: a weight aggregation with all slices by gene should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_slices_weight_aggregation_genes.log \
+    | grep -q "so no weights are reduced to an"
+then
+    echo "ERROR: a weight aggregation with all slices by gene was refused for another reason."
+    exit 1
+fi
+
+# A summary of shares needs a drawn map that pools samples and shows slices. Here the rings show no
+# border on the 'unified' map, and no map of a group is drawn.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+    --reaction-slice-weights coverage --reaction-slice-share-summary pooled_sum \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-border-slice-by accession --draw-individual-files \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_border_slices_share_summary.log 2>&1
+then
+    echo "ERROR: a summary of shares with no map that pools slices should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_border_slices_share_summary.log \
+    | grep -q "slices of elements or of rings"
+then
+    echo "ERROR: a summary of shares with no map that pools slices was refused for another reason."
+    exit 1
+fi
+
+# Messages of the command line and of the mapper name the options of the border where rings are
+# sliced. ConfigError breaks its lines after hyphens, so the spaces and line breaks are deleted
+# before the flags are matched.
+if ! tr -d ' \n' < draw_txt_border_slices_accession_aggregation.log \
+    | grep -q "With'--reaction-border-slice-byaccession',eachsliceofaring"
+then
+    echo "ERROR: a border accession aggregation for sliced rings named the wrong option."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_border_slices_genes_std.log \
+    | grep -q "With'--reaction-border-slice-bygene',itreducestherows"
+then
+    echo "ERROR: 'std' over the rows of a gene in a ring named the wrong option."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_border_slices_weight_aggregation_genes.log \
+    | grep -q "With'--reaction-slice-bygene'and'--reaction-border-slice-bygene',eachgene"
+then
+    echo "ERROR: a weight aggregation with everything sliced by gene named the wrong options."
+    exit 1
+fi
+
+# '--reaction-color none' leaves the fills of a file without a value column uncolored, so that its
+# boxes show only their rings. Its entries do not count as data, so a map is drawn only where a ring
+# shows. The overview map 01200 shows no rings of reactions, so it is not drawn. A KO whose border
+# cell is empty shows nothing, as if it were not in the file, and the run counts such rows.
+INFO "Testing a reaction layer of rings alone, with an empty border cell"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_status_empty_cell.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-color none \
+    --output-dir draw_txt_rings_alone_empty_cell --pathway-numbers $pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_rings_alone_empty_cell.log
+if ! tr '\n' ' ' < draw_txt_rings_alone_empty_cell.log \
+    | grep -q "Reaction rows without a border value \.*: 1 "
+then
+    echo "ERROR: the row without a border value of a layer of rings alone was not counted."
+    exit 1
+fi
+if [ ! -s draw_txt_rings_alone_empty_cell/unified/ko00010.pdf ]
+then
+    echo "ERROR: a map with rings and no colored fills should have been drawn."
+    exit 1
+fi
+if [ -e draw_txt_rings_alone_empty_cell/unified/ko01200.pdf ]
+then
+    echo "ERROR: a map that shows no ring of a layer of rings alone should not have been drawn."
+    exit 1
+fi
+
+# Compounds take fills from reactions only where a reaction layer colors fills. A compound layer of
+# rings alone without a reaction layer draws white circles with rings, on the overview map 01200 as
+# on the standard map 00010.
+INFO "Testing a compound layer of rings alone, without a reaction layer"
+anvi-draw-kegg-pathways --compound-txt draw_compounds.compound.txt \
+    --compound-border-column value --compound-color none \
+    --output-dir draw_txt_compound_rings_alone --pathway-numbers $pathway_numbers \
+    --no-progress
+if [ ! -s draw_txt_compound_rings_alone/unified/ko01200.pdf ]
+then
+    echo "ERROR: an overview map with compound rings and no reaction layer should have been drawn."
+    exit 1
+fi
+if [ -e draw_txt_compound_rings_alone/colorbar_compounds.pdf ] \
+    || [ ! -s draw_txt_compound_rings_alone/colorbar_compounds_border.pdf ]
+then
+    echo "ERROR: a compound layer of rings alone should have keyed its rings and not its fills."
+    exit 1
+fi
+
+# With a static color, the map of each group counts the samples of the group and takes a key of the
+# counts. A layer of rings alone counts nothing there, so neither the maps of the groups nor their
+# panels in the grid take a key of counts. The run needs no '--group-threshold'.
+INFO "Testing the maps of groups of a layer of rings alone"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-color none --groups-txt draw-sample-group-information.txt \
+    --reaction-border-sample-summary plurality_order \
+    --reaction-border-group-summary plurality_order \
+    --output-dir draw_txt_groups_rings_alone --pathway-numbers $pathway_numbers \
+    --draw-individual-files --draw-grid \
+    --no-progress
+for group in G1 G2
+do
+    if [ -e draw_txt_groups_rings_alone/individual/$group/colorbar.pdf ] \
+        || [ -e draw_txt_groups_rings_alone/grid/colorbar_$group.pdf ]
+    then
+        echo "ERROR: the maps of group $group took a key of counts for a layer of rings alone."
+        exit 1
+    fi
+    if [ ! -s draw_txt_groups_rings_alone/individual/$group/ko00010.pdf ]
+    then
+        echo "ERROR: the map of group $group should have been drawn for its rings."
+        exit 1
+    fi
+done
+
+# Without a border sample summary, the 'unified' map shows no ring, and a layer of rings alone shows
+# nothing there. The maps of the samples show their rings.
+INFO "Testing the warning that the 'unified' map shows nothing of a layer of rings alone"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-color none \
+    --output-dir draw_txt_rings_alone_no_summary --pathway-numbers $pathway_numbers \
+    --draw-individual-files \
+    --no-progress 2>&1 | tee draw_txt_rings_alone_no_summary.log
+if ! tr '\n' ' ' < draw_txt_rings_alone_no_summary.log \
+    | grep -q "The 'unified' map shows nothing of the reaction layer"
+then
+    echo "ERROR: a 'unified' map that shows nothing of a layer of rings alone was not reported."
+    exit 1
+fi
+
+INFO "Testing that the colors of layers are refused unless they are hex codes or 'none'"
+# '--reaction-color' and '--compound-color' take a six-digit color hex code, as the colors files do.
+# A color name, such as 'orange', is refused for every input.
+for color_option in "--reaction-txt draw_kos.reaction.txt --reaction-color" \
+                    "--compound-txt draw_compounds_presence.compound.txt --compound-color"
+do
+    if anvi-draw-kegg-pathways $color_option orange --pathway-numbers $pathway_numbers \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_color_name.log 2>&1
+    then
+        echo "ERROR: '$color_option orange' should have failed but did not."
+        exit 1
+    fi
+    if ! tr '\n' ' ' < draw_txt_color_name.log | grep -q "It takes a six-digit color hex code"
+    then
+        echo "ERROR: '$color_option orange' was refused for another reason."
+        exit 1
+    fi
+done
+for color_input in "--reaction-network-json pan-network.json" \
+                   "--contigs-dbs E_faecalis_6240.db" \
+                   "--external-genomes external-genomes.txt" \
+                   "--pan-db TEST-PAN.db --genomes-storage TEST-GENOMES.db"
+do
+    if anvi-draw-kegg-pathways $color_input --reaction-color orange \
+        --pathway-numbers $pathway_numbers \
+        --output-dir draw_db_bad --overwrite-output-destinations \
+        --no-progress > draw_db_color_name.log 2>&1
+    then
+        echo "ERROR: '--reaction-color orange' with '$color_input' should have failed but did not."
+        exit 1
+    fi
+    if ! tr '\n' ' ' < draw_db_color_name.log | grep -q "It takes a six-digit color hex code"
+    then
+        echo "ERROR: '--reaction-color orange' with '$color_input' was refused for another reason."
+        exit 1
+    fi
+done
+
+# The mapper takes 'original' as its way of asking for the colors of the reference map. Every input
+# refuses it as a color, in favor of '--original-color'.
+if anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db --reaction-color original \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_db_bad --overwrite-output-destinations \
+    --no-progress > draw_db_color_original.log 2>&1
+then
+    echo "ERROR: '--reaction-color original' on a contigs database run should have failed."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_db_color_original.log | grep -q "use the '--original-color' flag instead"
+then
+    echo "ERROR: '--reaction-color original' on a contigs database run failed for another reason."
+    exit 1
+fi
+
+INFO "Testing that rings alone are refused where they cannot apply"
+# Only a text file has a border column, so only a text file can draw rings alone.
+if anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db --reaction-color none \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_db_bad --overwrite-output-destinations \
+    --no-progress > draw_db_color_none.log 2>&1
+then
+    echo "ERROR: '--reaction-color none' on a contigs database run should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_db_color_none.log | grep -q "Only a text file given with"
+then
+    echo "ERROR: '--reaction-color none' on a contigs database run was refused for another reason."
+    exit 1
+fi
+
+# Without a border column, a layer of rings alone would draw nothing.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt --reaction-color none \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_color_none_no_border.log 2>&1
+then
+    echo "ERROR: '--reaction-color none' without a border column should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_color_none_no_border.log | grep -q "so the layer would draw nothing"
+then
+    echo "ERROR: '--reaction-color none' without a border column was refused for another reason."
+    exit 1
+fi
+
+# The options that color fills have no fills to color. A summary of presence colors the fills of the
+# 'unified' map, and the rings take summaries of their own. Slices of the fill need values, and the
+# rings can still be sliced with '--reaction-border-slice-by'. '--reaction-reverse-overlay' changes
+# only the drawing order of the fills.
+for fill_option in "--reaction-sample-summary count" "--reaction-slice-by accession" \
+                   "--reaction-reverse-overlay"
+do
+    if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+        --reaction-border-column status --reaction-border-value-type categorical \
+        --reaction-color none $fill_option --pathway-numbers $pathway_numbers \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_color_none_fill_option.log 2>&1
+    then
+        echo "ERROR: '$fill_option' for rings alone should have failed but did not."
+        exit 1
+    fi
+    if ! tr '\n' ' ' < draw_txt_color_none_fill_option.log \
+        | grep -q "These options color the fills of the reaction layer"
+    then
+        echo "ERROR: '$fill_option' for rings alone was refused for another reason."
+        exit 1
+    fi
+done
+
+# Global maps draw no rings, so a run of rings alone that draws only global maps would draw nothing.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_status_empty_cell.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-color none --pathway-numbers 01100 \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_color_none_global.log 2>&1
+then
+    echo "ERROR: rings alone on the global map alone should have failed but did not."
+    exit 1
+fi
+if ! tr '\n' ' ' < draw_txt_color_none_global.log | grep -q "This run draws no such map"
+then
+    echo "ERROR: rings alone on the global map alone were refused for another reason."
+    exit 1
+fi
+
+# The group options style the counts on the maps of groups. A layer of rings alone counts nothing
+# there, and no other layer is drawn.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+    --reaction-border-column status --reaction-border-value-type categorical \
+    --reaction-color none --groups-txt draw-sample-group-information.txt \
+    --reaction-border-sample-summary plurality_order --group-colormap viridis \
+    --draw-individual-files --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_color_none_group_colormap.log 2>&1
+then
+    echo "ERROR: '--group-colormap' for a grouped layer of rings alone should have failed."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_color_none_group_colormap.log \
+    | grep -q "countnothingforthereactionlayer,since'--reaction-colornone'"
+then
+    echo "ERROR: '--group-colormap' for a grouped layer of rings alone failed for another reason."
+    exit 1
+fi
+
+# A bar column sets the length of a bar in each reaction box of a standard map, in the color of the
+# fill. A box with a fill and no bar value is left uncolored on a map that shows bars, and the run
+# counts such boxes.
+INFO "Testing a bar column with an empty cell beside a value column"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_empty_cell.reaction.txt \
+    --reaction-bar-column level --output-dir draw_txt_bar_empty_cell \
+    --pathway-numbers $pathway_numbers --no-progress 2>&1 | tee draw_txt_bar_empty_cell.log
+for phrase in "Reactionrowswithoutabarvalue" "havenobarvaluefromthe'level'barcolumn"
+do
+    if ! tr -d ' \n' < draw_txt_bar_empty_cell.log | grep -q "$phrase"
+    then
+        echo "ERROR: the warning or report that contains '$phrase' was not given."
+        exit 1
+    fi
+done
+if [ ! -s draw_txt_bar_empty_cell/bar_key_reactions.pdf ]
+then
+    echo "ERROR: a run with bars should have written a bar key."
+    exit 1
+fi
+
+# In the strip style, a box with a fill and no bar value keeps its whole fill without a strip, so
+# it is not left uncolored, and no warning counts it.
+INFO "Testing a bar column with an empty cell, drawn as strips"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_empty_cell.reaction.txt \
+    --reaction-bar-column level --reaction-bar-style strip \
+    --output-dir draw_txt_bar_empty_cell_strip --pathway-numbers $pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_bar_empty_cell_strip.log
+if ! tr -d ' \n' < draw_txt_bar_empty_cell_strip.log | grep -q "Reactionbarstyle.*strip"
+then
+    echo "ERROR: the run did not report the strip style of its bars."
+    exit 1
+fi
+if tr -d ' \n' < draw_txt_bar_empty_cell_strip.log | grep -q "havenobarvaluefromthe"
+then
+    echo "ERROR: a box without a bar value was left uncolored in the strip style."
+    exit 1
+fi
+
+# Bar values on both sides of 0 grow both ways from a zero line. The boxes of the 'fill' style drop
+# their labels, and a key table names them by their accessions. Map 00010 draws K00844 in the boxes
+# of entries 69 and 75, and K01810 in those of entries 66 and 71. Each is listed once.
+INFO "Testing bars on both sides of 0"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_signed.reaction.txt \
+    --reaction-bar-column level --output-dir draw_txt_bar_signed \
+    --pathway-numbers $pathway_numbers --no-progress
+label_key=draw_txt_bar_signed/label_key_reactions.txt
+if [ "$(head -1 $label_key | tr '\t' ' ')" != "map drawn_map entry_id x y label accession bar" ] \
+    || [ "$(sed 1d $label_key | cut -f1-3,7,8 | tr '\t\n' '  ')" != "00010 unified 66 K01810 3.0 \
+00010 unified 69 K00844 -2.0 00010 unified 71 K01810 3.0 00010 unified 75 K00844 -2.0 " ]
+then
+    echo "ERROR: the key table of unlabeled boxes should list the four boxes of K00844 and K01810."
+    exit 1
+fi
+
+# The table lists the boxes whose bars drop their labels, whether or not '--reaction-labels' labels
+# the other boxes.
+INFO "Testing the key table of unlabeled boxes on maps without labels"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_signed.reaction.txt \
+    --reaction-bar-column level --reaction-labels none \
+    --output-dir draw_txt_bar_signed_no_labels --pathway-numbers $pathway_numbers --no-progress
+if ! cmp -s draw_txt_bar_signed/label_key_reactions.txt \
+    draw_txt_bar_signed_no_labels/label_key_reactions.txt
+then
+    echo "ERROR: '--reaction-labels none' should not change the key table of unlabeled boxes."
+    exit 1
+fi
+
+# A strip lies below the label of its box, so it keeps the label on a scale with values on both
+# sides of 0, and no box is listed.
+INFO "Testing strips on both sides of 0"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_signed.reaction.txt \
+    --reaction-bar-column level --reaction-bar-style strip \
+    --output-dir draw_txt_bar_signed_strip --pathway-numbers $pathway_numbers --no-progress
+if [ -e draw_txt_bar_signed_strip/label_key_reactions.txt ]
+then
+    echo "ERROR: strips should keep the labels of their boxes."
+    exit 1
+fi
+
+# Limits can reach below 0, as long as they include it. Limits of -5 and 5 put 0 in the middle of
+# the box. The one bar value of this file is 2.5, so the scale has a side below 0 only through the
+# limits, and only they drop the labels of the boxes of K00844.
+INFO "Testing bar limits on both sides of 0"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_empty_cell.reaction.txt \
+    --reaction-bar-column level --reaction-bar-value-limits -5 5 \
+    --output-dir draw_txt_bar_signed_limits --pathway-numbers $pathway_numbers --no-progress
+if [ ! -s draw_txt_bar_signed_limits/bar_key_reactions.pdf ] \
+    || [ "$(sed 1d draw_txt_bar_signed_limits/label_key_reactions.txt | cut -f7 | sort -u)" \
+    != "K00844" ]
+then
+    echo "ERROR: bar limits on both sides of 0 should have dropped the labels of K00844."
+    exit 1
+fi
+
+# An aggregation can reduce bar values of 0 or more below 0, as the skewness of the coverage of
+# genes does. The bars then grow both ways from 0.
+INFO "Testing bar values that a summary reduces below 0"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --reaction-bar-sample-summary skew \
+    --output-dir draw_txt_bar_skew --pathway-numbers $pathway_numbers --no-progress
+if [ ! -s draw_txt_bar_skew/label_key_reactions.txt ]
+then
+    echo "ERROR: bar values reduced below 0 should have grown both ways and dropped labels."
+    exit 1
+fi
+
+# A vertical bar runs behind the label of its box, so the box drops its label even on a scale whose
+# values are all 0 or more. Map 00010 draws K00844 in the boxes of entries 69 and 75. K01810 has no
+# bar value, so its boxes are left uncolored and keep their labels.
+INFO "Testing vertical bars"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_empty_cell.reaction.txt \
+    --reaction-bar-column level --reaction-bar-orientation vertical \
+    --output-dir draw_txt_bar_vertical --pathway-numbers $pathway_numbers --no-progress
+if [ "$(sed 1d draw_txt_bar_vertical/label_key_reactions.txt | cut -f3,7 | tr '\t\n' '  ')" \
+    != "69 K00844 75 K00844 " ]
+then
+    echo "ERROR: the key table of unlabeled boxes should list the two boxes of K00844."
+    exit 1
+fi
+
+# A scale whose values are all below 0 puts 0 at the right side of each box, with no zero line
+# inside it, so its boxes keep their labels.
+INFO "Testing bars whose values are all below 0"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_negative.reaction.txt \
+    --reaction-bar-column log_abundance --output-dir draw_txt_bar_negative \
+    --pathway-numbers $pathway_numbers --no-progress
+if [ -e draw_txt_bar_negative/label_key_reactions.txt ]
+then
+    echo "ERROR: bars on a scale whose values are all below 0 should keep the labels of boxes."
+    exit 1
+fi
+
+# Sliced boxes show a bar in each column. A column whose accession has a fill value but no bar value
+# is white and keeps its share, and its row of the key table has no bar value. A box none of whose
+# columns has a bar value is left uncolored, and a warning counts it. Lines take no bars and keep
+# their slices, with no bar values in the key table, on standard and overview maps alike. Each box
+# has one accession with a bar value at most, so every bar is horizontal and no box drops its label.
+INFO "Testing sliced boxes and lines without bar values"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_gaps.reaction.txt \
+    --reaction-bar-column level --reaction-slice-by accession \
+    --output-dir draw_txt_bar_gaps --pathway-numbers $pathway_numbers 00510 \
+    --no-progress 2>&1 | tee draw_txt_bar_gaps.log
+table=draw_txt_bar_gaps/slice_key_reactions.txt
+if [ "$(awk -F '\t' '$1 == "00010" && $3 == 18 {print $8 "=" $14}' $table | tr '\n' ' ')" \
+    != "K01623=2.5 K01624= " ]
+then
+    echo "ERROR: the key table should give K01623 its bar value and K01624 none."
+    exit 1
+fi
+if [ -n "$(awk -F '\t' '($1 == "00010" && $3 == 154) || ($1 == "00510" && $3 == 192)' $table)" ] \
+    || ! tr -d ' \n' < draw_txt_bar_gaps.log \
+    | grep -q "2reactionbox(es)withafillcolorhavenobarvalue"
+then
+    echo "ERROR: the boxes of K00174 and K00175 and of K03850 should have been left uncolored."
+    exit 1
+fi
+if [ "$(awk -F '\t' '$1 == "00510" && $3 == 143 {print $8 "=" $10 "=" $14}' $table)" \
+    != "K03850=30.0=" ] \
+    || [ "$(awk -F '\t' '$1 == "01200"' $table | wc -l)" -eq 0 ] \
+    || [ "$(awk -F '\t' '$1 == "01200" && $14 != ""' $table | wc -l)" -ne 0 ]
+then
+    echo "ERROR: lines should keep their slices, with no bar values in the key table."
+    exit 1
+fi
+if [ -e draw_txt_bar_gaps/label_key_reactions.txt ]
+then
+    echo "ERROR: boxes with one accession with a bar value should keep their labels."
+    exit 1
+fi
+
+# The 12 genes of K00844 are more than fit in a box, so it is drawn whole, with one bar of the mean
+# of their bar values. The 12 genes have bar values, so the bar runs up the box, which drops its
+# label. The key table lists the 12 genes with their bar values and the reason. With 11 genes, the
+# box is drawn in columns.
+INFO "Testing sliced bars over the cap"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_genes12_status.reaction.txt \
+    --reaction-value-type categorical --reaction-bar-column coverage --reaction-slice-by gene \
+    --output-dir draw_txt_bar_over_cap --pathway-numbers $pathway_numbers --no-progress
+if [ "$(awk -F '\t' '$13 == "over the cap" && $14 != ""' \
+    draw_txt_bar_over_cap/slice_key_reactions.txt | wc -l)" -ne 24 ] \
+    || [ "$(sed 1d draw_txt_bar_over_cap/label_key_reactions.txt | cut -f8 | sort -u)" != "6.5" ]
+then
+    echo "ERROR: a box over the cap should list its genes and show the mean of their bar values."
+    exit 1
+fi
+anvi-draw-kegg-pathways --reaction-txt draw_kos_genes11_status.reaction.txt \
+    --reaction-value-type categorical --reaction-bar-column coverage --reaction-slice-by gene \
+    --output-dir draw_txt_bar_under_cap --pathway-numbers $pathway_numbers --no-progress
+if [ -n "$(sed 1d draw_txt_bar_under_cap/slice_key_reactions.txt | cut -f13 | sort -u)" ] \
+    || [ "$(awk -F '\t' '$1 == "00010" && $3 == 69 && $7 != ""' \
+    draw_txt_bar_under_cap/slice_key_reactions.txt | wc -l)" -ne 11 ]
+then
+    echo "ERROR: a box of 11 genes should have been drawn in 11 columns."
+    exit 1
+fi
+
+# Weights size the columns of horizontal bars and of strips too. Each is read as a fraction of its
+# own column. The bars of a file without a value column are sliced on their own, and those of a file
+# with one follow the slices of its fill. Either way, the weights give K01622 a small share.
+INFO "Testing horizontal bars and strips in weighted columns"
+for style in fill strip
+do
+    anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+        --reaction-bar-column expression --reaction-slice-weights coverage \
+        --reaction-slice-by accession --reaction-bar-orientation horizontal \
+        --reaction-bar-style $style --output-dir draw_txt_bar_weighted_$style \
+        --pathway-numbers $pathway_numbers --draw-individual-files --no-progress
+done
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+    --reaction-value-type categorical --reaction-bar-column expression \
+    --reaction-slice-weights coverage --reaction-slice-by accession \
+    --reaction-bar-orientation horizontal --output-dir draw_txt_bar_weighted_values \
+    --pathway-numbers $pathway_numbers --draw-individual-files --no-progress
+for output in draw_txt_bar_weighted_fill draw_txt_bar_weighted_strip draw_txt_bar_weighted_values
+do
+    if [ "$(awk -F '\t' '$1 == "00010" && $2 == "SAMPLE_1" && $3 == 18 {print $8 "=" $11}' \
+        $output/slice_key_reactions.txt | tr '\n' ' ')" \
+        != "K01624=0.47619047619047616 K01622=0.047619047619047616 K16306=0.47619047619047616 " ]
+    then
+        echo "ERROR: the columns of bars in '$output' should take their shares from the weights."
+        exit 1
+    fi
+done
+
+# On a map whose fill shows presence, such as the 'unified' map without a sample summary, the fill
+# is not sliced. A box then shows one bar of the mean of the bar values of its accessions. Two or
+# more accessions of entry 18 have bar values, so its bar runs up the box, which drops its label.
+INFO "Testing whole bars on a map whose fill shows presence in a sliced layer"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --reaction-bar-sample-summary mean \
+    --reaction-slice-by accession --output-dir draw_txt_bar_sliced_presence \
+    --pathway-numbers $pathway_numbers --draw-individual-files --no-progress
+if [ "$(awk -F '\t' '$1 == "00010" && $2 == "unified" && $3 == 18 {print $8}' \
+    draw_txt_bar_sliced_presence/label_key_reactions.txt)" != "16.645833333333336" ] \
+    || [ -n "$(awk -F '\t' '$2 == "unified"' \
+    draw_txt_bar_sliced_presence/slice_key_reactions.txt)" ]
+then
+    echo "ERROR: the 'unified' map should show whole bars of the mean of the accessions."
+    exit 1
+fi
+
+# The rings of a file whose only column of values is its bar column are divided on their own, even
+# where they are sliced by the unit of the bars, since its fill is not sliced. The key table of the
+# rings has no 'bar' column.
+INFO "Testing rings beside bars sliced on their own"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_border.reaction.txt \
+    --reaction-bar-column coverage --reaction-border-column status \
+    --reaction-border-value-type categorical --reaction-slice-by accession \
+    --reaction-border-slice-by accession --output-dir draw_txt_bar_alone_rings \
+    --pathway-numbers $pathway_numbers --draw-individual-files \
+    --no-progress 2>&1 | tee draw_txt_bar_alone_rings.log
+if ! tr -d ' \n' < draw_txt_bar_alone_rings.log | grep -q "byaccession,independentofthefill" \
+    || [ "$(head -1 draw_txt_bar_alone_rings/slice_key_reactions_border.txt \
+    | awk -F '\t' '{print NF}')" -ne 13 ]
+then
+    echo "ERROR: rings beside bars sliced on their own should be divided on their own."
+    exit 1
+fi
+
+# The columns of bars sliced on their own take the one color of the fill, which '--reaction-color'
+# can give.
+INFO "Testing bars sliced on their own in a color of their own"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-bar-column coverage --reaction-slice-by accession --reaction-color "#FF8800" \
+    --output-dir draw_txt_bar_sliced_color --pathway-numbers $pathway_numbers --no-progress
+if [ "$(sed 1d draw_txt_bar_sliced_color/slice_key_reactions.txt | cut -f12 | sort -u)" \
+    != "#FF8800" ]
+then
+    echo "ERROR: the columns of bars sliced on their own should take the color of the fill."
+    exit 1
+fi
+
+# Bar values of 0 alone draw bars of no length, and a key labeled 0 alone.
+INFO "Testing a bar scale whose only value is 0"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_zero.reaction.txt --reaction-bar-column level \
+    --output-dir draw_txt_bar_zero --pathway-numbers $pathway_numbers --no-progress
+if [ ! -s draw_txt_bar_zero/bar_key_reactions.pdf ] \
+    || [ ! -s draw_txt_bar_zero/unified/ko00010.pdf ]
+then
+    echo "ERROR: bars of 0 alone should have been drawn with a key."
+    exit 1
+fi
+
+# Lines take no bars. A reaction element that a standard map draws as a line is reported.
+INFO "Testing the warning that reaction lines on a standard map show no bars"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_lines.reaction.txt --reaction-bar-column level \
+    --output-dir draw_txt_bar_lines --pathway-numbers 00010 00510 \
+    --no-progress 2>&1 | tee draw_txt_bar_lines.log
+if ! tr -d ' \n' < draw_txt_bar_lines.log | grep -q "Linesshownobars"
+then
+    echo "ERROR: reaction lines with bar values on a standard map were not reported."
+    exit 1
+fi
+
+# A player shows the key of bars only beside the maps that show bars, which are standard maps.
+# Skipping the 'unified' map drops its bar key.
+INFO "Testing the keys of bars in players and without the 'unified' map"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --skip-unified-maps \
+    --output-dir draw_txt_bar_players --pathway-numbers $global_pathway_numbers \
+    --draw-individual-files --collate-files-by-map --animate-files-by-map \
+    --no-progress
+players=draw_txt_bar_players/by_map
+standard_keys=$(grep -o '<img class="key"[^>]*' $players/ko00010.html)
+overview_keys=$(grep -o '<img class="key"[^>]*' $players/ko01200.html)
+if [ "$(echo "$standard_keys" | wc -l)" -ne 2 ] \
+    || [ "$overview_keys" != "$(echo "$standard_keys" | sed -n 1p)" ]
+then
+    echo "ERROR: a player should show the key of bars only beside maps that show bars."
+    exit 1
+fi
+if [ -e draw_txt_bar_players/bar_key_reactions.pdf ] \
+    || [ ! -s draw_txt_bar_players/bar_key_reactions_samples.pdf ]
+then
+    echo "ERROR: skipping the 'unified' map should drop its bar key and keep that of the samples."
+    exit 1
+fi
+
+INFO "Testing that bar columns are refused where they cannot apply"
+
+# Every bar option needs the bar column.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-sample-summary mean --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_option_without_column.log 2>&1
+then
+    echo "ERROR: a bar option without the bar column should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_option_without_column.log \
+    | grep -q "appliestothebarsofthereactionlayer,butnobarcolumnwasnamed"
+then
+    echo "ERROR: a bar option without the bar column was refused for another reason."
+    exit 1
+fi
+
+# The style of bars needs the bar column too.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-style strip --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_style_without_column.log 2>&1
+then
+    echo "ERROR: a bar style without the bar column should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_style_without_column.log \
+    | grep -q "'--reaction-bar-style'appliestothebarsofthereactionlayer"
+then
+    echo "ERROR: a bar style without the bar column was refused for another reason."
+    exit 1
+fi
+
+# A strip lies along the bottom of its box, so it cannot run up the box.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_signed.reaction.txt \
+    --reaction-bar-column level --reaction-bar-style strip --reaction-bar-orientation vertical \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_vertical_strip.log 2>&1
+then
+    echo "ERROR: vertical strips should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_vertical_strip.log | grep -q "soastripisalwayshorizontal"
+then
+    echo "ERROR: vertical strips were refused for another reason."
+    exit 1
+fi
+
+# The aggregations of bars follow the rules of the fill in slices. A numeric bar accession
+# aggregation is refused with slices of accessions, and one that does not return a single value
+# unchanged with slices of genes. The bar gene aggregation is refused with slices of genes.
+for case in "accession-aggregation mean accession" "accession-aggregation std gene" \
+    "gene-aggregation mean gene"
+do
+    read -r option aggregation unit <<< "$case"
+    if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+        --reaction-sample-summary mean --reaction-bar-column coverage \
+        --reaction-bar-sample-summary mean --reaction-bar-$option $aggregation \
+        --reaction-slice-by $unit --pathway-numbers $pathway_numbers --draw-individual-files \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_bar_sliced_${option}_$unit.log 2>&1
+    then
+        echo "ERROR: '--reaction-bar-$option $aggregation' with slices of ${unit}s should have" \
+            "failed but did not."
+        exit 1
+    fi
+done
+for case in "accession-aggregation_accession eachcolumnofaboxshowsthebarvalueofoneaccession" \
+    "accession-aggregation_gene '--reaction-bar-accession-aggregation'wasgivenas'std'" \
+    "gene-aggregation_gene eachcolumnofaboxshowsthebarvalueofonegene"
+do
+    read -r name phrase <<< "$case"
+    if ! tr -d ' \n' < draw_txt_bar_sliced_$name.log | grep -q "$phrase"
+    then
+        echo "ERROR: the case '$name' of sliced bars was refused for another reason."
+        exit 1
+    fi
+done
+
+# A bar accession aggregation that returns one value unchanged is accepted with slices of genes.
+INFO "Testing a bar accession aggregation with slices of genes"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-sample-summary mean --reaction-bar-column coverage \
+    --reaction-bar-sample-summary mean --reaction-bar-accession-aggregation max \
+    --reaction-slice-by gene --output-dir draw_txt_bar_sliced_gene_max \
+    --pathway-numbers $pathway_numbers --draw-individual-files --no-progress
+
+# The bars of a file whose only column of values is its bar column are sliced on the maps that show
+# bars. Without a bar sample summary, no map that pools samples shows them, so a share summary is
+# refused.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+    --reaction-bar-column expression --reaction-slice-weights coverage --reaction-slice-by gene \
+    --reaction-slice-share-summary pooled_sum --pathway-numbers $pathway_numbers \
+    --draw-individual-files --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_alone_share_summary.log 2>&1
+then
+    echo "ERROR: a share summary with no map that pools bars should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_alone_share_summary.log \
+    | grep -q "soitsbarsareslicedontheirown,onthemapsthatshowbars"
+then
+    echo "ERROR: a share summary with no map that pools bars was refused for another reason."
+    exit 1
+fi
+
+# A key column cannot hold bar values.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-bar-column sample --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_key_column.log 2>&1
+then
+    echo "ERROR: a key column as the bar column should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_key_column.log \
+    | grep -q "soitcannotholdbarvalues"
+then
+    echo "ERROR: a key column as the bar column was refused for another reason."
+    exit 1
+fi
+
+# The bar column must be a column of the file.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+    --reaction-bar-column nothing --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_missing_column.log 2>&1
+then
+    echo "ERROR: a missing bar column should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_missing_column.log \
+    | grep -q "asthebarcolumn,butthereactionfilehasnocolumnwiththatheader"
+then
+    echo "ERROR: a missing bar column was refused for another reason."
+    exit 1
+fi
+
+# One column cannot set the lengths of bars and color borders.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-bar-column status --reaction-border-column status \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_is_border.log 2>&1
+then
+    echo "ERROR: one column as the bar and border column should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_is_border.log \
+    | grep -q "eithersetthelengthsofbarsorcolorborders"
+then
+    echo "ERROR: one column as the bar and border column was refused for another reason."
+    exit 1
+fi
+
+# One column cannot set the lengths of bars and hold the weights of slices.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+    --reaction-bar-column coverage --reaction-slice-weights coverage \
+    --reaction-border-column expression --reaction-border-slice-by accession \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_is_weights.log 2>&1
+then
+    echo "ERROR: one column as the bar and weight column should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_is_weights.log \
+    | grep -q "eithersetthelengthsofbarsorholdtheweightsofslices"
+then
+    echo "ERROR: one column as the bar and weight column was refused for another reason."
+    exit 1
+fi
+
+# A bar shows values only, so its summaries take no presence names.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --reaction-bar-sample-summary count \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_presence_summary.log 2>&1
+then
+    echo "ERROR: a presence summary of bars should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_presence_summary.log \
+    | grep -q "Abarshowsvaluesonly"
+then
+    echo "ERROR: a presence summary of bars was refused for another reason."
+    exit 1
+fi
+
+# Bars take numbers only, so their summaries take no rules for categorical values.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --reaction-bar-sample-summary plurality_order \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_rule_summary.log 2>&1
+then
+    echo "ERROR: a rule as a bar summary should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_rule_summary.log \
+    | grep -q "Poolthemwithanaggregation"
+then
+    echo "ERROR: a rule as a bar summary was refused for another reason."
+    exit 1
+fi
+
+# Bars take no period.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --reaction-bar-sample-summary circular_mean \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_circular_summary.log 2>&1
+then
+    echo "ERROR: a circular summary of bars should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_circular_summary.log \
+    | grep -q "takenoperiod,sincethelengthofabarstartsat0"
+then
+    echo "ERROR: a circular summary of bars was refused for another reason."
+    exit 1
+fi
+
+# A bar group summary needs a bar sample summary.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --groups-txt draw-sample-group-information.txt \
+    --group-threshold 0.5 --reaction-bar-group-summary mean --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_group_without_sample.log 2>&1
+then
+    echo "ERROR: a bar group summary without a bar sample summary should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_group_without_sample.log \
+    | grep -q "whichpoolsthebarvaluesofthegroups"
+then
+    echo "ERROR: a bar group summary without a bar sample summary was refused for another reason."
+    exit 1
+fi
+
+# A bar scale always includes 0.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --reaction-bar-sample-summary mean \
+    --reaction-bar-value-limits 10 100 --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_limits_without_zero.log 2>&1
+then
+    echo "ERROR: bar limits that leave out 0 should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_limits_without_zero.log \
+    | grep -q "limitsthatleaveout0"
+then
+    echo "ERROR: bar limits that leave out 0 was refused for another reason."
+    exit 1
+fi
+
+# Limits wholly below 0 leave it out as well.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_signed.reaction.txt \
+    --reaction-bar-column level --reaction-bar-value-limits -10 -1 \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_limits_below_zero.log 2>&1
+then
+    echo "ERROR: bar limits below 0 that leave out 0 should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_limits_below_zero.log \
+    | grep -q "limitsthatleaveout0"
+then
+    echo "ERROR: bar limits below 0 that leave out 0 were refused for another reason."
+    exit 1
+fi
+
+# Each bar value must be a number, and a bar column needs a value.
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_na_bar.reaction.txt --reaction-bar-column level \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_na_value.log 2>&1
+then
+    echo "ERROR: 'NA' as a bar value should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_na_value.log \
+    | grep -q "somethingotherthanafinitenumber"
+then
+    echo "ERROR: 'NA' as a bar value was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_bad_empty_bar.reaction.txt \
+    --reaction-bar-column level --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_empty_column.log 2>&1
+then
+    echo "ERROR: a bar column with no values should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_empty_column.log \
+    | grep -q "itwouldsetnobar"
+then
+    echo "ERROR: a bar column with no values was refused for another reason."
+    exit 1
+fi
+
+# A bar takes the color of its fill, which the reference map's colors and 'none' do not give.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_zero.reaction.txt \
+    --reaction-bar-column level --original-color --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_original_color.log 2>&1
+then
+    echo "ERROR: bars with '--original-color' should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_original_color.log \
+    | grep -q "givenalongwith'--original-color':'--reaction-bar-column'"
+then
+    echo "ERROR: bars with '--original-color' was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+    --reaction-bar-column coverage --reaction-border-column status \
+    --reaction-border-value-type categorical --reaction-color none \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_color_none.log 2>&1
+then
+    echo "ERROR: bars with '--reaction-color none' should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_color_none.log \
+    | grep -q "sothebarswouldhavenocolor"
+then
+    echo "ERROR: bars with '--reaction-color none' was refused for another reason."
+    exit 1
+fi
+
+# Only a text file has a bar column.
+if anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db --reaction-bar-column coverage \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_contigs_db.log 2>&1
+then
+    echo "ERROR: a bar column for a contigs database should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_contigs_db.log \
+    | grep -q "Theseoptionsweregiven:'--reaction-bar-column'"
+then
+    echo "ERROR: a bar column for a contigs database was refused for another reason."
+    exit 1
+fi
+
+# Bars are drawn only in the reaction boxes of standard maps.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --pathway-numbers 01200 \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_only_overview.log 2>&1
+then
+    echo "ERROR: bars on an overview map alone should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_only_overview.log \
+    | grep -q "drawsbarsinreactionboxes,whichonlystandardmapsdraw"
+then
+    echo "ERROR: bars on an overview map alone was refused for another reason."
+    exit 1
+fi
+
+# Without a bar sample summary, the 'unified' map of a file with samples shows no bars.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+    --reaction-bar-column coverage --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_bar_unified_without_summary.log 2>&1
+then
+    echo "ERROR: bars that no map shows should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_bar_unified_without_summary.log \
+    | grep -q "butnomapofthisrunwouldshowitsbars"
+then
+    echo "ERROR: bars that no map shows was refused for another reason."
+    exit 1
+fi
+
+# The bars of compounds are pies in the compound circles of standard and overview maps, in the color
+# of the fill. A circle with a fill and no bar value is left uncolored on a map that shows pies, and
+# a warning counts such circles. The global map draws its circles without an outline and shows no
+# pies, so they keep their fills. The warning counts only the circles of the other two maps, and the
+# run reports one map that shows no pies. A file without samples has one scale of pies, and so one
+# key. Pies take no style or orientation, so the run reports neither.
+INFO "Testing a compound bar column with an empty cell beside a value column"
+anvi-draw-kegg-pathways --compound-txt draw_compounds_bar_empty_cell.compound.txt \
+    --compound-bar-column level --output-dir draw_txt_pies_empty_cell \
+    --pathway-numbers $global_pathway_numbers \
+    --no-progress 2>&1 | tee draw_txt_pies_empty_cell.log
+for phrase in "Compoundrowswithoutabarvalue" \
+    "compoundcircle(s)withafillcolorhavenobarvaluefromthe'level'barcolumn"
+do
+    if ! tr -d ' \n' < draw_txt_pies_empty_cell.log | grep -q "$phrase"
+    then
+        echo "ERROR: the warning or report that contains '$phrase' was not given."
+        exit 1
+    fi
+done
+if ! tr -d ' \n' < draw_txt_pies_empty_cell.log | grep -q "On2drawnmap(s),2compoundcircle(s)"
+then
+    echo "ERROR: the warning should have counted the circles of the standard and overview maps."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pies_empty_cell.log | grep -q "Mapsthatshownocompoundpies\.*:1[^0-9]"
+then
+    echo "ERROR: the run should have reported one map that shows no pies, the global map."
+    exit 1
+fi
+if tr -d ' \n' < draw_txt_pies_empty_cell.log \
+    | grep -q -e "Compoundbarstyle" -e "Compoundbarorientation"
+then
+    echo "ERROR: the run reported a style or orientation of pies."
+    exit 1
+fi
+if [ ! -s draw_txt_pies_empty_cell/bar_key_compounds.pdf ] \
+    || [ -e draw_txt_pies_empty_cell/bar_key_compounds_samples.pdf ]
+then
+    echo "ERROR: the pies of a file without samples should have written one key."
+    exit 1
+fi
+
+# Bar values of 0 alone draw empty pies, and a key labeled 0 alone.
+INFO "Testing a scale of pies whose only value is 0"
+anvi-draw-kegg-pathways --compound-txt draw_compounds_bar_zero.compound.txt \
+    --compound-bar-column level --output-dir draw_txt_pies_zero \
+    --pathway-numbers $pathway_numbers --no-progress
+if [ ! -s draw_txt_pies_zero/bar_key_compounds.pdf ] \
+    || [ ! -s draw_txt_pies_zero/unified/ko00010.pdf ]
+then
+    echo "ERROR: pies of 0 alone should have been drawn with a key."
+    exit 1
+fi
+
+# A pie lies inside the ring of its circle, which a border column of categorical values colors. The
+# pies and the rings each take a key for the 'unified' map and one for the maps of the samples.
+INFO "Testing pies inside rings"
+anvi-draw-kegg-pathways --compound-txt draw_compounds_samples_concentration_status.compound.txt \
+    --compound-bar-column concentration --compound-bar-sample-summary mean \
+    --compound-border-column status --compound-border-value-type categorical \
+    --compound-border-sample-summary plurality_order --output-dir draw_txt_pies_rings \
+    --pathway-numbers $pathway_numbers --draw-individual-files --no-progress
+for key in bar_key_compounds bar_key_compounds_samples colorbar_compounds_border \
+    colorbar_compounds_border_samples
+do
+    if [ ! -s draw_txt_pies_rings/$key.pdf ]
+    then
+        echo "ERROR: a run with pies inside rings should have written the key '$key.pdf'."
+        exit 1
+    fi
+done
+
+# A compound layer of pies colors the fills of its circles, by presence here, so the compounds of an
+# overview map take no colors from the reactions that touch them. Alone, a layer of categorical
+# reaction values reports the choices its rule makes for the compounds of map 01200, and beside the
+# pies it makes none. The key of the pies shows that the overview map drew them.
+INFO "Testing pies beside a reaction layer on an overview map"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_class.reaction.txt \
+    --reaction-value-type categorical --output-dir draw_txt_pies_reactions_alone \
+    --pathway-numbers 01200 --no-progress 2>&1 | tee draw_txt_pies_reactions_alone.log
+anvi-draw-kegg-pathways --reaction-txt draw_kos_class.reaction.txt \
+    --reaction-value-type categorical --compound-txt draw_compounds_samples.compound.txt \
+    --compound-bar-column concentration --compound-bar-sample-summary mean \
+    --output-dir draw_txt_pies_reactions --pathway-numbers 01200 \
+    --no-progress 2>&1 | tee draw_txt_pies_reactions.log
+phrase="Choicesofareactionvalueamongreactionstouchingacompound"
+if ! tr -d ' \n' < draw_txt_pies_reactions_alone.log | grep -q "$phrase" \
+    || tr -d ' \n' < draw_txt_pies_reactions.log | grep -q "$phrase"
+then
+    echo "ERROR: pies should keep the compounds of map 01200 from taking colors from reactions."
+    exit 1
+fi
+if [ ! -s draw_txt_pies_reactions/bar_key_compounds.pdf ]
+then
+    echo "ERROR: the pies of the overview map should have been keyed."
+    exit 1
+fi
+
+# The bar sample summary pools the samples of each group, and the bar group summary pools the groups
+# for the 'unified' map. The maps of the groups share a scale of pies, which takes a key of its own.
+INFO "Testing the pies of groups"
+anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+    --compound-bar-column concentration --groups-txt draw-sample-group-information.txt \
+    --group-threshold 0.5 --compound-bar-sample-summary mean --compound-bar-group-summary mean \
+    --output-dir draw_txt_pies_groups --pathway-numbers $pathway_numbers \
+    --draw-individual-files --no-progress
+if [ ! -s draw_txt_pies_groups/bar_key_compounds.pdf ] \
+    || [ ! -s draw_txt_pies_groups/bar_key_compounds_groups.pdf ] \
+    || [ -e draw_txt_pies_groups/bar_key_compounds_samples.pdf ]
+then
+    echo "ERROR: a grouped run with pies should have keyed the 'unified' map and the groups."
+    exit 1
+fi
+
+# The scale of pies starts at 0, so a lower limit of 0 is accepted, and so is either end left open.
+# A pie of a value past the upper limit fills its circle.
+INFO "Testing limits of pies at 0 and with either end left open"
+for upper in 40 none
+do
+    anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+        --compound-bar-column concentration --compound-bar-sample-summary mean \
+        --compound-bar-value-limits 0 $upper --compound-bar-individual-value-limits none 40 \
+        --output-dir draw_txt_pies_limits_$upper --pathway-numbers $pathway_numbers \
+        --draw-individual-files --no-progress
+    if [ ! -s draw_txt_pies_limits_$upper/bar_key_compounds.pdf ] \
+        || [ ! -s draw_txt_pies_limits_$upper/bar_key_compounds_samples.pdf ]
+    then
+        echo "ERROR: pies with the limits '0 $upper' and 'none 40' should have been keyed."
+        exit 1
+    fi
+done
+
+# Bars of reactions and pies of compounds can be drawn in one run, each with options of its own. The
+# reaction bars are strips, and the compound layer takes the 'max' accession aggregation, which the
+# reaction layer does not share. The run reports the style of the bars, the accession aggregation of
+# each layer, and no style of the pies.
+INFO "Testing reaction bars and compound pies in one run"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_bar_empty_cell.reaction.txt \
+    --reaction-bar-column level --reaction-bar-style strip \
+    --compound-txt draw_compounds_bar_empty_cell.compound.txt --compound-bar-column level \
+    --compound-bar-accession-aggregation max --output-dir draw_txt_bars_and_pies \
+    --pathway-numbers $pathway_numbers --no-progress 2>&1 | tee draw_txt_bars_and_pies.log
+for phrase in "Reactionbarstyle\.*:strip" "Reactionbaraccessionaggregation\.*:mean" \
+    "Compoundbaraccessionaggregation\.*:max"
+do
+    if ! tr -d ' \n' < draw_txt_bars_and_pies.log | grep -q "$phrase"
+    then
+        echo "ERROR: the run report should have matched '$phrase'."
+        exit 1
+    fi
+done
+if tr -d ' \n' < draw_txt_bars_and_pies.log | grep -q "Compoundbarstyle"
+then
+    echo "ERROR: the run reported a style of pies."
+    exit 1
+fi
+if [ ! -s draw_txt_bars_and_pies/bar_key_reactions.pdf ] \
+    || [ ! -s draw_txt_bars_and_pies/bar_key_compounds.pdf ]
+then
+    echo "ERROR: the bars of reactions and the pies of compounds should each have been keyed."
+    exit 1
+fi
+
+# A player shows the key of pies beside the standard and overview maps, whose circles show pies, and
+# not beside the global map. Skipping the 'unified' map drops its key of pies.
+INFO "Testing the keys of pies in players and without the 'unified' map"
+anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+    --compound-bar-column concentration --skip-unified-maps \
+    --output-dir draw_txt_pies_players --pathway-numbers $global_pathway_numbers \
+    --draw-individual-files --collate-files-by-map --animate-files-by-map \
+    --no-progress
+# A search that finds no key would end the script without a message if its result were assigned, so
+# each search is made inside a test.
+players=draw_txt_pies_players/by_map
+if [ "$(grep -o '<img class="key"' $players/ko00010.html | wc -l)" -ne 1 ] \
+    || [ "$(grep -o '<img class="key"[^>]*' $players/ko01200.html)" \
+    != "$(grep -o '<img class="key"[^>]*' $players/ko00010.html)" ] \
+    || [ ! -s $players/ko01100.html ] \
+    || [ "$(grep -o '<img class="key"' $players/ko01100.html | wc -l)" -ne 0 ]
+then
+    echo "ERROR: a player should show the key of pies only beside maps that show pies."
+    exit 1
+fi
+if [ -e draw_txt_pies_players/bar_key_compounds.pdf ] \
+    || [ ! -s draw_txt_pies_players/bar_key_compounds_samples.pdf ]
+then
+    echo "ERROR: skipping the 'unified' map should drop its pie key and keep that of the samples."
+    exit 1
+fi
+
+INFO "Testing that compound bar columns are refused where they cannot apply"
+
+# Every other compound bar option needs the bar column.
+for bar_option in "--compound-bar-accession-aggregation mean" \
+                  "--compound-bar-sample-summary mean" \
+                  "--compound-bar-group-summary mean" \
+                  "--compound-bar-value-limits 0 10" \
+                  "--compound-bar-individual-value-limits 0 10"
+do
+    if anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+        $bar_option --pathway-numbers $pathway_numbers \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_pie_option_without_column.log 2>&1
+    then
+        echo "ERROR: '$bar_option' without the compound bar column should have failed but did not."
+        exit 1
+    fi
+    if ! tr -d ' \n' < draw_txt_pie_option_without_column.log \
+        | grep -q "'--compound-bar-column'.Namethecolumnwhosevaluessizethepies"
+    then
+        echo "ERROR: '$bar_option' without the compound bar column was refused for another reason."
+        exit 1
+    fi
+done
+
+# Pies take no style, orientation, or gene aggregation. These options apply to the bars of reactions
+# alone, so they need the reaction bar column, even where a compound bar column is named.
+for reaction_option in "--reaction-bar-style strip" "--reaction-bar-orientation vertical" \
+                       "--reaction-bar-gene-aggregation mean"
+do
+    if anvi-draw-kegg-pathways --compound-txt draw_compounds.compound.txt \
+        --compound-bar-column value $reaction_option --pathway-numbers $pathway_numbers \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_pie_reaction_option.log 2>&1
+    then
+        echo "ERROR: '$reaction_option' with only a compound bar column should have failed."
+        exit 1
+    fi
+    if ! tr -d ' \n' < draw_txt_pie_reaction_option.log \
+        | grep -q "Pies,thebarsofcompounds,takenostyle,orientation,orgeneaggregation"
+    then
+        echo "ERROR: '$reaction_option' with only a compound bar column failed for another reason."
+        exit 1
+    fi
+done
+
+# A key column cannot hold bar values, and the bar column must be a column of the file.
+for case in "accession soitcannotholdbarvalues" "sample soitcannotholdbarvalues" \
+    "nothing butthecompoundfilehasnocolumnwiththatheader"
+do
+    read -r column phrase <<< "$case"
+    if anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+        --compound-bar-column $column --pathway-numbers $pathway_numbers \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_pie_column_$column.log 2>&1
+    then
+        echo "ERROR: '$column' as the compound bar column should have failed but did not."
+        exit 1
+    fi
+    if ! tr -d ' \n' < draw_txt_pie_column_$column.log | grep -q "$phrase"
+    then
+        echo "ERROR: '$column' as the compound bar column was refused for another reason."
+        exit 1
+    fi
+done
+
+# One column cannot size pies and color borders.
+if anvi-draw-kegg-pathways \
+    --compound-txt draw_compounds_samples_concentration_status.compound.txt \
+    --compound-bar-column status --compound-border-column status \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_is_border.log 2>&1
+then
+    echo "ERROR: one column as the compound bar and border column should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_is_border.log | grep -q "eithersizepiesorcolorborders"
+then
+    echo "ERROR: one column as the compound bar and border column was refused for another reason."
+    exit 1
+fi
+
+# A pie shows values only, so its summaries take no presence names, at the level of samples or of
+# groups.
+for summary_options in "--compound-bar-sample-summary count" \
+                       "--compound-bar-sample-summary count_continuous" \
+                       "--compound-bar-sample-summary membership" \
+                       "--compound-bar-sample-summary mean --compound-bar-group-summary count"
+do
+    if anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+        --compound-bar-column concentration --groups-txt draw-sample-group-information.txt \
+        --group-threshold 0.5 $summary_options --pathway-numbers $pathway_numbers \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_pie_presence_summary.log 2>&1
+    then
+        echo "ERROR: '$summary_options' for pies should have failed but did not."
+        exit 1
+    fi
+    if ! tr -d ' \n' < draw_txt_pie_presence_summary.log | grep -q "Apieshowsvaluesonly"
+    then
+        echo "ERROR: '$summary_options' for pies was refused for another reason."
+        exit 1
+    fi
+done
+
+# Pies take numbers only, so their summaries take no rules for categorical values, and they take no
+# period.
+for case in "plurality_order Poolthemwithanaggregation" \
+    "circular_mean takenoperiod,sinceapiestartsat12o'clock"
+do
+    read -r summary phrase <<< "$case"
+    if anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+        --compound-bar-column concentration --compound-bar-sample-summary $summary \
+        --pathway-numbers $pathway_numbers \
+        --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_pie_summary_$summary.log 2>&1
+    then
+        echo "ERROR: '$summary' as a summary of pies should have failed but did not."
+        exit 1
+    fi
+    if ! tr -d ' \n' < draw_txt_pie_summary_$summary.log | grep -q "$phrase"
+    then
+        echo "ERROR: '$summary' as a summary of pies was refused for another reason."
+        exit 1
+    fi
+done
+
+# A bar group summary needs groups, and a bar sample summary to give each group its value.
+if anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+    --compound-bar-column concentration --compound-bar-sample-summary mean \
+    --compound-bar-group-summary mean --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_group_without_groups.log 2>&1
+then
+    echo "ERROR: a group summary of pies without groups should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_group_without_groups.log \
+    | grep -q "'--compound-bar-group-summary'summarizesgroupsofsamples,butnogroupsweredefined"
+then
+    echo "ERROR: a group summary of pies without groups was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+    --compound-bar-column concentration --groups-txt draw-sample-group-information.txt \
+    --group-threshold 0.5 --compound-bar-group-summary mean --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_group_without_sample.log 2>&1
+then
+    echo "ERROR: a group summary of pies without a sample summary should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_group_without_sample.log \
+    | grep -q "whichpoolsthebarvaluesofthegroups"
+then
+    echo "ERROR: a group summary of pies without a sample summary was refused for another reason."
+    exit 1
+fi
+
+# A pie grows clockwise from 12 o'clock and has no zero line, so its scale runs from 0 up. On either
+# scale, a lower limit other than 0 is refused, and so is an upper limit of 0 or less. The refusal
+# shows an open end as 'open'.
+for case in "value-limits 10 100 10to100" "individual-value-limits 10 100 10to100" \
+    "value-limits -10 -1 -10to-1" "value-limits -5 100 -5to100" \
+    "individual-value-limits -5 100 -5to100" "value-limits none 0 opento0"
+do
+    read -r option low high shown <<< "$case"
+    if anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+        --compound-bar-column concentration --compound-bar-sample-summary mean \
+        --compound-bar-$option $low $high --pathway-numbers $pathway_numbers \
+        --draw-individual-files --output-dir draw_txt_bad --overwrite-output-destinations \
+        --no-progress > draw_txt_pie_limits.log 2>&1
+    then
+        echo "ERROR: '--compound-bar-$option $low $high' should have failed but did not."
+        exit 1
+    fi
+    if ! tr -d ' \n' < draw_txt_pie_limits.log \
+        | grep -q "'--compound-bar-$option'wasgiventhelimits$shown\..*sothescaleofapierunsfrom0up"
+    then
+        echo "ERROR: '--compound-bar-$option $low $high' was refused for another reason."
+        exit 1
+    fi
+done
+
+# A pie grows clockwise from 12 o'clock and has no zero line, so a negative bar value is refused.
+if anvi-draw-kegg-pathways --compound-txt draw_bad_negative_bar.compound.txt \
+    --compound-bar-column level --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_negative_values.log 2>&1
+then
+    echo "ERROR: a negative bar value of a compound should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_negative_values.log \
+    | grep -q "setsthesizesofpies.*andhasnozeroline,soeachbarvaluemustbe0ormore"
+then
+    echo "ERROR: a negative bar value of a compound was refused for another reason."
+    exit 1
+fi
+
+# A summary can reduce bar values of 0 or more below 0, as the skewness of the bar values of C00031
+# in its three samples does. A pie cannot show such a value on the 'unified' map, so the summary is
+# refused.
+if anvi-draw-kegg-pathways --compound-txt draw_compounds_bar_skew.compound.txt \
+    --compound-bar-column level --compound-bar-sample-summary skew \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_skew.log 2>&1
+then
+    echo "ERROR: pies of bar values that a summary reduces below 0 should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_skew.log \
+    | grep -q "reduceitsvaluestonumbersbelow0onthe'unified'map,downto-1.73205"
+then
+    echo "ERROR: pies of bar values that a summary reduces below 0 were refused for another reason."
+    exit 1
+fi
+
+# A summary can also reduce the bar values of a group below 0 while the 'unified' map stays at 0 or
+# more. The skewness of the bar values of C00031 is below 0 in G1 and 0 in G2, and the 'unified' map
+# shows the larger of the two. The maps of the groups share a scale that reaches below 0, so drawing
+# them is refused, and a run without them is drawn.
+if anvi-draw-kegg-pathways --compound-txt draw_compounds_bar_skew_groups.compound.txt \
+    --compound-bar-column level --groups-txt draw-sample-group-information-skew.txt \
+    --group-threshold 0.5 --compound-bar-sample-summary skew --compound-bar-group-summary max \
+    --pathway-numbers $pathway_numbers --draw-individual-files \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_skew_groups.log 2>&1
+then
+    echo "ERROR: pies of groups that a summary reduces below 0 should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_skew_groups.log \
+    | grep -q "below0onthescalethatthemapsoftheindividualgroupsshare,downto-1.73205"
+then
+    echo "ERROR: pies of groups that a summary reduces below 0 were refused for another reason."
+    exit 1
+fi
+anvi-draw-kegg-pathways --compound-txt draw_compounds_bar_skew_groups.compound.txt \
+    --compound-bar-column level --groups-txt draw-sample-group-information-skew.txt \
+    --group-threshold 0.5 --compound-bar-sample-summary skew --compound-bar-group-summary max \
+    --output-dir draw_txt_pies_skew_unified --pathway-numbers $pathway_numbers --no-progress
+if [ ! -s draw_txt_pies_skew_unified/bar_key_compounds.pdf ]
+then
+    echo "ERROR: pies that stay at 0 or more on the drawn maps should have been drawn and keyed."
+    exit 1
+fi
+
+# Rounding can leave the mean of two skews that cancel out a hair below 0. Such a value on the
+# 'unified' map is taken for 0, even where no other value shares its scale.
+anvi-draw-kegg-pathways --compound-txt draw_compounds_bar_skew_cancel.compound.txt \
+    --compound-bar-column level --groups-txt draw-sample-group-information-skew.txt \
+    --group-threshold 0.5 --compound-bar-sample-summary skew --compound-bar-group-summary mean \
+    --output-dir draw_txt_pies_skew_cancel --pathway-numbers $pathway_numbers --no-progress
+if [ ! -s draw_txt_pies_skew_cancel/bar_key_compounds.pdf ]
+then
+    echo "ERROR: pies that rounding leaves a hair below 0 should have been drawn and keyed."
+    exit 1
+fi
+
+# Each bar value must be a number, and a bar column needs a value.
+if anvi-draw-kegg-pathways --compound-txt draw_bad_na_bar.compound.txt \
+    --compound-bar-column level --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_na_value.log 2>&1
+then
+    echo "ERROR: 'NA' as a bar value of a compound should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_na_value.log \
+    | grep -q "setsthesizesofpies,soeachofitsvaluesmustbeafinitenumber"
+then
+    echo "ERROR: 'NA' as a bar value of a compound was refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways --compound-txt draw_bad_empty_bar.compound.txt \
+    --compound-bar-column level --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_empty_column.log 2>&1
+then
+    echo "ERROR: a compound bar column with no values should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_empty_column.log | grep -q "itwouldsetnopie"
+then
+    echo "ERROR: a compound bar column with no values was refused for another reason."
+    exit 1
+fi
+
+# A pie takes the color of its fill, which the reference map's colors and 'none' do not give.
+# '--original-color' takes no compound file at all.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
+    --compound-txt draw_compounds.compound.txt --compound-bar-column value --original-color \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_original_color.log 2>&1
+then
+    echo "ERROR: pies with '--original-color' should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_original_color.log \
+    | grep -q "soitcannotalsotakeanexplicitcompoundfile"
+then
+    echo "ERROR: pies with '--original-color' were refused for another reason."
+    exit 1
+fi
+
+if anvi-draw-kegg-pathways \
+    --compound-txt draw_compounds_samples_concentration_status.compound.txt \
+    --compound-bar-column concentration --compound-border-column status \
+    --compound-border-value-type categorical --compound-color none \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_color_none.log 2>&1
+then
+    echo "ERROR: pies with '--compound-color none' should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_color_none.log | grep -q "sothepieswouldhavenocolor"
+then
+    echo "ERROR: pies with '--compound-color none' were refused for another reason."
+    exit 1
+fi
+
+# The compound bar column is a column of the compound file.
+if anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt --compound-bar-column value \
+    --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_without_compound_file.log 2>&1
+then
+    echo "ERROR: a compound bar column without a compound file should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_without_compound_file.log \
+    | grep -q "namesthebarcolumnofthecompoundfile,butnocompoundfile"
+then
+    echo "ERROR: a compound bar column without a compound file was refused for another reason."
+    exit 1
+fi
+
+# Only a text file has a bar column.
+for bar_input in "--contigs-dbs E_faecalis_6240.db" \
+                 "--external-genomes external-genomes.txt" \
+                 "--pan-db TEST-PAN.db --genomes-storage TEST-GENOMES.db" \
+                 "--reaction-network-json pan-network.json"
+do
+    if anvi-draw-kegg-pathways $bar_input --compound-bar-column value \
+        --pathway-numbers $pathway_numbers \
+        --output-dir draw_db_bad --overwrite-output-destinations \
+        --no-progress > draw_db_pie_column.log 2>&1
+    then
+        echo "ERROR: a compound bar column with '$bar_input' should have failed but did not."
+        exit 1
+    fi
+    if ! tr -d ' \n' < draw_db_pie_column.log \
+        | grep -q "Theseoptionsweregiven:'--compound-bar-column'"
+    then
+        echo "ERROR: a compound bar column with '$bar_input' was refused for another reason."
+        exit 1
+    fi
+done
+
+# Pies are drawn only in the outlined circles of standard and overview maps.
+if anvi-draw-kegg-pathways --compound-txt draw_compounds.compound.txt \
+    --compound-bar-column value --pathway-numbers 01100 \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_only_global.log 2>&1
+then
+    echo "ERROR: pies on the global map alone should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_only_global.log \
+    | grep -q "drawspiesincompoundcirclesonstandardandoverviewmaps.Thisrundrawsnosuchmap"
+then
+    echo "ERROR: pies on the global map alone were refused for another reason."
+    exit 1
+fi
+
+# Without a bar sample summary, the 'unified' map of a file with samples shows no pies.
+if anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+    --compound-bar-column concentration --pathway-numbers $pathway_numbers \
+    --output-dir draw_txt_bad --overwrite-output-destinations \
+    --no-progress > draw_txt_pie_unified_without_summary.log 2>&1
+then
+    echo "ERROR: pies that no map shows should have failed but did not."
+    exit 1
+fi
+if ! tr -d ' \n' < draw_txt_pie_unified_without_summary.log \
+    | grep -q "butnomapofthisrunwouldshowitspies"
+then
+    echo "ERROR: pies that no map shows were refused for another reason."
+    exit 1
+fi
+
 # Colors given per group of contigs databases, with each group's own maps colored by a ramp running
 # to that group's color rather than by one colormap shared across the groups.
 INFO "Testing colors given per group of contigs databases"
 anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db E_faecalis_6255.db E_faecalis_6512.db E_faecalis_6557.db E_faecalis_6563.db \
                         --groups-txt contigs-db-group-information.txt \
                         --group-threshold 0 \
-                        --reaction-category-colors draw-group-colors.txt \
-                        --group-colormap category \
-                        --output-dir contigs_dbs_kos_group_category_ramps \
+                        --reaction-membership-colors draw-group-colors.txt \
+                        --group-colormap tint \
+                        --output-dir contigs_dbs_kos_group_tint_ramps \
                         --draw-individual-files \
                         --draw-grid \
                         --pathway-numbers $pathway_numbers \

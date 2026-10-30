@@ -45,7 +45,8 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
 
         self.dirs_dict.update({"FASTA_DIR": "01_FASTA",
                                "CONTIGS_DIR": "02_CONTIGS",
-                               "PAN_DIR": "03_PAN"})
+                               "PAN_DIR": "03_PAN",
+                               "STRUCTURE_DIR": "04_STRUCTURE"})
 
 
     def init(self):
