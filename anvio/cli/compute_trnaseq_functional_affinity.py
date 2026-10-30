@@ -420,18 +420,20 @@ def get_args():
         "#running-anvi-interactive-in-manual-mode)")
     group1F.add_argument(
         '--plot', default=False, action='store_true',
-        help="Store static plots of function (or gene) affinity. Plots for each combination of "
-             "genome, function annotation source (if `--separate-function-sources` is used), and "
-             "affinity normalization method (if `--normalize-affinity` is used) are written to "
-             "filepaths based on `--output-file`, with the extension changed to '.pdf'. Genome"
-             "name, function source, and normalization method are inserted before the extension "
-             "following a hyphen. If the program is run solely to generate plots from an existing "
-             "affinity table, then use `--output-file` should specify the (template) path for the "
-             "plot. If the input affinity table path contains a recognized normalization method "
-             "before the extension, then it will also be included in the output path, and the "
-             "scale bar of the heatmap will be adjusted accordingly, with 'min-max' and "
-             "'magnitude-min-max' being on a scale of 0 to 1 and 'min-max-mean' being on a scale "
-             "of -1 to 1.")
+        help="Store static plots of function (or gene) affinity. A plot is made for each "
+             "combination of genome, function annotation source (unless "
+             "`--compare-all-function-sources` is used), and affinity normalization method (if "
+             "`--normalize-affinity` is used) at a path based on `--output-file`, with the "
+             "extension changed to '.pdf'. Following hyphens before the extension, the path adds "
+             "the genome name if more than one genome is plotted, the function source if more than "
+             "one source is plotted or `--separate-function-sources` is used, and the "
+             "normalization method of normalized affinities. If the program is run solely to "
+             "generate plots from an existing affinity table, then use `--output-file` should "
+             "specify the (template) path for the plot. If the input affinity table path contains "
+             "a recognized normalization method before the extension, then it will also be "
+             "included in the output path, and the scale bar of the heatmap will be adjusted "
+             "accordingly, with 'min-max' and 'magnitude-min-max' being on a scale of 0 to 1 and "
+             "'min-max-mean' being on a scale of -1 to 1.")
     group1F.add_argument(
         '--n-highest-affinity', default=25, type=int,
         help="Plot this number of functions (or genes) with the highest affinities in the genome "
@@ -2924,6 +2926,8 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
     output_root = os.path.splitext(args.output_file)[0]
     valid_derived_output_paths = []
     invalid_derived_output_paths = []
+    plotted_sources = {
+        source for source_dict in subset_affinities_dict.values() for source in source_dict}
 
     progress.new("Plotting")
     for genome_name, source_dict in subset_affinities_dict.items():
@@ -2945,11 +2949,12 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
 
                 # Determine the output path for the plot. A separate plot is made per genome, so the
                 # genome name is inserted to keep the paths distinct when more than one genome is
-                # plotted; with a single genome the plot uses the base output path.
+                # plotted; with a single genome the plot uses the base output path. Function sources
+                # are named the same way, and always with `--separate-function-sources`.
                 derived_output_path = f"{output_root}"
                 if len(subset_affinities_dict) > 1:
                     derived_output_path = f"{derived_output_path}-{genome_name}"
-                if args.separate_function_sources:
+                if args.separate_function_sources or len(plotted_sources) > 1:
                     derived_output_path = f"{derived_output_path}-{source}"
                 if normalization_method != 'raw':
                     derived_output_path = f"{derived_output_path}-{normalization_method}"
