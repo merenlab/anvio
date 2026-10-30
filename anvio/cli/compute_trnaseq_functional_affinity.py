@@ -2734,7 +2734,11 @@ def write_codon_newick_files(args, codon_linkage_dict):
             leaf_index_label_dict = dict(enumerate(labels))
             newick = clustering.get_tree_object_in_newick(
                 codon_tree, id_to_sample_dict=leaf_index_label_dict)
-            derived_output_path = f"{output_root}-{genome_name}-{source}.nwk"
+            # With genes or lumped function sources, the source key is not a function source.
+            if args.gene_affinity or args.compare_all_function_sources:
+                derived_output_path = f"{output_root}-{genome_name}-CODONS.nwk"
+            else:
+                derived_output_path = f"{output_root}-{genome_name}-{source}-CODONS.nwk"
             try:
                 filesnpaths.is_output_file_writable(derived_output_path)
             except FilesNPathsError:
@@ -2891,11 +2895,13 @@ def write_sample_newick_files(args, sample_linkage_dict):
                 leaf_index_label_dict = dict(enumerate(labels))
                 newick = clustering.get_tree_object_in_newick(
                     sample_tree, id_to_sample_dict=leaf_index_label_dict)
-                if normalization_method == 'raw':
-                    derived_output_path = f"{output_root}-{genome_name}-{source}.nwk"
-                else:
-                    derived_output_path = \
-                        f"{output_root}-{genome_name}-{source}-{normalization_method}.nwk"
+                derived_output_path = f"{output_root}-{genome_name}"
+                # With genes or lumped function sources, the source key is not a function source.
+                if not (args.gene_affinity or args.compare_all_function_sources):
+                    derived_output_path = f"{derived_output_path}-{source}"
+                if normalization_method != 'raw':
+                    derived_output_path = f"{derived_output_path}-{normalization_method}"
+                derived_output_path = f"{derived_output_path}-SAMPLES.nwk"
                 try:
                     filesnpaths.is_output_file_writable(derived_output_path)
                 except FilesNPathsError:
