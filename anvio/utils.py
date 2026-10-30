@@ -523,8 +523,8 @@ def tar_extract_file(input_file_path, output_file_path=None, keep_original=True)
         os.remove(input_file_path)
 
 
-def validate_discov_params(window_length, window_length_as_percentage, min_window_length, foldrange_lower, foldrange_upper, alpha, discov_formula, require_window_param=True):
-    """Validate Distribution of Coverage (DisCov) parameters and raise ConfigError for any invalid combination.
+def validate_discov_params(window_length, window_length_as_percentage, min_window_length, alpha, discov_formula, require_window_param=True):
+    """Validate distribution of coverage (discov) parameters and raise ConfigError for any invalid combination.
 
     Parameters
     ==========
@@ -534,12 +534,8 @@ def validate_discov_params(window_length, window_length_as_percentage, min_windo
         Window length as a percentage of the sequence length.
     min_window_length : int or None
         Minimum window length when using window_length_as_percentage.
-    foldrange_lower : float
-        Lower fold-range boundary for evenness score E.
-    foldrange_upper : float
-        Upper fold-range boundary for evenness score E.
     alpha : float
-        Weight of S in the DisCov score. Must be in [0, 1].
+        Weight of S in the discov score. Must be in [0, 1].
     discov_formula : str
         Combination formula. Must be 'linear' or 'geometric'.
     require_window_param : bool
@@ -548,7 +544,7 @@ def validate_discov_params(window_length, window_length_as_percentage, min_windo
         defaults when the user omits both flags.
     """
     if require_window_param and not window_length and not window_length_as_percentage:
-        raise ConfigError("In order to compute distribution of coverage (DisCov), we need you to specify a scheme "
+        raise ConfigError("In order to compute distribution of coverage (discov), we need you to specify a scheme "
                           "for setting the window length. Either provide an exact length using --window-length or a "
                           "percentage value (as an integer) using --window-length-as-percentage.")
 
@@ -556,7 +552,7 @@ def validate_discov_params(window_length, window_length_as_percentage, min_windo
         raise ConfigError("Please choose either --window-length or --window-length-as-percentage, not both.")
 
     if (window_length and window_length <= 0) or (window_length_as_percentage and window_length_as_percentage <= 0):
-        raise ConfigError("A positive window length (or percentage) is required for computing distribution of coverage (DisCov).")
+        raise ConfigError("A positive window length (or percentage) is required for computing distribution of coverage (discov).")
 
     if window_length_as_percentage and window_length_as_percentage > 100:
         raise ConfigError("We cannot work with windows that are longer than 100% of a given sequence. Please change your "
@@ -568,22 +564,15 @@ def validate_discov_params(window_length, window_length_as_percentage, min_windo
     if min_window_length and min_window_length < 0:
         raise ConfigError("The --min-window-length parameter has to be a positive integer.")
 
-    if foldrange_lower is None or foldrange_upper is None or alpha is None:
+    if alpha is None:
         raise ConfigError("You'd better be a programmer messing with stuff, because it is not supposed to be possible "
-                          "to pass None values for DisCov foldrange or alpha parameters. Nor is it advisable (because it will "
+                          "to pass a None value for the discov alpha parameter. Nor is it advisable (because it will "
                           "throw off the calculation), so we are stopping the show right here.")
 
-    if foldrange_lower < 0 or foldrange_upper < 0:
-        raise ConfigError("Please provide positive numbers for the fold-range boundary values.")
-
-    if foldrange_lower >= foldrange_upper:
-        raise ConfigError(f"The --foldrange-lower value ({foldrange_lower}) cannot be greater than the --foldrange-upper value "
-                          f"({foldrange_upper}).")
-
     if alpha < 0 or alpha > 1:
-        raise ConfigError("The --alpha parameter for DisCov should take a value between 0 and 1 (inclusive). Keep in "
-                          "mind that it is going to be used in the following equation: DisCov = αS + (1-α)E. Hopefully "
-                          "that helps explain these restrictions :)")
+        raise ConfigError("The --alpha parameter for discov should take a value between 0 and 1 (inclusive). Keep in "
+                          "mind that it is going to be used to combine S and E into the spread-evenness score as either "
+                          "C = αS + (1-α)E or C = S^α * E^(1-α). Hopefully that helps explain these restrictions :)")
 
     if discov_formula not in ('linear', 'geometric'):
         raise ConfigError(f"The --discov-formula parameter must be either 'linear' or 'geometric', but you provided "
@@ -595,14 +584,32 @@ class CoverageStats:
 
     FIXME: This class should replace `coverage_c` function in bamops to avoid redundancy.
 
-    In addition to the classic stats, this class also computes a distribution of coverage (DisCov)
-    score, which combines a metric for assessing spread of coverage across the sequence (proportion
-    of fixed-length windows with at least some coverage, S) and a metric for assessing the
-    evenness of nonzero coverage depth (proportion of bases with nonzero coverage that are within some
-    fold-range of the median nonzero coverage, E).
+    In addition to the classic stats, this class can also compute a distribution of coverage (discov)
+    score, which can be used to assess presence-absence of the reference sequence in a metagenomic
+    sample. Discov combines a metric for assessing spread of coverage across the sequence (S), a
+    metric for assessing the evenness of nonzero coverage depth (E), and detection.
 
-    These metrics can be combined linearly with a weight α following the formula: DisCov = αS + (1-α)E.
-    Or, they can be combined by taking a weighted geometric mean following the formula: DisCov = S^α * E^(1-α)
+    S is the proportion of non-overlapping, equal-sized windows that contain at least some coverage.
+    If the last window is shorter than 10% of the window length, it's dropped before counting. We
+    normalize S with the 'expected spread' computed by assuming reads distribute randomly; that is,
+    S_exp = 1 − e^(−(B + N·w)/G), where B is the total aligned read length, N is number of reads that mapped,
+    w is the window length, and G is the reference length. Normalized spread is therefore min(1, S / S_exp),
+    so it will be closer to 1 if reads truly distribute randomly and the observed proportion of covered windows
+    is as high (or higher) than we expect.
+
+    E is a 0-1 evenness score that computes the coefficient of variation (CV) on the nonzero mean coverages
+    of the same non-overlapping, equal-sized windows used in S. E = 1 / (1 + CV). If fewer than 3 windows have
+    coverage (which can happen on short or poorly covered sequences), we do not compute CV and E is set to 0
+    (maximum unevenness).
+
+    We combine (normalized) S and E into a 'spread-evenness score'. They can be combined linearly
+    with a weight α following the formula: C = αS_norm + (1-α)E. Or, they can be combined by
+    taking a weighted geometric mean following the formula: C = S_norm^α * E^(1-α).
+
+    Finally, we compute discov by adding detection on top of the spread-evenness score. The boost
+    provided by the detection value is modulated so that large values yield a disproportionately larger
+    boost than small values (since small detection does not necessarily imply absence).
+    discov = min(1, C + D^2)
 
     Parameters
     ==========
@@ -617,21 +624,20 @@ class CoverageStats:
     discov_min_window_len : int, None
         Specifies the minimum window length when discov_window_percentage is used. If None is passed, it will
         be converted to 0
-    discov_foldrange_lower : float
-        When computing E, count any bases with coverage over this value * the median nonzero coverage
-    discov_foldrange_upper : float
-        When computing E, count any bases with coverage under this value * the median nonzero coverage
     discov_alpha : float
-        A value in [0,1] that indicates how much to weight S over E in the Discov score
+        A value in [0,1] that indicates how much to weight S over E in the discov score
     discov_formula : string
         Can be 'linear' or 'geometric', to choose which formula to use.
+    num_reads : int, None
+        Number of reads mapping to the sequence, needed to compute the normalized spread
+    report_discov : boolean
+        Whether or not to compute discov and its sub-metrics. All discov-related attributes are None otherwise
     """
 
     def __init__(self, coverage, skip_outliers=False, discov_window_length=10000, discov_window_percentage=None,
-                discov_min_window_len=500, discov_foldrange_lower=0.25, discov_foldrange_upper=4, discov_alpha=0.5,
-                return_window_info=False, discov_formula='geometric'):
-        if discov_min_window_len is None:
-            discov_min_window_len = 0
+                discov_min_window_len=500, discov_alpha=0.5,
+                return_window_info=False, discov_formula='geometric', num_reads=None, report_discov=False):
+        self.num_reads = num_reads
 
         self.min: float = np.amin(coverage)
         self.max: float = np.amax(coverage)
@@ -653,7 +659,27 @@ class CoverageStats:
         else:
             self.is_outlier = get_list_of_outliers(coverage, median=self.median) # this is an array not a list
 
-        # compute proportion of windows that have at least some coverage
+        self.num_windows = None
+        self.prop_win_covered = None
+        self.window_depth_evenness = None
+        self.spread_expected = None
+        self.spread_norm = None
+        self.spread_evenness_score = None
+        self.discov = None
+        self.windows = None
+
+        if report_discov:
+            self.compute_discov_stats(coverage, discov_window_length, discov_window_percentage, discov_min_window_len, discov_alpha, discov_formula,
+                                      return_window_info)
+
+
+    def compute_discov_stats(self, coverage, discov_window_length, discov_window_percentage, discov_min_window_len, discov_alpha, discov_formula, return_window_info):
+        """Computes discov and its sub-metrics (see the class docstring), and sets them as attributes of this object."""
+
+        if discov_min_window_len is None:
+            discov_min_window_len = 0
+
+        # divide reference sequence into non-overlapping windows
         if discov_window_percentage:
             discov_window_length = int(len(coverage) * discov_window_percentage / 100)
             if discov_window_length < discov_min_window_len:
@@ -663,22 +689,27 @@ class CoverageStats:
             final_window_len = windows[-1][1] - windows[-1][0]
             if final_window_len < 0.1*discov_window_length: # don't count the last window if it is too small
                 windows = windows[:-1]
-        nonzero_window_means = [x for x in windows if x[2] > 0]
+
+        # compute spread (S) and evenness (E) from the windows
+        nonzero_window_means = [x[2] for x in windows if x[2] > 0]
         self.num_windows = len(windows)
         self.prop_win_covered = len(nonzero_window_means) / self.num_windows
+        cv_of_means = self.compute_CV(nonzero_window_means) if len(nonzero_window_means) >= 3 else None
+        if cv_of_means is not None:
+            self.window_depth_evenness = 1 / (1 + cv_of_means)
+        else:
+            self.window_depth_evenness = 0.0 # maximum unevenness
 
-        nonzero_coverage = coverage[coverage > 0]
-        self.fold_range_coverage_depth = self.fold_range_of_median_detection(nonzero_coverage, fold_lower=discov_foldrange_lower, fold_upper=discov_foldrange_upper)
-
-        if discov_formula == 'linear':
-            self.discov = discov_alpha * self.prop_win_covered + (1-discov_alpha) * self.fold_range_coverage_depth
-        else: # 'geometric'
-            self.discov = (self.prop_win_covered ** discov_alpha) * (self.fold_range_coverage_depth ** (1-discov_alpha))
+        # get_window_regions() shrinks the window to the sequence length when the sequence is shorter than
+        # discov_window_length, so we take the length of the first window as the one actually used for S
+        actual_window_length = windows[0][1] - windows[0][0]
+        self.spread_expected = self.expected_spread(B=np.sum(coverage), N=self.num_reads, w=actual_window_length, G=len(coverage))
+        self.spread_norm = self.normalized_spread(self.prop_win_covered, self.spread_expected)
+        self.spread_evenness_score = self.compute_spread_evenness_score(S=self.spread_norm, E=self.window_depth_evenness, alpha=discov_alpha, formula=discov_formula)
+        self.discov = self.compute_discov(C=self.spread_evenness_score, D=self.detection)
 
         if return_window_info:
-            self.windows = self._get_window_info(coverage, windows, nonzero_coverage, discov_foldrange_lower, discov_foldrange_upper)
-        else:
-            self.windows = None
+            self.windows = self._get_window_info(coverage, windows)
 
 
     def get_window_regions(self, coverage, window_length):
@@ -710,7 +741,7 @@ class CoverageStats:
         return windows
 
 
-    def _get_window_info(self, coverage, windows, nonzero_coverage, fold_lower, fold_upper):
+    def _get_window_info(self, coverage, windows):
         """Return a dict-of-dicts with per-window stats for optional window-level output.
 
         Parameters
@@ -719,51 +750,78 @@ class CoverageStats:
             Full nucleotide-level coverage array.
         windows : list
             List of (start, stop, mean_coverage) tuples from get_window_regions().
-        nonzero_coverage : array
-            coverage[coverage > 0], pre-computed by the caller.
-        fold_lower : float
-            Lower fold-range boundary (same as discov_foldrange_lower).
-        fold_upper : float
-            Upper fold-range boundary (same as discov_foldrange_upper).
 
         Returns
         =======
         window_info : dict
             Dict-of-dicts keyed by sequential integer index. Each inner dict has keys:
-            start, stop, length, has_coverage, num_bases_within_foldrange,
+            start, stop, length, has_coverage, mean_coverage,
             num_bases_with_coverage.
         """
         window_info = {}
-
-        if not len(nonzero_coverage):
-            for i, (start, stop, _) in enumerate(windows):
-                window_info[i] = {'start': start, 'stop': stop, 'length': stop - start,
-                                  'has_coverage': 0, 'num_bases_within_foldrange': 0,
-                                  'num_bases_with_coverage': 0}
-            return window_info
-
-        global_median = np.median(nonzero_coverage)
-        lower_bound = fold_lower * global_median
-        upper_bound = fold_upper * global_median
-
         for i, (start, stop, mean_cov) in enumerate(windows):
-            window_cov = coverage[start:stop]
-            num_within = int(np.sum((window_cov >= lower_bound) & (window_cov <= upper_bound)))
             window_info[i] = {'start': start, 'stop': stop, 'length': stop - start,
-                              'has_coverage': int(mean_cov > 0), 'num_bases_within_foldrange': num_within,
-                              'num_bases_with_coverage': int(np.count_nonzero(window_cov))}
+                              'has_coverage': int(mean_cov > 0), 'mean_coverage': mean_cov,
+                              'num_bases_with_coverage': int(np.count_nonzero(coverage[start:stop]))}
 
         return window_info
 
 
-    def fold_range_of_median_detection(self, coverage, fold_lower=0.25, fold_upper=4):
-        """Returns the fraction of bases within the fold-range of the median coverage."""
+    def expected_spread(self, B, N, w, G):
+        """Returns the spread expected if reads were placed randomly: S_exp = 1 - e^(-(B + N*w) / G)
 
-        if not len(coverage):
+        B is the sum of aligned lengths (sum of the coverage array), N is the number of reads mapping to the reference,
+        w is the window length used to compute the observed spread, and G is the reference length.
+        """
+
+        if N is None:
+            raise ConfigError("The expected_spread() function needs the number of reads mapping to the sequence (N) "
+                              "to compute the expected spread, but it was not provided. If you are seeing this error, "
+                              "whichever part of anvi'o initialized CoverageStats should have passed the `num_reads` "
+                              "parameter but did not. This is a programmer error, so please let the developers know.")
+        return 1 - np.exp(-(B + N * w) / G)
+
+
+    def normalized_spread(self, S_obs, S_exp):
+        """Returns observed spread relative to the spread expected if reads were placed randomly: min(1, S_obs / S_exp)
+
+        Returns None if S_obs is not available, and 0 if there is no coverage (S_exp is then 0).
+        """
+
+        if S_obs is None:
+            return None
+        if S_exp == 0:
             return 0.0
-        median = np.median(coverage)
-        num_within_range = len(coverage[(coverage >= fold_lower*median) & (coverage <= fold_upper*median)])
-        return num_within_range/len(coverage)
+        return min(1.0, S_obs / S_exp)
+
+
+    def compute_spread_evenness_score(self, S, E, alpha, formula='geometric'):
+        """Computes the Spread-Evenness score."""
+
+        if formula == 'linear':
+            return alpha * S + (1-alpha) * E
+        else: # 'geometric'
+            return (S ** alpha) * (E ** (1-alpha))
+
+
+    def compute_discov(self, C, D, beta=1, k=2):
+        """Adds a detection-dependent bonus to C, capped at 1: F = min(1, C + β·D^k)"""
+
+        if C is None or D is None:
+            return None
+        return min(1.0, C + beta * D**k)
+
+
+    def compute_CV(self, array):
+        """Returns coefficient of variation from an input array. Returns None if array is empty or mean is 0."""
+
+        if not len(array):
+            return None
+        mean = np.mean(array)
+        std = np.std(array)
+        if mean == 0:
+            return None
+        return std / mean
 
 
 class RunInDirectory(object):
