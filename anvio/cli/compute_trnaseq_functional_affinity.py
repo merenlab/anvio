@@ -957,11 +957,11 @@ def sanity_check_plot_affinity_file(args):
         raise ConfigError(
             "`--no-codon-dendrogram` cannot be used with `--plot-codon-file` or "
             "`--plot-codon-tree-file`.")
-    elif not (args.plot_codon_file or args.plot_codon_tree_file):
+    elif not (args.no_codon_dendrogram or args.plot_codon_file or args.plot_codon_tree_file):
         raise ConfigError(
             "To plot the dendrogram of displayed functions or genes, either pass a table of codon "
             "frequency data for tree calculation to `--plot-codon-file`, or pass a Newick tree to "
-            "`--plot-codon-tree-file`.")
+            "`--plot-codon-tree-file`. Use `--no-codon-dendrogram` to plot without the dendrogram.")
 
     if args.plot_codon_tree_file and args.save_codon_trees:
         raise ConfigError(
@@ -1137,7 +1137,7 @@ def load_affinities(args):
 
         affinities_df = affinities_df[select_samples]
 
-    if args.plot_codon_dendrogram:
+    if args.plot:
         if (not args.gene_affinity and
             affinities_df.index.get_level_values('function_source').nunique() > 1):
             multiple_sources = True
@@ -1206,7 +1206,8 @@ def generate_affinities(args):
             "Affinity could not be calculated given the input data and/or filters applied to the "
             "data.")
 
-    if args.plot_codon_dendrogram:
+    # Plots are labeled with codon tree labels, with or without the codon dendrogram.
+    if args.plot:
         if (not args.gene_affinity and
             affinities_df.index.get_level_values('function_source').nunique() > 1):
             multiple_sources = True
@@ -2900,9 +2901,10 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
     progress.new("Plotting")
     for genome_name, source_dict in subset_affinities_dict.items():
         for source, normalization_dict in source_dict.items():
+            # Linkages made only to save trees, not to plot dendrograms, have no 'plot_linkage'.
             if codon_linkage_dict:
                 codon_linkage_info_dict = codon_linkage_dict[genome_name][source]
-                codon_linkage = codon_linkage_info_dict['plot_linkage']
+                codon_linkage = codon_linkage_info_dict.get('plot_linkage')
             else:
                 codon_linkage = None
 
@@ -2910,7 +2912,7 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
                 if sample_linkage_dict:
                     sample_linkage_info_dict = sample_linkage_dict[
                         genome_name][source][normalization_method]
-                    sample_linkage = sample_linkage_info_dict['plot_linkage']
+                    sample_linkage = sample_linkage_info_dict.get('plot_linkage')
                 else:
                     sample_linkage = None
 
