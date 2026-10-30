@@ -428,12 +428,10 @@ def get_args():
              "the genome name if more than one genome is plotted, the function source if more than "
              "one source is plotted or `--separate-function-sources` is used, and the "
              "normalization method of normalized affinities. If the program is run solely to "
-             "generate plots from an existing affinity table, then use `--output-file` should "
-             "specify the (template) path for the plot. If the input affinity table path contains "
-             "a recognized normalization method before the extension, then it will also be "
-             "included in the output path, and the scale bar of the heatmap will be adjusted "
-             "accordingly, with 'min-max' and 'magnitude-min-max' being on a scale of 0 to 1 and "
-             "'min-max-mean' being on a scale of -1 to 1.")
+             "generate plots from an existing affinity table, then `--output-file` should specify "
+             "the (template) path for the plot. A loaded table is plotted on the color scale of "
+             "raw affinities. If it holds normalized affinities, passing their normalization "
+             "method to `--normalize-affinity` also plots them on the scale of that method.")
     group1F.add_argument(
         '--n-highest-affinity', default=25, type=int,
         help="Plot this number of functions (or genes) with the highest affinities in the genome "
@@ -838,8 +836,6 @@ def sanity_check(args):
     """Check for valid combinations of arguments."""
     if not args.output_file:
         raise ConfigError("An argument is required for `--output-file`.")
-    if not args.seeds_specific_txt:
-        raise ConfigError("An argument is required for `--seeds-specific-txt`.")
 
     clustering.is_distance_metric_OK(args.codon_distance_metric)
     clustering.is_linkage_method_OK(args.codon_linkage_method)
@@ -883,6 +879,11 @@ def sanity_check(args):
                 "`--save-isoacceptor-contributions` requires affinities to be computed from "
                 "scratch, but `--plot-affinity-file` loads precomputed affinities. Drop one of "
                 "the two flags.")
+        if args.save_isoacceptor_abundance_ratios or args.save_isoacceptor_codon_weights:
+            raise ConfigError(
+                "`--save-isoacceptor-abundance-ratios` and `--save-isoacceptor-codon-weights` "
+                "require affinities to be computed from scratch, but `--plot-affinity-file` loads "
+                "precomputed affinities.")
         sanity_check_plot_affinity_file(args)
         return
 
@@ -905,6 +906,9 @@ def sanity_check(args):
     if args.trnaseq_contigs_db is None:
         raise ConfigError(
             "`--trnaseq-contigs-db` is a required argument for computation of affinities.")
+    if not args.seeds_specific_txt:
+        raise ConfigError(
+            "`--seeds-specific-txt` is a required argument for computation of affinities.")
     n_reference_modes = sum([
         args.reference_sample is not None,
         bool(args.reference_samples),
@@ -969,6 +973,10 @@ def sanity_check_plot_affinity_file(args):
         raise ConfigError(
             "`--plot-codon-tree-file` cannot be used with `--save-codon-trees`. It does not make "
             "sense to resave the tree just loaded for plotting.")
+    if (args.save_codon_frequencies or args.save_codon_trees) and not args.plot_codon_file:
+        raise ConfigError(
+            "`--save-codon-frequencies` and `--save-codon-trees` need codon frequencies, which "
+            "come from `--plot-codon-file` when precomputed affinities are plotted.")
     if args.plot_sample_tree_file and args.save_sample_trees:
         raise ConfigError(
             "`--plot-sample-tree-file` cannot be used with `--save-sample-trees`. It does not make "
@@ -1135,7 +1143,7 @@ def load_affinities(args):
             raise ConfigError(
                 "The following samples given in the `--select-samples-txt` file, "
                 f"'{args.select_samples_txt}', are not found in the affinity table loaded from "
-                f"from '{args.plot_affinity_file}'.")
+                f"'{args.plot_affinity_file}': {', '.join(sorted(missing_samples))}")
 
         affinities_df = affinities_df[select_samples]
 
