@@ -3,8 +3,6 @@
 import numpy as np
 import pandas as pd
 
-from itertools import combinations
-
 from sklearn import manifold
 from sklearn import preprocessing
 from scipy.cluster import hierarchy
@@ -485,24 +483,57 @@ def order_contigs_experimental(config, progress=progress, run=run, debug=False):
         return newick
 
 
-def get_linkage_from_tree(tree, linkage, distance):
-    """Get a cluster linkage matrix from a tree.
+def get_linkage_from_tree(tree: Tree) -> np.ndarray:
+    """Get a cluster linkage matrix with the topology of an ete3 tree.
 
-    See https://stackoverflow.com/a/31036521
+    Leaf i of the linkage is leaf i of `tree.get_leaf_names()`, and a dendrogram of the linkage
+    keeps the leaf order of the tree. A node with k children makes k - 1 merges, all at a height
+    equal to the distance from the node to its farthest leaf. Rows follow a postorder traversal of
+    the tree, so they are not sorted by height.
+
+    Parameters
+    ==========
+    tree : ete3.Tree
+        Tree with two or more leaves, each with a unique name.
+
+    Returns
+    =======
+    numpy.ndarray
+        Linkage matrix in the format of `scipy.cluster.hierarchy.linkage`. The n leaves are
+        clusters 0 to n - 1, and row i merges two clusters into cluster n + i. The columns hold the
+        IDs of the two clusters, the height of the merge, and the number of leaves in the new
+        cluster.
     """
-    leaf_labels = tree.get_leaf_labels()
-    label_index_dict = {label: index for index, label in enumerate(leaf_labels)}
+    # Leaves are clusters 0 to n - 1, numbered in the leaf order of the tree.
+    leaf_index_dict: dict[str, int] = {
+        name: index for index, name in enumerate(tree.get_leaf_names())}
 
-    distance_matrix = np.zeros(len(leaf_labels), len(leaf_labels))
-    for first_label, second_label in combinations(leaf_labels):
-        distance = tree.get_distance(first_label, second_label)
-        first_index = label_index_dict[first_label]
-        second_index = label_index_dict[second_label]
-        distance_matrix[first_index, second_index] = \
-            distance_matrix[second_index, first_index] = distance
+    # Each node maps to its cluster: the ID of the cluster in the linkage and its number of leaves.
+    # A postorder traversal reaches children before their parent, so a row only merges leaves and
+    # the clusters of earlier rows, as scipy requires.
+    node_cluster_dict: dict[Tree, tuple[int, int]] = {}
+    linkage_rows: list[list[float]] = []
+    for node in tree.traverse('postorder'):
+        if node.is_leaf():
+            node_cluster_dict[node] = (leaf_index_dict[node.name], 1)
+            continue
 
-    # Condense the distance matrix for clustering.
-    distance_vector = scipy_distance.squareform(distance_matrix)
-    linkage_matrix = hierarchy.linkage(distance_vector, method=linkage, metric=distance)
+        # The farthest leaf of a node is at least as far as those of its children, so no merge is
+        # lower than the merges it joins.
+        height = node.get_farthest_leaf()[1]
 
-    return linkage_matrix
+        # The clusters of the children are merged one by one at the height of the node: the first
+        # with the second, then that cluster with the third, and so on. A polytomy of k children
+        # takes k - 1 rows, and a node with one child merges nothing and takes its child's cluster.
+        cluster_index, cluster_count = node_cluster_dict[node.children[0]]
+        for child in node.children[1:]:
+            child_index, child_count = node_cluster_dict[child]
+            cluster_count += child_count
+            # A dendrogram draws the first cluster of a row before the second, keeping the leaf
+            # order of the tree.
+            linkage_rows.append([cluster_index, child_index, height, cluster_count])
+            # Row i makes cluster n + i, for n leaves.
+            cluster_index = len(leaf_index_dict) + len(linkage_rows) - 1
+        node_cluster_dict[node] = (cluster_index, cluster_count)
+
+    return np.array(linkage_rows, dtype=float)

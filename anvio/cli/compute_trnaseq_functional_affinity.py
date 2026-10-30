@@ -971,7 +971,7 @@ def sanity_check_plot_affinity_file(args):
         raise ConfigError(
             "`--plot-sample-tree-file` cannot be used with `--save-sample-trees`. It does not make "
             "sense to resave the tree just loaded for plotting.")
-    if args.plot_sample_tree_file and args.normalization_methods:
+    if args.plot_sample_tree_file and args.normalize_affinity:
         raise ConfigError(
             "`--plot-sample-tree-file` cannot be used with `--normalize-affinity`. The sample tree "
             "should be constructed from raw affinities or normalized affinities of a single type. "
@@ -983,7 +983,8 @@ def sanity_check_plot_affinity_file(args):
     if args.plot_codon_file:
         filesnpaths.is_file_tab_delimited(args.plot_codon_file)
     if args.plot_codon_tree_file:
-        filesnpaths.is_proper_newick(args.plot_codon_tree_file)
+        # Gene trees are labeled by gene caller ID.
+        filesnpaths.is_proper_newick(args.plot_codon_tree_file, names_with_only_digits_ok=True)
     if args.plot_sample_tree_file:
         filesnpaths.is_proper_newick(args.plot_sample_tree_file)
 
@@ -1075,7 +1076,7 @@ def get_affinities(args):
         disabled or when affinities are being loaded for plotting (`--plot-affinity-file`).
     """
     if args.plot_affinity_file:
-        # Affinities are being plotted for a single genome but not computed anew.
+        # Affinities are being plotted but not computed anew.
         affinities_dict = load_affinities(args)
         stderrs_dict = None
         isoacceptor_abund_ratios_dict = None
@@ -1091,15 +1092,15 @@ def get_affinities(args):
 
 
 def load_affinities(args):
-    """Load single genome affinities for the purposes of plotting."""
+    """Load affinities for the purposes of plotting."""
     affinities_df = pd.read_csv(args.plot_affinity_file, sep='\t')
     # Make sure the loaded table is properly formatted.
-    if affinities_df.columns[: 4] == [
+    if affinities_df.columns[: 4].tolist() == [
         'genome_name', 'function_source', 'function_accession', 'function_name']:
         affinities_df = affinities_df.set_index(
             ['genome_name', 'function_source', 'function_accession', 'function_name'])
         args.gene_affinity = False
-    elif affinities_df.columns[: 2] == ['genome_name', 'gene_caller_id']:
+    elif affinities_df.columns[: 2].tolist() == ['genome_name', 'gene_caller_id']:
         affinities_df = affinities_df.set_index(['genome_name', 'gene_caller_id'])
         if args.gene_affinity is False:
             # Help out the user if they didn't explicitly indicate gene rather function affinity.
@@ -1111,15 +1112,19 @@ def load_affinities(args):
             "'function_accession', and 'function_name' for function affinities or 'genome_name' "
             "and 'gene_caller_id' for gene affinities.")
 
+    # Tables saved by runs with `--plot` can have a column of tree labels, which are remade here.
+    affinities_df = affinities_df.drop(columns='label', errors='ignore')
+
     # If also loading a codon tree to plot a y-axis dendrogram, confirm that the table only contains
     # information on one genome.
-    if (args.plot_codon_tree and
+    if (args.plot_codon_tree_file and
         affinities_df.index.get_level_values('genome_name').nunique() > 1):
         raise ConfigError(
-            f"The provided affinity table, '{args.plot_affinity_table}', contains information on "
-            f"more than one genome. However, the provided codon tree, '{args.plot_codon_tree}', is "
-            "only allowed to contain information on one genome. Of course, the affinity table and "
-            "codon tree should contain information on the same genome.")
+            f"The provided affinity table, '{args.plot_affinity_file}', contains information on "
+            "more than one genome. However, the provided codon tree, "
+            f"'{args.plot_codon_tree_file}', is only allowed to contain information on one genome. "
+            "Of course, the affinity table and codon tree should contain information on the same "
+            "genome.")
 
     if args.select_samples_txt:
         # Select a subset of samples.
@@ -1135,43 +1140,40 @@ def load_affinities(args):
 
         affinities_df = affinities_df[select_samples]
 
-    # The dictionary of affinity tables will only have one key for a single genome in the outermost
-    # dictionary.
+    if args.plot_codon_dendrogram:
+        if (not args.gene_affinity and
+            affinities_df.index.get_level_values('function_source').nunique() > 1):
+            multiple_sources = True
+        else:
+            multiple_sources = False
+        affinities_df = get_table_with_codon_tree_labels(
+            args, affinities_df, multiple_sources=multiple_sources)
+
+    # Cache the sample columns on `args` for downstream steps, as `generate_affinities` does.
+    args.analyzed_samples = list(affinities_df.columns)
+
     affinities_dict = {}
-    genome_name = affinities_df.index.get_level_values('genome_name')[0]
-    affinities_dict[genome_name] = source_dict = {}
-    if affinities_df.index.get_level_values('function_source').nunique() > 1:
-        multiple_sources = True
-    else:
-        multiple_sources = False
-    if args.gene_affinity:
-        source_dict['genes'] = normalization_dict = {}
-        if args.plot_codon_dendrogram:
-            affinities_df = get_table_with_codon_tree_labels(
-                args, affinities_df, multiple_sources=multiple_sources)
-        normalization_dict['raw'] = affinities_df
-        for normalization_method in args.normalization_methods:
-            normalization_dict[normalization_method] = normalize_affinities_table(
-                affinities_df, normalization_method)
-    elif args.compare_all_function_sources:
-        source_dict['all_functions'] = normalization_dict = {}
-        if args.plot_codon_dendrogram:
-            affinities_df = get_table_with_codon_tree_labels(
-                args, affinities_df, multiple_sources=multiple_sources)
-        normalization_dict['raw'] = affinities_df
-        for normalization_method in args.normalization_methods:
-            normalization_dict[normalization_method] = normalize_affinities_table(
-                affinities_df, normalization_method)
-    else:
-        for source, source_df in affinities_df.groupby('function_source'):
-            source_dict[source] = normalization_dict = {}
-            if args.plot_codon_dendrogram:
-                source_df = get_table_with_codon_tree_labels(
-                    args, source_df, multiple_sources=multiple_sources)
-            normalization_dict['raw'] = source_df
+    for genome_name, genome_df in affinities_df.groupby('genome_name'):
+        affinities_dict[genome_name] = source_dict = {}
+        if args.gene_affinity:
+            source_dict['genes'] = normalization_dict = {}
+            normalization_dict['raw'] = genome_df
             for normalization_method in args.normalization_methods:
                 normalization_dict[normalization_method] = normalize_affinities_table(
-                    source_df, normalization_method)
+                    genome_df, normalization_method)
+        elif args.compare_all_function_sources:
+            source_dict['all_functions'] = normalization_dict = {}
+            normalization_dict['raw'] = genome_df
+            for normalization_method in args.normalization_methods:
+                normalization_dict[normalization_method] = normalize_affinities_table(
+                    genome_df, normalization_method)
+        else:
+            for source, source_df in genome_df.groupby('function_source'):
+                source_dict[source] = normalization_dict = {}
+                normalization_dict['raw'] = source_df
+                for normalization_method in args.normalization_methods:
+                    normalization_dict[normalization_method] = normalize_affinities_table(
+                        source_df, normalization_method)
 
     run.info(
         f"Input table of {'gene' if args.gene_affinity else 'function'} affinities",
@@ -1208,7 +1210,8 @@ def generate_affinities(args):
             "data.")
 
     if args.plot_codon_dendrogram:
-        if affinities_df.index.get_level_values('function_source').nunique() > 1:
+        if (not args.gene_affinity and
+            affinities_df.index.get_level_values('function_source').nunique() > 1):
             multiple_sources = True
         else:
             multiple_sources = False
@@ -1348,13 +1351,9 @@ def get_table_with_codon_tree_labels(args, df, multiple_sources=False):
     with codon frequency tables and trees for the same genome."""
     df = df.reset_index()
 
-    if 'KEGG_BRITE' in df['function_source']:
-        # A KEGG function name has a hierarchical format, which each level separated by '>>>'.
-        # Retain the most specific level in the label.
-        df['function_name'] = df['function_name'].apply(lambda n: n.split('>>>')[-1])
-
     if args.gene_affinity:
-        labels = df['gene_caller_id'].tolist()
+        # Labels are strings, like the leaf names of a loaded tree.
+        labels = df['gene_caller_id'].astype(str).tolist()
     else:
         labels = []
         # For consistency, labels always end in parentheses. Empty parentheses are stripped upon
@@ -2121,6 +2120,9 @@ def get_general_codon_frequencies(args, affinities_dict):
 
     if args.plot_codon_file:
         codon_frequency_dict = load_general_codon_frequencies(args, affinities_dict)
+    elif args.plot_affinity_file:
+        # Plot-only runs lack genomic inputs, and their codon dendrogram comes from the loaded tree.
+        return None
     else:
         codon_frequency_dict = generate_general_codon_frequencies(args, affinities_dict)
 
@@ -2161,7 +2163,7 @@ def load_general_codon_frequencies(args, affinities_dict):
     # general codon data.
     missing_codon_genome_names = []
     for genome_name in affinities_dict:
-        if genome_name not in codon_frequency_df:
+        if genome_name not in codon_frequency_df['genome_name'].unique():
             missing_codon_genome_names.append(genome_name)
     missing_affinity_genome_names = []
     for genome_name in codon_frequency_df['genome_name'].unique():
@@ -2199,6 +2201,15 @@ def load_general_codon_frequencies(args, affinities_dict):
                 "function columns with the headers, 'function_source', 'function_accession', and "
                 "'function_name'. The following of these columns is missing: "
                 f"{', '.join(missing_cols)}")
+
+    # Tables saved by runs with `--plot` or `--save-codon-trees` can have a column of tree labels,
+    # which are remade here.
+    codon_frequency_df = codon_frequency_df.drop(columns='label', errors='ignore')
+    if args.gene_affinity:
+        codon_frequency_df = codon_frequency_df.set_index(['genome_name', 'gene_caller_id'])
+    else:
+        codon_frequency_df = codon_frequency_df.set_index(
+            ['genome_name', 'function_source', 'function_accession', 'function_name'])
 
     codon_frequency_dict = {}
     for genome_name, genome_df in codon_frequency_df.groupby('genome_name'):
@@ -2471,7 +2482,7 @@ def subset_affinity_entries(args, affinities_dict):
                     args.n_highest_affinity < len(subset_raw_affinities_df)):
                     if args.gene_affinity:
                         source_message = ""
-                    elif args.normalized_all_function_sources:
+                    elif args.compare_all_function_sources:
                         source_message = "from all function sources "
                     else:
                         source_message = f"from the function source, {source}, "
@@ -2543,7 +2554,8 @@ def load_codon_linkage_from_newick(args, subset_affinities_dict):
             break
 
     # Confirm that the functions or genes in the subset affinity table are represented in the tree.
-    missing_leaf_labels = sorted(set(subset_affinities_df['label']).difference(set(leaf_labels)))
+    subset_labels = subset_affinities_df.index.get_level_values('label').tolist()
+    missing_leaf_labels = sorted(set(subset_labels).difference(set(leaf_labels)))
     if missing_leaf_labels:
         raise ConfigError(
             "The following functions or genes of interest in the affinity table loaded from "
@@ -2551,38 +2563,31 @@ def load_codon_linkage_from_newick(args, subset_affinities_dict):
             f"'{args.plot_codon_tree_file}': {', '.join(missing_leaf_labels)}")
 
     # Prune the tree to retain the functions or genes of interest.
-    pruned_codon_tree = codon_tree.prune(subset_affinities_df['label'].tolist())
-    pruned_leaf_labels = pruned_codon_tree.get_leaf_names()
-    if pruned_leaf_labels < leaf_labels:
+    codon_tree.prune(subset_labels, preserve_branch_length=True)
+    pruned_leaf_labels = codon_tree.get_leaf_names()
+    if len(pruned_leaf_labels) < len(leaf_labels):
         run.warning(
             f"{len(leaf_labels)} {'genes' if args.gene_affinity else 'functions'} were loaded in "
             f"the codon tree from '{args.plot_codon_tree_file}' and pruned to "
             f"{len(pruned_leaf_labels)} {'genes' if args.gene_affinity else 'functions'} of "
             "interest.")
 
-    # Reindex the raw and normalized affinity tables to match the order of leaves in the dendrogram:
-    # the first leaf is the bottom leaf of the y-axis dendrogram, corresponding to the last row of
-    # the affinity table and heatmap.
+    # Order the rows of the raw and normalized affinity tables like the leaves of the tree, which
+    # are the leaves of the linkage.
     reindexed_info = []
-    for genome_name, source_dict in subset_affinities_df.items():
+    for genome_name, source_dict in subset_affinities_dict.items():
         for source, normalization_dict in source_dict.items():
             for normalization_method, subset_affinities_df in normalization_dict.items():
                 index_names = subset_affinities_df.index.names
                 reindexed_df = subset_affinities_df.reset_index()
                 reindexed_df = reindexed_df.set_index('label')
-                reindexed_df = reindexed_df.loc[pruned_leaf_labels[::-1]]
+                reindexed_df = reindexed_df.loc[pruned_leaf_labels]
                 reindexed_df = reindexed_df.reset_index()
                 reindexed_df = reindexed_df.set_index(index_names)
                 reindexed_info.append((normalization_method, reindexed_df))
-    subset_affinities_df[genome_name][source] = dict(reindexed_info)
+    subset_affinities_dict[genome_name][source] = dict(reindexed_info)
 
-    codon_linkage = clustering.get_linkage_from_tree(
-        pruned_codon_tree, args.codon_linkage_method, args.codon_distance_metric)
-    run.warning(
-        "It is assumed that the loaded codon tree was generated with the distance metric, "
-        f"'{args.codon_distance_metric}', and linkage method, '{args.codon_linkage_method}', that "
-        "have been provided to the program by `--codon-distance-metric` and "
-        "`--codon-linkage-method`.")
+    codon_linkage = clustering.get_linkage_from_tree(codon_tree)
 
     codon_linkage_dict = {}
     codon_linkage_dict[genome_name] = source_codon_linkage_dict = {}
@@ -2767,7 +2772,7 @@ def load_sample_linkage_from_newick(args, subset_affinities_dict):
                 break
 
     # Confirm that the samples in the affinity table are represented in the tree.
-    missing_leaf_labels = sorted(set(subset_affinities_df.columns)).difference(set(leaf_labels))
+    missing_leaf_labels = sorted(set(subset_affinities_df.columns).difference(set(leaf_labels)))
     if missing_leaf_labels:
         raise ConfigError(
             "The following select samples in the affinity table loaded from "
@@ -2775,9 +2780,9 @@ def load_sample_linkage_from_newick(args, subset_affinities_dict):
             f"'{args.plot_sample_tree_file}': {', '.join(missing_leaf_labels)}")
 
     # Prune the tree to retain the samples of interest.
-    pruned_sample_tree = sample_tree.prune(subset_affinities_df.columns)
-    pruned_leaf_labels = pruned_sample_tree.get_leaf_names()
-    if pruned_leaf_labels < leaf_labels:
+    sample_tree.prune(subset_affinities_df.columns.tolist(), preserve_branch_length=True)
+    pruned_leaf_labels = sample_tree.get_leaf_names()
+    if len(pruned_leaf_labels) < len(leaf_labels):
         run.warning(
             f"{len(leaf_labels)} samples were loaded in the tRNA-seq sample tree from "
             f"'{args.plot_sample_tree_file}' and pruned to {len(pruned_leaf_labels)} samples of "
@@ -2787,13 +2792,7 @@ def load_sample_linkage_from_newick(args, subset_affinities_dict):
     subset_affinities_df = subset_affinities_df[pruned_leaf_labels]
     subset_affinities_dict[genome_name][source][normalization_method] = subset_affinities_df
 
-    sample_linkage = clustering.get_linkage_from_tree(
-        pruned_sample_tree, args.sample_linkage_method, args.sample_distance_metric)
-    run.warning(
-        "It is assumed that the loaded tRNA-seq sample tree was generated with the distance "
-        f"metric, '{args.sample_distance_metric}', and linkage method, "
-        f"'{args.sample_linkage_method}', that have been provided to the program by "
-        "`--codon-distance-metric` and `--codon-linkage-method`.")
+    sample_linkage = clustering.get_linkage_from_tree(sample_tree)
 
     sample_linkage_dict = {}
     sample_linkage_dict[genome_name] = source_sample_linkage_dict = {}
@@ -3008,6 +3007,9 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
 def get_plot_labels(args, subset_affinities_df):
     """Return labels to display on the codon frequency dendrogram, which can altered from the
     labels generated by `get_table_with_codon_tree_labels`."""
+    if args.gene_affinity:
+        return subset_affinities_df.index.get_level_values('label').tolist()
+
     if args.label_brite_hierarchy:
         plot_labels = subset_affinities_df.index.get_level_values('label').tolist()
     else:
