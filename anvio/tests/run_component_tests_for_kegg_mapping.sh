@@ -145,7 +145,7 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
                         --reaction-gene-aggregation mean \
                         --reaction-sample-summary mean \
                         --reaction-value-limits 5 35 \
-                        --reaction-category-value-limits 5 35 \
+                        --reaction-individual-value-limits 5 35 \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \
@@ -161,7 +161,7 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_log_ratio.reaction.txt \
                         --reaction-sample-summary mean \
                         --reaction-colormap RdBu_r \
                         --reaction-value-center \
-                        --reaction-category-value-center \
+                        --reaction-individual-value-center \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \
@@ -187,18 +187,18 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_negative.reaction.txt \
 # read as the same quantity, and each scale writes its own colorbar.
 INFO "Giving the per-sample color scale a colormap of its own, with a colorbar for each"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
-                        --output-dir draw_txt_samples_kos_category_colormap \
+                        --output-dir draw_txt_samples_kos_individual_colormap \
                         --reaction-gene-aggregation mean \
                         --reaction-sample-summary std \
                         --reaction-colormap viridis \
-                        --reaction-category-colormap RdYlGn 0.1 0.9 \
+                        --reaction-individual-colormap RdYlGn 0.1 0.9 \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \
                         --no-progress
 
-if [ ! -s draw_txt_samples_kos_category_colormap/colorbar_reactions.pdf ] \
-    || [ ! -s draw_txt_samples_kos_category_colormap/colorbar_reactions_samples.pdf ]
+if [ ! -s draw_txt_samples_kos_individual_colormap/colorbar_reactions.pdf ] \
+    || [ ! -s draw_txt_samples_kos_individual_colormap/colorbar_reactions_samples.pdf ]
 then
     echo "ERROR: two colormaps for one layer should have written a colorbar for each scale."
     exit 1
@@ -230,7 +230,7 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
                         --draw-grid \
                         --no-progress
 
-## COUNTS AND CATEGORY COLORS
+## COUNTS AND MEMBERSHIP COLORS
 INFO "Summarizing samples by count rather than by membership"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
                         --output-dir draw_txt_samples_kos_count \
@@ -247,8 +247,8 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples4.reaction.txt \
 
 INFO "Coloring sample membership from a color given per sample"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
-                        --reaction-category-colors draw-sample-colors.txt \
-                        --output-dir draw_txt_samples_category_colors \
+                        --reaction-membership-colors draw-sample-colors.txt \
+                        --output-dir draw_txt_samples_membership_colors \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \
@@ -258,8 +258,8 @@ INFO "Coloring group membership from a color given per group"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
                         --groups-txt draw-sample-group-information.txt \
                         --group-threshold 0.5 \
-                        --reaction-category-colors draw-group-colors.txt \
-                        --output-dir draw_txt_groups_category_colors \
+                        --reaction-membership-colors draw-group-colors.txt \
+                        --output-dir draw_txt_groups_membership_colors \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \
@@ -267,13 +267,13 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
 
 # Each group's ramp runs from white to that group's own color, so a group's maps are read on a
 # scale of their own while staying recognizable as that group's.
-INFO "Building each group's color scale as a ramp with '--group-colormap category'"
+INFO "Building each group's color scale as a ramp with '--group-colormap tint'"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
                         --groups-txt draw-sample-group-information.txt \
                         --group-threshold 0.5 \
-                        --reaction-category-colors draw-group-colors.txt \
-                        --group-colormap category \
-                        --output-dir draw_txt_groups_category_ramps \
+                        --reaction-membership-colors draw-group-colors.txt \
+                        --group-colormap tint \
+                        --output-dir draw_txt_groups_tint_ramps \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \
@@ -281,18 +281,18 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
 
 INFO "Giving the per-group color scale a colormap of its own"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
-                        --output-dir draw_txt_groups_kos_category_colormap \
+                        --output-dir draw_txt_groups_kos_individual_colormap \
                         --groups-txt draw-sample-group-information.txt \
                         --reaction-sample-summary mean \
                         --reaction-group-summary std \
                         --reaction-colormap cividis \
-                        --reaction-category-colormap RdBu_r \
+                        --reaction-individual-colormap RdBu_r \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \
                         --no-progress
 
-if [ ! -s draw_txt_groups_kos_category_colormap/colorbar_reactions_groups.pdf ]
+if [ ! -s draw_txt_groups_kos_individual_colormap/colorbar_reactions_groups.pdf ]
 then
     echo "ERROR: a grouped run with two colormaps should have written a per-group colorbar."
     exit 1
@@ -358,7 +358,515 @@ then
     exit 1
 fi
 
+## CATEGORICAL VALUES
+# A value column can hold names, such as 'up', 'down' and 'same', instead of numbers. Each name
+# takes a color of its own. The map of each sample shows that sample's values. The 'unified' map
+# shows presence across the samples, since a value need not mean the same thing in every sample.
+INFO "Coloring each sample's reactions by categorical values, as grids and a map per sample"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+                        --reaction-value-type categorical \
+                        --output-dir draw_txt_samples_kos_categorical \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
+if [ ! -s draw_txt_samples_kos_categorical/colorbar_reactions_samples.pdf ]
+then
+    echo "ERROR: a run of categorical values should have written a legend for the sample maps."
+    exit 1
+fi
+
+# A colors file gives each value a color of its own choosing. The order of its rows also ranks the
+# values, so 'order' gives a map element whose KOs have several values the first of them.
+INFO "Coloring categorical values with colors of your choosing, which also rank the values"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+                        --reaction-value-type categorical \
+                        --reaction-value-colors draw-status-colors.txt \
+                        --reaction-accession-aggregation order \
+                        --output-dir draw_txt_samples_kos_categorical_colors \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-grid \
+                        --no-progress
+
+# Where a value means the same thing in every sample, a rule chooses one value across the samples
+# for the 'unified' map. Here a tie between samples is broken at random, from a given seed.
+INFO "Choosing one categorical value across the samples, breaking ties at random"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+                        --reaction-value-type categorical \
+                        --reaction-sample-summary plurality_random \
+                        --seed 1 \
+                        --output-dir draw_txt_samples_kos_categorical_unified \
+                        --pathway-numbers $pathway_numbers \
+                        --no-progress
+
+# With groups, a rule among the samples of each group colors that group's map. A rule across the
+# groups colors the 'unified' map. Each group gives one vote, whatever its size.
+INFO "Choosing one categorical value in each group of samples, and one across the groups"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+                        --reaction-value-type categorical \
+                        --groups-txt draw-sample-group-information.txt \
+                        --reaction-sample-summary plurality_order \
+                        --reaction-group-summary plurality_order \
+                        --output-dir draw_txt_groups_kos_categorical \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-grid \
+                        --no-progress
+
+## SLICING REACTION ELEMENTS
+# A map element often stands for several KOs. With '--reaction-slice-by accession', each KO with a
+# value on a map takes a slice of the element in the color of its own value. A box is cut into
+# columns, and a line into repeating dashes. Only maps that show values are sliced. Here these are
+# the maps of the samples. The 'unified' map shows presence, so its elements are drawn whole.
+INFO "Slicing each element by KO on the maps of individual samples, as grids and a map per sample"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage.reaction.txt \
+                        --reaction-slice-by accession \
+                        --output-dir draw_txt_samples_kos_slices \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
+# Slices have no labels, so a table beside the colorbars lists the slices of every map.
+if [ ! -s draw_txt_samples_kos_slices/slice_key_reactions.txt ]
+then
+    echo "ERROR: a run that slices reaction elements should have written a key table of slices."
+    exit 1
+fi
+
+# A column of weights sizes the slices. Here the color of a slice shows the expression of its KO,
+# and its width shows the coverage of the KO's genes. The map of each sample takes its shares from
+# that sample. Under 'share_mean', the default, the map of a group averages the shares of its
+# samples, and the 'unified' map averages the shares of the groups.
+INFO "Sizing slices by a column of weights, with shares averaged within groups and across them"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+                        --groups-txt draw-sample-group-information.txt \
+                        --reaction-sample-summary mean \
+                        --reaction-group-summary mean \
+                        --reaction-slice-by accession \
+                        --reaction-slice-weights coverage \
+                        --reaction-slice-share-summary share_mean \
+                        --output-dir draw_txt_groups_kos_slices_share_mean \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
+# 'pooled_sum' adds up the weights of each KO across the samples and divides each sum by the total
+# of the element. A sample with more weight therefore counts for more.
+INFO "Pooling the weights of slices across samples by their sum on the 'unified' map"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+                        --reaction-sample-summary mean \
+                        --reaction-slice-by accession \
+                        --reaction-slice-weights coverage \
+                        --reaction-slice-share-summary pooled_sum \
+                        --output-dir draw_txt_samples_kos_slices_pooled_sum \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-grid \
+                        --no-progress
+
+# Categorical values are sliced too. Each slice takes the color of its KO's value. On the 'unified'
+# map, a rule across the samples chooses the value of each slice.
+INFO "Slicing elements by the categorical values of their KOs"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+                        --reaction-value-type categorical \
+                        --reaction-value-colors draw-status-colors.txt \
+                        --reaction-sample-summary plurality_order \
+                        --reaction-slice-by accession \
+                        --output-dir draw_txt_samples_kos_categorical_slices \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-grid \
+                        --no-progress
+
+# A file of KEGG reaction IDs is sliced by reaction rather than by KO. R01061 and R01063 share a map
+# element on both maps.
+INFO "Slicing elements by KEGG reaction"
+anvi-draw-kegg-pathways --reaction-txt draw_reactions_shared_element.reaction.txt \
+                        --reaction-slice-by accession \
+                        --output-dir draw_txt_reactions_slices \
+                        --pathway-numbers $pathway_numbers \
+                        --no-progress
+
+# With '--reaction-slice-by gene', each gene with a value on a map takes a slice of each element
+# whose KOs it has rows for. A gene with rows for two KOs of one element is one slice. One gene ID
+# names the same gene in every sample, so the 'unified' map pools the values of each gene across the
+# samples. Here the color of a slice shows the expression of its gene, and its width shows the
+# coverage of the gene.
+INFO "Slicing each element by gene, with the values of each gene pooled across the samples"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+                        --reaction-sample-summary mean \
+                        --reaction-slice-by gene \
+                        --reaction-slice-weights coverage \
+                        --output-dir draw_txt_samples_genes_slices \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
+# With groups, the map of each group pools the genes of its samples. Under 'pooled_sum', the map of
+# a group adds up the weights of each gene over the samples of the group, and the 'unified' map adds
+# them up over every sample.
+INFO "Slicing each element by gene on the maps of groups, with weights pooled by their sum"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+                        --groups-txt draw-sample-group-information.txt \
+                        --reaction-sample-summary mean \
+                        --reaction-group-summary mean \
+                        --reaction-slice-by gene \
+                        --reaction-slice-weights coverage \
+                        --reaction-slice-share-summary pooled_sum \
+                        --output-dir draw_txt_groups_genes_slices_pooled_sum \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
+## BORDER VALUES
+# A second column can color the borders of map elements, while the value column still colors their
+# fills. '--reaction-border-column' names it. A border is a ring inside the outline of each box on
+# standard maps, and of each compound circle on standard and overview maps. Here the fills show the
+# coverage of each sample, and the borders show its status. The 'unified' map chooses one status
+# across the samples, so it shows a border too. The borders take keys of their own.
+INFO "Coloring borders by a column of categorical values beside a value column"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+                        --reaction-border-column status \
+                        --reaction-border-value-type categorical \
+                        --reaction-border-value-colors draw-status-colors.txt \
+                        --reaction-border-sample-summary plurality_order \
+                        --output-dir draw_txt_samples_kos_border_status \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
+if [ ! -s draw_txt_samples_kos_border_status/colorbar_reactions_border.pdf ] \
+    || [ ! -s draw_txt_samples_kos_border_status/colorbar_reactions_border_samples.pdf ]
+then
+    echo "ERROR: a run with borders should have written a key for each scale of the borders."
+    exit 1
+fi
+
+# A file whose only column of values is its border column colors its fills by presence. With
+# groups, the border of each group's map takes the status chosen among the group's samples, and the
+# 'unified' map takes the status chosen among the groups.
+INFO "Coloring borders across groups of samples, with the fills showing presence"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_status.reaction.txt \
+                        --reaction-border-column status \
+                        --reaction-border-value-type categorical \
+                        --groups-txt draw-sample-group-information.txt \
+                        --group-threshold 0.5 \
+                        --reaction-border-sample-summary plurality_order \
+                        --reaction-border-group-summary plurality_order \
+                        --output-dir draw_txt_groups_kos_border_status \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-grid \
+                        --no-progress
+
+if [ ! -s draw_txt_groups_kos_border_status/colorbar_reactions_border.pdf ] \
+    || [ ! -s draw_txt_groups_kos_border_status/colorbar_reactions_border_groups.pdf ]
+then
+    echo "ERROR: a grouped run with borders should have written a key for each border scale."
+    exit 1
+fi
+
+# Numeric border values take 'viridis' by default, so their colors differ from those of the fills.
+# Each layer has a border of its own. The reaction file here has no other column of values, so its
+# fills show presence and get no colorbar.
+INFO "Coloring the borders of both layers by numbers"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+                        --reaction-border-column coverage \
+                        --compound-txt draw_compounds_samples.compound.txt \
+                        --compound-border-column concentration \
+                        --compound-border-sample-summary mean \
+                        --output-dir draw_txt_both_layers_border \
+                        --pathway-numbers $pathway_numbers \
+                        --no-progress
+
+if [ ! -s draw_txt_both_layers_border/colorbar_reactions_border.pdf ] \
+    || [ ! -s draw_txt_both_layers_border/colorbar_compounds_border.pdf ]
+then
+    echo "ERROR: a run with borders on both layers should have written a key for each border."
+    exit 1
+fi
+if [ -e draw_txt_both_layers_border/colorbar_reactions.pdf ]
+then
+    echo "ERROR: fills that show presence without samples should have no colorbar."
+    exit 1
+fi
+
+# '--compound-color none' leaves the fills of a compound file without a value column uncolored, so
+# that its circles show only their rings. On the overview map 01200, the circles keep the fills that
+# they take from the reactions that touch them. A circle there shows the coverage of its reactions
+# in its fill and the mean concentration of its compound in its ring. The compound layer writes a
+# key of its rings and none of its fills.
+INFO "Drawing compound rings alone, over the fills that compounds take from reactions"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+                        --compound-txt draw_compounds_samples.compound.txt \
+                        --compound-border-column concentration \
+                        --compound-border-sample-summary mean \
+                        --compound-color none \
+                        --output-dir draw_txt_both_layers_compound_rings_alone \
+                        --pathway-numbers $pathway_numbers \
+                        --no-progress
+
+if [ ! -s draw_txt_both_layers_compound_rings_alone/colorbar_compounds_border.pdf ]
+then
+    echo "ERROR: a compound layer of rings alone should have written a key of its rings."
+    exit 1
+fi
+if [ -e draw_txt_both_layers_compound_rings_alone/colorbar_compounds.pdf ]
+then
+    echo "ERROR: a compound layer of rings alone should have written no key of its fills."
+    exit 1
+fi
+
+# '--reaction-border-slice-by' divides the ring of each box among its KOs or genes. Here the fill
+# is sliced by KO as well, so the rings are aligned with it. Each column of the fill takes the
+# status of its own KO, as bands above and below the column. The coverage of each KO sizes its
+# column, and its expression colors the column. A second key table lists the slices of the rings.
+INFO "Slicing borders by KO, aligned with fills that are sliced by KO and sized by weights"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+                        --reaction-sample-summary mean \
+                        --reaction-slice-by accession \
+                        --reaction-slice-weights coverage \
+                        --reaction-border-column status \
+                        --reaction-border-value-type categorical \
+                        --reaction-border-value-colors draw-status-colors.txt \
+                        --reaction-border-sample-summary plurality_order \
+                        --reaction-border-slice-by accession \
+                        --output-dir draw_txt_samples_kos_border_slices_aligned \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
+if [ ! -s draw_txt_samples_kos_border_slices_aligned/slice_key_reactions_border.txt ]
+then
+    echo "ERROR: a run that slices borders should have written a key table of the slices of rings."
+    exit 1
+fi
+
+# Without '--reaction-slice-by', each ring is divided on its own, clockwise from the top left corner
+# of its box, while the fill stays whole. The weights size the slices of the rings.
+INFO "Slicing borders by KO on their own, with weights, around fills drawn whole"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+                        --reaction-sample-summary mean \
+                        --reaction-slice-weights coverage \
+                        --reaction-border-column status \
+                        --reaction-border-value-type categorical \
+                        --reaction-border-value-colors draw-status-colors.txt \
+                        --reaction-border-sample-summary plurality_order \
+                        --reaction-border-slice-by accession \
+                        --output-dir draw_txt_samples_kos_border_slices_independent \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
+if [ ! -s draw_txt_samples_kos_border_slices_independent/slice_key_reactions_border.txt ]
+then
+    echo "ERROR: a run that slices borders on their own should have written their key table."
+    exit 1
+fi
+if [ -e draw_txt_samples_kos_border_slices_independent/slice_key_reactions.txt ]
+then
+    echo "ERROR: fills drawn whole should have no key table of slices."
+    exit 1
+fi
+
 ## PRESENCE COLORING
+# A bar column sets the length of a bar in each reaction box on standard maps, while the value
+# column still sets the color of its fill. A bar is drawn in the color of the fill over a gray track,
+# and a thin dark line marks its end. Here the fills show the expression of each sample, and the
+# bars show its coverage. The 'unified' map shows bars too, since a bar sample summary pools the
+# coverage of the samples. The bars take keys of their own.
+INFO "Drawing bars of a second column in boxes whose fills are colored by values"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+                        --reaction-bar-column coverage \
+                        --reaction-bar-sample-summary mean \
+                        --output-dir draw_txt_samples_kos_bars \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --draw-grid \
+                        --no-progress
+
+if [ ! -s draw_txt_samples_kos_bars/bar_key_reactions.pdf ] \
+    || [ ! -s draw_txt_samples_kos_bars/bar_key_reactions_samples.pdf ]
+then
+    echo "ERROR: a run with bars should have written a key for each bar scale."
+    exit 1
+fi
+
+# A file whose only other column of values is its bar column colors its fills by presence, and its
+# bars take the colors of presence. A ring of a border column lies around the bar.
+INFO "Drawing bars inside rings, in boxes whose fills show presence"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_coverage_status.reaction.txt \
+                        --reaction-bar-column coverage \
+                        --reaction-bar-sample-summary mean \
+                        --reaction-border-column status \
+                        --reaction-border-value-type categorical \
+                        --reaction-border-value-colors draw-status-colors.txt \
+                        --reaction-border-sample-summary plurality_order \
+                        --output-dir draw_txt_samples_kos_bars_rings \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+# The strip style draws the fill of each box whole and the bar as a dark bar on a white strip along
+# the bottom of the box. Both values then stay readable: expression by color, and coverage by
+# length. A ring of a third column lies around both.
+INFO "Drawing bars as strips under whole fills, inside rings"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights_status.reaction.txt \
+                        --reaction-sample-summary mean \
+                        --reaction-bar-column coverage \
+                        --reaction-bar-style strip \
+                        --reaction-bar-sample-summary mean \
+                        --reaction-border-column status \
+                        --reaction-border-value-type categorical \
+                        --reaction-border-value-colors draw-status-colors.txt \
+                        --reaction-border-sample-summary plurality_order \
+                        --output-dir draw_txt_samples_kos_strips_rings \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+if [ ! -s draw_txt_samples_kos_strips_rings/bar_key_reactions.pdf ] \
+    || [ ! -s draw_txt_samples_kos_strips_rings/bar_key_reactions_samples.pdf ]
+then
+    echo "ERROR: a run with strips should have written a key for each bar scale."
+    exit 1
+fi
+
+# Bars can run up the height of their boxes in place of across them. The top of a vertical bar would
+# run behind the label of its box, so these boxes drop their labels, and the key table of unlabeled
+# boxes names them on each drawn map. The bar keys have their rulers beside their boxes.
+INFO "Drawing vertical bars"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+                        --reaction-bar-column coverage \
+                        --reaction-bar-sample-summary mean \
+                        --reaction-bar-orientation vertical \
+                        --output-dir draw_txt_samples_kos_vertical_bars \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+if [ "$(sed 1d draw_txt_samples_kos_vertical_bars/label_key_reactions.txt | cut -f2 | uniq \
+    | tr '\n' ' ')" != "unified SAMPLE_1 SAMPLE_2 SAMPLE_3 " ] \
+    || [ ! -s draw_txt_samples_kos_vertical_bars/bar_key_reactions_samples.pdf ]
+then
+    echo "ERROR: a run with vertical bars should have listed its boxes and keyed its bars."
+    exit 1
+fi
+
+# Sliced boxes show a bar in each column, of the bar value of its own accession. An element with two
+# or more accessions with bar values runs its bars up its columns, and its box drops its label. The
+# key table of slices gives the bar value of each slice in a last column.
+INFO "Drawing bars in the slices of boxes"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_genes.reaction.txt \
+                        --reaction-sample-summary mean \
+                        --reaction-bar-column coverage \
+                        --reaction-bar-sample-summary mean \
+                        --reaction-slice-by accession \
+                        --output-dir draw_txt_samples_kos_sliced_bars \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+# Each column of entry 18 on the 'unified' map shows the mean bar value of its accession. Two or
+# more accessions of entries 18 and 154 have bar values in the file, so these boxes drop their
+# labels on every map, even where one accession shows, as K00174 does on the map of SAMPLE_2.
+table=draw_txt_samples_kos_sliced_bars/slice_key_reactions.txt
+labels=draw_txt_samples_kos_sliced_bars/label_key_reactions.txt
+if [ "$(head -1 $table | cut -f14)" != "bar" ] \
+    || [ "$(awk -F '\t' '$1 == "00010" && $2 == "unified" && $3 == 18 {print $14}' $table \
+    | tr '\n' ' ')" != "13.333333333333334 21.0 17.25 15.0 " ]
+then
+    echo "ERROR: the key table should end with a 'bar' column of the bar values of the slices."
+    exit 1
+fi
+if [ "$(awk -F '\t' '$1 == "00010" && $2 == "unified" {print $3}' $labels | tr '\n' ' ')" \
+    != "18 154 " ] \
+    || [ "$(awk -F '\t' '$2 == "SAMPLE_2" && $3 == 154 {print $7 "=" $8}' $labels)" \
+    != "K00174=7.5" ]
+then
+    echo "ERROR: boxes with two or more accessions with bar values should drop their labels."
+    exit 1
+fi
+
+# A file whose only other column of values is its bar column colors its fills by presence. With
+# slices, its bars are sliced on their own, here by gene and with shares from a column of weights,
+# and each box becomes a bar chart of its genes in the one color of the fill.
+INFO "Drawing bars sliced on their own by gene, with weights"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_weights.reaction.txt \
+                        --reaction-bar-column expression \
+                        --reaction-slice-weights coverage \
+                        --reaction-slice-by gene \
+                        --output-dir draw_txt_samples_kos_bars_by_gene \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+# The same with slices of accessions, from a file without samples.
+INFO "Drawing bars sliced on their own by accession"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_coverage.reaction.txt \
+                        --reaction-bar-column coverage \
+                        --reaction-slice-by accession \
+                        --output-dir draw_txt_kos_bars_by_accession \
+                        --pathway-numbers $pathway_numbers \
+                        --no-progress
+
+for table in draw_txt_samples_kos_bars_by_gene/slice_key_reactions.txt \
+             draw_txt_kos_bars_by_accession/slice_key_reactions.txt
+do
+    # The fill shows presence, so the 'value' column is blank, and the 'bar' column holds values.
+    if [ -n "$(sed 1d $table | cut -f10 | sort -u)" ] \
+        || [ -z "$(sed 1d $table | cut -f14 | sort -u)" ]
+    then
+        echo "ERROR: the key table at '$table' should list columns of bars without fill values."
+        exit 1
+    fi
+done
+
+# A bar column with values on both sides of 0 draws bars that grow both ways from a gray zero line.
+# The boxes on such a scale drop their labels, which would hide the zero line, and a key table names
+# them by their accessions.
+INFO "Drawing bars that grow both ways from 0"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples_log_ratio.reaction.txt \
+                        --reaction-bar-column log_ratio \
+                        --reaction-bar-sample-summary mean \
+                        --output-dir draw_txt_samples_kos_signed_bars \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+# Each drawn map lists its own boxes, the 'unified' map first.
+if [ "$(sed 1d draw_txt_samples_kos_signed_bars/label_key_reactions.txt | cut -f2 | uniq \
+    | tr '\n' ' ')" != "unified SAMPLE_1 SAMPLE_2 SAMPLE_3 " ]
+then
+    echo "ERROR: a run with bars on both sides of 0 should have listed the boxes without labels."
+    exit 1
+fi
+
+# The bars of compounds are pies in the compound circles of standard and overview maps. A pie is a
+# sector in the color of the fill, clockwise from 12 o'clock over a gray track, and a thin dark line
+# marks its free edge. The compound file has no other column of values, so its fills show presence,
+# and its pies show concentrations. The 'unified' map shows pies of the mean concentration of the
+# samples. The pies take keys of their own, each a circle ticked in quarters of its scale.
+INFO "Drawing pies of a bar column in compound circles"
+anvi-draw-kegg-pathways --compound-txt draw_compounds_samples.compound.txt \
+                        --compound-bar-column concentration \
+                        --compound-bar-sample-summary mean \
+                        --output-dir draw_txt_samples_compounds_pies \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --no-progress
+
+if [ ! -s draw_txt_samples_compounds_pies/bar_key_compounds.pdf ] \
+    || [ ! -s draw_txt_samples_compounds_pies/bar_key_compounds_samples.pdf ]
+then
+    echo "ERROR: a run with pies should have written a key for each bar scale."
+    exit 1
+fi
+
 INFO "Mixing presence coloring of reactions with value coloring of compounds"
 anvi-draw-kegg-pathways --reaction-txt draw_kos.reaction.txt \
                         --compound-txt draw_compounds.compound.txt \
@@ -427,6 +935,7 @@ anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
                         --draw-individual-files \
                         --draw-grid \
                         --collate-files-by-map \
+                        --animate-files-by-map \
                         --no-progress
 
 collated_dir=draw_txt_collate_by_map_categorized/by_map
@@ -434,6 +943,11 @@ brite_dir=$collated_dir/Metabolism/Carbohydrate_metabolism
 if [ ! -s $brite_dir/ko00010_Glycolysis_Gluconeogenesis/SAMPLE_1.pdf ]
 then
     echo "ERROR: gathering by map did not keep the BRITE subdirectories of the map."
+    exit 1
+fi
+if [ ! -s $brite_dir/ko00010_Glycolysis_Gluconeogenesis.html ]
+then
+    echo "ERROR: the player of a map did not keep the BRITE subdirectories and the map's name."
     exit 1
 fi
 if [ -e $collated_dir/all_maps ]
@@ -480,6 +994,34 @@ then
     exit 1
 fi
 
+INFO "Writing a player of each map gathered by map"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
+                        --output-dir draw_txt_animate_by_map \
+                        --pathway-numbers $pathway_numbers \
+                        --draw-individual-files \
+                        --collate-files-by-map \
+                        --animate-files-by-map \
+                        --no-progress
+
+player=draw_txt_animate_by_map/by_map/ko00010.html
+if [ ! -s $player ]
+then
+    echo "ERROR: the map gathered by map has no player."
+    exit 1
+fi
+# The page describes each frame with a label.
+if [ "$(grep -o '"label":' $player | wc -l)" -ne 3 ]
+then
+    echo "ERROR: the player of a map should hold a frame for each of the three samples."
+    exit 1
+fi
+# The player holds everything it shows, so it can be opened and passed around as one file.
+if grep -q '<script src=\|<link \|<img [^>]*src="[^d]' $player
+then
+    echo "ERROR: the player of a map loads a file of its own."
+    exit 1
+fi
+
 INFO "Skipping the 'unified' map so that only the individual samples are drawn"
 anvi-draw-kegg-pathways --reaction-txt draw_kos_samples.reaction.txt \
                         --output-dir draw_txt_skip_unified \
@@ -514,6 +1056,18 @@ then
     exit 1
 fi
 
+## LABELS
+# By default, only the reaction elements of standard maps are labeled. Here the reaction elements
+# and compound circles of standard and overview maps are all labeled.
+INFO "Labeling reaction elements and compound circles on standard and overview maps"
+anvi-draw-kegg-pathways --reaction-txt draw_kos_and_compounds.reaction.txt \
+                        --compound-txt draw_compounds.compound.txt \
+                        --reaction-labels standard overview \
+                        --compound-labels standard overview \
+                        --output-dir draw_txt_labels \
+                        --pathway-numbers $pathway_numbers \
+                        --no-progress
+
 ## CONTIGS DATABASE INPUT
 INFO "Mapping KOs from a genomic contigs database"
 anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db \
@@ -541,8 +1095,8 @@ anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db E_faecalis_6255.db E_fa
 # Each database's own map takes that database's color and matches its band on the 'unified' map.
 INFO "Coloring contigs database membership from a color given per database"
 anvi-draw-kegg-pathways --contigs-dbs E_faecalis_6240.db E_faecalis_6255.db E_faecalis_6512.db \
-                        --reaction-category-colors draw-contigs-db-colors.txt \
-                        --output-dir contigs_dbs_kos_category_colors \
+                        --reaction-membership-colors draw-contigs-db-colors.txt \
+                        --output-dir contigs_dbs_kos_membership_colors \
                         --pathway-numbers $pathway_numbers \
                         --draw-individual-files \
                         --draw-grid \

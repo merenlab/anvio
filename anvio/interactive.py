@@ -2286,6 +2286,12 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
                                                               # so we re-calculate available genes :\
             self.process_full_variability()
 
+        if not self.available_genes:
+            raise ConfigError("There is no gene to display: none of your genes of interest has a structure in "
+                              "your structure database (or, if you provided one, variability data). A structure "
+                              "database can have no structure at all, for instance when MODELLER found no template "
+                              "for any of its genes.")
+
         # default gene is the first gene of interest
         self.profile_gene_variability_data(self.available_genes[0])
 

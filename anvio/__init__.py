@@ -1053,6 +1053,90 @@ D = {
              'help': "The directory path for your Pfam setup. Anvi'o will try to use the default path "
                      "if you do not specify anything."}
                 ),
+    'antismash-dir': (
+            ['--antismash-dir'],
+            {'default': None,
+             'type': str,
+             'metavar': 'DIR_PATH',
+             'help': "The directory antiSMASH is installed in (its conda environment), e.g. "
+                     "~/miniforge3/envs/antismash. You usually do NOT need this: anvi'o first looks for "
+                     "'antismash' on your PATH, and failing that automatically searches your conda "
+                     "environments for it. If anvi'o cannot find antiSMASH on its own, or if you have "
+                     "several antiSMASH installations and would like to point to a specific one you can "
+                     "use this flag."}
+                ),
+    'antismash-data-dir': (
+            ['--antismash-data-dir'],
+            {'default': None,
+             'type': str,
+             'metavar': 'DIR_PATH',
+             'help': "This points to the antiSMASH database and you only need this flag if you did not "
+                     "store the database in the default directory, in which case the program does not know "
+                     "where to look."}
+                ),
+    'antismash-taxon': (
+            ['--taxon'],
+            {'default': 'bacteria',
+             'type': str,
+             'choices': ['bacteria', 'fungi'],
+             'help': "Source organism kingdom for antiSMASH. Default: %(default)s. You can change it to fungi."}
+                ),
+    'antismash-add-on': (
+            ['--antismash-add-on'],
+            {'default': '',
+             'type': str,
+             'metavar': 'ANTISMASH_FLAGS',
+             'help': "Using this flag you can ask anvi-run-antismash to include additional analyses "
+                     "available in antiSMASH, including --fullhmmer, --clusterhmmer, --tigrfam, --pfam2go, "
+                     "--tfbs and --cassis. Please use the '=' form with quotes, e.g., --antismash-add-on=\"--fullhmmer --tfbs\", so "
+                     "they are not mistaken for flags of the anvi'o program itself. Flags "
+                     "anvi'o already sets for you (such as --cpus or --taxon) are not allowed here."}
+                ),
+    'include-detailed-antismash-output': (
+            ['--include-detailed-output'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "To include ClusterBlast and MIBiG analysis, smCOG trees as well as the per-region "
+                     "GenBank (.gbk) files (useful as input to tools like BiG-SCAPE), the raw JSON, and "
+                     "the comparison tabs. This slows down the analysis and generates quite a few files, "
+                     "but gives you a more comprehensive output of which we can't judge if it is useful "
+                     "to you or not."}
+                ),
+    'antismash-regions-output': (
+            ['--regions-output'],
+            {'default': None,
+             'type': str,
+             'metavar': 'FILE_PATH',
+             'help': "Can be used to set the path for the per-region dataframe. The default is to include "
+                     "it as antismash_regions.txt inside the report directory. This is only relevant if you "
+                     "run anvi-run-antismash on a single database, if you use an external-genomes.txt "
+                     "anvi-run-antismash creates individual directories automatically."}
+                ),
+    'antismash-work-dir': (
+            ['--work-dir'],
+            {'default': None,
+             'type': str,
+             'metavar': 'DIR_PATH',
+             'help': "You can use this directory to store the intermediates instead of a tempdir "
+                     "(helpful for debugging). This is only relevant if you run anvi-run-antismash on a "
+                     "single database."}
+                ),
+    'antismash-genes-matrix': (
+            ['--genes'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Build a per-gene matrix: rows are distinct gene signatures (role, function, "
+                     "smCOG and domains as separate columns), columns are genomes, and each cell is "
+                     "how many genes in that genome match the signature."}
+                ),
+    'antismash-regions-matrix': (
+            ['--regions'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Build a per-cluster matrix: rows are BGC product types (terpene, NRPS, ...), "
+                     "columns are genomes, and each cell is how many regions (clusters) of that type "
+                     "the genome has."}
+                ),
     'pdb-database-path': (
             ['--pdb-database-path'],
             {'default': None,
