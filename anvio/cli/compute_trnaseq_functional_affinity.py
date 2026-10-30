@@ -2585,7 +2585,13 @@ def load_codon_linkage_from_newick(args, subset_affinities_dict):
                 reindexed_info.append((normalization_method, reindexed_df))
     subset_affinities_dict[genome_name][source] = dict(reindexed_info)
 
-    codon_linkage = clustering.get_linkage_from_tree(codon_tree)
+    if len(pruned_leaf_labels) > 1:
+        codon_linkage = clustering.get_linkage_from_tree(codon_tree)
+    else:
+        run.warning(
+            f"Only one {'gene' if args.gene_affinity else 'function'} is plotted for the genome, "
+            f"{genome_name}, so the plot has no codon dendrogram.")
+        codon_linkage = None
 
     codon_linkage_dict = {}
     codon_linkage_dict[genome_name] = source_codon_linkage_dict = {}
@@ -2617,11 +2623,24 @@ def generate_codon_linkages(args, codon_frequency_dict, subset_affinities_dict):
             relative_codon_frequency_df = codon_frequency_df.div(
                 codon_frequency_df.sum(axis=1), axis=0)
 
+            if args.gene_affinity:
+                source_message = ""
+            elif args.compare_all_function_sources:
+                source_message = "from all function sources "
+            else:
+                source_message = f"from the function source, {source}, "
+
             # Displayed functions or genes selected by `--n-highest-affinity` and
             # `--n-lowest-affinity` can be a subset of those saved to file. The saved tree can be
             # pruned to different functions or genes of interest if reloaded when the program is
             # rerun for plotting.
-            if args.save_codon_trees:
+            if args.save_codon_trees and len(relative_codon_frequency_df) < 2:
+                run.warning(
+                    f"The genome, {genome_name}, has only one "
+                    f"{'gene' if args.gene_affinity else 'function'} {source_message}with codon "
+                    "frequencies, so no codon tree is saved for it.")
+                linkage_info_dict['save_linkage'] = None
+            elif args.save_codon_trees:
                 codon_linkage = hierarchy.linkage(
                     relative_codon_frequency_df,
                     method=args.codon_linkage_method,
@@ -2632,7 +2651,12 @@ def generate_codon_linkages(args, codon_frequency_dict, subset_affinities_dict):
                 linkage_info_dict['save_linkage'] = codon_linkage
                 linkage_info_dict['save_labels'] = leaf_labels
 
-            if args.plot_codon_dendrogram:
+            if args.plot_codon_dendrogram and len(subset_affinities_df) < 2:
+                run.warning(
+                    f"Only one {'gene' if args.gene_affinity else 'function'} {source_message}is "
+                    f"plotted for the genome, {genome_name}, so the plot has no codon dendrogram.")
+                linkage_info_dict['plot_linkage'] = None
+            elif args.plot_codon_dendrogram:
                 codon_linkage = hierarchy.linkage(
                     relative_codon_frequency_df.loc[subset_affinities_df.index],
                     method=args.codon_linkage_method,
@@ -2690,6 +2714,9 @@ def write_codon_newick_files(args, codon_linkage_dict):
     for genome_name, source_codon_linkage_dict in codon_linkage_dict.items():
         for source, linkage_info_dict in source_codon_linkage_dict.items():
             codon_linkage = linkage_info_dict['save_linkage']
+            if codon_linkage is None:
+                # A single function or gene has no tree.
+                continue
             labels = encode_newick_labels(linkage_info_dict['save_labels'])
 
             codon_tree = hierarchy.to_tree(codon_linkage)
