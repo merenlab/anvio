@@ -251,7 +251,29 @@ anvi-reorient-genomes --fasta-txt %(fasta-txt)s \
                       --output-dir REORIENTED-FASTA-FILES/
 {{ codestop }}
 
-This approach will use `prodigal` to call genes in the reference genome, use `hmmsearch` with the Bac_DnaA_C HMM profile from Pfam to identify the DnaA gene, rotate the reference to start at the DnaA gene position, then align all other genomes to this DnaA-oriented reference.
+This approach will use `prodigal` to call genes in the reference genome, use `hmmsearch` with the Bac_DnaA_C HMM profile from Pfam to identify the DnaA gene, rotate the reference so that it starts with the start codon of dnaA on the forward strand (reverse complementing it first if its DnaA gene sits on the reverse strand, which is how complete bacterial genomes are conventionally written), then align all other genomes to this DnaA-oriented reference.
+
+### Starting every genome at its own DnaA
+
+{:.notice}
+TL;DR: Best for **bacterial genomes** of any divergence, when all you want is every genome starting at dnaA. No reference, no alignments.
+
+Instead of aligning every genome to a DnaA-oriented reference, you can ask anvi'o to find the DnaA gene of **every genome on its own**, and start each genome there:
+
+{{ codestart }}
+anvi-reorient-genomes --fasta-txt %(fasta-txt)s \
+                      --use-dnaa-for-every-genome \
+                      --output-dir REORIENTED-FASTA-FILES/
+{{ codestop }}
+
+Every genome gets the same treatment, regardless of how similar it is to the others:
+
+* A genome that is **a single contig** is treated as a circle: it is reverse complemented if its DnaA gene is on the reverse strand, and rotated so that the start codon of dnaA becomes its first nucleotide.
+* In a genome with **more than one contig**, the contig that carries DnaA is **cut in two** at that start codon instead, since rotating a contig that may be a fragment of a draft genome would join its two ends, which are not neighbours. The piece that starts with dnaA becomes `<contig>_part2` and the one before it `<contig>_part1`; both are written first, in that order, in the orientation that puts dnaA on the forward strand. In other words, a contig `A - B - C - DnaA - E - F - G` becomes `DnaA - E - F - G` and `A - B - C`.
+* If your multi-contig genomes are **complete** (e.g., chromosomes with plasmids, or more than one chromosome), add `--dnaa-contigs-are-circular`, and the contigs that carry DnaA will be rotated just like single-contig genomes instead of being cut.
+* All other contigs, and genomes in which no DnaA gene is found, are written as they are (the latter are reported at the end).
+
+Since nothing is aligned to a reference, contigs of draft genomes are not ordered or oriented with this flag, which is why it can't be combined with `--reference`, `--use-auto-reference-as-is`, `--use-dnaa-for-reference-orientation`, `--scaffold-fragmented`, or `--keep-query-contigs-intact`. For complete genomes the two DnaA approaches end up at the same place: every genome starts with the start codon of dnaA on the forward strand.
 
 For the most up-to-date list of parameters and their default values, please see the help menu on your terminal.
 
@@ -263,7 +285,7 @@ Here is an example output for two circular genomes where the query nicely aligne
 
 ![](../../images/anvi-reorient-genomes-circular.png)
 
-The fact that 'Start in query' and 'Start in reference' is identical is great news, and shows that the program was able to set a start position that works perfectly. The high coverage alignment between the two is also great as it shows that you brough together genomes that are quite closely related. The approximate ANI says 100%%, and it is not to be trusted. For instance, the true ANI between these two genomes in this example is about 93%%. But since we are cutting corners using the `minimap2` aligned bits between the two, we really really overestimate the ANI value. It is useful, but please don't rely on the apprximate ANI reported here for anything serious.
+The fact that the start of the reference could be placed in the query is great news, and shows that the program was able to set a start position that works perfectly. The high coverage alignment between the two is also great as it shows that you brough together genomes that are quite closely related. The approximate ANI says 100%%, and it is not to be trusted. For instance, the true ANI between these two genomes in this example is about 93%%. But since we are cutting corners using the `minimap2` aligned bits between the two, we really really overestimate the ANI value. It is useful, but please don't rely on the apprximate ANI reported here for anything serious.
 
 ---
 
@@ -324,7 +346,7 @@ Here is a more detailed description of what is going on behind the scenes when y
 2. **Make sure every genome aligns to the reference**. Before doing any real work, the program aligns every genome in your %(fasta-txt)s to the reference with `minimap2`, and **stops with an error if any of them does not align to it at all**. See '*When your genomes do not align to the reference*' below for why this is an error rather than a warning, and what you can do about it.
 
 3. **Determine reference orientation**. The program uses one of three strategies to orient the reference genome:
-   - **DnaA-based orientation** (if `--use-dnaa-for-reference-orientation` is set): Calls genes with `prodigal`, searches for the DnaA gene using `hmmsearch` with the Bac_DnaA_C HMM profile, and rotates the reference to start at the DnaA gene position. This provides biologically meaningful orientation for bacterial genomes. This strategy takes precedence over the two below, and applies to a user-specified reference just as much as to an auto-selected one.
+   - **DnaA-based orientation** (if `--use-dnaa-for-reference-orientation` is set): Calls genes with `prodigal`, searches for the DnaA gene using `hmmsearch` with the Bac_DnaA_C HMM profile, and rotates the reference so that it starts with the start codon of dnaA on the forward strand (reverse complementing it first if necessary). This provides biologically meaningful orientation for bacterial genomes. This strategy takes precedence over the two below, and applies to a user-specified reference just as much as to an auto-selected one.
    - **De novo optimal position** (if reference is auto-selected without DnaA flag): Aligns each genome to the reference using minimap2 with `--secondary=yes -N 100 -p 0.5` to capture **all possible good alignments** (not just the best one). Builds a coverage map using 1,000 bp bins showing which positions are covered by alignments from each genome. Identifies the position with maximum coverage across all genomes (stopping early if it finds 100%% coverage). The reference is then rotated to start at this optimal position, ensuring all genomes will start at a conserved region that is genuinely shared across the dataset.
    - **User-specified reference** (if `--reference` is set without the DnaA flag): Uses the reference genome as-is without rotation.
    - **Auto-selected reference used as-is** (if `--use-auto-reference-as-is` is set): Auto-selects the reference (fewest contigs, longest total length) but skips any rotation, treating the auto-chosen genome exactly like a user-specified one.
@@ -333,11 +355,7 @@ Here is a more detailed description of what is going on behind the scenes when y
 
 4. **Initial alignment (reference vs query)**. Runs `minimap2` (preset `asm5`, with as many threads as you asked for using `--threads`) to align each query to the reference and identifies a primary anchor near reference position 0. If the anchor is on `-` strand, the query is reverse-complemented. The query is rotated so that reference position 0 maps onto the query (first snap).
 
-5. **Second alignment and snap**. Re-aligns the rotated query, finds the primary anchor with the smallest reference start, and rotates again to bring reference 0 onto the query (second snap).
-
-6. **Snap-to-zero with a ref0-focused anchor**. Aligns once again, picks the primary anchor closest to reference position 0, rotates, aligns once more, and applies a final snap so that reference position 0 maps to query position 0.
-
-7. **Iterative correction for perfect alignment**. After the final snap, the program checks if the alignment truly starts at position 0 in both the query and reference. If not (e.g., due to `minimap2` soft-clipping divergent regions), it calculates the necessary rotation, applies it, and re-aligns. This iterates up to 5 times or until the genomes are perfectly aligned at position 0.
+5. **Checking where the reference starts, and correcting it**. Re-aligns the rotated query, takes the primary `+` strand alignment block closest to reference position 0 (on either side of it, since the reference is a circle), and works out which query position the start of the reference aligns to. If that is not query position 0 (e.g., because the first alignment was soft-clipped), the query is rotated accordingly and checked again, up to 5 times. This follows the block at the *start* of the reference on purpose: the largest alignment block anywhere in the genome says nothing about where the reference starts as soon as the two genomes differ by an indel or a rearrangement between that block and the start.
 
 **For fragmented genomes (multi-contig MAGs or draft assemblies):**
 
@@ -359,7 +377,7 @@ Here is a more detailed description of what is going on behind the scenes when y
 
 11. **Write outputs**. Copies the reference %(fasta)s to the output directory (potentially rotated if auto-selected). Writes each reoriented query %(fasta)s under the same name (and using the original extension).
 
-12. **Report per-genome stats and alignment plots**. For each genome, the program reports the orientation outcome (whether it was `TRUSTWORTHY`, `SOMEWHAT OK`, or `NOT TRUSTWORTHY`, based on alignment coverage and, for fragmented genomes, on whether the resulting contig layout follows the reference), many other statistics, and synteny ribbon plots showing the alignment patterns before and after reorientation to visualize orientation quality.
+12. **Report per-genome stats and alignment plots**. For each genome, the program reports the orientation outcome (whether it was `TRUSTWORTHY`, `SOMEWHAT OK`, or `NOT TRUSTWORTHY`, based on alignment coverage and, for circular genomes, on whether the start of the reference could be placed in them, or for fragmented genomes, on whether the resulting contig layout follows the reference), many other statistics, and synteny ribbon plots showing the alignment patterns before and after reorientation to visualize orientation quality.
 
 13. **Final report**. Summarizes the number of genomes in different trust categories along their output FASTA paths for the user to decide which outputs are safe for downstream analyses.
 
@@ -368,7 +386,7 @@ Here is a more detailed description of what is going on behind the scenes when y
 
 * **Interpreting "Start in query" and "Start in reference" (circular genomes only)**: These numbers show where `minimap2` primary alignments begin. **When both values are equal** (e.g., both 61), your genomes are correctly aligned at the same biological position. The small offset is just natural sequence variation in the first few dozen base pairs since `minimap2` soft-clips divergent regions at the beginning. In fact, Meren was so concerned about it, he triple-checked this, and discovered that despite differences in offsets across genomes, the amino acid sequences of the first genes in every aligned genome was identical even though their 'start' positions in individual genomes differed. So that's that. But **when the values differ** (e.g., query=0, reference=106), the alignment may have issues and the genome might not be well-oriented.
 
-* **Interpreting trust labels**: For circular genomes, low coverage (either genome covered <50%%) yields `NOT TRUSTWORTHY`. For fragmented genomes, the label considers both reference coverage and the percentage of contigs that aligned. This often means the genome is too divergent or structurally different to reorient confidently. Check the alignment plots and stats before using such outputs. Genomes with `TRUSTWORTHY` labels are safe for downstream comparative analyses.
+* **Interpreting trust labels**: For circular genomes, a genome in which the start of the reference could not be placed (no alignment block within 10 kbp of it) is `NOT TRUSTWORTHY`, and so is one with low coverage (the two genomes covered <50%% on average, counting every primary alignment block, not just the largest one; coverage below 90%% yields `SOMEWHAT OK`). For fragmented genomes, the label considers both reference coverage and the percentage of contigs that aligned. This often means the genome is too divergent or structurally different to reorient confidently. Check the alignment plots and stats before using such outputs. Genomes with `TRUSTWORTHY` labels are safe for downstream comparative analyses.
 
 * **A fragmented genome is also `NOT TRUSTWORTHY` when one of its contigs spans the entire reference**, no matter how good its coverage and ANI are. Coverage, ANI, and the fraction of contigs that aligned all describe how well *sequences* align, and they don't really say nothing about whether the contigs ended up in the right *order* in the output FASTA file. If the user prevented anvi'o to cuts or rotate contigs when needed (i.e., by using `--keep-query-contigs-intact`), and/or when the order is broken despite the best attempts of this program, the genome will be marked NOT TRUSTWORTHY, and anvi'o will print out various warnings in the output to name and shame those contigs:
 
