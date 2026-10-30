@@ -2129,9 +2129,9 @@ def get_general_codon_frequencies(args, affinities_dict):
     else:
         sources = []
         for source_dict in codon_frequency_dict.values():
-            for source, normalization_dict in source_dict.items():
+            for source, codon_frequency_df in source_dict.items():
                 if source == 'all_functions':
-                    sources += normalization_dict['raw'].index.get_level_values(
+                    sources += codon_frequency_df.index.get_level_values(
                         'function_source').unique().tolist()
                 else:
                     sources.append(source)
@@ -2264,20 +2264,20 @@ def generate_general_codon_frequencies(args, affinities_dict):
                 gene_caller_ids = None
                 function_accession_dict = {}
                 function_name_dict = {}
-                for source, accession, name in zip(
+                for function_source, accession, name in zip(
                     affinities_df['function_source'],
                     affinities_df['function_accession'],
                     affinities_df['function_name']):
                     try:
-                        function_accession_dict[source].append(accession)
+                        function_accession_dict[function_source].append(accession)
                     except KeyError:
-                        function_accession_dict[source] = [accession]
+                        function_accession_dict[function_source] = [accession]
                     try:
-                        function_name_dict[source].append(name)
+                        function_name_dict[function_source].append(name)
                     except KeyError:
-                        function_name_dict[source] = [name]
+                        function_name_dict[function_source] = [name]
             if isinstance(codon_usage, codonusage.SingleGenomeCodonUsage) and not args.gene_affinity:
-                codon_args.function_sources = [source]
+                codon_args.function_sources = list(function_accession_dict)
                 codon_usage = codonusage.SingleGenomeCodonUsage(codon_args, r=run_quiet)
             if isinstance(codon_usage, codonusage.SingleGenomeCodonUsage):
                 codon_frequency_df = codon_usage.get_frequencies(
