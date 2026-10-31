@@ -1047,6 +1047,12 @@ class VariabilitySuper(VariabilityFilter, object):
             raise ConfigError("Well well well. It seems SNVs were not characterized for this profile database. "
                                "Sorry, there is nothing to report here!")
 
+        if not profile_db.meta.get('SNVs_stored', 1):
+            self.progress.end()
+            raise ConfigError("SNVs were characterized for this profile database, but it was generated with "
+                              "`--skip-SNV-storage`, so the per-position SNV rows were not stored. There is nothing "
+                              "to report here (the split-level 'variability' view is still available).")
+
         profile_db.disconnect()
         self.progress.end()
 
