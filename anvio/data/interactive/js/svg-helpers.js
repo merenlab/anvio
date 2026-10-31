@@ -907,6 +907,16 @@ function createGradient(svg,id,stops){
 }
 
 
+function getDivergingGradientColor(start_color, mid_color, end_color, percent) {
+    // three-stop gradient: start_color at 0, mid_color at 0.5, end_color at 1
+    if (percent <= 0.5) {
+        return getGradientColor(start_color, mid_color, percent * 2);
+    } else {
+        return getGradientColor(mid_color, end_color, (percent - 0.5) * 2);
+    }
+}
+
+
 function getGradientColor(start_color, end_color, percent) {
    // strip the leading # if it's there
    start_color = start_color.replace(/^\s*#|\s*$/g, '');
