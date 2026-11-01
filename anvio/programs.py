@@ -200,6 +200,10 @@ class AnvioPrograms(AnvioAuthors):
             raise ConfigError("The pyproject.toml is there, but it does not seem to contain any entry points. This "
                               "function needs an adult to figure this out :(")
 
+        # we keep the entry points themselves, too, so programs can be loaded without running them
+        # (i.e., to learn about their parameters)
+        self.program_entry_points = dict(entry_points)
+
         # turn entry point entries into program name / absolute path pairs
         for entry_point in entry_points:
             program_name = entry_point
