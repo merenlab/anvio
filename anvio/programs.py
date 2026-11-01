@@ -27,21 +27,8 @@ __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
 
-J = lambda x: '\n'.join(x) if x else ''
-
 run = terminal.Run()
 progress = terminal.Progress()
-
-
-def get_until_blank(output):
-    section = []
-    while 1:
-        if output[0] == '':
-            break
-        else:
-            section.append(output.pop(0))
-
-    return section
 
 
 def get_meta_information_from_file(file_path, meta_tag):
@@ -71,74 +58,6 @@ def get_meta_information_from_file(file_path, meta_tag):
         return eval(meta_tag_content.split('=')[1].strip())
     else:
         return []
-
-
-def get_param_set(output):
-    if output[0] in ['optional arguments:', 'positional arguments:']:
-        section = output.pop(0)
-        desc = ''
-        _params = J([p for p in get_until_blank(output) if not p.startswith('  -h, --help')])
-    else:
-        output.pop(0)
-        section = output.pop(0)
-
-        if section.startswith('━'):
-            return None, None, None
-
-        if output[0].startswith('  -'):
-            # no description, goes into params immediately (someone did a crappy job)
-            desc = ''
-        else:
-            desc = get_until_blank(output)
-            output.pop(0)
-
-        _params = J(get_until_blank(output))
-
-    return section, desc, _params
-
-
-def skip_until_usage(output):
-    while 1:
-        if not len(output):
-            return
-
-        if output[0].startswith('usage:'):
-            return
-
-        output.pop(0)
-
-
-def parse_help_output(output):
-    skip_until_usage(output)
-
-    if not len(output):
-        raise ConfigError("This is not the help menu output we are looking for.")
-
-    if not output[0].startswith('usage:'):
-        raise ConfigError("This output does not seem to have the proper usage statement.")
-
-    usage = J([l for l in get_until_blank(output)])
-
-    if output.pop(0) != '':
-        raise ConfigError("This output is missing the description start marker.")
-
-    params = {}
-    while 1:
-        if not len(output):
-            break
-
-        section, desc, _params = get_param_set(output)
-
-        if section == None:
-            break
-
-        if _params == '':
-            pass
-        else:
-            params[section] = {'description': J(desc),
-                               'params': _params}
-
-    return usage,  params, output
 
 
 class AnvioPrograms(AnvioAuthors):
@@ -280,6 +199,10 @@ class AnvioPrograms(AnvioAuthors):
         if not entry_points:
             raise ConfigError("The pyproject.toml is there, but it does not seem to contain any entry points. This "
                               "function needs an adult to figure this out :(")
+
+        # we keep the entry points themselves, too, so programs can be loaded without running them
+        # (i.e., to learn about their parameters)
+        self.program_entry_points = dict(entry_points)
 
         # turn entry point entries into program name / absolute path pairs
         for entry_point in entry_points:

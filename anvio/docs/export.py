@@ -461,6 +461,7 @@ class HelpPagesRenderer:
                  'meta': {'summary_type': 'program',
                           'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in self.dataset.meta.versions]),
                           'date': self.dataset.meta.date,
+                          'anvio_version': self.dataset.meta.version,
                           'version_short_identifier': self.version_short_identifier}
                 }
 
@@ -476,6 +477,8 @@ class HelpPagesRenderer:
             d['program']['can_provide'] = program_provides_requires_dict[program_name]['can_provide']
             d['program']['icon'] = '../../images/icons/%s.png' % 'PROGRAM'
             d['program']['authors'] = self.get_HTML_formatted_authors_data(program.authors)
+            d['program']['command_line_usage'] = program.command_line_usage
+            d['program']['parameter_groups'] = [asdict(group) for group in program.parameter_groups]
             d['artifacts'] = self.artifacts_info
             d['workflows'] = {name: asdict(workflow) for name, workflow in self.workflows.items()}
 

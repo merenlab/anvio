@@ -1,6 +1,8 @@
 """Collect documentation from CLI metadata, source registries, Markdown, and images."""
 
 import os
+import sys
+import argparse
 from pathlib import Path
 
 import anvio
@@ -15,11 +17,14 @@ from anvio.docs.data import (
     BuildMetadata,
     DocumentationAsset,
     DocumentationData,
+    ParameterGroup,
     ProgramDocumentation,
+    ProgramParameter,
     ThirdPartyProgram,
     WorkflowDocumentation,
 )
 from anvio.errors import ConfigError
+from anvio.argparse import get_parser_for_program
 from anvio.programs import AnvioPrograms, AnvioArtifacts, AnvioWorkflows
 
 
@@ -84,10 +89,85 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
             return source.read()
 
 
+    def get_JSON_value(self, value):
+        """Turns parameter defaults and choices into values JSON can hold and read back as they were"""
+
+        if value is None or isinstance(value, (bool, int, float, str)):
+            return value
+        elif isinstance(value, (set, frozenset)):
+            return sorted([self.get_JSON_value(v) for v in value], key=str)
+        elif isinstance(value, (list, tuple, range, type({}.keys()))):
+            return [self.get_JSON_value(v) for v in value]
+        else:
+            return str(value)
+
+
+    def get_command_line_parameters(self, program_name):
+        """Returns the usage line and the parameter groups of a program, as its argument parser describes them.
+
+        The parser comes from `get_parser_for_program`, which learns it without running the program.
+        Programs without a parser we can reach (such as the non-Python scripts, or retired programs
+        that refuse to run) get no usage line and an empty list of parameter groups.
+        """
+
+        entry_point = self.program_entry_points.get(program_name)
+        parser = get_parser_for_program(program_name, entry_point) if entry_point else None
+
+        if not parser:
+            return None, []
+
+        # the width is set to the maximum so the usage line does not depend on the terminal of the
+        # person who happens to generate the documentation
+        formatter = argparse.HelpFormatter(parser.prog, width=sys.maxsize)
+        formatter.add_usage(parser.usage, parser._actions, parser._mutually_exclusive_groups, prefix='')
+        command_line_usage = formatter.format_help().strip()
+
+        parameter_groups = []
+        for group in parser._action_groups:
+            parameters = []
+            for action in group._group_actions:
+                # the help flag is the same for every program, and the parameters whose help is
+                # suppressed are hidden from users on purpose
+                if isinstance(action, (argparse._HelpAction, argparse._VersionAction)) or action.help == argparse.SUPPRESS:
+                    continue
+
+                # this fills in things like `%(default)s` the same way `--help` would
+                try:
+                    help_text = formatter._expand_help(action) if action.help else ''
+                except (KeyError, TypeError, ValueError):
+                    help_text = action.help
+
+                metavar = ' '.join(action.metavar) if isinstance(action.metavar, tuple) else action.metavar
+
+                parameters.append(ProgramParameter(flags=list(action.option_strings),
+                                                   dest=action.dest,
+                                                   help=' '.join(help_text.split()),
+                                                   metavar=metavar,
+                                                   default=None if action.default is argparse.SUPPRESS else self.get_JSON_value(action.default),
+                                                   choices=None if action.choices is None else self.get_JSON_value(action.choices),
+                                                   required=action.required,
+                                                   takes_value=action.nargs != 0,
+                                                   nargs=action.nargs))
+
+            if parameters:
+                parameter_groups.append(ParameterGroup(title=group.title,
+                                                       description=' '.join(group.description.split()) if group.description else None,
+                                                       parameters=parameters))
+
+        return command_line_usage, parameter_groups
+
+
     def collect(self) -> DocumentationData:
         """Capture help records without presentation changes or inferred provenance."""
         programs: dict[str, ProgramDocumentation] = {}
+        programs_without_parameters = []
+        self.progress.new('Learning program parameters', progress_total_items=len(self.programs))
         for name, program in self.programs.items():
+            self.progress.update(name, increment=True)
+            command_line_usage, parameter_groups = self.get_command_line_parameters(name)
+            if command_line_usage is None:
+                programs_without_parameters.append(name)
+
             metadata = program.meta_info
             programs[name] = ProgramDocumentation(
                 id=f'program:{name}', kind='program', name=name,
@@ -104,7 +184,18 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
                 provides=[artifact.id for artifact in metadata['provides']['value']],
                 can_use=[artifact.id for artifact in metadata['can_use']['value']],
                 can_provide=[artifact.id for artifact in metadata['can_provide']['value']],
+                command_line_usage=command_line_usage,
+                parameter_groups=parameter_groups,
             )
+        self.progress.end()
+
+        if programs_without_parameters:
+            self.run.info_single(f"Anvi'o could not learn the command line parameters of {len(programs_without_parameters)} "
+                                 f"of {len(self.programs)} programs, so their help pages will not list any. These are "
+                                 f"usually programs that are not written in Python, or retired programs that only tell "
+                                 f"their users what to use instead: {', '.join(sorted(programs_without_parameters))}.",
+                                 nl_after=1, nl_before=1)
+
         artifacts = {
             name: ArtifactDocumentation(
                 id=f'artifact:{name}', kind='artifact', name=artifact['name'],

@@ -11,6 +11,7 @@ import json
 from dataclasses import asdict, dataclass, field
 from functools import cached_property
 from pathlib import Path
+from typing import Any
 
 import anvio.filesnpaths as filesnpaths
 
@@ -42,6 +43,33 @@ class DocumentRecord:
 
 
 @dataclass(frozen=True, kw_only=True)
+class ProgramParameter:
+    """A single command line parameter of a program, as its argument parser describes it.
+
+    `flags` is empty for positional arguments. `default` and `choices` hold JSON values, and
+    `nargs` is what argparse uses to describe the number of values (0 for flags that take none,
+    None for exactly one, or an integer, '?', '*', or '+').
+    """
+
+    flags: list[str]
+    dest: str
+    help: str
+    metavar: str | None
+    default: Any
+    choices: list[Any] | None
+    required: bool
+    takes_value: bool
+    nargs: int | str | None
+
+
+@dataclass(frozen=True, kw_only=True)
+class ParameterGroup:
+    title: str
+    description: str | None
+    parameters: list[ProgramParameter]
+
+
+@dataclass(frozen=True, kw_only=True)
 class ProgramDocumentation(DocumentRecord):
     name: str
     source_path: str
@@ -54,6 +82,8 @@ class ProgramDocumentation(DocumentRecord):
     provides: list[str]
     can_use: list[str]
     can_provide: list[str]
+    command_line_usage: str | None
+    parameter_groups: list[ParameterGroup]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -152,6 +182,9 @@ class DocumentationData:
             data["meta"]["versions"] = [(name, version) for name, version in data["meta"]["versions"]]
             for record in data["programs"].values():
                 record["resources"] = [(label, url) for label, url in record["resources"]]
+                record["parameter_groups"] = [ParameterGroup(title=group["title"], description=group["description"],
+                                                             parameters=[ProgramParameter(**parameter) for parameter in group["parameters"]])
+                                              for group in record["parameter_groups"]]
             for record in data["workflows"].values():
                 record["third_party_programs_used"] = [(operation, programs) for operation, programs in record["third_party_programs_used"]]
 
