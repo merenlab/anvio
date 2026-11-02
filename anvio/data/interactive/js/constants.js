@@ -387,6 +387,15 @@ var named_layers = {
         'type': 'bar',
         'pretty_name': 'Min AAI',
     },
+    'AAI_min_nonzero': {
+        'height': 180,
+        'color': '#9e009e',
+        'norm': 'none',
+        'min': 0,
+        'max': 1,
+        'type': 'bar',
+        'pretty_name': 'Min non-zero AAI',
+    },
     'AAI_max': {
         'height': 180,
         'color': '#9e009e',
@@ -530,6 +539,48 @@ var named_layers = {
         'norm': 'none',
         'pretty_name': '_',
     },
+    'gene_types!core': {
+        'height': 200,
+        'color': '#440000',
+        'norm': 'none',
+        'min': 0,
+        'max': 100,
+        'max_disabled': false,
+        'min_disabled': false,
+        'pretty_name': 'Gene Types',
+        'type': 'bar'
+    },
+    'gene_types!singleton': {
+        'height': 200,
+        'color': '#440000',
+        'norm': 'none',
+        'min': 0,
+        'max': 100,
+        'max_disabled': false,
+        'min_disabled': false,
+        'pretty_name': 'Gene Types',
+        'type': 'bar'
+    },
+    'gene_types!accessory': {
+        'height': 200,
+        'color': '#440000',
+        'norm': 'none',
+        'min': 0,
+        'max': 100,
+        'max_disabled': false,
+        'min_disabled': false,
+        'pretty_name': 'Gene Types',
+        'type': 'bar'
+    },
+    'psgc_composition': {
+        'type': 'bar',
+        'pretty_name': 'Gene Types in PSGC'
+    },
+    'number_gc_in_psgc': {
+        'height': 200,
+        'color': '#ffa60d',
+        'pretty_name': 'Num GC in PSGC'
+    },
 };
 
 named_category_colors = {
@@ -551,6 +602,15 @@ named_category_colors = {
     'DISC'            : '#BCC8CC',
     'CORE'            : '#00AA00',
     'ACCESSORY'       : '#AA0000',
+    'core'            : '#00AA00',
+    'singleton'       : '#888888',
+    'accessory'       : '#AA0000',
+    'comp_core'       : '#CC7A00',
+    'comp_accessory'  : '#E8B866',
+    'comp_singleton'  : '#F5E0BB',
+    'fragmented'      : '#E8A838',
+    'combined'        : '#CC7A00',
+    'missing_genes'   : '#996633',
 };
 
 function getNamedCategoryColor(name)
@@ -573,6 +633,12 @@ pretty_names = {
 };
 
 function getPrettyLayerTitle(layer_title) {
+    if (layer_title.indexOf('!') > -1 )
+    {
+        layer_title = layer_title.split('!')[0];
+    }
+
+
     if (layer_title in named_layers && 'pretty_name' in named_layers[layer_title]) {
         layer_title = named_layers[layer_title]['pretty_name'];
     } else if(layer_title.substring(0, 5) == "hmmx_") {
@@ -581,11 +647,6 @@ function getPrettyLayerTitle(layer_title) {
         layer_title = layer_title.replace(/hmms_/g, "").replace(/_/g, " ");
     } else {
         layer_title = layer_title.replace(/_/g, " ");
-    }
-
-    if (layer_title.indexOf('!') > -1 )
-    {
-        layer_title = layer_title.split('!')[0];
     }
 
     return layer_title;
@@ -678,6 +739,22 @@ function getNamedLayerDefaults(layer, attribute, default_value, group)
     if (layer.substring(0, 6) == "motif_") {
         if (attribute == 'norm')   return 'none';
         if (attribute == 'color')  return '#222288';
+    }
+
+    /* Compare-pan layers: warm amber gradient (deepest inner → lightest outer) */
+    if (layer.indexOf('_composition!') > -1) {
+        if (attribute == 'height') return '180';
+    }
+    if (layer.endsWith('_num_GCs')) {
+        if (attribute == 'color')  return '#CC7A00';
+        if (attribute == 'norm')   return 'none';
+    }
+    if (layer.endsWith('_composition_evenness')) {
+        if (attribute == 'color')  return '#CC7A00';
+        if (attribute == 'norm')   return 'none';
+        if (attribute == 'min')    return 0;
+        if (attribute == 'max')    return 1;
+        if (attribute == 'type')   return 'bar';
     }
 
     if (layer in named_layers)
