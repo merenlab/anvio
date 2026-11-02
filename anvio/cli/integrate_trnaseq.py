@@ -2,12 +2,15 @@
 """Integrate tRNA-seq with (meta)genomic data, relating tRNA-seq seeds to tRNA genes"""
 
 
+import sys
+import shutil
+
 import anvio
 import anvio.terminal as terminal
 import anvio.genomictrnaseq as genomictrnaseq
 
 from anvio.argparse import ArgumentParser
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, FilesNPathsError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -29,23 +32,35 @@ run = terminal.Run()
 
 def main():
     args = get_args()
-    if args.list_genomes:
-        integrated_genome_dict = genomictrnaseq.Integrator.get_integrated_genomes(
-            args.trnaseq_contigs_db)
-        print_genomes(integrated_genome_dict)
-        return
 
-    sanity_check(args)
+    try:
+        if args.list_genomes:
+            integrated_genome_dict = genomictrnaseq.Integrator.get_integrated_genomes(
+                args.trnaseq_contigs_db)
+            print_genomes(integrated_genome_dict)
+            return
 
-    permuter = genomictrnaseq.SeedPermuter(args)
-    integrator = genomictrnaseq.Integrator(args)
+        sanity_check(args)
 
-    # Permute tRNA-seq seed sequences at positions with predicted modifications.
-    permuter.go()
+        permuter = genomictrnaseq.SeedPermuter(args)
+        integrator = genomictrnaseq.Integrator(args)
 
-    # Relate seeds to (meta)genomic tRNA genes.
-    integrator.permuted_seeds_fasta_path = permuter.permuted_seeds_fasta_path
-    integrator.go()
+        # Permute tRNA-seq seed sequences at positions with predicted modifications.
+        permuter.go()
+
+        # Relate seeds to (meta)genomic tRNA genes.
+        integrator.permuted_seeds_fasta_path = permuter.permuted_seeds_fasta_path
+        integrator.go()
+
+        # Remove the temporary directory of permuted seeds, which BLAST needed until now.
+        if permuter.tmp_dir:
+            shutil.rmtree(permuter.tmp_dir)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
 def get_args():
@@ -80,7 +95,11 @@ def get_args():
         "ID. "
         "(4) Internal genomes, or a list of metagenomic bins (can be used with external genomes). "
         "(5) External genomes, or a list of contigs databases representing genomes (can be used "
-        "with internal genomes).")
+        "with internal genomes). "
+        "With bins (2-4), seeds are matched against all tRNA genes in the contigs databases, so "
+        "that a seed better matching a gene outside the bins is not assigned to a gene in a bin, "
+        "but only matches to genes in the bins are stored, unless the contigs database is also "
+        "given as an external genome.")
     group1B.add_argument(
         *anvio.A('contigs-db'), **anvio.K('contigs-db', {
             'required': False,
@@ -135,7 +154,8 @@ def get_args():
         '-x', '--max-mismatches', metavar='INT', type=int,
         default=genomictrnaseq.Integrator.default_max_mismatches,
         help="The maximum number of mismatches allowed in a gapless alignment between a permuted "
-             "or non-permuted tRNA-seq seed and a tRNA gene.")
+             "or non-permuted tRNA-seq seed and a tRNA gene. Mismatches are counted over the whole "
+             "length of the seed, including its 5' and 3' ends.")
     group1D.add_argument(
         '-f', '--full-gene', default=False, action='store_true',
         help="Use this flag to only retain tRNA-seq seeds that align with a full tRNA gene, "
@@ -143,37 +163,42 @@ def get_args():
     group1D.add_argument(
         '--unambiguous-genome-assignment', default=False, action='store_true',
         help="Use this flag to prevent tRNA-seq seeds from being assigned to tRNA genes in "
-             "multiple genomes or in a single genome and unbinned contigs. Consider what happens "
-             "with two bins. With this flag, if a seed matches genes in both bins, the seed is "
-             "disregarded; if a seed matches genes in one bin and also matches genes in unbinned "
-             "contigs, the seed is also disregarded. The seed can only match one or more genes in "
-             "a single bin. Note that running this program again without this flag appends new "
-             "seed/gene assignments to existing ones in the database. With this flag, new results "
-             "cannot be appended to existing ones and an error is thrown (unless "
-             "`--remove-previous-matches` is used to discard existing assignments).")
+             "multiple genomes or in a single genome and unbinned contigs. Each gene is assigned "
+             "the seed that best matches it. Consider what happens with two bins. With this flag, "
+             "if a seed is assigned to genes in both bins, the seed is disregarded; if a seed is "
+             "assigned to genes in one bin and also to genes in unbinned contigs, the seed is also "
+             "disregarded. The seed can only be assigned to one or more genes in a single bin. "
+             "This flag requires bins, internal genomes, or external genomes: a contigs database "
+             "alone is treated as a single (meta)genome. Note that running this program again "
+             "without this flag appends new seed/gene assignments to existing ones in the "
+             "database. With this flag, new results cannot be appended to existing ones and an "
+             "error is thrown (unless `--remove-previous-matches` is used to discard existing "
+             "assignments).")
 
     group1E = parser.add_argument_group(
         'TEMPORARY FILES',
         "By default, temporary files are produced: "
         "(1) A FASTA file of permuted tRNA-seq seed sequences and "
         "(2) BLAST databases and output tables from searching permuted seeds against tRNA genes. "
-        "The global anvi'o option, `--tmp-dir`, allows the user to provide a single output "
-        "directory for all of these. Alternatively, program-specific options give more control "
-        "over temp file storage.")
+        "Each run writes these to new directories in the system's temporary directory, or in the "
+        "directory given by the global anvi'o option, `--tmp-dir`, and removes them after "
+        "finishing successfully. Alternatively, program-specific options give more control "
+        "over temp file storage, and files written to paths given by these options are kept.")
     group1E.add_argument(
         '-u', '--permuted-seeds-fasta', metavar='FILE_PATH', type=str, default=None,
         help="FASTA file of original and permuted tRNA-seq seed sequences.")
     group1E.add_argument(
         '-d', '--blast-dir', metavar='DIRECTORY_PATH', type=str, default=None,
         help="Directory to store BLAST databases and tables generated in searching original and "
-             "permuted seeds against tRNA genes.")
+             "permuted seeds against tRNA genes. The directory is created if it does not exist.")
 
     group1F = parser.add_argument_group('OTHER')
     group1F.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     group1F.add_argument(
         '-r', '--remove-previous-matches', default=False, action='store_true',
         help="Remove existing tRNA-seq seed assignments to tRNA genes in the tRNA-seq contigs "
-             "database.")
+             "database. Without this flag, new assignments are appended to existing ones, "
+             "replacing any existing assignments to the genomes being integrated.")
 
     group2 = parser.add_argument_group('INFO')
     group2.add_argument(
@@ -238,14 +263,13 @@ def print_genomes(integrated_genome_dict):
             continue
 
         for profile_db_sample_id, collections_dict in profile_db_dict.items():
-            run.info_single(
-                f"Profile database sample ID: {profile_db_sample_id}", cut_after=0, level=2)
-
             for collection_name, bin_ids in collections_dict.items():
-                run.info_single(f"Collection name: {collection_name}", cut_after=0, level=3)
+                run.info_single(
+                    f"Profile database sample ID: {profile_db_sample_id} ; Collection name: "
+                    f"{collection_name}", cut_after=0, level=2)
 
-                for bin_id in bin_ids:
-                    run.info_single(f"Bin ID: {bin_id}", cut_after=0, level=4)
+                for bin_id in sorted(bin_ids):
+                    run.info_single(f"Bin ID: {bin_id}", cut_after=0, level=3)
     print()
 
 

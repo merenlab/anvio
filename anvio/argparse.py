@@ -1,15 +1,17 @@
 """Overloading Python argparse for anvi'o purposes"""
 
+import io
 import os
 import sys
 import argparse
 import textwrap
+import importlib
+import contextlib
 
 from colored import fg, attr
 from rich_argparse import RichHelpFormatter
 
 import anvio
-import anvio.docs as docs
 import anvio.terminal as terminal
 
 from anvio.programs import Program
@@ -109,7 +111,7 @@ class ArgumentParser(argparse.ArgumentParser):
         general_help = f"https://anvio.org/help/{version}"
         program_help = f"{general_help}/programs/{self.prog}"
 
-        if os.path.exists(os.path.join(os.path.dirname(docs.__file__), f"programs/{self.prog}.md")):
+        if os.path.exists(os.path.join(anvio.DOCS_PATH, f"programs/{self.prog}.md")):
             if atty:
                 epilog += f'''\n🍺 {attr('bold')}More on `{self.prog}`:{attr('reset')}\n\n   {fg('cyan') + program_help + attr('reset')}'''
             else:
@@ -314,6 +316,68 @@ class ArgumentParser(argparse.ArgumentParser):
             parser.parse_args()
 
         return args
+
+
+class ParserHandedOver(BaseException):
+    """Carries the parser of a program out of its `main` function, see `get_parser_for_program`.
+
+    This is a `BaseException` rather than an `Exception` on purpose, so the `try` / `except`
+    blocks in programs do not catch it before it reaches us.
+    """
+
+    def __init__(self, parser):
+        super().__init__()
+        self.parser = parser
+
+
+def get_parser_for_program(program_name, entry_point):
+    """Returns the argument parser of an anvi'o program without running the program.
+
+    Every anvi'o program builds its parser in its `main` function, and then asks it to parse the
+    command line before doing anything else. So here we call the entry point of the program after
+    replacing `parse_known_args` (which `parse_args` and our own `get_args` call, too) with a function
+    that hands over the parser instead of parsing anything. The program stops exactly at the moment
+    its parameters are fully described, and nothing else in it runs.
+
+    Parameters
+    ==========
+    program_name : str
+        The name of the program, such as `anvi-gen-contigs-database`, which argparse uses as `prog`.
+    entry_point : str
+        The entry point of the program as it appears in `pyproject.toml`, such as
+        `anvio.cli.gen_contigs_database:main`.
+
+    Returns
+    =======
+    parser : argparse.ArgumentParser or None
+        The parser of the program, or None if the program stopped before parsing anything (which
+        is what retired programs do when they tell their users which program to use instead).
+    """
+
+    module_name, function_name = entry_point.split(':')
+
+    def hand_over_the_parser(parser, args=None, namespace=None):
+        raise ParserHandedOver(parser)
+
+    original_parse_known_args = argparse.ArgumentParser.parse_known_args
+    original_argv = sys.argv
+
+    argparse.ArgumentParser.parse_known_args = hand_over_the_parser
+    sys.argv = [program_name]
+    try:
+        # programs are not expected to say anything before parsing their arguments, but the
+        # ones that do should not leak their messages into the output of whoever is asking
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            getattr(importlib.import_module(module_name), function_name)()
+    except ParserHandedOver as handover:
+        return handover.parser
+    except (Exception, SystemExit):
+        return None
+    finally:
+        argparse.ArgumentParser.parse_known_args = original_parse_known_args
+        sys.argv = original_argv
+
+    return None
 
 
 class PopulateAnvioDBArgs(FindAnvioDBs):
