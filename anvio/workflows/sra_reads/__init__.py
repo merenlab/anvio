@@ -198,12 +198,20 @@ class SRAReadsModule:
         single_end = sorted(a for a, e in self.sra_metadata.items() if e['read_type'] == sra.SINGLE_END_SHORT_READS)
 
         if single_end:
-            details = '\n'.join(f"    {a} ({self.sra_metadata[a]['platform']}, "
-                                f"{self.sra_metadata[a]['model']})" for a in single_end[:10])
+            num_shown = 10
+            details = ', '.join(f"{a} ({self.sra_metadata[a]['platform']} {self.sra_metadata[a]['model']})"
+                                for a in single_end[:num_shown])
+
+            if len(single_end) > num_shown:
+                listing = (f"Here are the first {num_shown} of them: {details}, and {len(single_end) - num_shown} "
+                           f"more (all {len(single_end)} must go, not only the ones listed here).")
+            else:
+                listing = f"Here {'they are' if len(single_end) > 1 else 'it is'}: {details}."
+
             raise ConfigError(f"{terminal.pluralize('accession', len(single_end))} in '{samples_txt_path}' "
                               f"{'are' if len(single_end) > 1 else 'is'} single-end short reads, and the anvi'o "
-                              f"metagenomics workflow does not handle those at this point in time. Here "
-                              f"{'they are' if len(single_end) > 1 else 'it is'}:\n\n{details}\n\n"
+                              f"metagenomics workflow does not handle those at this point in time. "
+                              f"{listing} "
                               f"To go ahead with the rest of your samples, please remove "
                               f"{'these accessions' if len(single_end) > 1 else 'this accession'} from your "
                               f"samples-txt file. Anvi'o is sorry to be the bearer of this news, and would rather "

@@ -12,6 +12,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
+from anvio.workflows.structure import StructureModule
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -22,7 +23,7 @@ __maintainer__ = "Alon Shaiber"
 __email__ = "alon.shaiber@gmail.com"
 
 
-class ContigsDBWorkflow(WorkflowSuperClass):
+class ContigsDBWorkflow(StructureModule, WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.init_workflow_super_class(args, workflow_name='contigs')
 
@@ -44,8 +45,11 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                            'anvi_script_run_eggnog_mapper', 'reformat_external_gene_calls_table',
                            'reformat_external_functions', 'import_external_functions', 'anvi_run_pfams', 'anvi_run_kegg_kofams'])
 
+        StructureModule.__init__(self)
+
         self.dirs_dict.update({"FASTA_DIR": "01_FASTA",
-                               "CONTIGS_DIR": "02_CONTIGS"})
+                               "CONTIGS_DIR": "02_CONTIGS",
+                               "STRUCTURE_DIR": "03_STRUCTURE"})
 
 
 
@@ -65,6 +69,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
             self.sanity_check_for_fasta_txt()
 
         self.sanity_check_contigs_project_name()
+
+        self.init_structure()
 
         # check and warn user regarding risky change of parameters with wildcards as default values
         self.warn_user_regarding_param_with_wildcard_default_value('anvi_run_ncbi_cogs', '--temporary-dir-path', '{group}')

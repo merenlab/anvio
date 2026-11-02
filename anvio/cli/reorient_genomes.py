@@ -82,13 +82,34 @@ def get_args():
                                "`--use-dnaa-for-reference-orientation`.")
     groupRef.add_argument('--use-dnaa-for-reference-orientation', action='store_true',
                           help="Use DnaA gene location to orient the reference genome. The program will identify the DnaA "
-                               "gene using an HMM profile (Bac_DnaA_C from Pfam), and rotate the reference to start near "
-                               "the DnaA gene, which typically marks the origin of replication in bacterial genomes. Since "
+                               "gene using an HMM profile (Bac_DnaA_C from Pfam), and rotate the reference so that it starts "
+                               "with the start codon of dnaA on the forward strand (reverse complementing it first if necessary), "
+                               "which typically marks the origin of replication in bacterial genomes. Since "
                                "this rotates the reference, it requires the reference genome to be a single contig. This "
                                "option is useful for bacterial genomes but may not work well for plasmids or viral genomes "
                                "without DnaA, or fragments from genomes such as specific genomic loci you are interested in "
                                "(for such cases you should certainly consider naming your reference explicitly with "
                                "`--reference`, which never rotates it, or using `--use-auto-reference-as-is`).")
+
+    groupDnaA = parser.add_argument_group('STARTING EVERY GENOME AT ITS OWN DnaA',
+                                          "Instead of aligning every genome to a reference, anvi'o can find the DnaA gene "
+                                          "of every genome on its own and start the genome there. This needs no reference, "
+                                          "no alignments, and works the same way however distant your genomes are.")
+    groupDnaA.add_argument('--use-dnaa-for-every-genome', action='store_true',
+                           help="Start every genome at its own DnaA gene, found with an HMM profile (Bac_DnaA_C from Pfam) "
+                                "after calling genes with pyrodigal-gv. A genome that is a single contig is treated as a circle: "
+                                "it is reverse complemented if its DnaA gene is on the reverse strand, and rotated so that the "
+                                "start codon of dnaA becomes its first nucleotide. In a genome with more than one contig, the "
+                                "contig that carries DnaA is cut in two at that start codon instead (the piece that starts with "
+                                "dnaA becomes '<contig>_part2', the one before it '<contig>_part1', and both are written first), "
+                                "since rotating a contig that may be a fragment of a draft genome would join its two ends, which "
+                                "are not neighbours. All other contigs, and genomes without a DnaA gene, are written as they "
+                                "are. This flag is not compatible with any of the flags that choose or treat a reference.")
+    groupDnaA.add_argument('--dnaa-contigs-are-circular', action='store_true',
+                           help="Use this with `--use-dnaa-for-every-genome` if the contigs that carry DnaA in your genomes are "
+                                "complete, circular chromosomes even in genomes with more than one contig (e.g., complete "
+                                "genomes with plasmids or with more than one chromosome). These contigs are then rotated to "
+                                "start at DnaA, just like single-contig genomes, instead of being cut in two.")
 
     groupScaffold = parser.add_argument_group('SCAFFOLDING OPTIONS',
                                               "These options control how multi-contig (fragmented) genomes are ordered "

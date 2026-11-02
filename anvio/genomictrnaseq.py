@@ -2,6 +2,7 @@
 """tRNA-seq integration with (meta)genomics"""
 
 import os
+import shutil
 import argparse
 import tempfile
 import numpy as np
@@ -29,7 +30,7 @@ from anvio.genomedescriptions import GenomeDescriptions
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2022, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2026, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __maintainer__ = "Samuel Miller"
@@ -96,10 +97,9 @@ class SeedPermuter(object):
 
         # paths for output files
         self.permuted_seeds_fasta_path = A('permuted_seeds_fasta')
+        # Without a FASTA path, `go` writes the file to a new temporary directory, so that
+        # concurrent runs do not overwrite each other's files.
         self.tmp_dir = None
-        if self.permuted_seeds_fasta_path is None:
-            self.tmp_dir = anvio.TMP_DIR if anvio.TMP_DIR else tempfile.gettempdir()
-            self.permuted_seeds_fasta_path = os.path.join(self.tmp_dir, "permuted_seeds.fa")
 
         self.run = r
         self.progress = p
@@ -118,6 +118,13 @@ class SeedPermuter(object):
                 f"The database at '{self.contigs_db_path}' was a '{contigs_db_info.variant}' "
                 "variant, not the required 'trnaseq' variant.")
 
+        with contigs_db_info.load_db() as contigs_db:
+            seed_count = contigs_db.get_row_counts_from_table(tables.contig_sequences_table_name)
+        if not seed_count:
+            raise ConfigError(
+                f"The tRNA-seq contigs database at '{self.contigs_db_path}' does not contain any "
+                "seeds.")
+
         filesnpaths.is_file_exists(self.modifications_txt_path)
 
         if not (0 <= self.min_nt_frequency < 1):
@@ -130,11 +137,16 @@ class SeedPermuter(object):
                 "The specified maximum number of variable positions in a permuted sequence is "
                 f"'{self.max_variable_positions}', but it needs to be a positive integer.")
 
-        filesnpaths.is_output_file_writable(self.permuted_seeds_fasta_path)
+        if self.permuted_seeds_fasta_path:
+            filesnpaths.is_output_file_writable(self.permuted_seeds_fasta_path)
 
 
     def go(self):
         """Permute tRNA seed sequences at predicted sites of modification-induced substitutions."""
+        if self.permuted_seeds_fasta_path is None:
+            self.tmp_dir = tempfile.mkdtemp(dir=anvio.TMP_DIR)
+            self.permuted_seeds_fasta_path = os.path.join(self.tmp_dir, 'permuted_seeds.fa')
+
         with self.contigs_db_info.load_db() as contigs_db:
             seed_contig_names_seqs = contigs_db.get_table_as_list_of_tuples('contig_sequences')
 
@@ -350,17 +362,19 @@ class Integrator(object):
 
         self.permuted_seeds_fasta_path = A('permuted_seeds_fasta')
         self.blast_dir = A('blast_dir')
-        if self.blast_dir is None:
-            self.blast_dir = anvio.TMP_DIR if anvio.TMP_DIR else tempfile.gettempdir()
+        # Without a BLAST directory, `go` uses a new temporary directory, so that concurrent runs do
+        # not overwrite each other's files, and removes it at the end.
+        self.tmp_dir = None
 
-        self.num_threads = A('num_threads') or anvio.K('num_threads')['default']
+        self.num_threads = A('num_threads') or anvio.K('num-threads')['default']
         self.remove_previous_matches = A('remove_previous_matches')
-
-        self.trna_genes_fasta_path = os.path.join(self.blast_dir, 'trna_genes.fa')
 
         self.run = r
         self.run_quiet = rq
         self.progress = p
+
+        # The combination of (meta)genomic input arguments determines how databases are accessed.
+        self.check_genomic_input_args()
 
         self.trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path, expecting='contigs')
 
@@ -382,15 +396,17 @@ class Integrator(object):
             bin_ids = []
             with open(self.bin_ids_path) as bin_ids_file:
                 for line in bin_ids_file:
-                    bin_ids.append(line.rstrip())
+                    bin_id = line.rstrip()
+                    if bin_id:
+                        bin_ids.append(bin_id)
         else:
             bin_ids = None
 
         if self.bin_id:
             collect = ccollections.Collections()
             collect.populate_collections_dict(self.genomic_profile_db_path)
-            collect.is_bin_in_collection(bin_id)
-            self.genome_info_dict[bin_id] = genome_info = {}
+            collect.is_bin_in_collection(self.collection_name, self.bin_id)
+            self.genome_info_dict[self.bin_id] = genome_info = {}
             genome_info['contigs_db_info'] = contigs_db_info
             genome_info['profile_db_info'] = profile_db_info
             genome_info['collection_name'] = self.collection_name
@@ -399,7 +415,7 @@ class Integrator(object):
             collect = ccollections.Collections()
             collect.populate_collections_dict(self.genomic_profile_db_path)
             for bin_id in bin_ids:
-                collect.is_bin_in_collection(bin_id)
+                collect.is_bin_in_collection(self.collection_name, bin_id)
                 self.genome_info_dict[bin_id] = genome_info = {}
                 genome_info['contigs_db_info'] = contigs_db_info
                 genome_info['profile_db_info'] = profile_db_info
@@ -409,7 +425,7 @@ class Integrator(object):
             # There is a collection of internal genomes.
             collect = ccollections.Collections()
             collect.populate_collections_dict(self.genomic_profile_db_path)
-            for bin_id in collect.get_bins_info_dict():
+            for bin_id in collect.get_bins_info_dict(self.collection_name):
                 self.genome_info_dict[bin_id] = genome_info = {}
                 genome_info['contigs_db_info'] = contigs_db_info
                 genome_info['profile_db_info'] = profile_db_info
@@ -460,6 +476,46 @@ class Integrator(object):
             self.sanity_check()
 
 
+    def check_genomic_input_args(self):
+        """Check the combination of (meta)genomic input arguments."""
+        if not (self.genomic_contigs_db_path or
+                self.internal_genomes_path or
+                self.external_genomes_path):
+            raise ConfigError("A (meta)genomic input is required: `--contigs-db`, "
+                              "`--internal-genomes`, or `--external-genomes`.")
+
+        if (self.genomic_contigs_db_path and
+            (self.internal_genomes_path or self.external_genomes_path)):
+            raise ConfigError("`internal_genomes` and `external_genomes` cannot be used with "
+                              "`contigs_db`.")
+
+        if ((self.genomic_profile_db_path or self.collection_name) and
+            not (self.genomic_contigs_db_path and
+                 self.genomic_profile_db_path and
+                 self.collection_name)):
+            raise ConfigError("A collection must be provided using `contigs_db`, `profile_db`, and "
+                              "`collection_name`.")
+
+        if self.bin_id and self.bin_ids_path:
+            raise ConfigError("`bin_id` and `bin_ids_file` cannot be used together.")
+
+        if ((self.bin_id or self.bin_ids_path) and
+            not (self.genomic_contigs_db_path and
+                 self.genomic_profile_db_path and
+                 self.collection_name)):
+            raise ConfigError("Bins provided with `bin_id` or `bin_ids_file` also require "
+                              "`contigs_db`, `profile_db`, and `collection_name`.")
+
+        if (self.unambiguous_genome_assignment and
+            self.genomic_contigs_db_path and
+            not self.collection_name):
+            raise ConfigError(
+                "`--unambiguous-genome-assignment` requires bins (`--collection-name`, optionally "
+                "with `--bin-id` or `--bin-ids-file`), internal genomes, or external genomes. With "
+                "a contigs database alone, all of its tRNA genes are treated as one (meta)genome, "
+                "so no seed can be assigned to genes in more than one genome.")
+
+
     def sanity_check(self, check_permuted_seeds_fasta=False):
         """Check the feasibility of args from initialization."""
         if self.trnaseq_contigs_db_info.variant != 'trnaseq':
@@ -480,7 +536,7 @@ class Integrator(object):
                     f"'{self.trnaseq_contigs_db_path}', does not have the proper number of "
                     "columns, probably because it was created with an obsolete version of the "
                     "program. The table can be deleted and recreated with the proper columns by "
-                    "running the program with `remove_previous_matches`.")
+                    "running the program with `--remove-previous-matches`.")
 
         # Existing seed/gene hits must be willfully overwritten or appended to.
         hit_count = trnaseq_contigs_db.get_row_counts_from_table(
@@ -493,8 +549,8 @@ class Integrator(object):
                     "The seeds from the tRNA-seq contigs database at "
                     f"'{self.trnaseq_contigs_db_path}' have already been associated with tRNA "
                     "genes from one or more (meta)genomic contigs databases. Either use "
-                    "`remove_previous_matches` to clear existing matches, or append to existing "
-                    "matches by not using `unambiguous_genome_assignments`.")
+                    "`--remove-previous-matches` to clear existing matches, or append to existing "
+                    "matches by not using `--unambiguous-genome-assignment`.")
         trnaseq_contigs_db.disconnect()
 
         # The tRNA-seq contigs db version must be up-to-date.
@@ -505,31 +561,11 @@ class Integrator(object):
                 f"v{self.trnaseq_contigs_db_info.version} and your anvi'o installation wants to "
                 f"work with v{required_version}). You can migrate your database without losing any "
                 "data using the program `anvi-migrate` with either of the flags "
-                "`--migrate-dbs-safely` or `--migrate-dbs-quickly`.")
+                "`--migrate-safely` or `--migrate-quickly`.")
 
         # Right now there are no specific checks here on the format of these tables.
         filesnpaths.is_file_exists(self.seeds_specific_txt_path)
         filesnpaths.is_file_exists(self.modifications_txt_path)
-
-        # Do basic checks of the combinations of (meta)genomic input arguments.
-        if (self.genomic_contigs_db_path and
-            (self.internal_genomes_path or self.external_genomes_path)):
-            raise ConfigError("`internal_genomes` and `external_genomes` cannot be used with "
-                              "`contigs_db`.")
-
-        if ((self.genomic_profile_db_path or self.collection_name) and
-            not (self.genomic_contigs_db_path and
-                 self.genomic_profile_db_path and
-                 self.collection_name)):
-            raise ConfigError("A collection must be provided using `contigs_db`, `profile_db`, and "
-                              "`collection_name`.")
-
-        if (self.bin_id and
-            not (self.genomic_contigs_db_path and
-                 self.genomic_profile_db_path and
-                 self.collection_name)):
-            raise ConfigError("A specific bin provided with `bin_id` also requires `contigs_db`, "
-                              "`profile_db`, and `collection_name`.")
 
         # Prevent a confused user from providing a tRNA-seq contigs database in lieu of a
         # (meta)genomic contigs database.
@@ -540,9 +576,10 @@ class Integrator(object):
         if unrecognized:
             if self.genomic_contigs_db_path:
                 raise ConfigError(
-                    f"The purported (meta)genomic contigs database, '{unrecognized[0]}', was not "
-                    "recognized as such. A proper database (technically of the 'unknown' variant) "
-                    "should be generated by `anvi-gen-contigs-database`.")
+                    "The purported (meta)genomic contigs database, "
+                    f"'{self.genomic_contigs_db_path}', was not recognized as such. A proper "
+                    "database (technically of the 'unknown' variant) should be generated by "
+                    "`anvi-gen-contigs-database`.")
             else:
                 raise ConfigError(
                     "The purported (meta)genomic contigs databases for the following genomes were "
@@ -560,9 +597,9 @@ class Integrator(object):
             if self.genomic_contigs_db_path:
                 raise ConfigError(
                     "It appears that tRNA genes have not been annotated in the (meta)genomic "
-                    f"contigs database, '{unannotated[0]}'. Please run `anvi-scan-trnas` on the "
-                    "database and try again (this same error will arise if no tRNA genes are "
-                    "found).")
+                    f"contigs database, '{self.genomic_contigs_db_path}'. Please run "
+                    "`anvi-scan-trnas` on the database and try again (this same error will arise "
+                    "if no tRNA genes are found).")
             else:
                 raise ConfigError(
                     "It appears that tRNA genes have not been annotated in the following "
@@ -582,9 +619,10 @@ class Integrator(object):
         if incompatible:
             if self.genomic_contigs_db_path:
                 raise ConfigError(
-                    f"The (meta)genomic contigs database, '{incompatible[0]}', is not compatible "
-                    f"with the provided profile database, {genome_info['profile_db_info'].path}. "
-                    "In fact, the profile database was not generated from the contigs database.")
+                    f"The (meta)genomic contigs database, '{self.genomic_contigs_db_path}', is not "
+                    "compatible with the provided profile database, "
+                    f"'{self.genomic_profile_db_path}'. In fact, the profile database was not "
+                    "generated from the contigs database.")
             else:
                 raise ConfigError(
                     "The contigs databases for the following genomes are not compatible with the "
@@ -614,7 +652,12 @@ class Integrator(object):
                 "The maximum number of mismatches allowed in a seed-gene alignment must be a "
                 f"non-negative integer, not the provided value of {self.max_mismatches}")
 
-        filesnpaths.is_output_dir_writable(self.blast_dir)
+        if self.blast_dir:
+            # Like `--tmp-dir`, the BLAST directory is created if needed in an existing directory.
+            if not os.path.exists(self.blast_dir):
+                filesnpaths.is_output_dir_writable(os.path.dirname(os.path.abspath(self.blast_dir)))
+                os.mkdir(self.blast_dir)
+            filesnpaths.is_output_dir_writable(self.blast_dir)
 
         # Ignore this sanity check when using `genomictrnaseq.Permuter` FASTA output.
         if check_permuted_seeds_fasta:
@@ -628,11 +671,19 @@ class Integrator(object):
     def go(self):
         """Link tRNA-seq seeds to tRNA genes, adding this information to the tRNA-seq contigs
         database."""
+        if self.blast_dir is None:
+            self.tmp_dir = self.blast_dir = tempfile.mkdtemp(dir=anvio.TMP_DIR)
+        self.trna_genes_fasta_path = os.path.join(self.blast_dir, 'trna_genes.fa')
+
         trna_gene_seq_dict = self.write_trna_genes_fasta()
-        self.blast()
+        self.blast(len(trna_gene_seq_dict))
         hits_df = self.filter_hits(trna_gene_seq_dict)
         unmodified_nt_df = self.find_unmodified_nucleotides(hits_df)
+        hits_df = self.drop_hits_outside_bins(hits_df)
         self.update_trnaseq_contigs_database(hits_df, unmodified_nt_df)
+
+        if self.tmp_dir:
+            shutil.rmtree(self.tmp_dir)
 
 
     def write_trna_genes_fasta(self):
@@ -657,6 +708,7 @@ class Integrator(object):
         for genome_info in self.genome_info_dict.values():
             if genome_info['contigs_db_info'].path in contigs_db_paths:
                 continue
+            contigs_db_paths.add(genome_info['contigs_db_info'].path)
             contigs_db_infos.append(genome_info['contigs_db_info'])
 
         for contigs_db_info in contigs_db_infos:
@@ -696,8 +748,23 @@ class Integrator(object):
         return trna_gene_seq_dict
 
 
-    def blast(self):
-        """Align tRNA-seq seeds/permuted seeds to tRNA genes."""
+    def blast(self, trna_gene_count):
+        """Align tRNA-seq seeds/permuted seeds to tRNA genes, reporting hits of each query to as
+        many as all of the tRNA genes."""
+        min_query_length = None
+        fasta = fastalib.SequenceSource(self.permuted_seeds_fasta_path)
+        while next(fasta):
+            if min_query_length is None or len(fasta.seq) < min_query_length:
+                min_query_length = len(fasta.seq)
+        fasta.close()
+        # An ungapped alignment of L nucleotides with m mismatches contains a run of at least
+        # (L - m) / (m + 1) matching nucleotides, so a word no longer than that hits the diagonal of
+        # every seed aligning to a gene within the allowed mismatches, though the hit must still
+        # pass the e-value cutoff. The word is kept between the minimum for blastn, 4, and its
+        # default, 11.
+        word_size = (min_query_length - self.max_mismatches) // (self.max_mismatches + 1)
+        word_size = min(max(word_size, 4), 11)
+
         blast = BLAST(self.permuted_seeds_fasta_path,
                       self.trna_genes_fasta_path,
                       search_program='blastn',
@@ -707,9 +774,11 @@ class Integrator(object):
         blast.tmp_dir = self.blast_dir
         blast.search_output_path = os.path.join(self.blast_dir, 'blast-search-results.txt')
         blast.log_file_path = os.path.join(self.blast_dir, 'blast-log.txt')
-        blast.additional_params_for_blast = "-ungapped"
+        blast.additional_params_for_blast = "-task blastn -ungapped"
+        # By default, BLAST reports hits of a query to at most 500 subject sequences.
+        blast.max_target_seqs = trna_gene_count
         blast.makedb(dbtype='nucl')
-        blast.blast(outputfmt='6 ' + ' '.join(self.blast_search_output_cols))
+        blast.blast(outputfmt='6 ' + ' '.join(self.blast_search_output_cols), word_size=word_size)
 
 
     def filter_hits(self, trna_gene_seq_dict):
@@ -733,20 +802,13 @@ class Integrator(object):
         hits_df = pd.read_csv(
             search_output_path, sep='\t', header=None, names=self.blast_search_output_cols)
 
-        # Discard alignments with too many mismatches.
-        hits_df = hits_df[hits_df['mismatch'] <= self.max_mismatches]
-        if self.full_gene:
-            # Discard alignments that do not start at the beginning of the gene.
-            hits_df = hits_df[hits_df['sstart'] == 1]
-
         # Discard (enigmatic) indistinguishable, duplicate hits if they exist.
         hits_df = hits_df.drop_duplicates()
 
-        # Parse seed IDs and permutation info.
-        hits_df[['seed_contig_name', 'seed_permutation']] = \
-            hits_df['qseqid'].str.split('|', expand=True)
-        hits_df['seed_permutation'] = hits_df['seed_permutation'].fillna('')
-        hits_df = hits_df.drop('qseqid', axis=1)
+        # Parse seed IDs and permutation info. The IDs of unpermuted seeds lack permutation info.
+        qseqid_parts = hits_df['qseqid'].str.split('|', n=1)
+        hits_df['seed_contig_name'] = qseqid_parts.str[0]
+        hits_df['seed_permutation'] = qseqid_parts.str[1].fillna('')
 
         # Extract information on each hit.
         contigs_db_project_names = []
@@ -787,16 +849,29 @@ class Integrator(object):
         hits_df['gene_stop_in_contig'] = gene_stops
         hits_df['gene_sequence'] = gene_sequences
 
-        # Filter individual alignments.
+        # BLAST alignments are local, stopping short of mismatches near the ends of the seed, so the
+        # whole seed/permuted seed is placed on the diagonal of each alignment, and mismatches are
+        # counted over the placement.
+        query_seq_dict = {}
+        fasta = fastalib.SequenceSource(self.permuted_seeds_fasta_path)
+        while next(fasta):
+            query_seq_dict[fasta.id] = fasta.seq
+        fasta.close()
         retained_indices = []
+        seed_alignment_starts = []
+        gene_alignment_starts = []
+        gene_alignment_stops = []
+        mismatches = []
         for (index,
+             query_id,
              decoded_amino_acid,
-             seed_alignment_start,
+             hsp_seed_start,
              seed_length,
-             gene_alignment_start,
-             gene_alignment_end,
+             hsp_gene_start,
+             hsp_gene_end,
              gene_sequence,
              gene_length) in zip(hits_df.index,
+                                 hits_df['qseqid'],
                                  hits_df['decoded_amino_acid'],
                                  hits_df['qstart'],
                                  hits_df['qlen'],
@@ -804,27 +879,79 @@ class Integrator(object):
                                  hits_df['send'],
                                  hits_df['gene_sequence'],
                                  hits_df['slen']):
-            if ((gene_length - gene_alignment_end == 0) or
-                ((gene_length - gene_alignment_end == 3) and gene_sequence[-3: ] == 'CCA')):
-                # The alignment ends at the end of the gene or just short of a 3'-CCA acceptor in
-                # the gene (the seed/permuted seed should never contain the 3'-CCA acceptor).
-                if ((seed_alignment_start == 1) and
-                    (gene_alignment_end - gene_alignment_start == seed_length - 1)):
-                    # The alignment starts at the beginning of the seed/permuted seed and spans the
-                    # entire query.
-                    retained_indices.append(index)
-                elif ((decoded_amino_acid == 'His') and
-                      (seed_alignment_start == 2) and
-                      (gene_alignment_end - gene_alignment_start == seed_length - 2)):
-                    # The alignment starts at the second position of the tRNA-His seed/permuted seed
-                    # sequence, which has a post-transcriptional G at the 5' end, and spans the
-                    # remaining length of the query.
-                    retained_indices.append(index)
+            if hsp_gene_end < hsp_gene_start:
+                # The seed aligns to the reverse complement of the gene.
+                continue
+            # This is the index in the gene of the first nucleotide of the seed.
+            seed_offset = hsp_gene_start - hsp_seed_start
+            gene_alignment_stop = seed_offset + seed_length
+            if not ((gene_alignment_stop == gene_length) or
+                    ((gene_alignment_stop == gene_length - 3) and gene_sequence[-3: ] == 'CCA')):
+                # The seed must end at the end of the gene or just short of a 3'-CCA acceptor in the
+                # gene (the seed/permuted seed should never contain the 3'-CCA acceptor).
+                continue
+            if seed_offset >= 0:
+                seed_alignment_start = 0
+            elif seed_offset == -1 and decoded_amino_acid == 'His':
+                # The post-transcriptional G at the 5' end of the tRNA-His seed precedes the gene.
+                seed_alignment_start = 1
+            else:
+                continue
+            gene_alignment_start = seed_offset + seed_alignment_start
+            seed_sequence = query_seq_dict[query_id]
+            mismatch = 0
+            for seed_nt, gene_nt in zip(seed_sequence[seed_alignment_start: ],
+                                        gene_sequence[gene_alignment_start: gene_alignment_stop]):
+                if seed_nt != gene_nt:
+                    mismatch += 1
+            retained_indices.append(index)
+            seed_alignment_starts.append(seed_alignment_start)
+            gene_alignment_starts.append(gene_alignment_start)
+            gene_alignment_stops.append(gene_alignment_stop)
+            mismatches.append(mismatch)
         hits_df = hits_df.loc[retained_indices]
+        hits_df = hits_df.assign(seed_alignment_start=seed_alignment_starts,
+                                 gene_alignment_start=gene_alignment_starts,
+                                 gene_alignment_stop=gene_alignment_stops,
+                                 mismatch=mismatches)
 
-        # Retain each seed/permuted seed's top-scoring hits.
+        # Discard alignments with too many mismatches.
+        hits_df = hits_df[hits_df['mismatch'] <= self.max_mismatches]
+        if self.full_gene:
+            # Discard alignments that do not start at the beginning of the gene.
+            hits_df = hits_df[hits_df['gene_alignment_start'] == 0]
+
+        # Keep one placement of a seed/permuted seed per gene. Alignments on the same diagonal give
+        # the same placement, kept with the highest bitscore. A seed placed both at the end of the
+        # gene and just short of a 3'-CCA is kept where it has fewer mismatches, or else short of
+        # the CCA. Then restore the BLAST order of hits, which breaks ties between seed permutations
+        # below.
+        hits_df = hits_df.sort_values(
+            ['mismatch', 'gene_alignment_stop', 'bitscore'], ascending=[True, True, False])
+        hits_df = hits_df.drop_duplicates(['qseqid', 'sseqid'])
+        hits_df = hits_df.sort_index()
+        hits_df = hits_df.drop(['qseqid', 'qstart', 'qlen', 'sseqid', 'sstart', 'send', 'slen'],
+                               axis=1)
+
+        # Retain the hits of each seed, over its permutations, with the fewest mismatches, and then
+        # with the longest alignments (the first nucleotide of a tRNA-His seed may not be aligned).
         hits_df = hits_df[
-            hits_df.groupby('seed_contig_name')['bitscore'].transform('max') == hits_df['bitscore']]
+            hits_df.groupby('seed_contig_name')['mismatch'].transform('min') == hits_df['mismatch']]
+        alignment_lengths = hits_df['gene_alignment_stop'] - hits_df['gene_alignment_start']
+        hits_df = hits_df[
+            alignment_lengths.groupby(hits_df['seed_contig_name']).transform('max') ==
+            alignment_lengths]
+
+        if hits_df.empty:
+            if self.full_gene:
+                full_gene_text = ", starting at the 5' end of the gene as required by `--full-gene`"
+            else:
+                full_gene_text = ""
+            raise ConfigError(
+                "No tRNA-seq seed aligned to a tRNA gene over the length of the seed and through "
+                "the 3' end of the gene (or up to a 3'-CCA in the gene) with at most "
+                f"{self.max_mismatches} mismatches{full_gene_text}. The tRNA-seq contigs database "
+                "was not changed.")
 
         ##################################################
         # Now add information on internal genomes of interest that contain the tRNA genes. Note that
@@ -856,12 +983,13 @@ class Integrator(object):
 
             # Note that the same contig may be in different bins, thus the list values of the dict.
             contigs_db_hash = genome_info['contigs_db_info'].hash
-            profile_db_sample_id = genome_info['profile_db_info'].sample_id
+            profile_db_sample_id = genome_info['profile_db_info'].get_self_table()['sample_id']
             if search_for_bin_of_interest:
                 bin_contig_names_dict = ccollections.GetSplitNamesInBins(args).get_dict()
                 for bin_id, split_names in bin_contig_names_dict.items():
-                    for split_name in split_names:
-                        contig_name = split_name.split('_split_')[0]
+                    # Record the bin once for a contig with multiple splits in the bin.
+                    contig_names = {split_name.split('_split_')[0] for split_name in split_names}
+                    for contig_name in contig_names:
                         try:
                             contig_bin_dict[(contigs_db_hash, contig_name)].append(
                                 (profile_db_sample_id, collection_name, bin_id))
@@ -892,78 +1020,33 @@ class Integrator(object):
                                               'collection_name',
                                               'bin_id'])
         # Merge the table of seed/gene hits with the new table of bin membership, multiplying each
-        # row per hit by each bin containing the gene.
-        hits_df = hits_df.merge(contig_bin_df, on=['contigs_db_hash', 'gene_contig_name'])
-
-        # For the sake of clarity, here is what happens to each of the different possible
-        # (meta)genomic sources with "unambiguous" tRNA gene assignment.
-        # 1. Single contigs database without bins: The existence of genomes is not assumed, so no
-        #    hits are disregarded.
-        # 2. Single contigs database with collection of bins: disregard seeds with equally strong
-        #    hits that are not confined to a single bin.
-        # 3. Single contigs database with specified bin: disregard seeds with equally strong hits
-        #    that are not confined to the bin.
-        # 4. One or more contigs databases input as "external" genomes: disregard seeds with equally
-        #    strong hits that are not confined to a single contigs database.
-        # 5. "Internal" genomes (bins) from one or more contigs databases: disregard seeds with
-        #    equally strong hits that are not confined to a single bin.
-        # 6. A combination of "internal" and "external" genomes (4 + 5): disregard seeds with
-        #    equally strong hits that are not confined to a single internal genome bin or external
-        #    genome contigs database.
-        if self.genomic_contigs_db_path and not self.collection_name and not self.bin_id: # (1)
-            is_simple_contigs_db_input = True
-        else:
-            is_simple_contigs_db_input = False
-        if self.unambiguous_genome_assignment and not is_simple_contigs_db_input:
-            # Drop hits to genes in multiple bins: partly takes care of (2), (5), and (6).
-            hits_df = hits_df.groupby('seed_contig_name').filter(
-                lambda seed_df: len(seed_df[['contigs_db_hash',
-                                             'profile_db_sample_id',
-                                             'collection_name',
-                                             'bin_id']].drop_duplicates()) == 1)
-            # Drop hits to genes in multiple contigs databases: takes care of (4), partly takes care
-            # of (5) and (6).
-            hits_df = hits_df.groupby('seed_contig_name').filter(
-                lambda seed_df: len(seed_df['contigs_db_hash'].drop_duplicates()) == 1)
-            # Drop hits to genes in unbinned contigs: takes care of (3), finishes taking care of
-            # (2), (5), and (6).
-            if (self.collection_name or
-                (self.internal_genomes_path and not self.external_genomes_path)):
-                hits_df = hits_df[hits_df['bin_id'] != '']
-            elif self.internal_genomes_path and self.external_genomes_path:
-                external_genome_contigs_db_hashes = [
-                    genome_info['contigs_db_hash'] for genome_info in self.genome_info_dict.values()
-                    if genome_info['bin_id'] is None]
-                retained_index = []
-                for key, contigs_db_hash, bin_id in zip(hits_df.index, hits_df['contigs_db_hash'], hits_df['bin_id']):
-                    if contigs_db_hash in external_genome_contigs_db_hashes:
-                        retained_index.append(key)
-                        continue
-                    if bin_id is not None:
-                        retained_index.append(key)
-                hits_df = hits_df.loc[retained_index]
+        # row per hit by each bin containing the gene. A left merge keeps the BLAST order of hits,
+        # which breaks ties between seed permutations below.
+        hits_df = hits_df.merge(
+            contig_bin_df, how='left', on=['contigs_db_hash', 'gene_contig_name'])
         ##################################################
 
-        # Multiple permutations of the same seed may be retained after filtering by score. There are
-        # two and possibly more ways that this can occur. (1) The unmodified nucleotide at a
-        # modified position has a very low frequency and so was not used in the permuted sequences.
-        # The permuted sequences, none of which contain the correct nucleotide, mismatch this
-        # nucleotide in genes equally well. (2) A permutation is introduced at a predicted
-        # modification position that is actually a nucleotide variant, and different versions of the
-        # variant occur in different (meta)genomic contigs. The following procedure resolves both of
-        # these possibilities, with the last step being the one that resolves the first possibility.
-        # (1) Choose the permutation hitting the greatest number of genes. (2) If not resolved,
-        # choose the permutation with the fewest permuted positions. (3) If not resolved, break the
-        # tie by choosing the first permutation in the table, which will favor permutations toward
-        # the 5' end.
+        # Multiple permutations of the same seed may be retained after filtering by mismatches and
+        # alignment length. There are two and possibly more ways that this can occur. (1) The
+        # unmodified nucleotide at a modified position has a very low frequency and so was not used
+        # in the permuted sequences. The permuted sequences, none of which contain the correct
+        # nucleotide, mismatch this nucleotide in genes equally well. (2) A permutation is
+        # introduced at a predicted modification position that is actually a nucleotide variant, and
+        # different versions of the variant occur in different (meta)genomic contigs. The following
+        # procedure resolves both of these possibilities, with the last step being the one that
+        # resolves the first possibility. (1) Choose the permutation hitting the greatest number of
+        # genes. (2) If not resolved, choose the permutation with the fewest permuted positions. (3)
+        # If not resolved, break the tie by choosing the first permutation in the table, which will
+        # favor permutations toward the 5' end.
         are_permutations_unresolved = True
         if hits_df.groupby('seed_contig_name').ngroups == hits_df.groupby(
             ['seed_contig_name', 'seed_permutation']).ngroups:
             are_permutations_unresolved = False
         if are_permutations_unresolved: # (1)
-            hits_df['count'] = hits_df.groupby(
-                ['seed_contig_name', 'seed_permutation'], as_index=False)[
-                    'seed_contig_name'].transform(len)
+            # Count each gene once, though its hit is repeated for each bin containing the gene.
+            gene_keys = hits_df['contigs_db_hash'] + '|' + hits_df['gene_callers_id'].astype(str)
+            hits_df['count'] = gene_keys.groupby(
+                [hits_df['seed_contig_name'], hits_df['seed_permutation']]).transform('nunique')
             hits_df = hits_df[
                 hits_df['count'] == hits_df.groupby('seed_contig_name')['count'].transform('max')]
             hits_df = hits_df.drop('count', axis=1)
@@ -972,7 +1055,7 @@ class Integrator(object):
                 are_permutations_unresolved = False
         if are_permutations_unresolved: # (2)
             hits_df['num_permuted_positions'] = hits_df[
-                'seed_permutation'].apply(lambda p: p.count('_'))
+                'seed_permutation'].apply(lambda p: len(p.split('_')) if p else 0)
             hits_df = hits_df[
                 hits_df['num_permuted_positions'] == hits_df.groupby('seed_contig_name')[
                     'num_permuted_positions'].transform('min')]
@@ -1002,28 +1085,40 @@ class Integrator(object):
         # relative 3' abundances of 0.02 and 0.03 in the two samples and the other seed has
         # abundances of 0.0006 and 0.00008, then the hit to the former seed will be the only one
         # retained for this gene.
-        # II. The selection of the lowest mismatch seed (see the previous section) can create an
-        # unintended side effect. The A -> I34 wobble position modification is typically nearly 100%
-        # complete. I is detected as G in tRNA-seq reads, so the correct seed matching the gene
-        # should have at least one alignment mismatch, G/A at position 34. In very deeply sequenced
-        # samples, however, a seed with A34 can sometimes be detected from rare tRNA molecules
-        # lacking the modification. `anvi-merge-trnaseq` would not merge the A34 and G34 seeds due
-        # to the absence of a third or fourth mutated nucleotide at position 34 and the miniscule
-        # frequency of A. Therefore, in this case, the lowest mismatch seed should not be selected;
-        # rather, select the lowest mismatch seed with G34. The algorithm also confirms that the G34
-        # seed is >10x more abundant than the A34 seed.
+        # II. The selection of the lowest mismatch seed (see the previous section) needs two
+        # adjustments for genes with A34. The A -> I34 wobble position modification is typically
+        # nearly 100% complete. I is detected as G in tRNA-seq reads, so G at position 34 of the
+        # aligned seed sequence (permuted or not) is not counted as a mismatch to A34 in the gene.
+        # In very deeply sequenced samples, a seed with A34 can also be detected from rare tRNA
+        # molecules lacking the modification, such as precursors. `anvi-merge-trnaseq` would not
+        # merge the A34 and G34 seeds due to the absence of a third or fourth mutated nucleotide at
+        # position 34 and the miniscule frequency of A. The A34 seed can match the gene better than
+        # the seed of the mature tRNA, which can mismatch the gene at another nearly completely
+        # modified position, e.g., m1I37 in eukaryotic tRNA-Ala-AGC. Therefore, if the seed selected
+        # for a gene with A34 does not have G34 (seeds with C or U34 being transcripts of other
+        # isoacceptors), the lowest mismatch seed with G34 is selected instead if it is at least 10x
+        # more abundant.
         coverage_df = pd.read_csv(self.seeds_specific_txt_path, sep='\t', header=0, skiprows=[1, 2])
         coverage_df = coverage_df[['contig_name', 'sample_name', 'relative_discriminator_coverage']]
         coverage_df = coverage_df.rename({'contig_name': 'seed_contig_name'}, axis=1)
         coverage_df = coverage_df[
             coverage_df['seed_contig_name'].isin(hits_df['seed_contig_name'].unique())]
+        missing_seed_contig_names = sorted(
+            set(hits_df['seed_contig_name']) - set(coverage_df['seed_contig_name']))
+        if missing_seed_contig_names:
+            raise ConfigError(
+                f"{len(missing_seed_contig_names)} tRNA-seq seeds aligned to tRNA genes are not in "
+                f"the table of seed coverages, '{self.seeds_specific_txt_path}', e.g., "
+                f"'{missing_seed_contig_names[0]}'. The table should be made by "
+                "`anvi-tabulate-trnaseq` from the same tRNA-seq contigs database. The tRNA-seq "
+                "contigs database was not changed.")
         coverage_df = hits_df.merge(coverage_df, on='seed_contig_name')
 
         # Isolate the nucleotide at wobble position 34 in seeds that hit tRNAs with A34.
         trnaseq_contigs_db = self.trnaseq_contigs_db_info.load_db()
         # Convert seed contigs names to gene callers IDs.
         seed_contig_names_string = ','.join(
-            ['"%s"' % seed_contig_name for seed_contig_name in
+            ["'%s'" % seed_contig_name for seed_contig_name in
              hits_df[hits_df['anticodon'].str[0] == 'A']['seed_contig_name'].unique()])
         contigs_where_clause = f'''contig IN ({seed_contig_names_string})'''
         seed_id_df = trnaseq_contigs_db.get_table_as_dataframe(
@@ -1034,7 +1129,7 @@ class Integrator(object):
         seed_id_df = seed_id_df.rename(
             {'gene_callers_id': 'seed_gene_callers_id', 'contig': 'seed_contig_name'}, axis=1)
         # Find the index of position 34 in each of the seed sequences.
-        seed_ids_string = ','.join(['"%s"' % seed_gene_callers_id for seed_gene_callers_id in
+        seed_ids_string = ','.join([str(int(seed_gene_callers_id)) for seed_gene_callers_id in
                                     seed_id_df['seed_gene_callers_id'].unique()])
         ids_where_clause = f'''gene_callers_id IN ({seed_ids_string})'''
         seed_wobble_df = trnaseq_contigs_db.get_table_as_dataframe(
@@ -1062,57 +1157,138 @@ class Integrator(object):
             anticodon_wobble_nucleotides.append(seed_consensus_sequence[anticodon_start])
         seed_wobble_df['seed_anticodon_wobble_nucleotide'] = anticodon_wobble_nucleotides
 
-        def filter_multiple_hits_to_gene(gene_df): # inner function used in groupby apply
-            min_mismatch_df = gene_df[gene_df['mismatch'] == gene_df['mismatch'].min()]
-            if min_mismatch_df['seed_contig_name'].nunique() > 1:
-                min_mismatch_df = min_mismatch_df[
-                    min_mismatch_df['seed_contig_name'] == min_mismatch_df.groupby(
-                        'seed_contig_name')['relative_discriminator_coverage'].mean().sort_values(
-                            ascending=False).index[0]]
-            if gene_df['anticodon'].iloc[0][0] != 'A':
-                return min_mismatch_df
+        # Count G at position 34 of the aligned seed sequence as I34 matching A34 in the gene. The
+        # nucleotide is that of the seed consensus sequence unless the position was permuted.
+        coverage_df = coverage_df.merge(
+            seed_wobble_df[
+                ['seed_contig_name', 'seed_anticodon_start', 'seed_anticodon_wobble_nucleotide']],
+            how='left', on='seed_contig_name')
+        effective_mismatches = []
+        for (mismatch,
+             anticodon,
+             seed_permutation,
+             seed_anticodon_start,
+             seed_anticodon_wobble_nucleotide,
+             seed_alignment_start,
+             gene_alignment_start,
+             gene_sequence) in zip(coverage_df['mismatch'],
+                                   coverage_df['anticodon'],
+                                   coverage_df['seed_permutation'],
+                                   coverage_df['seed_anticodon_start'],
+                                   coverage_df['seed_anticodon_wobble_nucleotide'],
+                                   coverage_df['seed_alignment_start'],
+                                   coverage_df['gene_alignment_start'],
+                                   coverage_df['gene_sequence']):
+            if anticodon[0] != 'A' or pd.isna(seed_anticodon_start):
+                effective_mismatches.append(mismatch)
+                continue
+            seed_anticodon_start = int(seed_anticodon_start)
+            query_wobble_nucleotide = seed_anticodon_wobble_nucleotide
+            permutations = seed_permutation.split('_') if seed_permutation else []
+            for permutation in permutations:
+                if int(permutation[: -1]) == seed_anticodon_start:
+                    query_wobble_nucleotide = permutation[-1]
+            gene_wobble_position = (
+                seed_anticodon_start - seed_alignment_start + gene_alignment_start)
+            if (query_wobble_nucleotide == 'G' and
+                0 <= gene_wobble_position < len(gene_sequence) and
+                gene_sequence[gene_wobble_position] == 'A'):
+                effective_mismatches.append(mismatch - 1)
             else:
-                # Case II: Address possibility that seed with I34 is neglected.
-                max_coverage_seed_contig_name = gene_df.groupby('seed_contig_name')[
-                        'relative_discriminator_coverage'].mean().sort_values(
-                            ascending=False).index[0]
-                min_mismatch_seed_contig_name = min_mismatch_df['seed_contig_name'].iloc[0]
-                if min_mismatch_seed_contig_name == max_coverage_seed_contig_name:
-                    # The seed with the fewest mismatches also has the highest average discriminator
-                    # coverage.
-                    return min_mismatch_df
-                wobble_df = gene_df.merge(seed_wobble_df, how='left', on='seed_contig_name')
-                min_mismatch_seed_wobble_nucleotide = wobble_df[
-                    wobble_df['seed_contig_name'] == min_mismatch_seed_contig_name][
-                        'anticodon'].iloc[0][0]
-                if min_mismatch_seed_wobble_nucleotide != 'A':
-                    # The seed with the fewest mismatches (and which does not have the highest
-                    # average discriminator coverage) does not have an A at position 34. A seed is
-                    # not matched to the gene.
-                    return pd.DataFrame().reindex_like(min_mismatch_df)
-                wobble_df = wobble_df[wobble_df['seed_anticodon_wobble_nucleotide'] == 'G']
-                wobble_df = wobble_df[wobble_df['mismatch'] == wobble_df['mismatch'].min()]
-                max_coverage_G34_seed_contig_name = wobble_df.groupby('seed_contig_name')[
-                    'relative_discriminator_coverage'].mean().sort_values(ascending=False).index[0]
-                if (wobble_df[wobble_df['seed_contig_name'] == max_coverage_G34_seed_contig_name][
-                    'relative_discriminator_coverage'].mean() >= 10 * min_mismatch_df[
-                        'relative_discriminator_coverage'].mean()):
-                    # The seed with the fewest mismatches and a G at position 34 has an average
-                    # discriminator coverage at least an order of magnitude higher than the the seed
-                    # with the fewest mismatches and an A at position 34. Match the former seed to
-                    # the gene instead of the latter.
-                    return gene_df[gene_df['seed_contig_name'] == max_coverage_G34_seed_contig_name]
-                else:
-                    # The seed with the fewest mismatches and a G at position 34 does not have an
-                    # average discriminator coverage at least an order of magnitude higher than the
-                    # the seed with the fewest mismatches and an A at position 34. A seed is not
-                    # matched to the gene.
-                    return pd.DataFrame().reindex_like(min_mismatch_df)
+                effective_mismatches.append(mismatch)
+        coverage_df['effective_mismatch'] = effective_mismatches
+
+        def get_lowest_mismatch_seed(gene_df):
+            # Select the seed with the fewest mismatches, and then the highest average discriminator
+            # coverage.
+            min_mismatch_df = gene_df[
+                gene_df['effective_mismatch'] == gene_df['effective_mismatch'].min()]
+            return min_mismatch_df.groupby('seed_contig_name')[
+                'relative_discriminator_coverage'].mean().sort_values(ascending=False).index[0]
+
+        def filter_multiple_hits_to_gene(gene_df): # inner function used in groupby apply
+            seed_contig_name = get_lowest_mismatch_seed(gene_df)
+            seed_df = gene_df[gene_df['seed_contig_name'] == seed_contig_name]
+            if (gene_df['anticodon'].iloc[0][0] == 'A' and
+                seed_df['seed_anticodon_wobble_nucleotide'].iloc[0] != 'G'):
+                # Case II: Address possibility that the seed with I34 has more mismatches.
+                g34_df = gene_df[gene_df['seed_anticodon_wobble_nucleotide'] == 'G']
+                if len(g34_df):
+                    g34_seed_contig_name = get_lowest_mismatch_seed(g34_df)
+                    g34_seed_df = g34_df[g34_df['seed_contig_name'] == g34_seed_contig_name]
+                    if (g34_seed_df['relative_discriminator_coverage'].mean() >=
+                        10 * seed_df['relative_discriminator_coverage'].mean()):
+                        return g34_seed_df
+            return seed_df
 
         coverage_df = coverage_df.groupby(
-            'gene_callers_id', group_keys=False).apply(filter_multiple_hits_to_gene)
-        hits_df = hits_df[
-            hits_df['seed_contig_name'].isin(coverage_df['seed_contig_name'].unique())]
+            ['contigs_db_hash', 'gene_callers_id'], group_keys=False).apply(
+                filter_multiple_hits_to_gene)
+        # Keep each gene's hit to its chosen seed, but not hits of that seed to genes for which other
+        # seeds were chosen.
+        chosen_seed_gene_df = coverage_df[
+            ['seed_contig_name', 'contigs_db_hash', 'gene_callers_id']]
+        chosen_seed_gene_pairs = set(chosen_seed_gene_df.itertuples(index=False, name=None))
+        seed_gene_pairs = zip(
+            hits_df['seed_contig_name'], hits_df['contigs_db_hash'], hits_df['gene_callers_id'])
+        hits_df = hits_df[[seed_gene_pair in chosen_seed_gene_pairs for seed_gene_pair in seed_gene_pairs]]
+        ##################################################
+
+        ##################################################
+        # For the sake of clarity, here is what happens to each of the different possible
+        # (meta)genomic sources with "unambiguous" tRNA gene assignment. Seeds are judged by the
+        # genes for which they were chosen, so that a seed is not disregarded for equally strong
+        # hits to genes for which other seeds were chosen, and so that a worse seed is not chosen
+        # for a gene in place of a disregarded seed.
+        # 1. Single contigs database without bins: The existence of genomes is not assumed, so
+        #    unambiguous assignment is refused (see `check_genomic_input_args`).
+        # 2. Single contigs database with collection of bins: disregard seeds chosen for genes that
+        #    are not confined to a single bin.
+        # 3. Single contigs database with specified bin: disregard seeds chosen for genes that are
+        #    not confined to the bin.
+        # 4. One or more contigs databases input as "external" genomes: disregard seeds chosen for
+        #    genes that are not confined to a single contigs database.
+        # 5. "Internal" genomes (bins) from one or more contigs databases: disregard seeds chosen
+        #    for genes that are not confined to a single bin.
+        # 6. A combination of "internal" and "external" genomes (4 + 5): disregard seeds chosen for
+        #    genes that are not confined to a single internal genome bin or external genome contigs
+        #    database.
+        if self.unambiguous_genome_assignment:
+            # Drop seeds chosen for genes in multiple bins: partly takes care of (2), (5), and (6).
+            hits_df = hits_df.groupby('seed_contig_name').filter(
+                lambda seed_df: len(seed_df[['contigs_db_hash',
+                                             'profile_db_sample_id',
+                                             'collection_name',
+                                             'bin_id']].drop_duplicates()) == 1)
+            # Drop seeds chosen for genes in multiple contigs databases: takes care of (4), partly
+            # takes care of (5) and (6).
+            hits_df = hits_df.groupby('seed_contig_name').filter(
+                lambda seed_df: len(seed_df['contigs_db_hash'].drop_duplicates()) == 1)
+            # Drop hits to genes in unbinned contigs: takes care of (3), finishes taking care of
+            # (2), (5), and (6).
+            if (self.collection_name or
+                (self.internal_genomes_path and not self.external_genomes_path)):
+                hits_df = hits_df[hits_df['bin_id'] != '']
+            elif self.internal_genomes_path and self.external_genomes_path:
+                external_genome_contigs_db_hashes = [
+                    genome_info['contigs_db_info'].hash
+                    for genome_info in self.genome_info_dict.values()
+                    if genome_info['bin_id'] is None]
+                retained_index = []
+                for key, contigs_db_hash, bin_id in zip(
+                    hits_df.index, hits_df['contigs_db_hash'], hits_df['bin_id']):
+                    if contigs_db_hash in external_genome_contigs_db_hashes:
+                        retained_index.append(key)
+                        continue
+                    if bin_id != '':
+                        retained_index.append(key)
+                hits_df = hits_df.loc[retained_index]
+
+            if hits_df.empty:
+                raise ConfigError(
+                    "Every tRNA-seq seed was chosen for tRNA genes in more than one genome or in "
+                    "unbinned contigs, so none was kept with `--unambiguous-genome-assignment`. "
+                    "The tRNA-seq contigs database was not changed.")
         ##################################################
 
         # Add seed gene callers IDs to the table. (Both seed "contig" names and gene callers IDs are
@@ -1125,11 +1301,7 @@ class Integrator(object):
         hits_df = hits_df.merge(seed_id_df, how='left', on='seed_contig_name')
 
         # Polish the columns. Order them how they will appear in the hits table in the database.
-        hits_df['seed_alignment_start'] = hits_df['qstart'] - 1
-        hits_df['gene_alignment_start'] = hits_df['sstart'] - 1
-        hits_df = hits_df.drop(['qstart', 'qlen', 'sseqid', 'sstart'], axis=1)
-        hits_df = hits_df.rename(
-            {'gene_callers_id': 'gene_gene_callers_id', 'send': 'gene_alignment_stop'}, axis=1)
+        hits_df = hits_df.rename({'gene_callers_id': 'gene_gene_callers_id'}, axis=1)
         hits_df = hits_df[['seed_gene_callers_id', # seed info
                            'seed_contig_name',
                            'seed_permutation',
@@ -1151,6 +1323,45 @@ class Integrator(object):
                            'seed_alignment_start',
                            'gene_alignment_start',
                            'gene_alignment_stop']]
+
+        return hits_df
+
+
+    def drop_hits_outside_bins(self, hits_df):
+        """
+        Drop hits to genes outside the bins being integrated from contigs databases that are input
+        only as sources of bins.
+
+        Seeds are matched to all tRNA genes in these contigs databases, so that a seed better
+        matching a gene outside the bins is not assigned to a gene in a bin, and so that a seed
+        assigned to genes with different nucleotides at a predicted modification position is
+        recognized. The hits to genes outside the bins are not stored, however.
+
+        Parameters
+        ==========
+        hits_df : pandas.core.frame.DataFrame
+            Each row contains a selected hit between a seed and tRNA gene.
+
+        Returns
+        =======
+        hits_df : pandas.core.frame.DataFrame
+            Hits without those to genes outside the bins.
+        """
+        binned_contigs_db_hashes = set()
+        unbinned_contigs_db_hashes = set()
+        for genome_info in self.genome_info_dict.values():
+            if genome_info['bin_id']:
+                binned_contigs_db_hashes.add(genome_info['contigs_db_info'].hash)
+            else:
+                unbinned_contigs_db_hashes.add(genome_info['contigs_db_info'].hash)
+        outside_bins_contigs_db_hashes = binned_contigs_db_hashes - unbinned_contigs_db_hashes
+        hits_df = hits_df[~(hits_df['contigs_db_hash'].isin(outside_bins_contigs_db_hashes) &
+                            (hits_df['bin_id'] == ''))]
+
+        if hits_df.empty:
+            raise ConfigError(
+                "tRNA-seq seeds were only matched to tRNA genes outside the bins being integrated. "
+                "The tRNA-seq contigs database was not changed.")
 
         return hits_df
 
@@ -1182,28 +1393,36 @@ class Integrator(object):
         # differ between the genes, then it is likely that the variation is genetic rather than
         # caused by a modification.
         modification_candidates_df = modifications_df.merge(
-            hits_df[['seed_contig_name', 'seed_alignment_start', 'gene_sequence']],
+            hits_df[['seed_contig_name', 'seed_alignment_start', 'gene_alignment_start',
+                     'gene_sequence']],
             how='left', on='seed_contig_name')
         modification_keys = []
         unmodified_nts = []
-        variant_keys = []
         for group_key, modification_candidate_df in modification_candidates_df.groupby(
             ['seed_contig_name', 'seed_position'], as_index=False):
             unmodified_nt = ''
-            for seed_position, seed_alignment_start, gene_sequence in zip(
+            for seed_position, seed_alignment_start, gene_alignment_start, gene_sequence in zip(
                 modification_candidate_df['seed_position'],
                 modification_candidate_df['seed_alignment_start'],
+                modification_candidate_df['gene_alignment_start'],
                 modification_candidate_df['gene_sequence']):
-                gene_nt = gene_sequence[int(seed_position - seed_alignment_start)]
+                if seed_position < seed_alignment_start:
+                    # The seed position is not aligned to the gene, e.g., G-1 of tRNA-His.
+                    continue
+                # The alignment starts past the 5' end of the gene when the seed lacks nucleotides
+                # at the 5' end of the gene.
+                gene_nt = gene_sequence[
+                    int(seed_position - seed_alignment_start + gene_alignment_start)]
                 if unmodified_nt:
                     if gene_nt != unmodified_nt:
-                        variant_keys.append(group_key)
                         break
                 else:
                     unmodified_nt = gene_nt
             else:
-                modification_keys.append(group_key)
-                unmodified_nts.append(unmodified_nt)
+                # Ignore a seed position that is not aligned to any gene.
+                if unmodified_nt:
+                    modification_keys.append(group_key)
+                    unmodified_nts.append(unmodified_nt)
         modifications_df = modifications_df.set_index(['seed_contig_name', 'seed_position'])
         modifications_df = modifications_df.loc[modification_keys]
         unmodified_nt_df = modifications_df.merge(
@@ -1232,24 +1451,52 @@ class Integrator(object):
         trnaseq_contigs_db = self.trnaseq_contigs_db_info.load_db()
 
         # Either clear the table of seed/gene matches with `self.remove_previous_matches` or append
-        # to the table.
+        # to the table, replacing previous matches of the genomes being integrated.
         row_count = trnaseq_contigs_db.get_row_counts_from_table(tables.trna_gene_hits_table_name)
-        print()
         if self.remove_previous_matches:
             trnaseq_contigs_db._exec(f'''DELETE FROM {tables.trna_gene_hits_table_name}''')
             self.run.info_single(
                 f"{pp(row_count)} seed/gene matches dropped from the tRNA-seq contigs database",
-                cut_after=0)
+                cut_after=0, nl_before=1)
         else:
-            if row_count:
+            replaced_genome_keys = set()
+            for genome_info in self.genome_info_dict.values():
+                contigs_db_hash = genome_info['contigs_db_info'].hash
+                if genome_info['bin_id']:
+                    profile_db_sample_id = genome_info['profile_db_info'].get_self_table()[
+                        'sample_id']
+                    replaced_genome_keys.add((contigs_db_hash,
+                                              profile_db_sample_id,
+                                              genome_info['collection_name'],
+                                              genome_info['bin_id']))
+                else:
+                    replaced_genome_keys.add((contigs_db_hash, '', '', ''))
+            trnaseq_contigs_db._exec_many(
+                f'''DELETE FROM {tables.trna_gene_hits_table_name} WHERE gene_contigs_db_hash = ? '''
+                '''AND profile_db_sample_id = ? AND collection_name = ? AND bin_id = ?''',
+                list(replaced_genome_keys))
+            retained_row_count = trnaseq_contigs_db.get_row_counts_from_table(
+                tables.trna_gene_hits_table_name)
+
+            if row_count > retained_row_count:
                 self.run.info_single(
-                    f"Appending to the {pp(row_count)} seed/gene matches previously stored in the "
-                    "tRNA-seq contigs database",
-                    cut_after=0)
+                    f"{pp(row_count - retained_row_count)} seed/gene matches previously stored for "
+                    "the genomes being integrated dropped from the tRNA-seq contigs database",
+                    cut_after=0, nl_before=1)
+            if retained_row_count:
+                self.run.info_single(
+                    f"Appending to the {pp(retained_row_count)} seed/gene matches previously stored "
+                    "for other genomes in the tRNA-seq contigs database",
+                    cut_after=0, nl_before=1)
 
         # Add the unmodified nucleotides to the rows of the table.
         table_entries = []
-        hit_id = 0
+        if self.remove_previous_matches:
+            hit_id = 0
+        else:
+            # Number appended rows after the rows already in the table.
+            hit_id = trnaseq_contigs_db.get_max_value_in_column(
+                tables.trna_gene_hits_table_name, 'entry_id', value_if_empty=-1) + 1
         for row in hits_df.itertuples(index=False):
             seed_unmodified_nt_df = unmodified_nt_df[
                 unmodified_nt_df['seed_contig_name'] == row.seed_contig_name]
@@ -1300,7 +1547,7 @@ class Integrator(object):
                     "The existing table of seed/gene matches in the tRNA-seq contigs database, "
                     f"'{self.trnaseq_contigs_db_path}', did not have the proper number of columns, "
                     "probably because it was created with an obsolete version of the program, but "
-                    "anvi'o was instructed to clear the table with `remove_previous_matches`, so "
+                    "anvi'o was instructed to clear the table with `--remove-previous-matches`, so "
                     "the table has instead been deleted entirely and replaced by one with the "
                     "proper column structure.")
 
@@ -1310,9 +1557,10 @@ class Integrator(object):
 
         trnaseq_contigs_db.disconnect()
 
+        gene_count = len(hits_df[['contigs_db_hash', 'gene_gene_callers_id']].drop_duplicates())
         self.run.info_single(
             f"{hits_df['seed_gene_callers_id'].nunique()} tRNA-seq seeds are found to match "
-            f"{hits_df['gene_gene_callers_id'].nunique()} tRNA genes",
+            f"{gene_count} tRNA genes",
             cut_after=0, nl_after=1)
 
 
@@ -1347,7 +1595,8 @@ class Integrator(object):
                                      'gene_contigs_db_hash',
                                      'profile_db_sample_id',
                                      'collection_name',
-                                     'bin_id'])
+                                     'bin_id'],
+                error_if_no_data=False)
         integrated_genome_dict = {}
         for row in trna_gene_hits_df.itertuples(index=False):
             if not row.gene_contigs_db_project_name or not row.gene_contigs_db_hash:
@@ -1565,6 +1814,9 @@ class Affinitizer:
         self.run_quiet = rq
         self.progress = p
 
+        # The combination of (meta)genomic input arguments determines how databases are accessed.
+        self.check_genomic_input_args()
+
         self.trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path, expecting='contigs')
 
         # Store information on accessing (meta)genomes.
@@ -1587,15 +1839,17 @@ class Affinitizer:
             bin_ids = []
             with open(self.bin_ids_path) as bin_ids_file:
                 for line in bin_ids_file:
-                    bin_ids.append(line.rstrip())
+                    bin_id = line.rstrip()
+                    if bin_id:
+                        bin_ids.append(bin_id)
         else:
             bin_ids = None
 
         if self.bin_id:
             collect = ccollections.Collections()
             collect.populate_collections_dict(self.genomic_profile_db_path)
-            collect.is_bin_in_collection(bin_id)
-            self.genome_info_dict[bin_id] = genome_info = {}
+            collect.is_bin_in_collection(self.collection_name, self.bin_id)
+            self.genome_info_dict[self.bin_id] = genome_info = {}
             genome_info['contigs_db_info'] = contigs_db_info
             genome_info['profile_db_info'] = profile_db_info
             genome_info['profile_db_sample_id'] = profile_db_sample_id
@@ -1605,7 +1859,7 @@ class Affinitizer:
             collect = ccollections.Collections()
             collect.populate_collections_dict(self.genomic_profile_db_path)
             for bin_id in bin_ids:
-                collect.is_bin_in_collection(bin_id)
+                collect.is_bin_in_collection(self.collection_name, bin_id)
                 self.genome_info_dict[bin_id] = genome_info = {}
                 genome_info['contigs_db_info'] = contigs_db_info
                 genome_info['profile_db_info'] = profile_db_info
@@ -1616,7 +1870,7 @@ class Affinitizer:
             # There is a collection of internal genomes.
             collect = ccollections.Collections()
             collect.populate_collections_dict(self.genomic_profile_db_path)
-            for bin_id in collect.get_bins_info_dict():
+            for bin_id in collect.get_bins_info_dict(self.collection_name):
                 self.genome_info_dict[bin_id] = genome_info = {}
                 genome_info['contigs_db_info'] = contigs_db_info
                 genome_info['profile_db_info'] = profile_db_info
@@ -1798,6 +2052,35 @@ class Affinitizer:
                 self.nucleotide_decoding_dict[derived_anticodon] = decoded_codons
 
 
+    def check_genomic_input_args(self):
+        """Check the combination of (meta)genomic input arguments."""
+        if (self.genomic_contigs_db_path and
+            (self.internal_genomes_path or self.external_genomes_path)):
+            raise ConfigError(
+                "`internal_genomes` and `external_genomes` cannot be used with `contigs_db`.")
+
+        if ((self.genomic_profile_db_path or self.collection_name) and
+            not (
+                self.genomic_contigs_db_path and
+                self.genomic_profile_db_path and
+                self.collection_name)):
+            raise ConfigError(
+                "A collection must be provided using `contigs_db`, `profile_db`, and "
+                "`collection_name`.")
+
+        if self.bin_id and self.bin_ids_path:
+            raise ConfigError("`bin_id` and `bin_ids_file` cannot be used together.")
+
+        if ((self.bin_id or self.bin_ids_path) and
+            not (
+                self.genomic_contigs_db_path and
+                self.genomic_profile_db_path and
+                self.collection_name)):
+            raise ConfigError(
+                "Bins provided with `bin_id` or `bin_ids_file` also require `contigs_db`, "
+                "`profile_db`, and `collection_name`.")
+
+
     def sanity_check(self):
         """Check the feasibility of args from initialization."""
         if self.trnaseq_contigs_db_info.variant != 'trnaseq':
@@ -1874,30 +2157,6 @@ class Affinitizer:
                 f"`analyzed_samples`, the only sample in '{self.seeds_specific_txt_path}' is "
                 "the reference itself. Provide more samples or specify `analyzed_samples`.")
         ##################################################
-
-        # Do basic checks of the combinations of (meta)genomic input arguments.
-        if (self.genomic_contigs_db_path and
-            (self.internal_genomes_path or self.external_genomes_path)):
-            raise ConfigError(
-                "`internal_genomes` and `external_genomes` cannot be used with `contigs_db`.")
-
-        if ((self.genomic_profile_db_path or self.collection_name) and
-            not (
-                self.genomic_contigs_db_path and
-                self.genomic_profile_db_path and
-                self.collection_name)):
-            raise ConfigError(
-                "A collection must be provided using `contigs_db`, `profile_db`, and "
-                "`collection_name`.")
-
-        if (self.bin_id and
-            not (
-                self.genomic_contigs_db_path and
-                self.genomic_profile_db_path and
-                self.collection_name)):
-            raise ConfigError(
-                "A specific bin provided with `bin_id` also requires `contigs_db`, `profile_db`, "
-                "and `collection_name`.")
 
         ##################################################
         # Check that the (meta)genomic inputs correspond to tRNA genes linked to seeds in the
@@ -2378,7 +2637,7 @@ class Affinitizer:
 
         ##################################################
         # Find the nucleotide at anticodon wobble position 34 in each seed consensus sequence.
-        seed_ids_string = ','.join(['"%s"' % gene_callers_id for gene_callers_id in
+        seed_ids_string = ','.join([str(int(gene_callers_id)) for gene_callers_id in
                                     trna_gene_hits_df['seed_gene_callers_id'].unique()])
         ids_where_clause = f'''gene_callers_id IN ({seed_ids_string})'''
         wobble_position_df = trnaseq_contigs_db.get_table_as_dataframe(
@@ -2392,7 +2651,7 @@ class Affinitizer:
         trna_gene_hits_df = trna_gene_hits_df.merge(
             wobble_position_df, on='seed_gene_callers_id')
 
-        seed_contig_names_string = ','.join(['"%s"' % seed_contig_name for seed_contig_name in
+        seed_contig_names_string = ','.join(["'%s'" % seed_contig_name for seed_contig_name in
                                                 trna_gene_hits_df['seed_contig_name'].unique()])
         contigs_where_clause = f'''contig IN ({seed_contig_names_string})'''
         seed_consensus_sequence_df = trnaseq_contigs_db.get_table_as_dataframe(
