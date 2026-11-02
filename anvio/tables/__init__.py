@@ -165,6 +165,10 @@ gene_level_inseq_stats_table_name      = 'gene_level_inseq_stats'
 gene_level_inseq_stats_table_structure = ['gene_callers_id', 'sample_name', 'mean_coverage', 'insertions', 'insertions_normalized', 'mean_disruption', 'below_disruption', 'gene_coverage_values_per_nt']
 gene_level_inseq_stats_table_types     = [    'numeric'    ,     'text'   ,    'numeric'   ,  'numeric'  ,        'numeric'       ,      'numeric'   ,      'numeric'    ,              'blob'          ]
 
+gene_level_normalized_coverages_table_name      = 'gene_level_normalized_coverages'
+gene_level_normalized_coverages_table_structure = ['gene_callers_id', 'sample_name', 'log1p', 'cpm', 'zscore_raw', 'zscore_log1p', 'zscore_cpm']
+gene_level_normalized_coverages_table_types     = [    'numeric'    ,    'text'    , 'numeric', 'numeric', 'numeric',   'numeric'  ,  'numeric' ]
+
 ####################################################################################################
 #
 #     ADDITIONAL TABLE DESCRIPTIONS FOR THE TRNASEQ VARIANT OF THE CONTIGS DATABASE
@@ -466,6 +470,7 @@ table_requires_unique_entry_id = {'self': False,
                                   amino_acid_additional_data_table_name: True,
                                   gene_level_coverage_stats_table_name: True,
                                   gene_level_inseq_stats_table_name: True,
+                                  gene_level_normalized_coverages_table_name: True,
                                   trna_seed_feature_table_name: False,
                                   trna_gene_hits_table_name: False,
                                   item_additional_data_table_name: True,
