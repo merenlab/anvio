@@ -672,7 +672,9 @@ class BAMProfilerQuick:
 
             gc_content = (weighted_gc / bin_length) if bin_length else 0
 
-            self.collection_bins[bin_name] = {'contigs': contigs,
+            # contigs are sorted by name so that the bin-level coverage array (and therefore the discov windows)
+            # does not depend on the order of the collection-txt, and matches the one in anvi-summarize
+            self.collection_bins[bin_name] = {'contigs': sorted(contigs),
                                               'length': bin_length,
                                               'gc_content': gc_content}
 
