@@ -6,6 +6,7 @@ Unit tests for the split_fasta function.
 import unittest as ut
 
 import os
+import tempfile
 
 import anvio
 from anvio.errors import FilesNPathsError
@@ -21,6 +22,9 @@ __email__ = "moorer@udel.edu"
 
 class SplitFastaTestCase(ut.TestCase):
     def setUp(self):
+        self.output_directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.output_directory.cleanup)
+        self.output_dir = self.output_directory.name
         self.this_dir = os.path.dirname(os.path.realpath(__file__))
         self.test_files = os.path.join(self.this_dir, "test_files")
         self.not_fasta = os.path.join(self.test_files, "not_a_fasta.txt")
@@ -38,9 +42,9 @@ class SplitFastaTestCase(ut.TestCase):
         self.assertRaises(FilesNPathsError, split_fasta, self.empty_fasta)
 
     def test_single_fasta_gives_one_split(self):
-        out_files = split_fasta(self.single_seq_fasta)
+        out_files = split_fasta(self.single_seq_fasta, output_dir=self.output_dir)
 
-        expected_out_file = os.path.join(self.test_files, f'{self.single_seq_fasta}.0')
+        expected_out_file = os.path.join(self.output_dir, 'one_sequence.fasta.0')
 
         self.assertEqual(out_files, [expected_out_file])
 
@@ -57,9 +61,9 @@ class SplitFastaTestCase(ut.TestCase):
 
     def test_fasta_splitting(self):
         parts = 2
-        expected_out_files = [os.path.join(self.test_files, f'{self.five_seq_fasta}.{i}') for i in range(parts)]
+        expected_out_files = [os.path.join(self.output_dir, f'five_sequences.fasta.{i}') for i in range(parts)]
 
-        out_files = split_fasta(self.five_seq_fasta, parts=parts)
+        out_files = split_fasta(self.five_seq_fasta, parts=parts, output_dir=self.output_dir)
 
         self.assertEqual(out_files, expected_out_files)
 
@@ -79,9 +83,9 @@ class SplitFastaTestCase(ut.TestCase):
     def test_more_parts_than_sequences(self):
         parts = 10
         num_sequences = 5
-        expected_out_files = [os.path.join(self.test_files, f'{self.five_seq_fasta}.{i}') for i in range(num_sequences)]
+        expected_out_files = [os.path.join(self.output_dir, f'five_sequences.fasta.{i}') for i in range(num_sequences)]
 
-        out_files = split_fasta(self.five_seq_fasta, parts=parts)
+        out_files = split_fasta(self.five_seq_fasta, parts=parts, output_dir=self.output_dir)
 
         self.assertEqual(out_files, expected_out_files)
 
@@ -92,8 +96,8 @@ class SplitFastaTestCase(ut.TestCase):
         parts = 1
         file_name_prefix = 'silly'
 
-        out_files = split_fasta(self.five_seq_fasta, parts=parts, file_name_prefix=file_name_prefix, output_dir=self.this_dir)
-        expected_out_files = [os.path.join(self.this_dir, 'silly.0')]
+        out_files = split_fasta(self.five_seq_fasta, parts=parts, file_name_prefix=file_name_prefix, output_dir=self.output_dir)
+        expected_out_files = [os.path.join(self.output_dir, 'silly.0')]
 
         self.assertEqual(out_files, expected_out_files)
 
@@ -103,7 +107,7 @@ class SplitFastaTestCase(ut.TestCase):
     def test_shuffle_mode(self):
         parts = 2
 
-        out_files = split_fasta(self.five_seq_fasta, parts=parts, shuffle=True)
+        out_files = split_fasta(self.five_seq_fasta, parts=parts, shuffle=True, output_dir=self.output_dir)
 
         fasta = ReadFasta(out_files[0])
         self.assertEqual(fasta.ids, ['seq1 apple', 'seq3 cat', 'seq5 extra'])

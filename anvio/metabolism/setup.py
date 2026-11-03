@@ -543,10 +543,10 @@ class KeggSetup(KeggContext):
                     current_category = fields[1]
                 # Sub-category
                 elif first_char == "B":
-                    fields = re.split('\s{2,}', line) # don't want to split the subcategory name, so we have to split at least 2 spaces
+                    fields = re.split(r'\s{2,}', line) # don't want to split the subcategory name, so we have to split at least 2 spaces
                     current_subcategory = fields[1]
                 elif first_char == "C":
-                    fields = re.split('\s{2,}', line)
+                    fields = re.split(r'\s{2,}', line)
                     konum = "ko" + fields[1]
                     if konum[:5] != "ko010" and konum[:4] != "ko07":
                         self.pathway_dict[konum] = {"name" : fields[2], "category" : current_category, "subcategory" : current_subcategory}
@@ -607,7 +607,7 @@ class KeggSetup(KeggContext):
             if first_char == '+':  # first line of the file; second character gives us target level
                 target_level = line[1]
             elif first_char == target_level: # need to extract the accession, which is second field (split on spaces)
-                fields = re.split('\s+', line)
+                fields = re.split(r'\s+', line)
                 accession_list.append(fields[1])
             else: # skip everything else
                 continue
@@ -770,7 +770,7 @@ class KeggSetup(KeggContext):
         for line in f.readlines():
             line = line.strip('\n')
 
-            fields = re.split('\s{2,}', line)
+            fields = re.split(r'\s{2,}', line)
             data_vals = None
 
             # when data name unknown, parse from first field

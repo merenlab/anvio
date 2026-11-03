@@ -302,7 +302,7 @@ class BottleApplication(Bottle):
 
         # cache killer, it adds random query string to .js, .css source urls.
         if filename.endswith('.html'):
-            pattern = re.compile(b".*(<script|<link).*(href|src)\=[\'\"]((?!http\:\/\/).+?)\".*", re.MULTILINE)
+            pattern = re.compile(rb'.*(<script|<link).*(href|src)=["\']((?!http://).+?)".*', re.MULTILINE)
 
             buff = io.BytesIO()
             index = 0
