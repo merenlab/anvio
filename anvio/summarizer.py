@@ -1447,12 +1447,12 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                               'length': len(contig_array),
                                               'num_reads': contig_num_reads[contig_name],
                                               'num_windows': c_stats.num_windows,
-                                              'actual_prop_windows_covered': c_stats.prop_win_covered,
-                                              'expected_prop_windows_covered': c_stats.spread_expected,
-                                              'normalized_spread': c_stats.spread_norm,
-                                              'window_depth_evenness': c_stats.window_depth_evenness,
-                                              'spread_evenness_score': c_stats.spread_evenness_score,
-                                              'dis_cov': c_stats.discov})
+                                              'actual_prop_windows_covered': f"{c_stats.prop_win_covered:.4}",
+                                              'expected_prop_windows_covered': f"{c_stats.spread_expected:.4}",
+                                              'normalized_spread': f"{c_stats.spread_norm:.4}",
+                                              'window_depth_evenness': f"{c_stats.window_depth_evenness:.4}",
+                                              'spread_evenness_score': f"{c_stats.spread_evenness_score:.4}",
+                                              'dis_cov': f"{c_stats.discov:.4}"})
 
                 # Compute bin-level discov; reuse contig arrays
                 if failed_contigs: # unless one of the contig lookups failed; we don't want to compute based on partial bins
@@ -1472,12 +1472,12 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                        'length': len(bin_array),
                                        'num_reads': sum(contig_num_reads.values()),
                                        'num_windows': b_stats.num_windows,
-                                       'actual_prop_windows_covered': b_stats.prop_win_covered,
-                                       'expected_prop_windows_covered': b_stats.spread_expected,
-                                       'normalized_spread': b_stats.spread_norm,
-                                       'window_depth_evenness': b_stats.window_depth_evenness,
-                                       'spread_evenness_score': b_stats.spread_evenness_score,
-                                       'dis_cov': b_stats.discov})
+                                       'actual_prop_windows_covered': f"{b_stats.prop_win_covered:.4}",
+                                       'expected_prop_windows_covered': f"{b_stats.spread_expected:.4}",
+                                       'normalized_spread': f"{b_stats.spread_norm:.4}",
+                                       'window_depth_evenness': f"{b_stats.window_depth_evenness:.4}",
+                                       'spread_evenness_score': f"{b_stats.spread_evenness_score:.4}",
+                                       'dis_cov': f"{b_stats.discov:.4}"})
 
                 # When careful Q2Q3 was also requested, extract it from the bin-level stats here (it was skipped
                 # in init_collection_profile) to avoid redundant array concatenation and computation
