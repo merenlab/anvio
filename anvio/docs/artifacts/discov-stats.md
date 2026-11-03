@@ -1,34 +1,56 @@
-The Distribution of Coverage (DisCov) score is designed to capture the presence-absence of a contig or genome ('bin') in a metagenomic sample, as an alternative to using arbitrary detection thresholds for this purpose. DisCov quantifies how well a sequence is covered by reads — not just how many bases have coverage, but whether that coverage is spread across the sequence and whether it is roughly even in depth. To achieve this, DisCov incorporates two independent metrics:
+The distribution of coverage (discov) score is designed to capture the presence-absence of a contig or genome ('bin') in a metagenomic sample, as an alternative to using arbitrary detection thresholds for this purpose. Discov quantifies how well a sequence is covered by reads — not just how many bases have coverage, but whether that coverage is spread across the sequence as much as we would expect given the number of mapped reads and their total alignment length, and whether it is roughly even in depth. To achieve this, discov incorporates three metrics:
 
-* **_S_** (spread): the proportion of non-overlapping windows across the sequence that include bases with at least 1X coverage. In other words, `S = # of windows with coverage / # of windows`.
-* **_E_** (evenness): the proportion of covered bases whose coverage falls within an expected fold-range of the median nonzero coverage. In other words, `E = # covered bases that fall within some range of the median / # of covered bases`
+* **_S_** (spread): the proportion of non-overlapping windows across the sequence that include bases with at least 1X coverage, normalized by the proportion we would expect if the same reads were placed randomly on the sequence.
+* **_E_** (evenness): how similar the mean coverage depths of the covered windows are to each other, computed from their coefficient of variation (CV).
+* **_D_** (detection): the proportion of bases with at least 1X coverage.
 
-These are combined into a single score using either a linear or geometric formula:
+_S_ and _E_ are first combined into a spread-evenness score _C_, using either a geometric (the default) or a linear formula:
 
-* **Linear**: DisCov = _αS_ + (1-_α_)_E_
-* **Geometric**: DisCov = _S_^_α_ × _E_^(1-_α_)
+* **Geometric**: _C_ = _S_^_α_ × _E_^(1-_α_)
+* **Linear**: _C_ = _αS_ + (1-_α_)_E_
 
-where _α_ is a value between 0 and 1 that controls how much weight is given to spread (_S_) relative to evenness (_E_). By default _α_ = 0.5 (equal weighting) and the linear formula is used, so DisCov is simply the average of _S_ and _E_.
+where _α_ is a value between 0 and 1 that controls how much weight is given to spread (_S_) relative to evenness (_E_). By default _α_ = 0.5 (equal weighting).
 
-When DisCov values are reported -- for instance, in %(bam-stats-txt)s -- usually _S_, _E_, and the number of windows are individually reported in addition to the overall DisCov score.
+Detection is then added on top of _C_, and the final score is capped at 1:
+
+discov = min(1, _C_ + _D_^2)
+
+Squaring detection means that high detection gives a large boost, while low detection (which does not necessarily mean absence) contributes very little.
+
+When discov values are reported -- for instance, in %(bam-stats-txt)s -- the number of windows, the observed and expected spread, the normalized spread, _E_, and _C_ are individually reported in addition to the overall discov score.
 
 ## Technical details & parameters
 
-Here you'll find a description on how DisCov is computed. You can modify most aspects of the DisCov calculation, and the parameters for each step are mentioned when relevant below.
+Here you'll find a description on how discov is computed. You can modify several aspects of the discov calculation, and the parameters for each step are mentioned when relevant below.
 
 ### Programs that produce these stats
 
-%(anvi-profile-blitz)s always computes DisCov scores as part of its output. %(anvi-summarize)s computes DisCov scores when the `--report-discov` flag is provided.
+%(anvi-profile-blitz)s computes discov scores as part of its default output (but not with `--report-minimal` or `--gene-mode`). %(anvi-summarize)s computes discov scores for each bin and each contig within each bin when the `--report-discov` flag is provided.
 
 ### Input data
 
-_S_, _E_, and DisCov scores are computed based on per-nucleotide coverage arrays for individual contigs. When computing scores at the genome-level, the arrays for all contigs within a given genome (or more generically, a given bin) are concatenated. Note that the concatentation of per-contig coverage arrays means that the windows for the _S_ metric can span across contig boundaries within the genome.
+Discov is computed based on per-nucleotide coverage arrays for individual contigs and on the number of reads mapping to each contig. When computing scores at the genome-level, the arrays for all contigs within a given genome (or more generically, a given bin) are concatenated in alphabetical order of contig names, and the number of reads is summed across contigs. Note that the concatenation of per-contig coverage arrays means that the windows can span across contig boundaries within the genome.
 
-The per-base coverage arrays are either obtained directly from a %(bam-file)s, or from the auxiliary database files (`AUXILIARY-DATA.db`) produced by %(anvi-profile)s.
+%(anvi-profile-blitz)s obtains the coverage arrays and the number of reads directly from a %(bam-file)s. %(anvi-summarize)s obtains the coverage arrays from the auxiliary database file (`AUXILIARY-DATA.db`) produced by %(anvi-profile)s, and the number of reads from the %(profile-db)s.
 
-### _S_ and window length
+<div class="extra-info" markdown="1">
 
-We divide each sequence (contig or genome) into non-overlapping windows to compute _S_. _S_ is therefore essentially a more coarse-grained version of the regular detection metric (proportion of bases with coverage), and the window size affects its sensitivity. We want the windows to be long enough to capture meaningful clusters of mapped reads (hence, longer than typical short-read lengths), but short enough to effectively assess the distribution of these mapped reads along the sequence.
+<span class="extra-info-header">Differences between anvi-profile-blitz and anvi-summarize</span>
+The numbers reported by either strategy on the same dataset are usually the same, with the following exceptions:
+- when working with databases generated by %(anvi-profile)s with a nonzero `--min-contig-length` parameter, %(anvi-summarize)s will compute discov scores based on the filtered contigs
+- when some contigs have extremely high coverage (see below)
+
+The auxiliary database stores per-nucleotide coverage values up to a maximum of 65,535X, and higher values are capped. So for sequences with extremely high coverage, discov values from %(anvi-summarize)s can be slightly different from those reported by %(anvi-profile-blitz)s, which uses the exact coverage depths reported in the input BAM files. In practice, this mostly affects _E_, since capping the most highly-covered windows makes the window depths look slightly more even.
+
+</div>
+
+{:.warning}
+%(anvi-profile)s assigns each read to a single split (the one containing most of its aligned bases), and stores the number of reads per split in the %(profile-db)s. Profile databases generated with older versions of anvi'o do not include these counts, in which case %(anvi-summarize)s will tell you that it can not compute discov. If you have old profiles and you want to compute discov scores, you will need to find (or remake) the corresponding BAM files and then either use %(anvi-profile-blitz)s or re-run %(anvi-profile)s to fill in the read count data tables before running %(anvi-summarize)s.
+
+
+### Windows and window length
+
+We divide each sequence (contig or genome) into non-overlapping windows to compute both _S_ and _E_. The window size affects the sensitivity of these metrics. We want the windows to be long enough to capture meaningful clusters of mapped reads (hence, longer than typical read lengths), but short enough to effectively assess the distribution of these mapped reads along the sequence.
 
 ![Schematic for Spread](../../images/discov-spread.png){:.center-img .width-50}
 
@@ -37,44 +59,65 @@ There are two strategies for setting the window length:
 * **Fixed window length** (`--window-length`): a constant window size in bp applied to all sequences.
 * **Percentage-based window length** (`--window-length-as-percentage`): the window size is set as a percentage of each sequence's length, optionally with a minimum length floor (`--min-window-length`).
 
-If you don't explicitly set any of these parameters, the default sizing strategy depends on the context. For genome-level stats, the default is a fixed 1,000 bp window. For contig-level stats, a percentage-based window (1%% of contig length, with a minimum of 300 bp) is used to better accommodate contigs of varying sizes.
+If you don't explicitly set any of these parameters, the default sizing strategy depends on the context. For genome-level stats, the default is a fixed 10,000 bp window. For contig-level stats, a percentage-based window (1%% of contig length, with a minimum of 300 bp) is used to better accommodate contigs of varying sizes. In %(anvi-summarize)s, if you set a window length parameter yourself, it applies to both the genome-level and the contig-level stats.
 
 {:.warning}
-If a contig (or genome) is _shorter_ than the window length, the sequence will not be divided; that is, the entire sequence will be a single window. In this case, the _S_ metric collapses to a binary value (does the sequence have any coverage, or not), and from there: (1) If the sequence has no coverage at all (_S_ = 0), DisCov will be 0 (as the evenness metric _E_ will also be 0). (2) If the sequence does have coverage (_S_ = 1), then the DisCov value will have a minimum value of _α_ and the increase from _α_ is determined by _E_: DisCov = _α_ + (1-_α_)_E_. DisCov may not be very meaningful for these short sequences. In most cases, anvi'o will warn you if sequences are shorter than the computed window length, and regardless you should be able to see the number of windows per sequence in the output files.
+If a contig (or genome) is _shorter_ than the window length, the sequence will not be divided; that is, the entire sequence will be a single window. In this case, the observed spread collapses to a binary value (does the sequence have any coverage, or not), and _E_ will be 0 (see below). In most cases, anvi'o will warn you if sequences are shorter than the computed window length, and regardless you should be able to see the number of windows per sequence in the output files.
 
 **Removal of very short 'remainder' windows**
 
-Since the windows for computing _S_ are non-overlapping, the final window in the sequence is often shorter than the other windows (its length is the remainder when you divide the total sequence length by the window size). In general it is not a big problem to include one shorter window in the calculation, but it means that these final bases can sometimes have very disproportional representation in the spread metric. So when the remainder is _very small_ (<10%% of the window size), we exclude the final, shorter window entirely from the calculation of _S_.
+Since the windows are non-overlapping, the final window in the sequence is often shorter than the other windows (its length is the remainder when you divide the total sequence length by the window size). In general it is not a big problem to include one shorter window in the calculation, but it means that these final bases can sometimes have very disproportional representation. So when the remainder is _very small_ (<10%% of the window size), we exclude the final, shorter window entirely.
 
-What happens if we using a fixed window length and are dealing with very short contigs that by themselves are <10%% of that length? We don't throw anything away, and those contigs will have exactly 1 window.
+What happens if we are using a fixed window length and are dealing with very short contigs that by themselves are <10%% of that length? We don't throw anything away, and those contigs will have exactly 1 window.
 
-### _E_ and the fold-range
+### _S_ and the expected spread
 
-Evenness is computed only based upon the bases with nonzero coverage in the input sequence; that is, we filter the coverage array to keep only the nonzero values. From these nonzero coverage values, we compute the median coverage depth and multiply this value by the fold-range lower and upper bound to establish a range of 'expected' coverage depth. Bases with coverage depth within this range are counted as "evenly covered".
+The observed spread is the proportion of windows that contain at least one base with nonzero coverage:
 
-![Schematic for Evenness](../../images/discov-evenness.png){:.center-img .width-50}
+_S_obs_ = # of windows with coverage / # of windows
 
-You can adjust the fold-range to accommodate more or less variation in coverage depth by setting `--foldrange-lower` and `--foldrange-upper`. Wider fold-range values are more permissive; narrower ones are stricter. The default lower bound is 0.5x the median nonzero coverage while the default upper bound is 2.0x the median nonzero coverage. Note that these values are not required to be inverses of each other; for example, you could set a lower bound of 0.2x and an upper bound of 3x.
+But the proportion of covered windows depends heavily on how many reads map to the sequence. A handful of reads can only cover a handful of windows, even if the sequence is truly present in the sample. To account for this, we compare the observed spread to the spread we would expect if the same reads were placed randomly along the sequence:
+
+_S_exp_ = 1 − e^(−(_B_ + _N_·_w_) / _G_)
+
+where _B_ is the total number of aligned bases (the sum of the coverage array), _N_ is the number of reads mapping to the sequence, _w_ is the window length, and _G_ is the length of the sequence. The normalized spread is then
+
+_S_ = min(1, _S_obs_ / _S_exp_)
+
+so _S_ is close to 1 when reads are spread across the sequence as much as (or more than) we would expect from random placement, and lower when reads are clustered in a few regions. If the sequence has no coverage at all, _S_ is 0.
+
+Read length has an impact on the expected spread and is implicitly taken into account by considering both the number of mapped reads (_N_) and the total alignment length (_B_): the same amount of coverage coming from a few long reads covers fewer windows than when it comes from many short reads. For example, 5 long reads with a mean length of 10,000 bp on a 200,000 bp sequence (with 1,000 bp windows) are expected to cover only about 24%% of the windows, so observing 25%% covered windows yields _S_ = 1. The same coverage coming from 500 short reads of 100 bp would be expected to cover about 94%% of the windows, so in that case _S_ would be about 0.27.
+
+{:.notice}
+In the output files, the observed spread is reported as `actual_prop_windows_covered`, the expected spread as `expected_prop_windows_covered`, and _S_ as `normalized_spread`.
+
+### _E_ and the coefficient of variation
+
+Evenness is computed from the mean coverage depth of each window that has nonzero coverage, essentially asking the question: wherever there is coverage on the sequence, is the coverage depth even? (Uncovered windows are already accounted for in _S_, anyway). We compute the coefficient of variation (CV, the standard deviation divided by the mean) of these window means, and convert it into a score between 0 and 1:
+
+_E_ = 1 / (1 + CV)
+
+When all covered windows have the same mean depth, CV = 0 and _E_ = 1. The more the depths vary across windows, the closer _E_ gets to 0.
 
 {:.warning}
-The reliance on nonzero coverage values means that _E_ can have extremely high values when few reads map to a sequence. Even if an input sequence is 1,000,000 bp long, if it has only one read of 300 bp mapping to it, _E_ will be computed based upon the subset of ~300 bp where that read maps. In this example, there is an even 1x coverage on every single base of the ~300bp, and therefore _E_ = 1. With the linear DisCov formula and the default _α_ of 0.5, the DisCov score in a situation like this would be 0.5 despite the relative lack of read mapping, due to the high evenness. If that seems like too high of a score for this situation, then you can adjust _α_ or use the geometric formula for DisCov instead to penalize cases where _S_ is very low.
+If fewer than 3 windows have coverage, there is not enough information to estimate evenness, and _E_ is set to 0 (maximum unevenness). This happens for sequences with very few windows (i.e., short sequences relative to the window length) and for sequences with very few mapped reads. With the default geometric formula, _E_ = 0 means that _C_ = 0, so discov will be equal to _D_^2 and generally very low.
 
 ### The weight parameter _α_
 
-You can adjust the weights on _S_ and _E_ by setting the `--alpha` parameter. Increase _α_ to increase the importance of spread, and decrease _α_ to increase the importance of evenness. _α_ should always be between 0 and 1 (inclusive. In case you really want DisCov to be equivalent to one of _S_ or _E_ you can set _α_ = 1 or _α_ = 0, respectively).
+You can adjust the weights on _S_ and _E_ by setting the `--alpha` parameter. Increase _α_ to increase the importance of spread, and decrease _α_ to increase the importance of evenness. _α_ should always be between 0 and 1 (inclusive. In case you really want _C_ to be equivalent to one of _S_ or _E_ you can set _α_ = 1 or _α_ = 0, respectively).
 
-### Choosing the DisCov formula
+### Choosing the formula for combining _S_ and _E_
 
-The parameter `--discov-formula` controls which equation is used to combine _S_ and _E_ into the final DisCov score. If it's `linear` (the default), we take a weighted average of _S_ and _E_, and if it's `geometric`, we compute a weighted geometric mean of the two.
+The parameter `--discov-formula` controls which equation is used to combine _S_ and _E_ into the spread-evenness score _C_. If it's `geometric` (the default), we compute a weighted geometric mean of _S_ and _E_, and if it's `linear`, we take a weighted average of the two.
 
-Each formulation has pros and cons. The linear version is typically easier to interpret -- high numbers mean at least one of _S_ and _E_ is high and this often is a good evidence for presence in a metagenome sample. However, the exceptions to this are the edge cases mentioned in the warning boxes above -- _S_ will be 1.0 for very short input sequences with some coverage while _E_ will be 1.0 when a few isolated reads map to the sequence. Those cases yield mid-level DisCov scores even though the evidence for their presence is not very strong, and that means that linear DisCov values close to ~0.5 are rather ambiguous (they might result from similar yet low-ish values of _S_ and _E_, or they might result from these extreme edge cases where one takes a value near 1.0 and the other takes a value near 0.0). The alternative geometric formulation requires input sequences to have both high _S_ and high _E_ to yield a high DisCov score and can therefore more clearly distinguish ambiguous cases.
+The geometric formula requires a sequence to have both high _S_ and high _E_ to yield a high score, and _C_ will be 0 if either of them is 0. The linear formula is more permissive: a high value of one metric can compensate for a low value of the other. That makes linear scores somewhat ambiguous, since a mid-level score could come from similar, moderate values of _S_ and _E_ or from one metric near 1 and the other near 0 (for instance, a sequence with only 1 or 2 covered windows will have _E_ = 0, but with the linear formula it can still get a mid-level score from _S_ alone).
 
-Still not sure which formulation is best for your data? You could always compute both and maybe even combine them :)
+## Okay, but how do I use discov?
 
-## Okay, but how do I use DisCov?
+You can use discov to decide if a given sequence is present or absent in a metagenome sample by setting a threshold score above which it is considered present. Where you draw the line depends on how confident you want to be (or how much you want to avoid false positives).
 
 You can use DisCov to decide if a given sequence is present or absent in a metagenome sample by setting a threshold score above which it is considered present. Where you draw the line depends on how confident you want to be (or how much you want to avoid false positives). A rough guideline based on insights during testing: for [linear DisCov](https://github.com/merenlab/anvio/pull/2563#issuecomment-4422260917), don't use a threshold any lower than ~0.6, and for [geometric DisCov](https://github.com/merenlab/anvio/pull/2563#issuecomment-4544106000), don't use any threshold lower than ~0.5.
 
 ## More resources
 
-- The [DisCov Pull Request](https://github.com/merenlab/anvio/pull/2563) explains some implementation decisions, shows results from the hyperparameter tuning used to set the default parameters, and also describes the outcome of various validation tests.
+- The [initial discov Pull Request](https://github.com/merenlab/anvio/pull/2563) explains some implementation decisions, shows results from the hyperparameter tuning used to set the default parameters, and also describes the outcome of various validation tests. However, please note that this is an earlier version of discov, when it exclusively consisted of the spread-evenness score (no detection in the formula).
