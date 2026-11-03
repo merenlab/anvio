@@ -29,7 +29,6 @@ Thus, after running this program on a bin with name `BIN_NAME`, you can run
 {{ codestart }}
 %(anvi-interactive)s -d BIN_NAME-GENE-COVs.txt \
                  -A BIN_NAME-ENV-DETECTION.txt \
-                 --manual \
                  -p %(profile-db)s
 {{ codestop }}
 

@@ -79,14 +79,25 @@ You can also visit [this page](http://merenlab.org/tutorials/infant-gut/#the-gen
 
 ## Manual mode: visualize anything
 
-You can initiate the anvi'o interactive interface in manual mode to run it on *ad hoc* tabular data (here is [a tutorial on this](http://merenlab.org/tutorials/interactive-interface/)).
+You can also run the anvi'o interactive interface on *ad hoc* data that has nothing to do with anvi'o databases (here is [a tutorial on this](http://merenlab.org/tutorials/interactive-interface/)). To do that, you simply provide *any* of the following types of files individually or together, without a %(contigs-db)s:
 
-Anvi'o interactive interface is initiated with the flag `--manual-mode` and then by providing *any* of the following types of files individually or together:
+- a TAB-delimited tabular data (`--view-data`),
+- a NEWICK formatted tree (`--tree`),
 
-- a TAB-delimited tabular data,
-- a NEWICK formatted tree,
+For instance:
 
-When doing this kind of run, anvi'o does not expect you to have a profile database, but it still needs you to provide a name for it. Anvi'o will simply create an empty one for you so you can store your state or collections in it for reproducibility.
+{{ codestart }}
+anvi-interactive -d view_data.txt \
+                 -t tree.txt \
+                 -p my-display-PROFILE.db
+{{ codestop }}
+
+When doing this kind of run, anvi'o does not expect you to have a profile database, but it still needs you to provide a name for it. Anvi'o will simply create an empty one for you so you can store your state or collections in it for reproducibility. When you run the same command again, anvi'o will find the same profile database and will remember everything you have stored in it.
+
+{:.notice}
+Anvi'o recognizes this kind of run automatically, and starts the interface in what we call the 'manual mode'. In older versions of anvi'o you had to use the flag `--manual-mode` (or `--manual`) to ask for it explicitly. This is no longer necessary, but anvi'o will continue to accept these flags so your older commands will work.
+
+There is one case where you will need the `--manual-mode` flag: if you provide a tree or a data file without `-p` or `-c` in a directory where anvi'o can find a %(profile-db)s and a %(contigs-db)s, anvi'o can't tell whether you want to see your files alone, or on top of those databases. In that case it will ask you to be precise, either by using `--manual-mode` with a profile database path of your choice, or by providing the databases you want to use explicitly with `-p` and `-c`.
 
 ## Extending anvi'o displays
 
