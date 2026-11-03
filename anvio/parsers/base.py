@@ -4,6 +4,7 @@
 
 import os
 import hashlib
+import pandas as pd
 
 import anvio.terminal as terminal
 
@@ -132,7 +133,7 @@ class TaxonomyHelper(object):
         taxon_name_id_counter = 1
 
         for gene_callers_id in self.annotations_dict:
-            t_hash = hashlib.sha224(''.join(self.annotations_dict[gene_callers_id][level] or '' for level in levels_of_taxonomy).encode('utf-8')).hexdigest()
+            t_hash = hashlib.sha224(''.join('' if pd.isna(self.annotations_dict[gene_callers_id][level]) else str(self.annotations_dict[gene_callers_id][level]) for level in levels_of_taxonomy).encode('utf-8')).hexdigest()
 
             if t_hash in hash_to_taxon_name_id:
                 taxon_name_id = hash_to_taxon_name_id[t_hash]

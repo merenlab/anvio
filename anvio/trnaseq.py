@@ -159,6 +159,11 @@ __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
 
 
+def _anticodon_sequence_or_empty(value):
+    """Return a tRNA-seq anticodon sequence as text, using blank for missing values."""
+    return value if pd.notnull(value) else ''
+
+
 pp = terminal.pretty_print
 
 MAXSIZE = sys.maxsize
@@ -5569,7 +5574,7 @@ class DatabaseMerger(object):
             summary_N.spec_covs = np.fromiter(map(int, info_N.specific_coverages.split(',')[: -1]), int)
             summary_N.nonspec_covs = np.fromiter(map(int, info_N.nonspecific_coverages.split(',')[: -1]), int)
             summary_N.string = info_N.sequence
-            summary_N.anticodon_string = info_N.anticodon_sequence if info_N.anticodon_sequence else ''
+            summary_N.anticodon_string = _anticodon_sequence_or_empty(info_N.anticodon_sequence)
             length_N = len(summary_N.string)
             summary_N.spec_nt_covs_dict = spec_nt_covs_dict = {nt: np.zeros(length_N, dtype=int) for nt in UNAMBIG_NTS}
             summary_N.nonspec_nt_covs_dict = nonspec_nt_covs_dict = {nt: np.zeros(length_N, dtype=int) for nt in UNAMBIG_NTS}
