@@ -270,6 +270,7 @@ class HelpPagesRenderer:
                                    f"{error}") from error
         finally:
             self.progress.end()
+            self.run.info("Anvi'o help docs", str(self.output_directory))
 
 
     def copy_images(self):
