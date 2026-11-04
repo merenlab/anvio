@@ -241,12 +241,12 @@ zero_coverage_contigs_table_types     = ['text', 'text' ]
 # the splits for which all mapped reads are mostly aligning to other splits, meaning that no reads
 # get assigned to them (ie, they have a read count of 0) since these are not included in the
 # zero_coverage_splits table above
-num_reads_assigned_splits_table_name           = 'num_reads_assigned_splits'
-num_reads_mapped_contigs_table_name            = 'num_reads_mapped_contigs'
+num_reads_splits_table_name  = 'num_reads_splits'
+num_reads_contigs_table_name = 'num_reads_contigs'
 
-zero_num_reads_assigned_splits_table_name      = 'zero_num_reads_assigned_splits'
-zero_num_reads_assigned_splits_table_structure = ['item', 'layer']
-zero_num_reads_assigned_splits_table_types     = ['text', 'text' ]
+zero_read_splits_table_name      = 'zero_read_splits'
+zero_read_splits_table_structure = ['item', 'layer']
+zero_read_splits_table_types     = ['text', 'text' ]
 
 protein_abundances_table_name        = 'protein_abundances'
 protein_abundances_table_structure   = ['protein_id', 'reference_source', 'reference_id', 'sample_name', 'abundance_value']
@@ -423,9 +423,9 @@ table_requires_unique_entry_id = {'self': False,
                                   'variability_contigs': True,
                                   'zero_coverage_splits': False,
                                   'zero_coverage_contigs': False,
-                                  'num_reads_assigned_splits': True,
-                                  'num_reads_mapped_contigs': True,
-                                  'zero_num_reads_assigned_splits': False,
+                                  'num_reads_splits': True,
+                                  'num_reads_contigs': True,
+                                  'zero_read_splits': False,
                                   'gene_cluster_frequencies': True,
                                   'gene_cluster_presence_absence': True,
                                   'clusters': False,

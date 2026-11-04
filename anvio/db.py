@@ -834,7 +834,7 @@ class DB:
         same structure, such as the number of reads tables). Instead, such (item, layer) pairs are listed in
         dedicated tables, and `get_view_data` uses the tables returned by this function to add the zeros back.
         Items with zero coverage are listed in zero_coverage tables, and apply to all view tables. Splits with
-        no reads assigned to them but nonzero coverage are listed in the zero_num_reads_assigned_splits table, and only apply to
+        no reads assigned to them but nonzero coverage are listed in the zero_read_splits table, and only apply to
         the number of reads table for splits (every contig with coverage has at least one read).
         """
 
@@ -845,8 +845,8 @@ class DB:
         else:
             return []
 
-        if view_table_name == tables.num_reads_assigned_splits_table_name:
-            zero_value_tables.append(tables.zero_num_reads_assigned_splits_table_name)
+        if view_table_name == tables.num_reads_splits_table_name:
+            zero_value_tables.append(tables.zero_read_splits_table_name)
 
         return zero_value_tables
 

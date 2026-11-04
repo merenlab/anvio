@@ -5,7 +5,7 @@ from view tables into zero_coverage tables.
 
 This migration:
   1. Creates the (empty) tables for the number of reads mapped per split and contig, and sets the
-     `num_reads_mapped_stored` flag to False, since this information cannot be recovered from the
+     `num_reads_stored` flag to False, since this information cannot be recovered from the
      existing data.
   2. Moves (item, layer) pairs that have value=0 across all view tables into the zero_coverage tables.
      Profile databases generated since v42 store explicit zero rows for contigs that were profiled
@@ -33,9 +33,9 @@ essential_data_fields = ['std_coverage',
                          'abundance',
                          'variability']
 
-num_reads_tables = [('num_reads_assigned_splits',      ['item', 'layer', 'value'], ['text', 'text', 'numeric']),
-                    ('num_reads_mapped_contigs',       ['item', 'layer', 'value'], ['text', 'text', 'numeric']),
-                    ('zero_num_reads_assigned_splits', ['item', 'layer'],          ['text', 'text'])]
+num_reads_tables = [('num_reads_splits',  ['item', 'layer', 'value'], ['text', 'text', 'numeric']),
+                    ('num_reads_contigs', ['item', 'layer', 'value'], ['text', 'text', 'numeric']),
+                    ('zero_read_splits',  ['item', 'layer'],          ['text', 'text'])]
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -60,7 +60,7 @@ def migrate(db_path):
             profile_db.create_table(table_name, structure, types)
 
     # set the self table flag to indicate that the new tables are empty to downstream programs
-    profile_db.set_meta_value('num_reads_mapped_stored', False)
+    profile_db.set_meta_value('num_reads_stored', False)
 
     existing_tables = profile_db.get_table_names()
 
