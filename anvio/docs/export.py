@@ -558,7 +558,7 @@ class LLMsTextRenderer:
             Path to the llms-full.txt file to write.
         """
         self.dataset = dataset
-        self.output_file = Path(output_file)
+        self.output_file = Path(output_file).resolve()
         self.run = r
         self.progress = p
         self.site_url = f"https://anvio.org{dataset.meta.base_url}"
@@ -597,7 +597,7 @@ class LLMsTextRenderer:
         """Render the document and write it to the output file."""
         filesnpaths.is_output_file_writable(self.output_file)
         self.output_file.write_text(self.render(), encoding="utf-8")
-        self.run.info("llms-full.txt", self.output_file)
+        self.run.info("Consolidated documentation dump for LLMs", str(self.output_file))
 
 
     def render_header(self) -> str:
