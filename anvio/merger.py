@@ -241,6 +241,9 @@ class MultipleRuns:
         for p in self.input_profile_db_paths:
             profile_db = dbops.ProfileDatabase(p)
             self.profile_dbs_info_dict[p] = profile_db.meta
+            # profiles made before --skip-SNV-storage / --min-indel-length existed stored everything
+            self.profile_dbs_info_dict[p].setdefault('SNVs_stored', int(bool(profile_db.meta.get('SNVs_profiled'))))
+            self.profile_dbs_info_dict[p].setdefault('min_indel_length', 0)
 
         self.progress.end()
 
@@ -288,7 +291,9 @@ class MultipleRuns:
                      ('report_variability_full', 'Whether to report full variability (--report-variability-full) flags'),
                      ('SCVs_profiled', 'Profile SCVs flags (--profile-SCVs)'),
                      ('SNVs_profiled', 'SNV profiling flags (--skip-SNV-profiling)'),
-                     ('INDELs_profiled', 'Profile indels flags (--profile-indels)')]:
+                     ('INDELs_profiled', 'Profile indels flags (--profile-indels)'),
+                     ('SNVs_stored', 'Whether SNV rows were stored (--skip-SNV-storage)'),
+                     ('min_indel_length', 'The minimum stored indel length (--min-indel-length) values')]:
             v = set([r[k] for r in list(self.profile_dbs_info_dict.values())])
             if len(v) > 1:
                 if anvio.FORCE:
@@ -447,6 +452,9 @@ class MultipleRuns:
         self.SCVs_profiled = C('SCVs_profiled')
         self.SNVs_profiled = C('SNVs_profiled')
         self.INDELs_profiled = int(C('INDELs_profiled'))
+        # keys introduced with --skip-SNV-storage / --min-indel-length; profiles made before them stored everything
+        self.SNVs_stored = int(C('SNVs_stored'))
+        self.min_indel_length = int(C('min_indel_length'))
         self.total_length = C('total_length')
 
         if self.num_splits > self.max_num_splits_for_hierarchical_clustering and not self.enforce_hierarchical_clustering:
@@ -488,6 +496,8 @@ class MultipleRuns:
                        'SNVs_profiled': self.SNVs_profiled,
                        'SCVs_profiled': self.SCVs_profiled,
                        'INDELs_profiled': self.INDELs_profiled,
+                       'SNVs_stored': self.SNVs_stored,
+                       'min_indel_length': self.min_indel_length,
                        'num_contigs': self.num_contigs,
                        'num_splits': self.num_splits,
                        'total_length': self.total_length,

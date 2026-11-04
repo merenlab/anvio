@@ -1,0 +1,4 @@
+sample_name	mge_position
+S01	14872
+S02	50000
+S03	100000

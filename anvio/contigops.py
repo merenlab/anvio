@@ -11,6 +11,7 @@ import argparse
 
 from Bio import SeqIO
 from collections import OrderedDict
+from numba import jit
 
 import anvio
 import anvio.utils as utils
@@ -74,6 +75,61 @@ def get_atomic_data(sample_id, contigs, atomic_data_field, zero_cov_splits=None)
             atomic_data_splits.append((split.name, sample_id, split_atomic_data), )
 
     return atomic_data_splits, atomic_data_contigs
+
+
+def cigar_has_indel_block_of_length(cigartuples, min_length):
+    """True if a read's vectorized form would contain an indel block of at least `min_length` rows.
+
+    This mirrors `bamops._vectorize_read` exactly: ops consuming only the read (I, S) are type 1, ops consuming
+    only the reference (D, N) are type 2, ops consuming both are type 0, and ops consuming neither (H, P) still
+    occupy rows of type -1 and so break blocks. Consecutive ops of the same type form one block, and zero-length
+    ops add no rows. Reads without such a block contribute no indel >= min_length, so vectorizing them can be
+    skipped without changing any stored indel.
+
+    Parameters
+    ==========
+    cigartuples : list
+        The (operation, length) tuples of the read's CIGAR string.
+    min_length : int
+        The minimum length of an insertion-type or deletion-type block.
+
+    Returns
+    =======
+    result : bool
+    """
+    if cigartuples is None or len(cigartuples) == 0:
+        return False
+    return _cigar_has_indel_block_of_length(np.asarray(cigartuples, dtype=np.int64), int(min_length),
+                                            constants.cigar_consumption)
+
+
+@jit(nopython=True)
+def _cigar_has_indel_block_of_length(cigartuples, min_length, cigar_consumption):
+    current = -2
+    run = 0
+    for i in range(cigartuples.shape[0]):
+        operation = cigartuples[i, 0]
+        length = cigartuples[i, 1]
+        if length == 0:
+            continue
+        consumes_read = cigar_consumption[operation, 0]
+        consumes_ref = cigar_consumption[operation, 1]
+        if consumes_read and consumes_ref:
+            kind = 0
+        elif consumes_read:
+            kind = 1
+        elif consumes_ref:
+            kind = 2
+        else:
+            kind = -1
+        if kind == current:
+            run += length
+        else:
+            current = kind
+            run = length
+        if (kind == 1 or kind == 2) and run >= min_length:
+            return True
+    return False
 
 
 class Contig:
@@ -180,7 +236,7 @@ class Split:
 class Auxiliary:
     def __init__(self, split, min_coverage_for_variability=10, report_variability_full=False,
                  profile_SCVs=False, skip_INDEL_profiling=False, skip_SNV_profiling=False,
-                 min_percent_identity=None, skip_edges=0):
+                 min_percent_identity=None, skip_edges=0, skip_SNV_storage=False, min_indel_length=0):
 
         if anvio.DEBUG:
             self.run = terminal.Run()
@@ -194,6 +250,13 @@ class Auxiliary:
         self.skip_INDEL_profiling = skip_INDEL_profiling
         self.report_variability_full = report_variability_full
         self.skip_edges = skip_edges
+        # SNVs are still computed (the split's variation density stays identical), but their
+        # per-position rows are dropped instead of being returned for storage
+        self.skip_SNV_storage = skip_SNV_storage
+        # indels shorter than this are skipped as they are encountered in reads. A stored indel row
+        # depends only on that indel and the split's coverage array, so the rows that are kept are
+        # identical to those of a full profile filtered afterwards.
+        self.min_indel_length = min_indel_length or 0
 
         # used during array processing
         self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
@@ -499,10 +562,14 @@ class Auxiliary:
 
             allele_counts_array = utils.add_to_2D_numeric_array(aligned_sequence_as_index, reference_positions_in_split, allele_counts_array)
 
-            if not self.skip_INDEL_profiling:
+            if not self.skip_INDEL_profiling and (not self.min_indel_length or
+                                                  cigar_has_indel_block_of_length(read.cigartuples, self.min_indel_length)):
                 read.vectorize()
 
                 for ins_segment in read.iterate_blocks_by_mapping_type(mapping_type=1):
+                    if ins_segment.shape[0] < self.min_indel_length:
+                        continue
+
                     # Get the position and sequence of the insertion, create hash as a key for storage
                     ins_seq = ''.join([chr(x) for x in ins_segment[:, 1]])
                     ins_pos = ins_segment[0, 0] - self.split.start
@@ -521,6 +588,9 @@ class Auxiliary:
                 for del_segment in read.iterate_blocks_by_mapping_type(mapping_type=2):
                     # Get the position and length of the deletion, create hash as a key for storage
                     del_len = del_segment.shape[0]
+                    if del_len < self.min_indel_length:
+                        continue
+
                     del_pos = del_segment[0, 0] - self.split.start
                     indel_hash = hash((del_pos, del_len))
 
@@ -547,7 +617,7 @@ class Auxiliary:
             sequence_as_index=split_as_index,
             min_coverage_for_variability=self.min_coverage_for_variability,
             test_class=variability_test_class_null if self.report_variability_full else variability_test_class_default,
-            additional_per_position_data=additional_per_position_data,
+            additional_per_position_data={} if self.skip_SNV_storage else additional_per_position_data,
         )
         nt_profile.process()
         self.split.SNV_profiles = nt_profile.d
@@ -565,6 +635,11 @@ class Auxiliary:
         self.split.num_SNV_entries = len(nt_profile.d['coverage'])
         self.split.num_INDEL_entries = len(self.split.INDEL_profiles)
         self.variation_density = self.split.num_SNV_entries * 1000.0 / self.split.length
+
+        if self.skip_SNV_storage:
+            # num_SNV_entries and the density above keep their true values; only the per-position
+            # rows are dropped here (they are never stored: see BAMProfiler.generate_variable_nts_table)
+            self.split.SNV_profiles = {}
 
         if anvio.DEBUG:
             self.run.info_single('%d SNVs to report' % (self.split.num_SNV_entries), nl_before=0, nl_after=0, level=2)
