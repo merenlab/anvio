@@ -59,8 +59,7 @@ def migrate(db_path):
         if table_name not in existing_tables:
             profile_db.create_table(table_name, structure, types)
 
-    # the number of reads cannot be recovered from the existing data, so these tables stay empty
-    profile_db.remove_meta_key_value_pair('num_reads_mapped_stored')
+    # set the self table flag to indicate that the new tables are empty to downstream programs
     profile_db.set_meta_value('num_reads_mapped_stored', False)
 
     existing_tables = profile_db.get_table_names()
