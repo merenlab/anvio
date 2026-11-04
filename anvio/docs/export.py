@@ -4,10 +4,13 @@ import os
 import re
 import json
 import shutil
-from collections import Counter
-from dataclasses import asdict
-from pathlib import Path
+import posixpath
+
 from typing import Any
+from pathlib import Path
+from dataclasses import asdict
+from collections import Counter
+from urllib.parse import urlparse
 
 import anvio
 import anvio.filesnpaths as filesnpaths
@@ -689,14 +692,19 @@ class LLMsTextRenderer:
           the main sections of every entry at the same level regardless of how the source
           Markdown was authored.
         - anvi'o-specific markup is converted to plain Markdown first (see
-          `convert_anvio_markdown`).
+          `convert_anvio_markdown`), and relative links are rewritten to work from the
+          location of llms-full.txt (see `relocate_relative_links`).
         - Lines inside fenced code blocks are never treated as headings, so shell comments
           in examples remain untouched.
         """
         if record.source_markdown is None:
             return ""
 
-        lines = self.convert_anvio_markdown(record.source_markdown).strip().split("\n")
+        page_directory = urlparse(record.html_url).path.removeprefix(self.dataset.meta.base_url).strip("/")
+        content = self.convert_anvio_markdown(record.source_markdown)
+        content = self.relocate_relative_links(content, page_directory)
+
+        lines = content.strip().split("\n")
         heading_indices = []
         in_code = False
         for index, line in enumerate(lines):
@@ -763,6 +771,53 @@ class LLMsTextRenderer:
             converted.append(line)
 
         return "\n".join(converted)
+
+
+    def relocate_relative_links(self, content: str, page_directory: str) -> str:
+        """Rewrite relative links so they resolve from the root of the help output.
+
+        Parameters
+        ==========
+        content : str
+            Markdown authored for the page that lives in `page_directory`.
+        page_directory : str
+            Location of that page relative to the root of the help output, such as
+            `programs/anvi-run-hmms`.
+
+        Returns
+        =======
+        content : str
+            The same Markdown, with relative link and image targets rewritten.
+
+        Notes
+        =====
+        - Help pages live two levels deep (e.g., `programs/anvi-run-hmms/index.html`), while
+          llms-full.txt sits at the root of the help output next to the `images` directory.
+          A link such as `../../images/x.png` therefore becomes `images/x.png`. Links stay
+          relative, so the output works wherever it is hosted, as long as llms-full.txt is
+          kept at the root of the help output.
+        - Both Markdown targets, `[text](target)`, and HTML `src="target"` / `href="target"`
+          attributes are rewritten.
+        - Absolute URLs, site-absolute paths (`/...`), in-page anchors (`#...`), and links
+          that would point outside the help output are left untouched.
+        """
+        def relocate(target: str) -> str:
+            if not target or urlparse(target).scheme or target.startswith(("/", "#")):
+                return target
+
+            path, hash_sign, fragment = target.partition("#")
+            relocated = posixpath.normpath(posixpath.join(page_directory, path))
+            if relocated == ".." or relocated.startswith("../"):
+                return target
+            if path.endswith("/"):
+                relocated += "/"
+
+            return relocated + hash_sign + fragment
+
+        content = re.sub(r"(\]\(\s*)([^)\s]+)", lambda m: m.group(1) + relocate(m.group(2)), content)
+        content = re.sub(r"""((?:src|href)=")([^"]*)""", lambda m: m.group(1) + relocate(m.group(2)), content)
+
+        return content
 
 
     def heading_level(self, line: str) -> int:
