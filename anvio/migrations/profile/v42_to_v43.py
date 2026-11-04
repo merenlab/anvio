@@ -20,7 +20,6 @@ import sys
 import argparse
 
 import anvio.dbinfo as dbinfo
-import anvio.tables as t
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
@@ -33,6 +32,10 @@ essential_data_fields = ['std_coverage',
                          'detection',
                          'abundance',
                          'variability']
+
+num_reads_tables = [('num_reads_assigned_splits',      ['item', 'layer', 'value'], ['text', 'text', 'numeric']),
+                    ('num_reads_mapped_contigs',       ['item', 'layer', 'value'], ['text', 'text', 'numeric']),
+                    ('zero_num_reads_assigned_splits', ['item', 'layer'],          ['text', 'text'])]
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -52,9 +55,7 @@ def migrate(db_path):
 
     progress.update("Creating tables for the number of reads mapped per split and contig")
     existing_tables = profile_db.get_table_names()
-    for table_name, structure, types in [(t.num_reads_assigned_splits_table_name, t.view_table_structure, t.view_table_types),
-                                         (t.num_reads_mapped_contigs_table_name, t.view_table_structure, t.view_table_types),
-                                         (t.zero_num_reads_assigned_splits_table_name, t.zero_num_reads_assigned_splits_table_structure, t.zero_num_reads_assigned_splits_table_types)]:
+    for table_name, structure, types in num_reads_tables:
         if table_name not in existing_tables:
             profile_db.create_table(table_name, structure, types)
 
