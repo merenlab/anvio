@@ -768,7 +768,7 @@ class BAMProfilerQuick:
             if self.report_minimal:
                 return ['bin', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov']
             else:
-                return ['bin', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov', 'num_windows', 'actual_prop_windows_covered', 'expected_prop_windows_covered', 'normalized_spread', 'window_depth_evenness', 'spread_evenness_score', 'dis_cov']
+                return ['bin', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov', 'num_windows', 'actual_prop_windows_covered', 'expected_prop_windows_covered', 'normalized_spread', 'window_depth_evenness', 'spread_evenness_score', 'discov']
 
         elif reporting_genes:
             if self.report_minimal:
@@ -780,7 +780,7 @@ class BAMProfilerQuick:
             if self.report_minimal:
                 return ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov']
             else:
-                return ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov', 'num_windows', 'actual_prop_windows_covered', 'expected_prop_windows_covered', 'normalized_spread', 'window_depth_evenness', 'spread_evenness_score', 'dis_cov']
+                return ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov', 'num_windows', 'actual_prop_windows_covered', 'expected_prop_windows_covered', 'normalized_spread', 'window_depth_evenness', 'spread_evenness_score', 'discov']
 
         raise ConfigError("This function reached a point it should have never :(")
 

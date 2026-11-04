@@ -86,7 +86,7 @@ This requires access to the auxiliary data file (`AUXILIARY-DATA.db`) in the sam
 * `discov_bins.txt` — one row per bin × sample
 * `discov_contigs.txt` — one row per contig × sample. If the splits of a contig are in different bins, each of these bins gets a row for the part of the contig that is in it, and the `partial_contig_in_bin` column is set to 1 for these rows.
 
-Both files report the length of each sequence, the number of reads mapping to it (`num_reads`), the number of windows, the observed and expected proportion of covered windows, the normalized spread (_S_), the window depth evenness (_E_), the spread-evenness score (_C_), and the discov score (`dis_cov`).
+Both files report the length of each sequence, the number of reads mapping to it (`num_reads`), the number of windows, the observed and expected proportion of covered windows, the normalized spread (_S_), the window depth evenness (_E_), the spread-evenness score (_C_), and the discov score (`discov`).
 
 You can adjust how discov is computed using the following parameters. When neither `--window-length` nor `--window-length-as-percentage` is specified, anvi'o applies context-sensitive defaults: a fixed 10,000 bp window for bins, and a percentage-based window (1%% of contig length, minimum 300 bp) for individual contigs. If you specify window length parameters, they apply to both bins and contigs.
 

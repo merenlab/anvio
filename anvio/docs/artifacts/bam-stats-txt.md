@@ -29,13 +29,13 @@ These files can also contain distribution of coverage (discov) scores and relate
 * `normalized_spread`: The observed spread divided by the expected spread, capped at 1. Also known as the Spread (_S_) metric.
 * `window_depth_evenness`: 1 / (1 + CV), where CV is the coefficient of variation of the mean coverage depths of the covered windows. Also known as the Evenness (_E_) metric. It is set to 0 when fewer than 3 windows are covered.
 * `spread_evenness_score`: The geometric or linear combination of _S_ and _E_ (_C_).
-* `dis_cov`: The overall distribution of coverage score for the contig (or genome), computed as min(1, _C_ + detection^2).
+* `discov`: The overall distribution of coverage score for the contig (or genome), computed as min(1, _C_ + detection^2).
 
 ### Contig mode, default output
 
 19-column TAB delimited file, where each row represents a single contig x sample pair (so the values in the first column are not unique):
 
-|**`contig`**|**`sample`**|**`length`**|**`gc_content`**|**`num_mapped_reads`**|**`detection`**|**`mean_cov`**|**`q2q3_cov`**|**`median_cov`**|**`min_cov`**|**`max_cov`**|**`std_cov`**|**`num_windows`**|**`actual_prop_windows_covered`**|**`expected_prop_windows_covered`**|**`normalized_spread`**|**`window_depth_evenness`**|**`spread_evenness_score`**|**`dis_cov`**|
+|**`contig`**|**`sample`**|**`length`**|**`gc_content`**|**`num_mapped_reads`**|**`detection`**|**`mean_cov`**|**`q2q3_cov`**|**`median_cov`**|**`min_cov`**|**`max_cov`**|**`std_cov`**|**`num_windows`**|**`actual_prop_windows_covered`**|**`expected_prop_windows_covered`**|**`normalized_spread`**|**`window_depth_evenness`**|**`spread_evenness_score`**|**`discov`**|
 |:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|
 |contig_878|SAMPLE-01|27538|0.608|11877|0.9995|63.61|65.2|65.0|0|107|15.21|92|1.0|1.0|1.0|0.8684|0.9319|1.0|
 |contig_6515|SAMPLE-01|12315|0.446|7669|0.9985|91.51|92.5|92.0|0|195|23.98|41|1.0|1.0|1.0|0.8321|0.9122|1.0|
@@ -67,7 +67,7 @@ These files can also contain distribution of coverage (discov) scores and relate
 
 19-column TAB delimited file, where each row represents a single bin/genome x sample pair:
 
-|**`bin`**|**`sample`**|**`length`**|**`gc_content`**|**`num_mapped_reads`**|**`detection`**|**`mean_cov`**|**`q2q3_cov`**|**`median_cov`**|**`min_cov`**|**`max_cov`**|**`std_cov`**|**`num_windows`**|**`actual_prop_windows_covered`**|**`expected_prop_windows_covered`**|**`normalized_spread`**|**`window_depth_evenness`**|**`spread_evenness_score`**|**`dis_cov`**|
+|**`bin`**|**`sample`**|**`length`**|**`gc_content`**|**`num_mapped_reads`**|**`detection`**|**`mean_cov`**|**`q2q3_cov`**|**`median_cov`**|**`min_cov`**|**`max_cov`**|**`std_cov`**|**`num_windows`**|**`actual_prop_windows_covered`**|**`expected_prop_windows_covered`**|**`normalized_spread`**|**`window_depth_evenness`**|**`spread_evenness_score`**|**`discov`**|
 |:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|
 |Bin_1|SAMPLE-01|27538|0.608|11877|0.9995|63.61|65.2|65.0|0|107|15.21|3|1.0|1.0|1.0|0.9701|0.9849|1.0|
 |Bin_2|SAMPLE-01|16856|0.312|4237|0.9993|37.85|38.25|38.0|0|56|7.961|2|1.0|1.0|1.0|0.0|0.0|0.9987|

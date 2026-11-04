@@ -1452,7 +1452,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                               'normalized_spread': f"{c_stats.spread_norm:.4}",
                                               'window_depth_evenness': f"{c_stats.window_depth_evenness:.4}",
                                               'spread_evenness_score': f"{c_stats.spread_evenness_score:.4}",
-                                              'dis_cov': f"{c_stats.discov:.4}"})
+                                              'discov': f"{c_stats.discov:.4}"})
 
                 # Compute bin-level discov; reuse contig arrays
                 if failed_contigs: # unless one of the contig lookups failed; we don't want to compute based on partial bins
@@ -1477,7 +1477,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                        'normalized_spread': f"{b_stats.spread_norm:.4}",
                                        'window_depth_evenness': f"{b_stats.window_depth_evenness:.4}",
                                        'spread_evenness_score': f"{b_stats.spread_evenness_score:.4}",
-                                       'dis_cov': f"{b_stats.discov:.4}"})
+                                       'discov': f"{b_stats.discov:.4}"})
 
                 # When careful Q2Q3 was also requested, extract it from the bin-level stats here (it was skipped
                 # in init_collection_profile) to avoid redundant array concatenation and computation
@@ -1490,7 +1490,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         # is suppressed so the file starts directly with the data columns.
         bin_headers = ['key', 'bin_name', 'sample_name', 'length', 'num_reads', 'num_windows',
                        'actual_prop_windows_covered', 'expected_prop_windows_covered', 'normalized_spread',
-                       'window_depth_evenness', 'spread_evenness_score', 'dis_cov']
+                       'window_depth_evenness', 'spread_evenness_score', 'discov']
         output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix=DISCOV_BINS_OUTPUT)
         utils.store_dict_as_TAB_delimited_file({i: row for i, row in enumerate(bin_level_rows)},
                                                None,
@@ -1501,7 +1501,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         # Write contig-level output
         contig_headers = ['key', 'bin_name', 'contig_name', 'sample_name', 'partial_contig_in_bin', 'length', 'num_reads', 'num_windows',
                           'actual_prop_windows_covered', 'expected_prop_windows_covered', 'normalized_spread',
-                          'window_depth_evenness', 'spread_evenness_score', 'dis_cov']
+                          'window_depth_evenness', 'spread_evenness_score', 'discov']
         output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix=DISCOV_CONTIGS_OUTPUT)
         utils.store_dict_as_TAB_delimited_file({i: row for i, row in enumerate(contig_level_rows)},
                                                None,
