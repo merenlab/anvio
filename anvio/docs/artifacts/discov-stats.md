@@ -52,7 +52,7 @@ The auxiliary database stores per-nucleotide coverage values up to a maximum of 
 
 We divide each sequence (contig or genome) into non-overlapping windows to compute both _S_ and _E_. The window size affects the sensitivity of these metrics. We want the windows to be long enough to capture meaningful clusters of mapped reads (hence, longer than typical read lengths), but short enough to effectively assess the distribution of these mapped reads along the sequence.
 
-![Schematic for Spread](../../images/discov-spread.png){:.center-img .width-50}
+
 
 There are two strategies for setting the window length:
 
@@ -76,6 +76,8 @@ The observed spread is the proportion of windows that contain at least one base 
 
 _S_obs_ = # of windows with coverage / # of windows
 
+![Schematic for Spread](../../images/discov-spread.png){:.center-img .width-50}
+
 But the proportion of covered windows depends heavily on how many reads map to the sequence. A handful of reads can only cover a handful of windows, even if the sequence is truly present in the sample. To account for this, we compare the observed spread to the spread we would expect if the same reads were placed randomly along the sequence:
 
 _S_exp_ = 1 − e^(−(_B_ + _N_·_w_) / _G_)
@@ -97,6 +99,8 @@ Evenness is computed from the mean coverage depth of each window that has nonzer
 
 _E_ = 1 / (1 + CV)
 
+![Schematic for Evenness](../../images/discov-evenness.png){:.center-img .width-50}
+
 When all covered windows have the same mean depth, CV = 0 and _E_ = 1. The more the depths vary across windows, the closer _E_ gets to 0.
 
 {:.warning}
@@ -116,7 +120,11 @@ The geometric formula requires a sequence to have both high _S_ and high _E_ to 
 
 You can use discov to decide if a given sequence is present or absent in a metagenome sample by setting a threshold score above which it is considered present. Where you draw the line depends on how confident you want to be (or how much you want to avoid false positives).
 
-You can use DisCov to decide if a given sequence is present or absent in a metagenome sample by setting a threshold score above which it is considered present. Where you draw the line depends on how confident you want to be (or how much you want to avoid false positives). A rough guideline based on insights during testing: for [linear DisCov](https://github.com/merenlab/anvio/pull/2563#issuecomment-4422260917), don't use a threshold any lower than ~0.6, and for [geometric DisCov](https://github.com/merenlab/anvio/pull/2563#issuecomment-4544106000), don't use any threshold lower than ~0.5.
+To help you get an intuition on how to set the threshold, you can take a look at the distribution of discov scores in our test dataset. We manually-validated present or absent genomes across metagenomes that were randomly subsampled, and computed discov for each genome in each subsample using default parameters, or when changing the S-E formula to linear. Below, each dot represents one genome in one subsample (there are 25 total metagenomes each with 20 subsamples keeping 0.1% to 100% of reads, and each metagenome has ~5 present and ~5 absent genomes associated wth it), and the dashed line indicates the discov threshold with the best precision and recall (highest F1 score) in each case.
+
+![Discov Distributions](../../images/discov_violin_plots.png){:.center-img .width-50}
+
+Some rough guidelines from this data: discov thresholds for determining presence should always be set above 0.5. With all default parameters, a threshold around 0.6 is good for avoiding most false positives. The linear formula is more forgiving/ambiguous for mid-range spread and evenness values, and therefore the threshold should generally be set higher when using the linear version than when using the geometric formula.
 
 ## More resources
 
