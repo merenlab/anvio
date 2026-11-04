@@ -122,7 +122,7 @@ To help you get an intuition on how to set the threshold, you can take a look at
 
 ![Discov Distributions](../../images/discov_violin_plots.png){:.center-img .width-50}
 
-Some rough guidelines from this data: discov thresholds for determining presence should always be set above 0.5. With all default parameters, a threshold around 0.6 is good for avoiding most false positives. The linear formula is more forgiving/ambiguous for mid-range spread and evenness values, and therefore the threshold should generally be set higher when using the linear version than when using the geometric formula.
+Some rough guidelines from this data: discov thresholds for determining presence should always be set above 0.5. With all default parameters, a threshold around 0.6 is good for avoiding most false positives. The linear formula is more forgiving/ambiguous for mid-range spread and evenness values, and therefore the threshold should generally be set higher when using the linear version than when using the geometric formula. Note that these recommendations apply to genome-level metrics; we haven't tested contig-level metrics comprehensively enough to suggest thresholds for those yet.
 
 ## More resources
 
