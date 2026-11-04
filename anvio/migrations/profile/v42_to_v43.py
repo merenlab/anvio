@@ -5,7 +5,7 @@ from view tables into zero_coverage tables.
 
 This migration:
   1. Creates the (empty) tables for the number of reads mapped per split and contig, and sets the
-     `num_reads_mapped_stored` flag to False, since this information cannot be recovered from the
+     `num_reads_stored` flag to False, since this information cannot be recovered from the
      existing data.
   2. Moves (item, layer) pairs that have value=0 across all view tables into the zero_coverage tables.
      Profile databases generated since v42 store explicit zero rows for contigs that were profiled
@@ -20,7 +20,6 @@ import sys
 import argparse
 
 import anvio.dbinfo as dbinfo
-import anvio.tables as t
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
@@ -33,6 +32,10 @@ essential_data_fields = ['std_coverage',
                          'detection',
                          'abundance',
                          'variability']
+
+num_reads_tables = [('num_reads_splits',  ['item', 'layer', 'value'], ['text', 'text', 'numeric']),
+                    ('num_reads_contigs', ['item', 'layer', 'value'], ['text', 'text', 'numeric']),
+                    ('zero_read_splits',  ['item', 'layer'],          ['text', 'text'])]
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -52,15 +55,12 @@ def migrate(db_path):
 
     progress.update("Creating tables for the number of reads mapped per split and contig")
     existing_tables = profile_db.get_table_names()
-    for table_name, structure, types in [(t.num_reads_assigned_splits_table_name, t.view_table_structure, t.view_table_types),
-                                         (t.num_reads_mapped_contigs_table_name, t.view_table_structure, t.view_table_types),
-                                         (t.zero_num_reads_assigned_splits_table_name, t.zero_num_reads_assigned_splits_table_structure, t.zero_num_reads_assigned_splits_table_types)]:
+    for table_name, structure, types in num_reads_tables:
         if table_name not in existing_tables:
             profile_db.create_table(table_name, structure, types)
 
-    # the number of reads cannot be recovered from the existing data, so these tables stay empty
-    profile_db.remove_meta_key_value_pair('num_reads_mapped_stored')
-    profile_db.set_meta_value('num_reads_mapped_stored', False)
+    # set the self table flag to indicate that the new tables are empty to downstream programs
+    profile_db.set_meta_value('num_reads_stored', False)
 
     existing_tables = profile_db.get_table_names()
 

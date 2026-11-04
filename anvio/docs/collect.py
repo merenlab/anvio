@@ -122,8 +122,14 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         formatter.add_usage(parser.usage, parser._actions, parser._mutually_exclusive_groups, prefix='')
         command_line_usage = formatter.format_help().strip()
 
+        # programs with modes get one more group for each mode, titled with the flag and the mode that
+        # enable its parameters, since the groups of mode parsers carry titles formatted for the terminal
+        groups = [(group, group.title, None) for group in parser._action_groups]
+        for mode, mode_parser in parser.mode_parsers.items():
+            groups += [(group, f"{parser.mode_flag} {mode}", mode) for group in mode_parser._action_groups]
+
         parameter_groups = []
-        for group in parser._action_groups:
+        for group, title, mode in groups:
             parameters = []
             for action in group._group_actions:
                 # the help flag is the same for every program, and the parameters whose help is
@@ -150,9 +156,10 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
                                                    nargs=action.nargs))
 
             if parameters:
-                parameter_groups.append(ParameterGroup(title=group.title,
+                parameter_groups.append(ParameterGroup(title=title,
                                                        description=' '.join(group.description.split()) if group.description else None,
-                                                       parameters=parameters))
+                                                       parameters=parameters,
+                                                       mode=mode))
 
         return command_line_usage, parameter_groups
 
