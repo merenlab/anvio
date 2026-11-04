@@ -566,6 +566,7 @@ class LLMsTextRenderer:
 
         self.body_top_heading_level = 3
         self.max_heading_level = 6
+        self.callout_labels = {"notice": "Note", "note": "Note", "warning": "Warning"}
         self._artifact_relations = {"requires": "Required by", "provides": "Provided by",
                                     "can_use": "Can be used by", "can_provide": "Can be provided by"}
 
@@ -687,20 +688,19 @@ class LLMsTextRenderer:
           shallowest heading in the body sits directly below the section heading. This keeps
           the main sections of every entry at the same level regardless of how the source
           Markdown was authored.
-        - Lines inside `{{ codestart }}` blocks or fenced code blocks are never treated as
-          headings, so shell comments in examples remain untouched.
+        - anvi'o-specific markup is converted to plain Markdown first (see
+          `convert_anvio_markdown`).
+        - Lines inside fenced code blocks are never treated as headings, so shell comments
+          in examples remain untouched.
         """
         if record.source_markdown is None:
             return ""
 
-        lines = record.source_markdown.strip().split("\n")
+        lines = self.convert_anvio_markdown(record.source_markdown).strip().split("\n")
         heading_indices = []
         in_code = False
         for index, line in enumerate(lines):
-            stripped = line.strip()
-            if stripped in ("{{ codestart }}", "{{ codestop }}"):
-                in_code = stripped == "{{ codestart }}"
-            elif stripped.startswith("```"):
+            if line.strip().startswith("```"):
                 in_code = not in_code
             elif not in_code and re.match(r"#{1,6} ", line):
                 heading_indices.append(index)
@@ -712,6 +712,57 @@ class LLMsTextRenderer:
                 lines[index] = self.shift_heading(lines[index], offset)
 
         return "\n".join(lines)
+
+
+    def convert_anvio_markdown(self, content: str) -> str:
+        """Turn anvi'o-flavored Markdown into plain Markdown.
+
+        Parameters
+        ==========
+        content : str
+            Markdown as authored in anvi'o documentation files.
+
+        Returns
+        =======
+        content : str
+            The same Markdown with anvi'o-specific markup removed.
+
+        Notes
+        =====
+        - `%(name)s` variables, which the help pages turn into links to programs and
+          artifacts, become the bare `name`.
+        - `%%`, the escaped form of a literal `%` sign, becomes `%`.
+        - `{{ codestart }}` and `{{ codestop }}` lines become ``` fences, keeping their
+          indentation so code blocks nested in lists stay nested.
+        - Kramdown class markers that style the next paragraph on the web site, such as
+          `{:.notice}` or `{:.warning}`, are dropped, and the paragraph they style starts with
+          a bold label such as `**Note:**` or `**Warning:**` instead.
+        - Kramdown attribute lists attached to links and images, such as the
+          `{:.center-img .width-70}` that sizes figures on the web site, are dropped.
+        """
+        content = re.sub(r"%%|%\(([^)]+)\)s", lambda m: m.group(1) or "%", content)
+        content = re.sub(r"(?<=\))\{:[^}]*\}", "", content)
+
+        converted = []
+        pending_label = None
+        for line in content.split("\n"):
+            stripped = line.strip()
+            indent = line[:len(line) - len(stripped)] if stripped else ""
+            callout = re.fullmatch(r"\{:\s*\.(\w+)\s*\}", stripped)
+
+            if stripped in ("{{ codestart }}", "{{ codestop }}"):
+                line = indent + "```"
+            elif callout:
+                pending_label = self.callout_labels.get(callout.group(1), callout.group(1).capitalize())
+                continue
+
+            if pending_label:
+                line = f"{indent}**{pending_label}:** {stripped}" if stripped else f"**{pending_label}:**\n"
+                pending_label = None
+
+            converted.append(line)
+
+        return "\n".join(converted)
 
 
     def heading_level(self, line: str) -> int:
