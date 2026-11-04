@@ -5198,7 +5198,7 @@ class ProfileSuperclass(object):
         if report_discov and not self.p_meta['blank']:
             self.progress.update("Reading the number of reads assigned to splits")
             split_names_in_collection = set([split_name for bin_id in collection for split_name in collection[bin_id]])
-            self.num_reads_per_split, _ = profile_db.db.get_view_data(t.num_reads_assigned_splits_table_name, split_names_of_interest=split_names_in_collection)
+            self.num_reads_per_split, _ = profile_db.db.get_view_data(t.num_reads_splits_table_name, split_names_of_interest=split_names_in_collection)
 
         # generating precent recruitment of each bin plus __splits_not_binned__ in each sample:
         self.bin_percent_recruitment_per_sample = {}
