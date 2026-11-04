@@ -44,6 +44,25 @@ class ArgumentParser(argparse.ArgumentParser):
                                            '--force-use-my-tree', '--force-overwrite', '--tmp-dir',
                                            '--I-know-this-is-not-a-good-idea', '--include-stray-KOs']
 
+        self.mode_flag = None
+        self.mode_parsers = {}
+
+
+    def add_mode_parsers(self, mode_flag, mode_parsers):
+        """Declares the separate parsers a program uses for the parameters of each of its modes,
+           so the code that generates the help pages can find them (see `get_parser_for_program`).
+
+        Parameters
+        ==========
+        mode_flag : str
+            The flag that chooses the mode, such as `--mode`.
+        mode_parsers : dict
+            The parser of each mode, keyed by the mode names users can pass with `mode_flag`.
+        """
+
+        self.mode_flag = mode_flag
+        self.mode_parsers = mode_parsers
+
 
     def get_num_threads_action(self):
         for action in self._actions:
