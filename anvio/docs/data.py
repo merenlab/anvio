@@ -67,6 +67,7 @@ class ParameterGroup:
     title: str
     description: str | None
     parameters: list[ProgramParameter]
+    mode: str | None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -183,7 +184,8 @@ class DocumentationData:
             for record in data["programs"].values():
                 record["resources"] = [(label, url) for label, url in record["resources"]]
                 record["parameter_groups"] = [ParameterGroup(title=group["title"], description=group["description"],
-                                                             parameters=[ProgramParameter(**parameter) for parameter in group["parameters"]])
+                                                             parameters=[ProgramParameter(**parameter) for parameter in group["parameters"]],
+                                                             mode=group["mode"])
                                               for group in record["parameter_groups"]]
             for record in data["workflows"].values():
                 record["third_party_programs_used"] = [(operation, programs) for operation, programs in record["third_party_programs_used"]]
