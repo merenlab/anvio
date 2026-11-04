@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 DESCRIPTION = """This program downloads and sets up the ModelSEED Biochemistry database."""
 
-import os
-
 from sys import exit
 from argparse import Namespace
 
@@ -36,8 +34,10 @@ def main() -> None:
 def get_args() -> Namespace:
     parser = ArgumentParser(description=DESCRIPTION)
     parser.add_argument(
-        '--dir', default=os.path.dirname(reactionnetwork.ModelSEEDDatabase.default_dir), type=str,
-        help="Directory in which a new subdirectory with the name, 'ModelSEED', is created containing database files."
+        '--dir', default=None, type=str,
+        help="Directory in which a new subdirectory, 'MODELSEED', is created to hold the database "
+             "files. Without this flag, the database is set up in a default directory within the "
+             "anvi'o installation (anvio/data/misc/MODELSEED)."
     )
     parser.add_argument(*A('reset'), **K('reset'))
 
