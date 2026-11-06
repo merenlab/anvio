@@ -405,8 +405,6 @@ class BAMProfilerQuick:
         self.window_length = A('window_length')
         self.window_length_as_percentage = A('window_length_as_percentage')
         self.min_window_length = A('min_window_length')
-        self.foldrange_lower = A('foldrange_lower')
-        self.foldrange_upper = A('foldrange_upper')
         self.alpha = A('alpha')
         self.discov_formula = A('discov_formula')
         self.gen_window_level_output = A('gen_window_level_output')
@@ -424,13 +422,12 @@ class BAMProfilerQuick:
         self.run.info('Contigs DB', self.contigs_db_path)
         self.run.info('Num BAM files', len(self.bam_file_paths))
         self.run.info('Reporting', 'MINIMAL' if self.report_minimal else 'EVERYTHING', mc="red" if self.report_minimal else "green")
-        if not self.report_minimal and not self.gene_level_stats: # report parameters for DisCov
-            self.run.info('DisCov window length', self.window_length if self.window_length else f"{self.window_length_as_percentage}% of sequence")
+        if not self.report_minimal and not self.gene_level_stats: # report parameters for discov
+            self.run.info('Discov window length', self.window_length if self.window_length else f"{self.window_length_as_percentage}% of sequence")
             if self.window_length_as_percentage:
                 self.run.info('Minimum window length', self.min_window_length)
-            self.run.info('DisCov fold-range', f"{self.foldrange_lower}x to {self.foldrange_upper}x of median nonzero coverage")
-            self.run.info('DisCov alpha value', self.alpha)
-            self.run.info('DisCov formula', self.discov_formula)
+            self.run.info('Discov alpha value', self.alpha)
+            self.run.info('Discov formula', self.discov_formula)
         if self.gen_window_level_output:
             self.run.info('Window-level output', self.window_output_file_path)
 
@@ -508,18 +505,17 @@ class BAMProfilerQuick:
                 raise ConfigError(f"The gene caller '{self.gene_caller}' is not among those that are found in "
                                   f"the contigs database (and shown above for your convenience).")
 
-        # DisCov parameter sanity checks
+        # discov parameter sanity checks
         if not self.report_minimal and not self.gene_level_stats:
             utils.validate_discov_params(self.window_length, self.window_length_as_percentage,
-                                         self.min_window_length, self.foldrange_lower, self.foldrange_upper,
-                                         self.alpha, self.discov_formula, require_window_param=True)
+                                         self.min_window_length, self.alpha, self.discov_formula, require_window_param=True)
 
         if self.gen_window_level_output:
             if self.gene_level_stats:
                 raise ConfigError("The flag `--gen-window-level-output` is not compatible with `--gene-mode`, as there "
                                   "are no windows to report for gene-level stats.")
             if self.report_minimal:
-                raise ConfigError("The flag `--gen-window-level-output` requires full output (the DisCov windows must "
+                raise ConfigError("The flag `--gen-window-level-output` requires full output (the discov windows must "
                                   "be computed), and is therefore not compatible with `--report-minimal`.")
             if self.window_output_file_path:
                 filesnpaths.is_output_file_writable(self.window_output_file_path, ok_if_exists=False)
@@ -552,7 +548,7 @@ class BAMProfilerQuick:
         if self.collection_txt_path:
             self.init_collection_bins()
         elif self.window_length:
-            # sanity check contig lengths for DisCov
+            # sanity check contig lengths for discov
             contigs_smaller_than_window = []
             for cname in self.contig_names_to_process:
                 if self.contigs_basic_info[cname]['length'] < self.window_length:
@@ -560,8 +556,8 @@ class BAMProfilerQuick:
             if contigs_smaller_than_window:
                 self.run.warning(f"{len(contigs_smaller_than_window)} out of {len(self.contig_names_to_process)} contigs "
                                  f"({(len(contigs_smaller_than_window)/len(self.contig_names_to_process)):.2f}%) are smaller "
-                                 f"than the requested window size for the DisCov metric. These contigs will not be split into "
-                                 f"multiple windows when computing DisCov, and hence their spread (S) score will become BINARY "
+                                 f"than the requested window size for the discov metric. These contigs will not be split into "
+                                 f"multiple windows when computing discov, and hence their spread (S) score will become BINARY "
                                  f"(0 if no reads mapped, or 1 if any reads mapped to the contig). Just so you know. In case "
                                  f"the percentage of affected contigs is very high, you probably want to consider using a "
                                  f"percentage-based window length instead (ie, with `--window-length-as-percentage`). Here "
@@ -676,7 +672,9 @@ class BAMProfilerQuick:
 
             gc_content = (weighted_gc / bin_length) if bin_length else 0
 
-            self.collection_bins[bin_name] = {'contigs': contigs,
+            # contigs are sorted by name so that the bin-level coverage array (and therefore the discov windows)
+            # does not depend on the order of the collection-txt, and matches the one in anvi-summarize
+            self.collection_bins[bin_name] = {'contigs': sorted(contigs),
                                               'length': bin_length,
                                               'gc_content': gc_content}
 
@@ -770,7 +768,7 @@ class BAMProfilerQuick:
             if self.report_minimal:
                 return ['bin', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov']
             else:
-                return ['bin', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov', 'num_windows', 'prop_windows_covered', 'prop_cov_within_foldrange', 'dis_cov']
+                return ['bin', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov', 'num_windows', 'actual_prop_windows_covered', 'expected_prop_windows_covered', 'normalized_spread', 'window_depth_evenness', 'spread_evenness_score', 'discov']
 
         elif reporting_genes:
             if self.report_minimal:
@@ -782,7 +780,7 @@ class BAMProfilerQuick:
             if self.report_minimal:
                 return ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov']
             else:
-                return ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov', 'num_windows', 'prop_windows_covered', 'prop_cov_within_foldrange', 'dis_cov']
+                return ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov', 'num_windows', 'actual_prop_windows_covered', 'expected_prop_windows_covered', 'normalized_spread', 'window_depth_evenness', 'spread_evenness_score', 'discov']
 
         raise ConfigError("This function reached a point it should have never :(")
 
@@ -921,8 +919,7 @@ class BAMProfilerQuick:
         else:
             C = utils.CoverageStats(coverage_array, skip_outliers=True, discov_window_length=self.window_length,
                         discov_window_percentage = self.window_length_as_percentage, discov_min_window_len = self.min_window_length,
-                        discov_foldrange_lower=self.foldrange_lower, discov_foldrange_upper=self.foldrange_upper,
-                        discov_alpha=self.alpha, discov_formula=self.discov_formula, return_window_info=window_output is not None)
+                        discov_alpha=self.alpha, discov_formula=self.discov_formula, return_window_info=window_output is not None, num_reads=num_reads, report_discov=True)
             output.write(f"{bin_name}\t"
                          f"{bam_file_name}\t"
                          f"{bin_data['length']}\t"
@@ -937,7 +934,10 @@ class BAMProfilerQuick:
                          f"{C.std:.4}\t"
                          f"{C.num_windows}\t"
                          f"{C.prop_win_covered:.4}\t"
-                         f"{C.fold_range_coverage_depth:.4}\t"
+                         f"{C.spread_expected:.4}\t"
+                         f"{C.spread_norm:.4}\t"
+                         f"{C.window_depth_evenness:.4}\t"
+                         f"{C.spread_evenness_score:.4}\t"
                          f"{C.discov:.4}\n")
             if window_output:
                 self._write_window_rows(window_output, bam_file_name, C.windows, bin_name=bin_name, contig_boundaries=contig_boundaries)
@@ -967,8 +967,7 @@ class BAMProfilerQuick:
         else:
             C = utils.CoverageStats(coverage_obj.c, skip_outliers=True, discov_window_length=self.window_length,
                         discov_window_percentage = self.window_length_as_percentage, discov_min_window_len = self.min_window_length,
-                        discov_foldrange_lower=self.foldrange_lower, discov_foldrange_upper=self.foldrange_upper,
-                        discov_alpha=self.alpha, discov_formula=self.discov_formula, return_window_info=window_output is not None)
+                        discov_alpha=self.alpha, discov_formula=self.discov_formula, return_window_info=window_output is not None, num_reads=coverage_obj.num_reads, report_discov=True)
             output.write(f"{contig_name}\t"
                          f"{bam_file_name}\t"
                          f"{self.contigs_basic_info[contig_name]['length']}\t"
@@ -983,7 +982,10 @@ class BAMProfilerQuick:
                          f"{C.std:.4}\t"
                          f"{C.num_windows}\t"
                          f"{C.prop_win_covered:.4}\t"
-                         f"{C.fold_range_coverage_depth:.4}\t"
+                         f"{C.spread_expected:.4}\t"
+                         f"{C.spread_norm:.4}\t"
+                         f"{C.window_depth_evenness:.4}\t"
+                         f"{C.spread_evenness_score:.4}\t"
                          f"{C.discov:.4}\n")
             if window_output:
                 self._write_window_rows(window_output, bam_file_name, C.windows, contig_name=contig_name)
@@ -1050,9 +1052,9 @@ class BAMProfilerQuick:
                                'window_stop': w['stop'] - ctg_offset,
                                'window_length': w['length'],
                                'has_coverage': w['has_coverage'],
-                               'num_bases_with_coverage': w['num_bases_with_coverage'],
-                               'num_bases_within_foldrange': w['num_bases_within_foldrange']}
-            headers = ['key', 'bin', 'contig', 'sample', 'window_start', 'window_stop', 'window_length', 'has_coverage', 'num_bases_with_coverage', 'num_bases_within_foldrange']
+                               'mean_coverage': w['mean_coverage'],
+                               'num_bases_with_coverage': w['num_bases_with_coverage']}
+            headers = ['key', 'bin', 'contig', 'sample', 'window_start', 'window_stop', 'window_length', 'has_coverage', 'mean_coverage', 'num_bases_with_coverage']
         else:
             # contig mode: positions are already relative to the contig
             enriched = {}
@@ -1063,9 +1065,9 @@ class BAMProfilerQuick:
                                'window_stop': w['stop'],
                                'window_length': w['length'],
                                'has_coverage': w['has_coverage'],
-                               'num_bases_with_coverage': w['num_bases_with_coverage'],
-                               'num_bases_within_foldrange': w['num_bases_within_foldrange']}
-            headers = ['key', 'contig', 'sample', 'window_start', 'window_stop', 'window_length', 'has_coverage', 'num_bases_with_coverage', 'num_bases_within_foldrange']
+                               'mean_coverage': w['mean_coverage'],
+                               'num_bases_with_coverage': w['num_bases_with_coverage']}
+            headers = ['key', 'contig', 'sample', 'window_start', 'window_stop', 'window_length', 'has_coverage', 'mean_coverage', 'num_bases_with_coverage']
 
         window_output.append(enriched, headers=headers, do_not_write_key_column=True)
 
@@ -1471,6 +1473,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.run.info('Minimum percent identity of reads to be profiled', self.min_percent_identity, mc='green')
         self.run.info('Fetch filter engaged', self.fetch_filter, mc='green', nl_after=1)
+
+        if self.min_percent_identity or self.fetch_filter:
+            self.run.warning("Please keep in mind that the read filtering you have requested (via `--min-percent-identity` "
+                             "and/or `--fetch-filter`) will not only affect the coverage values stored in your profile and "
+                             "auxiliary databases, but also the number of reads per split and per contig that anvi'o stores "
+                             "in the profile database. Therefore, any downstream calculations that rely on these numbers, such "
+                             "as the distribution of coverage (discov) scores, will be computed from the filtered reads only, and "
+                             "will not be directly comparable to those computed from unfiltered reads (i.e., by "
+                             "`anvi-profile-blitz`). YOU HAVE BEEN WARNED.")
 
         self.run.info('Is merged profile?', False)
         self.run.info('Is blank profile?', self.blank)
