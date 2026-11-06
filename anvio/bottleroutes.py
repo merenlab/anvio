@@ -592,7 +592,7 @@ class BottleApplication(Bottle):
         split_variability_info_dict = self.interactive.get_variability_information_for_split(split_name, skip_outlier_SNVs=self.args.hide_outlier_SNVs)
 
         ## get the indels information dict for split:
-        split_indels_info_dict = self.interactive.get_indels_information_for_split(split_name)
+        split_indels_info_dict = self.interactive.get_indels_information_for_split(split_name, splits_basic_info=self.interactive.splits_basic_info)
 
         # building layer data
         for layer in layers:
@@ -816,20 +816,33 @@ class BottleApplication(Bottle):
         ## get the indels information dict for split:
         progress.new('Indels')
         progress.update('Collecting info for "%s"' % split_name)
-        split_indels_info_dict = self.interactive.get_indels_information_for_split(split_name)
+        split_indels_info_dict = self.interactive.get_indels_information_for_split(split_name, splits_basic_info=self.interactive.splits_basic_info)
 
         for layer in layers:
             progress.update('Formatting indels data: "%s"' % layer)
 
             indels_dict_original = copy.deepcopy(split_indels_info_dict[layer]['indels'])
             indels_dict = {}
-            for indel_entry_id in indels_dict_original:
-                pos = indels_dict_original[indel_entry_id]['pos']
-                if pos < focus_region_start or pos > focus_region_end:
-                    continue
+            for indel_entry_id, indel in indels_dict_original.items():
+                # positions are shifted to the focus region, so the position in the split is kept for display
+                indel['pos_in_split'] = indel['pos']
+
+                if indel['type'] == 'DEL':
+                    # a deletion is shown if any part of it falls in the focus region. if it starts before the
+                    # region, its marker goes to the start of the region
+                    if indel['span_end'] <= focus_region_start or indel['span_start'] > focus_region_end:
+                        continue
+
+                    indel['pos'] = max(indel['pos'], focus_region_start) - focus_region_start
+                    indel['span_start'] -= focus_region_start
+                    indel['span_end'] -= focus_region_start
                 else:
-                    indels_dict[indel_entry_id] = indels_dict_original[indel_entry_id]
-                    indels_dict[indel_entry_id]['pos'] = indels_dict[indel_entry_id]['pos'] - focus_region_start
+                    if indel['pos'] < focus_region_start or indel['pos'] > focus_region_end:
+                        continue
+
+                    indel['pos'] -= focus_region_start
+
+                indels_dict[indel_entry_id] = indel
 
             data['indels'].append(indels_dict)
 
