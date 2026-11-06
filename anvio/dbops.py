@@ -5030,7 +5030,28 @@ class ProfileSuperclass(object):
 
         return d
 
-    def get_indels_information_for_split(self, split_name):
+    def get_indels_information_for_split(self, split_name, splits_basic_info=None):
+        """Returns the indels of a split, per sample
+
+        A deletion is stored once, in the split where it starts, and it may extend into the splits that follow.
+        Every deletion gets `span_start` and `span_end`, the deleted region in the coordinates of this split (which
+        may fall outside of it). If `splits_basic_info` is provided, the deletions that start in an earlier split of
+        the same contig and extend into this split are included as well: their `pos` is 0, and `starts_in_split` is
+        the name of the split where they start.
+
+        Parameters
+        ==========
+        split_name : str
+            The split of interest
+        splits_basic_info : dict, None
+            The `splits_basic_info` of a contigs database, with the `parent`, `start`, and `end` of each split
+
+        Returns
+        =======
+        d : dict
+            A dictionary with an `indels` dictionary for each sample (see `get_blank_indels_dict`)
+        """
+
         if not split_name in self.split_names:
             raise ConfigError("get_indels_information_for_split: The split name '%s' does not seem to be "
                                "represented in this profile database. Are you sure you are looking for it "
@@ -5041,11 +5062,33 @@ class ProfileSuperclass(object):
 
         profile_db = ProfileDatabase(self.profile_db_path)
         split_indels_information = list(profile_db.db.get_some_rows_from_table_as_dict(t.indels_table_name, '''split_name = "%s"''' % split_name, error_if_no_data=False).values())
+
+        # deletions that start in an earlier split of the same contig and extend into this one
+        deletions_from_earlier_splits = []
+        if splits_basic_info and split_name in splits_basic_info:
+            split_info = splits_basic_info[split_name]
+            earlier_splits = [s for s, info in splits_basic_info.items() if info['parent'] == split_info['parent'] and info['end'] <= split_info['start']]
+
+            if earlier_splits:
+                where_clause = '''split_name IN (%s) AND type = "DEL" AND pos_in_contig + length > %d''' % (','.join(['"%s"' % s for s in earlier_splits]), split_info['start'])
+                deletions_from_earlier_splits = list(profile_db.db.get_some_rows_from_table_as_dict(t.indels_table_name, where_clause, error_if_no_data=False).values())
+
         profile_db.disconnect()
 
         d = self.get_blank_indels_dict()
 
         for i, e in enumerate(split_indels_information):
+            if e['type'] == 'DEL':
+                e['span_start'], e['span_end'] = e['pos'], e['pos'] + e['length']
+
+            d[e['sample_id']]['indels'][i] = e
+
+        for i, e in enumerate(deletions_from_earlier_splits, start=len(split_indels_information)):
+            e['span_start'] = e['pos_in_contig'] - split_info['start']
+            e['span_end'] = e['span_start'] + e['length']
+            e['starts_in_split'] = e['split_name']
+            e['pos'] = 0
+
             d[e['sample_id']]['indels'][i] = e
 
         self.progress.end()
