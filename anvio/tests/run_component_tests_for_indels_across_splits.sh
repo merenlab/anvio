@@ -34,3 +34,18 @@ anvi-export-table PROFILE/PROFILE.db --table indels -o indels.txt --quiet
 
 INFO "Checking the indels table"
 python3 mock.py check indels.txt CONTIGS.db
+
+INFO "Splitting the profile into bins that cut the contig at the boundary, and into a bin that keeps both sides"
+python3 mock.py collections CONTIGS.db
+anvi-import-collection cut.txt -p PROFILE/PROFILE.db -c CONTIGS.db -C CUT --quiet
+anvi-import-collection kept.txt -p PROFILE/PROFILE.db -c CONTIGS.db -C KEPT --quiet
+anvi-split -p PROFILE/PROFILE.db -c CONTIGS.db -C CUT -o SPLIT_CUT --quiet
+anvi-split -p PROFILE/PROFILE.db -c CONTIGS.db -C KEPT -o SPLIT_KEPT --quiet
+
+for bin in SPLIT_CUT/BEFORE SPLIT_CUT/AFTER SPLIT_KEPT/BOTH
+do
+    anvi-export-table $bin/PROFILE.db --table indels -o $bin/indels.txt --quiet
+done
+
+INFO "Checking the indels tables of the split profiles"
+python3 mock.py check-split indels.txt CONTIGS.db SPLIT_CUT/BEFORE/indels.txt SPLIT_CUT/AFTER/indels.txt SPLIT_KEPT/BOTH/indels.txt
