@@ -469,8 +469,9 @@ class Read:
         Reads are trimmed to the region being profiled (a split), so a deletion that crosses an edge of the region
         is cut there, and a deletion that crosses a split boundary would be recorded as one piece per split. Taking
         deletions from the untrimmed alignment, and only those that start in the region, records each deletion once,
-        whole, in the region where it starts. As in the vectorized read, consecutive reference-only operations (D and
-        N) form one deletion.
+        whole, in the region where it starts. Only CIGAR D operations are deletions, and consecutive D operations form
+        one deletion. N (a skipped region of the reference, such as an intron in a spliced alignment) is not a
+        deletion, and like any other operation it ends the deletion before it.
 
         Parameters
         ==========
@@ -486,9 +487,7 @@ class Read:
         ref = self.untrimmed_reference_start
         del_start = None
         for operation, length in self.untrimmed_cigartuples:
-            consumes_read, consumes_reference = constants.cigar_consumption[operation]
-
-            if consumes_reference and not consumes_read:
+            if operation == 2:  # D
                 if del_start is None:
                     del_start = ref
                 ref += length
@@ -499,6 +498,7 @@ class Read:
                     yield del_start, ref - del_start
                 del_start = None
 
+            _, consumes_reference = constants.cigar_consumption[operation]
             if consumes_reference:
                 ref += length
 
