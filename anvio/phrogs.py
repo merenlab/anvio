@@ -174,21 +174,13 @@ class PHROGs(object):
         self.run = run
         self.progress = progress
 
-        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
-        null = lambda x: x
+        self.noise_cutoff_terms = A('noise_cutoff_terms')
 
-        self.contigs_db_path = A('contigs_db', null)
-        self.num_threads = A('num_threads', null) or 1
-        self.hmm_program = A('hmmer_program', null) or 'hmmsearch'
-        self.phrogs_data_dir = A('phrogs_data_dir', null)
-        self.noise_cutoff_terms = A('noise_cutoff_terms', null) or '-E 1e-10'
-
-        # Inform the user when we fall back to the default noise cutoff
-        if self.noise_cutoff_terms == "-E 1e-10":
-            self.run.info_single(
-                f"No `--noise-cutoff-terms` was provided; using default '{self.noise_cutoff_terms}'. "
-                "You may wish to choose a different cutoff.",
-                nl_before=1, nl_after=1, mc='yellow')
+        if self.noise_cutoff_terms is None:
+            self.noise_cutoff_terms = '-E 1e-10'
+            self.run.info_single(f"No `--noise-cutoff-terms` was provided, so anvi'o will use the default "
+                                 f"'{self.noise_cutoff_terms}'. You may wish to choose a different cutoff.",
+                                 nl_before=1, nl_after=1, mc='yellow')
 
         filesnpaths.is_program_exists(self.hmm_program)
         utils.is_contigs_db(self.contigs_db_path)
