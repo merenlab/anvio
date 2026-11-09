@@ -189,7 +189,6 @@ class PHROGs(object):
                 f"No `--noise-cutoff-terms` was provided; using default '{self.noise_cutoff_terms}'. "
                 "You may wish to choose a different cutoff.",
                 nl_before=1, nl_after=1, mc='yellow')
-        self.just_do_it = A('just_do_it', null)
 
         filesnpaths.is_program_exists(self.hmm_program)
         utils.is_contigs_db(self.contigs_db_path)
@@ -269,7 +268,7 @@ class PHROGs(object):
             counter += 1
 
         if functions_dict:
-            gene_function_calls_table.create(functions_dict, drop_previous_annotations_first=bool(self.just_do_it))
+            gene_function_calls_table.create(functions_dict)
         else:
             self.run.warning("PHROGs class has no hits to process. Returning empty handed, but still adding PHROGs as a functional source.")
             gene_function_calls_table.add_empty_sources_to_functional_sources({'PHROGs'})

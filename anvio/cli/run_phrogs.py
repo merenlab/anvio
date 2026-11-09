@@ -44,7 +44,6 @@ def get_args():
     parser.add_argument('--noise-cutoff-terms', default='-E 1e-10', help="Filtering options for HMMER. By default, `-E 1e-10` is used.")
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     parser.add_argument(*anvio.A('hmmer-program'), **anvio.K('hmmer-program'))
-    parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     return parser.get_args(parser)
 
