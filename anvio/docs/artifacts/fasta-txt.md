@@ -18,4 +18,6 @@ Here is an example with those additional columns:
 |SAMPLE_01|path/to/sample_01.fa|%(external-gene-calls)s_01.txt|%(functions-txt)s_01.txt|
 |SAMPLE_02|path/to/sample_02.fa|%(external-gene-calls)s_02.txt|%(functions-txt)s_02.txt|
 
+You can also add a `structure_genes_of_interest` column, which points to a %(genes-of-interest-txt)s for each FASTA file. When structure prediction is turned on in the contigs workflow, anvi'o predicts structures only for these genes, and for every gene of a FASTA file that has no value in this column (see the [contigs workflow](../../workflows/contigs/#predicting-protein-structures) for details).
+
 For more information, check out the [anvi'o workflow tutorial](https://merenlab.org/2018/07/09/anvio-snakemake-workflows/#fastatxt)

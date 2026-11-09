@@ -27,7 +27,8 @@ __version__ = anvio.__version__
 __authors__ = ['ozcan', 'meren']
 __resources__ = []
 __tags__ = ["profile_db", "clustering", "collections"]
-__requires__ = ['profile-db', 'contigs-db', 'collection']
+__requires__ = ['profile-db', 'contigs-db']
+__can_use__ = ['collection']
 __provides__ = ['collection', 'bin']
 __description__ = "A program to cluster items in a merged anvi'o profile using automatic binning algorithms"
 
@@ -156,12 +157,12 @@ def get_args():
         subparser = argparse.ArgumentParser(usage=argparse.SUPPRESS, add_help=False)
 
         try:
-            # test if __init__() will raise ConfigError with is_program_exists
-            module()
-
             subparser._optionals.title = " \n%s\n%s" % (c(name.upper(), "green"), ':' * 79)
             for arg_name, definiton in module.arguments.items():
                 subparser.add_argument(*definiton[0], **definiton[1])
+
+            # test if __init__() will raise ConfigError with is_program_exists
+            module()
 
             if show_help:
                 subparser.print_help()
@@ -175,6 +176,8 @@ def get_args():
 
     if show_help:
         sys.exit()
+
+    parent_parser.add_mode_parsers('--driver', subparsers)
 
     args, unknown = parent_parser.parse_known_args()
 

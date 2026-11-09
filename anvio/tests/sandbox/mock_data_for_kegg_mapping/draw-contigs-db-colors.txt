@@ -1,0 +1,4 @@
+genome	color
+E_faecalis_6240	#1f77b4
+E_faecalis_6255	#ff7f0e
+E_faecalis_6512	#2ca02c

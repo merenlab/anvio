@@ -19,7 +19,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'semiller10']
 __requires__ = ['contigs-db']
-__provides__ = ['interactive', 'svg', 'profile-db']
+__provides__ = ['interactive']
+__can_provide__ = ['svg', 'profile-db']
 __description__ = ("Display codon frequency statistics across genes in a given genome in the anvi'o interactive interface.")
 
 

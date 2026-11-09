@@ -1,17 +1,20 @@
-You give this program one or more PFAM accession ids, and it generates an anvi'o compatible HMM directory [hmm-source](https://anvio.org/help/main/artifacts/hmm-source/) to be used with `anvi-run-hmms`.
+You give this program one or more PFAM accession ids, and it generates an anvi'o compatible HMM directory %(hmm-source)s to be used with %(anvi-run-hmms)s by downloading them from the PFAM database.
 
 ### Basic usage
 
-You may either specify a list of PFAM accession with `--pfam-accessions-list`:
+You may either specify a list of PFAM accessions with `--pfam-accessions-list`:
 
 {{ codestart }}
-anvi-script-pfam-accessions-to-hmm-directory --pfam-accessions-list ACC1 ACC2 -O output
+anvi-script-pfam-accessions-to-hmms-directory --pfam-accessions-list PF00001 PF00002 \
+                                              -o PROFILE-NAME
 {{ codestop }}
 
 Or a file containing this list using `--pfam-accessions-file`. The file should have one accession number per line:
 
 {{ codestart }}
-anvi-script-pfam-accessions-to-hmm-directory --pfam-accessions-file file.txt -O output
+anvi-script-pfam-accessions-to-hmms-directory --pfam-accessions-file file.txt \
+                                              -o PROFILE-NAME
 {{ codestop }}
 
-Output folder is specified by `-O` and the folder will be created by anvi'o if it doesn't exist, otherwise anvi'o will exist.
+{:.warning}
+Please note that the `PROFILE-NAME` will become the name for the HMM source when you use this HMM directory with %(anvi-run-hmms)s. So choose the output directory name accordingly, and make sure (1) it does not conflict with any existing HMM source name in your anvi'o setup, and (2) it is descriptive of the profile you are building.

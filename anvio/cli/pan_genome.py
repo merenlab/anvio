@@ -16,8 +16,10 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['genomes-storage-db', 'gene-clusters-txt']
-__provides__ = ['pan-db', 'misc-data-items-order', 'gene-clusters']
+__requires__ = ['genomes-storage-db']
+__can_use__ = ['gene-clusters-txt']
+__provides__ = ['pan-db', 'gene-clusters']
+__can_provide__ = ['misc-data-items-order']
 __description__ = ("An anvi'o program to compute a pangenome from an anvi'o genome storage")
 __resources__ = [("A tutorial on pangenomics", "http://merenlab.org/2016/11/08/pangenomics-v2/"),]
 

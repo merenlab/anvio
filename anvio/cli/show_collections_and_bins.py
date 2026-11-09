@@ -17,7 +17,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ["pan-db", "profile-db", "pan-graph-db"]
+__requires__ = ['profile-db']
+__can_use__ = ['pan-db', 'pan-graph-db']
 __description__ = "A script to display collections stored in an anvi'o profile, pan, or pan-graph database"
 
 

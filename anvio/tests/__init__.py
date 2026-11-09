@@ -13,6 +13,7 @@ known_tests = {'mini'                  : ['run_component_tests_for_minimal_metag
                'process-genbank'       : ['run_component_tests_for_process_genbank.sh'],
                'workflow-contigs'      : ['run_workflow_tests_for_contigs.sh'],
                'workflow-metagenomics' : ['run_workflow_tests_for_metagenomics.sh'],
+               'workflow-metagenomics-sra' : ['run_workflow_tests_for_metagenomics_sra.sh'],
                'workflow-pangenomics'  : ['run_workflow_tests_for_pangenomics.sh'],
                'workflow-phylogenomics': ['run_workflow_tests_for_phylogenomics.sh'],
                'workflow-ecophylo'     : ['run_workflow_tests_for_ecophylo.sh'],

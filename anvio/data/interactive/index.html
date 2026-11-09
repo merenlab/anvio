@@ -73,9 +73,6 @@
     <!-- /Table sorter -->
 
     <script type="text/javascript" src="./node_modules/marked/marked.min.js" onerror='alertDependencyError("marked")'></script>
-    <link rel="stylesheet" href="./node_modules/bootstrap-markdown/css/bootstrap-markdown.min.css" type="text/css" />
-    <script type="text/javascript" src="./node_modules/bootstrap-markdown/js/bootstrap-markdown.js" onerror='alertDependencyError("bootstrap-markdown", true)' onload='alertDependencyError(null, true)'></script>
-    <link rel="stylesheet" href="css/markdown-local.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="css/loading.css" />
     <link rel="stylesheet" type="text/css" href="css/glowing-button.css" />
     <link rel="stylesheet" type="text/css" href="css/popover.css" />
@@ -143,8 +140,8 @@
                                 </a>
                             </li>
                             <li id="description_panel_tab" role="presentation" class="nav-item">
-                                <a href="#description_tab" aria-controls="description_tab" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block" >
-                                    <i class="nav-icon fs-2x bi bi-file-richtext"></i><i class="nav-icon-fill fs-2x bi bi-file-richtext-fill"></i><span role="tab" class="d-block">Notes</span>
+                                <a href="#" class="nav-link navbar-btn d-block" id="description_toggle_btn" onclick="description_panel.toggle(); return false;">
+                                    <i class="nav-icon fs-2x bi bi-file-richtext"></i><i class="nav-icon-fill fs-2x bi bi-file-richtext-fill"></i><span class="d-block">Notes</span>
                                 </a>
                             </li>
                             <li id="search_panel_tab" role="presentation" class="nav-item">
@@ -1186,13 +1183,6 @@
                         </div>
                     </div>
 
-                    <!-- NOTES TAB -->
-                    <div role="tabpanel" class="tab-pane fade show" id="description_tab">
-                        <div class="mt-3">
-                            <textarea id="description-editor" rows="10"></textarea>
-                        </div>
-                    </div>
-
                     <!-- ANVIO TAB -->
                     <div role="tabpanel" class="tab-pane fade show" id="anvio_detail_tab">
                         <div class="mt-3 paragraph" id="anvio_tab_content">
@@ -1640,5 +1630,33 @@
     // open all links in a new tab
     $("body a[href^='http']").attr("target","_blank");
     </script>
+
+    <!-- FLOATING DESCRIPTION PANEL -->
+    <div id="description-panel">
+      <div class="description-panel-header">
+        <span class="description-panel-title">
+          <i class="bi bi-file-richtext me-2"></i> Notes
+        </span>
+        <div class="description-panel-actions">
+          <button id="description-edit-btn" class="description-action-btn" title="Edit" onclick="description_panel.edit()">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button id="description-save-btn" class="description-action-btn description-save-hidden" title="Save" onclick="description_panel.save()">
+            <i class="bi bi-floppy"></i>
+          </button>
+          <button id="description-cancel-btn" class="description-action-btn description-save-hidden" title="Cancel edit" onclick="description_panel.cancel_edit()">
+            <i class="bi bi-x-circle"></i>
+          </button>
+          <button class="description-action-btn description-close-btn" title="Close" onclick="description_panel.hide()">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      </div>
+      <div class="description-panel-body">
+        <div id="description-view-content" class="description-markdown-content"></div>
+        <textarea id="description-edit-content" class="description-textarea description-save-hidden" placeholder="Write notes in Markdown format..."></textarea>
+      </div>
+    </div>
+
 </body>
 </html>

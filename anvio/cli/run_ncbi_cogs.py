@@ -16,8 +16,10 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'ge0rges']
-__requires__ = ['cogs-data', 'contigs-db', 'fasta']
-__provides__ = ['functions', 'functions-txt']
+__requires__ = ['cogs-data', 'contigs-db']
+__can_use__ = ['fasta']
+__provides__ = ['functions']
+__can_provide__ = ['functions-txt']
 __description__ = ("This program runs NCBI's COGs to associate genes in an anvi'o contigs database with functions. "
                    "This program can also run NCBI's COGs to annotate an amino acid sequence with function. "
                    "COGs database was been designed as an attempt to classify proteins from completely "

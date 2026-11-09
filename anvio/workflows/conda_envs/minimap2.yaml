@@ -1,0 +1,9 @@
+# Standalone conda environment for the 'minimap2' / 'minimap2_index' rules (long-read mapping).
+# Point a workflow config at this file via: "minimap2": {"conda_yaml": ".../minimap2.yaml"}
+# and run the workflow with `--use-conda` so Snakemake builds and uses this env.
+name: anvio-minimap2
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - minimap2=2.28

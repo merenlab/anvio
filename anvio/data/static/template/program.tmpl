@@ -26,7 +26,7 @@ image:
 
 {{ program.authors | safe }}
 
-## Can consume
+## Requires
 
 {% if program.requires %}
 <p style="text-align: left" markdown="1">{% for name, path in program.requires %}<span class="artifact-r">[{{name}}]({{path}}) <img src="../../images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
@@ -34,12 +34,24 @@ image:
 This program seems to know what its doing. It needs no input material from its user. Good program.
 {% endif %}
 
-## Can provide
+{% if program.can_use %}
+## Can use
+
+<p style="text-align: left" markdown="1">{% for name, path in program.can_use %}<span class="artifact-r">[{{name}}]({{path}}) <img src="../../images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
+{% endif %}
+
+## Provides
 
 {% if program.provides %}
 <p style="text-align: left" markdown="1">{% for name, path in program.provides %}<span class="artifact-p">[{{name}}]({{path}}) <img src="../../images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
 {% else %}
 This program does not seem to provide any artifacts. Such programs usually print out some information for you to see or alter some anvi'o artifacts without producing any immediate outputs.
+{% endif %}
+
+{% if program.can_provide %}
+## Can provide
+
+<p style="text-align: left" markdown="1">{% for name, path in program.can_provide %}<span class="artifact-p">[{{name}}]({{path}}) <img src="../../images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
 {% endif %}
 
 ## Usage
@@ -52,6 +64,37 @@ Edit [this file](https://github.com/merenlab/anvio/tree/master/anvio/docs/progra
 {% else %}
 {:.notice}
 **No one has described the usage of this program** :/ If you would like to contribute, please see previous examples [here](https://github.com/merenlab/anvio/tree/master/anvio/docs/programs), and feel free to add a Markdown formatted file in that directory named "{{program.name}}.md". For a template, you can use the markdown file for `anvi-gen-contigs-database`. THANK YOU!
+{% endif %}
+
+{% if program.parameter_groups %}
+## Command line interface
+
+The following is the list of parameters and their descriptions in the latest version of `{{ program.name }}`.
+
+The code that generates this web page ensures that this information is the latest available in **{{ meta.anvio_version }}**. Which means, in some cases the information in this section (generated automatically) might be more comprehensive or up-to-date compared to the descriptions above (written by humans).
+
+---
+
+### Command line usage
+
+{% verbatim %}{% raw %}{% endverbatim %}
+<div class="program-parameters-usage">{{ program.command_line_usage }}</div>
+{% verbatim %}{% endraw %}{% endverbatim %}
+
+### Parameters and their descriptions
+
+{% verbatim %}{% raw %}{% endverbatim %}
+<div class="program-parameters">{% for group in program.parameter_groups %}
+<section class="parameter-group parameter-group-{{ group.title|slugify }}">
+<header class="parameter-group-header"><span class="parameter-group-title">{{ group.title }}</span>{% if group.description %} <span class="parameter-group-description">{{ group.description }}</span>{% endif %}</header>
+<dl class="parameter-list">{% for parameter in group.parameters %}
+<dt class="parameter{% if parameter.required %} parameter-required{% endif %}{% if not parameter.flags %} parameter-positional{% endif %}{% if not parameter.takes_value %} parameter-switch{% endif %}" id="parameter-{{ parameter.dest|slugify }}"><code class="parameter-flags">{% if parameter.flags %}{{ parameter.flags|join:", " }}{% else %}{{ parameter.metavar|default:parameter.dest }}{% endif %}</code>{% if parameter.flags and parameter.takes_value %} <code class="parameter-metavar">{{ parameter.metavar|default:parameter.dest|upper }}</code>{% endif %}{% if parameter.required %} <span class="parameter-required-label">required</span>{% endif %}</dt>
+<dd class="parameter-details{% if parameter.required %} parameter-required{% endif %}"><span class="parameter-help">{{ parameter.help }}</span>{% if parameter.choices %} <span class="parameter-choices"><span class="parameter-label">Choices:</span> {% for choice in parameter.choices %}<code class="parameter-choice">{{ choice }}</code>{% if not forloop.last %} {% endif %}{% endfor %}</span>{% endif %}{% if parameter.takes_value and parameter.default is not None %} <span class="parameter-default"><span class="parameter-label">Default:</span> <code class="parameter-default-value">{{ parameter.default }}</code></span>{% endif %}</dd>{% endfor %}
+</dl>
+</section>{% endfor %}
+</div>
+{% verbatim %}{% endraw %}{% endverbatim %}
+
 {% endif %}
 
 ## Additional Resources

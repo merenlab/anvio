@@ -40,25 +40,7 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         self.rules.extend(['anvi_get_sequences_for_hmm_hits', 'trimal', 'iqtree'])
 
-        self.general_params.extend(['project_name', 'internal_genomes', 'external_genomes'])
-
         self.dirs_dict.update({"PHYLO_DIR": "01_PHYLOGENOMICS"})
-
-        self.default_config.update({'anvi_get_sequences_for_hmm_hits': {'--return-best-hit': True,
-                                                                        '--align-with': 'famsa',
-                                                                        '--concatenate-genes': True,
-                                                                        '--get-aa-sequences': True,
-                                                                        '--hmm-sources': 'Bacteria_71'},
-                                    'trimal': {'-gt': 0.5},
-                                    'iqtree': {'threads': 8, '-m': 'WAG', '-bb': 1000}})
-
-        get_sequences_params = ['--return-best-hit',
-                                '--separator', '--align-with', '--min-num-bins-gene-occurs',
-                                '--max-num-genes-missing-from-bin', '--concatenate-genes',
-                                '--get-aa-sequences', '--gene-names', '--hmm-sources']
-        self.rule_acceptable_params_dict['anvi_get_sequences_for_hmm_hits'] = get_sequences_params
-        self.rule_acceptable_params_dict['trimal'] = ['-gt', 'additional_params']
-        self.rule_acceptable_params_dict['iqtree'] = ['-m', '-bb', 'additional_params']
 
 
     def init(self):

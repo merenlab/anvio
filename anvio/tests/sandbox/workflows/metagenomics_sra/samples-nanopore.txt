@@ -1,0 +1,2 @@
+sample	sra_accession
+S04	SRR39242466

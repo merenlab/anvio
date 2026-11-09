@@ -70,7 +70,7 @@ anvi-profile-blitz %(bam-file)s \
 {{ codestop }}
 
 {:.note}
-Bin-level detection and coverage are computed by treating all contigs in a bin as a single genome (nucleotide arrays are concatenated under the hood). With `--report-minimal`, these statistics are streamed to keep memory usage close to contig mode even for large bins.
+Bin-level detection and coverage are computed by treating all contigs in a bin as a single genome (nucleotide arrays are concatenated under the hood, in alphabetical order of contig names). With `--report-minimal`, these statistics are streamed to keep memory usage close to contig mode even for large bins.
 
 ### Genes mode, default output
 
@@ -90,7 +90,6 @@ anvi-profile-blitz %(bam-file)s \
 You don't want to profile all genes in your %(contigs-db)s? Then you should tell anvi'o which specific genes you are interested in by either providing a comma-separated list of gene-caller IDs:
 
 {{ codestart }}
-# the following will profile 4 specific gene calls
 anvi-profile-blitz %(bam-file)s \
                    -c %(contigs-db)s \
                    --gene-mode \
@@ -107,6 +106,46 @@ anvi-profile-blitz %(bam-file)s \
                    -o OUTPUT.txt \
                    --genes-of-interest %(genes-of-interest-txt)s
 {{ codestop }}
+
+## Modifying discov parameters
+
+For genomes or contigs, %(anvi-profile-blitz)s computes the distribution of coverage (discov) score alongside other coverage statistics. Discov combines a spread score _S_ (proportion of windows with coverage, normalized by the proportion expected given the number of mapped reads), an evenness score _E_ (based on the coefficient of variation of mean coverage depth across covered windows), and detection _D_. See %(discov-stats)s for a full description of the metric and parameters.
+
+The default parameters are designed to work well across typical metagenomics data, but you can adjust them:
+
+**Window sizing**
+
+_S_ and _E_ are computed by dividing the input sequence into non-overlapping windows. By default, contig-level stats use a window length equal to 1%% of the contig length (minimum 300 bp). Genome/bin-level stats (when using `--collection-txt`) use a fixed 10,000 bp window. You can override these defaults with the following parameters:
+
+* `--window-length INT` — use a fixed window size in bp for all sequences
+* `--window-length-as-percentage INT` — set window length as a percentage of each sequence's length
+* `--min-window-length INT` — set a minimum window length floor when using percentage mode
+
+**Combining _S_ and _E_**
+
+You can adjust how _S_ and _E_ are combined into the spread-evenness score _C_ by changing either their weights or the formula:
+
+* `--alpha FLOAT` — weight of _S_ relative to _E_, in [0, 1] (default: 0.5)
+* `--discov-formula STRING` — `geometric` (_C_ = _S_^_α_ × _E_^(1-_α_)) or `linear` (_C_ = _αS_ + (1-_α_)_E_) (default: `geometric`)
+
+The final score is discov = min(1, _C_ + _D_^2).
+
+**Window-level output**
+
+To inspect the per-window values used to compute _S_ and _E_ (useful for debugging or visualization), add the `--gen-window-level-output` flag:
+
+{{ codestart }}
+anvi-profile-blitz %(bam-file)s \
+                   -c %(contigs-db)s \
+                   -o OUTPUT.txt \
+                   --gen-window-level-output
+{{ codestop }}
+
+This produces an additional file named `OUTPUT-WINDOWS.txt` with one row per window, including its start/stop positions (relative to the contig it is in, also in genome mode), its length, whether it has any coverage, its mean coverage, and the number of bases with nonzero coverage.
+
+In genome mode, the contigs of a bin are concatenated before being divided into windows, so a window can span the boundary between two contigs. Such a window is reported under the contig in which it starts, and its stop position can therefore be larger than the length of that contig.
+
+Note that computing discov is not compatible with `--gene-mode` or `--report-minimal`.
 
 ## Performance
 

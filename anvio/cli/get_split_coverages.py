@@ -23,8 +23,9 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__provides__ = ["coverages-txt",]
-__requires__ = ["profile-db", "contigs-db", "collection", "bin"]
+__requires__ = ["profile-db"]
+__can_use__ = ["contigs-db", "collection", "bin"]
+__provides__ = ["coverages-txt"]
 __description__ = "Export splits and the coverage table from database"
 __resources__ = [("Using this program to generate split coverage visualizations across samples", "http://merenlab.org/2019/11/25/visualizing-coverages/#visualize-only-the-coverage-of-a-split-across-samples")]
 

@@ -28,12 +28,24 @@ A {{ artifact.type }}-type anvi'o artifact. This artifact {% if artifact.provide
 There are no anvi'o tools that generate this artifact, which means it is most likely provided to the anvi'o ecosystem by the user.
 {% endif %}
 
-## Required or used by
+{% if artifact.can_provided_by %}
+## Can be provided by
+
+<p style="text-align: left" markdown="1">{% for name, path in artifact.can_provided_by %}<span class="artifact-p">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
+{% endif %}
+
+## Required by
 
 {% if artifact.required_by %}
 <p style="text-align: left" markdown="1">{% for name, path in artifact.required_by %}<span class="artifact-r">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
 {% else %}
-There are no anvi'o tools that use or require this artifact directly, which means it is most likely an end-product for the user.
+There are no anvi'o tools that require this artifact directly, which means it is most likely an end-product for the user.
+{% endif %}
+
+{% if artifact.can_used_by %}
+## Can be used by
+
+<p style="text-align: left" markdown="1">{% for name, path in artifact.can_used_by %}<span class="artifact-r">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
 {% endif %}
 
 ## Description

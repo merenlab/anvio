@@ -1,0 +1,20 @@
+name: Migrations
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run every Tuesday at 9:00 AM
+    # Runs only once a week because of how long it takes to run.
+    # Why Tuesday? Why not?! - @ulgens
+    - cron: "0 9 * * 2"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    uses: ./.github/workflows/test-base.yaml
+    with:
+      test-name: "Migrations"
+      test-commands: |
+        anvi-self-test --suite database-migrations

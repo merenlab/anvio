@@ -15,7 +15,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ["profile-db", "contigs-db", "genes-of-interest-txt"]
+__requires__ = ["profile-db", "contigs-db"]
+__can_use__ = ["genes-of-interest-txt"]
 __provides__ = ["genes-fasta"]
 __description__ = "Collapse variability for a set of genes across samples"
 

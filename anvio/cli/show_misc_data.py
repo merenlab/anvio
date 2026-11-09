@@ -15,7 +15,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'ekiefl']
-__requires__ = ["pan-db", "profile-db", "contigs-db"]
+__requires__ = ['profile-db']
+__can_use__ = ['pan-db', 'contigs-db']
 __description__ = "Show all misc data keys in all misc data tables"
 
 

@@ -808,7 +808,7 @@ class SequencesForHMMHits:
                              "in your `--gene-names` -- but of course it will not change the fact that some bins will "
                              "still be missing some genes, and how does this patchiness will impact your downstream "
                              "analyses (such as phylogenomics) is an important question that will require you to "
-                             "consider. Pro tip: you can always use the program `anvi-script-gen-function-matrix-across-genomes` "
+                             "consider. Pro tip: you can always use the program `anvi-gen-function-matrix` "
                              "to see the distribution of HMM hits across your bins/genomes.", nl_before=1, nl_after=1)
 
         self.run.info('Num bins at the beginning of this filter', len(bin_names_in_original_dict), nl_after=1)

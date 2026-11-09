@@ -1,15 +1,17 @@
 """Overloading Python argparse for anvi'o purposes"""
 
+import io
 import os
 import sys
 import argparse
 import textwrap
+import importlib
+import contextlib
 
 from colored import fg, attr
 from rich_argparse import RichHelpFormatter
 
 import anvio
-import anvio.docs as docs
 import anvio.terminal as terminal
 
 from anvio.programs import Program
@@ -41,6 +43,25 @@ class ArgumentParser(argparse.ArgumentParser):
                                            '--quiet', '--no-progress', '--as-markdown', '--display-db-calls',
                                            '--force-use-my-tree', '--force-overwrite', '--tmp-dir',
                                            '--I-know-this-is-not-a-good-idea', '--include-stray-KOs']
+
+        self.mode_flag = None
+        self.mode_parsers = {}
+
+
+    def add_mode_parsers(self, mode_flag, mode_parsers):
+        """Declares the separate parsers a program uses for the parameters of each of its modes,
+           so the code that generates the help pages can find them (see `get_parser_for_program`).
+
+        Parameters
+        ==========
+        mode_flag : str
+            The flag that chooses the mode, such as `--mode`.
+        mode_parsers : dict
+            The parser of each mode, keyed by the mode names users can pass with `mode_flag`.
+        """
+
+        self.mode_flag = mode_flag
+        self.mode_parsers = mode_parsers
 
 
     def get_num_threads_action(self):
@@ -109,7 +130,7 @@ class ArgumentParser(argparse.ArgumentParser):
         general_help = f"https://anvio.org/help/{version}"
         program_help = f"{general_help}/programs/{self.prog}"
 
-        if os.path.exists(os.path.join(os.path.dirname(docs.__file__), f"programs/{self.prog}.md")):
+        if os.path.exists(os.path.join(anvio.DOCS_PATH, f"programs/{self.prog}.md")):
             if atty:
                 epilog += f'''\n🍺 {attr('bold')}More on `{self.prog}`:{attr('reset')}\n\n   {fg('cyan') + program_help + attr('reset')}'''
             else:
@@ -133,13 +154,18 @@ class ArgumentParser(argparse.ArgumentParser):
 
         requires_and_provides_statements = []
 
-        program = Program(self.prog)
-        requires = [v.id for v in program.meta_info['requires']['value']]
-        provides = [v.id for v in program.meta_info['provides']['value']]
+        def _get_values_for(statement):
+            return [v.id for v in program.meta_info[statement]['value']]
 
-        def get_block(statement, header):
+        program = Program(self.prog)
+        requires = _get_values_for('requires')
+        provides = _get_values_for('provides')
+        can_use = _get_values_for('can_use')
+        can_provide = _get_values_for('can_provide')
+
+        def get_block(statement, header=None, extra_items=None, extra_verb=''):
             blocks = []
-            if len(requires):
+            if len(statement):
                 split = []
                 for item in statement:
                     addition = [item, " / "] if statement[-1] != item else [item]
@@ -152,6 +178,9 @@ class ArgumentParser(argparse.ArgumentParser):
                 blocks.append(split)
                 blocks.append([''])
 
+            # index of the last content block (before the trailing empty one)
+            suffix_block_idx = len(blocks) - 2 if extra_items and len(blocks) >= 2 else None
+
             for i in range(0, len(blocks)):
                 block = blocks[i]
                 if atty:
@@ -162,12 +191,21 @@ class ArgumentParser(argparse.ArgumentParser):
                 if len(block) > 1:
                     block.insert(0, '   ')
 
+                # build suffix with artifact names colored, surrounding text plain
+                if i == suffix_block_idx:
+                    if atty:
+                        colored = [fg('red') + item + attr('reset') for item in extra_items]
+                    else:
+                        colored = extra_items
+                    block.append(f' (can also {extra_verb} {" / ".join(colored)})')
+
                 blocks[i] = block
 
-            if atty:
-                blocks.insert(0, attr('bold') + header + attr('reset'))
-            else:
-                blocks.insert(0, header)
+            if header:
+                if atty:
+                    blocks.insert(0, attr('bold') + header + attr('reset'))
+                else:
+                    blocks.insert(0, header)
 
             blocks.insert(1, "")
 
@@ -176,8 +214,8 @@ class ArgumentParser(argparse.ArgumentParser):
             return '\n'.join(blocks)
 
 
-        requires_and_provides_statements.append(get_block(requires, """🧀 Can consume:"""))
-        requires_and_provides_statements.append(get_block(provides, """🍕 Can provide:"""))
+        requires_and_provides_statements.append(get_block(requires, """🧀 Requires:""", extra_items=can_use, extra_verb='use'))
+        requires_and_provides_statements.append(get_block(provides, """🍕 Provides:""", extra_items=can_provide, extra_verb='generate'))
 
         return '\n' + '\n'.join(requires_and_provides_statements)
 
@@ -297,6 +335,68 @@ class ArgumentParser(argparse.ArgumentParser):
             parser.parse_args()
 
         return args
+
+
+class ParserHandedOver(BaseException):
+    """Carries the parser of a program out of its `main` function, see `get_parser_for_program`.
+
+    This is a `BaseException` rather than an `Exception` on purpose, so the `try` / `except`
+    blocks in programs do not catch it before it reaches us.
+    """
+
+    def __init__(self, parser):
+        super().__init__()
+        self.parser = parser
+
+
+def get_parser_for_program(program_name, entry_point):
+    """Returns the argument parser of an anvi'o program without running the program.
+
+    Every anvi'o program builds its parser in its `main` function, and then asks it to parse the
+    command line before doing anything else. So here we call the entry point of the program after
+    replacing `parse_known_args` (which `parse_args` and our own `get_args` call, too) with a function
+    that hands over the parser instead of parsing anything. The program stops exactly at the moment
+    its parameters are fully described, and nothing else in it runs.
+
+    Parameters
+    ==========
+    program_name : str
+        The name of the program, such as `anvi-gen-contigs-database`, which argparse uses as `prog`.
+    entry_point : str
+        The entry point of the program as it appears in `pyproject.toml`, such as
+        `anvio.cli.gen_contigs_database:main`.
+
+    Returns
+    =======
+    parser : argparse.ArgumentParser or None
+        The parser of the program, or None if the program stopped before parsing anything (which
+        is what retired programs do when they tell their users which program to use instead).
+    """
+
+    module_name, function_name = entry_point.split(':')
+
+    def hand_over_the_parser(parser, args=None, namespace=None):
+        raise ParserHandedOver(parser)
+
+    original_parse_known_args = argparse.ArgumentParser.parse_known_args
+    original_argv = sys.argv
+
+    argparse.ArgumentParser.parse_known_args = hand_over_the_parser
+    sys.argv = [program_name]
+    try:
+        # programs are not expected to say anything before parsing their arguments, but the
+        # ones that do should not leak their messages into the output of whoever is asking
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            getattr(importlib.import_module(module_name), function_name)()
+    except ParserHandedOver as handover:
+        return handover.parser
+    except (Exception, SystemExit):
+        return None
+    finally:
+        argparse.ArgumentParser.parse_known_args = original_parse_known_args
+        sys.argv = original_argv
+
+    return None
 
 
 class PopulateAnvioDBArgs(FindAnvioDBs):
@@ -443,6 +543,23 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
             return self.__args_failed('pan_db', 'None around :/')
 
 
+    def fill_in_pan_graph_db(self):
+        if 'pan_graph_db' not in self.args:
+            return
+
+        FindAnvioDBs.__init__(self, run=self.run, progress=self.progress) if not self.anvio_dbs_found else None
+        if 'pan-graph' not in self.anvio_dbs:
+            return self.__args_failed.append(('pan_graph_db', 'No pan-graph databases around :/'))
+
+        pan_graph_dbs = self.anvio_dbs['pan-graph']
+
+        if len(pan_graph_dbs):
+            self.set_arg('pan_graph_db', pan_graph_dbs[0].path)
+            self.fill_in_genomes_storage_db(db_hash=pan_graph_dbs[0].hash)
+        else:
+            return self.__args_failed('pan_graph_db', 'None around :/')
+
+
     def get_updated_args(self):
         if anvio.DEBUG_AUTO_FILL_ANVIO_DBS:
             self.run.warning(None, header="ANVI'O DBs FOUND", lc="yellow")
@@ -457,6 +574,8 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
             self.fill_in_profile_db()
         elif 'pan_db' in self.args and not self.args.pan_db:
             self.fill_in_pan_db()
+        elif 'pan_graph_db' in self.args and not self.args.pan_graph_db:
+            self.fill_in_pan_graph_db()
 
         if len(self.__args_set):
             self.run.warning(None, header=f"ANVI'O FILLED IN THE {len(self.__args_set)} {P('ARG', len(self.__args_set), alt='ARGS')} BELOW AUTOMATICALLY", lc='yellow')

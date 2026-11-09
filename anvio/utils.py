@@ -11,10 +11,12 @@ try:
     import os
     import sys
     import ssl
+    import json
     import yaml
     import gzip
     import time
     import copy
+    import random
     import socket
     import shutil
     import tarfile
@@ -45,7 +47,7 @@ try:
     from anvio.sequence import Composition
     from anvio.version import versions_for_db_types
     from anvio.errors import ConfigError, FilesNPathsError
-    from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode
+    from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
 except ModuleNotFoundError as e:
     # Extract just the module name from "No module named 'modulename'"
     module_name = str(e).split("'")[1] if "'" in str(e) else str(e)
@@ -55,7 +57,7 @@ except ModuleNotFoundError as e:
           f"properly initialized since Python complains that it cannot\n"
           f"import '{module_name}'. Are you sure you have initialized\n"
           f"the anvi'o environment properly?\n\n")
-    sys.exit()
+    sys.exit(1)
 
 # psutil is causing lots of problems for lots of people :/
 with SuppressAllOutput():
@@ -173,11 +175,16 @@ def rev_comp(seq):
     return seq.translate(constants.complements)[::-1]
 
 
-def rev_comp_gene_calls_dict(gene_calls_dict, contig_sequence):
+def rev_comp_gene_calls_dict(gene_calls_dict, contig_sequence, preserve_gene_caller_ids=False):
     contig_length = len(contig_sequence)
     gene_caller_ids = list(gene_calls_dict.keys())
 
-    gene_caller_id_conversion_dict = dict([(gene_caller_ids[-i - 1], i) for i in range(0, len(gene_caller_ids))])
+    if preserve_gene_caller_ids:
+        # the caller wants to keep the original gene caller ids rather than resetting them to
+        # start from 0, so the conversion dict is simply an identity mapping
+        gene_caller_id_conversion_dict = dict([(g, g) for g in gene_caller_ids])
+    else:
+        gene_caller_id_conversion_dict = dict([(gene_caller_ids[-i - 1], i) for i in range(0, len(gene_caller_ids))])
     G = lambda g: gene_caller_id_conversion_dict[g]
 
     reverse_complemented_gene_calls = {}
@@ -516,13 +523,122 @@ def tar_extract_file(input_file_path, output_file_path=None, keep_original=True)
         os.remove(input_file_path)
 
 
+def validate_discov_params(window_length, window_length_as_percentage, min_window_length, alpha, discov_formula, require_window_param=True):
+    """Validate distribution of coverage (discov) parameters and raise ConfigError for any invalid combination.
+
+    Parameters
+    ==========
+    window_length : int or None
+        Fixed window length in bp.
+    window_length_as_percentage : int or None
+        Window length as a percentage of the sequence length.
+    min_window_length : int or None
+        Minimum window length when using window_length_as_percentage.
+    alpha : float
+        Weight of S in the discov score. Must be in [0, 1].
+    discov_formula : str
+        Combination formula. Must be 'linear' or 'geometric'.
+    require_window_param : bool
+        When True, raise an error if neither window_length nor window_length_as_percentage
+        is set. Set to False for callers (e.g. anvi-summarize) that supply context-sensitive
+        defaults when the user omits both flags.
+    """
+    if require_window_param and not window_length and not window_length_as_percentage:
+        raise ConfigError("In order to compute distribution of coverage (discov), we need you to specify a scheme "
+                          "for setting the window length. Either provide an exact length using --window-length or a "
+                          "percentage value (as an integer) using --window-length-as-percentage.")
+
+    if window_length and window_length_as_percentage:
+        raise ConfigError("Please choose either --window-length or --window-length-as-percentage, not both.")
+
+    if (window_length and window_length <= 0) or (window_length_as_percentage and window_length_as_percentage <= 0):
+        raise ConfigError("A positive window length (or percentage) is required for computing distribution of coverage (discov).")
+
+    if window_length_as_percentage and window_length_as_percentage > 100:
+        raise ConfigError("We cannot work with windows that are longer than 100% of a given sequence. Please change your "
+                          "--window-length-as-percentage value.")
+
+    if window_length and min_window_length:
+        raise ConfigError("The --min-window-length is only relevant when using the --window-length-as-percentage option.")
+
+    if min_window_length and min_window_length < 0:
+        raise ConfigError("The --min-window-length parameter has to be a positive integer.")
+
+    if alpha is None:
+        raise ConfigError("You'd better be a programmer messing with stuff, because it is not supposed to be possible "
+                          "to pass a None value for the discov alpha parameter. Nor is it advisable (because it will "
+                          "throw off the calculation), so we are stopping the show right here.")
+
+    if alpha < 0 or alpha > 1:
+        raise ConfigError("The --alpha parameter for discov should take a value between 0 and 1 (inclusive). Keep in "
+                          "mind that it is going to be used to combine S and E into the spread-evenness score as either "
+                          "C = αS + (1-α)E or C = S^α * E^(1-α). Hopefully that helps explain these restrictions :)")
+
+    if discov_formula not in ('linear', 'geometric'):
+        raise ConfigError(f"The --discov-formula parameter must be either 'linear' or 'geometric', but you provided "
+                          f"'{discov_formula}'. Please fix that and try again.")
+
+
 class CoverageStats:
     """A class to return coverage stats for an array of nucleotide level coverages.
 
     FIXME: This class should replace `coverage_c` function in bamops to avoid redundancy.
+
+    In addition to the classic stats, this class can also compute a distribution of coverage (discov)
+    score, which can be used to assess presence-absence of the reference sequence in a metagenomic
+    sample. Discov combines a metric for assessing spread of coverage across the sequence (S), a
+    metric for assessing the evenness of nonzero coverage depth (E), and detection.
+
+    S is the proportion of non-overlapping, equal-sized windows that contain at least some coverage.
+    If the last window is shorter than 10% of the window length, it's dropped before counting. We
+    normalize S with the 'expected spread' computed by assuming reads distribute randomly; that is,
+    S_exp = 1 − e^(−(B + N·w)/G), where B is the total aligned read length, N is number of reads that mapped,
+    w is the window length, and G is the reference length. Normalized spread is therefore min(1, S / S_exp),
+    so it will be closer to 1 if reads truly distribute randomly and the observed proportion of covered windows
+    is as high (or higher) than we expect.
+
+    E is a 0-1 evenness score that computes the coefficient of variation (CV) on the nonzero mean coverages
+    of the same non-overlapping, equal-sized windows used in S. E = 1 / (1 + CV). If fewer than 3 windows have
+    coverage (which can happen on short or poorly covered sequences), we do not compute CV and E is set to 0
+    (maximum unevenness).
+
+    We combine (normalized) S and E into a 'spread-evenness score'. They can be combined linearly
+    with a weight α following the formula: C = αS_norm + (1-α)E. Or, they can be combined by
+    taking a weighted geometric mean following the formula: C = S_norm^α * E^(1-α).
+
+    Finally, we compute discov by adding detection on top of the spread-evenness score. The boost
+    provided by the detection value is modulated so that large values yield a disproportionately larger
+    boost than small values (since small detection does not necessarily imply absence).
+    discov = min(1, C + D^2)
+
+    Parameters
+    ==========
+    coverage : array
+        Nucleotide-level coverages. The only required parameter.
+    skip_outliers : boolean
+        Whether or not to compute the self.is_outlier attribute
+    discov_window_length : int
+        How long to make the windows for computing S
+    discov_window_percentage : int
+        If provided, window length will be computed dynamically as a percentage of the input sequence length
+    discov_min_window_len : int, None
+        Specifies the minimum window length when discov_window_percentage is used. If None is passed, it will
+        be converted to 0
+    discov_alpha : float
+        A value in [0,1] that indicates how much to weight S over E in the discov score
+    discov_formula : string
+        Can be 'linear' or 'geometric', to choose which formula to use.
+    num_reads : int, None
+        Number of reads mapping to the sequence, needed to compute the normalized spread
+    report_discov : boolean
+        Whether or not to compute discov and its sub-metrics. All discov-related attributes are None otherwise
     """
 
-    def __init__(self, coverage, skip_outliers=False):
+    def __init__(self, coverage, skip_outliers=False, discov_window_length=10000, discov_window_percentage=None,
+                discov_min_window_len=500, discov_alpha=0.5,
+                return_window_info=False, discov_formula='geometric', num_reads=None, report_discov=False):
+        self.num_reads = num_reads
+
         self.min: float = np.amin(coverage)
         self.max: float = np.amax(coverage)
         self.median: float = np.median(coverage)
@@ -542,6 +658,170 @@ class CoverageStats:
             self.is_outlier = None
         else:
             self.is_outlier = get_list_of_outliers(coverage, median=self.median) # this is an array not a list
+
+        self.num_windows = None
+        self.prop_win_covered = None
+        self.window_depth_evenness = None
+        self.spread_expected = None
+        self.spread_norm = None
+        self.spread_evenness_score = None
+        self.discov = None
+        self.windows = None
+
+        if report_discov:
+            self.compute_discov_stats(coverage, discov_window_length, discov_window_percentage, discov_min_window_len, discov_alpha, discov_formula,
+                                      return_window_info)
+
+
+    def compute_discov_stats(self, coverage, discov_window_length, discov_window_percentage, discov_min_window_len, discov_alpha, discov_formula, return_window_info):
+        """Computes discov and its sub-metrics (see the class docstring), and sets them as attributes of this object."""
+
+        if discov_min_window_len is None:
+            discov_min_window_len = 0
+
+        # divide reference sequence into non-overlapping windows
+        if discov_window_percentage:
+            discov_window_length = int(len(coverage) * discov_window_percentage / 100)
+            if discov_window_length < discov_min_window_len:
+                discov_window_length = discov_min_window_len
+        windows = self.get_window_regions(coverage, window_length=discov_window_length)
+        if len(windows) > 1:
+            final_window_len = windows[-1][1] - windows[-1][0]
+            if final_window_len < 0.1*discov_window_length: # don't count the last window if it is too small
+                windows = windows[:-1]
+
+        # compute spread (S) and evenness (E) from the windows
+        nonzero_window_means = [x[2] for x in windows if x[2] > 0]
+        self.num_windows = len(windows)
+        self.prop_win_covered = len(nonzero_window_means) / self.num_windows
+        cv_of_means = self.compute_CV(nonzero_window_means) if len(nonzero_window_means) >= 3 else None
+        if cv_of_means is not None:
+            self.window_depth_evenness = 1 / (1 + cv_of_means)
+        else:
+            self.window_depth_evenness = 0.0 # maximum unevenness
+
+        # get_window_regions() shrinks the window to the sequence length when the sequence is shorter than
+        # discov_window_length, so we take the length of the first window as the one actually used for S
+        actual_window_length = windows[0][1] - windows[0][0]
+        self.spread_expected = self.expected_spread(B=np.sum(coverage), N=self.num_reads, w=actual_window_length, G=len(coverage))
+        self.spread_norm = self.normalized_spread(self.prop_win_covered, self.spread_expected)
+        self.spread_evenness_score = self.compute_spread_evenness_score(S=self.spread_norm, E=self.window_depth_evenness, alpha=discov_alpha, formula=discov_formula)
+        self.discov = self.compute_discov(C=self.spread_evenness_score, D=self.detection)
+
+        if return_window_info:
+            self.windows = self._get_window_info(coverage, windows)
+
+
+    def get_window_regions(self, coverage, window_length):
+        """Given an array of coverage values, divides it into non-overlapping windows of the requested length.
+
+        Each region is described as a tuple of (start_position, stop_position, mean_coverage), with start and stop
+        positions following Python indexing rules to enable slicing. If the array doesn't divide equally by the
+        window length, the final window will be shorter than the rest. And if the input array is smaller than the
+        window length, this function will return a single window covering the entire array.
+        """
+        if window_length > len(coverage): # if the input is smaller than the window size, make it one window
+            window_length = len(coverage)
+        elif window_length == 0:
+            raise ConfigError("The get_window_regions() function was requested to make zero-length windows. Impossible!")
+
+        windows = []
+        current_start = 0
+        current_stop = current_start + window_length
+        while current_stop <= len(coverage):
+            region_data = (current_start, current_stop, np.mean(coverage[current_start:current_stop]))
+            windows.append(region_data)
+            current_start = current_stop
+            current_stop = current_start + window_length
+            # EDGE CASE: final region is incomplete window
+            if current_stop > len(coverage) and current_start < len(coverage):
+                final_region = (current_start, len(coverage), np.mean(coverage[current_start:]))
+                windows.append(final_region)
+
+        return windows
+
+
+    def _get_window_info(self, coverage, windows):
+        """Return a dict-of-dicts with per-window stats for optional window-level output.
+
+        Parameters
+        ==========
+        coverage : array
+            Full nucleotide-level coverage array.
+        windows : list
+            List of (start, stop, mean_coverage) tuples from get_window_regions().
+
+        Returns
+        =======
+        window_info : dict
+            Dict-of-dicts keyed by sequential integer index. Each inner dict has keys:
+            start, stop, length, has_coverage, mean_coverage,
+            num_bases_with_coverage.
+        """
+        window_info = {}
+        for i, (start, stop, mean_cov) in enumerate(windows):
+            window_info[i] = {'start': start, 'stop': stop, 'length': stop - start,
+                              'has_coverage': int(mean_cov > 0), 'mean_coverage': mean_cov,
+                              'num_bases_with_coverage': int(np.count_nonzero(coverage[start:stop]))}
+
+        return window_info
+
+
+    def expected_spread(self, B, N, w, G):
+        """Returns the spread expected if reads were placed randomly: S_exp = 1 - e^(-(B + N*w) / G)
+
+        B is the sum of aligned lengths (sum of the coverage array), N is the number of reads mapping to the reference,
+        w is the window length used to compute the observed spread, and G is the reference length.
+        """
+
+        if N is None:
+            raise ConfigError("The expected_spread() function needs the number of reads mapping to the sequence (N) "
+                              "to compute the expected spread, but it was not provided. If you are seeing this error, "
+                              "whichever part of anvi'o initialized CoverageStats should have passed the `num_reads` "
+                              "parameter but did not. This is a programmer error, so please let the developers know.")
+        return 1 - np.exp(-(B + N * w) / G)
+
+
+    def normalized_spread(self, S_obs, S_exp):
+        """Returns observed spread relative to the spread expected if reads were placed randomly: min(1, S_obs / S_exp)
+
+        Returns None if S_obs is not available, and 0 if there is no coverage (S_exp is then 0).
+        """
+
+        if S_obs is None:
+            return None
+        if S_exp == 0:
+            return 0.0
+        return min(1.0, S_obs / S_exp)
+
+
+    def compute_spread_evenness_score(self, S, E, alpha, formula='geometric'):
+        """Computes the Spread-Evenness score."""
+
+        if formula == 'linear':
+            return alpha * S + (1-alpha) * E
+        else: # 'geometric'
+            return (S ** alpha) * (E ** (1-alpha))
+
+
+    def compute_discov(self, C, D, beta=1, k=2):
+        """Adds a detection-dependent bonus to C, capped at 1: F = min(1, C + β·D^k)"""
+
+        if C is None or D is None:
+            return None
+        return min(1.0, C + beta * D**k)
+
+
+    def compute_CV(self, array):
+        """Returns coefficient of variation from an input array. Returns None if array is empty or mean is 0."""
+
+        if not len(array):
+            return None
+        mean = np.mean(array)
+        std = np.std(array)
+        if mean == 0:
+            return None
+        return std / mean
 
 
 class RunInDirectory(object):
@@ -1000,6 +1280,19 @@ def is_all_npm_packages_installed():
     # Check if node_modules exists and is not empty
     node_modules_path = os.path.join(interactive_dir_path, 'node_modules')
 
+    # package-lock.json is not part of anvi'o, so a clean install drops the one a previous install left
+    # behind, which may still point to versions npm upgraded
+    def show_npm_install_commands(restore_package_json=False, clean_install=False):
+        commands = [f"cd {interactive_dir_path}"]
+        if restore_package_json:
+            commands.append("git restore package.json")
+        if clean_install:
+            commands.append("rm -rf node_modules package-lock.json")
+        commands.extend(["npm install", "cd -"])
+
+        for i, command in enumerate(commands):
+            run.info_single(f"{i + 1}) {command}", level=0, overwrite_verbose=True)
+
     if not os.path.exists(node_modules_path) or not os.listdir(node_modules_path):
         run.warning("Anvi'o recently changed its use of external libraries for interactive interfaces"
                     "from git submodules to npm packages. Your current setup does not seem to have the "
@@ -1009,14 +1302,76 @@ def is_all_npm_packages_installed():
                     "on GitHub or Discord since this is a new feature and some hiccups may occur.",
                     header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True,
                     lc='yellow')
-        run.info_single(f"1) cd {interactive_dir_path}", level=0, overwrite_verbose=True)
-        run.info_single("2) npm install", level=0, overwrite_verbose=True)
-        run.info_single("3) cd -", level=0, overwrite_verbose=True)
+        show_npm_install_commands()
 
         raise ConfigError("Some npm packages seem to be missing in your interactive directory. "
                           "Please run 'npm install' in the interactive directory and try again.")
-    else:
-        return True
+
+    with open(os.path.join(interactive_dir_path, 'package.json')) as package_json:
+        dependencies = json.load(package_json).get('dependencies', {})
+
+    # Anvi'o pins every package to an exact version, since the interfaces only work with those
+    # versions (e.g., Bootstrap 4 refuses to run with jQuery 4). A version range in package.json
+    # (e.g., '^4.0.0') means `npm audit fix --force` or `npm install <package>` rewrote it, and an
+    # installed version that differs from its pin means node_modules no longer matches package.json
+    installed_versions = {}
+    for package in dependencies:
+        installed_package_json_path = os.path.join(node_modules_path, package, 'package.json')
+        if os.path.exists(installed_package_json_path):
+            with open(installed_package_json_path) as installed_package_json:
+                installed_versions[package] = json.load(installed_package_json).get('version')
+
+    unpinned_packages = [p for p, v in dependencies.items() if not all(part.isdigit() for part in v.split('.'))]
+    mismatched_packages = [p for p in installed_versions if p not in unpinned_packages and installed_versions[p] != dependencies[p]]
+
+    if unpinned_packages or mismatched_packages:
+        changed_packages = [f"{p} ({installed_versions.get(p, 'not installed')}, package.json asks for '{dependencies[p]}')" for p in unpinned_packages] + \
+                           [f"{p} ({installed_versions[p]}, expected {dependencies[p]})" for p in mismatched_packages]
+
+        is_git_checkout = os.path.exists(os.path.join(os.path.dirname(anvio_module_path), '.git'))
+
+        explanation = (f"The npm packages in your interactive directory do not match the versions anvi'o "
+                       f"was tested with: {', '.join(changed_packages)}. This most often happens after "
+                       f"running `npm audit fix --force` or `npm install <package>`, which upgrade packages "
+                       f"to versions the interactive interfaces do not work with (e.g., the interface hangs "
+                       f"on its loading screen). The vulnerabilities `npm audit` reports concern websites "
+                       f"served to the open internet, and do not apply to anvi'o interfaces running on your "
+                       f"own computer, so you can safely ignore them.")
+
+        if unpinned_packages and not is_git_checkout:
+            run.warning(f"{explanation} Since npm rewrote the package.json file of your anvi'o installation, "
+                        f"which is not a git checkout anvi'o could restore it from, please reinstall anvi'o "
+                        f"to get the original package.json back, and run `npm install` in the interactive "
+                        f"directory again.", header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True,
+                        lc='yellow')
+
+            raise ConfigError("The package.json file in your interactive directory no longer pins the npm "
+                              "package versions anvi'o needs. Please reinstall anvi'o and try again.")
+
+        run.warning(f"{explanation} If you run the commands below in your terminal, you will reinstall "
+                    f"the correct versions:", header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True,
+                    lc='yellow')
+        show_npm_install_commands(restore_package_json=bool(unpinned_packages), clean_install=True)
+
+        raise ConfigError("Some npm packages in your interactive directory are not the versions anvi'o "
+                          "needs. Please reinstall them with the commands above and try again.")
+
+    # Check if every package listed in package.json is in node_modules, since a node_modules
+    # directory from an earlier `npm install` lacks the packages added to anvi'o after it
+    missing_packages = [p for p in dependencies if not os.path.exists(os.path.join(node_modules_path, p, 'package.json'))]
+
+    if missing_packages:
+        run.warning(f"Your interactive directory is missing {pluralize('npm package', len(missing_packages))} "
+                    f"that anvi'o interfaces need: {', '.join(missing_packages)}. This happens when anvi'o "
+                    f"starts using a new library after your last `npm install`. If you run the commands below "
+                    f"in your terminal, you will most likely be fine :)",
+                    header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True, lc='yellow')
+        show_npm_install_commands()
+
+        raise ConfigError("Some npm packages seem to be missing in your interactive directory. "
+                          "Please run 'npm install' in the interactive directory and try again.")
+
+    return True
 
 
 def HTMLColorToRGB(colorstring, scaled=True):
@@ -1230,6 +1585,104 @@ def restore_alignment(sequence, alignment_summary, from_aa_alignment_summary_to_
         return alignment + ''.join(sequence)
     else:
         return alignment
+
+
+def get_representative_sequence_from_gene_cluster(sequence_entries):
+    """Select a single representative amino acid sequence for a gene cluster.
+
+    This is the shared implementation behind `anvio.dbops.PanSuperclass.get_gene_cluster_representative_sequences`
+    (the user-facing path, reached via `anvi-get-sequences-for-gene-clusters --representative-sequences`).
+    It is deliberately kept as a standalone function so that anvi'o's structural-pangenome build path can
+    reuse the exact same selection logic and both routes pick representatives identically.
+
+    Strategy
+    ========
+    1) exclude length outliers using the median length of non-partial genes (fall back to all genes).
+    2) compute a medoid based on pairwise similarity of the aligned sequences.
+    3) prefer non-partial genes; if all are partial, fall back to the best partial medoid.
+    4) if only one sequence exists, return it.
+
+    Parameters
+    ==========
+    sequence_entries : list of dict
+        One dict per gene in the cluster, each with AT LEAST the following keys:
+          'align_sequence' : str, the ALIGNED amino acid sequence (i.e., with gap characters).
+          'length'         : int, the ungapped amino acid sequence length.
+          'gap_count'      : int, the number of gap characters in 'align_sequence'.
+          'is_partial'     : bool, whether the gene call is partial.
+        Any additional keys (e.g., 'genome_name', 'gene_callers_id') are ignored by the
+        selection logic but preserved, since the winning entry is returned as-is.
+
+    Returns
+    =======
+    representative_entry : dict
+        The winning entry from `sequence_entries`, returned unchanged. Its 'align_sequence' value is
+        the aligned amino acid sequence (still with gaps); callers that want the raw sequence should
+        strip the gap characters themselves. Any identity keys the caller included (e.g.,
+        'genome_name', 'gene_callers_id') are carried through untouched.
+    """
+
+    if not len(sequence_entries):
+        raise ConfigError("get_representative_sequence_from_gene_cluster :: was called with an empty list of "
+                          "sequence entries, which should never happen.")
+
+    # short-circuit: single-member cluster
+    if len(sequence_entries) == 1:
+        return sequence_entries[0]
+
+    # compute median length excluding partials if possible
+    non_partial_lengths = [e['length'] for e in sequence_entries if not e['is_partial']]
+    lengths_for_median = non_partial_lengths if len(non_partial_lengths) else [e['length'] for e in sequence_entries]
+    median_length = np.median(lengths_for_median) if len(lengths_for_median) else 0
+
+    # exclude length outliers (+/-20% of median). If everything is excluded, fall back to all.
+    filtered_entries = sequence_entries
+    if median_length:
+        lower, upper = 0.8 * median_length, 1.2 * median_length
+        filtered_entries = [e for e in sequence_entries if lower <= e['length'] <= upper]
+        if not len(filtered_entries):
+            filtered_entries = sequence_entries
+
+    # compute pairwise similarities (identity over aligned positions without gaps)
+    def pairwise_similarity(seq_a, seq_b):
+        matches, positions = 0, 0
+        for aa, bb in zip(seq_a, seq_b):
+            if aa == '-' or bb == '-':
+                continue
+            positions += 1
+            if aa == bb:
+                matches += 1
+        if positions == 0:
+            return 0
+        return matches / positions
+
+    def average_distance(entry, entries):
+        if len(entries) == 1:
+            return 0
+        total = 0
+        for other in entries:
+            if other is entry:
+                continue
+            sim = pairwise_similarity(entry['align_sequence'], other['align_sequence'])
+            total += (1 - sim)
+        return total / (len(entries) - 1)
+
+    # rank candidates by average distance, then gaps, then length (longer preferred). The trailing
+    # index is a deterministic tiebreaker that also keeps the sort from ever comparing the entries.
+    ranked = []
+    for idx, entry in enumerate(filtered_entries):
+        avg_dist = average_distance(entry, filtered_entries)
+        ranked.append((avg_dist, entry['gap_count'], -entry['length'], entry['is_partial'], entry['align_sequence'], idx))
+
+    ranked.sort()
+
+    # prefer non-partial medoid if available
+    for _, _, _, is_partial, _, idx in ranked:
+        if not is_partial:
+            return filtered_entries[idx]
+
+    # all sequences are partial
+    return filtered_entries[ranked[0][5]]
 
 
 def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], expected_number_of_fields=None, separator='\t'):
@@ -4178,7 +4631,7 @@ def get_pruned_HMM_hits_dict(hmm_hits_dict):
                 shortest_of_the_two = min(hits[i][0], hits[j][0])
 
                 if alignment_end - alignment_start > shortest_of_the_two / 2:
-                    # the overlap between these two is more than the half of the lenght of the
+                    # the overlap between these two is more than the half of the length of the
                     # shorter one. this is done
                     overlapping_hits_indices.add(i)
                     overlapping_hits_indices.add(j)
@@ -4915,8 +5368,107 @@ def download_protein_structure(protein_code, output_path=None, chain=None, raise
     return output_path
 
 
-def get_hash_for_list(l):
-    return 'hash' + str(hashlib.sha224(''.join(sorted(list(l))).encode('utf-8')).hexdigest()[0:8])
+def get_hash_for_list(l, num_hex_digits=24):
+    return str(hashlib.sha224(''.join(sorted(list(l))).encode('utf-8')).hexdigest()[0:num_hex_digits])
+
+
+def get_random_hash(num_hex_digits=24):
+    """Returns a random hash for anvi'o databases that need a unique identifier.
+
+    Please note that the number of hexadecimal digits here is not a cosmetic choice: the
+    probability of two independently generated hashes colliding is governed by the birthday
+    problem, and with the 8 hexadecimal digits anvi'o used to use (i.e., a space of only 32
+    bits), someone who generated tens of thousands of databases over the years would have been
+    more likely than not to end up with two databases that had the exact same hash. Which did
+    happen. Twice. Hence these 16 digits.
+
+    Parameters
+    ==========
+    num_hex_digits : int
+        The number of hexadecimal digits the hash will be composed of.
+
+    Returns
+    =======
+    hash : str
+        A string that looks like `hash0a1b2c3d4e5f6789`.
+    """
+
+    return f'{random.getrandbits(num_hex_digits * 4):0{num_hex_digits}x}'
+
+
+def get_digest_for_contig_sequence(contig_name, contig_sequence):
+    """Returns the raw digest of a single contig for `get_contigs_db_hash`"""
+
+    return hashlib.sha256(f"{contig_name}\n{contig_sequence}".encode('utf-8')).digest()
+
+
+def get_contigs_db_hash(contigs_db, contig_digests=None, num_hex_digits=24):
+    """Compute a deterministic hash that describes the identity of a contigs database.
+
+    The hash is a function of everything that defines the contigs-db cotnent AND structure:
+    contig names and sequences, split boundaries, gene calls, and the k-mer size. Which means two
+    contigs databases that are generated from the same FASTA file with the same parameters (and
+    with the same versions of the same gene caller) WILL HAVE the same hash, and any difference
+    that would invalidate a profile database that was generated from one of themm, will change it.
+
+    Notes
+    =====
+    - The hash of a contigs database is computed once, when the database is created. Things that
+      are added to a contigs database later (functions, HMM hits, taxonomy, and even the additional
+      gene calls that come from HMM sources that find rRNAs) do not change it, since none of them
+      invalidate the databases that are linked to a contigs database through this hash.
+    - The order in which contigs occur in the input FASTA file does not influence the hash, but
+      contig names do (since they influence BAMs that have emerged from and everything downstream).
+
+    Parameters
+    ==========
+    contigs_db : anvio.db.DB
+        A `db.DB` instance for a contigs database the contig sequences, splits, and gene calls of
+        which are already in place.
+    contig_digests : list
+        An optional list of per-contig digests that are generated by the function
+        `get_digest_for_contig_sequence`. When this is not None, contig sequences will not be read
+        from `contigs_db`, which is much more memory friendly for callers that already have all the
+        sequences at hand (see how `dbops.ContigsDatabase.create` uses this function).
+    num_hex_digits : int
+        The number of hexadecimal digits the hash will be composed of. None means use all digits.
+
+    Returns
+    =======
+    hash : str
+        A string that looks like gibberish to the untrained eye (yas -- some of us can read SHA sums thx).
+    """
+
+    if contig_digests is None:
+        contig_digests = [get_digest_for_contig_sequence(contig_name, sequence) for contig_name, sequence \
+                                in contigs_db.get_some_columns_from_table(t.contig_sequences_table_name, 'contig, sequence')]
+
+    hasher = hashlib.sha256()
+
+    # digests are sorted here so the hash does not depend on the order in which
+    # the contigs occurred in the input FASTA file
+    for digest in sorted(contig_digests):
+        hasher.update(digest)
+
+    # split boundaries. this is what distinguishes an otherwise identical contigs database that was
+    # generated with a different split length, or without paying attention to gene calls
+    splits = contigs_db.get_some_columns_from_table(t.splits_info_table_name, 'split, parent, start, end')
+    for entry in sorted(splits, key=lambda x: x[0]):
+        hasher.update(('\t'.join([str(f) for f in entry]) + '\n').encode('utf-8'))
+
+    # gene calls. gene caller ids are the currency of every downstream database, so a contigs
+    # database with different gene calls must have a different hash even if its sequences are
+    # identical
+    gene_calls = contigs_db.get_some_columns_from_table(t.genes_in_contigs_table_name, 'gene_callers_id, contig, start, stop, direction, partial, call_type, source, version')
+    for entry in sorted(gene_calls, key=lambda x: x[0]):
+        hasher.update(('\t'.join([str(f) for f in entry]) + '\n').encode('utf-8'))
+
+    hasher.update(f"kmer_size:{contigs_db.get_meta_value('kmer_size')}\n".encode('utf-8'))
+
+    if num_hex_digits:
+        return hasher.hexdigest()[:num_hex_digits]
+    else:
+        return hasher.hexdigest()
 
 
 def get_file_md5(file_path):

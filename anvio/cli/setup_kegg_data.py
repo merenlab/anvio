@@ -181,6 +181,8 @@ def get_args():
     if show_help:
         sys.exit()
 
+    parser.add_mode_parsers('--mode', subparsers)
+
     args, unknown_args = parser.parse_known_args()
 
     return (args, unknown_args, subparsers)

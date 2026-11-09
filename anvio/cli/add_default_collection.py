@@ -15,8 +15,9 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
+__requires__ = ['profile-db']
+__can_use__ = ['pan-db', 'contigs-db']
 __provides__ = ["collection", "bin"]
-__requires__ = ["pan-db", "profile-db", "contigs-db"]
 __description__ = ("A script to add a 'DEFAULT' collection in an anvi'o pan or profile database with "
                    "either (1) a single bin that describes all items available in the profile database, "
                    "or (2) as many bins as there are items in the profile database wher every item has its "

@@ -55,8 +55,10 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['contigs-db', 'profile-db', 'external-genomes', 'internal-genomes', 'hmm-source', "hmm-hits"]
-__provides__ = ['genes-fasta', 'concatenated-gene-alignment-fasta']
+__requires__ = ['contigs-db', 'hmm-source', 'hmm-hits']
+__can_use__ = ['profile-db', 'external-genomes', 'internal-genomes']
+__provides__ = ['genes-fasta']
+__can_provide__ = ['concatenated-gene-alignment-fasta']
 __description__ = "Get sequences for HMM hits from many inputs"
 __resources__ = [("A tutorial on anvi'o phylogenomics workflow", "http://merenlab.org/2017/06/07/phylogenomics/"),
                  ("A detailed application of phylogenomics to place a new genome on a tree", "http://merenlab.org/data/parcubacterium-in-hbcfdna/")]

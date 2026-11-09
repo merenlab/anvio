@@ -11,9 +11,7 @@ from colored import Fore, Back, Style
 
 import anvio
 import anvio.programs as p
-import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
 from anvio.terminal import tabulate
 from anvio.errors import ConfigError
@@ -49,11 +47,13 @@ class ProgramSearch:
         self.search_term_user_input = A('search-term', null)
         self.requires = A('requires', bool)
         self.provides = A('provides', bool)
+        self.can_use = A('can-use', bool)
+        self.can_provide = A('can-provide', bool)
         self.name = A('name', bool)
         self.report = A('report', null)
 
         self.headers_to_report = []
-        self.headers = ['Program', 'Description', 'Tags', 'Provides', 'Requires']
+        self.headers = ['Program', 'Description', 'Tags', 'Provides', 'Requires', 'Can Use', 'Can Provide']
         self.table = pd.DataFrame([], columns = self.headers)
 
         self.handle_inputs()
@@ -69,14 +69,15 @@ class ProgramSearch:
         if self.headers_to_report:
             return
 
-        self.headers_to_report = ['Program', 'Description', 'Provides', 'Requires']
+        self.headers_to_report = ['Program', 'Description', 'Provides', 'Requires', 'Can Use', 'Can Provide']
 
 
     def handle_inputs(self):
-        if self.requires and self.provides:
-            raise ConfigError("You can't provide --requires and --provides. Pick one.")
-        if self.name and (self.requires or self.provides):
-            raise ConfigError("You can't provide --name with --provides or --requires. Pick one.")
+        filter_flags = [self.requires, self.provides, self.can_use, self.can_provide]
+        if sum(bool(f) for f in filter_flags) > 1:
+            raise ConfigError("You can only use one of --requires, --provides, --can-use, or --can-provide at a time.")
+        if self.name and any(filter_flags):
+            raise ConfigError("You can't use --name together with --requires, --provides, --can-use, or --can-provide.")
 
         self.search_terms = []
         if self.search_term_user_input:
@@ -109,31 +110,16 @@ class ProgramSearch:
         self.display_table()
 
 
-    def parse_description_from_program_call(self, program):
-        log_file = filesnpaths.get_temp_file_path()
-        output = utils.run_command_STDIN('%s --help' % (program.program_path), log_file, '').split('\n')
-
-        try:
-            _, description, _, _ = p.parse_help_output(output)
-        except Exception:
-            return ''
-
-        return description.replace('\n', '')
-
-
     def populate_table(self):
         for program in self.programs.values():
             tags = program.meta_info['tags']['value']
             provides = [item.id for item in program.meta_info['provides']['value']]
             requires = [item.id for item in program.meta_info['requires']['value']]
+            can_use = [item.id for item in program.meta_info['can_use']['value']]
+            can_provide = [item.id for item in program.meta_info['can_provide']['value']]
             description = program.meta_info['description']['value']
 
             resources = program.meta_info['resources']['value']
-
-            if not len(description):
-                # Yes, it can be learned from parse_description_from_program_call,
-                # No, it is not worth waiting ~1s for.
-                pass
 
             # if there are resources listed for the program, add them at the end of the description
             if len(resources):
@@ -141,9 +127,9 @@ class ProgramSearch:
 
                 description += "<><>RESOURCES:<><>%s<>" % (resources_text)
 
-            row_info = [program.name, description, tags, provides, requires]
+            row_info = [program.name, description, tags, provides, requires, can_use, can_provide]
             row = dict(zip(self.headers, row_info))
-            self.table = self.table.append(row, ignore_index = True)
+            self.table = pd.concat([self.table, pd.DataFrame([row])], ignore_index=True)
 
         self.table.sort_values(by = 'Program').reset_index(inplace = True)
 
@@ -162,6 +148,10 @@ class ProgramSearch:
                 if self.provides and header != 'Provides':
                     continue
                 if self.requires and header != 'Requires':
+                    continue
+                if self.can_use and header != 'Can Use':
+                    continue
+                if self.can_provide and header != 'Can Provide':
                     continue
                 if self.name and header != 'Program':
                     continue

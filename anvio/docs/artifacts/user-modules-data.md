@@ -117,7 +117,7 @@ Annotating PF06603.14 requires an extra step, because we first need to create a 
 
 {{ codestart }}
 %(anvi-script-pfam-accessions-to-hmms-directory)s --pfam-accessions-list PF06603.14 \
-                                               -O METABOLISM_HMM
+                                               -o METABOLISM_HMM
 %(anvi-run-hmms)s -c CONTIGS.db \
                -H METABOLISM_HMM \
                --add-to-functions-table \

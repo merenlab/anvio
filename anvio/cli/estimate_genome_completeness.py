@@ -20,7 +20,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ["contigs-db", "profile-db", "external-genomes", "collection"]
+__requires__ = ["contigs-db"]
+__can_use__ = ["profile-db", "external-genomes", "collection"]
 __provides__ = ["completion"]
 __description__ = "Estimate completion and redundancy using domain-specific single-copy core genes"
 
