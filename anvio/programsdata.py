@@ -492,6 +492,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "phrogs-data": {
+        "name": "PHROGs DATA",
+        "type": "DATA",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "cazyme-data": {
         "name": "CAZymes HMM DATA",
         "type": "DATA",
