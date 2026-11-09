@@ -221,9 +221,20 @@ class PHROGs(object):
 
         self.local_hmm_file = os.path.join(self.phrogs_data_dir, 'PHROGs.hmm')
         self.local_annotation_path = os.path.join(self.phrogs_data_dir, 'phrog_annot.tsv')
+        self.local_version_file = os.path.join(self.phrogs_data_dir, 'version.txt')
 
         self.is_database_exists()
+        self.get_version()
         self.load_catalog()
+
+    def get_version(self):
+        if os.path.exists(self.local_version_file):
+            with open(self.local_version_file) as f:
+                version = f.read().strip()
+        else:
+            version = 'unknown'
+
+        self.run.info('PHROGs version', version)
 
     def is_database_exists(self):
         if not os.path.exists(self.local_hmm_file):
