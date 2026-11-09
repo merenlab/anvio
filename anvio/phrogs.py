@@ -117,8 +117,19 @@ class PHROGsSetup(object):
 
         hmm_files = self.build_hmms_from_fmas(fma_files)
 
-        utils.concatenate_files(self.local_hmm_file, hmm_files, remove_concatenated_files=True)
+        utils.concatenate_files(self.local_hmm_file, hmm_files, remove_concatenated_files=not anvio.DEBUG)
         self.hmmpress_profiles()
+
+        # clean up after successful setup
+        if not anvio.DEBUG:
+            os.remove(self.local_msa_archive_path)
+            shutil.rmtree(self.local_extracted_fma_dir)
+        else:
+            self.run.warning(f"Since you used the `--debug` flag, anvi'o kept all the intermediate files from this setup. "
+                             f"These include the downloaded archive at '{self.local_msa_archive_path}', and the folder "
+                             f"'{self.local_extracted_fma_dir}' with all {len(fma_files)} FMA alignments and the individual "
+                             f".hmm files built from them, which together take up quite a bit of space. Please don't forget "
+                             f"to clean those up later.", header="Debug")
 
         with open(os.path.join(self.phrogs_data_dir, "version.txt"), 'w') as f:
             f.write(f"{self.phrogs_version}\n")
@@ -159,8 +170,9 @@ class PHROGsSetup(object):
                               "but something went wrong. Please check the log file ('%s') to see what happened." % log_file_path)
 
         # Delete FMAs
-        for fma_file in fma_files:
-            os.remove(fma_file)
+        if not anvio.DEBUG:
+            for fma_file in fma_files:
+                os.remove(fma_file)
 
         return hmm_files
 
@@ -173,7 +185,8 @@ class PHROGsSetup(object):
             raise ConfigError("There was an error while running `hmmpress` on PHROGs HMM profiles. "
                               "Check out the log file ('%s') to see what went wrong." % log_file_path)
 
-        os.remove(log_file_path)
+        if not anvio.DEBUG:
+            os.remove(log_file_path)
 
 
 class PHROGs(object):
