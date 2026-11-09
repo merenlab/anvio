@@ -11,7 +11,7 @@ from anvio.errors import ConfigError, FilesNPathsError
 __copyright__ = "Copyleft 2015-2026, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__authors__ = ['Georges Kanaan']
+__authors__ = ['Ge0rges']
 __provides__ = ['phrogs-data']
 __description__ = "Download and setup PHROGs data"
 

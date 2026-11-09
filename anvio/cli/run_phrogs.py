@@ -12,7 +12,7 @@ from anvio.terminal import time_program
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__authors__ = ['copilot']
+__authors__ = ['Ge0rges']
 __requires__ = ['contigs-db', 'phrogs-data']
 __provides__ = ['functions']
 __description__ = "Run PHROGs HMMs on contigs-db"
