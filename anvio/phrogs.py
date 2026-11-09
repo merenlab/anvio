@@ -30,6 +30,12 @@ class PHROGsSetup(object):
         self.args = args
         self.run = run
         self.progress = progress
+
+        # reminder to be a good citizen
+        self.run.warning("Anvi'o will set up the PHROGs database, as described in Terzian, Olo Ndela et al. (2021) "
+                         "(doi:10.1093/nargab/lqab067). When you publish your findings, please do not forget to "
+                         "properly credit this work.", lc='green', header="CITATION")
+
         self.phrogs_data_dir = args.phrogs_data_dir
         self.phrogs_version = args.phrogs_version or 'v4'
 
@@ -173,6 +179,11 @@ class PHROGs(object):
         self.args = args
         self.run = run
         self.progress = progress
+
+        # reminder to be a good citizen
+        self.run.warning("Anvi'o will annotate your database with the PHROGs database, as described in Terzian, "
+                         "Olo Ndela et al. (2021) (doi:10.1093/nargab/lqab067). When you publish your findings, "
+                         "please do not forget to properly credit this work.", lc='green', header="CITATION")
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.contigs_db_path = A('contigs_db')
