@@ -25,7 +25,7 @@ pp = terminal.pretty_print
 
 
 class BLAST:
-    def __init__(self, query_fasta, target_fasta=None, search_program='blastp', run=run, progress=progress, num_threads=1, overwrite_output_destinations=False):
+    def __init__(self, query_fasta, target_fasta=None, search_program='blastp', run=run, progress=progress, num_threads=1, output_file='blast-search-results.txt', overwrite_output_destinations=False, additional_params = ''):
         """BLAST driver.
 
            We generate target database from the `target_fasta`. If `target_fasta` is None,
@@ -52,7 +52,7 @@ class BLAST:
             self.target_fasta = self.query_fasta
 
         self.search_program = search_program
-        self.search_output_path = 'blast-search-results.txt'
+        self.search_output_path = output_file
         self.log_file_path = 'blast-log.txt'
         self.max_target_seqs = None
 
@@ -63,7 +63,7 @@ class BLAST:
         # the dictionary that connects the ids in the fasta file, to ids that were identical to it.
         self.names_dict = None
 
-        self.additional_params_for_blast = ""
+        self.additional_params_for_blast = additional_params
 
     def get_blast_results(self):
         force_makedb, force_blast = False, False
