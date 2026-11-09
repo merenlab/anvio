@@ -220,12 +220,15 @@ class PHROGs(object):
     def get_function_from_catalog(self, accession, ok_if_missing_from_catalog=False):
         accession = str(accession)
 
-        if accession not in self.function_catalog:
-            if ok_if_missing_from_catalog:
-                return "Unknown function with PHROGs accession %s" % accession
-            raise ConfigError("It seems hmmscan/hmmsearch found an accession id that does not exist in the PHROGs catalog: %s" % accession)
+        # the annotation table is keyed by integer PHROG IDs, while model names look like 'phrog_1'
+        catalog_key = accession.removeprefix('phrog_')
 
-        return self.function_catalog[accession]['annot']
+        if catalog_key not in self.function_catalog:
+            if ok_if_missing_from_catalog:
+                return f"Unknown function with PHROGs accession {accession}"
+            raise ConfigError(f"It seems hmmscan/hmmsearch found an accession id that does not exist in the PHROGs catalog: {accession}")
+
+        return self.function_catalog[catalog_key]['annot']
 
     def process(self):
         args = argparse.Namespace(contigs_db=self.contigs_db_path)
@@ -261,8 +264,9 @@ class PHROGs(object):
             functions_dict[counter] = {
                 'gene_callers_id': hmm_hit['gene_callers_id'],
                 'source': 'PHROGs',
-                'accession': hmm_hit['gene_hmm_id'],
-                'function': self.get_function_from_catalog(hmm_hit['gene_hmm_id'], ok_if_missing_from_catalog=True),
+                # models built from PHROGs FMA files have no ACC line, so we use the model NAME (e.g., 'phrog_1')
+                'accession': hmm_hit['gene_name'],
+                'function': self.get_function_from_catalog(hmm_hit['gene_name'], ok_if_missing_from_catalog=True),
                 'e_value': hmm_hit['e_value'],
             }
             counter += 1
