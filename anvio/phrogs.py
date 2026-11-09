@@ -174,6 +174,11 @@ class PHROGs(object):
         self.run = run
         self.progress = progress
 
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.contigs_db_path = A('contigs_db')
+        self.num_threads = A('num_threads') or 1
+        self.hmm_program = A('hmmer_program') or 'hmmsearch'
+        self.phrogs_data_dir = A('phrogs_data_dir')
         self.noise_cutoff_terms = A('noise_cutoff_terms')
 
         if self.noise_cutoff_terms is None:
