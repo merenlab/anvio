@@ -140,6 +140,7 @@ class PHROGsSetup(object):
             self.progress.new("Building PHROGs .hmm files from FMA families", progress_total_items=len(fma_files))
 
             for fma_file in fma_files:
+                self.progress.update(f"{os.path.basename(fma_file)} ({len(hmm_files) + 1} of {len(fma_files)})")
                 hmm_file = os.path.splitext(fma_file)[0] + '.hmm'
                 utils.run_command_and_get_output(
                     ['hmmbuild', hmm_file, fma_file],
