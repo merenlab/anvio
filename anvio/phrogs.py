@@ -57,9 +57,11 @@ class PHROGsSetup(object):
 
         self.db_url = "https://phrogs.lmge.uca.fr/downloads_from_website"
         self.msa_archive_name = "MSA_phrogs.tar.gz"
+        self.msa_extracted_dir_name = "MSA_Phrogs_M50_FASTA"
         self.annotation_file_name = f"phrog_annot_{self.phrogs_version}.tsv"
 
         self.local_msa_archive_path = os.path.join(self.phrogs_data_dir, self.msa_archive_name)
+        self.local_extracted_fma_dir = os.path.join(self.phrogs_data_dir, self.msa_extracted_dir_name)
         self.local_annotation_path = os.path.join(self.phrogs_data_dir, "phrog_annot.tsv")
         self.local_hmm_file = os.path.join(self.phrogs_data_dir, "PHROGs.hmm")
 
@@ -102,17 +104,16 @@ class PHROGsSetup(object):
             raise ConfigError("Anvi'o failed to download PHROGs files. If your internet connection is healthy, this may indicate the "
                               "database URLs have changed. Please report this issue to the anvi'o developers. Original error: '%s'." % e)
 
-        extracted_fma_dir = os.path.join(self.phrogs_data_dir, "MSA_Phrogs_M50_FASTA")
-        if os.path.exists(extracted_fma_dir):
-            shutil.rmtree(extracted_fma_dir)
+        if os.path.exists(self.local_extracted_fma_dir):
+            shutil.rmtree(self.local_extracted_fma_dir)
 
         utils.tar_extract_file(self.local_msa_archive_path, output_file_path=self.phrogs_data_dir, keep_original=True)
 
-        fma_files = sorted(glob.glob(os.path.join(extracted_fma_dir, "*.fma")))
+        fma_files = sorted(glob.glob(os.path.join(self.local_extracted_fma_dir, "*.fma")))
 
         if not fma_files:
             raise ConfigError("Anvi'o expected to find FMA files under '%s' after extracting the PHROGs archive, but found none. "
-                              "The archive format may have changed." % extracted_fma_dir)
+                              "The archive format may have changed." % self.local_extracted_fma_dir)
 
         hmm_files = self.build_hmms_from_fmas(fma_files)
 
