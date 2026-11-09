@@ -42,7 +42,7 @@ class PHROGsSetup(object):
         filesnpaths.is_program_exists('hmmpress')
         filesnpaths.is_program_exists('hmmbuild')
 
-        if self.phrogs_data_dir and args.reset:
+        if self.phrogs_data_dir and args.reset and os.path.exists(self.phrogs_data_dir):
             raise ConfigError("You are attempting to run PHROGs setup on a non-default data directory (%s) using the --reset flag. "
                               "To avoid automatically deleting a directory that may be important to you, anvi'o refuses to reset "
                               "directories that have been specified with --phrogs-data-dir. If you really want to get rid of this "
