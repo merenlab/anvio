@@ -405,8 +405,6 @@ class BAMProfilerQuick:
         self.window_length = A('window_length')
         self.window_length_as_percentage = A('window_length_as_percentage')
         self.min_window_length = A('min_window_length')
-        self.foldrange_lower = A('foldrange_lower')
-        self.foldrange_upper = A('foldrange_upper')
         self.alpha = A('alpha')
         self.discov_formula = A('discov_formula')
         self.gen_window_level_output = A('gen_window_level_output')
@@ -424,13 +422,12 @@ class BAMProfilerQuick:
         self.run.info('Contigs DB', self.contigs_db_path)
         self.run.info('Num BAM files', len(self.bam_file_paths))
         self.run.info('Reporting', 'MINIMAL' if self.report_minimal else 'EVERYTHING', mc="red" if self.report_minimal else "green")
-        if not self.report_minimal and not self.gene_level_stats: # report parameters for DisCov
-            self.run.info('DisCov window length', self.window_length if self.window_length else f"{self.window_length_as_percentage}% of sequence")
+        if not self.report_minimal and not self.gene_level_stats: # report parameters for discov
+            self.run.info('Discov window length', self.window_length if self.window_length else f"{self.window_length_as_percentage}% of sequence")
             if self.window_length_as_percentage:
                 self.run.info('Minimum window length', self.min_window_length)
-            self.run.info('DisCov fold-range', f"{self.foldrange_lower}x to {self.foldrange_upper}x of median nonzero coverage")
-            self.run.info('DisCov alpha value', self.alpha)
-            self.run.info('DisCov formula', self.discov_formula)
+            self.run.info('Discov alpha value', self.alpha)
+            self.run.info('Discov formula', self.discov_formula)
         if self.gen_window_level_output:
             self.run.info('Window-level output', self.window_output_file_path)
 
@@ -508,18 +505,17 @@ class BAMProfilerQuick:
                 raise ConfigError(f"The gene caller '{self.gene_caller}' is not among those that are found in "
                                   f"the contigs database (and shown above for your convenience).")
 
-        # DisCov parameter sanity checks
+        # discov parameter sanity checks
         if not self.report_minimal and not self.gene_level_stats:
             utils.validate_discov_params(self.window_length, self.window_length_as_percentage,
-                                         self.min_window_length, self.foldrange_lower, self.foldrange_upper,
-                                         self.alpha, self.discov_formula, require_window_param=True)
+                                         self.min_window_length, self.alpha, self.discov_formula, require_window_param=True)
 
         if self.gen_window_level_output:
             if self.gene_level_stats:
                 raise ConfigError("The flag `--gen-window-level-output` is not compatible with `--gene-mode`, as there "
                                   "are no windows to report for gene-level stats.")
             if self.report_minimal:
-                raise ConfigError("The flag `--gen-window-level-output` requires full output (the DisCov windows must "
+                raise ConfigError("The flag `--gen-window-level-output` requires full output (the discov windows must "
                                   "be computed), and is therefore not compatible with `--report-minimal`.")
             if self.window_output_file_path:
                 filesnpaths.is_output_file_writable(self.window_output_file_path, ok_if_exists=False)
@@ -552,7 +548,7 @@ class BAMProfilerQuick:
         if self.collection_txt_path:
             self.init_collection_bins()
         elif self.window_length:
-            # sanity check contig lengths for DisCov
+            # sanity check contig lengths for discov
             contigs_smaller_than_window = []
             for cname in self.contig_names_to_process:
                 if self.contigs_basic_info[cname]['length'] < self.window_length:
@@ -560,8 +556,8 @@ class BAMProfilerQuick:
             if contigs_smaller_than_window:
                 self.run.warning(f"{len(contigs_smaller_than_window)} out of {len(self.contig_names_to_process)} contigs "
                                  f"({(len(contigs_smaller_than_window)/len(self.contig_names_to_process)):.2f}%) are smaller "
-                                 f"than the requested window size for the DisCov metric. These contigs will not be split into "
-                                 f"multiple windows when computing DisCov, and hence their spread (S) score will become BINARY "
+                                 f"than the requested window size for the discov metric. These contigs will not be split into "
+                                 f"multiple windows when computing discov, and hence their spread (S) score will become BINARY "
                                  f"(0 if no reads mapped, or 1 if any reads mapped to the contig). Just so you know. In case "
                                  f"the percentage of affected contigs is very high, you probably want to consider using a "
                                  f"percentage-based window length instead (ie, with `--window-length-as-percentage`). Here "
@@ -676,7 +672,9 @@ class BAMProfilerQuick:
 
             gc_content = (weighted_gc / bin_length) if bin_length else 0
 
-            self.collection_bins[bin_name] = {'contigs': contigs,
+            # contigs are sorted by name so that the bin-level coverage array (and therefore the discov windows)
+            # does not depend on the order of the collection-txt, and matches the one in anvi-summarize
+            self.collection_bins[bin_name] = {'contigs': sorted(contigs),
                                               'length': bin_length,
                                               'gc_content': gc_content}
 
@@ -770,7 +768,7 @@ class BAMProfilerQuick:
             if self.report_minimal:
                 return ['bin', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov']
             else:
-                return ['bin', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov', 'num_windows', 'prop_windows_covered', 'prop_cov_within_foldrange', 'dis_cov']
+                return ['bin', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov', 'num_windows', 'actual_prop_windows_covered', 'expected_prop_windows_covered', 'normalized_spread', 'window_depth_evenness', 'spread_evenness_score', 'discov']
 
         elif reporting_genes:
             if self.report_minimal:
@@ -782,7 +780,7 @@ class BAMProfilerQuick:
             if self.report_minimal:
                 return ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov']
             else:
-                return ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov', 'num_windows', 'prop_windows_covered', 'prop_cov_within_foldrange', 'dis_cov']
+                return ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov', 'num_windows', 'actual_prop_windows_covered', 'expected_prop_windows_covered', 'normalized_spread', 'window_depth_evenness', 'spread_evenness_score', 'discov']
 
         raise ConfigError("This function reached a point it should have never :(")
 
@@ -921,8 +919,7 @@ class BAMProfilerQuick:
         else:
             C = utils.CoverageStats(coverage_array, skip_outliers=True, discov_window_length=self.window_length,
                         discov_window_percentage = self.window_length_as_percentage, discov_min_window_len = self.min_window_length,
-                        discov_foldrange_lower=self.foldrange_lower, discov_foldrange_upper=self.foldrange_upper,
-                        discov_alpha=self.alpha, discov_formula=self.discov_formula, return_window_info=window_output is not None)
+                        discov_alpha=self.alpha, discov_formula=self.discov_formula, return_window_info=window_output is not None, num_reads=num_reads, report_discov=True)
             output.write(f"{bin_name}\t"
                          f"{bam_file_name}\t"
                          f"{bin_data['length']}\t"
@@ -937,7 +934,10 @@ class BAMProfilerQuick:
                          f"{C.std:.4}\t"
                          f"{C.num_windows}\t"
                          f"{C.prop_win_covered:.4}\t"
-                         f"{C.fold_range_coverage_depth:.4}\t"
+                         f"{C.spread_expected:.4}\t"
+                         f"{C.spread_norm:.4}\t"
+                         f"{C.window_depth_evenness:.4}\t"
+                         f"{C.spread_evenness_score:.4}\t"
                          f"{C.discov:.4}\n")
             if window_output:
                 self._write_window_rows(window_output, bam_file_name, C.windows, bin_name=bin_name, contig_boundaries=contig_boundaries)
@@ -967,8 +967,7 @@ class BAMProfilerQuick:
         else:
             C = utils.CoverageStats(coverage_obj.c, skip_outliers=True, discov_window_length=self.window_length,
                         discov_window_percentage = self.window_length_as_percentage, discov_min_window_len = self.min_window_length,
-                        discov_foldrange_lower=self.foldrange_lower, discov_foldrange_upper=self.foldrange_upper,
-                        discov_alpha=self.alpha, discov_formula=self.discov_formula, return_window_info=window_output is not None)
+                        discov_alpha=self.alpha, discov_formula=self.discov_formula, return_window_info=window_output is not None, num_reads=coverage_obj.num_reads, report_discov=True)
             output.write(f"{contig_name}\t"
                          f"{bam_file_name}\t"
                          f"{self.contigs_basic_info[contig_name]['length']}\t"
@@ -983,7 +982,10 @@ class BAMProfilerQuick:
                          f"{C.std:.4}\t"
                          f"{C.num_windows}\t"
                          f"{C.prop_win_covered:.4}\t"
-                         f"{C.fold_range_coverage_depth:.4}\t"
+                         f"{C.spread_expected:.4}\t"
+                         f"{C.spread_norm:.4}\t"
+                         f"{C.window_depth_evenness:.4}\t"
+                         f"{C.spread_evenness_score:.4}\t"
                          f"{C.discov:.4}\n")
             if window_output:
                 self._write_window_rows(window_output, bam_file_name, C.windows, contig_name=contig_name)
@@ -1050,9 +1052,9 @@ class BAMProfilerQuick:
                                'window_stop': w['stop'] - ctg_offset,
                                'window_length': w['length'],
                                'has_coverage': w['has_coverage'],
-                               'num_bases_with_coverage': w['num_bases_with_coverage'],
-                               'num_bases_within_foldrange': w['num_bases_within_foldrange']}
-            headers = ['key', 'bin', 'contig', 'sample', 'window_start', 'window_stop', 'window_length', 'has_coverage', 'num_bases_with_coverage', 'num_bases_within_foldrange']
+                               'mean_coverage': w['mean_coverage'],
+                               'num_bases_with_coverage': w['num_bases_with_coverage']}
+            headers = ['key', 'bin', 'contig', 'sample', 'window_start', 'window_stop', 'window_length', 'has_coverage', 'mean_coverage', 'num_bases_with_coverage']
         else:
             # contig mode: positions are already relative to the contig
             enriched = {}
@@ -1063,9 +1065,9 @@ class BAMProfilerQuick:
                                'window_stop': w['stop'],
                                'window_length': w['length'],
                                'has_coverage': w['has_coverage'],
-                               'num_bases_with_coverage': w['num_bases_with_coverage'],
-                               'num_bases_within_foldrange': w['num_bases_within_foldrange']}
-            headers = ['key', 'contig', 'sample', 'window_start', 'window_stop', 'window_length', 'has_coverage', 'num_bases_with_coverage', 'num_bases_within_foldrange']
+                               'mean_coverage': w['mean_coverage'],
+                               'num_bases_with_coverage': w['num_bases_with_coverage']}
+            headers = ['key', 'contig', 'sample', 'window_start', 'window_stop', 'window_length', 'has_coverage', 'mean_coverage', 'num_bases_with_coverage']
 
         window_output.append(enriched, headers=headers, do_not_write_key_column=True)
 
@@ -1109,6 +1111,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.total_coverage_values_for_all_contigs = 0
         self.total_reads_kept = 0
         self.description_file_path = A('description')
+
+        # this will be set to `True` by `_apply_bam_index_prefilter` if there is not a single read
+        # in the BAM file that is mapped to any of the contigs we are interested in. in that case
+        # anvi'o will not profile anything, but will still generate a proper single profile database
+        # in which every contig and split has zero coverage
+        self.nothing_to_profile = False
 
         if self.fetch_filter:
             valid_fetch_filters = [k for k in constants.fetch_filters.keys() if k]
@@ -1288,19 +1296,47 @@ class BAMProfiler(dbops.ContigsSuperclass):
         else:
             eligible_contigs = all_contig_names
 
+        if self._user_specified_contigs_of_interest and not eligible_contigs:
+            _db.disconnect()
+            raise ConfigError("None of the contig names you have declared via `--contigs-of-interest` match to any of "
+                              "the contig names in your contigs database :/ Perhaps you have a typo, or you are using "
+                              "the wrong contigs database for this analysis?")
+
         # Contigs with coverage that are also eligible
         contigs_to_profile = contigs_with_coverage & eligible_contigs
         self._contigs_skipped_by_prefilter = eligible_contigs - contigs_to_profile
 
         if not contigs_to_profile:
+            # there is not a single read in this BAM file that is mapped to any of the contigs we
+            # care about. this is not an error: when one recruits reads from a large number of
+            # metagenomes using a small reference, some of those metagenomes will have nothing that
+            # matches it. so here anvi'o gives up on profiling, and lets the rest of the class know
+            # that every eligible contig (all of which are already in
+            # `self._contigs_skipped_by_prefilter`) will be backfilled with zero coverage by
+            # `store_zero_coverage_for_skipped_splits`. the resulting profile database is a
+            # first-class citizen: it has the same number of contigs, splits, and nucleotides as
+            # any other profile database generated from the same contigs database, thus it can be
+            # merged with them, and the sample will show up in downstream results with zero
+            # coverage everywhere.
             _db.disconnect()
+
+            self.nothing_to_profile = True
+
             if self._user_specified_contigs_of_interest:
-                raise ConfigError("None of the contigs you specified via `--contigs-of-interest` have any mapped "
-                                  "reads in the BAM file. The BAM file does contain reads mapped to other contigs, "
-                                  "but none of them match your list. There is nothing to profile here.")
+                self.run.warning("None of the contigs you specified via `--contigs-of-interest` have any mapped reads "
+                                 "in this BAM file (even though the BAM file does contain reads that are mapped to "
+                                 "other contigs). Anvi'o will still generate a single profile database for this "
+                                 "sample, but every contig in it will have zero coverage.",
+                                 header="NOTHING MAPPED TO YOUR CONTIGS OF INTEREST 🤷", lc="yellow")
             else:
-                raise ConfigError("None of the contigs in the BAM file have any mapped reads. There is nothing "
-                                  "to profile here.")
+                self.run.warning("There is not a single read in this BAM file that is mapped to any of the contigs in "
+                                 "your contigs database. Anvi'o will still generate a single profile database for this "
+                                 "sample so it can be merged with others and be visible in your downstream analyses, "
+                                 "but every contig in it will have zero coverage. If this is unexpected, you may want "
+                                 "to take a look at your mapping results.",
+                                 header="NOTHING MAPPED TO ANYTHING 🤷", lc="yellow")
+
+            return
 
         # Get split names for the contigs we will actually profile.
         # Uses a temp table + JOIN with parameterized inserts to avoid SQL injection
@@ -1381,6 +1417,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'SNVs_profiled': not self.skip_SNV_profiling,
                        'SCVs_profiled': self.profile_SCVs,
                        'INDELs_profiled': not self.skip_INDEL_profiling,
+                       'num_reads_stored': not self.blank,
                        'min_percent_identity': self.min_percent_identity or 0,
                        'fetch_filter': self.fetch_filter,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
@@ -1437,6 +1474,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('Minimum percent identity of reads to be profiled', self.min_percent_identity, mc='green')
         self.run.info('Fetch filter engaged', self.fetch_filter, mc='green', nl_after=1)
 
+        if self.min_percent_identity or self.fetch_filter:
+            self.run.warning("Please keep in mind that the read filtering you have requested (via `--min-percent-identity` "
+                             "and/or `--fetch-filter`) will not only affect the coverage values stored in your profile and "
+                             "auxiliary databases, but also the number of reads per split and per contig that anvi'o stores "
+                             "in the profile database. Therefore, any downstream calculations that rely on these numbers, such "
+                             "as the distribution of coverage (discov) scores, will be computed from the filtered reads only, and "
+                             "will not be directly comparable to those computed from unfiltered reads (i.e., by "
+                             "`anvi-profile-blitz`). YOU HAVE BEEN WARNED.")
+
         self.run.info('Is merged profile?', False)
         self.run.info('Is blank profile?', self.blank)
         self.run.info('Skip contigs shorter than', self.min_contig_length)
@@ -1478,7 +1524,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                                          view_name=None if table_name.endswith('contigs') else view)
         elif self.input_file_path:
             self.init_profile_from_BAM()
-            if self.num_threads > 1 or self.args.force_multi:
+            if self.nothing_to_profile:
+                # there are no contigs to distribute among workers. the single-threaded code path
+                # will simply backfill zero coverage for every contig and split:
+                self.profile_single_thread()
+            elif self.num_threads > 1 or self.args.force_multi:
                 if self.num_splits > 200000 and self.num_threads > 20:
                     self.run.warning(f"We noticed that you have more than 200,000 splits and are using more than 20 "
                                      f"threads. In fact, you have {self.num_splits:,} splits and are using "
@@ -1504,7 +1554,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self._log_mem("before clustering")
 
-        if self.contigs_shall_be_clustered:
+        if self.contigs_shall_be_clustered and self.nothing_to_profile:
+            self.run.warning("You asked anvi'o to cluster your contigs, but since there is not a single read in this "
+                             "BAM file that is mapped to any of them, there is no data to cluster them with. Anvi'o "
+                             "is skipping the hierarchical clustering step for this sample.")
+        elif self.contigs_shall_be_clustered:
             self.cluster_contigs()
 
         if self.bam:
@@ -1962,6 +2016,49 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('Number of reads in the BAM file', pp(int(self.num_reads_mapped)))
         self.run.info('Number of sequences in the contigs DB', pp(len(self.contig_names)))
 
+        if self.nothing_to_profile:
+            # `_apply_bam_index_prefilter` has already established that not a single read in this
+            # BAM file is mapped to any of our contigs. everything below sets the stage for
+            # `store_zero_coverage_for_skipped_splits` to do all the work: it will add every
+            # length-eligible contig and split to the profile database with zero coverage, and
+            # will increment the three `self` table variables anvi'o sets to zero here (which is
+            # critical, since `anvi-merge` requires them to be identical across profile databases).
+            if not set(self.contig_names) & self.contig_names_in_contigs_db:
+                raise ConfigError("Not only there are no reads in this BAM file that are mapped to any of your contigs, "
+                                  "but also not a single contig name in the BAM file matches to a contig name in your "
+                                  "contigs database. Which means you are most likely using a contigs database that has "
+                                  "nothing to do with this BAM file. Here is a contig name from your BAM file: '%s', and "
+                                  "here is one from your contigs database: '%s'. If they look like they should have "
+                                  "matched, you may have failed to fix your contig names in your FASTA file prior to "
+                                  "mapping, which is described here: %s"
+                                        % (self.contig_names[0] if len(self.contig_names) else 'N/A',
+                                           next(iter(self.contig_names_in_contigs_db), 'N/A'),
+                                           'http://goo.gl/Q9ChpS'))
+
+            self.contig_names = []
+            self.contig_lengths = []
+            self.contig_name_to_splits = {}
+            self.split_names = set([])
+            self.num_contigs = 0
+            self.num_splits = 0
+            self.total_length = 0
+
+            profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
+            profile_db.db.set_meta_value('num_splits', self.num_splits)
+            profile_db.db.set_meta_value('num_contigs', self.num_contigs)
+            profile_db.db.set_meta_value('total_length', self.total_length)
+            profile_db.disconnect()
+
+            self.run.info('Contigs with at least one mapped read', 'None. Every contig will have zero coverage',
+                          mc='red', nl_after=1)
+
+            self.layer_additional_data['total_reads_mapped'] = self.num_reads_mapped
+            self.layer_additional_keys.append('total_reads_mapped')
+
+            self._log_mem("after BAM init")
+
+            return
+
         if self.contig_names_of_interest:
             contig_name_to_index = {name: i for i, name in enumerate(self.contig_names)}
             indexes = [contig_name_to_index[r] for r in self.contig_names_of_interest if r in contig_name_to_index]
@@ -2160,7 +2257,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def profile_single_thread(self):
         """The main method for anvi-profile when num_threads is 1"""
 
-        if not self.contig_sequences:
+        if self.num_contigs and not self.contig_sequences:
             self.init_contig_sequences(contig_names_of_interest=set(self.contig_names))
 
         self._log_mem("after loading contig sequences")
@@ -2282,7 +2379,16 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.layer_additional_data['total_reads_kept'] = self.total_reads_kept
         self.layer_additional_keys.append('total_reads_kept')
 
-        self.check_contigs(num_contigs=received_contigs)
+        if not self.nothing_to_profile:
+            self.check_contigs(num_contigs=received_contigs)
+        elif not self.num_splits:
+            # nothing was profiled AND nothing was backfilled with zero coverage, which means the
+            # min/max contig length criteria have removed every single contig from consideration:
+            raise ConfigError("Anvi'o applied your min/max length criteria for contigs to filter out the bad ones "
+                              "and has bad news: not a single contig in your contigs database was greater than %s "
+                              "and smaller than %s nts :( So this profiling attempt did not really go anywhere. "
+                              "Please remove your half-baked output directory if it is still there: '%s'."
+                                    % (pp(self.min_contig_length), pp(self.max_contig_length), self.output_directory))
 
 
     def profile_multi_thread(self):
@@ -2490,27 +2596,42 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.generate_indels_table()
         self.store_split_coverages()
 
-        # Identify zero-coverage splits within covered contigs. These splits belong to
-        # contigs that DID have reads, but the reads did not cover every split. Instead
-        # of writing zero rows to all 12 view tables, we record them in
-        # zero_coverage_splits and skip them during atomic data generation.
+        # Identify zero-coverage contigs and splits. A contig can have zero coverage despite being
+        # profiled if none of its reads survived (e.g., all were removed by read filters, or the BAM
+        # index counted alignments without a CIGAR or sequence). Such contigs, and all of their splits,
+        # are recorded in the zero_coverage tables just like the contigs skipped by the BAM index
+        # prefilter. Splits within covered contigs may also have zero coverage if the reads did not
+        # cover every split. Instead of writing zero rows to all view tables, we record all of these
+        # in zero_coverage tables and skip them during atomic data generation.
+        zero_cov_contig_names = set()
         zero_cov_split_names = set()
         for contig in self.contigs:
+            if contig.coverage.mean == 0:
+                zero_cov_contig_names.add(contig.name)
+                zero_cov_split_names.update(split.name for split in contig.splits)
+                continue
+
             for split in contig.splits:
                 if split.coverage.mean == 0:
                     zero_cov_split_names.add(split.name)
 
-        if zero_cov_split_names:
+        if zero_cov_contig_names or zero_cov_split_names:
             profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
-            profile_db.db._exec_many(
-                'INSERT INTO %s VALUES (?,?)' % t.zero_coverage_splits_table_name,
-                [(name, self.sample_id) for name in zero_cov_split_names])
+            if zero_cov_contig_names:
+                profile_db.db._exec_many(
+                    'INSERT INTO %s VALUES (?,?)' % t.zero_coverage_contigs_table_name,
+                    [(name, self.sample_id) for name in zero_cov_contig_names])
+            if zero_cov_split_names:
+                profile_db.db._exec_many(
+                    'INSERT INTO %s VALUES (?,?)' % t.zero_coverage_splits_table_name,
+                    [(name, self.sample_id) for name in zero_cov_split_names])
             profile_db.disconnect()
 
         # the crux of the profiling
         for atomic_data_field in self.essential_data_fields_for_anvio_profiles:
             view_data_splits, view_data_contigs = contigops.get_atomic_data(self.sample_id, self.contigs, atomic_data_field,
-                                                                            zero_cov_splits=zero_cov_split_names)
+                                                                            zero_cov_splits=zero_cov_split_names,
+                                                                            zero_cov_contigs=zero_cov_contig_names)
 
             table_name = '_'.join([atomic_data_field, 'splits'])
             TablesForViews(self.profile_db_path,
@@ -2527,6 +2648,34 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                                  table_name=table_name,
                                                  view_name=None,
                                                  append_mode=True)
+
+        # the number of reads per split and contig are stored like atomic data. zero values
+        # are not stored: zero-coverage contigs and splits are already skipped (and every contig with coverage
+        # has at least one read), but a split with coverage may still have no reads assigned to it (if all reads
+        # covering it have most of their aligned bases in neighboring splits). those splits go into the
+        # zero_read_splits table instead
+        num_reads_splits, num_reads_contigs = contigops.get_atomic_data(self.sample_id, self.contigs, 'num_reads',
+                                                                        zero_cov_splits=zero_cov_split_names,
+                                                                        zero_cov_contigs=zero_cov_contig_names)
+        TablesForViews(self.profile_db_path,
+                       progress=self.progress) \
+                            .create_new_view(view_data=[d for d in num_reads_splits if d[2] > 0],
+                                             table_name=t.num_reads_splits_table_name,
+                                             view_name=None,
+                                             append_mode=True)
+
+        TablesForViews(self.profile_db_path,
+                       progress=self.progress) \
+                            .create_new_view(view_data=num_reads_contigs,
+                                             table_name=t.num_reads_contigs_table_name,
+                                             view_name=None,
+                                             append_mode=True)
+
+        zero_read_split_rows = [(item, layer) for item, layer, value in num_reads_splits if value == 0]
+        if zero_read_split_rows:
+            profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
+            profile_db.db._exec_many('INSERT INTO %s VALUES (?,?)' % t.zero_read_splits_table_name, zero_read_split_rows)
+            profile_db.disconnect()
 
 
     def check_contigs(self, num_contigs=None):

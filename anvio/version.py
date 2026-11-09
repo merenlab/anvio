@@ -18,15 +18,15 @@ minor_python_version_required = 10
 # of these numbers, you better have a well-tested migration script
 # ready to go along with that change!
 contigs_db_version = "25"
-profile_db_version = "42"
+profile_db_version = "43"
 genes_db_version = "6"
 pan_db_version = "21"
-pangraph_db_version = "5"
+pangraph_db_version = "7"
 auxiliary_data_version = "2"
-structure_db_version = "2"
+structure_db_version = "4"
 genomes_storage_version = "8"
 trnaseq_db_version = "2"
-workflow_config_version = "5"
+workflow_config_version = "6"
 metabolic_modules_db_version = "4"
 
 versions_for_db_types = {'contigs': contigs_db_version,

@@ -1,0 +1,3 @@
+accession	value
+R01061	10
+R01063	30

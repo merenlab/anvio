@@ -67,11 +67,11 @@ anvi-summarize -g %(genomes-storage-db)s \
                -C %(collection)s
 {{ codestop }}
 
-### Computing DisCov statistics
+### Computing discov statistics
 
-When summarizing a profile database, you can optionally compute the Distribution of Coverage (DisCov) score for each bin and each contig within each bin. See %(discov-stats)s for a full description of the metric and its parameters.
+When summarizing a profile database, you can optionally compute the distribution of coverage (discov) score for each bin and each contig within each bin. See %(discov-stats)s for a full description of the metric and its parameters.
 
-To enable DisCov computation, use the `--report-discov` flag:
+To enable discov computation, use the `--report-discov` flag:
 
 {{ codestart }}
 anvi-summarize -c %(contigs-db)s \
@@ -81,28 +81,30 @@ anvi-summarize -c %(contigs-db)s \
                --report-discov
 {{ codestop }}
 
-This requires access to the auxiliary data file (`AUXILIARY-DATA.db`) in the same directory as the profile database and produces two additional output files under `bins_across_samples/`:
+This requires access to the auxiliary data file (`AUXILIARY-DATA.db`) in the same directory as the profile database, and a profile database that includes the number of reads assigned to each split. It produces two additional output files under `bins_across_samples/`:
 
 * `discov_bins.txt` — one row per bin × sample
-* `discov_contigs.txt` — one row per contig × sample
+* `discov_contigs.txt` — one row per contig × sample. If the splits of a contig are in different bins, each of these bins gets a row for the part of the contig that is in it, and the `partial_contig_in_bin` column is set to 1 for these rows.
 
-You can adjust how DisCov is computed using the following parameters. When neither `--window-length` nor `--window-length-as-percentage` is specified, anvi'o applies context-sensitive defaults: a fixed 1,000 bp window for bins, and a percentage-based window (1%% of contig length, minimum 300 bp) for individual contigs.
+Both files report the length of each sequence, the number of reads mapping to it (`num_reads`), the number of windows, the observed and expected proportion of covered windows, the normalized spread (_S_), the window depth evenness (_E_), the spread-evenness score (_C_), and the discov score (`discov`).
 
-**Window sizing for S**
+You can adjust how discov is computed using the following parameters. When neither `--window-length` nor `--window-length-as-percentage` is specified, anvi'o applies context-sensitive defaults: a fixed 10,000 bp window for bins, and a percentage-based window (1%% of contig length, minimum 300 bp) for individual contigs. If you specify window length parameters, they apply to both bins and contigs.
+
+**Window sizing**
 
 * `--window-length INT` — use a fixed window size in bp for all sequences (bins and contigs)
-* `--window-length-as-percentage FLOAT` — set window length as a percentage of each sequence's length
-* `--min-window-length INT` — minimum window length floor for percentage mode
-
-**Fold-range for E**
-
-* `--foldrange-lower FLOAT` — lower bound of the coverage fold-range (default: 0.5)
-* `--foldrange-upper FLOAT` — upper bound of the coverage fold-range (default: 2.0)
+* `--window-length-as-percentage INT` — set window length as a percentage of each sequence's length
+* `--min-window-length INT` — minimum window length floor for percentage mode (default for contigs: 300)
 
 **Combining S and E**
 
 * `--alpha FLOAT` — weight of S relative to E, in [0, 1] (default: 0.5)
-* `--discov-formula STRING` — `linear` (DisCov = αS + (1-α)E) or `geometric` (DisCov = S^α × E^(1-α)) (default: `linear`)
+* `--discov-formula STRING` — `geometric` (C = S^α × E^(1-α)) or `linear` (C = αS + (1-α)E) (default: `geometric`)
+
+The final score is discov = min(1, C + D^2), where D is detection.
+
+{:.notice}
+Discov values computed by %(anvi-summarize)s and %(anvi-profile-blitz)s on the same data should be identical, with one exception: the auxiliary data file caps per-nucleotide coverage at 65,535X, so the values can differ slightly for sequences with extremely high coverage. See %(discov-stats)s for details.
 
 ### Other notes
 

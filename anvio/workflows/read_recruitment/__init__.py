@@ -6,7 +6,8 @@
 
 import os
 import anvio
-from anvio.workflows import WorkflowSuperClass
+from anvio.workflows import WorkflowSuperClass, get_lr_preset
+from anvio.errors import ConfigError
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -74,8 +75,31 @@ class ReadRecruitmentModule(WorkflowSuperClass):
         })
 
     def get_minimap2_preset(self, readset_id):
-        """Return the minimap2 preset from the config (same for every readset)."""
-        return self.get_param_value_from_config(['minimap2', 'preset'])
+        """Return the minimap2 -x preset for this readset.
+
+        Resolution order: (1) the readset's 'lr_technology' token from samples-txt (mapped
+        to a minimap2 preset via the LR technology preset file); (2) the explicit
+        'minimap2: preset' value from the config; otherwise a ConfigError. Anvi'o never lets
+        minimap2 fall back to its built-in default, to avoid silently mapping long reads with
+        the wrong preset.
+        """
+        rs = self.readsets_by_id.get(readset_id)
+        tech = rs.get('lr_technology') if rs else None
+        if tech:
+            # token validity is enforced during init(); get_lr_preset returns the preset
+            preset = get_lr_preset(tech, 'minimap2')
+            if preset:
+                return preset
+        preset = self.get_param_value_from_config(['minimap2', 'preset'])
+        if preset:
+            return preset
+        raise ConfigError(
+            f"Anvi'o needs a minimap2 preset to map the long reads for readset '{readset_id}', but "
+            f"none is available. Either add an 'lr_technology' column to your samples-txt file (anvi'o "
+            f"will choose the right preset automatically), or set 'minimap2': {{'preset': ...}} in your "
+            f"workflow config (e.g. 'map-ont', 'map-pb', 'map-hifi'). Anvi'o does not fall back to "
+            f"minimap2's built-in default on purpose, to avoid silently mapping with the wrong settings."
+        )
 
     def get_sr_readset_ids(self):
         return [rs['id'] for rs in self.readsets if rs['type'] == 'SR']

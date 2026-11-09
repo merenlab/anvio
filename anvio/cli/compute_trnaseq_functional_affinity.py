@@ -2,6 +2,7 @@
 """Relate changes in tRNA-seq seed abundances to the codon usage of gene functions"""
 
 import os
+import sys
 import warnings
 import pandas as pd
 import seaborn as sns
@@ -73,39 +74,46 @@ ete_newick_decoding_dict = {v: k for k, v in ete_newick_encoding_dict.items()}
 def main():
     args = get_args()
 
-    ran_helper_mode = run_helper_modes(args)
-    if ran_helper_mode:
-        return
+    try:
+        ran_helper_mode = run_helper_modes(args)
+        if ran_helper_mode:
+            return
 
-    sanity_check(args)
-    args.normalization_methods = args.normalize_affinity if args.normalize_affinity else []
-    # Add an argument the opposite of `no_codon_dendrogram`.
-    args.plot_codon_dendrogram = True if args.plot and not args.no_codon_dendrogram else False
+        sanity_check(args)
+        args.normalization_methods = args.normalize_affinity if args.normalize_affinity else []
+        # Add an argument the opposite of `no_codon_dendrogram`.
+        args.plot_codon_dendrogram = True if args.plot and not args.no_codon_dendrogram else False
 
-    affinities_dict, stderrs_dict, isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict, \
-        contributions_dict = get_affinities(args)
-    write_affinity_tables(args, affinities_dict)
-    write_affinity_stderr_tables(args, stderrs_dict)
-    write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict)
-    write_isoacceptor_codon_weights_tables(args, isoacceptor_codon_weights_dict)
-    write_isoacceptor_contribution_tables(args, contributions_dict)
+        affinities_dict, stderrs_dict, isoacceptor_abund_ratios_dict, \
+            isoacceptor_codon_weights_dict, contributions_dict = get_affinities(args)
+        write_affinity_tables(args, affinities_dict)
+        write_affinity_stderr_tables(args, stderrs_dict)
+        write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict)
+        write_isoacceptor_codon_weights_tables(args, isoacceptor_codon_weights_dict)
+        write_isoacceptor_contribution_tables(args, contributions_dict)
 
-    codon_frequency_dict = get_general_codon_frequencies(args, affinities_dict)
-    write_general_codon_frequency_tables(args, codon_frequency_dict)
+        codon_frequency_dict = get_general_codon_frequencies(args, affinities_dict)
+        write_general_codon_frequency_tables(args, codon_frequency_dict)
 
-    # If no subsetting occurred, the returned subset affinity tables contain the identical data as
-    # the passed affinity tables. Subset after generating the codon frequency tables, because those
-    # tables can be saved to file, including all, rather than a subset of, genes or functions for
-    # which affinity was calculated.
-    subset_affinities_dict = subset_affinity_entries(args, affinities_dict)
+        # If no subsetting occurred, the returned subset affinity tables contain the identical data
+        # as the passed affinity tables. Subset after generating the codon frequency tables, because
+        # those tables can be saved to file, including all, rather than a subset of, genes or
+        # functions for which affinity was calculated.
+        subset_affinities_dict = subset_affinity_entries(args, affinities_dict)
 
-    codon_linkage_dict = get_codon_linkage(args, codon_frequency_dict, subset_affinities_dict)
-    write_codon_newick_files(args, codon_linkage_dict)
+        codon_linkage_dict = get_codon_linkage(args, codon_frequency_dict, subset_affinities_dict)
+        write_codon_newick_files(args, codon_linkage_dict)
 
-    sample_linkage_dict = get_sample_linkage(args, subset_affinities_dict)
-    write_sample_newick_files(args, sample_linkage_dict)
+        sample_linkage_dict = get_sample_linkage(args, subset_affinities_dict)
+        write_sample_newick_files(args, sample_linkage_dict)
 
-    plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_linkage_dict)
+        plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_linkage_dict)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
 def get_args():
@@ -593,7 +601,11 @@ def get_args():
              "can be run with any number of (meta)genomes, but a selection of these can be used as "
              "inputs to `anvi-compute-trnaseq-functional-affinity`. For example, `unambiguous_db` "
              "could be useful to calculate affinity for a single genome on the basis of "
-             "unambiguous seeds despite multiple genomes having been integrated into the database."
+             "unambiguous seeds despite multiple genomes having been integrated into the database. "
+             "`anvi-integrate-trnaseq` does not store matches to tRNA genes outside the bins being "
+             "integrated, so `unambiguous_db` cannot recognize a seed that matches a gene in an "
+             "integrated bin and a gene outside the integrated bins equally well. To disregard such "
+             "seeds, run `anvi-integrate-trnaseq` with `--unambiguous-genome-assignment`. "
              "(3): `ambiguous_all`: Both unambiguous and ambiguous seeds are used in affinity "
              "calculations. As a result, affinity calculations for different genomes will not be "
              "independent if ambiguous seeds are shared."

@@ -115,7 +115,8 @@
         "--keep-tmp-files": "",
         "--tmp-dir": "",
         "--continue": "",
-        "--verbose": ""
+        "--verbose": "",
+        "use_anvio_conda_yaml": true
     },
     "idba_ud": {
         "--min_contig": 1000,
@@ -151,8 +152,8 @@
         "--meta": true,
         "--pacbio-raw": "",
         "--pacbio-corr": "",
-        "--pacbio-hifi": false,
-        "--nano-raw": true,
+        "--pacbio-hifi": "",
+        "--nano-raw": "",
         "--nano-corr": "",
         "--nano-hq": "",
         "--genome-size": "",
@@ -162,7 +163,8 @@
         "--keep-haplotypes": "",
         "--no-alt-contigs": "",
         "--scaffold": "",
-        "--polish-target": ""
+        "--polish-target": "",
+        "use_anvio_conda_yaml": true
     },
     "iu_filter_quality_minoche": {
         "run": true,
@@ -181,7 +183,8 @@
         "additional_params": "--no-unal",
         "threads": 3,
         "conda_yaml": "",
-        "conda_env": ""
+        "conda_env": "",
+        "use_anvio_conda_yaml": true
     },
     "minimap2_index": {
         "additional_params": "",
@@ -189,10 +192,11 @@
     },
     "minimap2": {
         "threads": 3,
-        "preset": "map-ont",
+        "preset": "",
         "additional_params": "--secondary-seq",
         "conda_yaml": "",
-        "conda_env": ""
+        "conda_env": "",
+        "use_anvio_conda_yaml": true
     },
     "samtools_view": {
         "additional_params": "-F 4",
@@ -342,6 +346,31 @@
         "LOGS_DIR": "00_LOGS-mixed-assembly"
     },
     "max_threads": "",
-    "config_version": "5",
-    "workflow_name": "metagenomics"
+    "config_version": "6",
+    "workflow_name": "metagenomics",
+    "filtlong": {
+        "run": true,
+        "use_anvio_conda_yaml": true,
+        "--min-length": 500,
+        "threads": 2
+    },
+    "nanoplot": {
+        "run": true,
+        "run_on_raw": true,
+        "run_on_filtered": true,
+        "use_anvio_conda_yaml": true,
+        "threads": 2
+    },
+    "fastqc": {
+        "run": true,
+        "run_on_raw": true,
+        "run_on_filtered": true,
+        "use_anvio_conda_yaml": true,
+        "threads": 1
+    },
+    "multiqc": {
+        "run": true,
+        "use_anvio_conda_yaml": true,
+        "threads": 1
+    }
 }

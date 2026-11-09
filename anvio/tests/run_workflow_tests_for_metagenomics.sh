@@ -10,6 +10,15 @@ mkdir $output_dir/workflow_test
 cp -r $files/workflows/metagenomics/* $output_dir/workflow_test/
 cd $output_dir/workflow_test
 
+# The committed long reads (sample-01/02-LR) are HiFi-quality (fixed length, high Q). To test the
+# multi-technology path (SR + ONT + PacBio HiFi in one run), we synthesize an ONT-style long-read
+# set on the fly from a reference with anvi-script-gen-reads rather than shipping more read files.
+# The read-length overrides keep reads short enough for these small test contigs (all < 8 kb).
+INFO "Generating synthetic ONT long reads for the multi-technology scenario"
+anvi-script-gen-reads -f three_samples_example/G02-contigs.fa.gz -o three_samples_example/sample-03-ONT \
+    --preset ont-r10 --read-length 1500 --read-length-std 800 --min-read-length 200 --coverage 25 --seed 1
+gzip -f three_samples_example/sample-03-ONT.fastq
+
 INFO "Creating a default config for metagenomics workflow"
 anvi-run-workflow -w metagenomics --get-default-config default-config.json
 
@@ -28,7 +37,7 @@ anvi-run-workflow -w metagenomics --config config-idba_ud.json
 INFO "Run with metaflye - LR only"
 anvi-run-workflow -w metagenomics --config config-metaflye.json
 
-INFO "Run with metaflye and megahit - all-vs-all - SR QC"
+INFO "Run megahit + metaflye - all-vs-all - SR(ONT+HiFi multi-tech) - full QC (filtlong+NanoPlot+FastQC+MultiQC, raw & filtered) via anvi'o conda envs"
 anvi-run-workflow -w metagenomics --config config-mixed-assembly.json
 
 INFO "Run reference-mode with SR and LR - no QC - add collection"

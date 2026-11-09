@@ -439,7 +439,7 @@ class PanRepresenter:
                         previous_gene_id = (gene_calls_data.get(first_id - 1) if first_id > min_valid_id else None)
                         next_gene_id = (gene_calls_data.get(last_id + 1) if last_id < max_valid_id else None)
 
-                        start = previous_gene_id["stop"] if previous_gene_id else 0
+                        start = (min(previous_gene_id["stop"], start)) if previous_gene_id else 0
                         stop = (max(last_gene_call["stop"], next_gene_id["start"]) if next_gene_id else len(contig_seq))
 
                     extracted = contig_seq[start:stop]

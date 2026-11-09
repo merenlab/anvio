@@ -317,10 +317,13 @@ class CAZyme(object):
         counter = 0
         for hmm_hit in search_results_dict.values():
             accession = hmm_hit['gene_name'].removesuffix('.hmm') # removing the .hmm suffix from CAZyme HMM names
-            if hmm_hit['gene_hmm_id'].startswith('PF'): # expaned function string if from PFAM
+
+            # dbCAN HMMs carry no ACC line except for the few models taken from Pfam, and there is no
+            # family description to look up, so the CAZyme family name (e.g., GH13_36) is the function
+            if hmm_hit['gene_hmm_id'].startswith('PF'): # expanded function string if from PFAM
                function = f"{accession} ({hmm_hit['gene_hmm_id']})"
             else:
-               function = hmm_hit['gene_hmm_id']
+               function = accession
 
             functions_dict[counter] = {
                 'gene_callers_id': hmm_hit['gene_callers_id'],
