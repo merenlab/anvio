@@ -6,6 +6,7 @@ import os
 import glob
 import shutil
 import argparse
+import multiprocess as multiprocessing
 
 import anvio
 import anvio.dbops as dbops
@@ -38,6 +39,8 @@ class PHROGsSetup(object):
 
         self.phrogs_data_dir = args.phrogs_data_dir
         self.phrogs_version = args.phrogs_version or 'v4'
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.num_threads = A('num_threads') or 1
 
         filesnpaths.is_program_exists('hmmpress')
         filesnpaths.is_program_exists('hmmbuild')
@@ -141,33 +144,97 @@ class PHROGsSetup(object):
                              "`anvi-run-phrogs` on contigs databases to annotate genes with PHROGs functions.",
                              nl_before=1, nl_after=1, mc='green')
 
+    @staticmethod
+    def _hmmbuild_worker(fma_files, log_file_path, output_queue):
+        """Multiprocessing worker that builds one .hmm file per FMA alignment it is given.
+
+        Parameters
+        ==========
+        fma_files : list of str
+            Paths to the FMA alignment files this worker is responsible for. Each .hmm file is
+            written next to its FMA file.
+        log_file_path : str
+            Path to this worker's own log file, where `hmmbuild` errors are written.
+        output_queue : multiprocess.Manager.Queue
+            Queue where the worker reports each file as `(True, fma_file, None)` on success, or
+            `(False, fma_file, error_message)` on failure. The worker stops after its first failure.
+        """
+
+        for fma_file in fma_files:
+            hmm_file = os.path.splitext(fma_file)[0] + '.hmm'
+
+            try:
+                utils.run_command_and_get_output(['hmmbuild', '--cpu', '1', hmm_file, fma_file], log_file_path=log_file_path)
+            except Exception as e:
+                if os.path.exists(hmm_file):
+                    os.remove(hmm_file)
+
+                output_queue.put((False, fma_file, getattr(e, 'e', None) or str(e)))
+                return
+
+            output_queue.put((True, fma_file, None))
+
     def build_hmms_from_fmas(self, fma_files):
-        log_file_path = os.path.join(self.phrogs_data_dir, '00_hmmbuild_log.txt')
-        fma_file = ""
-        hmm_file = ""
-        hmm_files = []
+        num_fma_files = len(fma_files)
 
+        # deal the FMA files round-robin into one chunk per worker
+        num_workers = min(self.num_threads, num_fma_files)
+        chunks = [fma_files[i::num_workers] for i in range(num_workers)]
+        log_file_paths = [os.path.join(self.phrogs_data_dir, f'00_hmmbuild_log_worker_{i}.txt') for i in range(num_workers)]
+
+        self.run.info('Number of FMA families', num_fma_files)
+        self.run.info('Number of hmmbuild workers', num_workers)
+
+        manager = multiprocessing.Manager()
+        output_queue = manager.Queue()
+
+        workers = []
+        for chunk, log_file_path in zip(chunks, log_file_paths):
+            worker = multiprocessing.Process(target=PHROGsSetup._hmmbuild_worker, args=(chunk, log_file_path, output_queue))
+            workers.append(worker)
+            worker.start()
+
+        self.progress.new("Building PHROGs .hmm files from FMA families", progress_total_items=num_fma_files)
+        self.progress.update(f"0 of {num_fma_files} families")
+
+        num_built = 0
+        failure = None
         try:
-            self.progress.new("Building PHROGs .hmm files from FMA families", progress_total_items=len(fma_files))
+            while num_built < num_fma_files:
+                success, fma_file, error_message = output_queue.get()
 
-            for fma_file in fma_files:
-                self.progress.update(f"{os.path.basename(fma_file)} ({len(hmm_files) + 1} of {len(fma_files)})")
-                hmm_file = os.path.splitext(fma_file)[0] + '.hmm'
-                utils.run_command_and_get_output(
-                    ['hmmbuild', hmm_file, fma_file],
-                    log_file_path=log_file_path
-                )
-                hmm_files.append(hmm_file)
-                self.progress.increment()
+                if not success:
+                    failure = (fma_file, error_message)
+                    break
 
+                num_built += 1
+                self.progress.update(f"{num_built} of {num_fma_files} families")
+                self.progress.increment(increment_to=num_built)
+        finally:
+            # always end progress and terminate workers, even on error
             self.progress.end()
+            for worker in workers:
+                worker.terminate()
+            for worker in workers:
+                worker.join()
 
-        except Exception:
-            if os.path.exists(hmm_file):
-                os.remove(hmm_file)
-            self.progress.end()
-            raise ConfigError("Anvi'o expected to be able to build PHROGs .hmm files from FMA families using `hmmbuild`, "
-                              "but something went wrong. Please check the log file ('%s') to see what happened." % log_file_path)
+        if failure:
+            fma_file, error_message = failure
+
+            # other workers may have been terminated mid-build, so we remove all .hmm files to avoid
+            # leaving partial models behind
+            for f in fma_files:
+                hmm_file = os.path.splitext(f)[0] + '.hmm'
+                if os.path.exists(hmm_file):
+                    os.remove(hmm_file)
+
+            raise ConfigError(f"Anvi'o expected to be able to build PHROGs .hmm files from FMA families using `hmmbuild`, "
+                              f"but something went wrong with '{os.path.basename(fma_file)}'. Here is the error message: "
+                              f"\"{error_message}\". You may find more details in the hmmbuild log files at "
+                              f"'{os.path.join(self.phrogs_data_dir, '00_hmmbuild_log_worker_*.txt')}'.")
+
+        # we build this list from the input order so the final PHROGs.hmm file is always the same regardless of the number of threads
+        hmm_files = [os.path.splitext(f)[0] + '.hmm' for f in fma_files]
 
         # Delete FMAs
         if not anvio.DEBUG:

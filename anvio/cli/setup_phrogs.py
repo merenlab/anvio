@@ -40,6 +40,7 @@ def get_args():
     parser.add_argument('--reset', default=False, action="store_true", help="Delete existing PHROGs setup and download everything again.")
     parser.add_argument('--phrogs-version', default='v4', help="PHROGs annotation version suffix to download for annotations. "
                         "For instance, use 'v4' to download phrog_annot_v4.tsv.")
+    parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
     return parser.get_args(parser)
 
