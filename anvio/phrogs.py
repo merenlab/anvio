@@ -112,7 +112,7 @@ class PHROGsSetup(object):
 
         utils.concatenate_files(self.local_hmm_file, hmm_files, remove_concatenated_files=True)
         self.hmmpress_profiles()
-        
+
         with open(os.path.join(self.phrogs_data_dir, "version.txt"), 'w') as f:
             f.write(f"{self.phrogs_version}\n")
 
@@ -153,7 +153,7 @@ class PHROGsSetup(object):
         # Delete FMAs
         for fma_file in fma_files:
             os.remove(fma_file)
-        
+
         return hmm_files
 
     def hmmpress_profiles(self):
@@ -282,5 +282,3 @@ class PHROGs(object):
                                  nl_before=1, nl_after=1)
             shutil.rmtree(tmp_directory_path)
             hmmer.clean_tmp_dirs()
-
-      
