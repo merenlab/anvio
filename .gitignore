@@ -31,6 +31,7 @@ anvio/data/misc/COG/
 anvio/data/misc/SCG/
 anvio/data/misc/KEGG/
 anvio/data/misc/Pfam/
+anvio/data/misc/PHROGs/
 anvio/data/misc/PDB.db
 anvio/data/misc/CAZyme/
 anvio/data/misc/GlobDB/
