@@ -182,6 +182,10 @@ class PHROGsSetup(object):
         chunks = [fma_files[i::num_workers] for i in range(num_workers)]
         log_file_paths = [os.path.join(self.phrogs_data_dir, f'00_hmmbuild_log_worker_{i}.txt') for i in range(num_workers)]
 
+        # worker logs are only written on failure, so we remove any left over from a previous failed attempt
+        for old_log_file_path in glob.glob(os.path.join(self.phrogs_data_dir, '00_hmmbuild_log_worker_*.txt')):
+            os.remove(old_log_file_path)
+
         self.run.info('Number of FMA families', num_fma_files)
         self.run.info('Number of hmmbuild workers', num_workers)
 
