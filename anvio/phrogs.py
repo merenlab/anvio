@@ -156,8 +156,8 @@ class PHROGsSetup(object):
         log_file_path : str
             Path to this worker's own log file, where `hmmbuild` errors are written.
         output_queue : multiprocess.Manager.Queue
-            Queue where the worker reports each file as `(True, fma_file, None)` on success, or
-            `(False, fma_file, error_message)` on failure. The worker stops after its first failure.
+            Queue where the worker reports each file as `(True, fma_file, None, None)` on success, or
+            `(False, fma_file, error_message, log_file_path)` on failure. The worker stops after its first failure.
         """
 
         for fma_file in fma_files:
@@ -169,10 +169,10 @@ class PHROGsSetup(object):
                 if os.path.exists(hmm_file):
                     os.remove(hmm_file)
 
-                output_queue.put((False, fma_file, getattr(e, 'e', None) or str(e)))
+                output_queue.put((False, fma_file, getattr(e, 'e', None) or str(e), log_file_path))
                 return
 
-            output_queue.put((True, fma_file, None))
+            output_queue.put((True, fma_file, None, None))
 
     def build_hmms_from_fmas(self, fma_files):
         num_fma_files = len(fma_files)
@@ -201,10 +201,10 @@ class PHROGsSetup(object):
         failure = None
         try:
             while num_built < num_fma_files:
-                success, fma_file, error_message = output_queue.get()
+                success, fma_file, error_message, failed_log_file_path = output_queue.get()
 
                 if not success:
-                    failure = (fma_file, error_message)
+                    failure = (fma_file, error_message, failed_log_file_path)
                     break
 
                 num_built += 1
@@ -219,7 +219,7 @@ class PHROGsSetup(object):
                 worker.join()
 
         if failure:
-            fma_file, error_message = failure
+            fma_file, error_message, failed_log_file_path = failure
 
             # other workers may have been terminated mid-build, so we remove all .hmm files to avoid
             # leaving partial models behind
@@ -230,8 +230,11 @@ class PHROGsSetup(object):
 
             raise ConfigError(f"Anvi'o expected to be able to build PHROGs .hmm files from FMA families using `hmmbuild`, "
                               f"but something went wrong with '{os.path.basename(fma_file)}'. Here is the error message: "
-                              f"\"{error_message}\". You may find more details in the hmmbuild log files at "
-                              f"'{os.path.join(self.phrogs_data_dir, '00_hmmbuild_log_worker_*.txt')}'.")
+                              f"\"{error_message}\". You can find the full output of the failed `hmmbuild` command in "
+                              f"this log file: '{failed_log_file_path}'. The most likely cause is that the PHROGs archive "
+                              f"was corrupted or only partially downloaded, so please try running `anvi-setup-phrogs` "
+                              f"again. If it fails again on the same family, the format of the PHROGs files may have "
+                              f"changed, in which case please let the anvi'o developers know.")
 
         # we build this list from the input order so the final PHROGs.hmm file is always the same regardless of the number of threads
         hmm_files = [os.path.splitext(f)[0] + '.hmm' for f in fma_files]
