@@ -290,6 +290,10 @@ class PHROGs(object):
         self.local_annotation_path = os.path.join(self.phrogs_data_dir, 'phrog_annot.tsv')
         self.local_version_file = os.path.join(self.phrogs_data_dir, 'version.txt')
 
+        # names of the functional sources this class adds to the contigs database
+        self.function_source = 'PHROG_FUNCTION'
+        self.category_source = 'PHROG_CATEGORY'
+
         self.is_database_exists()
         self.get_version()
         self.load_catalog()
@@ -319,6 +323,14 @@ class PHROGs(object):
         )
 
     def get_function_from_catalog(self, accession, ok_if_missing_from_catalog=False):
+        """Returns a `(function, category)` tuple for a PHROGs accession, from the 'annot' and 'category' columns
+
+        It is not uncommon for PHROGs to have annotation 'NA' and category 'unknown function' in the
+        annotation table, and these values will be stored in the contigs database. But when the family
+        ID is not in the annotation table at all, this functon returns longer 'Unknown' strings if
+        ok_if_missing_from_catalog is True.
+        """
+
         accession = str(accession)
 
         # the annotation table is keyed by integer PHROG IDs, while model names look like 'phrog_1'
@@ -326,10 +338,12 @@ class PHROGs(object):
 
         if catalog_key not in self.function_catalog:
             if ok_if_missing_from_catalog:
-                return f"Unknown function with PHROGs accession {accession}"
+                return (f"Unknown function with PHROGs accession {accession}",
+                        f"Unknown category with PHROGs accession {accession}")
             raise ConfigError(f"It seems hmmscan/hmmsearch found an accession id that does not exist in the PHROGs catalog: {accession}")
 
-        return self.function_catalog[catalog_key]['annot']
+        entry = self.function_catalog[catalog_key]
+        return entry['annot'], entry['category']
 
     def process(self):
         args = argparse.Namespace(contigs_db=self.contigs_db_path)
@@ -348,12 +362,12 @@ class PHROGs(object):
                                         None, self.noise_cutoff_terms)
 
         if not hmm_hits_file:
-            self.run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. But "
-                                 "now anvi'o will add PHROGs as a functional source with no hits, clean the temporary directories "
-                                 "and gracefully quit.", nl_before=1, nl_after=1)
+            self.run.info_single(f"The HMM search returned no hits :/ So there is nothing to add to the contigs database. But "
+                                 f"now anvi'o will add {self.function_source} and {self.category_source} as functional sources "
+                                 f"with no hits, clean the temporary directories and gracefully quit.", nl_before=1, nl_after=1)
             shutil.rmtree(tmp_directory_path)
             hmmer.clean_tmp_dirs()
-            gene_function_calls_table.add_empty_sources_to_functional_sources({'PHROGs'})
+            gene_function_calls_table.add_empty_sources_to_functional_sources({self.function_source, self.category_source})
             return
 
         parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
@@ -362,21 +376,26 @@ class PHROGs(object):
         functions_dict = {}
         counter = 0
         for hmm_hit in search_results_dict.values():
-            functions_dict[counter] = {
-                'gene_callers_id': hmm_hit['gene_callers_id'],
-                'source': 'PHROGs',
-                # models built from PHROGs FMA files have no ACC line, so we use the model NAME (e.g., 'phrog_1')
-                'accession': hmm_hit['gene_name'],
-                'function': self.get_function_from_catalog(hmm_hit['gene_name'], ok_if_missing_from_catalog=True),
-                'e_value': hmm_hit['e_value'],
-            }
-            counter += 1
+            # models built from PHROGs FMA files have no ACC line, so we use the model NAME (e.g., 'phrog_1')
+            accession = hmm_hit['gene_name']
+            function, category = self.get_function_from_catalog(accession, ok_if_missing_from_catalog=True)
+
+            for source, value in [(self.function_source, function), (self.category_source, category)]:
+                functions_dict[counter] = {
+                    'gene_callers_id': hmm_hit['gene_callers_id'],
+                    'source': source,
+                    'accession': accession,
+                    'function': value,
+                    'e_value': hmm_hit['e_value'],
+                }
+                counter += 1
 
         if functions_dict:
             gene_function_calls_table.create(functions_dict)
         else:
-            self.run.warning("PHROGs class has no hits to process. Returning empty handed, but still adding PHROGs as a functional source.")
-            gene_function_calls_table.add_empty_sources_to_functional_sources({'PHROGs'})
+            self.run.warning(f"PHROGs class has no hits to process. Returning empty handed, but still adding "
+                             f"{self.function_source} and {self.category_source} as functional sources.")
+            gene_function_calls_table.add_empty_sources_to_functional_sources({self.function_source, self.category_source})
 
         if anvio.DEBUG:
             self.run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up later" %
