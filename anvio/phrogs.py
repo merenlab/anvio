@@ -256,8 +256,14 @@ class PHROGsSetup(object):
         ret_val = utils.run_command(cmd_line, log_file_path)
 
         if ret_val:
-            raise ConfigError("There was an error while running `hmmpress` on PHROGs HMM profiles. "
-                              "Check out the log file ('%s') to see what went wrong." % log_file_path)
+            # clean up leftover files on failed hmmpress
+            for f in [self.local_hmm_file] + glob.glob(self.local_hmm_file + '.h3*'):
+                os.remove(f)
+
+            raise ConfigError(f"There was an error while running `hmmpress` on PHROGs HMM profiles. Check out the "
+                              f"log file ('{log_file_path}') to see what went wrong (but please note that HMMER may cut "
+                              f"long error messages short). Since the HMM profiles could not be prepared, anvi'o removed "
+                              f"them, and you will need to run `anvi-setup-phrogs` again.")
 
         if not anvio.DEBUG:
             os.remove(log_file_path)
