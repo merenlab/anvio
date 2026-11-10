@@ -2934,7 +2934,38 @@ D = {
                      "boss). Do not forget to take a look at '--min-coverage-for-variability' parameter. "
                      "Also note that this flag controls indel reporting: normally '--min-coverage-for-variability' "
                      "and internal anvi'o heuristics control whether or not indels should be reported, but with this "
-                     "flag all indels are reported."}
+                     "flag all indels are reported. This flag is a shorthand for using both "
+                     "'--report-SNV-variability-full' and '--report-INDEL-variability-full' at once, so it can not be "
+                     "combined with either of them."}
+                ),
+    'report-SNV-variability-full': (
+            ['--report-SNV-variability-full'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Same as '--report-variability-full', but only for single-nucleotide variants. Every variable "
+                     "position is reported, without the noise filter that anvi'o normally applies to SNVs. Indels are "
+                     "still filtered as usual, unless you also ask for '--report-INDEL-variability-full'. This flag "
+                     "can not be used with '--skip-SNV-profiling'."}
+                ),
+    'report-INDEL-variability-full': (
+            ['--report-INDEL-variability-full'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Same as '--report-variability-full', but only for insertions and deletions. Every indel is "
+                     "reported, regardless of '--min-coverage-for-variability' and the noise filter that anvi'o "
+                     "normally applies to indels. SNVs are still filtered as usual, unless you also ask for "
+                     "'--report-SNV-variability-full'. This flag can not be used with '--skip-INDEL-profiling'."}
+                ),
+    'min-indel-length': (
+            ['--min-indel-length'],
+            {'metavar': 'INT',
+             'default': 0,
+             'type': int,
+             'help': "Only store indels of at least this length (in bp). Shorter indels are discarded as they are "
+                     "encountered in reads, which saves a lot of memory, time and disk space with error-prone long "
+                     "reads. The indels that are stored are identical to what you would get by filtering a full "
+                     "profile afterwards. The default, 0, stores all indels. This flag can not be used with "
+                     "'--skip-INDEL-profiling'."}
                 ),
     'list-defline-variables': (
             ['--list-defline-variables'],
