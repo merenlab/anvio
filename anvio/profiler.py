@@ -1093,6 +1093,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
         self.sample_id = A('sample_name')
         self.report_variability_full = A('report_variability_full')
+        # --report-variability-full is a shorthand for both of the more specific flags
+        self.report_SNV_variability_full = bool(A('report_SNV_variability_full') or self.report_variability_full)
+        self.report_INDEL_variability_full = bool(A('report_INDEL_variability_full') or self.report_variability_full)
+        self.min_indel_length = int(A('min_indel_length') or 0)
         self.skip_edges = A('skip_edges')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.skip_SNV_profiling = A('skip_SNV_profiling')
@@ -1143,6 +1147,31 @@ class BAMProfiler(dbops.ContigsSuperclass):
             raise ConfigError(f"You can't ask anvi'o to skip profiling of SNVs and also ask to ignore {self.skip_edges} "
                               f"nucleotides from the beginning and the end of short reads while profiling of SNVs. You "
                               f"either need to drop the `--skip-SNV-profiling` flag, or the `--skip-edges` flag :/")
+
+        if self.report_variability_full and (A('report_SNV_variability_full') or A('report_INDEL_variability_full')):
+            raise ConfigError("--report-variability-full already means --report-SNV-variability-full and "
+                              "--report-INDEL-variability-full together. Please use either --report-variability-full "
+                              "alone, or the specific flags alone, and try again.")
+
+        if self.min_indel_length < 0:
+            raise ConfigError("The minimum indel length (--min-indel-length) can't be negative.")
+
+        if self.min_indel_length and self.skip_INDEL_profiling:
+            raise ConfigError("--min-indel-length has no effect with --skip-INDEL-profiling, since no indels are "
+                              "profiled in the first place. Please remove one of these flags and try again.")
+
+        if self.report_INDEL_variability_full and self.skip_INDEL_profiling:
+            raise ConfigError("--report-INDEL-variability-full has no effect with --skip-INDEL-profiling, since no "
+                              "indels are profiled in the first place. Please remove one of these flags and try again.")
+
+        if self.report_SNV_variability_full and self.skip_SNV_profiling:
+            raise ConfigError("--report-SNV-variability-full has no effect with --skip-SNV-profiling, since no SNVs "
+                              "are profiled in the first place. Please remove one of these flags and try again.")
+
+        if self.report_INDEL_variability_full and self.skip_SNV_profiling:
+            raise ConfigError("--report-INDEL-variability-full can't be used with --skip-SNV-profiling, because "
+                              "indels are only profiled together with SNVs. Please remove one of these flags and "
+                              "try again.")
 
         if not self.blank and self.contigs_shall_be_clustered and self.skip_hierarchical_clustering:
             raise ConfigError("You are confused, and confusing anvi'o, too. You can't as hierarchical clustering "
@@ -1417,11 +1446,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'SNVs_profiled': not self.skip_SNV_profiling,
                        'SCVs_profiled': self.profile_SCVs,
                        'INDELs_profiled': not self.skip_INDEL_profiling,
+                       'report_SNV_variability_full': self.report_SNV_variability_full,
+                       'report_INDEL_variability_full': self.report_INDEL_variability_full,
+                       'min_indel_length': self.min_indel_length,
                        'num_reads_stored': not self.blank,
                        'min_percent_identity': self.min_percent_identity or 0,
                        'fetch_filter': self.fetch_filter,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
-                       'report_variability_full': self.report_variability_full,
+                       'report_variability_full': self.report_SNV_variability_full and self.report_INDEL_variability_full,
                        'skip_edges_for_variant_profiling': self.skip_edges,
                        'contigs_db_hash': self.a_meta['contigs_db_hash'],
                        'description': self.description if self.description else '_No description is provided_'}
@@ -1496,7 +1528,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('Profile single-codon variants (SCVs/+SAAVs)?', self.profile_SCVs)
         self.run.info('Profile insertion/deletions (INDELs)?', not self.skip_INDEL_profiling)
         self.run.info('Minimum coverage to calculate SNVs', self.min_coverage_for_variability)
-        self.run.info('Report FULL variability data?', self.report_variability_full)
+        self.run.info('Report FULL variability data (SNVs)?', self.report_SNV_variability_full)
+        self.run.info('Report FULL variability data (INDELs)?', self.report_INDEL_variability_full)
+        self.run.info('Minimum indel length to store', self.min_indel_length)
 
         self.run.warning("Your minimum contig length is set to %s base pairs. So anvi'o will not take into "
                          "consideration anything below that. If you need to kill this an restart your "
@@ -1844,7 +1878,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         ctx.skip_INDEL_profiling = self.skip_INDEL_profiling
         ctx.profile_SCVs = self.profile_SCVs
         ctx.min_coverage_for_variability = self.min_coverage_for_variability
-        ctx.report_variability_full = self.report_variability_full
+        ctx.report_SNV_variability_full = self.report_SNV_variability_full
+        ctx.report_INDEL_variability_full = self.report_INDEL_variability_full
+        ctx.min_indel_length = self.min_indel_length
         ctx.min_percent_identity = self.min_percent_identity
         ctx.skip_edges = self.skip_edges
 
@@ -2222,7 +2258,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                                       skip_INDEL_profiling=self.skip_INDEL_profiling,
                                                       skip_SNV_profiling=self.skip_SNV_profiling,
                                                       min_coverage_for_variability=self.min_coverage_for_variability,
-                                                      report_variability_full=self.report_variability_full,
+                                                      report_SNV_variability_full=self.report_SNV_variability_full,
+                                                      report_INDEL_variability_full=self.report_INDEL_variability_full,
+                                                      min_indel_length=self.min_indel_length,
                                                       min_percent_identity=self.min_percent_identity,
                                                       skip_edges=self.skip_edges)
 
@@ -2758,7 +2796,8 @@ class WorkerContext:
         contig_sequences, contig_name_to_splits, splits_basic_info,
         contig_name_to_genes, genes_in_contigs_dict, nt_positions_info,
         a_meta, sample_id, skip_SNV_profiling, skip_INDEL_profiling,
-        profile_SCVs, min_coverage_for_variability, report_variability_full,
+        profile_SCVs, min_coverage_for_variability, report_SNV_variability_full,
+        report_INDEL_variability_full, min_indel_length,
         min_percent_identity, skip_edges, input_file_path, fetch_filter,
         contig_names, contig_lengths
 

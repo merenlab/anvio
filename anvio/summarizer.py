@@ -1239,6 +1239,9 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                                      ('SCVs profiled', T(self.p_meta['SCVs_profiled'])),
                                                      ('IN/DELs profiled', T(self.p_meta['INDELs_profiled'])),
                                                      ('Report variability full', T(self.p_meta['report_variability_full'])),
+                                                     ('Report variability full (SNVs)', T(self.p_meta.get('report_SNV_variability_full', self.p_meta['report_variability_full']))),
+                                                     ('Report variability full (INDELs)', T(self.p_meta.get('report_INDEL_variability_full', self.p_meta['report_variability_full']))),
+                                                     ('Min indel length stored', self.p_meta.get('min_indel_length', 0)),
                                                      ('Min coverage for variability', humanize_n(int(self.p_meta['min_coverage_for_variability'])) if J('min_coverage_for_variability') else 'NA'),
                                                     ],
                                          'contigs': [

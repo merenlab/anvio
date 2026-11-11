@@ -5309,7 +5309,8 @@ class ProfileDatabase:
         self.meta = dbi(self.db_path, expecting=self.db_type).get_self_table()
 
         for key in ['min_contig_length', 'SNVs_profiled', 'SCVs_profiled', 'INDELs_profiled', 'num_reads_stored',
-                    'merged', 'blank', 'items_ordered', 'report_variability_full', 'num_contigs',
+                    'merged', 'blank', 'items_ordered', 'report_variability_full', 'report_SNV_variability_full',
+                    'report_INDEL_variability_full', 'min_indel_length', 'num_contigs',
                     'min_coverage_for_variability', 'max_contig_length', 'num_splits',
                     'total_length', 'skip_edges_for_variant_profiling']:
             try:

@@ -1201,3 +1201,144 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  --gene-mode \
                  --no-progress \
                  $dry_run_controller
+
+
+# Lean indel and SNV profiling. The same BAM is profiled once per combination of the flags that control what is
+# stored, and the stored rows are compared. The flags are independent: each one must change only what it promises,
+# and --report-variability-full must be the same thing as the two specific flags together.
+INFO "Profiling SAMPLE-01 with the flags that control what is reported (SNVs and indels)"
+for flags in "DEFAULT" "SNV --report-SNV-variability-full" "INDEL --report-INDEL-variability-full" "BOTH --report-variability-full" "MIN --report-INDEL-variability-full --min-indel-length 2"
+do
+    set -- $flags
+    name=$1; shift
+    anvi-profile -i $output_dir/SAMPLE-01.bam \
+                 -c $output_dir/CONTIGS.db \
+                 -o $output_dir/FLAGS-$name \
+                 -S FLAGS_$name \
+                 "$@" \
+                 --no-progress \
+                 $thread_controller
+done
+
+# a second profile of the same BAM under the default flags, to be merged with the first one
+anvi-profile -i $output_dir/SAMPLE-01.bam \
+             -c $output_dir/CONTIGS.db \
+             -o $output_dir/FLAGS-DEFAULT-2 \
+             -S FLAGS_DEFAULT_2 \
+             --no-progress \
+             $thread_controller
+
+INFO "Comparing the stored rows of the profiles made with each combination of flags"
+python3 - $output_dir <<'PYEOF'
+import collections, sqlite3, sys
+
+out = sys.argv[1]
+
+def rows(name, table):
+    # the sample name is different in each profile by design (sample_id, sample_name, or the layer of a view), so it is left out
+    con = sqlite3.connect(f'{out}/FLAGS-{name}/PROFILE.db')
+    try:
+        cols = [r[1] for r in con.execute(f'PRAGMA table_info({table})') if r[1] not in ('sample_id', 'sample_name', 'layer')]
+        return collections.Counter(con.execute(f"SELECT {', '.join(cols)} FROM {table}").fetchall())
+    finally:
+        con.close()
+
+def fail(msg):
+    print(f"FAIL: {msg}")
+    sys.exit(1)
+
+def self_value(name, key):
+    con = sqlite3.connect(f'{out}/FLAGS-{name}/PROFILE.db')
+    try:
+        return con.execute("SELECT value FROM self WHERE key = ?", (key,)).fetchone()[0]
+    finally:
+        con.close()
+
+expected_meta = {
+    'DEFAULT': ('0', '0', '0', '0'),
+    'SNV':     ('1', '0', '0', '0'),
+    'INDEL':   ('0', '1', '0', '0'),
+    'BOTH':    ('1', '1', '1', '0'),
+    'MIN':     ('0', '1', '0', '2'),
+}
+for name, (snv, indel, full, min_len) in expected_meta.items():
+    got = tuple(self_value(name, k) for k in ['report_SNV_variability_full', 'report_INDEL_variability_full', 'report_variability_full', 'min_indel_length'])
+    if got != (snv, indel, full, min_len):
+        fail(f"{name}: meta flags are {got}, expected {(snv, indel, full, min_len)}")
+
+cols = [r[1] for r in sqlite3.connect(f'{out}/FLAGS-DEFAULT/PROFILE.db').execute('PRAGMA table_info(indels)') if r[1] not in ('sample_id', 'sample_name')]
+length_ix = cols.index('length')
+
+indels = {name: rows(name, 'indels') for name in ['DEFAULT', 'SNV', 'INDEL', 'BOTH', 'MIN']}
+snvs = {name: rows(name, 'variable_nucleotides') for name in ['DEFAULT', 'SNV', 'INDEL', 'BOTH', 'MIN']}
+
+# non-vacuous: the INDEL-full profile must hold indels the default does not, and some shorter than the threshold
+if sum(indels['INDEL'].values()) <= sum(indels['DEFAULT'].values()):
+    fail("--report-INDEL-variability-full did not report more indels than the default, so it was not exercised")
+if not any(r[length_ix] < 2 for r in indels['INDEL']):
+    fail("no indel shorter than 2 bp in the INDEL profile, so --min-indel-length was not exercised")
+if sum(snvs['SNV'].values()) <= sum(snvs['DEFAULT'].values()):
+    fail("--report-SNV-variability-full did not report more SNVs than the default, so it was not exercised")
+
+# indel-only flags leave SNVs as they are, and SNV-only flags leave indels as they are
+if snvs['INDEL'] != snvs['DEFAULT']:
+    fail("--report-INDEL-variability-full changed the SNV rows")
+if indels['SNV'] != indels['DEFAULT']:
+    fail("--report-SNV-variability-full changed the indel rows")
+
+# --report-variability-full is the same as the two specific flags together
+if indels['BOTH'] != indels['INDEL'] or snvs['BOTH'] != snvs['SNV']:
+    fail("--report-variability-full does not match --report-SNV-variability-full with --report-INDEL-variability-full")
+
+# --min-indel-length keeps exactly the indels of the full profile that are long enough
+if indels['MIN'] != collections.Counter({r: c for r, c in indels['INDEL'].items() if r[length_ix] >= 2}):
+    fail("the indels stored with --min-indel-length 2 are not exactly the full profile's indels of at least 2 bp")
+
+# the split-level variability (SNV density) only depends on the SNV flag
+variability = {name: rows(name, 'variability_splits') for name in ['DEFAULT', 'SNV', 'INDEL', 'BOTH', 'MIN']}
+if variability['INDEL'] != variability['DEFAULT'] or variability['MIN'] != variability['DEFAULT']:
+    fail("the variability view changed with indel-only flags")
+if variability['BOTH'] != variability['SNV']:
+    fail("the variability view changed with SNV flags")
+
+print(f"ok: {sum(indels['INDEL'].values())} indels with the INDEL flag, {sum(indels['MIN'].values())} of them at least 2 bp with --min-indel-length")
+print(f"ok: {sum(snvs['SNV'].values())} SNV rows with the SNV flag, {sum(snvs['DEFAULT'].values())} by default")
+PYEOF
+
+# expect_refusal NAME "MESSAGE FRAGMENT" COMMAND...: the command must fail and print the fragment
+# (anvi'o wraps long messages across lines, so whitespace is ignored when matching)
+expect_refusal() {
+    local name=$1 fragment=$2; shift 2
+    if "$@" > $output_dir/guard_${name}.log 2>&1
+    then
+        echo "FAIL: ${name}: the command succeeded but should have been refused"
+        exit 1
+    fi
+    if ! tr -d ' \n\t' < $output_dir/guard_${name}.log | grep -qF -- "$(tr -d ' \n\t' <<< "$fragment")"
+    then
+        echo "FAIL: ${name}: refused, but not with the expected message ('$fragment'); see $output_dir/guard_${name}.log"
+        exit 1
+    fi
+    echo "ok: ${name} refused as expected"
+}
+
+INFO "Guards: the lean-profiling flags refuse meaningless or conflicting combinations"
+expect_refusal snv_full_and_both "already means" \
+    anvi-profile -i $output_dir/SAMPLE-01.bam -c $output_dir/CONTIGS.db -o $output_dir/FLAGS-GUARD -S FLAGS_GUARD --report-variability-full --report-SNV-variability-full --no-progress
+expect_refusal skip_snv_and_snv_full "has no effect with --skip-SNV-profiling" \
+    anvi-profile -i $output_dir/SAMPLE-01.bam -c $output_dir/CONTIGS.db -o $output_dir/FLAGS-GUARD -S FLAGS_GUARD --skip-SNV-profiling --report-SNV-variability-full --no-progress
+expect_refusal skip_indel_and_indel_full "has no effect with --skip-INDEL-profiling" \
+    anvi-profile -i $output_dir/SAMPLE-01.bam -c $output_dir/CONTIGS.db -o $output_dir/FLAGS-GUARD -S FLAGS_GUARD --skip-INDEL-profiling --report-INDEL-variability-full --no-progress
+expect_refusal skip_indel_and_min_length "has no effect with --skip-INDEL-profiling" \
+    anvi-profile -i $output_dir/SAMPLE-01.bam -c $output_dir/CONTIGS.db -o $output_dir/FLAGS-GUARD -S FLAGS_GUARD --skip-INDEL-profiling --min-indel-length 2 --no-progress
+expect_refusal negative_min_length "can't be negative" \
+    anvi-profile -i $output_dir/SAMPLE-01.bam -c $output_dir/CONTIGS.db -o $output_dir/FLAGS-GUARD -S FLAGS_GUARD --min-indel-length -1 --no-progress
+
+INFO "Merging: profiles with identical flags merge, and profiles with different flags are refused"
+expect_refusal merge_different_indel_flags "report full indel variability" \
+    anvi-merge $output_dir/FLAGS-DEFAULT/PROFILE.db $output_dir/FLAGS-INDEL/PROFILE.db -c $output_dir/CONTIGS.db -o $output_dir/FLAGS-MERGE-MIXED --no-progress
+expect_refusal merge_different_min_length "minimum indel length" \
+    anvi-merge $output_dir/FLAGS-INDEL/PROFILE.db $output_dir/FLAGS-MIN/PROFILE.db -c $output_dir/CONTIGS.db -o $output_dir/FLAGS-MERGE-MIXED --no-progress
+anvi-merge $output_dir/FLAGS-DEFAULT/PROFILE.db $output_dir/FLAGS-DEFAULT-2/PROFILE.db -c $output_dir/CONTIGS.db -o $output_dir/FLAGS-MERGE --no-progress
+
+INFO "Lean-profiling checks in the metagenomics test passed"
