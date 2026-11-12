@@ -1306,6 +1306,8 @@ def generate_affinities(args):
 
     isoacceptor_codon_weights_dict = {}
     for genome_name, genome_df in isoacceptor_codon_weights_df.groupby('genome_name'):
+        # Drop the blank columns of isoacceptors that the genome lacks.
+        genome_df = genome_df.dropna(axis=1, how='all')
         isoacceptor_codon_weights_dict[genome_name] = source_dict = {}
         if args.gene_affinity:
             source_dict['genes'] = genome_df
