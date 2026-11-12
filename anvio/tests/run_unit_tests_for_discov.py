@@ -28,9 +28,9 @@ def make_coverage(G, regions):
     return coverage
 
 
-def get_stats(coverage, N, w=None, pct=None, min_w=None, alpha=0.5, formula='geometric'):
+def get_stats(coverage, N, w=None, pct=None, min_w=None, max_w=None, alpha=0.5, formula='geometric'):
     return utils.CoverageStats(coverage, skip_outliers=True, discov_window_length=w, discov_window_percentage=pct,
-                               discov_min_window_len=min_w, discov_alpha=alpha, discov_formula=formula,
+                               discov_min_window_len=min_w, discov_max_window_len=max_w, discov_alpha=alpha, discov_formula=formula,
                                num_reads=N, report_discov=True)
 
 
@@ -331,6 +331,21 @@ check("num windows (no minimum)", get_stats(coverage, N=200, pct=5, min_w=None).
 check_formulas(lambda formula: get_stats(coverage, N=200, pct=5, min_w=None, formula=formula), S_norm=1.0, E=1.0, D=1.0)
 check("num windows (minimum 300)", get_stats(coverage, N=200, pct=5, min_w=300).num_windows, 14)
 check_formulas(lambda formula: get_stats(coverage, N=200, pct=5, min_w=300, formula=formula), S_norm=1.0, E=1.0, D=1.0)
+
+#########################################
+
+test("Maximum window length for percentage-based windows",
+     "G = 4,000 with uniform coverage and a window length of 50%, which is 2,000 bp, so there are 2 windows. With a "
+     "maximum of 300 bp, the windows are capped at 300 bp: 13 full windows plus a final window of 100 bp (>= 10% of "
+     "300), so 14 windows. With a maximum larger than the percentage-based window length, nothing changes. In all "
+     "cases S = E = D = 1, so C and discov are 1 with both formulas.")
+
+coverage = make_coverage(4000, [(0, 4000, 5)])
+check("num windows (no maximum)", get_stats(coverage, N=200, pct=50).num_windows, 2)
+check("num windows (maximum 300)", get_stats(coverage, N=200, pct=50, max_w=300).num_windows, 14)
+check_formulas(lambda formula: get_stats(coverage, N=200, pct=50, max_w=300, formula=formula), S_norm=1.0, E=1.0, D=1.0)
+check("num windows (maximum 5000)", get_stats(coverage, N=200, pct=50, max_w=5000).num_windows, 2)
+check("num windows (minimum 100, maximum 300)", get_stats(coverage, N=200, pct=50, min_w=100, max_w=300).num_windows, 14)
 
 #########################################
 
