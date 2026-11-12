@@ -47,12 +47,12 @@ def gen_split_name(parent_name, order):
     return '_'.join([parent_name, 'split', '%05d' % (order + 1)])
 
 
-def get_atomic_data(sample_id, contigs, atomic_data_field, zero_cov_splits=None):
+def get_atomic_data(sample_id, contigs, atomic_data_field, zero_cov_splits=None, zero_cov_contigs=None):
     """Takes a list of contigops.Contig objects, and returns views for an atomic_data_field.
 
-    If `zero_cov_splits` is provided (a set of split names), those splits are skipped
-    since they have zero coverage and their data lives in the zero_coverage_splits table
-    instead of the view tables.
+    If `zero_cov_splits` or `zero_cov_contigs` are provided (sets of split or contig names),
+    those items are skipped since they have zero coverage and their data lives in the
+    zero_coverage_splits and zero_coverage_contigs tables instead of the view tables.
     """
 
     atomic_data_contigs = []
@@ -62,9 +62,9 @@ def get_atomic_data(sample_id, contigs, atomic_data_field, zero_cov_splits=None)
     # at once. this was broken down into about 10 functions, but this structure seems to be the most efficient
     # although it looks crappy:
     for contig in contigs:
-        contig_atomic_data = contig.get_atomic_data_dict(atomic_data_field)
-
-        atomic_data_contigs.append((contig.name, sample_id, contig_atomic_data), )
+        if not (zero_cov_contigs and contig.name in zero_cov_contigs):
+            contig_atomic_data = contig.get_atomic_data_dict(atomic_data_field)
+            atomic_data_contigs.append((contig.name, sample_id, contig_atomic_data), )
 
         # contig is done, deal with splits in it:
         for split in contig.splits:
@@ -95,12 +95,17 @@ class Contig:
              'mean_coverage_Q2Q3': self.coverage.mean_Q2Q3,
              'detection': self.coverage.detection,
              'abundance': self.abundance,
-             'variability': sum(s.auxiliary.variation_density for s in self.splits) if not self.skip_SNV_profiling else None}
+             'variability': sum(s.auxiliary.variation_density for s in self.splits) if not self.skip_SNV_profiling else None,
+             'num_reads': self.coverage.num_reads}
 
         return d[atomic_data_field]
 
 
     def analyze_coverage(self, bam, min_percent_identity):
+        # each read is assigned to the split that contains most of its aligned bases, so that the number
+        # of reads across all splits of a contig adds up to the number of reads of the contig
+        splits_in_order = sorted(self.splits, key=lambda split: split.start)
+        split_boundaries = [(split.start, split.end) for split in splits_in_order]
 
         if min_percent_identity is None:
             self.coverage.run(
@@ -108,6 +113,7 @@ class Contig:
                 self,
                 read_iterator='fetch',
                 max_coverage=anvio.auxiliarydataops.DEFAULT_COVERAGE_MAX_VALUE,
+                split_boundaries=split_boundaries,
             )
         else:
             self.coverage.run(
@@ -115,8 +121,12 @@ class Contig:
                 self,
                 read_iterator='fetch_filter_and_trim',
                 max_coverage=anvio.auxiliarydataops.DEFAULT_COVERAGE_MAX_VALUE,
+                split_boundaries=split_boundaries,
                 percent_id_cutoff=min_percent_identity,
             )
+
+        num_reads_per_split = dict(zip([split.name for split in splits_in_order], self.coverage.num_reads_per_split))
+        self.coverage.num_reads_per_split = None
 
         if len(self.splits) == 1:
             # Coverage.process_c is a potentially expensive operation (taking up ~90% of the time of
@@ -136,12 +146,14 @@ class Contig:
             split.coverage.is_outlier = self.coverage.is_outlier
             split.coverage.is_outlier_in_parent = self.coverage.is_outlier
             split.coverage.mean_Q2Q3 = self.coverage.mean_Q2Q3
+            split.coverage.num_reads = self.coverage.num_reads
             return
 
         for split in self.splits:
             split.coverage = anvio.bamops.Coverage()
             split.coverage.c = self.coverage.c[split.start:split.end]
             split.coverage.is_outlier_in_parent = self.coverage.is_outlier[split.start:split.end]
+            split.coverage.num_reads = num_reads_per_split[split.name]
             split.coverage.process_c(split.coverage.c)
 
 
@@ -172,7 +184,8 @@ class Split:
              'mean_coverage_Q2Q3': self.coverage.mean_Q2Q3,
              'detection': self.coverage.detection,
              'abundance': self.abundance,
-             'variability': self.auxiliary.variation_density if self.auxiliary else None}
+             'variability': self.auxiliary.variation_density if self.auxiliary else None,
+             'num_reads': self.coverage.num_reads}
 
         return d[atomic_data_field]
 
