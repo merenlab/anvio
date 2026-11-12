@@ -1334,31 +1334,39 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                              "DATA as part of the summary output.",
                              header="💀 THINGS WILL TAKE LONGER 💀")
 
-        # Determine effective window parameters for bin- or contig-level stats. When the user has not provided
-        # any window length option, use context-sensitive defaults from constants.py: bins get a
-        # fixed window (works well for large concatenated sequences), while contigs get a
-        # percentage-based window (to accommodate smaller contigs)
-        # If the user specifies either --window-length or --window-length-as-percentage, those
-        # values are applied uniformly to both levels. Contigs get a default minimum window
-        # length unless the user provides one (as in anvi-profile-blitz)
-        if self.discov_min_window_length is None:
-            contig_minlen = constants.discov_default_contig_min_window_length
-        else:
-            contig_minlen = self.discov_min_window_length
-
+        # Determine effective window parameters for bin- or contig-level stats (as in anvi-profile-blitz). When
+        # the user has not provided any window length option, use context-sensitive defaults from constants.py:
+        # bins get a fixed window (works well for large concatenated sequences), while contigs get a
+        # percentage-based window (to accommodate smaller contigs). If the user specifies either --window-length
+        # or --window-length-as-percentage, those values are applied uniformly to both levels. Afterwards, any
+        # level that uses percentage-based windows gets the default min/max window lengths unless the user
+        # provides them
         user_specified_window = self.discov_window_length is not None or self.discov_window_percentage is not None
         if user_specified_window:
             bin_wlen = self.discov_window_length
             bin_wpct = self.discov_window_percentage
-            bin_minlen = self.discov_min_window_length
             contig_wlen = self.discov_window_length
             contig_wpct = self.discov_window_percentage
         else: # context-specific defaults
             bin_wlen = constants.discov_default_bin_window_length
             bin_wpct = None
-            bin_minlen = 0 # not used when --window-length is set
             contig_wlen = None
             contig_wpct = constants.discov_default_contig_window_percentage
+
+        if self.discov_min_window_length is None:
+            minlen = constants.discov_default_contig_min_window_length
+        else:
+            minlen = self.discov_min_window_length
+
+        if self.discov_max_window_length is None:
+            maxlen = constants.discov_default_contig_max_window_length
+        else:
+            maxlen = self.discov_max_window_length
+
+        bin_minlen = minlen if bin_wpct else None
+        bin_maxlen = maxlen if bin_wpct else None
+        contig_minlen = minlen if contig_wpct else None
+        contig_maxlen = maxlen if contig_wpct else None
 
         if user_specified_window:
             self.run.info('Discov window length', bin_wlen if bin_wlen else f"{bin_wpct}% of sequence")
