@@ -97,6 +97,7 @@ class ArgsTemplateForSummarizerClass:
         self.window_length = None
         self.window_length_as_percentage = None
         self.min_window_length = None
+        self.max_window_length = None
         self.alpha = 0.5
         self.discov_formula = 'linear'
         self.skip_check_collection_name = False
@@ -146,6 +147,7 @@ class SummarizerSuperClass(object):
         self.discov_window_length = A('window_length')
         self.discov_window_percentage = A('window_length_as_percentage')
         self.discov_min_window_length = A('min_window_length')
+        self.discov_max_window_length = A('max_window_length')
         self.discov_alpha = A('alpha')
         self.discov_formula = A('discov_formula')
         self.output_directory = A('output_dir')
@@ -210,8 +212,8 @@ class SummarizerSuperClass(object):
 
         if self.report_discov:
             utils.validate_discov_params(self.discov_window_length, self.discov_window_percentage,
-                                         self.discov_min_window_length, self.discov_alpha, self.discov_formula,
-                                         require_window_param=False)
+                                         self.discov_min_window_length, self.discov_max_window_length, self.discov_alpha,
+                                         self.discov_formula, require_window_param=False)
 
 
     def get_output_file_handle(self, sub_directory=None, prefix='output.txt', overwrite=False, within=None, compress_output=False, add_project_name=False):
@@ -1361,11 +1363,11 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         if user_specified_window:
             self.run.info('Discov window length', bin_wlen if bin_wlen else f"{bin_wpct}% of sequence")
             if bin_wpct:
-                self.run.info('Minimum window length (bins)', bin_minlen or 0)
-                self.run.info('Minimum window length (contigs)', contig_minlen)
+                self.run.info('Minimum window length', minlen)
+                self.run.info('Maximum window length', maxlen)
         else:
             self.run.info('Discov window length (bins)', f"{bin_wlen} bp")
-            self.run.info('Discov window length (contigs)', f"{contig_wpct}% of sequence, min {contig_minlen} bp")
+            self.run.info('Discov window length (contigs)', f"{contig_wpct}% of sequence, min {contig_minlen} bp, max {contig_maxlen} bp")
         self.run.info('Discov alpha value', self.discov_alpha)
         self.run.info('Discov formula', self.discov_formula)
 
@@ -1436,6 +1438,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                                   discov_window_length=contig_wlen,
                                                   discov_window_percentage=contig_wpct,
                                                   discov_min_window_len=contig_minlen,
+                                                  discov_max_window_len=contig_maxlen,
                                                   discov_alpha=self.discov_alpha,
                                                   discov_formula=self.discov_formula,
                                                   num_reads=contig_num_reads[contig_name],
@@ -1463,6 +1466,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                               discov_window_length=bin_wlen,
                                               discov_window_percentage=bin_wpct,
                                               discov_min_window_len=bin_minlen,
+                                              discov_max_window_len=bin_maxlen,
                                               discov_alpha=self.discov_alpha,
                                               discov_formula=self.discov_formula,
                                               num_reads=sum(contig_num_reads.values()),

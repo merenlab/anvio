@@ -405,6 +405,7 @@ class BAMProfilerQuick:
         self.window_length = A('window_length')
         self.window_length_as_percentage = A('window_length_as_percentage')
         self.min_window_length = A('min_window_length')
+        self.max_window_length = A('max_window_length')
         self.alpha = A('alpha')
         self.discov_formula = A('discov_formula')
         self.gen_window_level_output = A('gen_window_level_output')
@@ -426,6 +427,7 @@ class BAMProfilerQuick:
             self.run.info('Discov window length', self.window_length if self.window_length else f"{self.window_length_as_percentage}% of sequence")
             if self.window_length_as_percentage:
                 self.run.info('Minimum window length', self.min_window_length)
+                self.run.info('Maximum window length', self.max_window_length)
             self.run.info('Discov alpha value', self.alpha)
             self.run.info('Discov formula', self.discov_formula)
         if self.gen_window_level_output:
@@ -508,7 +510,8 @@ class BAMProfilerQuick:
         # discov parameter sanity checks
         if not self.report_minimal and not self.gene_level_stats:
             utils.validate_discov_params(self.window_length, self.window_length_as_percentage,
-                                         self.min_window_length, self.alpha, self.discov_formula, require_window_param=True)
+                                         self.min_window_length, self.max_window_length, self.alpha, self.discov_formula,
+                                         require_window_param=True)
 
         if self.gen_window_level_output:
             if self.gene_level_stats:
@@ -919,7 +922,8 @@ class BAMProfilerQuick:
         else:
             C = utils.CoverageStats(coverage_array, skip_outliers=True, discov_window_length=self.window_length,
                         discov_window_percentage = self.window_length_as_percentage, discov_min_window_len = self.min_window_length,
-                        discov_alpha=self.alpha, discov_formula=self.discov_formula, return_window_info=window_output is not None, num_reads=num_reads, report_discov=True)
+                        discov_max_window_len = self.max_window_length, discov_alpha=self.alpha, discov_formula=self.discov_formula,
+                        return_window_info=window_output is not None, num_reads=num_reads, report_discov=True)
             output.write(f"{bin_name}\t"
                          f"{bam_file_name}\t"
                          f"{bin_data['length']}\t"
@@ -967,7 +971,8 @@ class BAMProfilerQuick:
         else:
             C = utils.CoverageStats(coverage_obj.c, skip_outliers=True, discov_window_length=self.window_length,
                         discov_window_percentage = self.window_length_as_percentage, discov_min_window_len = self.min_window_length,
-                        discov_alpha=self.alpha, discov_formula=self.discov_formula, return_window_info=window_output is not None, num_reads=coverage_obj.num_reads, report_discov=True)
+                        discov_max_window_len = self.max_window_length, discov_alpha=self.alpha, discov_formula=self.discov_formula,
+                        return_window_info=window_output is not None, num_reads=coverage_obj.num_reads, report_discov=True)
             output.write(f"{contig_name}\t"
                          f"{bam_file_name}\t"
                          f"{self.contigs_basic_info[contig_name]['length']}\t"

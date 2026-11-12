@@ -4460,6 +4460,13 @@ D = {
              'metavar': 'INTEGER',
              'help': "Use with --window-length-as-percentage to ensure that percentage-based window lengths never fall below this value."}
     ),
+    'max-window-length': (
+            ['--max-window-length'],
+            {'default': None,
+             'type': int,
+             'metavar': 'INTEGER',
+             'help': "Use with --window-length-as-percentage to ensure that percentage-based window lengths never exceed this value. "}
+    ),
     'alpha': (
             ['--alpha'],
             {'default': 0.5,
