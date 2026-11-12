@@ -55,9 +55,9 @@ We divide each sequence (contig or genome) into non-overlapping windows to compu
 There are two strategies for setting the window length:
 
 * **Fixed window length** (`--window-length`): a constant window size in bp applied to all sequences.
-* **Percentage-based window length** (`--window-length-as-percentage`): the window size is set as a percentage of each sequence's length, optionally with a minimum length floor (`--min-window-length`).
+* **Percentage-based window length** (`--window-length-as-percentage`): the window size is set as a percentage of each sequence's length, with a minimum length floor (`--min-window-length`, 300 bp by default) and a maximum length cap (`--max-window-length`, 10,000 bp by default).
 
-If you don't explicitly set any of these parameters, the default sizing strategy depends on the context. For genome-level stats, the default is a fixed 10,000 bp window. For contig-level stats, a percentage-based window (1%% of contig length, with a minimum of 300 bp) is used to better accommodate contigs of varying sizes. In %(anvi-summarize)s, if you set a window length parameter yourself, it applies to both the genome-level and the contig-level stats.
+If you don't explicitly set any of these parameters, the default sizing strategy depends on the context. For genome-level stats, the default is a fixed 10,000 bp window. For contig-level stats, a percentage-based window (1%% of contig length, with a minimum of 300 bp and a maximum of 10,000 bp) is used to better accommodate contigs of varying sizes. In %(anvi-summarize)s, if you set a window length parameter yourself, it applies to both the genome-level and the contig-level stats.
 
 {:.warning}
 If a contig (or genome) is _shorter_ than the window length, the sequence will not be divided; that is, the entire sequence will be a single window. In this case, the observed spread collapses to a binary value (does the sequence have any coverage, or not), and _E_ will be 0 (see below). In most cases, anvi'o will warn you if sequences are shorter than the computed window length, and regardless you should be able to see the number of windows per sequence in the output files.

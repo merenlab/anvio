@@ -88,13 +88,14 @@ This requires access to the auxiliary data file (`AUXILIARY-DATA.db`) in the sam
 
 Both files report the length of each sequence, the number of reads mapping to it (`num_reads`), the number of windows, the observed and expected proportion of covered windows, the normalized spread (_S_), the window depth evenness (_E_), the spread-evenness score (_C_), and the discov score (`discov`).
 
-You can adjust how discov is computed using the following parameters. When neither `--window-length` nor `--window-length-as-percentage` is specified, anvi'o applies context-sensitive defaults: a fixed 10,000 bp window for bins, and a percentage-based window (1%% of contig length, minimum 300 bp) for individual contigs. If you specify window length parameters, they apply to both bins and contigs.
+You can adjust how discov is computed using the following parameters. When neither `--window-length` nor `--window-length-as-percentage` is specified, anvi'o applies context-sensitive defaults: a fixed 10,000 bp window for bins, and a percentage-based window (1%% of contig length, minimum 300 bp, maximum 10,000 bp) for individual contigs. If you specify window length parameters, they apply to both bins and contigs.
 
 **Window sizing**
 
 * `--window-length INT` — use a fixed window size in bp for all sequences (bins and contigs)
 * `--window-length-as-percentage INT` — set window length as a percentage of each sequence's length
-* `--min-window-length INT` — minimum window length floor for percentage mode (default for contigs: 300)
+* `--min-window-length INT` — minimum window length floor for percentage mode (default: 300)
+* `--max-window-length INT` — maximum window length cap for percentage mode (default: 10,000)
 
 **Combining S and E**
 
