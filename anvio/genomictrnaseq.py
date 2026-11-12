@@ -2961,15 +2961,15 @@ class Affinitizer:
         isoacceptor_abund_ratios_df : pandas.core.frame.DataFrame
             Each row of this table, returned by `get_isoacceptors`, contains genome and isoacceptor
             information identifying sample/reference abundance ratios. This table is only used to
-            retrieve the isoacceptors identified in the tRNA-seq data: abundance data is not used in
-            any way by this method.
+            retrieve the isoacceptors identified in each genome: abundance data is not used in any
+            way by this method.
 
         Returns
         =======
         isoacceptor_codon_weights_df : pandas.core.frame.DataFrame
             This table of isoacceptor codon weights has rows representing functions (or genes) in
-            input genomes and columns representing each isoacceptor identified in the tRNA-seq data
-            regardless of genome source.
+            input genomes with isoacceptors and columns representing each isoacceptor identified in
+            any input genome. The weights of isoacceptors that the genome of a row lacks are NaN.
         """
         args = argparse.Namespace()
         args.contigs_db = self.genomic_contigs_db_path
@@ -3070,6 +3070,19 @@ class Affinitizer:
         isoacceptor_codon_weights_df = pd.DataFrame.from_dict(col_dict)
         isoacceptor_codon_weights_df.index = codon_frequency_df.index
 
+        # Blank the weights of isoacceptors in the rows of genomes that lack them, and drop the rows
+        # of genomes without isoacceptors, which get no affinities.
+        genome_isoacceptors_df = isoacceptor_abund_ratios_df[
+            ~isoacceptor_abund_ratios_df['decoded_amino_acid'].isin(['iMet', 'fMet'])]
+        row_genome_names = isoacceptor_codon_weights_df.index.get_level_values('genome_name')
+        for genome_name in row_genome_names.unique():
+            genome_anticodons = genome_isoacceptors_df.loc[
+                genome_isoacceptors_df['genome_name'] == genome_name, 'anticodon']
+            isoacceptor_codon_weights_df.loc[
+                row_genome_names == genome_name,
+                ~isoacceptor_codon_weights_df.columns.isin(genome_anticodons)] = np.nan
+        isoacceptor_codon_weights_df = isoacceptor_codon_weights_df.dropna(how='all')
+
         return isoacceptor_codon_weights_df
 
 
@@ -3091,9 +3104,9 @@ class Affinitizer:
             affinity(g, s) = Σ_i  w(g, i) · log2(supply(i, s) / reference(i))
 
         summed over the isoacceptors `i` detected in sample `s`, where `w(g, i)` is the relative
-        codon weight (demand) of function/gene `g` for isoacceptor `i`, normalized over all
-        isoacceptors. Equivalently, `2 ** affinity` is the ratio of the gene's measured
-        expression-based tAI in the sample to its expression-based tAI in the reference.
+        codon weight (demand) of function/gene `g` for isoacceptor `i`, normalized over the
+        isoacceptors of the genome of `g`. Equivalently, `2 ** affinity` is the ratio of the gene's
+        measured expression-based tAI in the sample to its expression-based tAI in the reference.
         Isoacceptors not detected in a sample are omitted, i.e. treated as unchanged from the
         reference.
 
@@ -3104,8 +3117,8 @@ class Affinitizer:
             abundance ratio: the isoacceptor's relative abundance in the sample over its reference.
 
         isoacceptor_codon_weights_df : pandas.core.frame.DataFrame
-            Isoacceptor codon weights with rows representing functions (or genes) and columns the
-            isoacceptors detected in the tRNA-seq data, regardless of genome source.
+            Isoacceptor codon weights, from `get_isoacceptor_codon_weights`, with rows representing
+            functions (or genes) and columns the isoacceptors detected in any input genome.
 
         return_intermediates : bool, False
             If True, also return a dict keyed by (genome_name, trnaseq_sample_name) with the
@@ -3130,10 +3143,7 @@ class Affinitizer:
             `AffinityIndexIntermediates` TypedDict defined at module level.
         """
         isoacceptor_abund_ratios_gb = isoacceptor_abund_ratios_df.groupby('genome_name')
-        relative_isoacceptor_codon_weights_df: pd.DataFrame = isoacceptor_codon_weights_df.div(
-            isoacceptor_codon_weights_df.sum(axis=1), axis=0)
-        relative_isoacceptor_codon_weights_gb = \
-            relative_isoacceptor_codon_weights_df.groupby('genome_name')
+        isoacceptor_codon_weights_gb = isoacceptor_codon_weights_df.groupby('genome_name')
 
         filtered_genome_names: list[str] = []
         genome_affinities_dfs: list[pd.DataFrame] = []
@@ -3147,22 +3157,31 @@ class Affinitizer:
                 filtered_genome_names.append(genome_name)
                 continue
             try:
-                genome_relative_isoacceptor_codon_weights_df = \
-                    relative_isoacceptor_codon_weights_gb.get_group(genome_name)
+                genome_isoacceptor_codon_weights_df = isoacceptor_codon_weights_gb.get_group(
+                    genome_name)
             except KeyError:
                 filtered_genome_names.append(genome_name)
                 continue
+
+            # Initiator tRNAs do not contribute to affinity (their codons were excluded from the
+            # codon-weight table).
+            genome_isoacceptor_abund_ratios_df = genome_isoacceptor_abund_ratios_df[
+                ~genome_isoacceptor_abund_ratios_df['decoded_amino_acid'].isin(['iMet', 'fMet'])]
+            # The codon weight table has a column for each isoacceptor of every input genome.
+            # Normalize demand over the genome's own isoacceptors, as in a run of the genome alone.
+            genome_anticodons = [
+                anticodon for anticodon in genome_isoacceptor_abund_ratios_df['anticodon'].unique()
+                if anticodon in genome_isoacceptor_codon_weights_df.columns]
+            genome_isoacceptor_codon_weights_df = genome_isoacceptor_codon_weights_df[
+                genome_anticodons]
+            genome_relative_isoacceptor_codon_weights_df = genome_isoacceptor_codon_weights_df.div(
+                genome_isoacceptor_codon_weights_df.sum(axis=1), axis=0)
 
             sample_affinities_dict: dict[str, pd.Series] = {}
             sample_stderrs_dict: dict[str, pd.Series] = {}
             for trnaseq_sample_name, sample_isoacceptor_abund_ratios_df in \
                 genome_isoacceptor_abund_ratios_df.groupby('trnaseq_sample_name'):
-                # Initiator tRNAs do not contribute to affinity (their codons were excluded from
-                # the codon-weight table).
-                initiation_filter = sample_isoacceptor_abund_ratios_df[
-                    'decoded_amino_acid'].isin(['iMet', 'fMet'])
-                sample_df = sample_isoacceptor_abund_ratios_df.loc[~initiation_filter].set_index(
-                    'anticodon')
+                sample_df = sample_isoacceptor_abund_ratios_df.set_index('anticodon')
                 abund_ratios = sample_df['abundance_ratio']
                 log_supply_variance = sample_df['log_supply_variance']
 
