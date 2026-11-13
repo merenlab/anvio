@@ -4,9 +4,11 @@
 import os
 import sys
 import warnings
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import scipy.cluster.hierarchy as hierarchy
+import scipy.spatial.distance as distance
 
 from argparse import Namespace
 from functools import partial
@@ -1058,7 +1060,7 @@ def get_affinities(args):
         -- 'min_max', 'min_max_mean', and 'magnitude_min_max' -- being the other possible keys.
 
         The values of the innermost dictionary are affinity tables with rows representing functions
-        or genes and columns representing tRNA-seq samples.
+        or genes and columns representing the tRNA-seq samples in which the genome has affinities.
 
     stderrs_dict : dict or None
         This nested dictionary is structured as follows: genome name -> function or gene source ->
@@ -1161,6 +1163,8 @@ def load_affinities(args):
 
     affinities_dict = {}
     for genome_name, genome_df in affinities_df.groupby('genome_name'):
+        # A table for multiple genomes is blank where a genome has no affinities in a sample.
+        genome_df = genome_df.dropna(axis=1, how='all')
         affinities_dict[genome_name] = source_dict = {}
         if args.gene_affinity:
             source_dict['genes'] = normalization_dict = {}
@@ -1263,8 +1267,15 @@ def generate_affinities(args):
     # warning), regardless of whether `--sample-order` was used.
     args.analyzed_samples = list(affinities_df.columns)
 
+    # The table has a column for each sample of every genome, in order of first appearance. Keep the
+    # samples in which each genome has affinities, in the order of a run of the genome alone.
+    genome_sample_names_dict = {}
     affinities_dict = {}
     for genome_name, genome_df in affinities_df.groupby('genome_name'):
+        genome_df = genome_df.dropna(axis=1, how='all')
+        if not args.sample_order:
+            genome_df = genome_df[sorted(genome_df.columns)]
+        genome_sample_names_dict[genome_name] = genome_df.columns
         affinities_dict[genome_name] = source_dict = {}
         if args.gene_affinity:
             source_dict['genes'] = normalization_dict = {}
@@ -1291,6 +1302,7 @@ def generate_affinities(args):
     # `affinities_dict`: genome name -> source -> stderr table.
     stderrs_dict = {}
     for genome_name, genome_df in stderrs_df.groupby('genome_name'):
+        genome_df = genome_df[genome_sample_names_dict[genome_name]]
         stderrs_dict[genome_name] = source_dict = {}
         if args.gene_affinity:
             source_dict['genes'] = genome_df
@@ -1542,6 +1554,8 @@ def write_affinity_tables(args, affinities_dict):
                     continue
                 valid_derived_output_paths.append(derived_output_path)
                 normalized_source_df = pd.concat(normalization_tables_dict[normalization_method])
+                # Each genome's table has only the samples in which it has affinities.
+                normalized_source_df = normalized_source_df.reindex(columns=args.analyzed_samples)
                 normalized_source_df = get_table_without_codon_tree_labels(normalized_source_df)
                 normalized_source_df.to_csv(derived_output_path, sep='\t')
             if args.no_raw_affinity:
@@ -1556,6 +1570,7 @@ def write_affinity_tables(args, affinities_dict):
                 continue
             valid_derived_output_paths.append(derived_output_path)
             raw_source_df = pd.concat(normalization_tables_dict['raw'])
+            raw_source_df = raw_source_df.reindex(columns=args.analyzed_samples)
             raw_source_df = get_table_without_codon_tree_labels(raw_source_df)
             raw_source_df.to_csv(derived_output_path, sep='\t')
     else:
@@ -1582,6 +1597,7 @@ def write_affinity_tables(args, affinities_dict):
                 continue
             valid_derived_output_paths.append(derived_output_path)
             normalized_df = pd.concat(normalization_tables_dict[normalization_method])
+            normalized_df = normalized_df.reindex(columns=args.analyzed_samples)
             normalized_df = get_table_without_codon_tree_labels(normalized_df)
             normalized_df.to_csv(derived_output_path, sep='\t')
         if not args.no_raw_affinity and not invalid_derived_output_paths:
@@ -1589,6 +1605,7 @@ def write_affinity_tables(args, affinities_dict):
             try:
                 filesnpaths.is_output_file_writable(args.output_file)
                 raw_df = pd.concat(normalization_tables_dict['raw'])
+                raw_df = raw_df.reindex(columns=args.analyzed_samples)
                 raw_df = get_table_without_codon_tree_labels(raw_df)
                 raw_df.to_csv(args.output_file, sep='\t')
                 is_given_output_path_valid = 1
@@ -1699,6 +1716,8 @@ def write_affinity_stderr_tables(args, stderrs_dict):
                 continue
             valid_derived_output_paths.append(derived_output_path)
             stderrs_df = pd.concat(stderrs_dfs)
+            # Each genome's table has only the samples in which it has affinities.
+            stderrs_df = stderrs_df.reindex(columns=args.analyzed_samples)
             stderrs_df.to_csv(derived_output_path, sep='\t')
     else:
         # Write stderr data for all genomes and sources in a single table.
@@ -1710,6 +1729,7 @@ def write_affinity_stderr_tables(args, stderrs_dict):
         try:
             filesnpaths.is_output_file_writable(derived_output_path)
             stderrs_df = pd.concat(stderrs_dfs)
+            stderrs_df = stderrs_df.reindex(columns=args.analyzed_samples)
             stderrs_df.to_csv(derived_output_path, sep='\t')
             valid_derived_output_paths.append(derived_output_path)
         except FilesNPathsError:
@@ -1760,6 +1780,8 @@ def write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict
             if invalid_derived_output_paths:
                 continue
             valid_derived_output_paths.append(derived_output_path)
+            # Drop samples without the genome's isoacceptors, as in a run of the genome alone.
+            isoacceptor_abund_ratio_df = isoacceptor_abund_ratio_df.dropna(axis=1, how='all')
             isoacceptor_abund_ratio_df.to_csv(derived_output_path, sep='\t')
     else:
         # Write isoacceptor abundance ratio data for all genomes and sources in a single table.
@@ -2820,6 +2842,13 @@ def load_sample_linkage_from_newick(args, subset_affinities_dict):
             f"'{args.plot_affinity_file}' are not represented in the sample tree loaded from "
             f"'{args.plot_sample_tree_file}': {', '.join(missing_leaf_labels)}")
 
+    # Samples blank for the genome were dropped on loading, which can leave fewer than two.
+    if len(subset_affinities_df.columns) < 2:
+        run.warning(
+            f"The affinities of the genome, {genome_name}, loaded from '{args.plot_affinity_file}' "
+            "have values in fewer than two samples, so the plot has no sample dendrogram.")
+        return {genome_name: {source: {normalization_method: {'plot_linkage': None}}}}
+
     # Prune the tree to retain the samples of interest.
     sample_tree.prune(subset_affinities_df.columns.tolist(), preserve_branch_length=True)
     pruned_leaf_labels = sample_tree.get_leaf_names()
@@ -2843,37 +2872,90 @@ def load_sample_linkage_from_newick(args, subset_affinities_dict):
     normalization_sample_linkage_dict[normalization_method] = {
         'save_linkage': None,
         'save_labels': None,
-        'plot_linkage': sample_linkage}
+        'plot_linkage': sample_linkage,
+        'plot_labels': pruned_leaf_labels}
 
     return sample_linkage_dict
 
 
 def generate_sample_linkages(args, subset_affinities_dict):
-    """Generate cluster linkages of tRNA-seq samples by their affinities."""
+    """Generate cluster linkages of tRNA-seq samples by their affinities. Blank rows and samples are
+    left out. A table with values in fewer than two samples, or with undefined distances between
+    samples, gets no linkage."""
+    if args.save_sample_trees and args.plot_sample_dendrogram:
+        clustering_output_name = "sample tree and dendrogram"
+        no_linkage_message = "no sample tree is saved and the plot has no sample dendrogram"
+    elif args.save_sample_trees:
+        clustering_output_name = "sample tree"
+        no_linkage_message = "no sample tree is saved"
+    else:
+        clustering_output_name = "sample dendrogram"
+        no_linkage_message = "the plot has no sample dendrogram"
+
     sample_linkage_dict = {}
     for genome_name, source_dict in subset_affinities_dict.items():
         sample_linkage_dict[genome_name] = source_sample_linkage_dict = {}
         for source, normalization_dict in source_dict.items():
             source_sample_linkage_dict[source] = normalization_sample_linkage_dict = {}
+            if args.gene_affinity:
+                source_message = ""
+            elif args.compare_all_function_sources:
+                source_message = "from all function sources "
+            else:
+                source_message = f"from the function source, {source}, "
+
             for normalization_method, subset_affinities_df in normalization_dict.items():
+                if normalization_method == 'raw':
+                    affinity_name = "affinities"
+                else:
+                    affinity_name = f"{normalization_method} normalized affinities"
+                table_message = (
+                    f"The {affinity_name} of the genome, {genome_name}, {source_message}")
+
                 # Note that the linkage object is generated from the subset of functions or genes
                 # retained in the affinity tables after application of `--n-highest-affinity` and
                 # `--n-lowest-affinity`. This differs from the codon frequency linkage objects
                 # generated from all functions or genes for which affinity was calculated, not just
-                # those displayed in the plots.
-                sample_linkage = hierarchy.linkage(
-                    subset_affinities_df.values.T,
-                    method=args.sample_linkage_method,
-                    metric=args.sample_distance_metric)
+                # those displayed in the plots. Rows are blank for functions or genes with no codons
+                # decoded by the genome's isoacceptors, and samples are blank where normalized
+                # affinities are undefined.
+                clustered_affinities_df = subset_affinities_df.dropna(how='all')
+                clustered_affinities_df = clustered_affinities_df.dropna(axis=1, how='all')
                 # By default, samples are labeled as integers in the linkage object. Labels are
                 # later updated to be informative.
-                leaf_labels = subset_affinities_df.columns.tolist()
+                leaf_labels = clustered_affinities_df.columns.tolist()
+                if len(leaf_labels) < 2:
+                    run.warning(
+                        f"{table_message}have values in fewer than two samples, so "
+                        f"{no_linkage_message}.")
+                    sample_linkage = None
+                else:
+                    sample_distances = distance.pdist(
+                        clustered_affinities_df.values.T, metric=args.sample_distance_metric)
+                    if np.isfinite(sample_distances).all():
+                        sample_linkage = hierarchy.linkage(
+                            sample_distances, method=args.sample_linkage_method)
+                    else:
+                        run.warning(
+                            f"{table_message}leave some '{args.sample_distance_metric}' distances "
+                            f"between samples undefined, so {no_linkage_message}.")
+                        sample_linkage = None
+
+                blank_sample_names = [
+                    sample_name for sample_name in subset_affinities_df.columns
+                    if sample_name not in leaf_labels]
+                if sample_linkage is not None and blank_sample_names:
+                    run.warning(
+                        f"{table_message}are blank in the following samples, which are left out of "
+                        f"the {clustering_output_name}: {', '.join(blank_sample_names)}")
+
                 normalization_sample_linkage_dict[normalization_method] = linkage_info_dict = {}
                 if args.save_sample_trees:
                     linkage_info_dict['save_linkage'] = sample_linkage
                     linkage_info_dict['save_labels'] = leaf_labels
                 if args.plot_sample_dendrogram:
                     linkage_info_dict['plot_linkage'] = sample_linkage
+                    linkage_info_dict['plot_labels'] = leaf_labels
 
     return sample_linkage_dict
 
@@ -2890,6 +2972,9 @@ def write_sample_newick_files(args, sample_linkage_dict):
         for source, normalization_sample_linkage_dict in source_sample_linkage_dict.items():
             for normalization_method, linkage_info_dict in normalization_sample_linkage_dict.items():
                 sample_linkage = linkage_info_dict['save_linkage']
+                if sample_linkage is None:
+                    # Too few samples have affinities, or the distances between them are undefined.
+                    continue
                 labels = encode_newick_labels(linkage_info_dict['save_labels'])
 
                 sample_tree = hierarchy.to_tree(sample_linkage)
@@ -2921,6 +3006,9 @@ def write_sample_newick_files(args, sample_linkage_dict):
                     "tRNA-seq sample trees could not be written to the following derived target "
                     f"paths: {', '.join(invalid_derived_output_paths)}")
 
+    if not valid_derived_output_paths:
+        return
+
     run.info_single("Saved tRNA-seq sample Newick trees")
     for valid_derived_output_path in sorted(valid_derived_output_paths, key=len):
         run.info_single(valid_derived_output_path, level=2)
@@ -2945,6 +3033,7 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
     plotted_sources = {
         source for source_dict in subset_affinities_dict.values() for source in source_dict}
 
+    unplotted_genome_names = set()
     progress.new("Plotting")
     for genome_name, source_dict in subset_affinities_dict.items():
         for source, normalization_dict in source_dict.items():
@@ -2956,12 +3045,24 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
                 codon_linkage = None
 
             for normalization_method, subset_affinities_df in normalization_dict.items():
+                if subset_affinities_df.columns.empty:
+                    # The genome has affinities in none of the samples, as can happen with
+                    # `--select-samples-txt`, and a heatmap cannot be drawn without columns.
+                    unplotted_genome_names.add(genome_name)
+                    continue
+
                 if sample_linkage_dict:
                     sample_linkage_info_dict = sample_linkage_dict[
                         genome_name][source][normalization_method]
                     sample_linkage = sample_linkage_info_dict.get('plot_linkage')
                 else:
                     sample_linkage = None
+                if sample_linkage is not None:
+                    # Blank samples are left out of the dendrogram. Selecting by membership rather
+                    # than by name keeps repeated samples of `--select-samples-txt` aligned.
+                    clustered_sample_mask = subset_affinities_df.columns.isin(
+                        sample_linkage_info_dict['plot_labels'])
+                    subset_affinities_df = subset_affinities_df.loc[:, clustered_sample_mask]
 
                 # Determine the output path for the plot. A separate plot is made per genome, so the
                 # genome name is inserted to keep the paths distinct when more than one genome is
@@ -3039,12 +3140,20 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
                 plot.savefig(derived_output_path, bbox_inches='tight', dpi=image_dpi)
     progress.end()
 
+    if unplotted_genome_names:
+        run.warning(
+            "The following genomes have no values in any of the plotted samples, so they are not "
+            f"plotted: {', '.join(sorted(unplotted_genome_names))}")
+
     if invalid_derived_output_paths:
         for derived_output_path in valid_derived_output_paths:
             os.remove(derived_output_path)
         paths_string = ', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])
         raise ConfigError(
             f"Plots could not be written to the following derived target paths: {paths_string}")
+
+    if not valid_derived_output_paths:
+        return
 
     run.info_single("Saved plots")
     for valid_derived_output_path in valid_derived_output_paths:
