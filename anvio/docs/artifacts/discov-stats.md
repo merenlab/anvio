@@ -105,6 +105,12 @@ When all covered windows have the same mean depth, CV = 0 and _E_ = 1. The more 
 {:.warning}
 If fewer than 3 windows have coverage, there is not enough information to estimate evenness, and _E_ is set to 0 (maximum unevenness). This happens for sequences with very few windows (i.e., short sequences relative to the window length) and for sequences with very few mapped reads. With the default geometric formula, _E_ = 0 means that _C_ = 0, so discov will be equal to _D_^2 and generally very low.
 
+### Sequences with very few mapped reads
+
+When only a handful of reads map to a sequence, there is not enough information to properly estimate either spread or evenness. Even so, both can look deceptively good: a few reads landing in separate windows are about as spread out as we expect from randomly-placed reads (so normalized _S_ is high), and since each covered window holds about one read, the mean window coverage depths barely vary (so _E_ is high). Without a safeguard, such sequences could get a discov score close to 1 from just a few reads.
+
+To avoid this, anvi'o sets both normalized _S_ and _E_ to 0 for any sequence with fewer mapped reads than `--discov-min-reads` (10 by default). The spread-evenness score _C_ is then 0, and discov collapses to _D_^2, which will be very low since a few reads cannot cover much of a sequence. The observed and expected proportions of covered windows are still reported for these sequences. You can set `--discov-min-reads 0` to always compute normalized _S_ and _E_.
+
 ### The weight parameter _α_
 
 You can adjust the weights on _S_ and _E_ by setting the `--alpha` parameter. Increase _α_ to increase the importance of spread, and decrease _α_ to increase the importance of evenness. _α_ should always be between 0 and 1 (inclusive. In case you really want _C_ to be equivalent to one of _S_ or _E_ you can set _α_ = 1 or _α_ = 0, respectively).

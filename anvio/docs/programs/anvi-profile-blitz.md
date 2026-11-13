@@ -131,6 +131,10 @@ You can adjust how _S_ and _E_ are combined into the spread-evenness score _C_ b
 
 The final score is discov = min(1, _C_ + _D_^2).
 
+**Sequences with few mapped reads**
+
+* `--discov-min-reads INT` — minimum number of reads mapping to a contig or bin for _S_ and _E_ to be computed. Below this threshold, normalized _S_ and _E_ are set to 0, so discov = _D_^2 (default: 10)
+
 **Window-level output**
 
 To inspect the per-window values used to compute _S_ and _E_ (useful for debugging or visualization), add the `--gen-window-level-output` flag:

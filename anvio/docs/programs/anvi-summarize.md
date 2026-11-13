@@ -104,6 +104,10 @@ You can adjust how discov is computed using the following parameters. When neith
 
 The final score is discov = min(1, C + D^2), where D is detection.
 
+**Sequences with few mapped reads**
+
+* `--discov-min-reads INT` — minimum number of reads mapping to a bin or contig for S and E to be computed. Below this threshold, normalized S and E are set to 0, so discov = D^2 (default: 10)
+
 {:.notice}
 Discov values computed by %(anvi-summarize)s and %(anvi-profile-blitz)s on the same data should be identical, with one exception: the auxiliary data file caps per-nucleotide coverage at 65,535X, so the values can differ slightly for sequences with extremely high coverage. See %(discov-stats)s for details.
 
