@@ -50,17 +50,18 @@ The numbers reported by either strategy on the same dataset are usually the same
 
 We divide each sequence (contig or genome) into non-overlapping windows to compute both _S_ and _E_. The window size affects the sensitivity of these metrics. We want the windows to be long enough to capture meaningful clusters of mapped reads (hence, longer than typical read lengths), but short enough to effectively assess the distribution of these mapped reads along the sequence.
 
-
-
 There are two strategies for setting the window length:
 
 * **Fixed window length** (`--window-length`): a constant window size in bp applied to all sequences.
-* **Percentage-based window length** (`--window-length-as-percentage`): the window size is set as a percentage of each sequence's length, optionally with a minimum length floor (`--min-window-length`).
+* **Percentage-based window length** (`--window-length-as-percentage`): the window size is set as a percentage of each sequence's length, with a minimum length floor (`--min-window-length`, 300 bp by default) and a maximum length cap (`--max-window-length`, 10,000 bp by default). Set either of these to 0 to remove the corresponding limit.
 
-If you don't explicitly set any of these parameters, the default sizing strategy depends on the context. For genome-level stats, the default is a fixed 10,000 bp window. For contig-level stats, a percentage-based window (1%% of contig length, with a minimum of 300 bp) is used to better accommodate contigs of varying sizes. In %(anvi-summarize)s, if you set a window length parameter yourself, it applies to both the genome-level and the contig-level stats.
+If you don't explicitly set any of these parameters, the default sizing strategy depends on the context. For genome-level stats, the default is a fixed 10,000 bp window. For contig-level stats, a percentage-based window (1%% of contig length, with a minimum of 300 bp and a maximum of 10,000 bp) is used to better accommodate contigs of varying sizes. In %(anvi-summarize)s, if you set a window length parameter yourself, it applies to both the genome-level and the contig-level stats.
 
 {:.warning}
 If a contig (or genome) is _shorter_ than the window length, the sequence will not be divided; that is, the entire sequence will be a single window. In this case, the observed spread collapses to a binary value (does the sequence have any coverage, or not), and _E_ will be 0 (see below). In most cases, anvi'o will warn you if sequences are shorter than the computed window length, and regardless you should be able to see the number of windows per sequence in the output files.
+
+{:.warning}
+Discov scores computed using different window lengths are _not comparable_ to each other. For instance, you cannot directly compare the discov value of a very short contig to that of a very long contig when using percentage-based window lengths. The min/max window length parameters can help to reduce the range of window sizes used in assemblies with a wide contig size distribution, but you should still use caution when interpreting scores across contigs. If you need the scores to be comparable, the best strategy is to set an explicit fixed window length that accommodates a majority of the useful contigs in your assembly.
 
 **Removal of very short 'remainder' windows**
 
@@ -122,7 +123,10 @@ To help you get an intuition on how to set the threshold, you can take a look at
 
 ![Discov Distributions](../../images/discov_violin_plots.png){:.center-img .width-50}
 
-Some rough guidelines from this data: discov thresholds for determining presence should always be set above 0.5. With all default parameters, a threshold around 0.6 is good for avoiding most false positives. The linear formula is more forgiving/ambiguous for mid-range spread and evenness values, and therefore the threshold should generally be set higher when using the linear version than when using the geometric formula. Note that these recommendations apply to genome-level metrics; we haven't tested contig-level metrics comprehensively enough to suggest thresholds for those yet.
+Some rough guidelines from this data: discov thresholds for determining presence should always be set above 0.5. With all default parameters, a threshold around 0.6 is good for avoiding most false positives. The linear formula is more forgiving/ambiguous for mid-range spread and evenness values, and therefore the threshold should generally be set higher when using the linear version than when using the geometric formula. Note that these recommendations apply to genome-level metrics and specifically when using the default fixed window length of 10,000 bp; we haven't tested contig-level metrics comprehensively enough to suggest thresholds for those yet.
+
+{:.warning}
+Since the window lengths and alpha values used to compute discov can affect the range of discov scores you will get, it is worthwhile to run some tests with known present/absent genomes to help set a classification threshold that will work for the parameters / window sizing strategy you want to use.
 
 ## More resources
 
