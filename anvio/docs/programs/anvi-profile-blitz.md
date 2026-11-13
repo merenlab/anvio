@@ -120,7 +120,7 @@ _S_ and _E_ are computed by dividing the input sequence into non-overlapping win
 * `--window-length INT` — use a fixed window size in bp for all sequences
 * `--window-length-as-percentage INT` — set window length as a percentage of each sequence's length
 * `--min-window-length INT` — set a minimum window length floor when using percentage mode (default: 300)
-* `--max-window-length INT` — set a maximum window length cap when using percentage mode (default: 10,000)
+* `--max-window-length INT` — set a maximum window length cap when using percentage mode (default: 10,000; set to 0 for no cap)
 
 **Combining _S_ and _E_**
 

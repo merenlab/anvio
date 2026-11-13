@@ -95,7 +95,7 @@ You can adjust how discov is computed using the following parameters. When neith
 * `--window-length INT` — use a fixed window size in bp for all sequences (bins and contigs)
 * `--window-length-as-percentage INT` — set window length as a percentage of each sequence's length
 * `--min-window-length INT` — minimum window length floor for percentage mode (default: 300)
-* `--max-window-length INT` — maximum window length cap for percentage mode (default: 10,000)
+* `--max-window-length INT` — maximum window length cap for percentage mode (default: 10,000; set to 0 for no cap)
 
 **Combining S and E**
 

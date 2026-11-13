@@ -53,7 +53,7 @@ We divide each sequence (contig or genome) into non-overlapping windows to compu
 There are two strategies for setting the window length:
 
 * **Fixed window length** (`--window-length`): a constant window size in bp applied to all sequences.
-* **Percentage-based window length** (`--window-length-as-percentage`): the window size is set as a percentage of each sequence's length, with a minimum length floor (`--min-window-length`, 300 bp by default) and a maximum length cap (`--max-window-length`, 10,000 bp by default).
+* **Percentage-based window length** (`--window-length-as-percentage`): the window size is set as a percentage of each sequence's length, with a minimum length floor (`--min-window-length`, 300 bp by default) and a maximum length cap (`--max-window-length`, 10,000 bp by default). Set either of these to 0 to remove the corresponding limit.
 
 If you don't explicitly set any of these parameters, the default sizing strategy depends on the context. For genome-level stats, the default is a fixed 10,000 bp window. For contig-level stats, a percentage-based window (1%% of contig length, with a minimum of 300 bp and a maximum of 10,000 bp) is used to better accommodate contigs of varying sizes. In %(anvi-summarize)s, if you set a window length parameter yourself, it applies to both the genome-level and the contig-level stats.
 

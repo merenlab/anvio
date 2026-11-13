@@ -337,8 +337,9 @@ check_formulas(lambda formula: get_stats(coverage, N=200, pct=5, min_w=300, form
 test("Maximum window length for percentage-based windows",
      "G = 4,000 with uniform coverage and a window length of 50%, which is 2,000 bp, so there are 2 windows. With a "
      "maximum of 300 bp, the windows are capped at 300 bp: 13 full windows plus a final window of 100 bp (>= 10% of "
-     "300), so 14 windows. With a maximum larger than the percentage-based window length, nothing changes. In all "
-     "cases S = E = D = 1, so C and discov are 1 with both formulas.")
+     "300), so 14 windows. With a maximum larger than the percentage-based window length, nothing changes. A "
+     "maximum of 0 means there is no cap, so the windows stay at 2,000 bp. In all cases S = E = D = 1, so C and "
+     "discov are 1 with both formulas.")
 
 coverage = make_coverage(4000, [(0, 4000, 5)])
 check("num windows (no maximum)", get_stats(coverage, N=200, pct=50).num_windows, 2)
@@ -346,6 +347,8 @@ check("num windows (maximum 300)", get_stats(coverage, N=200, pct=50, max_w=300)
 check_formulas(lambda formula: get_stats(coverage, N=200, pct=50, max_w=300, formula=formula), S_norm=1.0, E=1.0, D=1.0)
 check("num windows (maximum 5000)", get_stats(coverage, N=200, pct=50, max_w=5000).num_windows, 2)
 check("num windows (minimum 100, maximum 300)", get_stats(coverage, N=200, pct=50, min_w=100, max_w=300).num_windows, 14)
+check("num windows (maximum 0, i.e., no cap)", get_stats(coverage, N=200, pct=50, max_w=0).num_windows, 2)
+check("num windows (minimum 300, maximum 0)", get_stats(coverage, N=200, pct=50, min_w=300, max_w=0).num_windows, 2)
 
 #########################################
 
