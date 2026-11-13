@@ -108,6 +108,7 @@ class Indels:
         self.samples = []                 # ordered list of sample names
         self.sample_to_profile_path = {}  # sample_id → profile-db path it lives in
         self.aux_data_caches = {}         # profile-db path → AuxiliaryDataForSplitCoverages (or None)
+        self._split_index = {}            # contig → (split starts, ends, names), for DEL-locus aux lookups
         self.indels = []                  # list of dicts (one per accepted indel row)
         self.clusters_to_members = {}     # {cluster_id: [indel idx, ...]}
         self.cluster_representatives = {} # {cluster_id: fasta_id_of_representative}
@@ -598,9 +599,10 @@ class Indels:
 
                 current_members = []
                 current_positions = []
+                current_sum = 0  # running sum of current_positions (ints, so the mean is exact)
 
                 def flush():
-                    nonlocal locus_counter, current_members, current_positions
+                    nonlocal locus_counter, current_members, current_positions, current_sum
                     if not current_members:
                         return
                     locus_counter += 1
@@ -609,22 +611,24 @@ class Indels:
                         'cluster_id': cluster_id,
                         'contig_name': contig,
                         'positions': list(current_positions),
-                        'mean_pos': int(round(sum(current_positions) / len(current_positions))),
+                        'mean_pos': int(round(current_sum / len(current_positions))),
                         'min_pos': min(current_positions),
                         'max_pos': max(current_positions),
                         'members': list(current_members),
                     }
                     current_members = []
                     current_positions = []
+                    current_sum = 0
 
                 for idx in idxs:
                     pos = self.indels[idx]['pos_in_contig']
                     if current_positions:
-                        running_mean = sum(current_positions) / len(current_positions)
+                        running_mean = current_sum / len(current_positions)
                         if pos - running_mean > self.position_tolerance:
                             flush()
                     current_members.append(idx)
                     current_positions.append(pos)
+                    current_sum += pos
 
                 flush()
 
@@ -667,68 +671,136 @@ class Indels:
         self.aux_data_caches = {}
 
 
-    def _detection_in_region(self, sample, contig, pos_start, length):
-        """Return the fraction of positions in [pos_start, pos_start+length) on `contig`
-        that have ≥1x coverage in `sample`, looked up via the auxiliary-data db.
+    def _build_split_index(self):
+        """Index the splits of every contig by their start positions.
 
-        Returns None if the lookup can't be performed (no aux data, unknown sample, etc.).
+    Returns
+    =======
+    index : dict
+        {contig_name: (starts, ends, split_names)}, where each list is sorted by split start, so
+        the split that holds a given position can be found by bisection (see `_split_at`).
+    """
 
-        Uses two caches populated lazily on first call (allocated in build_matrix):
-        - `self._aux_split_lookup`: contig + position → (split_name, split_start). Replaces an
-          O(N_splits) linear scan over splits_basic_info on every call. The lookup itself is
-          one-per-locus on most genomes, so we cache by (contig, pos_start) to handle the rare
-          case where loci share a position.
-        - `self._aux_split_cache`: (profile_path, split_name) → sample-coverage dict. The
-          underlying aux.get() decompresses a gzipped blob; reusing across many DEL loci
-          on the same split avoids that.
-        """
+        by_contig = defaultdict(list)
+        for split_name, info in self.contigs_super.splits_basic_info.items():
+            by_contig[info['parent']].append((info['start'], info['end'], split_name))
 
-        profile_path = self.sample_to_profile_path.get(sample)
-        if not profile_path:
-            return None
-        aux = self.aux_data_caches.get(profile_path)
-        if aux is None:
-            return None
+        index = {}
+        for contig, splits in by_contig.items():
+            splits.sort()
+            index[contig] = ([s[0] for s in splits], [s[1] for s in splits], [s[2] for s in splits])
 
-        # Lookup (or compute & cache) the split containing pos_start
-        split_cache_key = (contig, pos_start)
-        cached = self._aux_split_lookup.get(split_cache_key)
-        if cached is None:
-            split_name = None
-            split_start = None
-            for sn, sinfo in self.contigs_super.splits_basic_info.items():
-                if sinfo['parent'] == contig and sinfo['start'] <= pos_start < sinfo['end']:
-                    split_name = sn
-                    split_start = sinfo['start']
-                    break
-            self._aux_split_lookup[split_cache_key] = (split_name, split_start)
-        else:
-            split_name, split_start = cached
+        return index
 
-        if split_name is None:
-            return None
 
-        # Lookup (or fetch & cache) the per-sample coverage arrays for this split
-        cov_cache_key = (profile_path, split_name)
-        split_cov = self._aux_split_cache.get(cov_cache_key)
-        if split_cov is None:
-            try:
-                split_cov = aux.get(split_name)
-            except Exception:
-                split_cov = {}
-            self._aux_split_cache[cov_cache_key] = split_cov
+    def _split_at(self, contig, pos):
+        """Find the split of a contig that contains a given position.
 
-        if not split_cov or sample not in split_cov:
-            return None
+    Parameters
+    ==========
+    contig : str
+        Contig name.
+    pos : int
+        Position in the contig.
 
-        rel_start = pos_start - split_start
-        cov_slice = split_cov[sample][rel_start:rel_start + length]
-        # detection is computed against the requested length, not the slice length, so positions
-        # past the split boundary count as zero-coverage. For 20 kb splits and sub-kb indels
-        # this is essentially never tripped.
+    Returns
+    =======
+    split : tuple
+        (split_name, split_start), or (None, None) if no split of `contig` contains `pos`.
+    """
+
+        entry = self._split_index.get(contig)
+        if entry is None:
+            return None, None
+
+        starts, ends, names = entry
+        i = bisect.bisect_right(starts, pos) - 1
+        if i >= 0 and pos < ends[i]:
+            return names[i], starts[i]
+
+        return None, None
+
+
+    def _detection_in_slice(self, coverage_array, rel_start, length):
+        """Compute the fraction of a region with at least 1x coverage.
+
+    Parameters
+    ==========
+    coverage_array : numpy.ndarray
+        Per-nucleotide coverage of a split in one sample.
+    rel_start : int
+        Start of the region relative to the split start.
+    length : int
+        Length of the region.
+
+    Returns
+    =======
+    detection : float
+        Fraction of the `length` positions with ≥1x coverage.
+
+    Notes
+    =====
+    - Detection is computed against the requested length rather than the slice length, so
+      positions past the split boundary count as zero-coverage (for 20 kb splits and sub-kb
+      indels this is essentially never tripped).
+    """
+
         if length <= 0:
             return 0.0
+
+        cov_slice = coverage_array[rel_start:rel_start + length]
         return float(np.count_nonzero(cov_slice)) / float(length)
+
+
+    def _resolve_del_detection_queries(self, queries):
+        """Answer the auxiliary-data coverage lookups `build_matrix` queued for DEL loci.
+
+    A queued cell becomes 1.0 if its sample covers ≥ DETECTION_THRESHOLD_FOR_PRESENCE of the
+    DELd region, and otherwise keeps the 0.0 it already holds.
+
+    Parameters
+    ==========
+    queries : dict
+        {(profile_db_path, split_name): [(locus_id, sample, rel_start, length), ...]}
+
+    Notes
+    =====
+    - Lookups are answered grouped by profile-db and split, so each coverage blob is read and
+      decompressed once, and no blob is kept once its split is done.
+    """
+
+        n_blobs = len(queries)
+        self.progress.new('Checking DEL-region coverage', progress_total_items=n_blobs)
+        self.progress.update('...')
+        update_every = max(1, n_blobs // 200)
+
+        splits_by_profile = defaultdict(list)
+        for profile_path, split_name in queries:
+            splits_by_profile[profile_path].append(split_name)
+
+        done = 0
+        for profile_path in sorted(splits_by_profile):
+            aux = self.aux_data_caches.get(profile_path)
+            for split_name in sorted(splits_by_profile[profile_path]):
+                if done % update_every == 0:
+                    self.progress.increment(increment_to=done)
+                    self.progress.update(f"split {pp(done)} of {pp(n_blobs)} ...")
+                done += 1
+
+                try:
+                    split_cov = aux.get(split_name)
+                except Exception:
+                    split_cov = {}
+
+                for locus_id, sample, rel_start, length in queries[(profile_path, split_name)]:
+                    # lookup unavailable -> the cell keeps the conservative default of 0.0
+                    if not split_cov or sample not in split_cov:
+                        continue
+
+                    if self._detection_in_slice(split_cov[sample], rel_start, length) >= DETECTION_THRESHOLD_FOR_PRESENCE:
+                        self.matrix[locus_id][sample] = 1.0
+
+        self.progress.end()
 
 
     def build_matrix(self):
@@ -766,8 +838,11 @@ class Indels:
         any_del_locus = any(t == 'DEL' for t in self.locus_event_types.values())
         if any_del_locus:
             self._open_aux_data_caches()
-            self._aux_split_cache = {}  # (profile_path, split_name) -> {sample: ndarray}
-            self._aux_split_lookup = {}  # contig -> (split_name, split_start) — cached split lookups
+            self._split_index = self._build_split_index()
+
+        # aux-coverage lookups for DEL-locus cells without events, answered after the loop grouped by
+        # (profile-db, split): {(profile_path, split_name): [(locus_id, sample, rel_start, length), ...]}
+        del_detection_queries = defaultdict(list)
 
         n_loci = len(self.loci)
         self.progress.new('Building presence matrix', progress_total_items=n_loci)
@@ -795,6 +870,7 @@ class Indels:
                 del_lengths = [self.indels[idx]['length'] for idx in info['members'] if self.indels[idx]['type'] == 'DEL']
                 rep_length = int(statistics.median(del_lengths)) if del_lengths else 0
                 rep_pos = info['mean_pos']
+                split_name, split_start = self._split_at(info['contig_name'], rep_pos)
             else:
                 rep_length = 0
                 rep_pos = info['mean_pos']
@@ -815,24 +891,25 @@ class Indels:
                     if locus_type == 'INS':
                         row[sample] = 0.0
                     else:
-                        # DEL locus: did this sample actually have coverage in the DELd region?
-                        detection = self._detection_in_region(sample, info['contig_name'], rep_pos, rep_length)
-                        if detection is None:
-                            # aux lookup unavailable -> conservative default of 0.0
-                            row[sample] = 0.0
-                        elif detection >= DETECTION_THRESHOLD_FOR_PRESENCE:
-                            row[sample] = 1.0
-                        else:
-                            row[sample] = 0.0
+                        # DEL locus: did this sample actually have coverage in the DELd region? 0.0
+                        # until the aux lookup (queued here, answered below) says so; it stays 0.0 if
+                        # the lookup is unavailable (conservative default)
+                        row[sample] = 0.0
+                        profile_path = self.sample_to_profile_path.get(sample)
+                        if split_name is not None and profile_path and self.aux_data_caches.get(profile_path) is not None:
+                            del_detection_queries[(profile_path, split_name)].append(
+                                (locus_id, sample, rep_pos - split_start, rep_length))
 
             self.matrix[locus_id] = row
 
         self.progress.end()
 
+        if del_detection_queries:
+            self._resolve_del_detection_queries(del_detection_queries)
+
         if any_del_locus:
             self._close_aux_data_caches()
-            self._aux_split_cache = {}
-            self._aux_split_lookup = {}
+            self._split_index = {}
 
 
     def _apply_min_samples_filter(self):
