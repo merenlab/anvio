@@ -199,6 +199,39 @@ class AMRFinder(object):
         self.run.info('Number of threads', self.num_threads)
 
         temp_dir_path = filesnpaths.get_temp_directory_path()
+        amrfinder_output_path = self.run_amrfinder(temp_dir_path)
+
+        expected_fields = ['Protein id', 'HMM accession'] + [field for fields in AMRFINDER_SOURCES.values() for field in fields]
+        amrfinder_hits = utils.get_TAB_delimited_file_as_dictionary(amrfinder_output_path, indexing_field=-1, expected_fields=expected_fields)
+
+        hmm_hits = {} if self.skip_e_values else self.get_hmm_hits(temp_dir_path)
+
+        self.store_hits(amrfinder_hits, hmm_hits)
+
+        if self.full_report_path:
+            self.write_full_report(amrfinder_output_path, amrfinder_hits, hmm_hits)
+
+        if anvio.DEBUG:
+            self.run.warning(f"You included the `--debug` flag and anvi'o will keep the temporary directory "
+                             f"'{temp_dir_path}'. Please don't forget to clean it up later.", header="Debug")
+        else:
+            shutil.rmtree(temp_dir_path)
+
+
+    def run_amrfinder(self, temp_dir_path):
+        """Export the amino acid sequences of all genes in the contigs-db, and run AMRFinderPlus on them.
+
+        Parameters
+        ==========
+        temp_dir_path : str
+            Path to a temporary directory for the input, output, and log files, which also becomes $TMPDIR for AMRFinderPlus
+
+        Returns
+        =======
+        amrfinder_output_path : str
+            Path to the AMRFinderPlus output table
+        """
+
         aa_sequences_path = os.path.join(temp_dir_path, 'AA_gene_sequences.fa')
         amrfinder_output_path = os.path.join(temp_dir_path, 'AMRFinder_output.txt')
         log_file_path = os.path.join(temp_dir_path, 'AMRFinder_log.txt')
@@ -237,34 +270,62 @@ class AMRFinder(object):
             raise ConfigError(f"AMRFinderPlus did not finish successfully :/ Its log file may tell you more about "
                               f"what went wrong: '{log_file_path}'.")
 
-        expected_fields = ['Protein id', 'HMM accession'] + [field for fields in AMRFINDER_SOURCES.values() for field in fields]
-        amrfinder_hits = utils.get_TAB_delimited_file_as_dictionary(amrfinder_output_path, indexing_field=-1, expected_fields=expected_fields)
+        return amrfinder_output_path
 
-        # AMRFinderPlus does not report e-values for HMM hits, but its own hmmsearch table has them
+
+    def get_hmm_hits(self, temp_dir_path):
+        """Read the e-values and bit scores of HMM hits from the hmmsearch table AMRFinderPlus left behind.
+
+        AMRFinderPlus does not report e-values for HMM hits, but its own hmmsearch table has them.
+
+        Parameters
+        ==========
+        temp_dir_path : str
+            Path to the temporary directory AMRFinderPlus ran in
+
+        Returns
+        =======
+        hmm_hits : dict
+            Maps (gene caller id, HMM accession) to the 'e_value' and 'bit_score' of that hit
+        """
+
+        hmmsearch_table_paths = glob.glob(os.path.join(temp_dir_path, 'amrfinder.*', 'hmmsearch'))
+
+        if not hmmsearch_table_paths:
+            # the files AMRFinderPlus left behind are of no use without the hmmsearch table
+            if not anvio.DEBUG:
+                shutil.rmtree(temp_dir_path)
+
+            raise ConfigError("Anvi'o tried to extract the e-values of your HMM hits from the temporary hmmsearch "
+                              "table AMRFinderPlus usually leaves behind but could not find it :/ That's not a big "
+                              "problem if you can live without these e-values. The AMRFinderPlus database contains "
+                              "manually curated thresholds for reliable identification and you shouldn't need to "
+                              "worry about that. We don't know why anvi'o couldn't find the file, but maybe there "
+                              "was a recent AMRFinderPlus update and the program no longer generates the temporary "
+                              "directory with this information. To nevertheless annotate your genes with "
+                              "AMRFinderPlus, simply run the program again with the flag `--skip-e-values` to store "
+                              "all AMRFinderPlus annotations with an e-value of 0.")
+
         hmm_hits = {}
-        if not self.skip_e_values:
-            hmmsearch_table_paths = glob.glob(os.path.join(temp_dir_path, 'amrfinder.*', 'hmmsearch'))
+        with open(hmmsearch_table_paths[0]) as hmmsearch_table:
+            for line in hmmsearch_table:
+                if not line.startswith('#'):
+                    fields = line.split()
+                    hmm_hits[(fields[0], fields[3])] = {'e_value': float(fields[4]), 'bit_score': float(fields[5])}
 
-            if not hmmsearch_table_paths:
-                # the files AMRFinderPlus left behind are of no use without the hmmsearch table
-                if not anvio.DEBUG:
-                    shutil.rmtree(temp_dir_path)
+        return hmm_hits
 
-                raise ConfigError("Anvi'o tried to extract the e-values of your HMM hits from the temporary hmmsearch "
-                                  "table AMRFinderPlus usually leaves behind but could not find it :/ That's not a big "
-                                  "problem if you can live without these e-values. The AMRFinderPlus database contains "
-                                  "manually curated thresholds for reliable identification and you shouldn't need to "
-                                  "worry about that. We don't know why anvi'o couldn't find the file, but maybe there "
-                                  "was a recent AMRFinderPlus update and the program no longer generates the temporary "
-                                  "directory with this information. To nevertheless annotate your genes with "
-                                  "AMRFinderPlus, simply run the program again with the flag `--skip-e-values` to store "
-                                  "all AMRFinderPlus annotations with an e-value of 0.")
 
-            with open(hmmsearch_table_paths[0]) as hmmsearch_table:
-                for line in hmmsearch_table:
-                    if not line.startswith('#'):
-                        fields = line.split()
-                        hmm_hits[(fields[0], fields[3])] = {'e_value': float(fields[4]), 'bit_score': float(fields[5])}
+    def store_hits(self, amrfinder_hits, hmm_hits):
+        """Store AMRFinderPlus hits as functions in the contigs-db, and record the database version.
+
+        Parameters
+        ==========
+        amrfinder_hits : dict
+            The AMRFinderPlus output table, one entry per hit
+        hmm_hits : dict
+            E-values and bit scores of HMM hits (see `get_hmm_hits`)
+        """
 
         functions_dict = {}
         for hit in amrfinder_hits.values():
@@ -299,23 +360,30 @@ class AMRFinder(object):
         contigs_db.db.set_meta_value('amrfinder_db_version', self.db_version)
         contigs_db.disconnect()
 
-        if self.full_report_path:
-            # the curated HMM cutoffs (the full sequence bit score thresholds, TC1) are in the AMRFinderPlus database
-            families = utils.get_TAB_delimited_file_as_dictionary(os.path.join(self.database_path, 'fam.tsv'))
-            hmm_cutoffs = {family['hmm_id']: family['hmm_tc1'] for family in families.values()}
 
-            for hit in amrfinder_hits.values():
-                hmm_hit = hmm_hits.get((hit['Protein id'], hit['HMM accession']))
-                hit['HMM e-value'] = hmm_hit['e_value'] if hmm_hit else 'NA'
-                hit['HMM bit score'] = hmm_hit['bit_score'] if hmm_hit else 'NA'
-                hit['HMM cutoff'] = hmm_cutoffs.get(hit['HMM accession'], 'NA')
+    def write_full_report(self, amrfinder_output_path, amrfinder_hits, hmm_hits):
+        """Write the AMRFinderPlus output table with the HMM e-value, bit score, and curated cutoff of each hit.
 
-            headers = utils.get_columns_of_TAB_delim_file(amrfinder_output_path, include_first_column=True) + ['HMM e-value', 'HMM bit score', 'HMM cutoff']
-            utils.store_dict_as_TAB_delimited_file(amrfinder_hits, self.full_report_path, headers=['entry'] + headers, do_not_write_key_column=True)
-            self.run.info('Full AMRFinderPlus report', self.full_report_path)
+        Parameters
+        ==========
+        amrfinder_output_path : str
+            Path to the AMRFinderPlus output table, which gives the column order
+        amrfinder_hits : dict
+            The AMRFinderPlus output table, one entry per hit
+        hmm_hits : dict
+            E-values and bit scores of HMM hits (see `get_hmm_hits`)
+        """
 
-        if anvio.DEBUG:
-            self.run.warning(f"You included the `--debug` flag and anvi'o will keep the temporary directory "
-                             f"'{temp_dir_path}'. Please don't forget to clean it up later.", header="Debug")
-        else:
-            shutil.rmtree(temp_dir_path)
+        # the curated HMM cutoffs (the full sequence bit score thresholds, TC1) are in the AMRFinderPlus database
+        families = utils.get_TAB_delimited_file_as_dictionary(os.path.join(self.database_path, 'fam.tsv'))
+        hmm_cutoffs = {family['hmm_id']: family['hmm_tc1'] for family in families.values()}
+
+        for hit in amrfinder_hits.values():
+            hmm_hit = hmm_hits.get((hit['Protein id'], hit['HMM accession']))
+            hit['HMM e-value'] = hmm_hit['e_value'] if hmm_hit else 'NA'
+            hit['HMM bit score'] = hmm_hit['bit_score'] if hmm_hit else 'NA'
+            hit['HMM cutoff'] = hmm_cutoffs.get(hit['HMM accession'], 'NA')
+
+        headers = utils.get_columns_of_TAB_delim_file(amrfinder_output_path, include_first_column=True) + ['HMM e-value', 'HMM bit score', 'HMM cutoff']
+        utils.store_dict_as_TAB_delimited_file(amrfinder_hits, self.full_report_path, headers=['entry'] + headers, do_not_write_key_column=True)
+        self.run.info('Full AMRFinderPlus report', self.full_report_path)
