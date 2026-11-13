@@ -28,9 +28,10 @@ def make_coverage(G, regions):
     return coverage
 
 
-def get_stats(coverage, N, w=None, pct=None, min_w=None, max_w=None, alpha=0.5, formula='geometric'):
+def get_stats(coverage, N, w=None, pct=None, min_w=None, max_w=None, alpha=0.5, formula='geometric', min_reads=0):
     return utils.CoverageStats(coverage, skip_outliers=True, discov_window_length=w, discov_window_percentage=pct,
                                discov_min_window_len=min_w, discov_max_window_len=max_w, discov_alpha=alpha, discov_formula=formula,
+                               discov_min_reads=min_reads,
                                num_reads=N, report_discov=True)
 
 
@@ -48,7 +49,7 @@ def check(label, observed, expected, tol=1e-9):
     assert passed, f"{label}: observed {observed}, expected {expected}"
 
 
-def check_all(stats, expected):
+def check_all(stats, expected, context=None):
     for attribute, label in [('num_windows', 'num windows'),
                              ('prop_win_covered', 'S'),
                              ('spread_expected', 'S_exp'),
@@ -58,7 +59,7 @@ def check_all(stats, expected):
                              ('spread_evenness_score', 'C'),
                              ('discov', 'discov')]:
         if attribute in expected:
-            check(label, getattr(stats, attribute), expected[attribute])
+            check(f"{label} ({context})" if context else label, getattr(stats, attribute), expected[attribute])
 
 
 def expected_C(S_norm, E, formula, alpha=0.5):
@@ -68,13 +69,15 @@ def expected_C(S_norm, E, formula, alpha=0.5):
     return S_norm ** alpha * E ** (1 - alpha)
 
 
-def check_formulas(get_stats_for, S_norm, E, D, alpha=0.5, show_alpha=False):
+def check_formulas(get_stats_for, S_norm, E, D, alpha=0.5, show_alpha=False, context=None):
     """Checks C and discov for both formulas. get_stats_for(formula) returns a CoverageStats object"""
 
     for formula in ['linear', 'geometric']:
         stats = get_stats_for(formula)
         C = expected_C(S_norm, E, formula, alpha)
         label = f"{formula}, alpha = {alpha}" if show_alpha or alpha != 0.5 else formula
+        if context:
+            label = f"{label}, {context}"
         check(f"C ({label})", stats.spread_evenness_score, C)
         check(f"discov ({label})", stats.discov, min(1.0, C + D ** 2))
 
@@ -346,6 +349,33 @@ check("num windows (maximum 300)", get_stats(coverage, N=200, pct=50, max_w=300)
 check_formulas(lambda formula: get_stats(coverage, N=200, pct=50, max_w=300, formula=formula), S_norm=1.0, E=1.0, D=1.0)
 check("num windows (maximum 5000)", get_stats(coverage, N=200, pct=50, max_w=5000).num_windows, 2)
 check("num windows (minimum 100, maximum 300)", get_stats(coverage, N=200, pct=50, min_w=100, max_w=300).num_windows, 14)
+
+#########################################
+
+test("Minimum number of mapped reads",
+     "G = 10,000 with w = 1,000, and 4 reads of 100 bp each landing in separate windows (N = 4, B = 400). Without a "
+     "read threshold, S = 4 / 10 = 0.4 and S_exp = 1 - e^(-(400 + 4,000) / 10,000) = 1 - e^(-0.44), so S_norm = "
+     "min(1, 0.4 / S_exp), and E = 1 because all covered windows have the same mean coverage. With the threshold "
+     "of 10 reads, S_norm and E are set to 0 (while S and S_exp are still reported), so C = 0 and discov = D^2 with "
+     "both formulas. With the threshold at exactly N = 4, S_norm and E are computed as usual.")
+
+coverage = make_coverage(10000, [(0, 100, 1), (2000, 2100, 1), (5000, 5100, 1), (8000, 8100, 1)])
+S_exp_few = 1 - math.exp(-0.44)
+S_norm_few = min(1, 0.4 / S_exp_few)
+D_few = 400 / 10000
+
+for min_reads, context, S_norm, E in [(0, 'no read threshold', S_norm_few, 1.0),
+                                      (10, 'min reads = 10', 0.0, 0.0),
+                                      (4, 'min reads = 4', S_norm_few, 1.0)]:
+    check_all(get_stats(coverage, N=4, w=1000, min_reads=min_reads), {'num_windows': 10,
+                                                                      'prop_win_covered': 0.4,
+                                                                      'spread_expected': S_exp_few,
+                                                                      'spread_norm': S_norm,
+                                                                      'window_depth_evenness': E,
+                                                                      'detection': D_few},
+              context=context)
+    check_formulas(lambda formula: get_stats(coverage, N=4, w=1000, min_reads=min_reads, formula=formula),
+                   S_norm=S_norm, E=E, D=D_few, context=context)
 
 #########################################
 
