@@ -1373,10 +1373,11 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
             self.run.info('Discov window length', bin_wlen if bin_wlen else f"{bin_wpct}% of sequence")
             if bin_wpct:
                 self.run.info('Minimum window length', minlen)
-                self.run.info('Maximum window length', maxlen)
+                self.run.info('Maximum window length', maxlen if maxlen else 'no limit')
         else:
             self.run.info('Discov window length (bins)', f"{bin_wlen} bp")
-            self.run.info('Discov window length (contigs)', f"{contig_wpct}% of sequence, min {contig_minlen} bp, max {contig_maxlen} bp")
+            contig_max_info = f"max {contig_maxlen} bp" if contig_maxlen else "no maximum limit"
+            self.run.info('Discov window length (contigs)', f"{contig_wpct}% of sequence, min {contig_minlen} bp, {contig_max_info}")
         self.run.info('Discov alpha value', self.discov_alpha)
         self.run.info('Discov formula', self.discov_formula)
         self.run.info('Minimum number of mapped reads for full discov calculation', self.discov_min_reads)

@@ -428,7 +428,7 @@ class BAMProfilerQuick:
             self.run.info('Discov window length', self.window_length if self.window_length else f"{self.window_length_as_percentage}% of sequence")
             if self.window_length_as_percentage:
                 self.run.info('Minimum window length', self.min_window_length)
-                self.run.info('Maximum window length', self.max_window_length)
+                self.run.info('Maximum window length', self.max_window_length if self.max_window_length else 'no limit')
             self.run.info('Discov alpha value', self.alpha)
             self.run.info('Discov formula', self.discov_formula)
             self.run.info('Minimum number of mapped reads for full discov calculation', self.discov_min_reads)

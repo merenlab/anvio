@@ -117,7 +117,8 @@ def get_args():
                         f"--window-length-as-percentage to ensure that percentage-based window lengths never exceed this value. "
                         f"This prevents very long sequences (such as large contigs or concatenated genomes) from producing windows "
                         f"that are too large to be informative. Whenever percentage-based windows are used, this parameter is set "
-                        f"by default to {MAX_WLEN_DEFAULT}."}))
+                        f"by default to {MAX_WLEN_DEFAULT}. Set it to 0 if you want percentage-based window lengths to be "
+                        f"unbounded (i.e., no maximum)."}))
     groupE.add_argument(*anvio.A('alpha'), **anvio.K('alpha'))
     groupE.add_argument(*anvio.A('discov-formula'), **anvio.K('discov-formula'))
     groupE.add_argument(*anvio.A('discov-min-reads'), **anvio.K('discov-min-reads'))

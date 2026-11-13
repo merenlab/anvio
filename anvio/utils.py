@@ -535,7 +535,7 @@ def validate_discov_params(window_length, window_length_as_percentage, min_windo
     min_window_length : int or None
         Minimum window length when using window_length_as_percentage.
     max_window_length : int or None
-        Maximum window length when using window_length_as_percentage. When either the minimum or the maximum
+        Maximum window length when using window_length_as_percentage. 0 means no maximum. When either the minimum or the maximum
         is None, the default from constants.py is used in its place to check that the minimum is not larger than
         the maximum, since callers apply those defaults to percentage-based windows.
     alpha : float
@@ -573,15 +573,16 @@ def validate_discov_params(window_length, window_length_as_percentage, min_windo
     if window_length and max_window_length:
         raise ConfigError("The --max-window-length is only relevant when using the --window-length-as-percentage option.")
 
-    if max_window_length is not None and max_window_length <= 0:
-        raise ConfigError("The --max-window-length parameter has to be a positive integer.")
+    if max_window_length and max_window_length < 0:
+        raise ConfigError("The --max-window-length parameter has to be a positive integer (or 0, if you want "
+                          "percentage-based window lengths to be unbounded).")
 
     if not window_length:
         default_min = constants.discov_default_contig_min_window_length
         default_max = constants.discov_default_contig_max_window_length
         effective_min_window_length = min_window_length if min_window_length is not None else default_min
         effective_max_window_length = max_window_length if max_window_length is not None else default_max
-        if effective_min_window_length > effective_max_window_length:
+        if effective_max_window_length and effective_min_window_length > effective_max_window_length:
             raise ConfigError(f"The minimum window length for discov ({effective_min_window_length}) cannot be larger than "
                               f"the maximum window length ({effective_max_window_length}). Please note that whenever "
                               f"percentage-based windows are used, anvi'o sets a default minimum of {default_min} and a "
@@ -659,7 +660,7 @@ class CoverageStats:
         Specifies the minimum window length when discov_window_percentage is used. If None is passed, it will
         be converted to 0
     discov_max_window_len : int, None
-        Specifies the maximum window length when discov_window_percentage is used. If None is passed, the
+        Specifies the maximum window length when discov_window_percentage is used. If None or 0 is passed, the
         percentage-based window length is not capped
     discov_alpha : float
         A value in [0,1] that indicates how much to weight S over E in the discov score
