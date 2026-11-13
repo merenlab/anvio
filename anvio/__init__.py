@@ -4460,6 +4460,14 @@ D = {
              'metavar': 'INTEGER',
              'help': "Use with --window-length-as-percentage to ensure that percentage-based window lengths never fall below this value."}
     ),
+    'max-window-length': (
+            ['--max-window-length'],
+            {'default': None,
+             'type': int,
+             'metavar': 'INTEGER',
+             'help': "Use with --window-length-as-percentage to ensure that percentage-based window lengths never exceed this value. "
+                     "Set it to 0 if you want percentage-based window lengths to be unbounded (i.e., no maximum)."}
+    ),
     'alpha': (
             ['--alpha'],
             {'default': 0.5,
@@ -4475,6 +4483,18 @@ D = {
              'metavar': 'STRING',
              'help': "Which formula to use when combining S and E into the spread-evenness score (C) that underlies the "
                      "discov score. Options are 'linear' (C = αS + (1-α)E) and 'geometric' (C = S^α * E^(1-α)). The "
+                     "default is '%(default)s'."}
+    ),
+    'discov-min-reads': (
+            ['--discov-min-reads'],
+            {'default': constants.discov_default_min_reads,
+             'type': int,
+             'metavar': 'INTEGER',
+             'help': "The minimum number of reads that must map to a sequence for anvi'o to compute the normalized spread (S) "
+                     "and evenness (E) components of discov. With very few reads, there is not enough information to estimate "
+                     "either of them reliably (for instance, a handful of reads landing randomly in separate windows can "
+                     "look perfectly spread and even). For sequences with fewer mapped reads than this value, S and E are "
+                     "set to 0, so discov collapses to detection squared. Set this to 0 to always compute S and E. The "
                      "default is '%(default)s'."}
     ),
     'gen-window-level-output': (

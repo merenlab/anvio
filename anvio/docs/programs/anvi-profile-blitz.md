@@ -115,11 +115,12 @@ The default parameters are designed to work well across typical metagenomics dat
 
 **Window sizing**
 
-_S_ and _E_ are computed by dividing the input sequence into non-overlapping windows. By default, contig-level stats use a window length equal to 1%% of the contig length (minimum 300 bp). Genome/bin-level stats (when using `--collection-txt`) use a fixed 10,000 bp window. You can override these defaults with the following parameters:
+_S_ and _E_ are computed by dividing the input sequence into non-overlapping windows. By default, contig-level stats use a window length equal to 1%% of the contig length (minimum 300 bp, maximum 10,000 bp). Genome/bin-level stats (when using `--collection-txt`) use a fixed 10,000 bp window. You can override these defaults with the following parameters:
 
 * `--window-length INT` — use a fixed window size in bp for all sequences
 * `--window-length-as-percentage INT` — set window length as a percentage of each sequence's length
-* `--min-window-length INT` — set a minimum window length floor when using percentage mode
+* `--min-window-length INT` — set a minimum window length floor when using percentage mode (default: 300)
+* `--max-window-length INT` — set a maximum window length cap when using percentage mode (default: 10,000; set to 0 for no cap)
 
 **Combining _S_ and _E_**
 
@@ -129,6 +130,10 @@ You can adjust how _S_ and _E_ are combined into the spread-evenness score _C_ b
 * `--discov-formula STRING` — `geometric` (_C_ = _S_^_α_ × _E_^(1-_α_)) or `linear` (_C_ = _αS_ + (1-_α_)_E_) (default: `geometric`)
 
 The final score is discov = min(1, _C_ + _D_^2).
+
+**Sequences with few mapped reads**
+
+* `--discov-min-reads INT` — minimum number of reads mapping to a contig or bin for _S_ and _E_ to be computed. Below this threshold, normalized _S_ and _E_ are set to 0, so discov = _D_^2 (default: 10)
 
 **Window-level output**
 
