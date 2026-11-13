@@ -4484,6 +4484,18 @@ D = {
                      "discov score. Options are 'linear' (C = αS + (1-α)E) and 'geometric' (C = S^α * E^(1-α)). The "
                      "default is '%(default)s'."}
     ),
+    'discov-min-reads': (
+            ['--discov-min-reads'],
+            {'default': constants.discov_default_min_reads,
+             'type': int,
+             'metavar': 'INTEGER',
+             'help': "The minimum number of reads that must map to a sequence for anvi'o to compute the normalized spread (S) "
+                     "and evenness (E) components of discov. With very few reads, there is not enough information to estimate "
+                     "either of them reliably (for instance, a handful of reads landing randomly in separate windows can "
+                     "look perfectly spread and even). For sequences with fewer mapped reads than this value, S and E are "
+                     "set to 0, so discov collapses to detection squared. Set this to 0 to always compute S and E. The "
+                     "default is '%(default)s'."}
+    ),
     'gen-window-level-output': (
             ['--gen-window-level-output'],
             {'default': False,

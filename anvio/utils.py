@@ -523,7 +523,7 @@ def tar_extract_file(input_file_path, output_file_path=None, keep_original=True)
         os.remove(input_file_path)
 
 
-def validate_discov_params(window_length, window_length_as_percentage, min_window_length, max_window_length, alpha, discov_formula, require_window_param=True):
+def validate_discov_params(window_length, window_length_as_percentage, min_window_length, max_window_length, alpha, discov_formula, min_reads, require_window_param=True):
     """Validate distribution of coverage (discov) parameters and raise ConfigError for any invalid combination.
 
     Parameters
@@ -542,6 +542,8 @@ def validate_discov_params(window_length, window_length_as_percentage, min_windo
         Weight of S in the discov score. Must be in [0, 1].
     discov_formula : str
         Combination formula. Must be 'linear' or 'geometric'.
+    min_reads : int
+        Minimum number of mapped reads required to compute S and E. Must be a non-negative integer.
     require_window_param : bool
         When True, raise an error if neither window_length nor window_length_as_percentage
         is set. Set to False for callers (e.g. anvi-summarize) that supply context-sensitive
@@ -599,6 +601,11 @@ def validate_discov_params(window_length, window_length_as_percentage, min_windo
     if discov_formula not in ('linear', 'geometric'):
         raise ConfigError(f"The --discov-formula parameter must be either 'linear' or 'geometric', but you provided "
                           f"'{discov_formula}'. Please fix that and try again.")
+
+    if min_reads is None or min_reads < 0:
+        raise ConfigError(f"The --discov-min-reads parameter must be a non-negative integer, but you provided "
+                          f"'{min_reads}'. Please use 0 if you want S and E to be computed regardless of how many reads "
+                          f"map to a given sequence.")
 
 
 class CoverageStats:

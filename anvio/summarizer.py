@@ -150,6 +150,7 @@ class SummarizerSuperClass(object):
         self.discov_max_window_length = A('max_window_length')
         self.discov_alpha = A('alpha')
         self.discov_formula = A('discov_formula')
+        self.discov_min_reads = A('discov_min_reads') if A('discov_min_reads') is not None else constants.discov_default_min_reads
         self.output_directory = A('output_dir')
         self.quick = A('quick_summary')
         self.light_summary = A('light_summary')
@@ -213,7 +214,7 @@ class SummarizerSuperClass(object):
         if self.report_discov:
             utils.validate_discov_params(self.discov_window_length, self.discov_window_percentage,
                                          self.discov_min_window_length, self.discov_max_window_length, self.discov_alpha,
-                                         self.discov_formula, require_window_param=False)
+                                         self.discov_formula, self.discov_min_reads, require_window_param=False)
 
 
     def get_output_file_handle(self, sub_directory=None, prefix='output.txt', overwrite=False, within=None, compress_output=False, add_project_name=False):
@@ -1378,6 +1379,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
             self.run.info('Discov window length (contigs)', f"{contig_wpct}% of sequence, min {contig_minlen} bp, max {contig_maxlen} bp")
         self.run.info('Discov alpha value', self.discov_alpha)
         self.run.info('Discov formula', self.discov_formula)
+        self.run.info('Minimum number of mapped reads for full discov calculation', self.discov_min_reads)
 
         bin_level_rows = []
         contig_level_rows = []
@@ -1449,6 +1451,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                                   discov_max_window_len=contig_maxlen,
                                                   discov_alpha=self.discov_alpha,
                                                   discov_formula=self.discov_formula,
+                                                  discov_min_reads=self.discov_min_reads,
                                                   num_reads=contig_num_reads[contig_name],
                                                   report_discov=True)
                     contig_level_rows.append({'bin_name': bin_id,
@@ -1477,6 +1480,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                               discov_max_window_len=bin_maxlen,
                                               discov_alpha=self.discov_alpha,
                                               discov_formula=self.discov_formula,
+                                              discov_min_reads=self.discov_min_reads,
                                               num_reads=sum(contig_num_reads.values()),
                                               report_discov=True)
                 bin_level_rows.append({'bin_name': bin_id,

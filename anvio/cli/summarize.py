@@ -137,6 +137,7 @@ def get_args():
                                             f"{DISCOV_MAX_WLEN_DEFAULT}."}))
     groupG.add_argument(*anvio.A('alpha'), **anvio.K('alpha'))
     groupG.add_argument(*anvio.A('discov-formula'), **anvio.K('discov-formula'))
+    groupG.add_argument(*anvio.A('discov-min-reads'), **anvio.K('discov-min-reads'))
 
     groupD.add_argument(
         *anvio.A('report-DNA-sequences'),
