@@ -113,11 +113,25 @@ function get_indel_sequence_cell_html(indel) {
 function get_indel_popover_html(indel) {
   var type = (indel['type'] == 'INS') ? 'Insertion' : 'Deletion';
 
+  // a deletion that starts in an earlier split is shown in this split, but its position is in the split where it starts
+  var position_row;
+  if(indel.hasOwnProperty('starts_in_split')) {
+    position_row = '<tr><td>Starts in split</td><td>' + escape_html(indel['starts_in_split']) + '</td></tr>';
+  } else {
+    position_row = '<tr><td>Position in split</td><td>' + (indel.hasOwnProperty('pos_in_split') ? indel['pos_in_split'] : indel['pos']) + '</td></tr>';
+  }
+
+  var deleted_region_row = '';
+  if(indel['type'] == 'DEL') {
+    deleted_region_row = '<tr><td>Deleted region in contig</td><td>' + indel['pos_in_contig'] + ' - ' + (indel['pos_in_contig'] + indel['length'] - 1) + '</td></tr>';
+  }
+
   return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
           <h3>' + type + '</h3> \
           <table class="table table-striped" style="width: 100%; text-align: left; font-size: 12px;"> \
-              <tr><td>Position in split</td><td>' + indel['pos'] +'</td></tr> \
+              ' + position_row + ' \
               <tr><td>Position in contig</td><td>' + indel['pos_in_contig'] +'</td></tr> \
+              ' + deleted_region_row + ' \
               <tr><td>Reference</td><td>' + escape_html(indel['reference']) +'</td></tr> \
               <tr><td>Sequence</td><td>' + get_indel_sequence_cell_html(indel) +'</td></tr> \
               <tr><td>Type</td><td>' + type +'</td></tr> \
@@ -2283,6 +2297,27 @@ function Chart(options){
                                   .attr("pointer-events", "none");
       }
 
+      // the region a deletion removes, cut at the edges of the chart: a deletion may start in an earlier split,
+      // or extend beyond the end of this one
+      var deletion_spans = d3.entries(this.indels).filter(function(d) {
+        return d.value['type'] == 'DEL' && d.value.hasOwnProperty('span_start');
+      });
+
+      this.insertionWhiskerContainer.selectAll(".deletion_span")
+                                .data(deletion_spans)
+                                .enter()
+                                .append("line")
+                                .attr("class", "deletion_span")
+                                .attr("x1", function (d) { return Math.max(0, Math.min(chart_width, xS(d.value['span_start']))); })
+                                .attr("x2", function (d) { return Math.max(0, Math.min(chart_width, xS(d.value['span_end']))); })
+                                .attr("y1", function (d) { return ySL_indel(Math.min(d.value['count']/d.value['coverage'], 1)); })
+                                .attr("y2", function (d) { return ySL_indel(Math.min(d.value['count']/d.value['coverage'], 1)); })
+                                .attr("stroke", "#4b0055")
+                                .attr("stroke-width", "1")
+                                .attr("stroke-dasharray", "4,2")
+                                .attr("stroke-opacity", "0.85")
+                                .attr("pointer-events", "none");
+
       // add text to text container based on type, and data-content based on other variables
       info("Drawing indel markers");
       this.textContainerIndels.selectAll("text")
@@ -2365,6 +2400,9 @@ Chart.prototype.showOnly = function(b){
                                   .attr("x2", function (d) { return Math.max(0, Math.min(chart_width, xS(0.5+d.value['pos']+(d.value['length']/2)))); })
                                   .attr("y1", function (d) { return ySL_indel(Math.min(d.value['count']/d.value['coverage'], 1)); })
                                   .attr("y2", function (d) { return ySL_indel(Math.min(d.value['count']/d.value['coverage'], 1)); });
+    this.insertionWhiskerContainer.selectAll(".deletion_span")
+                                  .attr("x1", function (d) { return Math.max(0, Math.min(chart_width, xS(d.value['span_start']))); })
+                                  .attr("x2", function (d) { return Math.max(0, Math.min(chart_width, xS(d.value['span_end']))); });
 
     let numNucl = $('#brush_end').val()-$('#brush_start').val();
     let mk_font_size = 2000/numNucl;

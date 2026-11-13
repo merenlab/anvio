@@ -37,6 +37,10 @@ Similarly, if you provide a %(genomes-storage-db)s and %(pan-db)s pair, the dire
 
 You can always use the program %(anvi-show-collections-and-bins)s to learn available %(collection)s and %(bin)s names in a given %(profile-db)s or %(pan-db)s.
 
+### Deletions at the edges of a bin
+
+A deletion is reported in the split where it starts, and it may extend into the splits that follow (see %(variability-profile)s). When a %(bin)s holds only some of the splits of a contig, a deletion may start or end in a split that is not in the %(bin)s. In that case, the split %(profile-db)s reports the part of the deletion that falls in the %(bin)s, in the split where that part starts: a deletion that runs past the end of the %(bin)s is shortened, and a deletion that starts before the %(bin)s is reported from the first position of the %(bin)s, with the coverage and gene information of that position. A deletion that stays within consecutive splits of the %(bin)s is reported whole, just like in the original %(profile-db)s. If you need the deletions as they were in the original profile, use the original %(profile-db)s.
+
 ### Performance
 
 For extremely large datasets, splitting bins may be difficult. For metagenomics projets you can,
