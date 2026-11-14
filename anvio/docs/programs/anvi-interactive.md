@@ -115,6 +115,10 @@ The same window also shows a 'Sequences' section that lists the sequence of each
 
 If your sequences are not already aligned, you can check the box "Align sequences before showing them" in the Bins panel (it is unchecked by default). When it is checked, anvi'o aligns the sequences in the bin with its default aligner (any gap characters in your FASTA file are removed first), so their columns line up and odd sequences are easier to spot. In this case the FASTA you copy to your clipboard will contain the aligned sequences. Please keep in mind that aligning many or very long sequences may take a while. Aligned sequences are colored the same way %(anvi-display-pan)s colors the amino acid sequences of gene clusters (which is designed for amino acids, so colors will not mean much for nucleotide sequences), unless there are so many residues that coloring them would make the interface sluggish.
 
+### Getting a new FASTA file after curating bins
+
+In manual mode with a FASTA file, the Bins panel also offers to download a copy of the input FASTA either *excluding* the sequences in your bins, or *only* with the sequences in your bins. Clicking either of these buttons opens a window where you can select the bins to consider and change the name of the new file, which your browser will save like any other download. The new FASTA file reflects your bins as they are in the interface at that moment (whether you stored them in a collection or not), and its sequences appear in the same order and with the same deflines as in the input FASTA file. Entries in the input FASTA that do not appear in your display are kept when you exclude sequences in bins (since they can't be in a bin).
+
 If/when you provide a FASTA file to %(anvi-interactive)s, the combination of displaying sequences (with the option to align them on-the-fly) AND being able to move them around or mark them for deletion by adding unruly sequences to specific bins, becomes an extremely powerful way to manually curate your phylogenetic trees.
 
 ## Extending anvi'o displays
