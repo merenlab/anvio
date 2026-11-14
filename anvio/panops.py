@@ -85,9 +85,8 @@ class ComparePan:
 
     Note
     ----
-    This class writes item additional data to BOTH pan databases: gene cluster type
-    classifications are added to both the primary and compared pan-dbs so that each
-    database is self-contained when opened with anvi-display-pan.
+    This class writes item additional data to the primary pan-db only. The compared
+    pan-db is read, but never modified.
     """
 
     def __init__(self, args, run=run, progress=progress):
@@ -453,8 +452,8 @@ class ComparePan:
         """
         num_genomes = self.pan.p_meta['num_genomes']
 
-        self.pan_gc_types = Pangenome.classify_gene_cluster_types(self.pan.gene_clusters, num_genomes)
-        self.compared_gc_types = Pangenome.classify_gene_cluster_types(self.compared_pan.gene_clusters, num_genomes)
+        self.pan_gc_types = PangenomeBase.classify_gene_cluster_types(self.pan.gene_clusters, num_genomes)
+        self.compared_gc_types = PangenomeBase.classify_gene_cluster_types(self.compared_pan.gene_clusters, num_genomes)
 
 
     def add_cluster_composition_metrics(self):
@@ -1140,7 +1139,19 @@ class RarefactionAnalysis:
         return (self.k, self.alpha)
 
 
-class Pangenome(object):
+class PangenomeBase(object):
+    """Machinery shared by every program that turns a gene clusters dictionary into a pan-db.
+
+    Subclasses decide where gene clusters come from: `Pangenome` computes them from amino acid
+    sequences (or takes them from a gene-clusters-txt), and `StructurePangenome` merges the gene
+    clusters of an existing pangenome into protein structure-informed gene clusters. This class then
+    populates the pan-db with views, item and layer additional data, alignments, homogeneity indices,
+    and item orders.
+    """
+
+    # the program users run, for messages
+    program_name = None
+
     def __init__(self, args=None, run=run, progress=progress):
         self.args = args
         self.run = run
@@ -1153,49 +1164,17 @@ class Pangenome(object):
         self.genomes_storage_path = A('genomes_storage')
         self.project_name = A('project_name')
         self.num_threads = A('num_threads')
-        self.user_defined_gene_clusters = A('gene_clusters_txt')
         self.skip_alignments = A('skip_alignments')
         self.skip_homogeneity = A('skip_homogeneity')
         self.quick_homogeneity = A('quick_homogeneity')
         self.align_with = A('align_with')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.debug = anvio.DEBUG
-        self.min_percent_identity = A('min_percent_identity')
-        self.gene_cluster_min_occurrence = A('min_occurrence')
-        self.mcl_inflation = A('mcl_inflation')
-        self.minbit = A('minbit')
-        self.use_ncbi_blast = A('use_ncbi_blast')
-        self.exclude_partial_gene_calls = A('exclude_partial_gene_calls')
+        self.gene_cluster_min_occurrence = A('min_occurrence') or 1
         self.description_file_path = A('description')
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
         self.enforce_hierarchical_clustering = A('enforce_hierarchical_clustering')
         self.enforce_the_analysis_of_excessive_number_of_genomes = anvio.USER_KNOWS_IT_IS_NOT_A_GOOD_IDEA
-
-        self.pan_mode = A('pan_mode') or constants.pangenome_mode_default
-        self.foldseek_search_results_output_file = A('foldseek_search_results')
-        self.structures_txt_path = A('structures_txt')
-        self.min_tm_score = A('min_tm_score')
-        self.de_novo_gene_clusters_dict = None
-        self.skip_sequence_pan = A('skip_sequence_pan')
-        self.conventional_pan_db_path = None
-
-        self.additional_params_for_seq_search = A('additional_params_for_seq_search')
-        self.additional_params_for_seq_search_processed = False
-
-        if not self.project_name:
-            raise ConfigError("Please set a project name using --project-name or -n.")
-
-        # next, we figure out where to keep the intermediate data files
-        user_pan_db_path = A('output_file') or A('pan_db')
-        if user_pan_db_path:
-            if not user_pan_db_path.endswith('-PAN.db'):
-                raise ConfigError("Sorry. The output file names for anvi'o pan-db artifats must end with '-PAN.db'. No exceptions, no exclusions, "
-                                  "no creative interpretations. Anvi'o: freedom in data analyses, tyranny in output file suffixes ✊")
-            self.pan_db_path = user_pan_db_path
-        else:
-            # if the user did not specify an output directory for the pan-db, just put it next to the genomes storage
-            # file with a name that includes the project name.
-            self.pan_db_path = os.path.join(os.path.dirname(self.genomes_storage_path), self.project_name + '-PAN.db')
 
         # only to keep intermediate data files
         self.intermediate_data_dir = None
@@ -1221,15 +1200,103 @@ class Pangenome(object):
         self.additional_view_data = {}
         self.aligner = None
 
-        # this is to fill a table that will only be relevant in structure mode.
-        self.gc_psgc_associations = []
-
         # we don't know what we are about
         self.description = None
 
-        # quick accession variables to mode
-        self.STRUCTURE_MODE = False if self.pan_mode == constants.pangenome_mode_default else True
-        self.SEQUENCE_MODE = not self.STRUCTURE_MODE
+
+    def setup_intermediate_data_dir_and_log_file(self):
+        try:
+            filesnpaths.is_file_exists(self.intermediate_data_dir)
+        except FilesNPathsError:
+            filesnpaths.gen_output_directory(self.intermediate_data_dir, delete_if_exists=self.overwrite_output_destinations)
+
+        filesnpaths.is_output_dir_writable(self.intermediate_data_dir)
+
+        if not self.log_file_path:
+            self.log_file_path = self.get_output_file_path('log.txt')
+
+        filesnpaths.is_output_file_writable(self.log_file_path)
+        os.remove(self.log_file_path) if os.path.exists(self.log_file_path) else None
+
+
+    def check_genomes_and_alignment_params(self):
+        if not isinstance(self.genomes, type({})):
+            raise ConfigError("self.genomes must be a dict. Anvi'o needs an adult :(")
+
+        if len(self.genomes) < 2:
+            raise ConfigError("There must be at least two genomes for this workflow to work. You have like '%d' of them :/"
+                    % len(self.genomes))
+
+        if len(self.genomes) > 100:
+            if self.enforce_the_analysis_of_excessive_number_of_genomes:
+                self.run.warning(f"Because you asked for it, anvi'o WILL analyze your {pp(len(self.genomes))} genomes. Perhaps it will "
+                                 f"fail, but it will fail while trying.", header="YOU HAVE USED YOUR AUTHORITY ⚔️")
+            else:
+                raise ConfigError(f"Sorry for making you wait this long to tell you this, but you have a total of {pp(len(self.genomes))} "
+                                  f"genomes to process, and anvi'o may not be the best platform to do that. The anvi'o pangenomics workflow "
+                                  f"is designed for interactive and in-depth investigations of microbial pangenomes. While one can "
+                                  f"certainly perform an in-depth investigation of their {pp(len(self.genomes))} genomes by turning them "
+                                  f"into a pangenome, they will unlikely manage to do it with anvi'o with more than about 100 genomes. "
+                                  f"We can't stop you if you insist running a pangenomic analyses on your genomes ANYWAY. For instance, "
+                                  f"you can easily force anvi'o to start the analysis using the flag `--I-know-this-is-not-a-good-idea`. "
+                                  f"But by using that flag, you will be forfeiting your privilege to complain to anvi'o developers if "
+                                  f"something goes wrong with your analyses :)")
+
+        if self.skip_alignments and self.align_with:
+            raise ConfigError("You are asking anvi'o to skip aligning sequences within your gene clusters, and then you "
+                              "are also asking it to use '%s' for aligning sequences within your gene clusters. It is easy "
+                              "to ignore this and skip the alignment, but anvi'o gets nervous when it realizes her users are "
+                              "being inconsistent. Please make up your mind, and come back as the explicit person you are"
+                                                                            % self.align_with)
+
+
+    def report_unsuccessful_alignments(self, gene_clusters_dict, unsuccessful_alignments):
+        if not len(unsuccessful_alignments):
+            return
+
+        if anvio.DEBUG:
+           self.run.warning(f"The alignment of sequences failed for {len(unsuccessful_alignments)} of the total {len(gene_clusters_dict)} "
+                            f"gene clusters anvi'o identified in your pangenome, and you can find the FASTA files for them in your logs "
+                            f"above. SAD DAY FOR EVERYONE.", header="GENE CLUSTERS SEQUENCE ALIGNMENT WARNING")
+        else:
+           self.run.warning(f"SOME BAD NEWS :/ The alignment of sequences failed for {len(unsuccessful_alignments)} of the total "
+                            f"{len(gene_clusters_dict)} gene clusters anvi'o identified in your pangenome :/ This often happens "
+                            f"when you have extremely long genes (often due to improper gene calling across scaffolds) or gene "
+                            f"clusters with extremely large number of genes (often happens with transposons or other mobile elements). "
+                            f"This is not the end of the world, since most things will continue to work. But you will be missing some "
+                            f"things for these gene clusters, including gene cluster functional and geometric homogeneity calculations "
+                            f"(which will have the value of `-1` to help you parse them out later in your downstream analyses). Even "
+                            f"the gene clusters failed at the alignment step will show up in all your downstream analyses. But the fact "
+                            f"that some of your gene clusters will not have any alignments may affect your science downstream depending "
+                            f"on what you wish to do with them (if you are not sure, come to anvi'o Discord, and tell us about what you "
+                            f"want to do with your pangenome so we can discuss more). Additionally, if you would like to see what is going "
+                            f"wrong with those gene clusters that are not aligned well, you can re-run the program with the `--debug` "
+                            f"flag, upon which anvi'o will anvi'o will store all the sequences in gene clusters that filed to align "
+                            f"into temporary FASTA files and will print out their locations. Here is the name of those gene clusters: "
+                            f"{', '.join(unsuccessful_alignments)}.", header="GENE CLUSTERS SEQUENCE ALIGNMENT WARNING")
+
+
+    def warn_if_too_much_data(self, gene_clusters_dict):
+        if len(gene_clusters_dict) > 20000 or len(self.genomes) > 150:
+            if len(gene_clusters_dict) > 20000 and len(self.genomes) > 150:
+                _ = "gene clusters and genomes"
+            elif len(gene_clusters_dict) > 20000:
+                _ = "gene clusters"
+            else:
+                _ = "genomes"
+
+            self.run.warning(f"It seems you have a lot of {_} in this pan database :) It is all good! But please be aware that you may "
+                             f"run into performance issues when you try to interactively visaulize these data using `anvi-display-pan`. "
+                             f"In some cases it may even be impossible to do it, in fact. This is largely because the part of the "
+                             f"anvi'o workflow to offer interactive access to a pangenomes is not designed to accommodate very"
+                             f" large number of {_}, but rather enable in-depth exploratory analyses of pangenomes interactively. You still "
+                             f"can work with large pangenomes via the command line utilities and do a lot of science with them. If you "
+                             f"are unable to work with the interactive interface and it is critical for you, you have multiple options, "
+                             f"You can use the `--min-occurrence` flag to reduce the number of gene clusters, or use the program "
+                             f"`anvi-dereplicate-genomes` in an attempt to reduce the number of redundant genomes in your analysis. "
+                             f"If you are unsure what would be the best game plan for you, you can consider coming to the anvi'o Discord "
+                             f"channel and consult the opinion of the anvi'o community. Despite all these, it is still a good idea to run "
+                             f"`anvi-display-pan` and see what it says first.", lc="cyan", header="FRIENDLY WARNING")
 
 
     def cleanup(self):
@@ -1241,23 +1308,24 @@ class Pangenome(object):
             if anvio.DEBUG:
                 self.run.info_single(f"The intermediate data at {self.intermediate_data_dir} is kept because of the `--debug` flag. "
                                      f"You can inspect these data, or re-use them with the `--intermediate-data-dir` parameter with "
-                                     f"`anvi-pan-genome`.", level=0, nl_after=2, mc='cyan')
+                                     f"`{self.program_name}`.", level=0, nl_after=2, mc='cyan')
             elif self.intermediate_data_dir and os.path.exists(self.intermediate_data_dir):
                 self.run.info_single(f"'{self.intermediate_data_dir}', the intermediate data directory anvi'o used for this analysis, "
                                      f"is now being cleaned up. But you *could* keep it for any reason, such as wanting to debug anvi'o, "
-                                     f"or to re-run `anvi-pan-genome` with different parameters using the same search results by simply "
+                                     f"or to re-run `{self.program_name}` with different parameters using the same search results by simply "
                                      f"defining an explicit output directory path for intermediate data files using the very aptly named "
                                      f"parameter `--intermediate-data-dir`. All is good, but just FYI.", level=0, nl_after=2, mc='cyan')
                 import shutil
                 shutil.rmtree(self.intermediate_data_dir)
         else:
             self.run.info_single(f"No cleanup! The intermediate data at {self.intermediate_data_dir} is available for you to re-run the "
-                                 f"`anvi-pan-genome` with the `--intermediate-data-dir` parameter.", level=0, nl_after=2, mc='cyan')
+                                 f"`{self.program_name}` with the `--intermediate-data-dir` parameter.", level=0, nl_after=2, mc='cyan')
 
 
     def load_genomes(self):
-        # genome_name parameter can be a file or comma seperated genome names.
-        if self.genome_names_to_focus:
+        # genome_name parameter can be a file or comma seperated genome names. a list means the
+        # genome names come from somewhere else than the user (e.g., an input pan-db).
+        if self.genome_names_to_focus and isinstance(self.genome_names_to_focus, str):
             if filesnpaths.is_file_exists(self.genome_names_to_focus, dont_raise=True):
                 self.genome_names_to_focus = utils.get_column_data_from_TAB_delim_file(self.genome_names_to_focus, column_indices=[0], expected_number_of_fields=1)[0]
             else:
@@ -1276,70 +1344,6 @@ class Pangenome(object):
             self.hash_to_genome_name[self.genomes[genome_name]['genome_hash']] = genome_name
 
 
-    def generate_pan_db(self):
-        meta_values = {'internal_genome_names': ','.join(self.internal_genome_names),
-                       'external_genome_names': ','.join(self.external_genome_names),
-                       'num_genomes': len(self.genomes),
-                       'min_percent_identity': self.min_percent_identity,
-                       'gene_cluster_min_occurrence': self.gene_cluster_min_occurrence,
-                       'mcl_inflation': self.mcl_inflation,
-                       'user_provided_gene_clusters_txt': True if self.user_defined_gene_clusters else False,
-                       'default_view': 'gene_cluster_presence_absence',
-                       'use_ncbi_blast': self.use_ncbi_blast,
-                       'additional_params_for_seq_search': self.additional_params_for_seq_search,
-                       'minbit': self.minbit,
-                       'exclude_partial_gene_calls': self.exclude_partial_gene_calls,
-                       'gene_alignments_computed': False if self.skip_alignments else True,
-                       'genomes_storage_hash': self.genomes_storage.get_storage_hash(),
-                       'project_name': self.project_name,
-                       'items_ordered': False,
-                       'reaction_network_ko_annotations_hash': None,
-                       'reaction_network_kegg_database_release': None,
-                       'reaction_network_modelseed_database_sha': None,
-                       'reaction_network_consensus_threshold': None,
-                       'reaction_network_discard_ties': None,
-                       'description': self.description if self.description else '_No description is provided_',
-                      }
-
-        filesnpaths.is_output_file_writable(self.pan_db_path, ok_if_exists=False)
-
-        dbops.PanDatabase(self.pan_db_path, quiet=False).create(meta_values, db_variant=self.pan_mode)
-
-        # know thyself.
-        self.args.pan_db = self.pan_db_path
-
-
-    def generate_conventional_pan_db(self):
-        """Generate a conventional sequence-based pan-db alongside the structure pan-db."""
-        meta_values = {'internal_genome_names': ','.join(self.internal_genome_names),
-                       'external_genome_names': ','.join(self.external_genome_names),
-                       'num_genomes': len(self.genomes),
-                       'min_percent_identity': self.min_percent_identity,
-                       'gene_cluster_min_occurrence': self.gene_cluster_min_occurrence,
-                       'mcl_inflation': self.mcl_inflation,
-                       'user_provided_gene_clusters_txt': True if self.user_defined_gene_clusters else False,
-                       'default_view': 'gene_cluster_presence_absence',
-                       'use_ncbi_blast': self.use_ncbi_blast,
-                       'additional_params_for_seq_search': self.additional_params_for_seq_search,
-                       'minbit': self.minbit,
-                       'exclude_partial_gene_calls': self.exclude_partial_gene_calls,
-                       'gene_alignments_computed': False if self.skip_alignments else True,
-                       'genomes_storage_hash': self.genomes_storage.get_storage_hash(),
-                       'project_name': self.project_name,
-                       'items_ordered': False,
-                       'reaction_network_ko_annotations_hash': None,
-                       'reaction_network_kegg_database_release': None,
-                       'reaction_network_modelseed_database_sha': None,
-                       'reaction_network_consensus_threshold': None,
-                       'reaction_network_discard_ties': None,
-                       'description': self.description if self.description else '_No description is provided_',
-                      }
-
-        filesnpaths.is_output_file_writable(self.conventional_pan_db_path, ok_if_exists=False)
-
-        dbops.PanDatabase(self.conventional_pan_db_path, quiet=False).create(meta_values, db_variant=constants.PAN_SEQUENCE_MODE)
-
-
     def get_output_file_path(self, file_name, delete_if_exists=False):
         output_file_path = os.path.join(self.intermediate_data_dir, file_name)
 
@@ -1348,20 +1352,6 @@ class Pangenome(object):
                 os.remove(output_file_path)
 
         return output_file_path
-
-
-    def check_programs(self):
-        if self.use_ncbi_blast:
-            utils.is_program_exists('blastp')
-        else:
-            utils.is_program_exists('diamond')
-
-        utils.is_program_exists('mcl')
-
-        if not self.skip_alignments:
-            # instantiating the aligner here is what makes anvi'o complain about a missing or
-            # unsupported alignment program at the very beginning of the analysis.
-            aligners.select(self.align_with, quiet=True)()
 
 
     def check_project_name(self):
@@ -1377,268 +1367,10 @@ class Pangenome(object):
         utils.is_this_name_OK_for_database('pan project name', self.project_name, stringent=False)
 
 
-    def check_params(self):
-        # deal with the intermediate data directory
-        try:
-            filesnpaths.is_file_exists(self.intermediate_data_dir)
-        except FilesNPathsError:
-            filesnpaths.gen_output_directory(self.intermediate_data_dir, delete_if_exists=self.overwrite_output_destinations)
-
-        filesnpaths.is_output_dir_writable(self.intermediate_data_dir)
-
-        if not self.log_file_path:
-            self.log_file_path = self.get_output_file_path('log.txt')
-
-        filesnpaths.is_output_file_writable(self.log_file_path)
-        os.remove(self.log_file_path) if os.path.exists(self.log_file_path) else None
-
-        if self.pan_mode not in constants.pangenome_modes_available:
-            raise ConfigError(f"The pangenome mode '{self.pan_mode}' is not something anvi'o recognizes :/ Something is wrong here.")
-
-        if self.STRUCTURE_MODE and self.user_defined_gene_clusters:
-            raise ConfigError("You are confusing anvi'o :/ You can't use `pan-mode --structure` and `gene_clusters_txt` at the same time."
-                                "When `structure` is active, please skip setting `gene_clusters_txt`.")
-
-        if self.user_defined_gene_clusters:
-            filesnpaths.is_gene_clusters_txt(self.user_defined_gene_clusters)
-
-        if not isinstance(self.minbit, float):
-            raise ConfigError("minbit value must be of type float :(")
-
-        if self.minbit < 0 or self.minbit > 1:
-            raise ConfigError("Well. minbit must be between 0 and 1. Yes. Very boring.")
-
-        if not isinstance(self.min_percent_identity, float):
-            raise ConfigError("Minimum percent identity value must be of type float :(")
-
-        if self.min_percent_identity < 0 or self.min_percent_identity > 100:
-            raise ConfigError("Minimum percent identity must be between 0%% and 100%%. Although your %.2f%% is "
-                              "pretty cute, too." % self.min_percent_identity)
-
-        if self.STRUCTURE_MODE:
-            try:
-                self.min_tm_score = float(self.min_tm_score)
-            except (TypeError, ValueError):
-                raise ConfigError(f"--min-tm-score must be a number; got '{self.min_tm_score}'.")
-            if self.min_tm_score < 0 or self.min_tm_score > 1:
-                raise ConfigError(f"--min-tm-score must be between 0 and 1 (TM scores are length-normalized). "
-                                  f"Got {self.min_tm_score}.")
-
-
-        if len([c for c in list(self.genomes.values()) if 'genome_hash' not in c]):
-            raise ConfigError("self.genomes does not seem to be a properly formatted dictionary for "
-                              "the anvi'o class Pangenome.")
-
-        if self.enforce_hierarchical_clustering and self.skip_hierarchical_clustering:
-            raise ConfigError("You are confusing anvi'o :/ You can't tell anvi'o to skip hierarchical clustering "
-                              "while also asking it to enforce it.")
-
-        if self.description_file_path:
-            filesnpaths.is_file_plain_text(self.description_file_path)
-            self.description = open(os.path.abspath(self.description_file_path), 'r').read()
-
-        # master's logic above already resolved `self.pan_db_path` to the final output location
-        # (the user's --output-file, or a `<project>-PAN.db` next to the genomes storage). In
-        # structure mode the *primary* output is a `-STRUCTURE-PAN.db`, with an optional
-        # conventional `-PAN.db` alongside it. We derive both from that same directory so they
-        # land where the user expects rather than in the (temporary) intermediate data dir.
-        if self.STRUCTURE_MODE:
-            output_directory = os.path.dirname(self.pan_db_path)
-            self.pan_db_path = os.path.join(output_directory, self.project_name + '-STRUCTURE-PAN.db')
-            if not self.skip_sequence_pan:
-                self.conventional_pan_db_path = os.path.join(output_directory, self.project_name + '-PAN.db')
-        elif self.SEQUENCE_MODE or self.user_defined_gene_clusters:
-            # `self.pan_db_path` is already the `-PAN.db` location resolved above.
-            pass
-        else:
-            raise ConfigError("Anvi'o is confused since it ended up somewhere that doesn't exist :(")
-
-        if self.foldseek_search_results_output_file:
-            filesnpaths.is_file_tab_delimited(self.foldseek_search_results_output_file)
-
-
-    def process_additional_params(self):
-        """Process user-requested additional params for sequence search with defaults
-
-        This is a bit complicated as there are those additional parameter sets used by
-        anvi'o (which are defined in `additional_param_sets_for_sequence_search`), and
-        there are those that may or may not be passed by the user. To reconcile all,
-        we first need to determine which algorithm they are using (i.e., diamond or
-        ncbi-blast, which are the only two options we offer at the time this function
-        was written), and then see if tey passed any 'additional additional' params to
-        this instance.
-        """
-
-        if self.additional_params_for_seq_search is not None:
-            # the user set something (or unset everything by passing ""): we obey
-            pass
-        else:
-            if self.use_ncbi_blast:
-                self.additional_params_for_seq_search = additional_param_sets_for_sequence_search['ncbi_blast']
-            else:
-                self.additional_params_for_seq_search = additional_param_sets_for_sequence_search['diamond']
-
-        self.additional_params_for_seq_search_processed = True
-
-
-    def run_diamond(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
-        # in case someone called this function directly without going through
-        # `self.process`:
-        self.process_additional_params()
-
-        diamond = Diamond(unique_AA_sequences_fasta_path, run=self.run, progress=self.progress,
-                          num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
-
-        diamond.names_dict = unique_AA_sequences_names_dict
-        diamond.additional_params_for_blastp = self.additional_params_for_seq_search
-        diamond.search_output_path = self.get_output_file_path('diamond-search-results')
-        diamond.tabular_output_path = self.get_output_file_path('diamond-search-results.txt')
-
-        return diamond.get_blast_results()
-
-
-    def run_blast(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
-        # in case someone called this function directly without going through
-        # `self.process`:
-        self.process_additional_params()
-
-        self.run.warning("You elected to use NCBI's `blastp` for amino acid sequence search. Running blastp will "
-                         "be significantly slower than DIAMOND, but in some cases, slightly more sensitive. "
-                         "We are unsure about whether the slight increase in sensitivity may justify significant "
-                         "increase in run time, but you are the boss.", lc="cyan")
-
-        blast = BLAST(unique_AA_sequences_fasta_path, run=self.run, progress=self.progress,
-                          num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
-
-        blast.names_dict = unique_AA_sequences_names_dict
-        blast.additional_params_for_blast = self.additional_params_for_seq_search
-        blast.log_file_path = self.log_file_path
-        blast.search_output_path = self.get_output_file_path('blast-search-results.txt')
-
-        return blast.get_blast_results()
-
-
-    def run_foldseek(self, structures_dict):
-        """Build a foldseek DB and run easy-search self-vs-self.
-
-        `structures_dict` maps gene_id -> structure file path. anvi'o stages a directory of
-        symlinks named `{gene_id}.{ext}` and hands that single directory to foldseek's createdb.
-        This (a) keeps us safely below ARG_MAX regardless of how many structures the user has and
-        (b) makes foldseek's query/target columns use gene_ids verbatim, so the easy-search output
-        is directly indexable against the conventional pangenome's gene cluster IDs.
-        """
-        structure_dir = self._stage_structures_for_foldseek(structures_dict)
-        fs = Foldseek(structure_dir=structure_dir,
-                      run=self.run,
-                      progress=self.progress,
-                      num_threads=self.num_threads,
-                      overwrite_output_destinations=self.overwrite_output_destinations)
-
-        fs.process(self.intermediate_data_dir)
-
-        return fs.get_foldseek_results()
-
-
-    def _stage_structures_for_foldseek(self, structures_dict):
-        """Create a directory of symlinks named `{gene_id}.{ext}` pointing at the user's
-        structure files. Returns the directory path.
-
-        foldseek's createdb uses the input file basenames as the query/target identifiers in
-        its easy-search output. By staging symlinks under names we control, we (a) ensure
-        the output is keyed on `gene_id` (the canonical anvi'o identifier) and not on
-        whatever the user happened to name their PDB files, and (b) collapse the command
-        line to a single positional argument so the ARG_MAX limit on argv doesn't bite
-        when there are tens of thousands of structures.
-
-        For now the structure-informed pangenome workflow restricts inputs to `.pdb` even
-        though the generic StructuresTxt artifact accepts CIF / mmCIF / FoldComp / gzipped
-        variants. We'll widen this once we've actually test-driven foldseek's behavior on
-        those formats against a real dataset; until then the safe path is to fail loudly
-        rather than silently produce something wrong.
-        """
-        # Workflow-level guard: PDB only for now. (See method docstring above.)
-        non_pdb = [(gid, p) for gid, p in structures_dict.items() if not p.lower().endswith('.pdb')]
-        if non_pdb:
-            preview = ', '.join(f"{g} -> {os.path.basename(p)}" for g, p in non_pdb[:5])
-            raise ConfigError(f"The structure-informed pangenome workflow currently accepts only .pdb files. "
-                              f"{len(non_pdb)} entry/entries in your structures-txt point at other formats "
-                              f"(.cif / .mmcif / .gz / .fcz). The generic structures-txt artifact accepts those, "
-                              f"but anvi-pan-genome has not yet been validated against them. First offenders: "
-                              f"{preview}.")
-
-        stage_dir = self.get_output_file_path('foldseek-input-structures')
-        filesnpaths.gen_output_directory(stage_dir, delete_if_exists=True, dont_warn=True)
-
-        for gene_id, src in structures_dict.items():
-            link_path = os.path.join(stage_dir, f"{gene_id}.pdb")
-            # src is already absolute (StructuresTxt resolves paths at parse time).
-            os.symlink(src, link_path)
-
-        self.run.info('Foldseek input staging directory', stage_dir)
-        return stage_dir
-
-
-    def resolve_structure_files_for_gcs(self, gene_cluster_ids):
-        """Load `--structures-txt` and return the structure files relevant to `gene_cluster_ids`.
-
-        - Warns on (and skips) gene clusters that have no entry in the structures-txt — these
-          are dropped from the foldseek DB and therefore from PSGC output.
-        - Warns on entries in the structures-txt that don't correspond to any gene cluster in
-          the conventional pan (typos / stale file). They're ignored.
-
-        Returns: (structures_dict, gcs_with_structures_set), where `structures_dict` is the
-        `{gene_id: path}` mapping restricted to GCs that have structures, preserving the
-        original order of `gene_cluster_ids` for deterministic symlink-farm naming.
-        """
-        if not self.structures_txt_path:
-            raise ConfigError("anvi-pan-genome was asked to run a structure-informed pangenome but you did not "
-                              "provide either --structures-txt (recommended: a TSV mapping GC IDs to predicted "
-                              "structure files) or --foldseek-search-results (a precomputed foldseek output). "
-                              "One of the two is required.")
-
-        structures = StructuresTxt(self.structures_txt_path, run=self.run, progress=self.progress)
-        full_structures_dict = structures.as_dict()
-
-        gc_set = set(gene_cluster_ids)
-        file_keys = set(full_structures_dict.keys())
-
-        missing_from_file = gc_set - file_keys
-        extra_in_file = file_keys - gc_set
-
-        if extra_in_file:
-            preview = ', '.join(sorted(extra_in_file)[:10])
-            self.run.warning(f"{len(extra_in_file)} entry/entries in '{self.structures_txt_path}' do not correspond "
-                             f"to any gene cluster in the conventional pangenome (likely a typo, or a stale file from "
-                             f"a different pan run). They will be ignored. First few: {preview}.")
-
-        if missing_from_file:
-            preview = ', '.join(sorted(missing_from_file)[:10])
-            self.run.warning(f"{len(missing_from_file)} of {len(gc_set)} gene clusters do not have a structure file "
-                             f"in '{self.structures_txt_path}'. Those gene clusters will be dropped from the "
-                             f"structural pangenome output (they remain present in the conventional pan-db). First "
-                             f"few skipped: {preview}.")
-
-        gcs_with_structures = gc_set & file_keys
-
-        # preserve the order of the gene_cluster_ids input (which mirrors the FASTA emission order)
-        structures_dict = {gc: full_structures_dict[gc] for gc in gene_cluster_ids if gc in gcs_with_structures}
-
-        self.run.info('GCs with predicted structure', f"{len(gcs_with_structures)} of {len(gc_set)}")
-
-        return structures_dict, gcs_with_structures
-
-
-    def run_search_de_novo(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
-        if self.use_ncbi_blast:
-            return self.run_blast(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
-        else:
-            return self.run_diamond(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
-
-
-    def run_mcl(self, mcl_input_file_path):
+    def run_mcl(self, mcl_input_file_path, inflation):
         mcl = MCL(mcl_input_file_path, run=self.run, progress=self.progress, num_threads=self.num_threads)
 
-        mcl.inflation = self.mcl_inflation
+        mcl.inflation = inflation
         mcl.clusters_file_path = self.get_output_file_path('mcl-clusters.txt')
         mcl.log_file_path = self.log_file_path
 
@@ -1663,6 +1395,7 @@ class Pangenome(object):
             if lower.endswith(ext):
                 return name[:-len(ext)]
         return name
+
 
     def _parse_search_row(self, line, line_no, mode):
         """Parse a single BLAST/foldseek output row.
@@ -1988,114 +1721,6 @@ class Pangenome(object):
         return gc_types
 
 
-    def add_psgc_layers(self, gene_clusters_dict, item_additional_data_keys):
-        """Add PSGC-related layers to the additional view data.
-
-        Args:
-            gene_clusters_dict: Dictionary containing gene cluster information
-            item_additional_data_keys: List to store the names of additional data keys
-        """
-        psgc_gc_counts = self.count_gene_clusters_per_psgc()
-        psgc_gc_types = self.classify_gene_types(gene_clusters_dict)
-
-        self.add_layers_to_view(psgc_gc_counts)
-        item_additional_data_keys.extend([
-            'number_gc_in_psgc',
-            'psgc_composition!core',
-            'psgc_composition!singleton',
-            'psgc_composition!accessory',
-            'gc_types'
-        ])
-
-
-    def count_gene_clusters_per_psgc(self):
-        """Count the number of gene clusters in each PSGC."""
-        psgc_gc_counts = {}
-        for gc_name, psgc_name in self.gc_psgc_associations:
-            if psgc_name:
-                psgc_gc_counts[psgc_name] = psgc_gc_counts.get(psgc_name, 0) + 1
-        return psgc_gc_counts
-
-
-    def count_genes_per_psgc(self, gene_clusters_dict):
-        """Count the total number of genes in each PSGC."""
-        psgc_gene_counts = {}
-
-        for gc_name, genes in gene_clusters_dict.items():
-            psgc_gene_counts[gc_name] = len(genes)
-
-        return psgc_gene_counts
-
-
-    def classify_gene_types(self, gene_clusters_dict):
-        """Classify original gene clusters as core, singleton, or other."""
-
-        self.run.warning(None, header="GENE TYPE CLASSIFICATION", lc="green")
-
-        de_novo_gc_types = {}
-        psgc_count = 0
-        psgcs_with_genes = 0
-
-        for gc_name in self.de_novo_gene_clusters_dict:
-            genomes_with_hits = set()
-            for gene_entry in self.de_novo_gene_clusters_dict[gc_name]:
-                genomes_with_hits.add(gene_entry['genome_name'])
-
-            if len(genomes_with_hits) == len(self.genomes):
-                de_novo_gc_types[gc_name] = 'core'
-            elif len(genomes_with_hits) == 1:
-                de_novo_gc_types[gc_name] = 'singleton'
-            else:
-                de_novo_gc_types[gc_name] = 'accessory'
-
-        gc_type_counts = {'core': 0, 'singleton': 0, 'accessory': 0}
-        for gc_type in de_novo_gc_types.values():
-            gc_type_counts[gc_type] += 1
-
-        for psgc_name in gene_clusters_dict:
-            self.additional_view_data[psgc_name].update({'psgc_composition!core': 0,'psgc_composition!singleton': 0,'psgc_composition!accessory': 0,'gc_types': '{}'})
-
-        for psgc_name in gene_clusters_dict:
-            psgc_count += 1
-
-            gc_types_dict = {}
-            de_novo_gcs = []
-            for gc, psgc in self.gc_psgc_associations:
-                if psgc == psgc_name and gc in de_novo_gc_types:
-                    de_novo_gcs.append(gc)
-                    gc_types_dict[gc] = de_novo_gc_types[gc]
-
-            core_genes = 0
-            singleton_genes = 0
-            accessory_genes = 0
-
-            for gc in de_novo_gcs:
-                gc_type = de_novo_gc_types[gc]
-                gene_count = len(self.de_novo_gene_clusters_dict[gc])
-
-                if gc_type == 'core':
-                    core_genes += gene_count
-                elif gc_type == 'singleton':
-                    singleton_genes += gene_count
-                else:
-                    accessory_genes += gene_count
-
-            self.additional_view_data[psgc_name]['gc_types'] = json.dumps(gc_types_dict)
-
-            if core_genes > 0 or singleton_genes > 0 or accessory_genes > 0:
-                psgcs_with_genes += 1
-                self.additional_view_data[psgc_name].update({'psgc_composition!core': core_genes,'psgc_composition!singleton': singleton_genes,'psgc_composition!accessory': accessory_genes})
-
-        self.run.info('PSGCs classified', f"{psgcs_with_genes} of {psgc_count}")
-        self.run.info('Gene cluster types', f"Core: {gc_type_counts['core']}, "f"Singleton: {gc_type_counts['singleton']}, "f"Accessory: {gc_type_counts['accessory']}")
-
-
-    def add_layers_to_view(self, psgc_gc_counts):
-        """Add all PSGC layers to the view data."""
-        for gene_cluster in self.view_data:
-            self.additional_view_data[gene_cluster].update({ 'number_gc_in_psgc': psgc_gc_counts.get(gene_cluster, 0) })
-
-
     def gen_synteny_based_ordering_of_gene_clusters(self, gene_clusters_dict):
         """Take the dictionary of gene_clusters, and order gene_clusters per genome based on synteny of genes.
 
@@ -2260,68 +1885,6 @@ class Pangenome(object):
         miscdata.TableForLayerAdditionalData(self.args, r=terminal.Run(verbose=False)).add(layers_additional_data_dict, layers_additional_data_keys)
 
 
-    def sanity_check(self):
-        self.check_project_name()
-        self.check_programs()
-
-        if not isinstance(self.mcl_inflation, float):
-            raise ConfigError("Well, MCL likes its inflation parameter in 'float' form...")
-
-        if self.mcl_inflation > 100 or self.mcl_inflation < 0.1:
-            raise ConfigError("MCL inflation parameter should have a reasonable value :/ Like between 0.1 and 100.0.")
-
-        if not isinstance(self.genomes, type({})):
-            raise ConfigError("self.genomes must be a dict. Anvi'o needs an adult :(")
-
-        if len(self.genomes) < 2:
-            raise ConfigError("There must be at least two genomes for this workflow to work. You have like '%d' of them :/"
-                    % len(self.genomes))
-
-        if len(self.genomes) > 100:
-            if self.enforce_the_analysis_of_excessive_number_of_genomes:
-                self.run.warning(f"Because you asked for it, anvi'o WILL analyze your {pp(len(self.genomes))} genomes. Perhaps it will "
-                                 f"fail, but it will fail while trying.", header="YOU HAVE USED YOUR AUTHORITY ⚔️")
-            else:
-                raise ConfigError(f"Sorry for making you wait this long to tell you this, but you have a total of {pp(len(self.genomes))} "
-                                  f"genomes to process, and anvi'o may not be the best platform to do that. The anvi'o pangenomics workflow "
-                                  f"is designed for interactive and in-depth investigations of microbial pangenomes. While one can "
-                                  f"certainly perform an in-depth investigation of their {pp(len(self.genomes))} genomes by turning them "
-                                  f"into a pangenome, they will unlikely manage to do it with anvi'o with more than about 100 genomes. "
-                                  f"We can't stop you if you insist running a pangenomic analyses on your genomes ANYWAY. For instance, "
-                                  f"you can easily force anvi'o to start the analysis using the flag `--I-know-this-is-not-a-good-idea`. "
-                                  f"But by using that flag, you will be forfeiting your privilege to complain to anvi'o developers if "
-                                  f"something goes wrong with your analyses :)")
-
-        if self.skip_alignments and self.align_with:
-            raise ConfigError("You are asking anvi'o to skip aligning sequences within your gene clusters, and then you "
-                              "are also asking it to use '%s' for aligning sequences within your gene clusters. It is easy "
-                              "to ignore this and skip the alignment, but anvi'o gets nervous when it realizes her users are "
-                              "being inconsistent. Please make up your mind, and come back as the explicit person you are"
-                                                                            % self.align_with)
-
-        self.check_params()
-
-        self.run.log_file_path = self.log_file_path
-        self.run.info('Args', (str(self.args)), quiet=True)
-
-
-    def populate_gene_cluster_tracker_table(self, gene_clusters_dict):
-        self.progress.new('Storing de novo gene clusters for future references')
-        self.progress.update('...')
-
-        table_for_gene_clusters = TableForGeneClusters(self.pan_db_path, gc_tracker_table=True, run=self.run, progress=self.progress)
-
-        num_genes_in_gene_clusters = 0
-        for gene_cluster_name in gene_clusters_dict:
-            for gene_entry in gene_clusters_dict[gene_cluster_name]:
-                table_for_gene_clusters.add(gene_entry)
-                num_genes_in_gene_clusters += 1
-
-        self.progress.end()
-
-        table_for_gene_clusters.store()
-
-
     def store_gene_clusters(self, gene_clusters_dict):
         self.progress.new('Storing gene clusters in the database')
         self.progress.update('...')
@@ -2338,114 +1901,10 @@ class Pangenome(object):
 
         table_for_gene_clusters.store()
 
-        self.progress.new('Storing gc <-> psgc associations in the database')
-        self.progress.update('...')
-
-        if self.STRUCTURE_MODE and utils.get_db_variant(self.pan_db_path) == constants.PAN_STRUCTURE_MODE:
-            # if we are in structure mode and writing to the structure pan-db, we also need to update the `TableForPSGCGCAssociations`
-            table_for_gc_psgc_associations = TableForPSGCGCAssociations(self.pan_db_path, run=self.run, progress=self.progress)
-
-            for gc_name, psgc_name in self.gc_psgc_associations:
-                table_for_gc_psgc_associations.add({'gene_cluster_id': gc_name, 'protein_structure_informed_gene_cluster_id': psgc_name})
-
-            self.progress.end()
-
-            table_for_gc_psgc_associations.store()
-
-
         pan_db = dbops.PanDatabase(self.pan_db_path, quiet=True)
         pan_db.db.set_meta_value('num_gene_clusters', len(gene_clusters_dict))
         pan_db.db.set_meta_value('num_genes_in_gene_clusters', num_genes_in_gene_clusters)
         pan_db.disconnect()
-
-
-    def gen_protein_structure_informed_gene_clusters_dict_from_mcl_clusters(self, mcl_clusters, gene_clusters_de_novo, name_prefix="PSGC"):
-        """Turn MCL clusters from structure search into a gene clusters dict
-
-        The only difference between this function and `gen_de_novo_gene_clusters_dict_from_mcl_clusters` is that
-        the latter takes in de novo gene clusters, where hashes must be replaced with actual genome names. In
-        contrast, this function takes clusters of gene clusters, which must be turned into a dictionary where
-        gene clusters resolved back to individual genes they had originally.
-        """
-
-        # we will build the following dictionary here from the MCL results and de novo gene clusters
-        protein_structure_informed_gene_clusters_dict = {}
-
-        counter = 0
-        for gene_cluster_group in mcl_clusters.values():
-            counter += 1
-            psgc_name = f"{name_prefix}_{counter:08d}"
-
-            protein_structure_informed_gene_clusters_dict[psgc_name] = []
-
-            # For each MCL gene cluster group, retrieve gene entries from gene_clusters_de_novo and add them to the new dictionary.
-            for gc_name in gene_cluster_group:
-
-                # as we are now going through de novo gene clusters that are represented in protein structure-informed
-                # clusters, we will update our talbe to track psgc <-> gc associations table
-                self.gc_psgc_associations.append((gc_name, psgc_name))
-
-                # go through every gene entry in de novo clusters
-                for gene_entry in gene_clusters_de_novo[gc_name]:
-                    protein_structure_informed_gene_clusters_dict[psgc_name].append({
-                        'gene_caller_id': int(gene_entry['gene_caller_id']),
-                        'gene_cluster_id': psgc_name,
-                        'genome_name': gene_entry['genome_name'],
-                        'alignment_summary': gene_entry.get('alignment_summary', '')
-                    })
-
-        # there is one last house-keeping business to do here. now we have our psgc <-> gc assocaitions
-        # table for downsteram steps. as we went through psgcs and matched gcs that were contained in
-        # them with the de novo gcs, we don't know if there are any de novo gcs that did not end up in
-        # any of the psgcs. this is an extremely unlikely scenario, but those are the kinds of things
-        # we are here for. so we will go t
-        known_gcs = set(list(gene_clusters_de_novo.keys()))
-        gcs_found_in_psgcs = set([tpl[0] for tpl in self.gc_psgc_associations])
-        gcs_not_reprsented_in_psgcs = known_gcs.difference(gcs_found_in_psgcs)
-        if gcs_not_reprsented_in_psgcs:
-            self.run.warning(f"Anvi'o noticed something unexpected, and she wants you to know about it. It seems "
-                             f"{pp(len(gcs_not_reprsented_in_psgcs))} of {pp(len(known_gcs))} gene clusters anvi'o "
-                             f"computed based on their amino acid sequences somehow were lost when protein "
-                             f"structure-informed gene clusters were computed from their representatives. We are "
-                             f"not sure under what circumstances this can happen. If you are seeing this error "
-                             f"message, you can help us implement more functionality in this class to debug it "
-                             f"properly. Here is the list of de novo gene clusters that were lost along the way: "
-                             f"{', '.join(gcs_not_reprsented_in_psgcs)}")
-
-            for gc_name in gcs_not_reprsented_in_psgcs:
-                self.gc_psgc_associations.append((gc_name, None))
-
-        self.run.warning(f"Hi! Anvi'o just finished calculating your protein structure-informed gene clusters dictionary "
-                         f"that consolidated {pp(len(known_gcs))} gene clusters (that were generated based on the good ol' "
-                         f"amino acid sequence homology considerations) into {pp(len(protein_structure_informed_gene_clusters_dict))} "
-                         f"protein structure-informed gene clusters. We keep our fingers crossed that something will not "
-                         f"explode after this.", header="🎉 GCs TO PSGCs IS WORKING 🎉", lc='green')
-
-        return protein_structure_informed_gene_clusters_dict
-
-
-    def gen_de_novo_gene_clusters_dict_from_mcl_clusters(self, mcl_clusters):
-        self.progress.new('Generating the gene clusters dictionary from raw MCL clusters')
-        self.progress.update('...')
-
-        gene_clusters_dict = {}
-
-        for gene_cluster in mcl_clusters:
-            gene_clusters_dict[gene_cluster] = []
-
-            for entry_hash, gene_caller_id in [e.split('_') for e in mcl_clusters[gene_cluster]]:
-                try:
-                    genome_name = self.hash_to_genome_name[entry_hash]
-                except KeyError:
-                    self.progress.end()
-                    raise ConfigError("Something horrible happened. This can only happen if you started a new analysis with "
-                                       "additional genomes without cleaning the previous work directory. Sounds familiar?")
-
-                gene_clusters_dict[gene_cluster].append({'gene_caller_id': int(gene_caller_id), 'gene_cluster_id': gene_cluster, 'genome_name': genome_name, 'alignment_summary': ''})
-
-        self.progress.end()
-
-        return gene_clusters_dict
 
 
     def compute_alignments_for_gene_clusters(self, gene_clusters_dict):
@@ -2475,7 +1934,7 @@ class Pangenome(object):
 
         workers = []
         for i in range(0, self.num_threads):
-            worker = multiprocessing.Process(target=Pangenome.alignment_worker,
+            worker = multiprocessing.Process(target=PangenomeBase.alignment_worker,
                 args=(input_queue, output_queue, gene_clusters_dict, self.genomes_storage, self.align_with, self.run))
 
             workers.append(worker)
@@ -2579,125 +2038,254 @@ class Pangenome(object):
             output_queue.put(output)
 
 
-    def get_gene_cluster_representative_sequences(self, gene_clusters_dict):
-        """Select representative sequences per GC.
+    def _run_full_pan_pipeline(self, gene_clusters_dict, pan_db_path, unsuccessful_alignments=None):
+        """Run the complete pan-db population pipeline for a given gene clusters dict and pan-db path."""
+        if unsuccessful_alignments is None:
+            unsuccessful_alignments = set()
 
-        The actual representative-picking logic lives in `utils.get_representative_sequence_from_gene_cluster`
-        so that this build-time path and the user-facing `anvi-get-sequences-for-gene-clusters --representative`
-        path (via `dbops.PanSuperclass.get_gene_cluster_representative_sequences`) pick representatives
-        identically. See that function for the selection strategy.
+        original_pan_db_path = self.pan_db_path
+        original_args_pan_db = self.args.pan_db
+
+        self.pan_db_path = pan_db_path
+        self.args.pan_db = pan_db_path
+
+        try:
+            gene_clusters_dict = self.process_gene_clusters(gene_clusters_dict)
+            self.store_gene_clusters(gene_clusters_dict)
+            self.gen_hierarchical_clustering_of_gene_clusters()
+            self.gen_synteny_based_ordering_of_gene_clusters(gene_clusters_dict)
+            self.populate_layers_additional_data_and_orders()
+            self.populate_gene_cluster_homogeneity_index(gene_clusters_dict, gene_clusters_failed_to_align=unsuccessful_alignments)
+        finally:
+            self.pan_db_path = original_pan_db_path
+            self.args.pan_db = original_args_pan_db
+
+        return gene_clusters_dict
+
+
+class Pangenome(PangenomeBase):
+    """Compute gene clusters de novo from amino acid sequences (or take them from a gene-clusters-txt)
+    and store them in a new pan-db. `anvi-pan-genome` is the default client of this class."""
+
+    program_name = 'anvi-pan-genome'
+
+    def __init__(self, args=None, run=run, progress=progress):
+        PangenomeBase.__init__(self, args, run=run, progress=progress)
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.user_defined_gene_clusters = A('gene_clusters_txt')
+        self.min_percent_identity = A('min_percent_identity')
+        self.mcl_inflation = A('mcl_inflation')
+        self.minbit = A('minbit')
+        self.use_ncbi_blast = A('use_ncbi_blast')
+        self.exclude_partial_gene_calls = A('exclude_partial_gene_calls')
+
+        self.additional_params_for_seq_search = A('additional_params_for_seq_search')
+        self.additional_params_for_seq_search_processed = False
+
+        if not self.project_name:
+            raise ConfigError("Please set a project name using --project-name or -n.")
+
+        # figure out where the pan-db should go
+        user_pan_db_path = A('output_file') or A('pan_db')
+        if user_pan_db_path:
+            if not user_pan_db_path.endswith('-PAN.db'):
+                raise ConfigError("Sorry. The output file names for anvi'o pan-db artifats must end with '-PAN.db'. No exceptions, no exclusions, "
+                                  "no creative interpretations. Anvi'o: freedom in data analyses, tyranny in output file suffixes ✊")
+            self.pan_db_path = user_pan_db_path
+        else:
+            # if the user did not specify an output directory for the pan-db, just put it next to the genomes storage
+            # file with a name that includes the project name.
+            self.pan_db_path = os.path.join(os.path.dirname(self.genomes_storage_path), self.project_name + '-PAN.db')
+
+
+    def generate_pan_db(self):
+        meta_values = {'internal_genome_names': ','.join(self.internal_genome_names),
+                       'external_genome_names': ','.join(self.external_genome_names),
+                       'num_genomes': len(self.genomes),
+                       'min_percent_identity': self.min_percent_identity,
+                       'gene_cluster_min_occurrence': self.gene_cluster_min_occurrence,
+                       'mcl_inflation': self.mcl_inflation,
+                       'user_provided_gene_clusters_txt': True if self.user_defined_gene_clusters else False,
+                       'default_view': 'gene_cluster_presence_absence',
+                       'use_ncbi_blast': self.use_ncbi_blast,
+                       'additional_params_for_seq_search': self.additional_params_for_seq_search,
+                       'minbit': self.minbit,
+                       'exclude_partial_gene_calls': self.exclude_partial_gene_calls,
+                       'gene_alignments_computed': False if self.skip_alignments else True,
+                       'genomes_storage_hash': self.genomes_storage.get_storage_hash(),
+                       'project_name': self.project_name,
+                       'items_ordered': False,
+                       'reaction_network_ko_annotations_hash': None,
+                       'reaction_network_kegg_database_release': None,
+                       'reaction_network_modelseed_database_sha': None,
+                       'reaction_network_consensus_threshold': None,
+                       'reaction_network_discard_ties': None,
+                       'description': self.description if self.description else '_No description is provided_',
+                      }
+
+        filesnpaths.is_output_file_writable(self.pan_db_path, ok_if_exists=False)
+
+        dbops.PanDatabase(self.pan_db_path, quiet=False).create(meta_values, db_variant=constants.PAN_SEQUENCE_MODE)
+
+        # know thyself.
+        self.args.pan_db = self.pan_db_path
+
+
+    def check_programs(self):
+        if self.use_ncbi_blast:
+            utils.is_program_exists('blastp')
+        else:
+            utils.is_program_exists('diamond')
+
+        utils.is_program_exists('mcl')
+
+        if not self.skip_alignments:
+            # instantiating the aligner here is what makes anvi'o complain about a missing or
+            # unsupported alignment program at the very beginning of the analysis.
+            aligners.select(self.align_with, quiet=True)()
+
+
+    def check_params(self):
+        self.setup_intermediate_data_dir_and_log_file()
+
+        if self.user_defined_gene_clusters:
+            filesnpaths.is_gene_clusters_txt(self.user_defined_gene_clusters)
+
+        if not isinstance(self.minbit, float):
+            raise ConfigError("minbit value must be of type float :(")
+
+        if self.minbit < 0 or self.minbit > 1:
+            raise ConfigError("Well. minbit must be between 0 and 1. Yes. Very boring.")
+
+        if not isinstance(self.min_percent_identity, float):
+            raise ConfigError("Minimum percent identity value must be of type float :(")
+
+        if self.min_percent_identity < 0 or self.min_percent_identity > 100:
+            raise ConfigError("Minimum percent identity must be between 0%% and 100%%. Although your %.2f%% is "
+                              "pretty cute, too." % self.min_percent_identity)
+
+        if len([c for c in list(self.genomes.values()) if 'genome_hash' not in c]):
+            raise ConfigError("self.genomes does not seem to be a properly formatted dictionary for "
+                              "the anvi'o class Pangenome.")
+
+        if self.enforce_hierarchical_clustering and self.skip_hierarchical_clustering:
+            raise ConfigError("You are confusing anvi'o :/ You can't tell anvi'o to skip hierarchical clustering "
+                              "while also asking it to enforce it.")
+
+        if self.description_file_path:
+            filesnpaths.is_file_plain_text(self.description_file_path)
+            self.description = open(os.path.abspath(self.description_file_path), 'r').read()
+
+
+    def process_additional_params(self):
+        """Process user-requested additional params for sequence search with defaults
+
+        This is a bit complicated as there are those additional parameter sets used by
+        anvi'o (which are defined in `additional_param_sets_for_sequence_search`), and
+        there are those that may or may not be passed by the user. To reconcile all,
+        we first need to determine which algorithm they are using (i.e., diamond or
+        ncbi-blast, which are the only two options we offer at the time this function
+        was written), and then see if tey passed any 'additional additional' params to
+        this instance.
         """
 
-        representative_sequences = {}
-
-        for gc_name in gene_clusters_dict:
-            sequence_entries = []
-
-            for gc_info in gene_clusters_dict[gc_name]:
-                # recover key data
-                genome_name = gc_info['genome_name']
-                gene_caller_id = gc_info['gene_caller_id']
-                alignment_summary = gc_info['alignment_summary']
-
-                # recover restored alignment for sequence
-                aa_sequence = self.genomes_storage.gene_info[genome_name][gene_caller_id]['aa_sequence']
-                sequence = utils.restore_alignment(aa_sequence, alignment_summary)
-                is_partial = self.genomes_storage.is_partial_gene_call(genome_name, gene_caller_id)
-
-                sequence_entries.append({
-                    'align_sequence': sequence,
-                    'length': len(aa_sequence),
-                    'gap_count': sequence.count('-'),
-                    'is_partial': bool(is_partial),
-                    'genome_name': genome_name,
-                    'gene_callers_id': gene_caller_id
-                })
-
-            representative_entry = utils.get_representative_sequence_from_gene_cluster(sequence_entries)
-            representative_sequences[gc_name] = {
-                'align_sequence': representative_entry['align_sequence'],
-                'genome_name': representative_entry['genome_name'],
-                'gene_callers_id': representative_entry['gene_callers_id']
-            }
-
-        return representative_sequences
-
-
-    def get_structure_informed_gene_clusters(self):
-        """Function to compute gene clusters de novo"""
-
-        # get de novo gene clusters first to reduce search space for structure
-        self.de_novo_gene_clusters_dict = self.get_sequence_based_gene_clusters()  # Store as class variable
-
-        # store gene clusters dict into the db. this one is the de novo gene cluster dictionary,
-        # not the structure one yet. but this dict will give access to the details of how de novo gene
-        # clusters distributed across genomes in conjunction with the gc_psgc_associations table
-        self.populate_gene_cluster_tracker_table(self.de_novo_gene_clusters_dict)
-
-        # generate the conventional pan-db if requested
-        if not self.skip_sequence_pan:
-            self.generate_conventional_pan_db()
-
-        # next, we will align non-singleton gene clusters to make sure we have all the information
-        # we need to be able to pick an appropriate representative for each gene cluster.
-        skip_alignments = self.skip_alignments
-        self.skip_alignments = False
-        self.de_novo_gene_clusters_dict, unsuccessful_alignments = self.compute_alignments_for_gene_clusters(self.de_novo_gene_clusters_dict)
-        self.skip_alignments = skip_alignments
-
-        # now the `de_novo_gene_clusters_dict` contains entries with alignment summaries. time to  get gene cluster
-        # representative sequences
-        gene_cluster_representatives = self.get_gene_cluster_representative_sequences(self.de_novo_gene_clusters_dict)
-
-        # next, we will generate a FASTA file for gene cluster representatives. This file is the
-        # deliverable users feed to AlphaFold/ColabFold/etc. to predict structures, and the
-        # FASTA deflines (the GC IDs) are exactly the gene_id column we expect in the
-        # structures-txt that comes back.
-        gene_cluster_representatives_FASTA_path = self.get_output_file_path('gene-cluster-representatives-aa.fa')
-        with open(gene_cluster_representatives_FASTA_path, 'w') as output:
-            for gc_name in gene_cluster_representatives:
-                sequence = gene_cluster_representatives[gc_name]['align_sequence'].replace('-', '')
-                output.write(f">{gc_name}\n{sequence}\n")
-        self.run.info('GC representatives FASTA', gene_cluster_representatives_FASTA_path)
-
-        # Resolve the foldseek output. Three scenarios in priority order:
-        #   1. --foldseek-search-results was provided (precomputed result file): use it as-is.
-        #   2. --structures-txt was provided: load it, build a foldseek DB from those structure
-        #      files, run easy-search self-vs-self.
-        #   3. Neither: error (anvi'o needs either precomputed results or structures to work with).
-        gcs_with_structures = None
-        if not self.foldseek_search_results_output_file:
-            structures_dict, gcs_with_structures = self.resolve_structure_files_for_gcs(list(gene_cluster_representatives.keys()))
-            if not structures_dict:
-                raise ConfigError("After loading --structures-txt, no gene cluster ended up with a structure to "
-                                  "search against. There is nothing for foldseek to do.")
-            self.foldseek_search_results_output_file = self.run_foldseek(structures_dict=structures_dict)
-
-        # generate MCL input from filtered foldseek_result; pass the full set of GCs we
-        # handed to foldseek so the heuristic step can also catch structures that produced
-        # zero output rows (not even a self-hit)
-        mcl_input_file_path = self.gen_mcl_input(self.foldseek_search_results_output_file,
-                                                 mode='structure',
-                                                 expected_ids=gcs_with_structures)
-
-        # get clusters from MCL
-        mcl_clusters = self.run_mcl(mcl_input_file_path)
-
-        # If a user-supplied structures-txt dropped some GCs, restrict the de-novo dict that
-        # gets handed to PSGC assembly so the "GCs lost on the way" warning only fires for
-        # genuinely unexpected losses (not the by-design subset).
-        if gcs_with_structures is not None:
-            de_novo_for_psgc = {gc: members for gc, members in self.de_novo_gene_clusters_dict.items() if gc in gcs_with_structures}
+        if self.additional_params_for_seq_search is not None:
+            # the user set something (or unset everything by passing ""): we obey
+            pass
         else:
-            de_novo_for_psgc = self.de_novo_gene_clusters_dict
+            if self.use_ncbi_blast:
+                self.additional_params_for_seq_search = additional_param_sets_for_sequence_search['ncbi_blast']
+            else:
+                self.additional_params_for_seq_search = additional_param_sets_for_sequence_search['diamond']
 
-        # we have the raw gene clusters dict, but we need to re-format it for following steps
-        protein_structure_informed_gene_clusters_dict = self.gen_protein_structure_informed_gene_clusters_dict_from_mcl_clusters(mcl_clusters, de_novo_for_psgc)
+        self.additional_params_for_seq_search_processed = True
 
-        # invoke the garbage collector to clean up some mess
-        del mcl_clusters
 
-        return protein_structure_informed_gene_clusters_dict
+    def run_diamond(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
+        # in case someone called this function directly without going through
+        # `self.process`:
+        self.process_additional_params()
+
+        diamond = Diamond(unique_AA_sequences_fasta_path, run=self.run, progress=self.progress,
+                          num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
+
+        diamond.names_dict = unique_AA_sequences_names_dict
+        diamond.additional_params_for_blastp = self.additional_params_for_seq_search
+        diamond.search_output_path = self.get_output_file_path('diamond-search-results')
+        diamond.tabular_output_path = self.get_output_file_path('diamond-search-results.txt')
+
+        return diamond.get_blast_results()
+
+
+    def run_blast(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
+        # in case someone called this function directly without going through
+        # `self.process`:
+        self.process_additional_params()
+
+        self.run.warning("You elected to use NCBI's `blastp` for amino acid sequence search. Running blastp will "
+                         "be significantly slower than DIAMOND, but in some cases, slightly more sensitive. "
+                         "We are unsure about whether the slight increase in sensitivity may justify significant "
+                         "increase in run time, but you are the boss.", lc="cyan")
+
+        blast = BLAST(unique_AA_sequences_fasta_path, run=self.run, progress=self.progress,
+                          num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
+
+        blast.names_dict = unique_AA_sequences_names_dict
+        blast.additional_params_for_blast = self.additional_params_for_seq_search
+        blast.log_file_path = self.log_file_path
+        blast.search_output_path = self.get_output_file_path('blast-search-results.txt')
+
+        return blast.get_blast_results()
+
+
+    def run_search_de_novo(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
+        if self.use_ncbi_blast:
+            return self.run_blast(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
+        else:
+            return self.run_diamond(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
+
+
+    def sanity_check(self):
+        self.check_project_name()
+        self.check_programs()
+
+        if not isinstance(self.mcl_inflation, float):
+            raise ConfigError("Well, MCL likes its inflation parameter in 'float' form...")
+
+        if self.mcl_inflation > 100 or self.mcl_inflation < 0.1:
+            raise ConfigError("MCL inflation parameter should have a reasonable value :/ Like between 0.1 and 100.0.")
+
+        self.check_genomes_and_alignment_params()
+
+        self.check_params()
+
+        self.run.log_file_path = self.log_file_path
+        self.run.info('Args', (str(self.args)), quiet=True)
+
+
+    def gen_de_novo_gene_clusters_dict_from_mcl_clusters(self, mcl_clusters):
+        self.progress.new('Generating the gene clusters dictionary from raw MCL clusters')
+        self.progress.update('...')
+
+        gene_clusters_dict = {}
+
+        for gene_cluster in mcl_clusters:
+            gene_clusters_dict[gene_cluster] = []
+
+            for entry_hash, gene_caller_id in [e.split('_') for e in mcl_clusters[gene_cluster]]:
+                try:
+                    genome_name = self.hash_to_genome_name[entry_hash]
+                except KeyError:
+                    self.progress.end()
+                    raise ConfigError("Something horrible happened. This can only happen if you started a new analysis with "
+                                       "additional genomes without cleaning the previous work directory. Sounds familiar?")
+
+                gene_clusters_dict[gene_cluster].append({'gene_caller_id': int(gene_caller_id), 'gene_cluster_id': gene_cluster, 'genome_name': genome_name, 'alignment_summary': ''})
+
+        self.progress.end()
+
+        return gene_clusters_dict
 
 
     def get_sequence_based_gene_clusters(self):
@@ -2722,7 +2310,7 @@ class Pangenome(object):
         mcl_input_file_path = self.gen_mcl_input(blastall_results)
 
         # get clusters from MCL
-        mcl_clusters = self.run_mcl(mcl_input_file_path)
+        mcl_clusters = self.run_mcl(mcl_input_file_path, inflation=self.mcl_inflation)
 
         # we have the raw gene clusters dict, but we need to re-format it for following steps
         gene_clusters_dict = self.gen_de_novo_gene_clusters_dict_from_mcl_clusters(mcl_clusters)
@@ -2769,47 +2357,6 @@ class Pangenome(object):
         return gene_clusters_dict
 
 
-    def _run_full_pan_pipeline(self, gene_clusters_dict, pan_db_path, unsuccessful_alignments=None):
-        """Run the complete pan-db population pipeline for a given gene clusters dict and pan-db path."""
-        if unsuccessful_alignments is None:
-            unsuccessful_alignments = set()
-
-        original_pan_db_path = self.pan_db_path
-        original_args_pan_db = self.args.pan_db
-
-        self.pan_db_path = pan_db_path
-        self.args.pan_db = pan_db_path
-
-        try:
-            gene_clusters_dict = self.process_gene_clusters(gene_clusters_dict)
-            self.store_gene_clusters(gene_clusters_dict)
-            self.gen_hierarchical_clustering_of_gene_clusters()
-            self.gen_synteny_based_ordering_of_gene_clusters(gene_clusters_dict)
-            self.populate_layers_additional_data_and_orders()
-            self.populate_gene_cluster_homogeneity_index(gene_clusters_dict, gene_clusters_failed_to_align=unsuccessful_alignments)
-        finally:
-            self.pan_db_path = original_pan_db_path
-            self.args.pan_db = original_args_pan_db
-
-        return gene_clusters_dict
-
-
-    def _compare_structure_and_sequence_pans(self):
-        """Compare the structure and conventional pan-dbs, adding comparison layers to both."""
-        self.run.warning(None, header="COMPARING STRUCTURE AND SEQUENCE PAN DATABASES", lc="cyan")
-
-        compare_args = argparse.Namespace(
-            pan_db=self.pan_db_path,
-            compared_pan_db=self.conventional_pan_db_path,
-            genomes_storage=self.genomes_storage_path,
-            output_file=self.get_output_file_path('structure-vs-sequence-comparison.txt'),
-            skip_output_files=False,
-        )
-
-        comparer = ComparePan(compare_args, run=self.run, progress=self.progress)
-        comparer.process()
-
-
     def process(self):
         # start by processing the additional params user may have passed for the blast step
         self.process_additional_params()
@@ -2827,69 +2374,18 @@ class Pangenome(object):
         # get them from the user themselves through gene-clusters-txt
         if self.user_defined_gene_clusters:
             gene_clusters_dict = self.get_gene_clusters_from_gene_clusters_txt()
-        elif self.STRUCTURE_MODE:
-            gene_clusters_dict = self.get_structure_informed_gene_clusters()
         else:
             gene_clusters_dict = self.get_sequence_based_gene_clusters()
 
         # compute alignments for genes within each gene_cluster (or don't)
         gene_clusters_dict, unsuccessful_alignments = self.compute_alignments_for_gene_clusters(gene_clusters_dict)
 
-        if len(unsuccessful_alignments):
-            if anvio.DEBUG:
-               self.run.warning(f"The alignment of sequences failed for {len(unsuccessful_alignments)} of the total {len(gene_clusters_dict)} "
-                                f"gene clusters anvi'o identified in your pangenome, and you can find the FASTA files for them in your logs "
-                                f"above. SAD DAY FOR EVERYONE.", header="GENE CLUSTERS SEQUENCE ALIGNMENT WARNING")
-            else:
-               self.run.warning(f"SOME BAD NEWS :/ The alignment of sequences failed for {len(unsuccessful_alignments)} of the total "
-                                f"{len(gene_clusters_dict)} gene clusters anvi'o identified in your pangenome :/ This often happens "
-                                f"when you have extremely long genes (often due to improper gene calling across scaffolds) or gene "
-                                f"clusters with extremely large number of genes (often happens with transposons or other mobile elements). "
-                                f"This is not the end of the world, since most things will continue to work. But you will be missing some "
-                                f"things for these gene clusters, including gene cluster functional and geometric homogeneity calculations "
-                                f"(which will have the value of `-1` to help you parse them out later in your downstream analyses). Even "
-                                f"the gene clusters failed at the alignment step will show up in all your downstream analyses. But the fact "
-                                f"that some of your gene clusters will not have any alignments may affect your science downstream depending "
-                                f"on what you wish to do with them (if you are not sure, come to anvi'o Discord, and tell us about what you "
-                                f"want to do with your pangenome so we can discuss more). Additionally, if you would like to see what is going "
-                                f"wrong with those gene clusters that are not aligned well, you can re-run the program with the `--debug` "
-                                f"flag, upon which anvi'o will anvi'o will store all the sequences in gene clusters that filed to align "
-                                f"into temporary FASTA files and will print out their locations. Here is the name of those gene clusters: "
-                                f"{', '.join(unsuccessful_alignments)}.", header="GENE CLUSTERS SEQUENCE ALIGNMENT WARNING")
+        self.report_unsuccessful_alignments(gene_clusters_dict, unsuccessful_alignments)
 
-        # --- Process the primary pan-db ---
         gene_clusters_dict = self._run_full_pan_pipeline(gene_clusters_dict, self.pan_db_path, unsuccessful_alignments)
 
-        # --- If structure mode, process conventional pan-db and compare ---
-        if self.STRUCTURE_MODE and not self.skip_sequence_pan:
-            self.run.warning(None, header="PROCESSING SEQUENCE-BASED PAN DATABASE", lc="cyan")
-            # de_novo_gene_clusters_dict already has alignments from get_structure_informed_gene_clusters
-            self._run_full_pan_pipeline(self.de_novo_gene_clusters_dict, self.conventional_pan_db_path)
-
-            # compare the two pan-dbs
-            self._compare_structure_and_sequence_pans()
-
         # let people know if they have too much data for their own comfort
-        if len(gene_clusters_dict) > 20000 or len(self.genomes) > 150:
-            if len(gene_clusters_dict) > 20000 and len(self.genomes) > 150:
-                _ = "gene clusters and genomes"
-            elif len(gene_clusters_dict) > 20000:
-                _ = "gene clusters"
-            else:
-                _ = "genomes"
-
-            self.run.warning(f"It seems you have a lot of {_} in this pan database :) It is all good! But please be aware that you may "
-                             f"run into performance issues when you try to interactively visaulize these data using `anvi-display-pan`. "
-                             f"In some cases it may even be impossible to do it, in fact. This is largely because the part of the "
-                             f"anvi'o workflow to offer interactive access to a pangenomes is not designed to accommodate very"
-                             f" large number of {_}, but rather enable in-depth exploratory analyses of pangenomes interactively. You still "
-                             f"can work with large pangenomes via the command line utilities and do a lot of science with them. If you "
-                             f"are unable to work with the interactive interface and it is critical for you, you have multiple options, "
-                             f"You can use the `--min-occurrence` flag to reduce the number of gene clusters, or use the program "
-                             f"`anvi-dereplicate-genomes` in an attempt to reduce the number of redundant genomes in your analysis. "
-                             f"If you are unsure what would be the best game plan for you, you can consider coming to the anvi'o Discord "
-                             f"channel and consult the opinion of the anvi'o community. Despite all these, it is still a good idea to run "
-                             f"`anvi-display-pan` and see what it says first.", lc="cyan", header="FRIENDLY WARNING")
+        self.warn_if_too_much_data(gene_clusters_dict)
 
         # deal with the intermediate data output directory
         self.cleanup()
@@ -2900,6 +2396,744 @@ class Pangenome(object):
 
         self.run.info_single(f"Your pangenome is ready with a total of {pp(len(gene_clusters_dict))} gene clusters across "
                              f"{len(self.genomes)} genomes 🎉", mc="green", nl_after=1)
+
+
+class StructurePangenome(PangenomeBase):
+    """Merge the gene clusters of an existing pangenome into protein structure-informed gene clusters (PSGCs).
+
+    The input is a conventional (sequence-based) pan-db and its genomes storage. Each gene cluster is
+    represented by a single predicted structure, which comes from a structure-db generated with the
+    pangenome as input (`anvi-gen-structure-database --pan-db`), from a structures-txt, or from a
+    precomputed foldseek search. Foldseek compares these structures all-vs-all, and MCL groups gene
+    clusters with similar structures into PSGCs. The output is a new pan-db (db variant
+    'structure-informed') whose items are PSGCs. Its `gc_tracker` table keeps a copy of the input gene
+    clusters, and its `gc_psgc_associations` table records which gene cluster went into which PSGC.
+    The input pan-db is never modified.
+    `anvi-pan-genome-structure` is the default client of this class.
+    """
+
+    program_name = 'anvi-pan-genome-structure'
+
+    def __init__(self, args=None, run=run, progress=progress):
+        PangenomeBase.__init__(self, args, run=run, progress=progress)
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.input_pan_db_path = A('pan_db')
+        self.output_file_path = A('output_file')
+        self.structure_db_path = A('structure_db')
+        self.structures_txt_path = A('structures_txt')
+        self.foldseek_search_results_output_file = A('foldseek_search_results')
+        self.min_tm_score = A('min_tm_score')
+        self.structure_mcl_inflation = A('structure_mcl_inflation')
+        self.keep_gcs_without_structure = A('keep_gcs_without_structure')
+        self.compare_with_input_pan = A('compare_with_input_pan')
+
+        # the genome set is always the one of the input pangenome
+        self.genome_names_to_focus = None
+
+        # filled from the input pan-db
+        self.input_pan_meta = None
+        self.input_gene_clusters_dict = {}  # gene cluster name -> list of gene entries, as stored in the input pan-db
+        self.input_gene_cluster_of_gene = {}  # (genome_name, gene_callers_id) -> gene cluster name
+
+        # gene clusters that have a structure to compare (None when the user provides foldseek search results)
+        self.gcs_with_structures = None
+
+        # (gene cluster name, psgc name) tuples for the `gc_psgc_associations` table
+        self.gc_psgc_associations = []
+
+        self.pan_db_path = None
+
+
+    def load_input_pan(self):
+        """Read the self table of the input pan-db, and set the defaults that depend on it."""
+
+        if not self.input_pan_db_path:
+            raise ConfigError("A structure-informed pangenome is built on top of a conventional pangenome, so anvi'o "
+                              "needs a pan-db (-p / --pan-db) generated by `anvi-pan-genome`.")
+
+        utils.is_pan_db(self.input_pan_db_path)
+
+        input_pan_variant = utils.get_db_variant(self.input_pan_db_path)
+        if input_pan_variant != constants.PAN_SEQUENCE_MODE:
+            raise ConfigError(f"The pan-db you provided is of the variant '{input_pan_variant}', but anvi'o needs a conventional, "
+                              f"sequence-based pan-db (variant '{constants.PAN_SEQUENCE_MODE}') generated by `anvi-pan-genome`. Its "
+                              f"gene clusters are the units that will be merged into protein structure-informed gene clusters.")
+
+        if not self.genomes_storage_path:
+            raise ConfigError("Anvi'o needs the genomes storage (-g / --genomes-storage) that goes with your pan-db.")
+
+        utils.is_genome_storage(self.genomes_storage_path)
+        utils.is_pan_db_and_genomes_storage_db_compatible(self.input_pan_db_path, self.genomes_storage_path)
+
+        pan_db = dbops.PanDatabase(self.input_pan_db_path, quiet=True)
+        self.input_pan_meta = pan_db.meta
+        self.genome_names_to_focus = [g for g in pan_db.genomes if g]
+        pan_db.disconnect()
+
+        if not self.project_name:
+            self.project_name = self.input_pan_meta['project_name']
+
+        if self.output_file_path:
+            if not self.output_file_path.endswith('-STRUCTURE-PAN.db'):
+                raise ConfigError("The output file name of a structure-informed pan-db must end with '-STRUCTURE-PAN.db', so it "
+                                  "is easy to tell apart from the conventional pan-db it is built on.")
+            self.pan_db_path = self.output_file_path
+        else:
+            self.pan_db_path = os.path.join(os.path.dirname(os.path.abspath(self.input_pan_db_path)), self.project_name + '-STRUCTURE-PAN.db')
+
+        if os.path.abspath(self.pan_db_path) == os.path.abspath(self.input_pan_db_path):
+            raise ConfigError("The output pan-db can't be the input pan-db.")
+
+
+    def load_input_gene_clusters(self):
+        """Read the gene clusters of the input pan-db into the gene entry format the rest of the class uses."""
+
+        pan_db = dbops.PanDatabase(self.input_pan_db_path, quiet=True)
+        gene_clusters_table = pan_db.db.get_table_as_dataframe(t.pan_gene_clusters_table_name)
+        pan_db.disconnect()
+
+        self.input_gene_clusters_dict = {}
+        self.input_gene_cluster_of_gene = {}
+
+        for gene_caller_id, gene_cluster_id, genome_name, alignment_summary in gene_clusters_table[t.pan_gene_clusters_table_structure].itertuples(index=False):
+            gene_caller_id = int(gene_caller_id)
+
+            if gene_cluster_id not in self.input_gene_clusters_dict:
+                self.input_gene_clusters_dict[gene_cluster_id] = []
+
+            self.input_gene_clusters_dict[gene_cluster_id].append({'gene_caller_id': gene_caller_id,
+                                                                   'gene_cluster_id': gene_cluster_id,
+                                                                   'genome_name': genome_name,
+                                                                   'alignment_summary': alignment_summary or ''})
+
+            self.input_gene_cluster_of_gene[(genome_name, gene_caller_id)] = gene_cluster_id
+
+        if not self.input_gene_clusters_dict:
+            raise ConfigError("The input pan-db has no gene clusters :/")
+
+        self.run.info('Input pan-db', self.input_pan_db_path)
+        self.run.info('Gene clusters in the input pan-db', pp(len(self.input_gene_clusters_dict)))
+
+
+    def check_programs(self):
+        utils.is_program_exists('mcl')
+
+        if not self.foldseek_search_results_output_file:
+            utils.is_program_exists('foldseek')
+
+        if not self.skip_alignments:
+            # instantiating the aligner here is what makes anvi'o complain about a missing or
+            # unsupported alignment program at the very beginning of the analysis.
+            aligners.select(self.align_with, quiet=True)()
+
+
+    def sanity_check(self):
+        structure_sources = [s for s in [self.structure_db_path, self.structures_txt_path, self.foldseek_search_results_output_file] if s]
+        if len(structure_sources) != 1:
+            raise ConfigError("Anvi'o needs exactly one source of structures: a structure-db (--structure-db), a structures-txt "
+                              "(--structures-txt), or precomputed foldseek search results (--foldseek-search-results).")
+
+        if self.structure_db_path:
+            utils.is_structure_db(self.structure_db_path)
+
+        if self.foldseek_search_results_output_file:
+            filesnpaths.is_file_tab_delimited(self.foldseek_search_results_output_file)
+
+        try:
+            self.min_tm_score = float(self.min_tm_score)
+        except (TypeError, ValueError):
+            raise ConfigError(f"--min-tm-score must be a number; got '{self.min_tm_score}'.")
+
+        if self.min_tm_score < 0 or self.min_tm_score > 1:
+            raise ConfigError(f"--min-tm-score must be between 0 and 1 (TM scores are length-normalized). Got {self.min_tm_score}.")
+
+        try:
+            self.structure_mcl_inflation = float(self.structure_mcl_inflation)
+        except (TypeError, ValueError):
+            raise ConfigError(f"--structure-mcl-inflation must be a number; got '{self.structure_mcl_inflation}'.")
+
+        if self.structure_mcl_inflation > 100 or self.structure_mcl_inflation < 0.1:
+            raise ConfigError("The MCL inflation parameter should have a reasonable value :/ Like between 0.1 and 100.0.")
+
+        self.check_project_name()
+        self.check_programs()
+
+        filesnpaths.is_output_file_writable(self.pan_db_path, ok_if_exists=False)
+
+        self.check_genomes_and_alignment_params()
+
+        if self.description_file_path:
+            filesnpaths.is_file_plain_text(self.description_file_path)
+            self.description = open(os.path.abspath(self.description_file_path), 'r').read()
+
+        self.setup_intermediate_data_dir_and_log_file()
+
+        self.run.log_file_path = self.log_file_path
+        self.run.info('Args', (str(self.args)), quiet=True)
+
+
+    def generate_pan_db(self):
+        # the gene clusters merged here were computed by the input pangenome, so the parameters that describe
+        # how they came to be are copied from it as provenance.
+        input_pan_keys = ['min_percent_identity', 'mcl_inflation', 'user_provided_gene_clusters_txt', 'use_ncbi_blast',
+                          'additional_params_for_seq_search', 'minbit', 'exclude_partial_gene_calls']
+
+        meta_values = {k: self.input_pan_meta.get(k) for k in input_pan_keys}
+
+        meta_values.update({'internal_genome_names': ','.join(self.internal_genome_names),
+                            'external_genome_names': ','.join(self.external_genome_names),
+                            'num_genomes': len(self.genomes),
+                            'gene_cluster_min_occurrence': self.gene_cluster_min_occurrence,
+                            'default_view': 'gene_cluster_presence_absence',
+                            'gene_alignments_computed': False if self.skip_alignments else True,
+                            'genomes_storage_hash': self.genomes_storage.get_storage_hash(),
+                            'project_name': self.project_name,
+                            'items_ordered': False,
+                            'reaction_network_ko_annotations_hash': None,
+                            'reaction_network_kegg_database_release': None,
+                            'reaction_network_modelseed_database_sha': None,
+                            'reaction_network_consensus_threshold': None,
+                            'reaction_network_discard_ties': None,
+                            'description': self.description if self.description else '_No description is provided_',
+                            'input_pan_project_name': self.input_pan_meta['project_name'],
+                            'input_pan_num_gene_clusters': len(self.input_gene_clusters_dict),
+                            'structure_source': self.structure_source,
+                            'min_tm_score': self.min_tm_score,
+                            'structure_mcl_inflation': self.structure_mcl_inflation,
+                            'keep_gcs_without_structure': True if self.keep_gcs_without_structure else False,
+                           })
+
+        dbops.PanDatabase(self.pan_db_path, quiet=False).create(meta_values, db_variant=constants.PAN_STRUCTURE_MODE)
+
+        # from now on, everything that reads `args.pan_db` (item additional data tables, PanSuperclass, etc)
+        # must find the new structure-informed pan-db, not the input pan-db.
+        self.args.pan_db = self.pan_db_path
+
+
+    @property
+    def structure_source(self):
+        if self.structure_db_path:
+            return 'structure-db'
+        elif self.structures_txt_path:
+            return 'structures-txt'
+        else:
+            return 'foldseek-search-results'
+
+
+    def report_gcs_without_structures(self, gcs_without_structures, source_name):
+        """Tell the user what happens to the gene clusters that have no structure in `source_name`."""
+
+        if not gcs_without_structures:
+            return
+
+        preview = ', '.join(sorted(gcs_without_structures)[:10])
+
+        if self.keep_gcs_without_structure:
+            fate = ("Since you used the flag `--keep-gcs-without-structure`, each of them will become its own protein "
+                    "structure-informed gene cluster, and the item additional data key `has_structure` will be 0 for those.")
+        else:
+            fate = ("They will not be a part of the structure-informed pangenome (they remain in the input pan-db). You can use "
+                    "the flag `--keep-gcs-without-structure` if you would like each of them to become its own protein "
+                    "structure-informed gene cluster instead.")
+
+        self.run.warning(f"{pp(len(gcs_without_structures))} of {pp(len(self.input_gene_clusters_dict))} gene clusters in the input "
+                         f"pan-db do not have a structure in {source_name}. {fate} First few: {preview}.")
+
+
+    def resolve_structures_from_structure_db(self, gene_cluster_ids):
+        """Export one structure per gene cluster from `--structure-db` and return the structure files.
+
+        The structure-db must have been generated with this pangenome as input. Every protein with a structure
+        must still belong to the gene cluster it was predicted for in the input pan-db, which is what tells anvi'o
+        that the structure-db and the pan-db go together. The representative of a gene cluster is the protein the
+        structure-db holds for it. If the structure-db holds more than one protein with a structure for a gene
+        cluster (for instance, when it was generated without `--select-representative`), anvi'o uses the
+        representative of that gene cluster in the input pangenome, and refuses to guess if that one is not among
+        them.
+
+        Returns: (structures_dict, gcs_with_structures_set), with the same meaning as for
+        `resolve_structure_files_for_gcs`.
+        """
+
+        # imported here to avoid loading the structure machinery whenever panops is imported
+        from anvio.structureops import StructureDatabase
+
+        structure_db = StructureDatabase(self.structure_db_path, ignore_hash=True, create_new=False,
+                                         run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
+
+        if structure_db.input_type != 'pangenome':
+            structure_db.disconnect()
+            raise ConfigError(f"The structure-db you provided was generated from a '{structure_db.input_type}' input, but a "
+                              f"structure-informed pangenome needs a structure-db generated from the very same pangenome. You can "
+                              f"generate one with `anvi-gen-structure-database --pan-db {self.input_pan_db_path} -g "
+                              f"{self.genomes_storage_path} --select-representative`.")
+
+        if str(structure_db.db_hash) != str(self.input_pan_meta['genomes_storage_hash']):
+            structure_db.disconnect()
+            raise ConfigError(f"The structure-db you provided was generated from a pangenome with a different genomes storage "
+                              f"('{structure_db.db_hash}' vs '{self.input_pan_meta['genomes_storage_hash']}' for your pan-db). These "
+                              f"two don't go together.")
+
+        proteins = structure_db.get_proteins_dataframe()
+        proteins = proteins[proteins['has_structure'] == 1]
+
+        if proteins.empty:
+            structure_db.disconnect()
+            raise ConfigError("The structure-db you provided does not contain a single protein with a structure :/")
+
+        # (genome_name, gene_callers_id) -> protein_id, per gene cluster
+        proteins_per_gc = {}
+        not_matching_the_pan = []
+        for protein_id, genome_name, gene_callers_id, gene_cluster_id in proteins[['protein_id', 'genome_name', 'gene_callers_id', 'gene_cluster_id']].itertuples(index=False):
+            gene = (genome_name, int(gene_callers_id))
+
+            if self.input_gene_cluster_of_gene.get(gene) != gene_cluster_id:
+                not_matching_the_pan.append(f"{genome_name}:{gene_callers_id} ({gene_cluster_id})")
+                continue
+
+            if gene_cluster_id not in proteins_per_gc:
+                proteins_per_gc[gene_cluster_id] = {}
+
+            proteins_per_gc[gene_cluster_id][gene] = int(protein_id)
+
+        if not_matching_the_pan:
+            structure_db.disconnect()
+            raise ConfigError(f"{pp(len(not_matching_the_pan))} of {pp(len(proteins))} proteins with a structure in the structure-db "
+                              f"do not belong to the gene cluster they were predicted for in your pan-db. This happens when the "
+                              f"structure-db was generated from a different pan-db, such as an earlier pangenome that was computed "
+                              f"again since. Here are a few of them (genome:gene caller id (gene cluster)): "
+                              f"{', '.join(not_matching_the_pan[:5])}.")
+
+        protein_of_gc = {gc: list(genes.values())[0] for gc, genes in proteins_per_gc.items() if len(genes) == 1}
+
+        gcs_with_multiple_proteins = sorted([gc for gc, genes in proteins_per_gc.items() if len(genes) > 1])
+        if gcs_with_multiple_proteins:
+            if not self.input_pan_meta['gene_alignments_computed']:
+                structure_db.disconnect()
+                raise ConfigError(f"The structure-db holds more than one protein with a structure for {pp(len(gcs_with_multiple_proteins))} "
+                                  f"gene clusters, and anvi'o would use the representative of each of these gene clusters in your "
+                                  f"pangenome to pick one. But your pan-db was generated without alignments, and the representatives "
+                                  f"are picked from aligned sequences. Please either generate a structure-db with one protein per gene "
+                                  f"cluster (`anvi-gen-structure-database --select-representative`), or use a pan-db with alignments. "
+                                  f"First few of these gene clusters: {', '.join(gcs_with_multiple_proteins[:5])}.")
+
+            representatives = self.get_gene_cluster_representative_sequences({gc: self.input_gene_clusters_dict[gc] for gc in gcs_with_multiple_proteins})
+
+            gcs_without_representative_structure = []
+            for gc in gcs_with_multiple_proteins:
+                representative = (representatives[gc]['genome_name'], int(representatives[gc]['gene_callers_id']))
+                if representative in proteins_per_gc[gc]:
+                    protein_of_gc[gc] = proteins_per_gc[gc][representative]
+                else:
+                    gcs_without_representative_structure.append(gc)
+
+            if gcs_without_representative_structure:
+                structure_db.disconnect()
+                raise ConfigError(f"The structure-db holds more than one protein with a structure for {pp(len(gcs_with_multiple_proteins))} "
+                                  f"gene clusters. For {pp(len(gcs_without_representative_structure))} of them, none of these proteins is "
+                                  f"the representative of the gene cluster in your pangenome, and anvi'o will not guess which one should "
+                                  f"stand for the gene cluster. Please generate a structure-db with one protein per gene cluster "
+                                  f"(`anvi-gen-structure-database --select-representative`). First few of these gene clusters: "
+                                  f"{', '.join(gcs_without_representative_structure[:5])}.")
+
+            self.run.warning(f"The structure-db holds more than one protein with a structure for {pp(len(gcs_with_multiple_proteins))} "
+                             f"gene clusters. For each of them, anvi'o used the structure of the representative of the gene cluster "
+                             f"in your pangenome.")
+
+        structures_dir = self.get_output_file_path('structures-from-structure-db')
+        filesnpaths.gen_output_directory(structures_dir, delete_if_exists=True, dont_warn=True)
+
+        # preserve the order of the gene_cluster_ids input for deterministic file naming downstream
+        structures_dict = {}
+        for gc in gene_cluster_ids:
+            if gc in protein_of_gc:
+                structures_dict[gc] = structure_db.export_pdb_content(protein_of_gc[gc], os.path.join(structures_dir, f"{gc}.pdb"), ok_if_exists=True)
+
+        structure_db.disconnect()
+
+        gcs_with_structures = set(structures_dict.keys())
+        self.report_gcs_without_structures(set(gene_cluster_ids) - gcs_with_structures, f"'{self.structure_db_path}'")
+
+        self.run.info('Structure-db', self.structure_db_path)
+        self.run.info('GCs with a structure', f"{pp(len(gcs_with_structures))} of {pp(len(gene_cluster_ids))}")
+
+        return structures_dict, gcs_with_structures
+
+
+    def run_mcl_on_structure_search_results(self, foldseek_search_results):
+        """Cluster gene clusters based on foldseek search results, and return the MCL clusters of gene clusters.
+
+        Gene clusters with no structure are appended as clusters of one if the user asked to keep them.
+        """
+
+        # pass the full set of GCs we handed to foldseek so the heuristic step can also catch structures
+        # that produced zero output rows (not even a self-hit)
+        mcl_input_file_path = self.gen_mcl_input(foldseek_search_results, mode='structure', expected_ids=self.gcs_with_structures)
+
+        mcl_clusters = self.run_mcl(mcl_input_file_path, inflation=self.structure_mcl_inflation)
+
+        gcs_in_mcl_clusters = set(chain.from_iterable(mcl_clusters.values()))
+
+        unknown_gcs = gcs_in_mcl_clusters - set(self.input_gene_clusters_dict.keys())
+        if unknown_gcs:
+            raise ConfigError(f"{pp(len(unknown_gcs))} of the identifiers in the foldseek search results are not gene clusters "
+                              f"of your pan-db. Each structure must be named after the gene cluster it represents. First few: "
+                              f"{', '.join(sorted(unknown_gcs)[:5])}.")
+
+        # foldseek search results provided by the user are the only source that does not tell anvi'o upfront which
+        # gene clusters have a structure
+        if self.gcs_with_structures is None:
+            self.gcs_with_structures = gcs_in_mcl_clusters
+            self.report_gcs_without_structures(set(self.input_gene_clusters_dict.keys()) - gcs_in_mcl_clusters,
+                                               f"'{self.foldseek_search_results_output_file}'")
+
+        if self.keep_gcs_without_structure:
+            for gc in sorted(set(self.input_gene_clusters_dict.keys()) - gcs_in_mcl_clusters):
+                mcl_clusters[f"NO_STRUCTURE_{gc}"] = [gc]
+
+        return mcl_clusters
+
+
+    def store_gene_clusters(self, gene_clusters_dict):
+        PangenomeBase.store_gene_clusters(self, gene_clusters_dict)
+
+        self.progress.new('Storing gc <-> psgc associations in the database')
+        self.progress.update('...')
+
+        table_for_gc_psgc_associations = TableForPSGCGCAssociations(self.pan_db_path, run=self.run, progress=self.progress)
+
+        for gc_name, psgc_name in self.gc_psgc_associations:
+            table_for_gc_psgc_associations.add({'gene_cluster_id': gc_name, 'protein_structure_informed_gene_cluster_id': psgc_name})
+
+        self.progress.end()
+
+        table_for_gc_psgc_associations.store()
+
+
+    def store_psgc_structure_status(self, gene_clusters_dict):
+        """Mark which PSGCs come from structures, which only matters when GCs without a structure are kept."""
+
+        if not self.keep_gcs_without_structure:
+            return
+
+        psgcs_with_structure = set([psgc for gc, psgc in self.gc_psgc_associations if psgc and gc in self.gcs_with_structures])
+        has_structure = {psgc: {'has_structure': 1 if psgc in psgcs_with_structure else 0} for psgc in gene_clusters_dict}
+
+        structure_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'structure'})
+        miscdata.TableForItemAdditionalData(structure_args, r=terminal.Run(verbose=False)).add(has_structure, ['has_structure'], skip_check_names=True)
+
+
+    def compare_with_input_pan_db(self):
+        """Compare the structure-informed pan-db with the input pan-db, adding comparison layers to the former."""
+
+        self.run.warning(None, header="COMPARING THE STRUCTURE-INFORMED AND THE INPUT PAN DATABASES", lc="cyan")
+
+        output_file_path = os.path.join(os.path.dirname(os.path.abspath(self.pan_db_path)), self.project_name + '-STRUCTURE-VS-SEQUENCE.txt')
+
+        compare_args = argparse.Namespace(pan_db=self.pan_db_path,
+                                          compared_pan_db=self.input_pan_db_path,
+                                          genomes_storage=self.genomes_storage_path,
+                                          output_file=output_file_path,
+                                          skip_output_files=False)
+
+        try:
+            ComparePan(compare_args, run=self.run, progress=self.progress).process()
+        except ConfigError as e:
+            # the structure-informed pan-db is complete at this point, and an uneventful comparison (e.g.,
+            # no PSGC merged more than one gene cluster) should not turn the whole run into a failure.
+            self.run.warning(f"Anvi'o could not compare the two pan-dbs, but your structure-informed pan-db is complete. "
+                             f"Here is what the comparison had to say: {e.clear_text()}", header="COMPARISON SKIPPED")
+
+
+    def process(self):
+        self.load_input_pan()
+
+        self.load_genomes()
+
+        self.sanity_check()
+
+        self.load_input_gene_clusters()
+
+        # every gene cluster of the input pan-db is tracked in the structure-informed pan-db, so PSGCs
+        # can always be resolved back to the gene clusters they came from
+        gene_cluster_ids = sorted(self.input_gene_clusters_dict.keys())
+
+        if self.foldseek_search_results_output_file:
+            foldseek_search_results = self.foldseek_search_results_output_file
+        else:
+            if self.structure_db_path:
+                structures_dict, self.gcs_with_structures = self.resolve_structures_from_structure_db(gene_cluster_ids)
+            else:
+                structures_dict, self.gcs_with_structures = self.resolve_structure_files_for_gcs(gene_cluster_ids)
+
+            if not structures_dict:
+                raise ConfigError("Not a single gene cluster of your pan-db ended up with a structure. There is nothing for "
+                                  "foldseek to do.")
+
+            foldseek_search_results = self.run_foldseek(structures_dict=structures_dict)
+
+        mcl_clusters = self.run_mcl_on_structure_search_results(foldseek_search_results)
+
+        # the gene clusters that will be merged into PSGCs. leaving out the ones without a structure (unless they
+        # are kept) ensures the "GCs lost on the way" warning only fires for genuinely unexpected losses.
+        gcs_in_psgcs = set(chain.from_iterable(mcl_clusters.values()))
+        gene_clusters_to_merge = {gc: self.input_gene_clusters_dict[gc] for gc in gene_cluster_ids if gc in gcs_in_psgcs}
+
+        gene_clusters_dict = self.gen_protein_structure_informed_gene_clusters_dict_from_mcl_clusters(mcl_clusters, gene_clusters_to_merge)
+        del mcl_clusters
+
+        self.generate_pan_db()
+
+        self.populate_gene_cluster_tracker_table(self.input_gene_clusters_dict)
+
+        gene_clusters_dict, unsuccessful_alignments = self.compute_alignments_for_gene_clusters(gene_clusters_dict)
+        self.report_unsuccessful_alignments(gene_clusters_dict, unsuccessful_alignments)
+
+        gene_clusters_dict = self._run_full_pan_pipeline(gene_clusters_dict, self.pan_db_path, unsuccessful_alignments)
+
+        self.store_psgc_structure_status(gene_clusters_dict)
+
+        if self.compare_with_input_pan:
+            self.compare_with_input_pan_db()
+
+        self.warn_if_too_much_data(gene_clusters_dict)
+
+        # deal with the intermediate data output directory
+        self.cleanup()
+
+        # done
+        self.run.log_file_path = None
+        self.run.info("The new structure-informed pan-db", self.pan_db_path, nl_after=1)
+
+        self.run.info_single(f"Your structure-informed pangenome is ready with a total of {pp(len(gene_clusters_dict))} protein "
+                             f"structure-informed gene clusters, merged from {pp(len(self.gcs_with_structures))} gene clusters with a "
+                             f"structure, across {len(self.genomes)} genomes 🎉", mc="green", nl_after=1)
+
+
+    def run_foldseek(self, structures_dict):
+        """Build a foldseek DB and run easy-search self-vs-self.
+
+        `structures_dict` maps gene_id -> structure file path. anvi'o stages a directory of
+        symlinks named `{gene_id}.{ext}` and hands that single directory to foldseek's createdb.
+        This (a) keeps us safely below ARG_MAX regardless of how many structures the user has and
+        (b) makes foldseek's query/target columns use gene_ids verbatim, so the easy-search output
+        is directly indexable against the gene cluster IDs of the input pan-db.
+        """
+        structure_dir = self._stage_structures_for_foldseek(structures_dict)
+        fs = Foldseek(structure_dir=structure_dir,
+                      run=self.run,
+                      progress=self.progress,
+                      num_threads=self.num_threads,
+                      overwrite_output_destinations=self.overwrite_output_destinations)
+
+        fs.process(self.intermediate_data_dir)
+
+        return fs.get_foldseek_results()
+
+
+    def _stage_structures_for_foldseek(self, structures_dict):
+        """Create a directory of symlinks named `{gene_id}.{ext}` pointing at the user's
+        structure files. Returns the directory path.
+
+        foldseek's createdb uses the input file basenames as the query/target identifiers in
+        its easy-search output. By staging symlinks under names we control, we (a) ensure
+        the output is keyed on `gene_id` (the canonical anvi'o identifier) and not on
+        whatever the user happened to name their PDB files, and (b) collapse the command
+        line to a single positional argument so the ARG_MAX limit on argv doesn't bite
+        when there are tens of thousands of structures.
+
+        For now the structure-informed pangenome workflow restricts inputs to `.pdb` even
+        though the generic StructuresTxt artifact accepts CIF / mmCIF / FoldComp / gzipped
+        variants. We'll widen this once we've actually test-driven foldseek's behavior on
+        those formats against a real dataset; until then the safe path is to fail loudly
+        rather than silently produce something wrong.
+        """
+        # Workflow-level guard: PDB only for now. (See method docstring above.)
+        non_pdb = [(gid, p) for gid, p in structures_dict.items() if not p.lower().endswith('.pdb')]
+        if non_pdb:
+            preview = ', '.join(f"{g} -> {os.path.basename(p)}" for g, p in non_pdb[:5])
+            raise ConfigError(f"The structure-informed pangenome workflow currently accepts only .pdb files. "
+                              f"{len(non_pdb)} entry/entries in your structures-txt point at other formats "
+                              f"(.cif / .mmcif / .gz / .fcz). The generic structures-txt artifact accepts those, "
+                              f"but the structure-informed pangenome has not yet been validated against them. First offenders: "
+                              f"{preview}.")
+
+        stage_dir = self.get_output_file_path('foldseek-input-structures')
+        filesnpaths.gen_output_directory(stage_dir, delete_if_exists=True, dont_warn=True)
+
+        for gene_id, src in structures_dict.items():
+            link_path = os.path.join(stage_dir, f"{gene_id}.pdb")
+            # src is already absolute (StructuresTxt resolves paths at parse time).
+            os.symlink(src, link_path)
+
+        self.run.info('Foldseek input staging directory', stage_dir)
+        return stage_dir
+
+
+    def resolve_structure_files_for_gcs(self, gene_cluster_ids):
+        """Load `--structures-txt` and return the structure files relevant to `gene_cluster_ids`.
+
+        - Warns on gene clusters that have no entry in the structures-txt — these are not in
+          the foldseek DB (see `report_gcs_without_structures` for what happens to them).
+        - Warns on entries in the structures-txt that don't correspond to any gene cluster in
+          the input pan-db (typos / stale file). They're ignored.
+
+        Returns: (structures_dict, gcs_with_structures_set), where `structures_dict` is the
+        `{gene_id: path}` mapping restricted to GCs that have structures, preserving the
+        original order of `gene_cluster_ids` for deterministic symlink-farm naming.
+        """
+        structures = StructuresTxt(self.structures_txt_path, run=self.run, progress=self.progress)
+        full_structures_dict = structures.as_dict()
+
+        gc_set = set(gene_cluster_ids)
+        file_keys = set(full_structures_dict.keys())
+
+        missing_from_file = gc_set - file_keys
+        extra_in_file = file_keys - gc_set
+
+        if extra_in_file:
+            preview = ', '.join(sorted(extra_in_file)[:10])
+            self.run.warning(f"{len(extra_in_file)} entry/entries in '{self.structures_txt_path}' do not correspond "
+                             f"to any gene cluster in the input pan-db (likely a typo, or a stale file from "
+                             f"a different pan run). They will be ignored. First few: {preview}.")
+
+        self.report_gcs_without_structures(missing_from_file, f"'{self.structures_txt_path}'")
+
+        gcs_with_structures = gc_set & file_keys
+
+        # preserve the order of the gene_cluster_ids input for deterministic symlink-farm naming
+        structures_dict = {gc: full_structures_dict[gc] for gc in gene_cluster_ids if gc in gcs_with_structures}
+
+        self.run.info('GCs with a structure', f"{pp(len(gcs_with_structures))} of {pp(len(gc_set))}")
+
+        return structures_dict, gcs_with_structures
+
+
+    def populate_gene_cluster_tracker_table(self, gene_clusters_dict):
+        self.progress.new('Storing the gene clusters of the input pan-db for future references')
+        self.progress.update('...')
+
+        table_for_gene_clusters = TableForGeneClusters(self.pan_db_path, gc_tracker_table=True, run=self.run, progress=self.progress)
+
+        num_genes_in_gene_clusters = 0
+        for gene_cluster_name in gene_clusters_dict:
+            for gene_entry in gene_clusters_dict[gene_cluster_name]:
+                table_for_gene_clusters.add(gene_entry)
+                num_genes_in_gene_clusters += 1
+
+        self.progress.end()
+
+        table_for_gene_clusters.store()
+
+
+    def gen_protein_structure_informed_gene_clusters_dict_from_mcl_clusters(self, mcl_clusters, gene_clusters_de_novo, name_prefix="PSGC"):
+        """Turn MCL clusters from structure search into a gene clusters dict
+
+        The only difference between this function and `gen_de_novo_gene_clusters_dict_from_mcl_clusters` is that
+        the latter takes in de novo gene clusters, where hashes must be replaced with actual genome names. In
+        contrast, this function takes clusters of gene clusters, which must be turned into a dictionary where
+        gene clusters resolved back to individual genes they had originally.
+        """
+
+        # we will build the following dictionary here from the MCL results and de novo gene clusters
+        protein_structure_informed_gene_clusters_dict = {}
+
+        counter = 0
+        for gene_cluster_group in mcl_clusters.values():
+            counter += 1
+            psgc_name = f"{name_prefix}_{counter:08d}"
+
+            protein_structure_informed_gene_clusters_dict[psgc_name] = []
+
+            # For each MCL gene cluster group, retrieve gene entries from gene_clusters_de_novo and add them to the new dictionary.
+            for gc_name in gene_cluster_group:
+
+                # as we are now going through de novo gene clusters that are represented in protein structure-informed
+                # clusters, we will update our talbe to track psgc <-> gc associations table
+                self.gc_psgc_associations.append((gc_name, psgc_name))
+
+                # go through every gene entry in de novo clusters
+                for gene_entry in gene_clusters_de_novo[gc_name]:
+                    protein_structure_informed_gene_clusters_dict[psgc_name].append({
+                        'gene_caller_id': int(gene_entry['gene_caller_id']),
+                        'gene_cluster_id': psgc_name,
+                        'genome_name': gene_entry['genome_name'],
+                        'alignment_summary': gene_entry.get('alignment_summary', '')
+                    })
+
+        # there is one last house-keeping business to do here. now we have our psgc <-> gc assocaitions
+        # table for downsteram steps. as we went through psgcs and matched gcs that were contained in
+        # them with the de novo gcs, we don't know if there are any de novo gcs that did not end up in
+        # any of the psgcs. this is an extremely unlikely scenario, but those are the kinds of things
+        # we are here for. so we will go t
+        known_gcs = set(list(gene_clusters_de_novo.keys()))
+        gcs_found_in_psgcs = set([tpl[0] for tpl in self.gc_psgc_associations])
+        gcs_not_reprsented_in_psgcs = known_gcs.difference(gcs_found_in_psgcs)
+        if gcs_not_reprsented_in_psgcs:
+            self.run.warning(f"Anvi'o noticed something unexpected, and she wants you to know about it. It seems "
+                             f"{pp(len(gcs_not_reprsented_in_psgcs))} of {pp(len(known_gcs))} gene clusters anvi'o "
+                             f"computed based on their amino acid sequences somehow were lost when protein "
+                             f"structure-informed gene clusters were computed from their representatives. We are "
+                             f"not sure under what circumstances this can happen. If you are seeing this error "
+                             f"message, you can help us implement more functionality in this class to debug it "
+                             f"properly. Here is the list of de novo gene clusters that were lost along the way: "
+                             f"{', '.join(gcs_not_reprsented_in_psgcs)}")
+
+            for gc_name in gcs_not_reprsented_in_psgcs:
+                self.gc_psgc_associations.append((gc_name, None))
+
+        self.run.warning(f"Hi! Anvi'o just finished calculating your protein structure-informed gene clusters dictionary "
+                         f"that consolidated {pp(len(known_gcs))} gene clusters (that were generated based on the good ol' "
+                         f"amino acid sequence homology considerations) into {pp(len(protein_structure_informed_gene_clusters_dict))} "
+                         f"protein structure-informed gene clusters. We keep our fingers crossed that something will not "
+                         f"explode after this.", header="🎉 GCs TO PSGCs IS WORKING 🎉", lc='green')
+
+        return protein_structure_informed_gene_clusters_dict
+
+
+    def get_gene_cluster_representative_sequences(self, gene_clusters_dict):
+        """Select representative sequences per GC.
+
+        The actual representative-picking logic lives in `utils.get_representative_sequence_from_gene_cluster`
+        so that this build-time path and the user-facing `anvi-get-sequences-for-gene-clusters --representative`
+        path (via `dbops.PanSuperclass.get_gene_cluster_representative_sequences`) pick representatives
+        identically. See that function for the selection strategy.
+        """
+
+        representative_sequences = {}
+
+        for gc_name in gene_clusters_dict:
+            sequence_entries = []
+
+            for gc_info in gene_clusters_dict[gc_name]:
+                # recover key data
+                genome_name = gc_info['genome_name']
+                gene_caller_id = gc_info['gene_caller_id']
+                alignment_summary = gc_info['alignment_summary']
+
+                # recover restored alignment for sequence
+                aa_sequence = self.genomes_storage.gene_info[genome_name][gene_caller_id]['aa_sequence']
+                sequence = utils.restore_alignment(aa_sequence, alignment_summary)
+                is_partial = self.genomes_storage.is_partial_gene_call(genome_name, gene_caller_id)
+
+                sequence_entries.append({
+                    'align_sequence': sequence,
+                    'length': len(aa_sequence),
+                    'gap_count': sequence.count('-'),
+                    'is_partial': bool(is_partial),
+                    'genome_name': genome_name,
+                    'gene_callers_id': gene_caller_id
+                })
+
+            representative_entry = utils.get_representative_sequence_from_gene_cluster(sequence_entries)
+            representative_sequences[gc_name] = {
+                'align_sequence': representative_entry['align_sequence'],
+                'genome_name': representative_entry['genome_name'],
+                'gene_callers_id': representative_entry['gene_callers_id']
+            }
+
+        return representative_sequences
 
 
 # ANCHOR - PangenomeGraph
