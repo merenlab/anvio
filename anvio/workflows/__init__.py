@@ -214,6 +214,7 @@ class WorkflowSuperClass:
             'TRNASeqWorkflow': 'trnaseq',
             'EcoPhyloWorkflow': 'ecophylo',
             'SRADownloadWorkflow': 'sra_download',
+            'StructureModule': 'structure',
         }
 
         merged = {'general_params': {}, 'rules': {}}

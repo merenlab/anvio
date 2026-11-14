@@ -70,7 +70,7 @@ anvi-profile-blitz %(bam-file)s \
 {{ codestop }}
 
 {:.note}
-Bin-level detection and coverage are computed by treating all contigs in a bin as a single genome (nucleotide arrays are concatenated under the hood). With `--report-minimal`, these statistics are streamed to keep memory usage close to contig mode even for large bins.
+Bin-level detection and coverage are computed by treating all contigs in a bin as a single genome (nucleotide arrays are concatenated under the hood, in alphabetical order of contig names). With `--report-minimal`, these statistics are streamed to keep memory usage close to contig mode even for large bins.
 
 ### Genes mode, default output
 
@@ -107,37 +107,32 @@ anvi-profile-blitz %(bam-file)s \
                    --genes-of-interest %(genes-of-interest-txt)s
 {{ codestop }}
 
-## Modifying DisCov parameters
+## Modifying discov parameters
 
-For genomes or contigs, %(anvi-profile-blitz)s can compute the Distribution of Coverage (DisCov) score alongside other coverage statistics. DisCov combines a spread score _S_ (proportion of windows with coverage) and an evenness score _E_ (proportion of covered bases within a fold-range of the median nonzero coverage). See %(discov-stats)s for a full description of the metric and parameters.
+For genomes or contigs, %(anvi-profile-blitz)s computes the distribution of coverage (discov) score alongside other coverage statistics. Discov combines a spread score _S_ (proportion of windows with coverage, normalized by the proportion expected given the number of mapped reads), an evenness score _E_ (based on the coefficient of variation of mean coverage depth across covered windows), and detection _D_. See %(discov-stats)s for a full description of the metric and parameters.
 
 The default parameters are designed to work well across typical metagenomics data, but you can adjust them:
 
-**Window sizing for _S_**
+**Window sizing**
 
-The spread score (_S_) is computed by dividing the input sequence into non-overlapping windows. By default, contig-level stats use a window length equal to 1%% of the contig length (minimum 300 bp). Genome/bin-level stats (when using `--collection-txt`) use a fixed 1,000 bp window. You can override these defaults with the following parameters:
+_S_ and _E_ are computed by dividing the input sequence into non-overlapping windows. By default, contig-level stats use a window length equal to 1%% of the contig length (minimum 300 bp). Genome/bin-level stats (when using `--collection-txt`) use a fixed 10,000 bp window. You can override these defaults with the following parameters:
 
 * `--window-length INT` — use a fixed window size in bp for all sequences
-* `--window-length-as-percentage FLOAT` — set window length as a percentage of each sequence's length
+* `--window-length-as-percentage INT` — set window length as a percentage of each sequence's length
 * `--min-window-length INT` — set a minimum window length floor when using percentage mode
-
-**Fold-range for _E_**
-
-The evenness score (_E_) counts bases with coverage between a lower and upper fold-multiple of the median nonzero coverage. The default fold-range endpoints are 0.5x and 2.0x. To adjust:
-
-* `--foldrange-lower FLOAT` — lower bound (default: 0.5)
-* `--foldrange-upper FLOAT` — upper bound (default: 2.0)
 
 **Combining _S_ and _E_**
 
-You can adjust how _S_ and _E_ are combined by changing either their weights or the overall DisCov formula:
+You can adjust how _S_ and _E_ are combined into the spread-evenness score _C_ by changing either their weights or the formula:
 
 * `--alpha FLOAT` — weight of _S_ relative to _E_, in [0, 1] (default: 0.5)
-* `--discov-formula STRING` — `linear` (DisCov = _αS_ + (1-_α_)_E_) or `geometric` (DisCov = _S_^_α_ × _E_^(1-_α_)) (default: `linear`)
+* `--discov-formula STRING` — `geometric` (_C_ = _S_^_α_ × _E_^(1-_α_)) or `linear` (_C_ = _αS_ + (1-_α_)_E_) (default: `geometric`)
+
+The final score is discov = min(1, _C_ + _D_^2).
 
 **Window-level output**
 
-To inspect the per-window values used to compute _S_ (useful for debugging or visualization), add the `--gen-window-level-output` flag:
+To inspect the per-window values used to compute _S_ and _E_ (useful for debugging or visualization), add the `--gen-window-level-output` flag:
 
 {{ codestart }}
 anvi-profile-blitz %(bam-file)s \
@@ -146,9 +141,11 @@ anvi-profile-blitz %(bam-file)s \
                    --gen-window-level-output
 {{ codestop }}
 
-This produces an additional file named `OUTPUT-WINDOWS.txt` with per-window start/stop positions, coverage presence, and base counts within the fold-range.
+This produces an additional file named `OUTPUT-WINDOWS.txt` with one row per window, including its start/stop positions (relative to the contig it is in, also in genome mode), its length, whether it has any coverage, its mean coverage, and the number of bases with nonzero coverage.
 
-Note that computing DisCov is not compatible with `--gene-mode` or `--report-minimal`.
+In genome mode, the contigs of a bin are concatenated before being divided into windows, so a window can span the boundary between two contigs. Such a window is reported under the contig in which it starts, and its stop position can therefore be larger than the length of that contig.
+
+Note that computing discov is not compatible with `--gene-mode` or `--report-minimal`.
 
 ## Performance
 
