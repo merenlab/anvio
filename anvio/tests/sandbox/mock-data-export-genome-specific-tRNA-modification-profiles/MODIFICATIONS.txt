@@ -1,0 +1,10 @@
+gene_callers_id	contig_name	anticodon	aa	domain	phylum	class	order	family	genus	species	taxon_percent_id	seed_position	ordinal_name	ordinal_position	canonical_position	reference	sample_name	A	C	G	T
+1	c_001	TAG	Leu									32	anticodon_loop_3	34	34	C	S1	0.0	80.0	0.0	20.0
+1	c_001	TAG	Leu									32	anticodon_loop_3	34	34	T	S2				
+1	c_001	TAG	Leu									32	anticodon_loop_3	34	34	T	S3				
+1	c_001	TAG	Leu									35	anticodon_loop_6	37	37	C	S1	0.0	60.0	0.0	40.0
+1	c_001	TAG	Leu									35	anticodon_loop_6	37	37	A	S2				
+1	c_001	TAG	Leu									35	anticodon_loop_6	37	37	A	S3				
+2	c_002	GAA	Phe									35	anticodon_loop_6	37	37	C	S1	0.0	50.0	0.0	50.0
+2	c_002	GAA	Phe									35	anticodon_loop_6	37	37	A	S2				
+2	c_002	GAA	Phe									35	anticodon_loop_6	37	37	A	S3				
