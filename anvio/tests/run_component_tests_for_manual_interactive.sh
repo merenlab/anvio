@@ -18,7 +18,6 @@ anvi-matrix-to-newick $output_dir/view_data.txt \
 
 INFO "Running a dry run to generate a profile database (to populate it with additional misc data)"
 anvi-interactive -d $output_dir/view_data.txt \
-                 --manual-mode \
                  -p $output_dir/test.db \
                  --dry-run
 
@@ -43,5 +42,11 @@ anvi-interactive -f $output_dir/fasta.fa \
                  -p $output_dir/test.db \
                  -t $output_dir/tree.txt \
                  --title "Interactive Interface Without Anvi'o Files"\
-                 --manual-mode \
                  $dry_run_controller
+
+INFO "Making sure the legacy '--manual' flag is still accepted (it is no longer necessary)"
+anvi-interactive -d $output_dir/view_data.txt \
+                 -t $output_dir/tree.txt \
+                 -p $output_dir/test.db \
+                 --manual \
+                 --dry-run
