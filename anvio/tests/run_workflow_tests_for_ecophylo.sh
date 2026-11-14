@@ -110,7 +110,6 @@ anvi-run-workflow -w ecophylo -c no-samples-txt-config.json
 INFO "Running ecophylo workflow interactive (tree-mode)"
 anvi-interactive -t ECOPHYLO_WORKFLOW/05_TREES/${HMM}/${HMM}_renamed.nwk \
                  -p ECOPHYLO_WORKFLOW/05_TREES/${HMM}/${HMM}-PROFILE.db \
-                 --manual \
                  $dry_run_controller
 
 rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/
@@ -121,7 +120,6 @@ anvi-run-workflow -w ecophylo -c no-samples-only-external-genomes-txt-config.jso
 INFO "Running ecophylo workflow interactive from external HMM (tree-mode)"
 anvi-interactive -t ECOPHYLO_WORKFLOW/05_TREES/${HMM}/${HMM}_renamed.nwk \
                  -p ECOPHYLO_WORKFLOW/05_TREES/${HMM}/${HMM}-PROFILE.db \
-                 --manual \
                  $dry_run_controller
 
 rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/
