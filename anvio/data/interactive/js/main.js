@@ -263,6 +263,14 @@ function initData() {
 
             functions_available = (response.functions_sources ?? []).length > 0;
 
+            // the option to show sequences in the bin items window only makes sense in manual mode
+            // when the user provided a FASTA file
+            if (mode == 'manual' && sequences_available) {
+                $('#show-sequences-in-bin-items-wrapper').show();
+            }
+
+            interface_read_only = response.read_only ? true : false;
+
             if (response.read_only)
             {
                 toastr.info("It seems that this is a read-only instance, therefore the database-writing \
