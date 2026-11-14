@@ -1501,6 +1501,25 @@ position: relative;
     font-weight: bold;
 }
 
+/* filled buttons with black text, matching the bootstrap 'btn-warning' used for operations */
+.bin-curation-btn-selection,
+.bin-curation-btn-discard,
+.bin-curation-btn-apply {
+    color: #212529;
+    border-color: transparent;
+}
+
+.bin-curation-btn-selection { background-color: #d3d9df; }
+.bin-curation-btn-discard   { background-color: #f5b5b5; }
+.bin-curation-btn-apply     { background-color: #9edaa8; }
+
+.bin-curation-btn-selection:hover,
+.bin-curation-btn-discard:hover,
+.bin-curation-btn-apply:hover {
+    color: #212529;
+    filter: brightness(0.92);
+}
+
 .bin-curation-status {
     font-size: 0.9em;
     color: #555;
@@ -1540,6 +1559,11 @@ position: relative;
     text-decoration: line-through;
 }
 
+/* colored residues of staged items are greyed out as well */
+.bin-curation-staged .bin-curation-seq span {
+    color: #aaa !important;
+}
+
 .bin-curation-seq-container {
     max-height: 45vh;
     overflow: auto;
@@ -1564,7 +1588,10 @@ position: relative;
     z-index: 1;
 }
 
-.bin-curation-seq {
+/* same font as the alignments in anvi-display-pan. the spans of colored residues need to be
+   listed explicitly, otherwise the global `html *` rule above gives them a proportional font */
+.bin-curation-seq,
+.bin-curation-seq span {
     font-family: monospace;
     white-space: pre;
 }

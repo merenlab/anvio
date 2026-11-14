@@ -216,9 +216,9 @@ function _buildBinCurationDialog(bin_id, bin_info, items, sequencesInfo) {
         <div class="bin-curation-controls">
             <div class="bin-curation-controls-row">
                 <span class="bin-curation-controls-label">Selections:</span>
-                <button type="button" class="btn btn-outline-secondary btn-sm" data-action="check-all">Check All</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" data-action="check-none">Check None</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" data-action="invert">Invert selections</button>
+                <button type="button" class="btn btn-sm bin-curation-btn-selection" data-action="check-all">Check All</button>
+                <button type="button" class="btn btn-sm bin-curation-btn-selection" data-action="check-none">Check None</button>
+                <button type="button" class="btn btn-sm bin-curation-btn-selection" data-action="invert">Invert selections</button>
             </div>
             <div class="bin-curation-controls-row">
                 <span class="bin-curation-controls-label">Operations:</span>
@@ -227,8 +227,8 @@ function _buildBinCurationDialog(bin_id, bin_info, items, sequencesInfo) {
             </div>
             <div class="bin-curation-controls-row">
                 <span class="bin-curation-controls-label">Conclusion:</span>
-                <button type="button" class="btn btn-outline-danger btn-sm" data-action="discard">Discard all changes</button>
-                <button type="button" class="btn btn-success btn-sm" data-action="apply" ${readOnlyAttr}>Apply</button>
+                <button type="button" class="btn btn-sm bin-curation-btn-discard" data-action="discard">Discard all changes</button>
+                <button type="button" class="btn btn-sm bin-curation-btn-apply" data-action="apply" ${readOnlyAttr}>Apply</button>
             </div>
             <div class="bin-curation-status"></div>
         </div>`;
