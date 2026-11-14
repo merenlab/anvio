@@ -48,11 +48,11 @@ Genes for which AMRFinderPlus reports no class or subclass, which includes most 
 
 Running HMMs to annotate genes generates e-values, but these are not included in the output of AMRFinderPlus because the database uses manually curated cutoff values. When you run the program in anvi'o it recovers the e-values from the hmmsearch table AMRFinderPlus leaves behind in its temporary directory, and stores them with every HMM based gene annotation. Hits without an HMM match that were identified with BLASTP only have no e-value and receive a placeholder e-value of 0. Because AMRFinderPlus calculates e-values for a fixed search space of 10,000 proteins, they are not directly comparable to the e-values of other anvi'o annotation programs.
 
-If for some reason anvi'o cannot find the hmmsearch table (for instance, because a future version of AMRFinderPlus works differently), it will stop with an error. In that case, you can use the flag `--skip-e-values` to store all annotations with an e-value of 0 but still get your annotations. That does not make the annotations less reliable, the same curated cutoffs are still applied during the annotation process:
+If for some reason anvi'o cannot find the hmmsearch table (for instance, because a future version of AMRFinderPlus works differently), it will stop with an error. In that case, you can use the flag `--skip-amrfinder-e-values` to store all annotations with an e-value of 0 but still get your annotations. That does not make the annotations less reliable, the same curated cutoffs are still applied during the annotation process:
 
 {{ codestart }}
 anvi-run-amrfinder -c %(contigs-db)s \
-                   --skip-e-values
+                   --skip-amrfinder-e-values
 {{ codestop }}
 
 ### The full AMRFinderPlus report

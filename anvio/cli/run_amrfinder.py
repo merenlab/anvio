@@ -41,7 +41,13 @@ def get_args():
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('amrfinder-data-dir'), **anvio.K('amrfinder-data-dir'))
     parser.add_argument(*anvio.A('full-amrfinder-report'), **anvio.K('full-amrfinder-report'))
-    parser.add_argument(*anvio.A('skip-e-values'), **anvio.K('skip-e-values'))
+    parser.add_argument('--skip-amrfinder-e-values', default=False, action='store_true', help="By default, AMRFinderPlus "
+                        "does not report e-values for its HMM hits because each model is manually curated and has its own "
+                        "threshold. However, because it's nice to know, anvi'o recovers them from the hmmsearch table "
+                        "AMRFinderPlus leaves behind in its temporary directory. We can't see into the future and it is "
+                        "possible that future versions of AMRFinderPlus won't produce that temporary file anymore. In that "
+                        "case anvi'o would be confused and tell you so. You can use this flag to tell anvi'o to go on with "
+                        "annotating genes with AMRFinderPlus without snatching the e-values, in which case they will all be 0.")
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it', {'help': "Using this flag, anvi'o will overwrite "
                         "previous AMRFinderPlus annotations in your contigs db."}))

@@ -1061,18 +1061,6 @@ D = {
              'help': "This is optional and allows you to specify a directory path for your AMRFinderPlus database. "
                      "Anvi'o will use the default path if you do not specify anything."}
                 ),
-    'skip-e-values': (
-            ['--skip-e-values'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "By default, AMRFinderPlus does not report e-values for its HMM hits because each model is "
-                     "manually curated and has its own threshold. However, because it's nice to know, anvi'o recovers "
-                     "them from the hmmsearch table AMRFinderPlus leaves behind in its temporary directory. We can't "
-                     "see into the future and it is possible that future versions of AMRFinderPlus won't produce that "
-                     "temporary file anymore. In that case anvi'o would be confused and tell you so. You can use this "
-                     "flag to tell anvi'o to go on with annotating genes with AMRFinderPlus without snatching the e-values, "
-                     "in which case they will all be 0."}
-                ),
     'full-amrfinder-report': (
             ['--full-amrfinder-report'],
             {'metavar': 'FILE',
