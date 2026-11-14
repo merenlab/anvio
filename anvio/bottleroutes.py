@@ -161,6 +161,7 @@ class BottleApplication(Bottle):
         self.route('/store_description',                                          callback=self.store_description, method='POST')
         self.route('/upload_project',                                             callback=self.upload_project, method='POST')
         self.route('/data/contig/<split_name>',                                   callback=self.get_sequence_for_split)
+        self.route('/data/get_sequences_for_splits',                              callback=self.get_sequences_for_splits, method='POST')
         self.route('/summarize/<collection_name>',                                callback=self.gen_summary, method='POST')
         self.route('/summary/<collection_name>/:filename#.*#',                    callback=self.send_summary_static)
         self.route('/data/gene/<gene_callers_id>',                                callback=self.get_sequence_for_gene_call)
@@ -1050,6 +1051,35 @@ class BottleApplication(Bottle):
             return json.dumps({'error': "Something went wrong when I tried to access that split sequence: '%s' :/" % e})
 
         return json.dumps({'sequence': sequence, 'header': header})
+
+
+    def get_sequences_for_splits(self):
+        """Returns sequences for a list of split names in a single request.
+
+        This is used by the bin curation window of the interactive interface (in manual mode
+        with a FASTA file), so it can show the sequences of every item in a bin at once rather
+        than requesting them one by one.
+        """
+
+        if not self.interactive.split_sequences:
+            message = ("There are no sequences associated with the items in this display, so anvi'o "
+                       "has nothing to show you :/")
+            return json.dumps({'status': 1, 'message': message})
+
+        try:
+            split_names = json.loads(request.forms.get('split_names'))
+        except Exception as e:
+            return json.dumps({'status': 1, 'message': f"Anvi'o could not make sense of the split names it received: '{e}'"})
+
+        missing = [s for s in split_names if s not in self.interactive.split_sequences]
+        if len(missing):
+            message = (f"{len(missing)} of the {len(split_names)} items you asked for do not have a "
+                       f"corresponding sequence (e.g., '{missing[0]}'). This is weird :/")
+            return json.dumps({'status': 1, 'message': message})
+
+        sequences = dict([(s, self.interactive.split_sequences[s]['sequence']) for s in split_names])
+
+        return json.dumps({'status': 0, 'sequences': sequences})
 
 
     def gen_summary(self, collection_name):
