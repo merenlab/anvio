@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import sys
 from pathlib import Path
 
@@ -7,7 +8,7 @@ import anvio
 import anvio.terminal as terminal
 
 from anvio.argparse import ArgumentParser
-from anvio.docs import AnvioDocs, DocumentationData, HelpPagesRenderer
+from anvio.docs import AnvioDocs, DocumentationData, HelpPagesRenderer, LLMsTextRenderer
 from anvio.errors import ConfigError, FilesNPathsError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -32,6 +33,7 @@ def main():
 
         output_dir = args.output_dir or 'ANVIO-HELP'
         HelpPagesRenderer(dataset=docs_dataset, output_directory=output_dir).generate()
+        LLMsTextRenderer(dataset=docs_dataset, output_file=os.path.join(output_dir, 'llms-full.txt')).write()
 
     except ConfigError as e:
         print(e)

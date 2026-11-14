@@ -67,7 +67,7 @@ anvi-gen-pan-representative -p %(pan-db)s \
 
 ## Creation of the supplementary contig
 
-Once the representative genome is chosen, the program builds the supplementary contig using a greedy covering strategy: it repeatedly selects the donor genome that covers the most gene clusters not yet represented, extracts the representative gene sequences for those uncovered gene clusters from that donor genome, then moves on to the next best donor until every gene cluster in the pangenome is accounted for. All extracted gene sequences are concatenated into a single supplementary contig, separated by stretches of `N` characters (20 by default, controlled by `--gap-size`).
+Once the representative genome is chosen, the program builds the supplementary contig using a greedy covering strategy: it repeatedly selects the donor genome that covers the most gene clusters not yet represented, extracts the representative gene sequences for those uncovered gene clusters from that donor genome, then moves on to the next best donor until every gene cluster in the pangenome is accounted for. All extracted gene sequences are concatenated into a single supplementary contig, separated by stretches of `N` characters (100 by default, controlled by `--gap-size`).
 
 By default, each gene is extracted individually from its start codon to its stop codon. Two additional modes offer finer control over what flanking sequence is included:
 

@@ -1,18 +1,16 @@
-"""Render the help website from a documentation dataset.
-
-Rendering uses only the dataset, its image assets, and installed website templates.
-It does not discover CLI programs or consult documentation source registries.
-"""
-
 from __future__ import annotations
 
 import os
+import re
 import json
 import shutil
-from collections import Counter
-from dataclasses import asdict
-from pathlib import Path
+import posixpath
+
 from typing import Any
+from pathlib import Path
+from dataclasses import asdict
+from collections import Counter
+from urllib.parse import urlparse
 
 import anvio
 import anvio.filesnpaths as filesnpaths
@@ -20,7 +18,8 @@ import anvio.terminal as terminal
 import anvio.utils as utils
 
 from anvio.docs.data import (
-    DATASET_FILENAME, DocumentationData, DocumentRecord,
+    DATASET_FILENAME, ArtifactDocumentation, DocumentationData, DocumentRecord,
+    ProgramDocumentation, WorkflowDocumentation,
 )
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.summaryhtml import SummaryHTMLOutput
@@ -274,6 +273,7 @@ class HelpPagesRenderer:
                                    f"{error}") from error
         finally:
             self.progress.end()
+            self.run.info("Anvi'o help docs", str(self.output_directory))
 
 
     def copy_images(self):
@@ -540,3 +540,298 @@ class HelpPagesRenderer:
         open(output_file_path, 'w', encoding='utf-8').write(SummaryHTMLOutput(d, r=self.run, p=self.progress).render())
 
         self.progress.end()
+
+
+class LLMsTextRenderer:
+    """Flatten a documentation dataset into a single llms-full.txt file.
+
+    The output follows the llms-full.txt convention: every program, artifact, and workflow
+    becomes one self-contained level-two section with a predictable heading, its metadata,
+    and its authored Markdown, so the file can be read directly or split into chunks for
+    retrieval.
+    """
+
+    def __init__(self, dataset: DocumentationData, output_file: str = "llms-full.txt", r=run, p=progress):
+        """Prepare the renderer for a documentation dataset.
+
+        Parameters
+        ==========
+        dataset : DocumentationData
+            The documentation dataset to flatten.
+        output_file : str
+            Path to the llms-full.txt file to write.
+        """
+        self.dataset = dataset
+        self.output_file = Path(output_file).resolve()
+        self.run = r
+        self.progress = p
+        self.site_url = f"https://anvio.org{dataset.meta.base_url}"
+
+        self.body_top_heading_level = 3
+        self.max_heading_level = 6
+        self.callout_labels = {"notice": "Note", "note": "Note", "warning": "Warning"}
+        self._artifact_relations = {"requires": "Required by", "provides": "Provided by",
+                                    "can_use": "Can be used by", "can_provide": "Can be provided by"}
+
+
+    def render(self) -> str:
+        """Render the full document.
+
+        Returns
+        =======
+        text : str
+            The Markdown text of llms-full.txt.
+        """
+        renderers = [(self.dataset.workflows, self.render_workflow),
+                     (self.dataset.programs, self.render_program),
+                     (self.dataset.artifacts, self.render_artifact)]
+        total = sum(len(records) for records, _ in renderers)
+
+        self.progress.new("Rendering llms-full.txt", progress_total_items=total)
+        sections = [self.render_header()]
+        for records, render_record in renderers:
+            for name, record in sorted(records.items()):
+                self.progress.update(f"{record.kind} '{name}' ...", increment=True)
+                sections.append(render_record(record))
+        self.progress.end()
+
+        return "\n\n".join(sections) + "\n"
+
+
+    def write(self) -> None:
+        """Render the document and write it to the output file."""
+        filesnpaths.is_output_file_writable(self.output_file)
+        self.output_file.write_text(self.render(), encoding="utf-8")
+        self.run.info("Consolidated documentation dump for LLMs", str(self.output_file))
+
+
+    def render_header(self) -> str:
+        meta = self.dataset.meta
+        versions = "\n".join(f"- {label}: {value}" for label, value in meta.versions)
+
+        return (f"# anvi'o documentation\n\n"
+                f"> anvi'o is an open-source platform for microbial 'omics. This file contains the help pages "
+                f"for every anvi'o workflow, program, and artifact (the files and concepts programs use and "
+                f"produce). Each entry is a level-two section titled `<name> (<kind>)`.\n\n"
+                f"Generated {meta.date} from anvi'o {meta.version}. Online version: {self.site_url}/\n\n"
+                f"{versions}")
+
+
+    def render_program(self, record: ProgramDocumentation) -> str:
+        fields = [("URL", record.html_url),
+                  ("Description", record.description),
+                  ("Requires", self.format_names(record.requires)),
+                  ("Can use", self.format_names(record.can_use)),
+                  ("Provides", self.format_names(record.provides)),
+                  ("Can provide", self.format_names(record.can_provide)),
+                  ("Workflows", self.format_names(record.anvio_workflows)),
+                  ("Tags", ", ".join(record.tags)),
+                  ("Authors", self.format_authors(record.authors))]
+
+        resources = "\n".join(f"- [{title}]({url})" for title, url in record.resources)
+        if resources:
+            resources = f"Resources:\n\n{resources}"
+
+        return self.render_section(record.name, record.kind, fields, [self.render_body(record), resources])
+
+
+    def render_artifact(self, record: ArtifactDocumentation) -> str:
+        fields = [("URL", record.html_url),
+                  ("Display name", record.name),
+                  ("Type", record.type),
+                  ("Provided by anvi'o", "yes" if record.provided_by_anvio else "no"),
+                  ("Provided by the user", "yes" if record.provided_by_user else "no")]
+
+        artifact_id = record.id.removeprefix("artifact:")
+        for relation, label in self._artifact_relations.items():
+            programs = [name for name, program in sorted(self.dataset.programs.items())
+                        if artifact_id in getattr(program, relation)]
+            fields.append((label, self.format_names(programs)))
+
+        return self.render_section(artifact_id, record.kind, fields, [self.render_body(record)])
+
+
+    def render_workflow(self, record: WorkflowDocumentation) -> str:
+        third_party = "; ".join(f"{purpose}: {', '.join(programs)}" for purpose, programs in record.third_party_programs_used)
+
+        fields = [("URL", record.html_url),
+                  ("Summary", record.one_sentence_summary),
+                  ("Accepts", self.format_names(record.artifacts_accepted)),
+                  ("Produces", self.format_names(record.artifacts_produced)),
+                  ("anvi'o programs used", self.format_names(record.anvio_programs_used)),
+                  ("Third-party programs used", third_party),
+                  ("Inherits workflows", self.format_names(record.anvio_workflows_inherited)),
+                  ("Authors", self.format_authors(record.authors))]
+
+        return self.render_section(record.name, record.kind, fields, [record.one_paragraph_summary, self.render_body(record)])
+
+
+    def render_section(self, name: str, kind: str, fields: list[tuple[str, str]], blocks: list[str]) -> str:
+        metadata = "\n".join(f"- {label}: {value}" for label, value in fields if value)
+        parts = [f"## {name} ({kind})", metadata] + [block for block in blocks if block]
+        return "\n\n".join(parts)
+
+
+    def render_body(self, record: ProgramDocumentation | ArtifactDocumentation | WorkflowDocumentation) -> str:
+        """Nest the authored Markdown of a record under its section heading.
+
+        Parameters
+        ==========
+        record : ProgramDocumentation | ArtifactDocumentation | WorkflowDocumentation
+            The documentation record whose authored Markdown is nested.
+
+        Returns
+        =======
+        body : str
+            The nested Markdown, or an empty string if the record has no authored Markdown.
+
+        Notes
+        =====
+        - The Markdown is kept as authored except for headings, which are shifted so the
+          shallowest heading in the body sits directly below the section heading. This keeps
+          the main sections of every entry at the same level regardless of how the source
+          Markdown was authored.
+        - anvi'o-specific markup is converted to plain Markdown first (see
+          `convert_anvio_markdown`), and relative links are rewritten to work from the
+          location of llms-full.txt (see `relocate_relative_links`).
+        - Lines inside fenced code blocks are never treated as headings, so shell comments
+          in examples remain untouched.
+        """
+        if record.source_markdown is None:
+            return ""
+
+        page_directory = urlparse(record.html_url).path.removeprefix(self.dataset.meta.base_url).strip("/")
+        content = self.convert_anvio_markdown(record.source_markdown)
+        content = self.relocate_relative_links(content, page_directory)
+
+        lines = content.strip().split("\n")
+        heading_indices = []
+        in_code = False
+        for index, line in enumerate(lines):
+            if line.strip().startswith("```"):
+                in_code = not in_code
+            elif not in_code and re.match(r"#{1,6} ", line):
+                heading_indices.append(index)
+
+        if heading_indices:
+            top_level = min(self.heading_level(lines[index]) for index in heading_indices)
+            offset = self.body_top_heading_level - top_level
+            for index in heading_indices:
+                lines[index] = self.shift_heading(lines[index], offset)
+
+        return "\n".join(lines)
+
+
+    def convert_anvio_markdown(self, content: str) -> str:
+        """Turn anvi'o-flavored Markdown into plain Markdown.
+
+        Parameters
+        ==========
+        content : str
+            Markdown as authored in anvi'o documentation files.
+
+        Returns
+        =======
+        content : str
+            The same Markdown with anvi'o-specific markup removed.
+
+        Notes
+        =====
+        - `%(name)s` variables, which the help pages turn into links to programs and
+          artifacts, become the bare `name`.
+        - `%%`, the escaped form of a literal `%` sign, becomes `%`.
+        - `{{ codestart }}` and `{{ codestop }}` lines become ``` fences, keeping their
+          indentation so code blocks nested in lists stay nested.
+        - Kramdown class markers that style the next paragraph on the web site, such as
+          `{:.notice}` or `{:.warning}`, are dropped, and the paragraph they style starts with
+          a bold label such as `**Note:**` or `**Warning:**` instead.
+        - Kramdown attribute lists attached to links and images, such as the
+          `{:.center-img .width-70}` that sizes figures on the web site, are dropped.
+        """
+        content = re.sub(r"%%|%\(([^)]+)\)s", lambda m: m.group(1) or "%", content)
+        content = re.sub(r"(?<=\))\{:[^}]*\}", "", content)
+
+        converted = []
+        pending_label = None
+        for line in content.split("\n"):
+            stripped = line.strip()
+            indent = line[:len(line) - len(stripped)] if stripped else ""
+            callout = re.fullmatch(r"\{:\s*\.(\w+)\s*\}", stripped)
+
+            if stripped in ("{{ codestart }}", "{{ codestop }}"):
+                line = indent + "```"
+            elif callout:
+                pending_label = self.callout_labels.get(callout.group(1), callout.group(1).capitalize())
+                continue
+
+            if pending_label:
+                line = f"{indent}**{pending_label}:** {stripped}" if stripped else f"**{pending_label}:**\n"
+                pending_label = None
+
+            converted.append(line)
+
+        return "\n".join(converted)
+
+
+    def relocate_relative_links(self, content: str, page_directory: str) -> str:
+        """Rewrite relative links so they resolve from the root of the help output.
+
+        Parameters
+        ==========
+        content : str
+            Markdown authored for the page that lives in `page_directory`.
+        page_directory : str
+            Location of that page relative to the root of the help output, such as
+            `programs/anvi-run-hmms`.
+
+        Returns
+        =======
+        content : str
+            The same Markdown, with relative link and image targets rewritten.
+
+        Notes
+        =====
+        - Help pages live two levels deep (e.g., `programs/anvi-run-hmms/index.html`), while
+          llms-full.txt sits at the root of the help output next to the `images` directory.
+          A link such as `../../images/x.png` therefore becomes `images/x.png`. Links stay
+          relative, so the output works wherever it is hosted, as long as llms-full.txt is
+          kept at the root of the help output.
+        - Both Markdown targets, `[text](target)`, and HTML `src="target"` / `href="target"`
+          attributes are rewritten.
+        - Absolute URLs, site-absolute paths (`/...`), in-page anchors (`#...`), and links
+          that would point outside the help output are left untouched.
+        """
+        def relocate(target: str) -> str:
+            if not target or urlparse(target).scheme or target.startswith(("/", "#")):
+                return target
+
+            path, hash_sign, fragment = target.partition("#")
+            relocated = posixpath.normpath(posixpath.join(page_directory, path))
+            if relocated == ".." or relocated.startswith("../"):
+                return target
+            if path.endswith("/"):
+                relocated += "/"
+
+            return relocated + hash_sign + fragment
+
+        content = re.sub(r"(\]\(\s*)([^)\s]+)", lambda m: m.group(1) + relocate(m.group(2)), content)
+        content = re.sub(r"""((?:src|href)=")([^"]*)""", lambda m: m.group(1) + relocate(m.group(2)), content)
+
+        return content
+
+
+    def heading_level(self, line: str) -> int:
+        return len(line) - len(line.lstrip("#"))
+
+
+    def shift_heading(self, line: str, offset: int) -> str:
+        level = self.heading_level(line)
+        return "#" * min(level + offset, self.max_heading_level) + line[level:]
+
+
+    def format_names(self, names: list[str]) -> str:
+        return ", ".join(f"`{name}`" for name in names)
+
+
+    def format_authors(self, authors: list[str]) -> str:
+        return ", ".join(f"{self.dataset.authors[author].name} (@{author})" for author in authors)
