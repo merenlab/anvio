@@ -1053,6 +1053,24 @@ D = {
              'help': "The directory path for your Pfam setup. Anvi'o will try to use the default path "
                      "if you do not specify anything."}
                 ),
+    'amrfinder-data-dir': (
+            ['--amrfinder-data-dir'],
+            {'default': None,
+             'type': str,
+             'metavar': 'DIR_PATH',
+             'help': "This is optional and allows you to specify a directory path for your AMRFinderPlus database. "
+                     "Anvi'o will use the default path if you do not specify anything."}
+                ),
+    'full-amrfinder-report': (
+            ['--full-amrfinder-report'],
+            {'metavar': 'FILE',
+             'default': None,
+             'help': "The contigs database only stores the gene, its classification, and the HMM e-value of each "
+                     "AMRFinderPlus hit. Using this flag, you can generate a table that includes everything "
+                     "AMRFinderPlus knows about each hit, including the percent identity to and the coverage of the "
+                     "closest reference protein, the HMM e-value, the HMM bit score, and the curated HMM cutoff. The "
+                     "protein ids in this file are identical to the gene caller ids in the contigs-db."}
+                ),
     'antismash-dir': (
             ['--antismash-dir'],
             {'default': None,
