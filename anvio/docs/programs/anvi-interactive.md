@@ -99,6 +99,28 @@ Anvi'o recognizes this kind of run automatically, and starts the interface in wh
 
 There is one case where you will need the `--manual-mode` flag: if you provide a tree or a data file without `-p` or `-c` in a directory where anvi'o can find a %(profile-db)s and a %(contigs-db)s, anvi'o can't tell whether you want to see your files alone, or on top of those databases. In that case it will ask you to be precise, either by using `--manual-mode` with a profile database path of your choice, or by providing the databases you want to use explicitly with `-p` and `-c`.
 
+If the items in your display have sequences (for instance, a tree you have computed from a multiple sequence alignment), you can also provide a FASTA file with `--fasta-file`, in which case the names of the sequences must match the names of the items in your display:
+
+{{ codestart }}
+anvi-interactive -t %(dendrogram)s \
+                 --fasta-file %(fasta)s \
+                 -p %(profile-db)s
+{{ codestop }}
+
+### Curating bins in manual mode
+
+In manual mode, clicking on the number of items of a bin in the Bins panel opens a curation window for that bin. This window lists every item in the bin with a checkbox, and offers buttons to select all items, none of them, or invert the current selection. Once you have selected some items, you can remove them from the bin, or move them to another bin. The window that opens when you choose to move items lists the existing bins, and also offers to move them to a new bin with a name anvi'o suggests (which you can change). New bins are created only when you apply your changes. These operations are only *staged*: the affected items are struck through and tagged in the window, and nothing happens to your bins until you click 'Apply'. Clicking 'Discard all changes' throws away all staged changes and lets you start over in the same window, and closing the window while there are staged changes discards them as well (after asking you to confirm). All changes applied at once can be reverted with a single 'undo'.
+
+The same window also shows a 'Sequences' section that lists the sequence of each item, so you can compare them and spot unexpected or odd ones that you may want to remove from the bin. Sequences are not wrapped, so if they come from an alignment their columns line up with each other. The checkboxes in this section are synchronized with those in the 'Splits' section, and you can copy the sequences of all remaining items, or only the checked ones, to your clipboard in FASTA format. If you do not wish to see the sequences, you can uncheck the box "Show sequences in the bin items window" in the Bins panel.
+
+If your sequences are not already aligned, you can check the box "Align sequences before showing them" in the Bins panel (it is unchecked by default). When it is checked, anvi'o aligns the sequences in the bin with its default aligner (any gap characters in your FASTA file are removed first), so their columns line up and odd sequences are easier to spot. In this case the FASTA you copy to your clipboard will contain the aligned sequences. Please keep in mind that aligning many or very long sequences may take a while. Aligned sequences are colored the same way %(anvi-display-pan)s colors the amino acid sequences of gene clusters (which is designed for amino acids, so colors will not mean much for nucleotide sequences), unless there are so many residues that coloring them would make the interface sluggish.
+
+### Getting a new FASTA file after curating bins
+
+In manual mode with a FASTA file, the Bins panel also offers to download a copy of the input FASTA either *excluding* the sequences in your bins, or *only* with the sequences in your bins. Clicking either of these buttons opens a window where you can select the bins to consider and change the name of the new file, which your browser will save like any other download. The new FASTA file reflects your bins as they are in the interface at that moment (whether you stored them in a collection or not), and its sequences appear in the same order and with the same deflines as in the input FASTA file. Entries in the input FASTA that do not appear in your display are kept when you exclude sequences in bins (since they can't be in a bin).
+
+If/when you provide a FASTA file to %(anvi-interactive)s, the combination of displaying sequences (with the option to align them on-the-fly) AND being able to move them around or mark them for deletion by adding unruly sequences to specific bins, becomes an extremely powerful way to manually curate your phylogenetic trees.
+
 ## Extending anvi'o displays
 
 You can extend any %(interactive)s display in anvi'o with additional data related to your project through the program %(anvi-import-misc-data)s. [This article](https://merenlab.org/2017/12/11/additional-data-tables/) describes a detailed use of this program.

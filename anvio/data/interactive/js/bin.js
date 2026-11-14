@@ -736,6 +736,33 @@ Bins.prototype.PushHistory = function(transaction) {
 };
 
 /**
+ * Run a function that performs multiple node operations (i.e., multiple calls to
+ * AppendNode / RemoveNode) so they end up in the history as a single transaction,
+ * and a single undo reverts all of them.
+ * @param {Function} fn - Function that performs the operations
+ */
+Bins.prototype.RunAsSingleTransaction = function(fn) {
+    const collected = [];
+
+    // temporarily shadow the prototype method on this instance to collect transactions
+    this.PushHistory = function(transaction) {
+        if (transaction) {
+            collected.push(...transaction);
+        }
+    };
+
+    try {
+        fn();
+    } finally {
+        delete this.PushHistory;
+    }
+
+    if (collected.length) {
+        this.PushHistory(collected);
+    }
+};
+
+/**
  * Undo last operation
  */
 Bins.prototype.Undo = function() {
@@ -776,8 +803,13 @@ Bins.prototype.ProcessTransaction = function(transaction, reversed = false) {
     const updated_bins = new Set();
     const removed_bins = new Set();
 
-    // Process each operation
-    for (const operation of transaction) {
+    // Process each operation. When undoing, operations must be reverted in the reverse order
+    // they were applied: e.g., moving a node from bin A to bin B records [remove from A, append
+    // to B], and reverting 'append to B' (which removes the node from all bins) after reverting
+    // 'remove from A' would leave the node in no bin at all.
+    const operations = reversed ? [...transaction].reverse() : transaction;
+
+    for (const operation of operations) {
         updated_bins.add(operation.bin_id);
 
         if (reversed) {

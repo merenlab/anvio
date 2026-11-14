@@ -881,7 +881,8 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     margin-top: 6px;
 }
 
-#taxonomy-ops-wrapper {
+#taxonomy-ops-wrapper,
+#bin-fasta-download-box {
     background: #e7f3381a;
     padding: 3px 6px 5px 10px;
     border: 1px dashed #a9a9a9;
@@ -1480,4 +1481,148 @@ position: relative;
         font-size: 10px;
         line-height: 1.428;
     }
+}
+
+/* bin curation window (manual mode) */
+.bin-curation-controls {
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 8px;
+}
+
+.bin-curation-controls-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.bin-curation-controls-label {
+    min-width: 95px;
+    font-weight: bold;
+}
+
+/* filled buttons with black text, matching the bootstrap 'btn-warning' used for operations */
+.bin-curation-btn-selection,
+.bin-curation-btn-discard,
+.bin-curation-btn-apply,
+.bin-fasta-btn {
+    color: #212529;
+    border-color: transparent;
+}
+
+.bin-curation-btn-selection { background-color: #d3d9df; }
+.bin-curation-btn-discard   { background-color: #f5b5b5; }
+.bin-curation-btn-apply     { background-color: #9edaa8; }
+.bin-fasta-btn              { background-color: #c6dcf0; }
+
+.bin-curation-btn-selection:hover,
+.bin-curation-btn-discard:hover,
+.bin-curation-btn-apply:hover,
+.bin-fasta-btn:hover {
+    color: #212529;
+    filter: brightness(0.92);
+}
+
+.bin-curation-status {
+    font-size: 0.9em;
+    color: #555;
+}
+
+.bin-curation-list {
+    max-height: 30vh;
+    overflow-y: auto;
+    list-style: none;
+    padding-left: 5px;
+    margin-bottom: 0;
+}
+
+.bin-curation-list li {
+    word-break: break-word;
+}
+
+.bin-curation-tag {
+    margin-left: 8px;
+    font-size: 0.85em;
+    font-style: italic;
+    color: #a94442;
+}
+
+.bin-curation-tag-color {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 4px;
+    border: 1px solid #333;
+    vertical-align: middle;
+}
+
+.bin-curation-staged .bin-curation-item-name,
+.bin-curation-staged .bin-curation-seq {
+    color: #aaa;
+    text-decoration: line-through;
+}
+
+/* colored residues of staged items are greyed out as well */
+.bin-curation-staged .bin-curation-seq span {
+    color: #aaa !important;
+}
+
+.bin-curation-seq-container {
+    max-height: 45vh;
+    overflow: auto;
+    border: 1px solid #eee;
+}
+
+.bin-curation-seq-table {
+    border-collapse: collapse;
+}
+
+.bin-curation-seq-table td {
+    padding: 1px 8px;
+    vertical-align: middle;
+}
+
+.bin-curation-seq-name {
+    position: sticky;
+    left: 0;
+    background: #fff;
+    white-space: nowrap;
+    border-right: 1px solid #ddd;
+    z-index: 1;
+}
+
+/* same font as the alignments in anvi-display-pan. the spans of colored residues need to be
+   listed explicitly, otherwise the global `html *` rule above gives them a proportional font */
+.bin-curation-seq,
+.bin-curation-seq span {
+    font-family: monospace;
+    white-space: pre;
+}
+
+.bin-curation-move-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.bin-curation-move-window {
+    background: #fff;
+    border-radius: 4px;
+    padding: 20px;
+    min-width: 300px;
+    max-width: 80%;
+    max-height: 80%;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.bin-curation-move-targets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
 }
