@@ -83,6 +83,7 @@ var samples_tree_hover = false;
 var inspection_available = false;
 var sequences_available = false;
 var interface_read_only = false;
+var input_fasta_name = null;
 var load_full_state = false;
 var items_additional_data_groups = {};
 var bbox;
@@ -258,6 +259,7 @@ function initData() {
             }
 
             sequences_available = response.sequences_available;
+            input_fasta_name = response.input_fasta_name;
             if(!response.sequences_available && mode != "collection" && mode != "pan"){
                 toastr.info("No sequence data is available. Some menu items will be disabled.");
             }
