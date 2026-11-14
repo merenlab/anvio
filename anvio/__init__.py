@@ -4252,13 +4252,6 @@ D = {
                      "'mean_coverage_Q2Q3'. To see a list of available stats, use this flag "
                      "and provide an absolutely ridiculous string after it (we suggest 'cattywampus', but you do you)."}
     ),
-    'pan-mode': (
-            ['--pan-mode'],
-            {'default': constants.pangenome_mode_default,
-             'choices': constants.pangenome_modes_available,
-             'type': str,
-             'help': f"Computation mode for the pangenome. Default mode is '{constants.pangenome_mode_default}'."}
-    ),
    'foldseek-search-results': (
             ['--foldseek-search-results'],
             {'default': None,
@@ -4269,24 +4262,15 @@ D = {
                      "re-running foldseek. This is mostly for debugging purposes and we strongly advice "
                      "you to not use it unless you consider yourself to be a hacker-type."}
         ),
-   'skip-sequence-pan': (
-            ['--skip-sequence-pan'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "When running a structure-informed pangenome, anvi'o generates a conventional "
-                     "sequence-based pan database alongside the structure pan database. Use this flag "
-                     "to skip generating the sequence-based pan database."}
-        ),
    'structures-txt': (
             ['--structures-txt'],
             {'default': None,
              'type': str,
              'metavar': 'FILE PATH',
-             'help': "Path to a structures-txt file: a two-column TSV mapping a gene_id (gene cluster ID, in "
-                     "this context) to a predicted protein structure file (.pdb, .cif, .mmcif, optionally "
-                     "gzipped, or .fcz). Anvi'o uses these structures to build a foldseek database and run an "
-                     "all-vs-all structural search. Required for structure-informed pangenomics unless you "
-                     "are also passing --foldseek-search-results."}
+             'help': "Path to a structures-txt file: a two-column TSV mapping a gene_id (a gene cluster ID of your "
+                     "pan-db, in this context) to a predicted protein structure file (.pdb). Anvi'o uses these "
+                     "structures to build a foldseek database and run an all-vs-all structural search. Use this "
+                     "if you predicted structures outside of anvi'o; otherwise, a structure-db is the way to go."}
         ),
    'min-tm-score': (
             ['--min-tm-score'],
@@ -4296,6 +4280,35 @@ D = {
              'help': "Minimum value of min(qtmscore, ttmscore) for a foldseek hit to be kept and used as the "
                      "MCL edge weight in structure-informed pangenomics. TM-score is length-normalized; values "
                      ">= 0.5 are conventionally considered to indicate the same fold. Default is %(default)g."}
+        ),
+   'structure-mcl-inflation': (
+            ['--structure-mcl-inflation'],
+            {'default': 2.0,
+             'type': float,
+             'metavar': 'INFLATION',
+             'help': "MCL inflation parameter for the clustering of gene clusters based on the similarity of their "
+                     "structures. Larger values give more, smaller protein structure-informed gene clusters. This is "
+                     "independent of the MCL inflation parameter that was used to compute the gene clusters of the "
+                     "input pangenome. The default is %(default)g."}
+        ),
+   'keep-gcs-without-structure': (
+            ['--keep-gcs-without-structure'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, gene clusters without a structure are not a part of the structure-informed "
+                     "pangenome (they remain in the input pan-db). With this flag, each of them becomes its own "
+                     "protein structure-informed gene cluster instead, so the structure-informed pangenome covers "
+                     "every gene of the input pangenome. The item additional data key `has_structure` tells these "
+                     "apart."}
+        ),
+   'compare-with-input-pan': (
+            ['--compare-with-input-pan'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Compare the new structure-informed pan-db with the input pan-db once it is ready, as "
+                     "`anvi-compare-pan` would. This adds layers to the structure-informed pan-db that show, for "
+                     "each PSGC, how the gene clusters it merged are distributed across genomes (core, accessory, "
+                     "singleton), along with a TAB-delimited report next to it. The input pan-db is not modified."}
         ),
    'compared-pan-db': (
             ['--compared-pan-db'],
