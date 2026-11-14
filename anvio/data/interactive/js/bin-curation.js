@@ -22,6 +22,14 @@
 
 const BIN_CURATION_MODAL_ID = 'bin-curation-modal';
 
+// limits beyond which aligned sequences are not colored, since coloring would make the interface
+// sluggish. coloring (`determineColor` in color-coding.js) compares every residue to every other
+// residue in its column, so its cost grows with (number of sequences)^2 x (alignment length), and
+// drawing the colored sequences grows with the number of residues. both limits correspond to a few
+// seconds of work on a typical laptop.
+const BIN_CURATION_MAX_COMPARISONS_TO_COLOR = 1e8;
+const BIN_CURATION_MAX_RESIDUES_TO_COLOR = 1e6;
+
 // aligning sequences only makes sense if they are shown
 $(document).ready(function() {
     $('#show_sequences_in_bin_items').on('change', function() {
@@ -369,9 +377,64 @@ function _buildBinCurationSplitsSection(items) {
 }
 
 
+/**
+ * Returns the HTML for each aligned sequence colored using `determineColor` from color-coding.js
+ * (the same coloring used for gene cluster alignments in anvi-display-pan), or null if there are too
+ * many residues to color without making the interface sluggish.
+ */
+function _getColoredAlignment(items, sequences) {
+    const num_sequences = items.length;
+    const alignment_length = items.reduce((max, item) => Math.max(max, sequences[item].length), 0);
+    const num_residues = num_sequences * alignment_length;
+
+    if (num_residues > BIN_CURATION_MAX_RESIDUES_TO_COLOR || num_residues * num_sequences > BIN_CURATION_MAX_COMPARISONS_TO_COLOR) {
+        return null;
+    }
+
+    // determineColor wants the alignment as columns: columns[position][sequence index]
+    const columns = [];
+    for (let i = 0; i < alignment_length; i++) {
+        columns.push(items.map(item => sequences[item][i]));
+    }
+
+    const coded_positions = determineColor(columns);
+
+    // consecutive residues of the same color go into a single span to keep the DOM small
+    return items.map((item, j) => {
+        const sequence = sequences[item];
+        let html = '', current_color = null, run = '';
+
+        for (let i = 0; i < sequence.length; i++) {
+            const residue = sequence[i];
+            const color = (coded_positions[i][j] && coded_positions[i][j][residue]) || 'BLACK';
+
+            if (color !== current_color && run.length) {
+                html += `<span style="color: ${current_color};">${_binCurationEscape(run)}</span>`;
+                run = '';
+            }
+
+            current_color = color;
+            run += residue;
+        }
+
+        if (run.length) {
+            html += `<span style="color: ${current_color};">${_binCurationEscape(run)}</span>`;
+        }
+
+        return html;
+    });
+}
+
+
 function _buildBinCurationSequencesSection(items, sequences, aligner) {
     const alignedNote = aligner
         ? `<span style="font-size: 0.85em; font-style: italic;">(aligned with ${_binCurationEscape(aligner)})</span>`
+        : '';
+
+    // we only color sequences that are aligned in this window
+    const colored = aligner ? _getColoredAlignment(items, sequences) : null;
+    const notColoredNote = (aligner && !colored)
+        ? `<p style="font-style: italic; margin: 0 0 6px 0;">anvi'o unilateraly decided to not color your alignments since it realized that is just too many residues to color without sacrificing a lot of performance :/</p>`
         : '';
 
     const rows = items.map((item, idx) => `
@@ -383,7 +446,7 @@ function _buildBinCurationSequencesSection(items, sequences, aligner) {
                 </label>
                 <span class="bin-curation-tag"></span>
             </td>
-            <td class="bin-curation-seq">${_binCurationEscape(sequences[item])}</td>
+            <td class="bin-curation-seq">${colored ? colored[idx] : _binCurationEscape(sequences[item])}</td>
         </tr>`).join('');
 
     return `
@@ -397,6 +460,7 @@ function _buildBinCurationSequencesSection(items, sequences, aligner) {
                     title="Copy sequences of checked items only as FASTA">Copy checked as FASTA</button>
             <span class="copy-feedback" style="min-width: 14px; font-size: 0.9em; line-height: 1;"></span>
         </div>
+        ${notColoredNote}
         <div class="bin-curation-seq-container">
             <table class="bin-curation-seq-table">${rows}</table>
         </div>`;
