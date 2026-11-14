@@ -186,7 +186,7 @@ class AMRFinder(object):
         """Run AMRFinderPlus on all genes in the contigs-db, and store its hits as functions."""
 
         # safety check so that people don't overwrite previous annotations by accident
-        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
         previous_db_version = contigs_db.db.get_meta_value('amrfinder_db_version', return_none_if_not_in_table=True)
         contigs_db.disconnect()
 
@@ -236,9 +236,11 @@ class AMRFinder(object):
         amrfinder_output_path = os.path.join(temp_dir_path, 'AMRFinder_output.txt')
         log_file_path = os.path.join(temp_dir_path, 'AMRFinder_log.txt')
 
-        dbops.ContigsSuperclass(self.args, r=terminal.Run(verbose=False)).get_sequences_for_gene_callers_ids(output_file_path=aa_sequences_path,
-                                                                                                             report_aa_sequences=True,
-                                                                                                             simple_headers=True)
+        contigs_db = dbops.ContigsSuperclass(self.args, r=self.run, p=self.progress)
+        contigs_db.get_sequences_for_gene_callers_ids(gene_caller_ids_list=list(contigs_db.genes_in_contigs_dict.keys()),
+                                                      output_file_path=aa_sequences_path,
+                                                      report_aa_sequences=True,
+                                                      simple_headers=True)
 
         cmd_line = ['amrfinder',
                     '--protein', aa_sequences_path,
@@ -356,7 +358,7 @@ class AMRFinder(object):
         if sources_without_hits:
             gene_function_calls_table.add_empty_sources_to_functional_sources(sources_without_hits)
 
-        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
         contigs_db.db.set_meta_value('amrfinder_db_version', self.db_version)
         contigs_db.disconnect()
 
