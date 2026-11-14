@@ -88,6 +88,24 @@ Anvi'o interactive interface is initiated with the flag `--manual-mode` and then
 
 When doing this kind of run, anvi'o does not expect you to have a profile database, but it still needs you to provide a name for it. Anvi'o will simply create an empty one for you so you can store your state or collections in it for reproducibility.
 
+If the items in your display have sequences (for instance, a tree you have computed from a multiple sequence alignment), you can also provide a FASTA file with `--fasta-file`, in which case the names of the sequences must match the names of the items in your display:
+
+{{ codestart }}
+anvi-interactive -t %(dendrogram)s \
+                 --fasta-file %(fasta)s \
+                 -p %(profile-db)s
+{{ codestop }}
+
+### Curating bins in manual mode
+
+In manual mode, clicking on the number of items of a bin in the Bins panel opens a curation window for that bin. This window lists every item in the bin with a checkbox, and offers buttons to select all items, none of them, or invert the current selection. Once you have selected some items, you can remove them from the bin, or move them to another bin. The window that opens when you choose to move items lists the existing bins, and also offers to move them to a new bin with a name anvi'o suggests (which you can change). New bins are created only when you apply your changes. These operations are only *staged*: the affected items are struck through and tagged in the window, and nothing happens to your bins until you click 'Apply'. Clicking 'Discard all changes' throws away all staged changes and lets you start over in the same window, and closing the window while there are staged changes discards them as well (after asking you to confirm). All changes applied at once can be reverted with a single 'undo'.
+
+The same window also shows a 'Sequences' section that lists the sequence of each item, so you can compare them and spot unexpected or odd ones that you may want to remove from the bin. Sequences are not wrapped, so if they come from an alignment their columns line up with each other. The checkboxes in this section are synchronized with those in the 'Splits' section, and you can copy the sequences of all remaining items, or only the checked ones, to your clipboard in FASTA format. If you do not wish to see the sequences, you can uncheck the box "Show sequences in the bin items window" in the Bins panel.
+
+If your sequences are not already aligned, you can check the box "Align sequences before showing them" in the Bins panel (it is unchecked by default). When it is checked, anvi'o aligns the sequences in the bin with its default aligner (any gap characters in your FASTA file are removed first), so their columns line up and odd sequences are easier to spot. In this case the FASTA you copy to your clipboard will contain the aligned sequences. Please keep in mind that aligning many or very long sequences may take a while.
+
+If/when you provide a FASTA file to %(anvi-interactive)s, the combination of displaying sequences (with the option to align them on-the-fly) AND being able to move them around or mark them for deletion by adding unruly sequences to specific bins, becomes an extremely powerful way to manually curate your phylogenetic trees.
+
 ## Extending anvi'o displays
 
 You can extend any %(interactive)s display in anvi'o with additional data related to your project through the program %(anvi-import-misc-data)s. [This article](https://merenlab.org/2017/12/11/additional-data-tables/) describes a detailed use of this program.
