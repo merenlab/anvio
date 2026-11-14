@@ -82,6 +82,7 @@ var description_panel;
 var samples_tree_hover = false;
 var inspection_available = false;
 var sequences_available = false;
+var interface_read_only = false;
 var load_full_state = false;
 var items_additional_data_groups = {};
 var bbox;
