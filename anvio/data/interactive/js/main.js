@@ -2040,6 +2040,8 @@ function serializeSettings(use_layer_names) {
     state['bin-labels-font-size'] = $('#bin_labels_font_size').val();
     state['autorotate-bin-labels'] = $('#autorotate_bin_labels').is(':checked');
     state['estimate-taxonomy'] = $('#estimate_taxonomy').is(':checked');
+    state['show-sequences-in-bin-items'] = $('#show_sequences_in_bin_items').is(':checked');
+    state['align-sequences-in-bin-items'] = $('#align_sequences_in_bin_items').is(':checked');
     state['use-taxonomy-bin-labels'] = $('#use_taxonomy_bin_labels').is(':checked');
     state['select-contigs-rather-than-splits'] = $('#select_contigs_rather_than_splits').is(':checked');
     state['taxonomy-label-level'] = $('input[name="taxonomy_label_level"]:checked').val();
@@ -3438,6 +3440,14 @@ function processState(state_name, state) {
 
     if (state.hasOwnProperty('estimate-taxonomy')) {
         $('#estimate_taxonomy').prop('checked', state['estimate-taxonomy']).trigger('change');
+    }
+
+    if (state.hasOwnProperty('show-sequences-in-bin-items')) {
+        $('#show_sequences_in_bin_items').prop('checked', state['show-sequences-in-bin-items']).trigger('change');
+    }
+
+    if (state.hasOwnProperty('align-sequences-in-bin-items')) {
+        $('#align_sequences_in_bin_items').prop('checked', state['align-sequences-in-bin-items']);
     }
 
     if (state.hasOwnProperty('taxonomy-label-level')) {
