@@ -1059,6 +1059,9 @@ class BottleApplication(Bottle):
         This is used by the bin curation window of the interactive interface (in manual mode
         with a FASTA file), so it can show the sequences of every item in a bin at once rather
         than requesting them one by one.
+
+        If the request includes `align=true`, sequences are aligned with anvi'o's default aligner
+        before they are returned, so they are easier to compare in the interface.
         """
 
         if not self.interactive.split_sequences:
@@ -1079,7 +1082,38 @@ class BottleApplication(Bottle):
 
         sequences = dict([(s, self.interactive.split_sequences[s]['sequence']) for s in split_names])
 
-        return json.dumps({'status': 0, 'sequences': sequences})
+        if request.forms.get('align') != 'true':
+            return json.dumps({'status': 0, 'sequences': sequences, 'aligned': False})
+
+        # a single sequence has nothing to be aligned to
+        if len(sequences) < 2:
+            return json.dumps({'status': 0, 'sequences': sequences, 'aligned': False})
+
+        # the input FASTA may already be an alignment, in which case we remove its gaps so
+        # the aligner gets the raw sequences
+        sequences_list = [(s, sequences[s].replace('-', '').replace('.', '')) for s in split_names]
+
+        empty = [s for (s, seq) in sequences_list if not len(seq)]
+        if len(empty):
+            message = (f"{len(empty)} of the items in this bin have no sequence left once their gap characters "
+                       f"are removed (e.g., '{empty[0]}'), so anvi'o can't align them :/")
+            return json.dumps({'status': 1, 'message': message})
+
+        try:
+            aligner_class = drivers.Aligners(run=terminal.Run(verbose=False)).select(quiet=True)
+            aligner = aligner_class(run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
+            aligned_sequences = aligner.run_default(sequences_list)
+        except Exception as e:
+            message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
+            return json.dumps({'status': 1, 'message': f"Anvi'o failed to align these sequences :/ Here is what it knows: {message}"})
+
+        missing = [s for s in split_names if s not in aligned_sequences]
+        if len(missing):
+            message = (f"The aligner did not return an alignment for {len(missing)} of the {len(split_names)} "
+                       f"sequences (e.g., '{missing[0]}'). This is weird :/")
+            return json.dumps({'status': 1, 'message': message})
+
+        return json.dumps({'status': 0, 'sequences': aligned_sequences, 'aligned': True, 'aligner': aligner.program_name})
 
 
     def gen_summary(self, collection_name):
