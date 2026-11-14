@@ -7,6 +7,9 @@
  * and stage their removal from the bin or their move to another bin. Nothing happens to the
  * actual bins until the user clicks 'Apply', and 'Discard' throws away all staged changes.
  *
+ * This file also implements the dialog to download a copy of the input FASTA file either without,
+ * or only with, the sequences in a set of bins.
+ *
  *  Copyright 2015-2026, The anvi'o project (http://anvio.org)
  *
  *  Anvi'o is a free software. You can redistribute this program
@@ -888,4 +891,191 @@ function _applyBinCurationChanges() {
     };
 
     $modal.modal('hide');
+}
+
+
+// ============================================================================
+// Downloading a copy of the input FASTA file with or without sequences in bins
+// ============================================================================
+
+const BIN_FASTA_MODAL_ID = 'bin-fasta-modal';
+
+
+/**
+ * Suggests a file name for the new FASTA file based on the name of the input FASTA file.
+ * @param {string} mode - 'exclude' or 'only'
+ */
+function _suggestBinFastaFileName(mode) {
+    const suffix = mode === 'exclude' ? '_excluding_bins' : '_only_bins';
+    const name = input_fasta_name || 'sequences.fa';
+    const dot = name.lastIndexOf('.');
+
+    return dot > 0 ? name.substring(0, dot) + suffix + name.substring(dot) : name + suffix + '.fa';
+}
+
+
+/**
+ * Shows the dialog to download a copy of the input FASTA file either without the sequences
+ * in the selected bins (mode 'exclude'), or with only the sequences in them (mode 'only').
+ * @param {string} mode - 'exclude' or 'only'
+ */
+function showBinFastaDownloadDialog(mode) {
+    const all_bins = [];
+
+    for (const tr of bins.container.querySelectorAll('tr.bin-row')) {
+        const bin_id = tr.getAttribute('bin-id');
+        const bin_info = bins.ExportBin(bin_id);
+
+        all_bins.push({bin_id: bin_id, bin_name: bin_info.bin_name, color: bin_info.color, items: bin_info.items});
+    }
+
+    if (!all_bins.some(b => b.items.length)) {
+        toastr.warning('None of your bins have any items in them yet :/');
+        return;
+    }
+
+    const title = mode === 'exclude'
+        ? 'Download the input FASTA excluding sequences in bins'
+        : 'Download the input FASTA only with sequences in bins';
+
+    // when excluding sequences, no bin is selected by default (so the user picks the ones to drop),
+    // and when keeping only the sequences in bins, all bins are selected by default
+    const checked_by_default = mode === 'only';
+
+    const bin_rows = all_bins.map((b, idx) => `
+        <li>
+            <label style="margin: 0; cursor: pointer;">
+                <input type="checkbox" class="bin-fasta-check" data-idx="${idx}" ${!b.items.length ? 'disabled' : (checked_by_default ? 'checked' : '')}>
+                <span class="bin-curation-tag-color" style="background: ${b.color};"></span>${_binCurationEscape(b.bin_name)}
+                <span style="color: #777;">(${b.items.length} item${b.items.length === 1 ? '' : 's'})</span>
+            </label>
+        </li>`).join('');
+
+    $(`#${BIN_FASTA_MODAL_ID}`).remove();
+
+    const template = `
+        <div class="modal fade" id="${BIN_FASTA_MODAL_ID}" role="dialog">
+            <div class="modal-dialog modal-dialog-centered" style="pointer-events: all;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">${title}</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">${MODALS.CLOSE_BUTTON_HTML}</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="bin-curation-controls-row">
+                            <button type="button" class="btn btn-sm bin-curation-btn-selection" data-action="check-all">Check All</button>
+                            <button type="button" class="btn btn-sm bin-curation-btn-selection" data-action="check-none">Check None</button>
+                        </div>
+                        <ul class="bin-curation-list" style="max-height: 40vh;">${bin_rows}</ul>
+                        <p class="bin-curation-status bin-fasta-summary" style="margin: 10px 0;"></p>
+                        <label style="margin-bottom: 2px;">File name:</label>
+                        <input type="text" class="form-control form-control-sm bin-fasta-file-name" value="${_binCurationEscape(_suggestBinFastaFileName(mode))}">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-sm bin-curation-btn-apply" data-action="download">Download</button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+
+    $('body').append(template);
+
+    const $modal = $(`#${BIN_FASTA_MODAL_ID}`);
+
+    const get_selected_items = function() {
+        const items = [];
+
+        $modal.find('.bin-fasta-check:checked').each(function() {
+            items.push(...all_bins[parseInt($(this).attr('data-idx'))].items);
+        });
+
+        return items;
+    };
+
+    const update_summary = function() {
+        const n = get_selected_items().length;
+        const what = mode === 'exclude' ? 'excluded from' : 'the only ones in';
+
+        $modal.find('.bin-fasta-summary').text(n
+            ? `${n} sequence${n === 1 ? '' : 's'} in the selected bins will be ${what} the new FASTA file.`
+            : 'Please select at least one bin.');
+        $modal.find('[data-action="download"]').prop('disabled', n === 0);
+    };
+
+    $modal.on('change', '.bin-fasta-check', update_summary);
+
+    $modal.on('click', '[data-action]', function() {
+        const action = $(this).attr('data-action');
+
+        if (action === 'check-all' || action === 'check-none') {
+            $modal.find('.bin-fasta-check:not(:disabled)').prop('checked', action === 'check-all');
+            update_summary();
+        } else if (action === 'download') {
+            _downloadBinFasta($modal, mode, get_selected_items());
+        }
+    });
+
+    // see the comments in _buildBinCurationDialog for why we handle the escape key and
+    // clean up backdrops ourselves
+    $(document).on('keydown.binFasta', function(event) {
+        if (event.key === 'Escape') {
+            $modal.modal('hide');
+        }
+    });
+
+    $modal.on('hidden.bs.modal', function() {
+        $(document).off('keydown.binFasta');
+        $(this).remove();
+        _removeStrayModalBackdrops();
+    });
+
+    $modal.modal({show: true, backdrop: true, keyboard: false})
+          .find('.modal-dialog')
+          .draggable({handle: '.modal-header'});
+
+    update_summary();
+}
+
+
+function _downloadBinFasta($modal, mode, items) {
+    const file_name = $modal.find('.bin-fasta-file-name').val().trim();
+
+    if (!file_name.length) {
+        toastr.warning('Please give your new FASTA file a name.');
+        return;
+    }
+
+    const $button = $modal.find('[data-action="download"]');
+    $button.prop('disabled', true).text('Preparing ...');
+
+    $.ajax({
+        type: 'POST',
+        url: '/data/get_fasta_for_bins',
+        data: {'mode': mode, 'item_names': JSON.stringify(items)},
+        success: function(response) {
+            if (typeof response === 'string') {
+                response = JSON.parse(response);
+            }
+
+            if (response.status != 0) {
+                toastr.error(`"${response.message}", the server said.`, "The anvi'o headquarters is upset");
+                $button.prop('disabled', false).text('Download');
+                return;
+            }
+
+            if (!response.num_sequences) {
+                toastr.warning('There would be no sequences left in the new FASTA file, so anvi\'o did not create one :/');
+                $button.prop('disabled', false).text('Download');
+                return;
+            }
+
+            downloadBlob(new Blob([response.fasta], {type: 'text/plain'}), file_name);
+            toastr.success(`${response.num_sequences} of the ${response.num_sequences_in_input} sequences in the input FASTA were written to '${file_name}'.`);
+            $modal.modal('hide');
+        },
+        error: function() {
+            toastr.error('Anvi\'o failed to prepare the new FASTA file :/', "The anvi'o headquarters is upset");
+            $button.prop('disabled', false).text('Download');
+        }
+    });
 }
