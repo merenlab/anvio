@@ -881,7 +881,8 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     margin-top: 6px;
 }
 
-#taxonomy-ops-wrapper {
+#taxonomy-ops-wrapper,
+#bin-fasta-download-box {
     background: #e7f3381a;
     padding: 3px 6px 5px 10px;
     border: 1px dashed #a9a9a9;
@@ -1504,7 +1505,8 @@ position: relative;
 /* filled buttons with black text, matching the bootstrap 'btn-warning' used for operations */
 .bin-curation-btn-selection,
 .bin-curation-btn-discard,
-.bin-curation-btn-apply {
+.bin-curation-btn-apply,
+.bin-fasta-btn {
     color: #212529;
     border-color: transparent;
 }
@@ -1512,10 +1514,12 @@ position: relative;
 .bin-curation-btn-selection { background-color: #d3d9df; }
 .bin-curation-btn-discard   { background-color: #f5b5b5; }
 .bin-curation-btn-apply     { background-color: #9edaa8; }
+.bin-fasta-btn              { background-color: #c6dcf0; }
 
 .bin-curation-btn-selection:hover,
 .bin-curation-btn-discard:hover,
-.bin-curation-btn-apply:hover {
+.bin-curation-btn-apply:hover,
+.bin-fasta-btn:hover {
     color: #212529;
     filter: brightness(0.92);
 }

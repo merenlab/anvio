@@ -916,6 +916,12 @@
                                         <input type="checkbox" id="align_sequences_in_bin_items">
                                         <span class="ml-1" for="align_sequences_in_bin_items" title="When checked, sequences shown in the bin items window will first be aligned with anvi'o's default aligner, so they are easier to compare (this may take a while for large bins or long sequences)">Align sequences before showing them.</span>
                                     </div>
+                                    <p class="mt-3 mb-0" id="bin-fasta-download-box" style="line-height: 2;">
+                                        Download a copy of the input FASTA either
+                                        <button type="button" class="btn btn-sm bin-fasta-btn" onclick="showBinFastaDownloadDialog('exclude');">excluding sequences in bins</button>,
+                                        or
+                                        <button type="button" class="btn btn-sm bin-fasta-btn" onclick="showBinFastaDownloadDialog('only');">only with sequences in bins</button>.
+                                    </p>
                                 </div>
 
                                 <table class="table" id="bins-table">
