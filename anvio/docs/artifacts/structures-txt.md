@@ -9,7 +9,7 @@ The file has exactly two columns:
 |GC_00000003|path/to/structures/GC_00000003.cif.gz|
 |(...)|(...)|
 
-The meaning of `gene_id` is set by whichever anvi'o program is consuming the file. For %(anvi-pan-genome)s in structure-informed pangenomics, `gene_id` is a **gene cluster ID** (the FASTA defline of the GC representative emitted by the conventional pangenome).
+The meaning of `gene_id` is set by whichever anvi'o program is consuming the file. For %(anvi-pan-genome-structure)s, `gene_id` is a **gene cluster ID** of the input %(pan-db)s, and %(anvi-pan-genome-structure)s currently accepts only `.pdb` files.
 
 If you want to import pre-computed structures into a %(structure-db)s instead, that is a different artifact with its own header layouts: see %(external-structures)s.
 
@@ -29,4 +29,4 @@ Programs that consume `structures-txt` may add their own additional checks on to
 
 ### A note on file naming
 
-You don't need to name your structure files after the `gene_id`, but it makes life easier when assembling the `structures-txt` file. For instance, if your conventional pangenome produced a representative FASTA, predicting one structure per defline and naming each file `<defline>.pdb` makes the `structures-txt` essentially write itself.
+You don't need to name your structure files after the `gene_id`, but it makes life easier when assembling the `structures-txt` file. For instance, if you export one representative sequence per gene cluster with %(anvi-get-sequences-for-gene-clusters)s and its flag `--representative-sequences`, predicting one structure per defline and naming each file `<defline>.pdb` makes the `structures-txt` essentially write itself.
