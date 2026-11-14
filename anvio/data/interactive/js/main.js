@@ -2517,6 +2517,13 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
         return;
     }
 
+    // in manual mode we show the bin curation window, which lets the user inspect, select,
+    // remove, or move items (and see their sequences if there is a FASTA file)
+    if (mode == 'manual') {
+        showBinCurationDialog(bin_id);
+        return;
+    }
+
     if (!functions_available) {
         toastr.warning('No functions, so anvi\'o will show you item names instead.', "Trivial anvi'o headquarters memo");
 
