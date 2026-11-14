@@ -127,7 +127,7 @@ class AMRFinder(object):
             Path to the AMRFinderPlus data directory. The anvi'o data directory is used if not provided.
         - num_threads : int, optional
             Number of threads for AMRFinderPlus to use
-        - skip_e_values : bool, optional
+        - skip_amrfinder_e_values : bool, optional
             If True, do not read e-values from the hmmsearch table of AMRFinderPlus, and store 0 instead.
         - full_amrfinder_report : str, optional
             Output file path for the AMRFinderPlus output table, with HMM e-values, bit scores, and cutoffs
@@ -148,7 +148,7 @@ class AMRFinder(object):
         self.contigs_db_path = A('contigs_db')
         self.amrfinder_data_dir = A('amrfinder_data_dir') or DEFAULT_AMRFINDER_DATA_DIR
         self.num_threads = A('num_threads') or 1
-        self.skip_e_values = A('skip_e_values')
+        self.skip_amrfinder_e_values = A('skip_amrfinder_e_values')
         self.full_report_path = A('full_amrfinder_report')
         self.just_do_it = A('just_do_it')
 
@@ -204,7 +204,7 @@ class AMRFinder(object):
         expected_fields = ['Protein id', 'HMM accession'] + [field for fields in AMRFINDER_SOURCES.values() for field in fields]
         amrfinder_hits = utils.get_TAB_delimited_file_as_dictionary(amrfinder_output_path, indexing_field=-1, expected_fields=expected_fields)
 
-        hmm_hits = {} if self.skip_e_values else self.get_hmm_hits(temp_dir_path)
+        hmm_hits = {} if self.skip_amrfinder_e_values else self.get_hmm_hits(temp_dir_path)
 
         self.store_hits(amrfinder_hits, hmm_hits)
 
@@ -303,7 +303,7 @@ class AMRFinder(object):
                               "worry about that. We don't know why anvi'o couldn't find the file, but maybe there "
                               "was a recent AMRFinderPlus update and the program no longer generates the temporary "
                               "directory with this information. To nevertheless annotate your genes with "
-                              "AMRFinderPlus, simply run the program again with the flag `--skip-e-values` to store "
+                              "AMRFinderPlus, simply run the program again with the flag `--skip-amrfinder-e-values` to store "
                               "all AMRFinderPlus annotations with an e-value of 0.")
 
         hmm_hits = {}
