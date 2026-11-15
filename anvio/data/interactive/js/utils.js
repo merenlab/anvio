@@ -1235,6 +1235,32 @@ function zoom_reset() {
 // Used by both anvi-display-pan (main.js) and anvi-display-pan-graph (pangenome-graph.js).
 // Kept here in utils.js so both interfaces can use them without loading main.js.
 
+/**
+ * Save a blob as a file through the browser's regular download mechanism.
+ * @param {Blob} blob - Content to save
+ * @param {string} name - Suggested file name
+ */
+function downloadBlob(blob, name) {
+    const blob_url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = blob_url;
+    link.download = name;
+
+    document.body.appendChild(link);
+
+    link.dispatchEvent(new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        view: window
+    }));
+
+    document.body.removeChild(link);
+
+    // release the memory held by the blob once the browser had a chance to start the download
+    setTimeout(() => URL.revokeObjectURL(blob_url), 10000);
+}
+
 function copyTextWithFeedback(btn, text) {
     if (typeof text !== 'string' || !text.length) return;
     navigator.clipboard.writeText(text)

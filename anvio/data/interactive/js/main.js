@@ -82,6 +82,8 @@ var description_panel;
 var samples_tree_hover = false;
 var inspection_available = false;
 var sequences_available = false;
+var interface_read_only = false;
+var input_fasta_name = null;
 var load_full_state = false;
 var items_additional_data_groups = {};
 var bbox;
@@ -257,11 +259,20 @@ function initData() {
             }
 
             sequences_available = response.sequences_available;
+            input_fasta_name = response.input_fasta_name;
             if(!response.sequences_available && mode != "collection" && mode != "pan"){
                 toastr.info("No sequence data is available. Some menu items will be disabled.");
             }
 
             functions_available = (response.functions_sources ?? []).length > 0;
+
+            // the option to show sequences in the bin items window only makes sense in manual mode
+            // when the user provided a FASTA file
+            if (mode == 'manual' && sequences_available) {
+                $('#show-sequences-in-bin-items-wrapper').show();
+            }
+
+            interface_read_only = response.read_only ? true : false;
 
             if (response.read_only)
             {
@@ -2040,6 +2051,8 @@ function serializeSettings(use_layer_names) {
     state['bin-labels-font-size'] = $('#bin_labels_font_size').val();
     state['autorotate-bin-labels'] = $('#autorotate_bin_labels').is(':checked');
     state['estimate-taxonomy'] = $('#estimate_taxonomy').is(':checked');
+    state['show-sequences-in-bin-items'] = $('#show_sequences_in_bin_items').is(':checked');
+    state['align-sequences-in-bin-items'] = $('#align_sequences_in_bin_items').is(':checked');
     state['use-taxonomy-bin-labels'] = $('#use_taxonomy_bin_labels').is(':checked');
     state['select-contigs-rather-than-splits'] = $('#select_contigs_rather_than_splits').is(':checked');
     state['taxonomy-label-level'] = $('input[name="taxonomy_label_level"]:checked').val();
@@ -2504,6 +2517,13 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
 
     if (!bin_info.items || bin_info.items.length === 0) {
         toastr.warning('There are no items in this bin yet, so there is nothing to show.', "The anvi'o headquarters has a note");
+        return;
+    }
+
+    // in manual mode we show the bin curation window, which lets the user inspect, select,
+    // remove, or move items (and see their sequences if there is a FASTA file)
+    if (mode == 'manual') {
+        showBinCurationDialog(bin_id);
         return;
     }
 
@@ -3438,6 +3458,14 @@ function processState(state_name, state) {
 
     if (state.hasOwnProperty('estimate-taxonomy')) {
         $('#estimate_taxonomy').prop('checked', state['estimate-taxonomy']).trigger('change');
+    }
+
+    if (state.hasOwnProperty('show-sequences-in-bin-items')) {
+        $('#show_sequences_in_bin_items').prop('checked', state['show-sequences-in-bin-items']).trigger('change');
+    }
+
+    if (state.hasOwnProperty('align-sequences-in-bin-items')) {
+        $('#align_sequences_in_bin_items').prop('checked', state['align-sequences-in-bin-items']);
     }
 
     if (state.hasOwnProperty('taxonomy-label-level')) {

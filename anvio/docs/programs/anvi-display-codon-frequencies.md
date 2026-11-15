@@ -72,6 +72,5 @@ This %(profile-db)s can be used to visualize the same data repeatedly; however, 
 
 
 ```
-anvi-interactive -p GCF_001458775-PROFILE.db \
-                 --manual
+anvi-interactive -p GCF_001458775-PROFILE.db
 ```
