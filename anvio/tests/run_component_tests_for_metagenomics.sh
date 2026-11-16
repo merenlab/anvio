@@ -822,6 +822,36 @@ anvi-get-sequences-for-hmm-hits -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                                 --get-aa-sequences \
                                 --no-progress
 
+INFO "Show available annotation sources for function hits"
+anvi-get-sequences-for-function-hits -c $output_dir/CONTIGS.db \
+                                     --list-annotation-sources \
+                                     --no-progress
+
+INFO "Get DNA sequences for all genes with hits in a functional annotation source"
+anvi-get-sequences-for-function-hits -c $output_dir/CONTIGS.db \
+                                     --annotation-source Pfam \
+                                     -o $output_dir/Pfam_hits_sequences.fa \
+                                     --no-progress
+SHOW_FILE $output_dir/Pfam_hits_sequences.fa
+
+INFO "Get AA sequences for genes with hits to specific accession ids in a functional annotation source"
+anvi-get-sequences-for-function-hits -c $output_dir/CONTIGS.db \
+                                     --annotation-source Pfam \
+                                     --accession-ids PF00117,PF02786 \
+                                     --get-aa-sequences \
+                                     -o $output_dir/Pfam_hits_for_accessions_AA_sequences.fa \
+                                     --no-progress
+SHOW_FILE $output_dir/Pfam_hits_for_accessions_AA_sequences.fa
+
+INFO "Get sequences for function hits in all bins of a collection with a defline format"
+anvi-get-sequences-for-function-hits -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                                     -c $output_dir/CONTIGS.db \
+                                     -C CONCOCT \
+                                     --annotation-source TIGRFAM \
+                                     --defline-format "{genome_name}_{gene_callers_id}_{accession}" \
+                                     -o $output_dir/TIGRFAM_hits_sequences_in_CONCOCT_bins.fa \
+                                     --no-progress
+
 INFO "Import layer additional data from file"
 anvi-import-misc-data $files/samples-information.txt \
                       -p $output_dir/SAMPLES-MERGED/PROFILE.db \
@@ -1089,6 +1119,12 @@ INFO "Generating hmm-hits matrix"
 anvi-gen-hmm-hits-matrix -o $output_dir/TEST-GENOME_MATRIX.txt \
                          -e $output_dir/external-genomes.txt \
                          --hmm-source Bacteria_71
+
+INFO "Get sequences for function hits across external genomes"
+anvi-get-sequences-for-function-hits -e $output_dir/external-genomes.txt \
+                                     --annotation-source COG20_FUNCTION \
+                                     -o $output_dir/COG20_FUNCTION_hits_in_external_genomes.fa \
+                                     --no-progress
 
 INFO "Testing anvi-analyze-synteny with default parameters using a pangenome for annotations"
 anvi-analyze-synteny -g $output_dir/TEST-GENOMES.db \
