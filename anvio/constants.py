@@ -742,3 +742,4 @@ anvio_news_url = "https://raw.githubusercontent.com/merenlab/anvio/master/NEWS.m
 discov_default_bin_window_length = 10000      # fixed bp window for bin/genome-level discov
 discov_default_contig_window_percentage = 1  # 1% of contig length for contig-level discov
 discov_default_contig_min_window_length = 300  # minimum window length for contig percentage mode
+discov_default_contig_max_window_length = discov_default_bin_window_length  # maximum window length for any percentage mode
