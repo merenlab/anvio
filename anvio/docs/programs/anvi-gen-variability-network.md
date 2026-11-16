@@ -26,8 +26,7 @@ anvi-matrix-to-newick variability_output.txt -o variability_output.newick
 
 anvi-interactive -d variability_output.txt \
                  -t variability_output.newick \
-                 -p varaibility_profile.db \
-                 --manual
+                 -p varaibility_profile.db
 ```
 
 ## Using competing nucleotides as features

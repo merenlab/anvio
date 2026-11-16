@@ -1382,9 +1382,15 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
             utils.is_contigs_db(self.contigs_db_path)
             contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
             self.contigs_db_project_name = contigs_db.meta['project_name']
+            contigs_db_variant = contigs_db.meta.get('db_variant')
             contigs_db.disconnect()
         else:
             self.contigs_db_project_name = "UNKNOWN"
+            contigs_db_variant = None
+
+        # Unlike tRNA genes, tRNA-seq seeds are labeled with anticodons read from transcripts, where
+        # inosine reads as G.
+        self.search_a34_genes = self.trna_focus and contigs_db_variant == 'trnaseq'
 
 
     def get_sequences_dict_from_contigs_db(self):
@@ -1498,6 +1504,9 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
         self.run.info('Taxonomy', self.ctx.accession_to_taxonomy_file_path)
         self.run.info('Database reference', self.ctx.search_databases_dir_path)
         self.run.info(f'Number of {self._ITEMS}', len(item_sequences_dict))
+        if self.search_a34_genes:
+            a34_searches = [f"{g34} in {a34}" for g34, a34 in self.ctx.a34_anticodon_dict.items()]
+            self.run.info('Seeds also searched as I34', ', '.join(a34_searches))
 
         self.run.warning('', header='Parameters for search', lc='green')
         self.run.info('Max number of target sequences', self.max_target_seqs)
@@ -1525,7 +1534,7 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
         item_sequences_fate = {}
 
         for item_name in item_sequences_dict:
-            item_sequences_fate[item_name] = {'in_contigs_db': len(item_sequences_dict[item_name]), 'in_search_results': 0}
+            item_sequences_fate[item_name] = {'in_contigs_db': len(item_sequences_dict[item_name]), 'in_search_results': 0, 'as_I34': 0}
 
             sequence = ""
             for entry in item_sequences_dict[item_name].values():
@@ -1585,6 +1594,8 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
                     self.tables_for_taxonomy.add(search_output)
                     for s in search_output:
                         item_sequences_fate[s[1]]['in_search_results'] += 1
+                        if s[2][0].get('searched_anticodon', s[1]) != s[1]:
+                            item_sequences_fate[s[1]]['as_I34'] += 1
 
                     search_output = []
 
@@ -1605,6 +1616,8 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
         self.tables_for_taxonomy.add(search_output)
         for s in search_output:
             item_sequences_fate[s[1]]['in_search_results'] += 1
+            if s[2][0].get('searched_anticodon', s[1]) != s[1]:
+                item_sequences_fate[s[1]]['as_I34'] += 1
 
         # time to update the self table:
         self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=True, database_version=database_version)
@@ -1620,13 +1633,30 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
 
         table.sort(key=lambda x: x[0])
 
+        i34_note = ""
+        if self.search_a34_genes:
+            a34_anticodon_dict = self.ctx.a34_anticodon_dict
+
+            header.append("as_I34")
+            for row in table:
+                num_as_i34 = item_sequences_fate[row[0]]['as_I34']
+                row.append(num_as_i34 if row[0] in a34_anticodon_dict else None)
+
+            g34_anticodons = ' and '.join(a34_anticodon_dict.keys())
+            a34_anticodons = ' and '.join(a34_anticodon_dict.values())
+            i34_note = (f" In this tRNA-seq contigs database, seeds labeled {g34_anticodons} were "
+                        f"also searched against {a34_anticodons} genes, respectively, since "
+                        f"bacterial tRNAs of these genes carry inosine at wobble position 34, "
+                        f"which reverse transcription reads as G. The column `as_I34` shows how "
+                        f"many seeds were annotated with these genes.")
+
         self.run.warning(f"Please take a careful look at the table below. It shows the number of sequences found in the contigs database "
-                         f"for a given {self._ITEM}, and how many of them actually was annotated based on sequences in GTDB. The discrepancy "
+                         f"for a given {self._ITEM}, and how many of them were actually annotated based on sequences in GTDB. The discrepancy "
                          f"between these two numbers can occur due to multiple reasons. You may have bacterial or archaeal sequences in your "
-                         f"data that are way too novel to hit anything in the GTDB above the percent identity cutoff set by the parameter"
+                         f"data that are way too novel to hit anything in the GTDB above the percent identity cutoff set by the parameter "
                          f"`--min-percent-identity` to report alignments (which is set to {self.min_pct_id} in the current run). Or, "
                          f"you may have a lot of eukaryotic organisms, {self._SOURCE_DATA} sequences of which may have no representation "
-                         f"in the GTDB, in which case decreasing `--min-percent-identity` will only give you erronous results.")
+                         f"in the GTDB, in which case decreasing `--min-percent-identity` will only give you erroneous results.{i34_note}")
 
         anvio.TABULATE(table, header, numalign="center")
 
@@ -1634,7 +1664,7 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
 
     def store_hits_gene_callers_id(self, gene_callers_id, gene_sequence, item_name, hits):
         if self.trna_focus:
-            header = ['db_name', 'gene_callers_id', 'anticodon', 'amino_acid', 'accession', 'percent_identity', 'bitscore'] + constants.levels_of_taxonomy
+            header = ['db_name', 'gene_callers_id', 'anticodon', 'searched_anticodon', 'amino_acid', 'accession', 'percent_identity', 'bitscore'] + constants.levels_of_taxonomy
         elif self.scgs_focus:
             header = ['db_name', 'gene_callers_id', 'gene_name', 'accession', 'percent_identity', 'bitscore'] + constants.levels_of_taxonomy
         else:
@@ -1644,15 +1674,14 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
             with open(self.all_hits_output_file_path, 'w') as output:
                 output.write('\t'.join(header) + '\n')
 
-        if self.trna_focus:
-            line = [str(f) for f in [self.contigs_db_project_name, gene_callers_id, item_name, constants.anticodon_to_AA[item_name]]]
-        elif self.scgs_focus:
-            line = [str(f) for f in [self.contigs_db_project_name, gene_callers_id, item_name]]
+        line = [str(f) for f in [self.contigs_db_project_name, gene_callers_id, item_name]]
 
         with open(self.all_hits_output_file_path, 'a') as output:
             for hit in hits:
                 if self.trna_focus:
-                    output.write('\t'.join(line + [str(hit[k]) for k in header[4:]]) + '\n')
+                    hit_line = [hit['searched_anticodon'], constants.anticodon_to_AA[item_name]]
+                    hit_line += [str(hit[k]) for k in header[5:]]
+                    output.write('\t'.join(line + hit_line) + '\n')
                 elif self.scgs_focus:
                     output.write('\t'.join(line + [str(hit[k]) for k in header[3:]]) + '\n')
 
@@ -1664,15 +1693,22 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
 
         if len(hits):
             header = ['%id', 'bitscore', 'accession', 'taxonomy']
+            if self.search_a34_genes:
+                header.insert(3, 'searched_anticodon')
             table = []
 
             for hit in hits:
                 if hit['accession'] == 'CONSENSUS':
                     accession = terminal.c(hit['accession'], color='red')
                     taxon_text = terminal.c(' / '.join([hit[l] if hit[l] else '' for l in self.ctx.levels_of_taxonomy]), color='red')
-                    table.append([str(hit['percent_identity']), str(hit['bitscore']), accession, taxon_text])
+                    row = [str(hit['percent_identity']), str(hit['bitscore']), accession, taxon_text]
                 else:
-                    table.append([str(hit['percent_identity']), str(hit['bitscore']), hit['accession'], ' / '.join([hit[l] if hit[l] else '' for l in self.ctx.levels_of_taxonomy])])
+                    row = [str(hit['percent_identity']), str(hit['bitscore']), hit['accession'], ' / '.join([hit[l] if hit[l] else '' for l in self.ctx.levels_of_taxonomy])]
+
+                if self.search_a34_genes:
+                    row.insert(3, hit['searched_anticodon'])
+
+                table.append(row)
 
             anvio.TABULATE(table, header)
         else:
@@ -1708,6 +1744,10 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
     def get_gene_estimation_output(self, item_name, fasta_formatted_sequence, log_file_path, show_all_hits=False):
         genes_estimation_output=[]
 
+        a34_anticodon = None
+        if self.search_a34_genes:
+            a34_anticodon = self.ctx.a34_anticodon_dict.get(item_name)
+
         if self.scgs_focus:
             target_database_path = self.ctx.SCGs[item_name]['db']
 
@@ -1719,42 +1759,52 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
             diamond.run.log_file_path = log_file_path
 
             raw_search_output = diamond.blastp_stdin_multi(fasta_formatted_sequence)
+            raw_search_outputs = [(item_name, raw_search_output)]
         elif self.trna_focus:
-            target_database_path = self.ctx.anticodons[item_name]['db']
+            searched_anticodons = [item_name, a34_anticodon] if a34_anticodon else [item_name]
 
-            blast = BLAST(None, target_database_path, run=run_quiet, progress=progress_quiet)
-            blast.search_program = 'blastn'
-            blast.max_target_seqs = self.max_target_seqs
-            blast.evalue = self.evalue
-            blast.min_pct_id = self.min_pct_id
-            blast.num_threads = self.num_threads
-            blast.run.log_file_path = log_file_path
+            raw_search_outputs = []
+            for searched_anticodon in searched_anticodons:
+                target_database_path = self.ctx.anticodons[searched_anticodon]['db']
 
-            raw_search_output = blast.blast_stdin(fasta_formatted_sequence)
+                blast = BLAST(None, target_database_path, run=run_quiet, progress=progress_quiet)
+                blast.search_program = 'blastn'
+                blast.max_target_seqs = self.max_target_seqs
+                blast.evalue = self.evalue
+                blast.min_pct_id = self.min_pct_id
+                blast.num_threads = self.num_threads
+                blast.run.log_file_path = log_file_path
+
+                raw_search_output = blast.blast_stdin(fasta_formatted_sequence)
+                raw_search_outputs.append((searched_anticodon, raw_search_output))
         else:
             raise ConfigError("You must be joking, Mr. Feynman.")
 
         hits_per_gene = {}
-        for blastp_hit in raw_search_output.split('\n'):
-            if len(blastp_hit) and not blastp_hit.startswith('Query'):
-                fields = blastp_hit.split('\t')
+        for searched_item_name, raw_search_output in raw_search_outputs:
+            for blastp_hit in raw_search_output.split('\n'):
+                if len(blastp_hit) and not blastp_hit.startswith('Query'):
+                    fields = blastp_hit.split('\t')
 
-                try:
-                    gene_callers_id = int(fields[0])
-                except:
-                    gene_callers_id = fields[0]
+                    try:
+                        gene_callers_id = int(fields[0])
+                    except:
+                        gene_callers_id = fields[0]
 
-                hit = dict(zip(['accession', 'percent_identity', 'bitscore'], [fields[1], float(fields[2]), float(fields[11])]))
+                    hit = dict(zip(['accession', 'percent_identity', 'bitscore'], [fields[1], float(fields[2]), float(fields[11])]))
 
-                hit = self.update_dict_with_taxonomy(hit)
+                    hit = self.update_dict_with_taxonomy(hit)
 
-                if gene_callers_id not in hits_per_gene:
-                    hits_per_gene[gene_callers_id] = {}
+                    if self.trna_focus:
+                        hit['searched_anticodon'] = searched_item_name
 
-                if item_name not in hits_per_gene[gene_callers_id]:
-                    hits_per_gene[gene_callers_id][item_name] = []
+                    if gene_callers_id not in hits_per_gene:
+                        hits_per_gene[gene_callers_id] = {}
 
-                hits_per_gene[gene_callers_id][item_name].append(hit)
+                    if searched_item_name not in hits_per_gene[gene_callers_id]:
+                        hits_per_gene[gene_callers_id][searched_item_name] = []
+
+                    hits_per_gene[gene_callers_id][searched_item_name].append(hit)
 
         # logging and reporting block
         if (anvio.DEBUG or self.all_hits_output_file_path) and not len(hits_per_gene):
@@ -1766,26 +1816,34 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
                 if self.all_hits_output_file_path:
                     self.store_hits_gene_callers_id(fasta_formatted_sequence.split('\n')[0][1:], fasta_formatted_sequence.split('\n')[1], item_name, [])
 
-        for gene_callers_id, raw_hits in hits_per_gene.items():
-            if len(raw_hits.keys()) > 1:
-                self.run.warning("As crazy as it sounds, the gene callers id `%d` seems to have hit more than one SCG o_O Anvi'o will only use "
-                                 "one of them almost absolutely randomly. Here are the SCGs the gene sequence matches: '%s'" % [s for s in raw_hits.keys()])
+        for gene_callers_id, raw_hits_dict in hits_per_gene.items():
+            # A tRNA-seq seed with hits among the genes of both its own and the A34 anticodon keeps
+            # the hits of the genes with the best-scoring alignment. Bit score rather than percent
+            # identity is used since a short alignment can reach a higher identity than a
+            # full-length one.
+            searched_item_name = item_name if item_name in raw_hits_dict else a34_anticodon
+            if len(raw_hits_dict) > 1:
+                own_top_bitscore = max([hit['bitscore'] for hit in raw_hits_dict[item_name]])
+                a34_top_bitscore = max([hit['bitscore'] for hit in raw_hits_dict[a34_anticodon]])
+                if a34_top_bitscore > own_top_bitscore:
+                    searched_item_name = a34_anticodon
 
-            item_name = list(raw_hits.keys())[0]
-            raw_hits = raw_hits[item_name]
+            raw_hits = raw_hits_dict[searched_item_name]
 
             consensus_hit = self.get_consensus_hit(raw_hits)
             consensus_hit['accession'] = 'CONSENSUS'
 
             if anvio.DEBUG or show_all_hits or self.all_hits_output_file_path:
-                # avoid race conditions when priting this information when `--debug` is true:
+                all_raw_hits = [hit for hits in raw_hits_dict.values() for hit in hits]
+
+                # avoid race conditions when printing this information when `--debug` is true:
                 with self.mutex:
                     if anvio.DEBUG or show_all_hits:
                         self.progress.reset()
-                        self.show_hits_gene_callers_id(gene_callers_id, fasta_formatted_sequence.split('\n')[1], item_name, raw_hits + [consensus_hit])
+                        self.show_hits_gene_callers_id(gene_callers_id, fasta_formatted_sequence.split('\n')[1], item_name, all_raw_hits + [consensus_hit])
 
                     if self.all_hits_output_file_path:
-                        self.store_hits_gene_callers_id(gene_callers_id, fasta_formatted_sequence.split('\n')[1], item_name, raw_hits + [consensus_hit])
+                        self.store_hits_gene_callers_id(gene_callers_id, fasta_formatted_sequence.split('\n')[1], item_name, all_raw_hits + [consensus_hit])
 
 
             genes_estimation_output.append([gene_callers_id, item_name, [consensus_hit]])

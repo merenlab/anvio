@@ -161,6 +161,8 @@ class BottleApplication(Bottle):
         self.route('/store_description',                                          callback=self.store_description, method='POST')
         self.route('/upload_project',                                             callback=self.upload_project, method='POST')
         self.route('/data/contig/<split_name>',                                   callback=self.get_sequence_for_split)
+        self.route('/data/get_sequences_for_splits',                              callback=self.get_sequences_for_splits, method='POST')
+        self.route('/data/get_fasta_for_bins',                                    callback=self.get_fasta_for_bins, method='POST')
         self.route('/summarize/<collection_name>',                                callback=self.gen_summary, method='POST')
         self.route('/summary/<collection_name>/:filename#.*#',                    callback=self.send_summary_static)
         self.route('/data/gene/<gene_callers_id>',                                callback=self.get_sequence_for_gene_call)
@@ -413,6 +415,7 @@ class BottleApplication(Bottle):
                                  "autodraw":                           autodraw,
                                  "inspection_available":               inspection_available,
                                  "sequences_available":                True if (self.interactive.split_sequences or self.interactive.mode == 'gene') else False,
+                                 "input_fasta_name":                   os.path.basename((getattr(self.interactive, 'p_meta', None) or {}).get('splits_fasta') or '') or None,
                                  "functions_initialized":              self.interactive.gene_function_calls_initiated,
                                  "functions_sources":                  functions_sources,
                                  "state":                              (self.interactive.state_autoload, state_dict),
@@ -1050,6 +1053,105 @@ class BottleApplication(Bottle):
             return json.dumps({'error': "Something went wrong when I tried to access that split sequence: '%s' :/" % e})
 
         return json.dumps({'sequence': sequence, 'header': header})
+
+
+    def get_sequences_for_splits(self):
+        """Returns sequences for a list of split names in a single request.
+
+        This is used by the bin curation window of the interactive interface (in manual mode
+        with a FASTA file), so it can show the sequences of every item in a bin at once rather
+        than requesting them one by one.
+
+        If the request includes `align=true`, sequences are aligned with anvi'o's default aligner
+        before they are returned, so they are easier to compare in the interface.
+        """
+
+        if not self.interactive.split_sequences:
+            message = ("There are no sequences associated with the items in this display, so anvi'o "
+                       "has nothing to show you :/")
+            return json.dumps({'status': 1, 'message': message})
+
+        try:
+            split_names = json.loads(request.forms.get('split_names'))
+        except Exception as e:
+            return json.dumps({'status': 1, 'message': f"Anvi'o could not make sense of the split names it received: '{e}'"})
+
+        missing = [s for s in split_names if s not in self.interactive.split_sequences]
+        if len(missing):
+            message = (f"{len(missing)} of the {len(split_names)} items you asked for do not have a "
+                       f"corresponding sequence (e.g., '{missing[0]}'). This is weird :/")
+            return json.dumps({'status': 1, 'message': message})
+
+        sequences = dict([(s, self.interactive.split_sequences[s]['sequence']) for s in split_names])
+
+        if request.forms.get('align') != 'true':
+            return json.dumps({'status': 0, 'sequences': sequences, 'aligned': False})
+
+        # a single sequence has nothing to be aligned to
+        if len(sequences) < 2:
+            return json.dumps({'status': 0, 'sequences': sequences, 'aligned': False})
+
+        # the input FASTA may already be an alignment, in which case we remove its gaps so
+        # the aligner gets the raw sequences
+        sequences_list = [(s, sequences[s].replace('-', '').replace('.', '')) for s in split_names]
+
+        empty = [s for (s, seq) in sequences_list if not len(seq)]
+        if len(empty):
+            message = (f"{len(empty)} of the items in this bin have no sequence left once their gap characters "
+                       f"are removed (e.g., '{empty[0]}'), so anvi'o can't align them :/")
+            return json.dumps({'status': 1, 'message': message})
+
+        try:
+            aligner_class = drivers.Aligners(run=terminal.Run(verbose=False)).select(quiet=True)
+            aligner = aligner_class(run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
+            aligned_sequences = aligner.run_default(sequences_list)
+        except Exception as e:
+            message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
+            return json.dumps({'status': 1, 'message': f"Anvi'o failed to align these sequences :/ Here is what it knows: {message}"})
+
+        missing = [s for s in split_names if s not in aligned_sequences]
+        if len(missing):
+            message = (f"The aligner did not return an alignment for {len(missing)} of the {len(split_names)} "
+                       f"sequences (e.g., '{missing[0]}'). This is weird :/")
+            return json.dumps({'status': 1, 'message': message})
+
+        return json.dumps({'status': 0, 'sequences': aligned_sequences, 'aligned': True, 'aligner': aligner.program_name})
+
+
+    def get_fasta_for_bins(self):
+        """Returns a copy of the input FASTA file either without, or only with, the sequences of a set of items.
+
+        This is used by the interactive interface in manual mode with a FASTA file, so the user can download
+        a new FASTA file after curating their bins. Sequences are written in the order they appear in the input
+        file, with their original deflines.
+        """
+
+        if not self.interactive.split_sequences:
+            message = ("There are no sequences associated with the items in this display, so anvi'o "
+                       "has no FASTA file to give you :/")
+            return json.dumps({'status': 1, 'message': message})
+
+        mode = request.forms.get('mode')
+        if mode not in ['exclude', 'only']:
+            return json.dumps({'status': 1, 'message': f"Anvi'o does not know what to do with the mode '{mode}' :/"})
+
+        try:
+            item_names = set(json.loads(request.forms.get('item_names')))
+        except Exception as e:
+            return json.dumps({'status': 1, 'message': f"Anvi'o could not make sense of the item names it received: '{e}'"})
+
+        # `split_sequences` keeps the order of the input FASTA file
+        if mode == 'exclude':
+            names = [n for n in self.interactive.split_sequences if n not in item_names]
+        else:
+            names = [n for n in self.interactive.split_sequences if n in item_names]
+
+        fasta = ''.join([f">{n}\n{self.interactive.split_sequences[n]['sequence']}\n" for n in names])
+
+        return json.dumps({'status': 0,
+                           'fasta': fasta,
+                           'num_sequences': len(names),
+                           'num_sequences_in_input': len(self.interactive.split_sequences)})
 
 
     def gen_summary(self, collection_name):
