@@ -14,6 +14,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['jessika-fuessel']
 __provides__ = ['amrfinder-data']
+__resources__ = [("AMRFinderPlus at NCBI", "https://www.ncbi.nlm.nih.gov/pathogens/antimicrobial-resistance/AMRFinder/"),
+                 ("AMRFinderPlus documentation", "https://github.com/ncbi/amr/wiki"),
+                 ("The AMRFinderPlus paper (Feldgarden et al. 2021)", "https://doi.org/10.1038/s41598-021-91456-0")]
 __description__ = "Downloads and sets up NCBI's AMRFinderPlus database for `anvi-run-amrfinder`"
 
 
