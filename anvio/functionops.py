@@ -429,3 +429,168 @@ class SequencesForFunctionHits(object):
         for unit_name in entries:
             self.run.info(f"Genes reported for '{unit_name}'", len(entries[unit_name]))
         self.run.info('Output FASTA', self.output_file_path, nl_before=1)
+
+
+class FunctionsSearchResultReporter(object):
+    """Search functions in contigs databases, genomes storages, or external genomes, and report hits"""
+
+    def __init__(self, args, run=run, progress=progress):
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.annotation_sources = [s.strip() for s in A('annotation_sources').split(',')] if A('annotation_sources') else []
+        self.list_annotation_sources = A('list_annotation_sources')
+        self.basic_report_path = A('output_file') or 'search_results.txt'
+        self.full_report_path = A('full_report')
+        self.include_sequences = A('include_sequences')
+        self.case_sensitive = A('case_sensitive')
+        self.exact_match = A('exact_match')
+        self.verbose = A('verbose')
+        self.args = args
+        self.search_mode = None
+
+        self.run = run
+        self.progress = progress
+
+        self.contigs_db = A('contigs_db')
+        self.genomes_storage = A('genomes_storage')
+        self.pan_db = A('pan_db')
+        self.external_genomes = A('external_genomes')
+
+        # get search results will fill these
+        self.all_item_names = None
+        self.matching_item_names_dict = None
+        self.verbose_output = None
+
+        # straighten things out
+        self.search_terms = [s.strip() for s in A('search_terms').split(A('delimiter'))]
+
+        self.db = self.get_database()
+
+        if self.list_annotation_sources:
+            self.db.list_function_sources()
+            sys.exit()
+
+
+    def process(self):
+        self.get_search_results()
+        self.write_report()
+
+        if self.full_report_path:
+            self.write_full_report()
+
+
+    def get_database(self):
+        if self.contigs_db and (self.genomes_storage or self.pan_db):
+            raise ConfigError("You cannot provide both a contigs database and genomes storage")
+        elif self.contigs_db and self.external_genomes:
+            raise ConfigError("You cannot provide both an individual contigs database and an external genomes file")
+        elif self.external_genomes and (self.genomes_storage or self.pan_db):
+            raise ConfigError("You cannot provide both an external genomes file and genomes storage")
+
+        if self.contigs_db:
+            self.search_mode = 'contigs'
+            self.run.info("Searching in Contigs Database", self.contigs_db)
+            return dbops.ContigsSuperclass(self.args, r=self.run, p=self.progress)
+
+        elif self.genomes_storage and self.pan_db:
+            self.search_mode = 'gene_clusters'
+            self.run.info("Searching in Genomes Storage", self.genomes_storage)
+            pan_database = dbops.PanSuperclass(self.args, r=self.run, p=self.progress)
+            pan_database.init_gene_clusters()
+            return pan_database
+
+        elif self.external_genomes:
+            self.search_mode = 'external_genomes'
+            self.run.info("Searching in multiple contigs databases from file", self.external_genomes)
+            genome_desc = GenomeDescriptions(self.args, run=self.run, progress=self.progress)
+            genome_desc.load_genomes_descriptions(init=self.include_sequences)
+            return genome_desc
+
+        else:
+            raise ConfigError("You did not provide enough arguments to initialize the input databases :( Note that "
+                              "to initialize a pan-db you need to provide both a genomes-storage-db and pan-db.")
+
+
+    def get_search_results(self):
+        self.matching_item_names_dict, self.verbose_output = self.db.search_for_gene_functions(self.search_terms, requested_sources=self.annotation_sources, verbose=self.verbose, case_sensitive=self.case_sensitive, exact_match=self.exact_match)
+
+        self.all_item_names = set([])
+
+        for item_names in list(self.matching_item_names_dict.values()):
+            self.all_item_names.update(item_names)
+
+
+    def write_report(self):
+        results_dict = {}
+
+        for item_name in self.all_item_names:
+            if self.search_mode == 'external_genomes': # item_name is a tuple: (genome, item)
+                results_dict[item_name] = {'genome': item_name[0], 'item': item_name[1]}
+                results_dict[item_name].update(dict([(s + '_hits', '') for s in self.search_terms]))
+            else:
+                results_dict[item_name] = dict([(s + '_hits', '') for s in self.search_terms])
+
+            for search_term in self.search_terms:
+                if item_name in self.matching_item_names_dict[search_term]:
+                    results_dict[item_name][search_term + '_hits'] = search_term
+
+        if self.search_mode == 'external_genomes':
+            header_list = ['key', 'item', 'genome'] + [s + '_hits' for s in self.search_terms]
+        else:
+            header_list = [self.search_mode] + [s + '_hits' for s in self.search_terms]
+
+        utils.store_dict_as_TAB_delimited_file(results_dict, self.basic_report_path, headers = header_list, do_not_write_key_column=(self.search_mode == 'external_genomes'))
+        self.run.info('Items additional data compatible output', self.basic_report_path, nl_before=1)
+
+
+    def write_full_report(self):
+        if self.search_mode == 'contigs':
+            header = ['gene_callers_id']
+        elif self.search_mode == 'gene_clusters' or self.search_mode == 'external_genomes':
+            header = ['gene_callers_id', 'genome_name']
+        else:
+            raise ConfigError("You ended up in a place you should have never ended up. Go back. Go back.")
+
+        header.extend(['source', 'accession', 'function', 'search_term', 'item' if self.search_mode == 'external_genomes' else self.search_mode])
+
+        if self.include_sequences:
+            if self.search_mode == 'contigs':
+                gene_caller_ids = list(set([e[0] for e in self.verbose_output]))
+                _, gene_sequences_dict = self.db.get_sequences_for_gene_callers_ids(gene_caller_ids, include_aa_sequences=True)
+                header.extend(['direction', 'rev_compd', 'dna_sequence', 'aa_sequence'])
+            elif self.search_mode == 'gene_clusters':
+                header.extend(['dna_sequence', 'aa_sequence'])
+            elif self.search_mode == 'external_genomes':
+                # now we need to load sequences from all databases in the input file
+                aa_seq_dicts_by_genome, dna_seq_dicts_by_genome = {}, {}
+                for g in self.db.genomes:
+                    _, aa_seq_dicts_by_genome[g], dna_seq_dicts_by_genome[g] = self.db.get_functions_and_sequences_dicts_from_contigs_db(g, requested_source_list=self.annotation_sources)
+                header.extend(['dna_sequence', 'aa_sequence'])
+
+        report = open(self.full_report_path, 'w')
+        report.write('\t'.join(header) + '\n')
+        for entry in self.verbose_output:
+            content = [str(item) for item in entry]
+            if self.include_sequences:
+                if self.search_mode == 'contigs':
+                    g = gene_sequences_dict[entry[0]]
+                    content.extend([g['direction'],
+                                    g['rev_compd'],
+                                    g['sequence'],
+                                    g['aa_sequence'],])
+                elif self.search_mode == 'gene_clusters':
+                    # pan results already contains dna and aa sequences
+                    pass
+                elif self.search_mode == 'external_genomes':
+                    gcid = entry[0]
+                    genome = entry[1]
+                    content.extend([dna_seq_dicts_by_genome[genome][gcid]['sequence'],
+                                    aa_seq_dicts_by_genome[genome][gcid]['sequence']])
+
+            else:
+                if self.search_mode == 'gene_clusters':
+                    content = content[:-2]
+
+            report.write('\t'.join(content) + '\n')
+        report.close()
+
+        self.run.info('Full report', self.full_report_path)
