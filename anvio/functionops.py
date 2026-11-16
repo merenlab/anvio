@@ -155,7 +155,7 @@ class SequencesForFunctionHits(object):
 
         if not self.output_file_path:
             raise ConfigError("Please don't make anvi'o make up output file names for you by providing an output "
-                              ("file path with with the parameter `--output-file`.")
+                              "file path with with the parameter `--output-file`.")
 
         filesnpaths.is_output_file_writable(self.output_file_path)
 
