@@ -1407,6 +1407,13 @@ D = {
                      "character (i.e., '--annotation-sources source_1,source_2,source_3'). The default "
                      "behavior is to return everything"}
                 ),
+    'accession-ids': (
+            ['--accession-ids'],
+            {'metavar': 'ACCESSION_IDS',
+             'help': "One or more accession ids from a functional annotation source to focus on. You can provide them "
+                     "as a comma-separated list (e.g., 'PF00117,PF02786'), or as a path to a file with one accession "
+                     "id per line. Accession ids are matched exactly and they are case-sensitive for science."}
+                ),
     'list-annotation-sources': (
             ['-l', '--list-annotation-sources'],
             {'default': False,
