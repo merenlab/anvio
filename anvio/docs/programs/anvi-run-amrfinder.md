@@ -5,6 +5,12 @@ Keep in mind that AMRs are difficult to annotate and AMRFinderPlus's database is
 
 Before you can run this program, you will need to install AMRFinderPlus and set up its database with %(anvi-setup-amrfinder)s.
 
+### Where does AMRFinderPlus come from?
+
+[AMRFinderPlus](https://www.ncbi.nlm.nih.gov/pathogens/antimicrobial-resistance/AMRFinder/) is a tool developed and maintained by the [National Center for Biotechnology Information (NCBI)](https://www.ncbi.nlm.nih.gov/) (as a part of its [Pathogen Detection](https://www.ncbi.nlm.nih.gov/pathogens/) project). It searches a given set of protein sequences against the curated Reference Gene Database and its curated collection of HMMs, both of which NCBI updates regularly. Anvi'o does not develop or maintain AMRFinderPlus or its database, but simply runs AMRFinderPlus on the genes in your %(contigs-db)s and stores its findings in a way other anvi'o programs can use them. So if you have questions about how a given gene is annotated, the [AMRFinderPlus documentation](https://github.com/ncbi/amr/wiki) is the best place to look.
+
+If you use %(anvi-run-amrfinder)s in your work, please don't forget to cite AMRFinderPlus along with anvi'o (anvi'o will remind you to do it in the output of the program and ask you to cite [Feldgarden M, Brover V, Gonzalez-Escalona N, et al. (2021)](https://doi.org/10.1038/s41598-021-91456-0)).
+
 ### How does it work?
 
 1. AMRFinderPlus requires the amino acid sequences of the genes in your %(contigs-db)s. The first thing %(anvi-run-amrfinder)s does is to **export the amino acid sequences** of all genes in your %(contigs-db)s into a temporary FASTA file while using their gene caller ids as names.

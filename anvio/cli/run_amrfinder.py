@@ -16,6 +16,9 @@ __version__ = anvio.__version__
 __authors__ = ['jessika-fuessel']
 __requires__ = ['contigs-db', 'amrfinder-data']
 __provides__ = ['functions']
+__resources__ = [("AMRFinderPlus at NCBI", "https://www.ncbi.nlm.nih.gov/pathogens/antimicrobial-resistance/AMRFinder/"),
+                 ("AMRFinderPlus documentation", "https://github.com/ncbi/amr/wiki"),
+                 ("The AMRFinderPlus paper (Feldgarden et al. 2021)", "https://doi.org/10.1038/s41598-021-91456-0")]
 __description__ = ("You can use this to annotate genes in a contigs-db with NCBI's AMRFinderPlus to find antimicrobial "
                    "resistance genes, stress response genes (such as metal and biocide resistance), and virulence genes.")
 
