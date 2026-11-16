@@ -1126,59 +1126,53 @@ class Indels:
         # one-pass count of loci per cluster so we don't do O(N_loci × N_clusters) scans below
         loci_per_cluster = Counter(info['cluster_id'] for info in self.loci.values())
 
-        cluster_meta = {}
-        for cid in final_cluster_ids:
-            member_idxs = self.clusters_to_members.get(cid, [])
-            if not member_idxs:
-                continue
-            type_counts = Counter(self.indels[i]['type'] for i in member_idxs)
-            ins_n = type_counts.get('INS', 0)
-            del_n = type_counts.get('DEL', 0)
-            if ins_n and del_n:
-                cluster_type = 'mixed'
-            elif ins_n:
-                cluster_type = 'INS'
-            else:
-                cluster_type = 'DEL'
-            samples = {self.indels[i]['sample_id'] for i in member_idxs}
-            n_loci = loci_per_cluster.get(cid, 0)
-            n_supporting_reads = sum(self.indels[i]['count'] for i in member_idxs)
-            rep_id = self.cluster_representatives.get(cid, '')
-            rep_seq = ''
-            rep_length = 0
-            if rep_id:
-                try:
-                    rep_idx = int(rep_id.split('|', 1)[0])
-                    rep_seq = self.indels[rep_idx].get('sequence', '') or ''
-                    rep_length = len(rep_seq)
-                except (ValueError, IndexError):
-                    pass
-            cluster_meta[cid] = {
-                'representative_id': rep_id,
-                'sequence': rep_seq,
-                'length': rep_length,
-                'cluster_type': cluster_type,
-                'n_supporting_reads': n_supporting_reads,
-                'n_loci': n_loci,
-                'n_samples_supporting': len(samples),
-            }
-
+        # both cluster files are written cluster by cluster: holding the metadata and representative
+        # sequences of every final cluster at once does not fit in memory for tens of millions of clusters
         cluster_cols = ['length', 'cluster_type', 'n_supporting_reads', 'n_loci', 'n_samples_supporting', 'representative_id']
-        clusters_txt_dict = {cid: {c: cluster_meta[cid][c] for c in cluster_cols}
-                             for cid in final_cluster_ids if cid in cluster_meta and cluster_meta[cid]['sequence']}
-        utils.store_dict_as_TAB_delimited_file(clusters_txt_dict, clusters_txt_path, headers=['cluster_id'] + cluster_cols)
+        with open(clusters_txt_path, 'w') as txt, open(clusters_fa_path, 'w') as fa:
+            txt.write('\t'.join(['cluster_id'] + cluster_cols) + '\n')
 
-        with open(clusters_fa_path, 'w') as f:
             for cid in final_cluster_ids:
-                m = cluster_meta.get(cid)
-                if not m or not m['sequence']:
+                member_idxs = self.clusters_to_members.get(cid, [])
+                if not member_idxs:
                     continue
+
+                rep_id = self.cluster_representatives.get(cid, '')
+                rep_seq = ''
+                if rep_id:
+                    try:
+                        rep_idx = int(rep_id.split('|', 1)[0])
+                        rep_seq = self.indels[rep_idx].get('sequence', '') or ''
+                    except (ValueError, IndexError):
+                        pass
+
+                # clusters without a representative sequence are left out of both files
+                if not rep_seq:
+                    continue
+
+                type_counts = Counter(self.indels[i]['type'] for i in member_idxs)
+                ins_n = type_counts.get('INS', 0)
+                del_n = type_counts.get('DEL', 0)
+                if ins_n and del_n:
+                    cluster_type = 'mixed'
+                elif ins_n:
+                    cluster_type = 'INS'
+                else:
+                    cluster_type = 'DEL'
+
+                meta = {'length': len(rep_seq),
+                        'cluster_type': cluster_type,
+                        'n_supporting_reads': sum(self.indels[i]['count'] for i in member_idxs),
+                        'n_loci': loci_per_cluster.get(cid, 0),
+                        'n_samples_supporting': len({self.indels[i]['sample_id'] for i in member_idxs}),
+                        'representative_id': rep_id}
+                txt.write('\t'.join([str(cid)] + [str(meta[c]) for c in cluster_cols]) + '\n')
+
                 # the defline is just the cluster id so that this file can go straight into
                 # `anvi-gen-contigs-database`; the rest of the metadata is in INDELS-CLUSTERS.txt
-                f.write(f">{cid}\n")
-                seq = m['sequence']
-                for i in range(0, len(seq), 70):
-                    f.write(seq[i:i + 70] + "\n")
+                fa.write(f">{cid}\n")
+                for i in range(0, len(rep_seq), 70):
+                    fa.write(rep_seq[i:i + 70] + "\n")
 
         self.progress.end()
 
