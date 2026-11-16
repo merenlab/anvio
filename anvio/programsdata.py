@@ -498,6 +498,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "amrfinder-data": {
+        "name": "AMRFinderPlus DATA",
+        "type": "DATA",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "misc-data-items-txt": {
         "name": "ITEMS DATA",
         "type": "TXT",

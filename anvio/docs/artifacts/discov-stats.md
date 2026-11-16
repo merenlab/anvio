@@ -136,4 +136,5 @@ Since the window lengths and alpha values used to compute discov can affect the 
 
 ## More resources
 
-- The [initial discov Pull Request](https://github.com/merenlab/anvio/pull/2563) explains some implementation decisions, shows results from the hyperparameter tuning used to set the default parameters, and also describes the outcome of various validation tests. However, please note that this is an earlier version of discov, when it exclusively consisted of the spread-evenness score (no detection in the formula).
+- The [initial discov Pull Request](https://github.com/merenlab/anvio/pull/2563) explains some implementation decisions, shows results from the hyperparameter tuning used to set the default parameters, and also describes the outcome of various validation tests. However, please note that this is an earlier version of discov, when it exclusively consisted of the spread-evenness score (no detection in the formula). If you are interested in implementation decisions, you might also want to read the [version 2 Pull Request](https://github.com/merenlab/anvio/pull/2872) to learn about why we changed certain things about the formula.
+- The [pull request for `--min-window-length`](https://github.com/merenlab/anvio/pull/2890) includes some tests that show the effect of this parameter on the distribution of discov scores.
