@@ -177,9 +177,13 @@ class AMRFinder(object):
         self.db_version = open(version_file_path).read().strip()
 
         # reminder to be a good citizen
-        self.run.warning("Anvi'o will annotate genes in your contigs-db with NCBI's AMRFinderPlus. Please do not "
+        self.run.warning("Anvi'o will annotate genes in your contigs-db with AMRFinderPlus, a tool and a curated "
+                         "database developed and maintained by the National Center for Biotechnology Information "
+                         "(NCBI) as a part of its Pathogen Detection project. You can learn more about it here: "
+                         "https://www.ncbi.nlm.nih.gov/pathogens/antimicrobial-resistance/AMRFinder/. Please do not "
                          "forget to cite it when you publish your science :) Here is the best way to cite this "
-                         "resource: https://doi.org/10.1038/s41598-021-91456-0", lc='green', header="CITATION")
+                         "resource: Feldgarden et al. (2021), https://doi.org/10.1038/s41598-021-91456-0",
+                         lc='green', header="CITATION")
 
 
     def process(self):
