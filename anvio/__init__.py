@@ -156,7 +156,12 @@ def TABULATE(table, header, numalign="right", max_width=0):
 
     from tabulate import tabulate
 
-    tablefmt = "fancy_grid" if sys.stdout.encoding == "UTF-8" else "grid"
+    # `anvio.terminal` imports `anvio`, but we need something from terminal :/ so
+    # here is the sneaky import to avoid that circular dependency (we keep our
+    # fingers crossed that this doesn't explode soon):
+    import anvio.terminal as terminal
+
+    tablefmt = "fancy_grid" if terminal.stdout_supports_unicode() else "grid"
     table = tabulate(table, headers=header, tablefmt=tablefmt, numalign=numalign)
 
     if max_width:
