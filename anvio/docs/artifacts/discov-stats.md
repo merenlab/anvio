@@ -109,7 +109,10 @@ If fewer than 3 windows have coverage, there is not enough information to estima
 
 When only a handful of reads map to a sequence, there is not enough information to properly estimate either spread or evenness. Even so, both can look deceptively good: a few reads landing in separate windows are about as spread out as we expect from randomly-placed reads (so normalized _S_ is high), and since each covered window holds about one read, the mean window coverage depths barely vary (so _E_ is high). Without a safeguard, such sequences could get a discov score close to 1 from just a few reads.
 
-To avoid this, anvi'o sets both normalized _S_ and _E_ to 0 for any sequence with fewer mapped reads than `--discov-min-reads` (10 by default). The spread-evenness score _C_ is then 0, and discov collapses to _D_^2, which will be very low since a few reads cannot cover much of a sequence. The observed and expected proportions of covered windows are still reported for these sequences. You can set `--discov-min-reads 0` to always compute normalized _S_ and _E_.
+To avoid this, anvi'o sets both normalized _S_ and _E_ to 0 for any sequence with fewer mapped reads than `--discov-min-reads` (20 by default). The spread-evenness score _C_ is then 0, and discov collapses to _D_^2, which will be very low since a few reads cannot cover much of a sequence. The observed and expected proportions of covered windows are still reported for these sequences. You can set `--discov-min-reads 0` to always compute normalized _S_ and _E_. Note that reads are counted individually, so each mate of a read pair that maps counts as one read.
+
+{:.warning}
+The same read threshold applies to genome-level and contig-level scores. The default of 20 reads was chosen based on tests with genome-level scores, and it may be too high for contig-level scores, where shorter sequences need fewer reads to be meaningfully covered. If you are working with contig-level scores (especially for short contigs), consider testing a lower `--discov-min-reads` value with contigs you know to be present or absent.
 
 ### The weight parameter _α_
 

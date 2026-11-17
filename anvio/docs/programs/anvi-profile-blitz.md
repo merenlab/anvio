@@ -133,7 +133,7 @@ The final score is discov = min(1, _C_ + _D_^2).
 
 **Sequences with few mapped reads**
 
-* `--discov-min-reads INT` — minimum number of reads mapping to a contig or bin for _S_ and _E_ to be computed. Below this threshold, normalized _S_ and _E_ are set to 0, so discov = _D_^2 (default: 10)
+* `--discov-min-reads INT` — minimum number of reads mapping to a contig or bin for _S_ and _E_ to be computed. Below this threshold, normalized _S_ and _E_ are set to 0, so discov = _D_^2 (default: 20). This default was set using genome-level scores, and may be too high for contig-level scores (see %(discov-stats)s)
 
 **Window-level output**
 
