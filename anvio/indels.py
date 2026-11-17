@@ -275,13 +275,13 @@ class Indels:
 
 
     def _init_contigs_super(self):
-        """Instantiate ContigsSuperclass once and pre-load contig sequences + gene calls/functions."""
+        """Instantiate ContigsSuperclass once and load gene calls and functions (contig sequences are
+        loaded later, and only for the contigs with DEL events; see `reconstruct_del_sequences`)."""
         import argparse
         self.progress.new('Initializing contigs database')
         self.progress.update('...')
         args = argparse.Namespace(contigs_db=self.contigs_db_path)
         self.contigs_super = dbops.ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
-        self.contigs_super.init_contig_sequences()
         try:
             self.contigs_super.init_functions()
         except ConfigError:
@@ -435,6 +435,15 @@ class Indels:
 
     def reconstruct_del_sequences(self):
         """Fill in `sequence` for DEL rows by slicing from the contig sequence."""
+
+        # contig sequences are needed only here, and only for the contigs that carry DEL rows: loading every
+        # contig instead takes about as much memory as the contigs-db is large (~150 GB for 141 Gbp)
+        del_contigs = set(e['contig_name'] for e in self.indels if e['type'] == 'DEL')
+        if del_contigs:
+            self.progress.new('Loading contig sequences')
+            self.progress.update(f"for {pp(len(del_contigs))} contigs with DEL events ...")
+            self.contigs_super.init_contig_sequences(contig_names_of_interest=del_contigs)
+            self.progress.end()
 
         n_reconstructed = 0
         n_skipped_mismatch = 0
