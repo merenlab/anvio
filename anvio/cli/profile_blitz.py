@@ -121,6 +121,7 @@ def get_args():
                         f"unbounded (i.e., no maximum)."}))
     groupE.add_argument(*anvio.A('alpha'), **anvio.K('alpha'))
     groupE.add_argument(*anvio.A('discov-formula'), **anvio.K('discov-formula'))
+    groupE.add_argument(*anvio.A('discov-min-reads'), **anvio.K('discov-min-reads'))
 
     return parser.get_args(parser)
 

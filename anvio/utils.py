@@ -523,7 +523,7 @@ def tar_extract_file(input_file_path, output_file_path=None, keep_original=True)
         os.remove(input_file_path)
 
 
-def validate_discov_params(window_length, window_length_as_percentage, min_window_length, max_window_length, alpha, discov_formula, require_window_param=True):
+def validate_discov_params(window_length, window_length_as_percentage, min_window_length, max_window_length, alpha, discov_formula, min_reads, require_window_param=True):
     """Validate distribution of coverage (discov) parameters and raise ConfigError for any invalid combination.
 
     Parameters
@@ -542,6 +542,8 @@ def validate_discov_params(window_length, window_length_as_percentage, min_windo
         Weight of S in the discov score. Must be in [0, 1].
     discov_formula : str
         Combination formula. Must be 'linear' or 'geometric'.
+    min_reads : int
+        Minimum number of mapped reads required to compute S and E. Must be a non-negative integer.
     require_window_param : bool
         When True, raise an error if neither window_length nor window_length_as_percentage
         is set. Set to False for callers (e.g. anvi-summarize) that supply context-sensitive
@@ -601,6 +603,11 @@ def validate_discov_params(window_length, window_length_as_percentage, min_windo
         raise ConfigError(f"The --discov-formula parameter must be either 'linear' or 'geometric', but you provided "
                           f"'{discov_formula}'. Please fix that and try again.")
 
+    if min_reads is None or min_reads < 0:
+        raise ConfigError(f"The --discov-min-reads parameter must be a non-negative integer, but you provided "
+                          f"'{min_reads}'. Please use 0 if you want S and E to be computed regardless of how many reads "
+                          f"map to a given sequence.")
+
 
 class CoverageStats:
     """A class to return coverage stats for an array of nucleotide level coverages.
@@ -624,6 +631,11 @@ class CoverageStats:
     of the same non-overlapping, equal-sized windows used in S. E = 1 / (1 + CV). If fewer than 3 windows have
     coverage (which can happen on short or poorly covered sequences), we do not compute CV and E is set to 0
     (maximum unevenness).
+
+    If fewer than `discov_min_reads` reads map to the sequence, there is not enough information to estimate
+    either S or E (a handful of reads landing randomly in separate windows can look perfectly spread and even),
+    so both normalized S and E are set to 0. The observed and expected proportions of covered windows are
+    still reported. Discov then collapses to detection squared.
 
     We combine (normalized) S and E into a 'spread-evenness score'. They can be combined linearly
     with a weight α following the formula: C = αS_norm + (1-α)E. Or, they can be combined by
@@ -654,6 +666,9 @@ class CoverageStats:
         A value in [0,1] that indicates how much to weight S over E in the discov score
     discov_formula : string
         Can be 'linear' or 'geometric', to choose which formula to use.
+    discov_min_reads : int
+        Minimum number of reads mapping to the sequence for normalized S and E to be computed. Below this
+        threshold, both are set to 0
     num_reads : int, None
         Number of reads mapping to the sequence, needed to compute the normalized spread
     report_discov : boolean
@@ -662,7 +677,8 @@ class CoverageStats:
 
     def __init__(self, coverage, skip_outliers=False, discov_window_length=10000, discov_window_percentage=None,
                 discov_min_window_len=500, discov_max_window_len=None, discov_alpha=0.5,
-                return_window_info=False, discov_formula='geometric', num_reads=None, report_discov=False):
+                return_window_info=False, discov_formula='geometric', discov_min_reads=constants.discov_default_min_reads,
+                num_reads=None, report_discov=False):
         self.num_reads = num_reads
 
         self.min: float = np.amin(coverage)
@@ -696,10 +712,10 @@ class CoverageStats:
 
         if report_discov:
             self.compute_discov_stats(coverage, discov_window_length, discov_window_percentage, discov_min_window_len, discov_max_window_len,
-                                      discov_alpha, discov_formula, return_window_info)
+                                      discov_alpha, discov_formula, discov_min_reads, return_window_info)
 
 
-    def compute_discov_stats(self, coverage, discov_window_length, discov_window_percentage, discov_min_window_len, discov_max_window_len, discov_alpha, discov_formula, return_window_info):
+    def compute_discov_stats(self, coverage, discov_window_length, discov_window_percentage, discov_min_window_len, discov_max_window_len, discov_alpha, discov_formula, discov_min_reads, return_window_info):
         """Computes discov and its sub-metrics (see the class docstring), and sets them as attributes of this object."""
 
         if discov_min_window_len is None:
@@ -733,6 +749,12 @@ class CoverageStats:
         actual_window_length = windows[0][1] - windows[0][0]
         self.spread_expected = self.expected_spread(B=np.sum(coverage), N=self.num_reads, w=actual_window_length, G=len(coverage))
         self.spread_norm = self.normalized_spread(self.prop_win_covered, self.spread_expected)
+
+        # too few reads to estimate S or E, so discov collapses to D^2
+        if self.num_reads < discov_min_reads:
+            self.spread_norm = 0.0
+            self.window_depth_evenness = 0.0
+
         self.spread_evenness_score = self.compute_spread_evenness_score(S=self.spread_norm, E=self.window_depth_evenness, alpha=discov_alpha, formula=discov_formula)
         self.discov = self.compute_discov(C=self.spread_evenness_score, D=self.detection)
 

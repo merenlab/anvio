@@ -105,6 +105,15 @@ When all covered windows have the same mean depth, CV = 0 and _E_ = 1. The more 
 {:.warning}
 If fewer than 3 windows have coverage, there is not enough information to estimate evenness, and _E_ is set to 0 (maximum unevenness). This happens for sequences with very few windows (i.e., short sequences relative to the window length) and for sequences with very few mapped reads. With the default geometric formula, _E_ = 0 means that _C_ = 0, so discov will be equal to _D_^2 and generally very low.
 
+### Sequences with very few mapped reads
+
+When only a handful of reads map to a sequence, there is not enough information to properly estimate either spread or evenness. Even so, both can look deceptively good: a few reads landing in separate windows are about as spread out as we expect from randomly-placed reads (so normalized _S_ is high), and since each covered window holds about one read, the mean window coverage depths barely vary (so _E_ is high). Without a safeguard, such sequences could get a discov score close to 1 from just a few reads.
+
+To avoid this, anvi'o sets both normalized _S_ and _E_ to 0 for any sequence with fewer mapped reads than `--discov-min-reads` (20 by default). The spread-evenness score _C_ is then 0, and discov collapses to _D_^2, which will be very low since a few reads cannot cover much of a sequence. The observed and expected proportions of covered windows are still reported for these sequences. You can set `--discov-min-reads 0` to always compute normalized _S_ and _E_. Note that reads are counted individually, so each mate of a read pair that maps counts as one read.
+
+{:.warning}
+The same read threshold applies to genome-level and contig-level scores. The default of 20 reads was chosen based on tests with genome-level scores, and it may be too high for contig-level scores, where shorter sequences need fewer reads to be meaningfully covered. If you are working with contig-level scores (especially for short contigs), consider testing a lower `--discov-min-reads` value with contigs you know to be present or absent.
+
 ### The weight parameter _α_
 
 You can adjust the weights on _S_ and _E_ by setting the `--alpha` parameter. Increase _α_ to increase the importance of spread, and decrease _α_ to increase the importance of evenness. _α_ should always be between 0 and 1 (inclusive. In case you really want _C_ to be equivalent to one of _S_ or _E_ you can set _α_ = 1 or _α_ = 0, respectively).
@@ -132,3 +141,4 @@ Since the window lengths and alpha values used to compute discov can affect the 
 
 - The [initial discov Pull Request](https://github.com/merenlab/anvio/pull/2563) explains some implementation decisions, shows results from the hyperparameter tuning used to set the default parameters, and also describes the outcome of various validation tests. However, please note that this is an earlier version of discov, when it exclusively consisted of the spread-evenness score (no detection in the formula). If you are interested in implementation decisions, you might also want to read the [version 2 Pull Request](https://github.com/merenlab/anvio/pull/2872) to learn about why we changed certain things about the formula.
 - The [pull request for `--min-window-length`](https://github.com/merenlab/anvio/pull/2890) includes some tests that show the effect of this parameter on the distribution of discov scores.
+- The [pull request for `--min-num-reads`](https://github.com/merenlab/anvio/pull/2891) includes some tests that support the need for this parameter and discusses how the default value was chosen.
