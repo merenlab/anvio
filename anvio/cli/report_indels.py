@@ -74,6 +74,13 @@ def get_args():
     groupC.add_argument(*anvio.A('report-indels-min-samples'), **anvio.K('report-indels-min-samples'))
     groupC.add_argument(*anvio.A('report-indels-min-reads-per-element'), **anvio.K('report-indels-min-reads-per-element'))
 
+    groupE = parser.add_argument_group(
+        'SCALE',
+        "Options for very large inputs (hundreds of samples, hundreds of millions of indel rows). All are off "
+        "by default, and the default output does not change.")
+    groupE.add_argument(*anvio.A('report-indels-exclude-contig-edges'), **anvio.K('report-indels-exclude-contig-edges'))
+    groupE.add_argument(*anvio.A('report-indels-max-loci-for-tree'), **anvio.K('report-indels-max-loci-for-tree'))
+
     groupD = parser.add_argument_group('OUTPUT', "Where the matrix + decoration files will be written.")
     groupD.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
     groupD.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))

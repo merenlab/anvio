@@ -649,6 +649,25 @@ D = {
                      "from any sample. Use this to suppress low-occurrence elements that the data doesn't really see. "
                      "Default: %(default)s. Set to 1 to disable this filter."}
                 ),
+    'report-indels-exclude-contig-edges': (
+            ['--exclude-contig-edges'],
+            {'type': int,
+             'default': 0,
+             'metavar': "INT",
+             'help': "Set aside INS rows within INT bp of either end of their contig before clustering. With long "
+                     "reads, an INS at a contig end is usually reads running past the end of the contig (contig "
+                     "adjacency), not an insertion. The rows set aside are written to INDELS-CONTIG-EDGE-INS.txt. "
+                     "Default: %(default)s (keep every row)."}
+                ),
+    'report-indels-max-loci-for-tree': (
+            ['--max-loci-for-tree'],
+            {'type': int,
+             'default': 0,
+             'metavar': "INT",
+             'help': "Skip the items-order tree when there are more than INT loci: its hierarchical clustering "
+                     "needs memory that grows with the square of the number of loci. Default: %(default)s (always "
+                     "compute the tree)."}
+                ),
     'skip-INDEL-profiling': (
             ['--skip-INDEL-profiling'],
             {'default': False,

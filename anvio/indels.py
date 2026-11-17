@@ -98,6 +98,10 @@ class Indels:
         self.min_samples = A('min_samples', 2)
         self.min_reads_per_element = A('min_reads_per_element', 5)
 
+        # scale
+        self.exclude_contig_edges = A('exclude_contig_edges', 0) or 0
+        self.max_loci_for_tree = A('max_loci_for_tree', 0) or 0
+
         # output
         self.output_dir = A('output_dir')
         self.num_threads = A('num_threads', 1)
@@ -118,6 +122,7 @@ class Indels:
         self.items_additional = {}        # {locus_id: {decoration_col: value, ...}}
         self.items_tree_newick = None
         self.long_format_rows = []
+        self.edge_rows = []               # INS rows set aside by --exclude-contig-edges
 
 
     def sanity_check(self):
@@ -205,6 +210,7 @@ class Indels:
 
         self._init_contigs_super()
         self.collect_indels()
+        self._set_aside_contig_edge_ins()
         if not self.indels:
             raise ConfigError(f"No indels passed --min-length {self.min_length} (and other filters) "
                               f"across the supplied profile-db(s). Nothing to report.")
@@ -431,6 +437,32 @@ class Indels:
 
         self.run.info('Indel rows passing filters', pp(len(self.indels)))
         self.run.info('Distinct samples', pp(len(self.samples)))
+
+
+    def _set_aside_contig_edge_ins(self):
+        """Move INS rows within --exclude-contig-edges bp of a contig end out of the analysis.
+
+    Notes
+    =====
+    - The rows set aside are kept in `self.edge_rows` and written to INDELS-CONTIG-EDGE-INS.txt by `report`.
+    """
+
+        if self.exclude_contig_edges <= 0:
+            return
+
+        n = self.exclude_contig_edges
+        lengths = {contig: info['length'] for contig, info in self.contigs_super.contigs_basic_info.items()}
+
+        kept = []
+        for e in self.indels:
+            contig_length = lengths.get(e['contig_name'])
+            if e['type'] == 'INS' and contig_length is not None and (e['pos_in_contig'] < n or e['pos_in_contig'] >= contig_length - n):
+                self.edge_rows.append(e)
+            else:
+                kept.append(e)
+
+        self.indels = kept
+        self.run.info(f'INS rows within {n} bp of a contig end (set aside)', pp(len(self.edge_rows)))
 
 
     def reconstruct_del_sequences(self):
@@ -1029,6 +1061,14 @@ class Indels:
         if len(self.matrix) < 3:
             self.items_tree_newick = None
             return
+
+        if self.max_loci_for_tree and len(self.matrix) > self.max_loci_for_tree:
+            self.run.warning(f"Skipping the items-order tree: {pp(len(self.matrix))} loci is more than "
+                             f"--max-loci-for-tree {pp(self.max_loci_for_tree)} (its hierarchical clustering "
+                             f"needs memory that grows with the square of the number of loci).")
+            self.items_tree_newick = None
+            return
+
         self.progress.new('Computing items-order tree')
         self.progress.update(f"hierarchical clustering of {pp(len(self.matrix))} loci × {pp(len(self.samples))} samples ...")
         self.items_tree_newick = clustering.get_newick_tree_data_for_dict(
@@ -1125,6 +1165,16 @@ class Indels:
             for r in self.long_format_rows:
                 f.write('\t'.join(str(r.get(c, '')) for c in long_cols) + '\n')
 
+        # INS rows set aside by --exclude-contig-edges
+        edge_path = None
+        if self.edge_rows:
+            edge_path = os.path.join(self.output_dir, 'INDELS-CONTIG-EDGE-INS.txt')
+            edge_cols = ['sample_id', 'profile_db', 'contig_name', 'split_name', 'pos_in_contig', 'type', 'length', 'count', 'coverage']
+            with open(edge_path, 'w') as f:
+                f.write('\t'.join(edge_cols) + '\n')
+                for e in self.edge_rows:
+                    f.write('\t'.join(str(e.get(c, '')) for c in edge_cols) + '\n')
+
         # cluster-representative FASTA — one entry per final cluster (i.e. clusters that have at
         # least one locus surviving every filter). Header carries metadata for downstream BLAST /
         # HMM lookups; sequence is the mmseqs2 (or exact-match) cluster representative's actual
@@ -1191,8 +1241,10 @@ class Indels:
         if tree_path:
             self.run.info('Items-order tree (newick)', tree_path, mc='green')
         else:
-            self.run.info('Items-order tree (newick)', 'skipped (< 3 loci)', mc='yellow')
+            self.run.info('Items-order tree (newick)', 'skipped (< 3 loci, or more than --max-loci-for-tree)', mc='yellow')
         self.run.info('Per-event audit (long format)', long_path, mc='green')
+        if edge_path:
+            self.run.info('Contig-edge INS rows (set aside)', edge_path, mc='green')
         self.run.info('Cluster representatives (FASTA)', clusters_fa_path, mc='green')
         self.run.info('Cluster representatives (metadata)', clusters_txt_path, mc='green')
 

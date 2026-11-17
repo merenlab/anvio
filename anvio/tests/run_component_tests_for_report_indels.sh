@@ -167,3 +167,78 @@ do
     fi
 done
 INFO "Reproducibility check passed: identical outputs after shuffling indel rows"
+
+INFO "Scale options: --max-loci-for-tree skips only the tree"
+anvi-report-indels -c 02_CONTIGS/CONTIGS.db \
+                   -p 04_PROFILE/MERGED/PROFILE.db \
+                   --min-samples 1 \
+                   --min-length 400 \
+                   --max-loci-for-tree 1 \
+                   -o INDELS_NO_TREE \
+                   $thread_controller
+
+if [ -e INDELS_NO_TREE/INDELS-ITEMS-ORDER.newick ]
+then
+    echo "anvi-report-indels wrote a tree although there are more loci than --max-loci-for-tree"
+    exit 1
+fi
+for f in INDELS-VIEW-DATA.txt INDELS-ITEMS-ADDITIONAL.txt INDELS-LOCI-LONG.txt INDELS-CLUSTERS.fa INDELS-CLUSTERS.txt
+do
+    if ! cmp -s INDELS_DEFAULT/$f INDELS_NO_TREE/$f
+    then
+        echo "--max-loci-for-tree changed $f, but it must only skip the tree"
+        exit 1
+    fi
+done
+
+INFO "Scale options: --exclude-contig-edges sets aside the INS rows near contig ends, and only those"
+# the mock genomes have no INS near a contig end, so the edge distance is set just past the INS row
+# closest to an end: that row (and any other as close) must be set aside, all others kept
+EDGE=$(python3 - <<'PYEOF'
+import csv, sqlite3
+lengths = dict(sqlite3.connect('02_CONTIGS/CONTIGS.db').execute('SELECT contig, length FROM contigs_basic_info'))
+rows = [r for r in csv.DictReader(open('INDELS_DEFAULT/INDELS-LOCI-LONG.txt'), delimiter='\t') if r['type'] == 'INS']
+print(min(min(int(r['pos_in_contig']), lengths[r['contig_name']] - int(r['pos_in_contig'])) for r in rows) + 1)
+PYEOF
+)
+INFO "Edge distance used: ${EDGE} bp"
+anvi-report-indels -c 02_CONTIGS/CONTIGS.db \
+                   -p 04_PROFILE/MERGED/PROFILE.db \
+                   --min-samples 1 \
+                   --min-length 400 \
+                   --exclude-contig-edges ${EDGE} \
+                   -o INDELS_NO_EDGES \
+                   $thread_controller
+
+EDGE=${EDGE} python3 - <<'PYEOF'
+import csv, os, sqlite3, sys
+
+EDGE = int(os.environ['EDGE'])
+db = sqlite3.connect('02_CONTIGS/CONTIGS.db')
+lengths = dict(db.execute('SELECT contig, length FROM contigs_basic_info'))
+near_end = lambda r: int(r['pos_in_contig']) < EDGE or int(r['pos_in_contig']) >= lengths[r['contig_name']] - EDGE
+
+read = lambda path: list(csv.DictReader(open(path), delimiter='\t')) if os.path.exists(path) else []
+default_rows = read('INDELS_DEFAULT/INDELS-LOCI-LONG.txt')
+kept_rows = read('INDELS_NO_EDGES/INDELS-LOCI-LONG.txt')
+edge_rows = read('INDELS_NO_EDGES/INDELS-CONTIG-EDGE-INS.txt')
+
+errors = []
+if any(r['type'] != 'INS' or not near_end(r) for r in edge_rows):
+    errors.append(f'a row set aside as contig-edge INS is not an INS within {EDGE} bp of a contig end')
+if any(r['type'] == 'INS' and near_end(r) for r in kept_rows):
+    errors.append(f'an INS row within {EDGE} bp of a contig end is still in the report')
+if not edge_rows:
+    errors.append('no row was set aside, but the edge distance was chosen so that at least one must be')
+if len(kept_rows) + len(edge_rows) != len(default_rows):
+    errors.append(f'rows kept ({len(kept_rows)}) + rows set aside ({len(edge_rows)}) != rows of the default run ({len(default_rows)})')
+expected_edge = sum(1 for r in default_rows if r['type'] == 'INS' and near_end(r))
+if len(edge_rows) != expected_edge:
+    errors.append(f'{len(edge_rows)} rows set aside, but the default run has {expected_edge} INS rows near contig ends')
+
+if errors:
+    print('\n'.join(errors))
+    sys.exit(1)
+print(f'{len(edge_rows)} contig-edge INS rows set aside, {len(kept_rows)} rows kept')
+PYEOF
+INFO "Scale option checks passed"
