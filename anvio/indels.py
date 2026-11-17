@@ -18,12 +18,14 @@ The pipeline:
 """
 
 import os
+import time
 import mmap
 import array
 import bisect
 import shutil
 import statistics
 import numpy as np
+import pandas as pd
 from collections import Counter, defaultdict
 
 import anvio
@@ -460,42 +462,55 @@ class Indels:
         """Drop clusters whose total supporting-read count (summed `count` across all member
         indel rows, including INS and DEL events from any sample) is below
         --min-reads-per-element. A 'cluster' here represents one MGE/element family, so this
-        filter removes elements that the data simply doesn't see often enough to trust."""
+        filter removes elements that the data simply doesn't see often enough to trust.
 
+        It also builds `clusters_to_members` and `cluster_representatives`, for the clusters that are kept only:
+        `cluster_sequences` keeps every cluster as arrays, since most clusters of a very large input are single
+        events that this filter removes."""
+
+        store = self.indels
+        n = self.n_clusters
+        totals = np.bincount(self.row_cluster, weights=store.count, minlength=n + 1)
+        events = np.bincount(self.row_cluster, minlength=n + 1)
+
+        keep = np.zeros(n + 1, dtype=bool)
         if self.min_reads_per_element <= 1:
-            return
+            keep[1:] = True
+        else:
+            keep[1:] = totals[1:] >= self.min_reads_per_element
+            dropped = np.nonzero(~keep[1:])[0] + 1
+            if len(dropped):
+                self.run.info(
+                    f"Clusters dropped by --min-reads-per-element ({self.min_reads_per_element})",
+                    f"{pp(len(dropped))} cluster(s), {pp(int(events[dropped].sum()))} event(s), "
+                    f"{pp(int(totals[dropped].sum()))} supporting read(s)"
+                )
 
-        kept_clusters = {}
-        kept_reps = {}
-        n_clusters_dropped = 0
-        n_events_dropped = 0
-        n_reads_dropped = 0
+        # rows of the kept clusters, grouped by cluster number, members in ascending order
+        rows = np.nonzero(keep[self.row_cluster])[0]
+        rows = rows[np.argsort(self.row_cluster[rows], kind='stable')]
+        bounds = np.nonzero(np.diff(self.row_cluster[rows]))[0] + 1
 
-        for cluster_id, member_idxs in self.clusters_to_members.items():
-            total_reads = sum(self.indels[idx]['count'] for idx in member_idxs)
-            if total_reads >= self.min_reads_per_element:
-                kept_clusters[cluster_id] = member_idxs
-                if cluster_id in self.cluster_representatives:
-                    kept_reps[cluster_id] = self.cluster_representatives[cluster_id]
-            else:
-                n_clusters_dropped += 1
-                n_events_dropped += len(member_idxs)
-                n_reads_dropped += total_reads
+        self.clusters_to_members = {}
+        self.cluster_representatives = {}
+        for chunk in (np.split(rows, bounds) if len(rows) else []):
+            c = int(self.row_cluster[chunk[0]])
+            cluster_id = f"C_{c:08d}"
+            self.clusters_to_members[cluster_id] = [int(i) for i in chunk]
+            self.cluster_representatives[cluster_id] = self._representative_id(int(self.cluster_rep_rows[c]))
 
-        if n_clusters_dropped:
-            self.run.info(
-                f"Clusters dropped by --min-reads-per-element ({self.min_reads_per_element})",
-                f"{pp(n_clusters_dropped)} cluster(s), {pp(n_events_dropped)} event(s), "
-                f"{pp(n_reads_dropped)} supporting read(s)"
-            )
-
-        self.clusters_to_members = kept_clusters
-        self.cluster_representatives = kept_reps
-
-        if not self.clusters_to_members:
+        if self.min_reads_per_element > 1 and not self.clusters_to_members:
             raise ConfigError(
                 f"All clusters were filtered out by --min-reads-per-element "
                 f"{self.min_reads_per_element}. Try lowering that threshold.")
+
+
+    def _representative_id(self, idx):
+        """The name of a cluster representative: '<row index>|sample|contig|position|type|length'."""
+
+        store = self.indels
+        return (f"{idx}|{store.value(idx, 'sample_id')}|{store.value(idx, 'contig_name')}|"
+                f"{store.value(idx, 'pos_in_contig')}|{store.value(idx, 'type')}|{store.value(idx, 'length')}")
 
 
     def _init_contigs_super(self):
@@ -790,8 +805,10 @@ class Indels:
 
         self.run.warning(None, header="CLUSTERING (length-tiered)", lc="green")
 
-        all_clusters = {}
-        all_reps = {}
+        # cluster assignments are kept as arrays: row -> cluster number (from 1), cluster number -> representative row
+        store = self.indels
+        self.row_cluster = np.zeros(len(store), dtype=np.int64)
+        reps = [0]
         cluster_counter = 0
         work_dir = self.work_dir
 
@@ -803,8 +820,7 @@ class Indels:
             if not idxs:
                 continue
 
-            tier_lengths = [self.indels[i]['length'] for i in idxs]
-            use_mmseqs = (min(tier_lengths) >= MMSEQS_MIN_LEN) and (len(idxs) > 1)
+            use_mmseqs = (int(store.length[idxs].min()) >= MMSEQS_MIN_LEN) and (len(idxs) > 1)
 
             method = 'mmseqs2' if use_mmseqs else 'exact-match'
             self.run.info(f"Tier '{label}'", f"{pp(len(idxs))} indels @ min_seq_id={min_id} ({method})")
@@ -813,55 +829,72 @@ class Indels:
                 # exact-match clustering: group by (type, sequence) — useful when sequences are too short for k-mer search
                 exact_groups = defaultdict(list)
                 for idx in idxs:
-                    e = self.indels[idx]
-                    key = (e['type'], e['sequence'].upper())
-                    exact_groups[key].append(idx)
+                    exact_groups[(int(store.type[idx]), store.seq_bytes(idx).upper())].append(idx)
 
-                for key, members in exact_groups.items():
+                for members in exact_groups.values():
                     cluster_counter += 1
-                    cluster_id = f"C_{cluster_counter:08d}"
-                    all_clusters[cluster_id] = members
-                    rep_idx = members[0]
-                    e = self.indels[rep_idx]
-                    all_reps[cluster_id] = f"{rep_idx}|{e['sample_id']}|{e['contig_name']}|{e['pos_in_contig']}|{e['type']}|{e['length']}"
+                    self.row_cluster[members] = cluster_counter
+                    reps.append(members[0])
                 continue
 
-            fasta_path = os.path.join(work_dir, f"indels_{label}.fa")
-            with open(fasta_path, 'w') as fa:
-                for idx in idxs:
-                    e = self.indels[idx]
-                    seq_id = f"{idx}|{e['sample_id']}|{e['contig_name']}|{e['pos_in_contig']}|{e['type']}|{e['length']}"
-                    fa.write(f">{seq_id}\n{e['sequence']}\n")
+            rep_rows, member_rows = self._run_mmseqs_tier(label, min_id, idxs, work_dir)
 
-            m = MMseqs2(fasta_path, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False),
-                        num_threads=self.num_threads, work_dir=work_dir)
-            m.min_seq_id = min_id
-            m.coverage = self.min_coverage
-            m.cov_mode = 0   # bidirectional coverage
-            m.additional_params = ' '.join(p for p in [f"--split-memory-limit {self.mmseqs_split_memory_limit}" if self.mmseqs_split_memory_limit else '',
-                                                       self.mmseqs_extra_params] if p)
+            # number clusters by their smallest member index (canonical once rows are sorted), instead of relying
+            # on the order mmseqs2 reported them in
+            uniq_reps, inverse = np.unique(rep_rows, return_inverse=True)
+            min_member = np.full(len(uniq_reps), np.iinfo(np.int64).max, dtype=np.int64)
+            np.minimum.at(min_member, inverse, member_rows)
+            order = np.argsort(min_member, kind='stable')
+            number_of = np.empty(len(uniq_reps), dtype=np.int64)
+            number_of[order] = cluster_counter + 1 + np.arange(len(uniq_reps))
+            self.row_cluster[member_rows] = number_of[inverse]
+            reps.extend(int(r) for r in uniq_reps[order])
+            cluster_counter += len(uniq_reps)
 
-            sub_clusters = m.get_clusters_dict(name_prefix=f"TIER{label.upper()}")
+        self.cluster_rep_rows = np.array(reps, dtype=np.int64)
+        self.n_clusters = cluster_counter
 
-            # member ids look like '<idx>|sample|contig|pos|type|length' — pull the leading idx back out.
-            # Number clusters by their smallest member index (canonical once rows are sorted), and keep
-            # members sorted, instead of relying on the order mmseqs2 output was parsed in.
-            parsed = []
-            for sub_cid, members in sub_clusters.items():
-                member_idxs = sorted(int(name.split('|', 1)[0]) for name in members)
-                parsed.append((member_idxs, m.representatives.get(sub_cid)))
-            for member_idxs, rep in sorted(parsed, key=lambda x: x[0][0]):
-                cluster_counter += 1
-                cluster_id = f"C_{cluster_counter:08d}"
-                all_clusters[cluster_id] = member_idxs
-                all_reps[cluster_id] = rep
+        self.run.info('Total clusters', pp(self.n_clusters))
 
-            m.cleanup()
 
-        self.clusters_to_members = all_clusters
-        self.cluster_representatives = all_reps
+    def _run_mmseqs_tier(self, label, min_id, idxs, work_dir):
+        """Cluster the sequences of one length tier with mmseqs2 easy-cluster.
 
-        self.run.info('Total clusters', pp(len(self.clusters_to_members)))
+    Returns
+    =======
+    clusters : tuple
+        (representative rows, member rows): two arrays, one pair per member. The FASTA ids given to mmseqs2 are
+        the row indices, so its cluster table is read straight into arrays.
+    """
+
+        fasta_path = os.path.join(work_dir, f"indels_{label}.fa")
+        with open(fasta_path, 'wb') as fa:
+            for idx in idxs:
+                fa.write(b'>%d\n' % idx)
+                fa.write(self.indels.seq_bytes(idx))
+                fa.write(b'\n')
+
+        m = MMseqs2(fasta_path, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False),
+                    num_threads=self.num_threads, work_dir=work_dir)
+        m.min_seq_id = min_id
+        m.coverage = self.min_coverage
+        m.cov_mode = 0   # bidirectional coverage
+        m.additional_params = ' '.join(p for p in [f"--split-memory-limit {self.mmseqs_split_memory_limit}" if self.mmseqs_split_memory_limit else '',
+                                                   self.mmseqs_extra_params] if p)
+
+        t_tier = time.time()
+        m.cluster()
+        self.run.info(f"Tier '{label}' mmseqs2 wall time", f"{time.time() - t_tier:.0f} s for {pp(len(idxs))} sequences")
+
+        # the cluster table has one '<representative>\t<member>' line per member
+        clusters = pd.read_csv(m.cluster_tsv_path, sep='\t', header=None, names=['rep', 'member'],
+                               dtype={'rep': np.int64, 'member': np.int64})
+        rep_rows, member_rows = clusters['rep'].to_numpy(), clusters['member'].to_numpy()
+        del clusters
+        m.cleanup()
+        os.remove(fasta_path)
+
+        return rep_rows, member_rows
 
 
     def define_loci(self):
