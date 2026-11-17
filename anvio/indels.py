@@ -18,7 +18,10 @@ The pipeline:
 """
 
 import os
+import mmap
+import array
 import bisect
+import shutil
 import statistics
 import numpy as np
 from collections import Counter, defaultdict
@@ -73,6 +76,205 @@ DEFAULT_LENGTH_TIERS = [
 PREFERRED_FUNCTION_SOURCES = ['KOfam', 'COG20_FUNCTION', 'Pfam', 'COG14_FUNCTION', 'KEGG_Module']
 
 
+class _IndelRow:
+    """Read-only, dict-like view of one row of an `_IndelStore`, so that `e['count']` and `e.get(...)` work."""
+
+    __slots__ = ('store', 'i')
+    KEYS = ('sample_id', 'profile_db', 'split_name', 'contig_name', 'pos_in_contig', 'corresponding_gene_call',
+            'reference', 'type', 'sequence', 'length', 'count', 'coverage')
+
+    def __init__(self, store, i):
+        self.store, self.i = store, i
+
+
+    def __getitem__(self, key):
+        return self.store.value(self.i, key)
+
+
+    def get(self, key, default=None):
+        return self.store.value(self.i, key) if key in self.KEYS else default
+
+
+    def keys(self):
+        return self.KEYS
+
+
+class _IndelStore:
+    """Columnar storage for indel rows.
+
+    Integer columns are numpy arrays, strings are codes into small tables, and the indel sequences live in a
+    file on disk that is memory-mapped for reading. Hundreds of millions of rows then fit in tens of GB, where
+    one Python dict per row (with its sequence) does not fit at all. Rows are appended while the profile-dbs
+    are read, `finalize` turns the columns into numpy arrays, and `take` keeps or reorders rows.
+    """
+
+    TYPES = ('DEL', 'INS')   # code order is string order, so type codes sort like the type strings
+    INT_COLS = {'sample': 'i', 'profile': 'i', 'split': 'i', 'contig': 'i', 'pos': 'q', 'gene': 'q', 'ref': 'i',
+                'type': 'b', 'length': 'i', 'count': 'q', 'coverage': 'q', 'seq_off': 'q', 'seq_len': 'i'}
+
+    def __init__(self, work_dir):
+        self.seq_path = os.path.join(work_dir, 'indel_sequences.bin')
+        self._fh = open(self.seq_path, 'wb')
+        self._end = 0
+        self._mm = None
+        self._mm_size = 0
+        self._cols = {k: array.array(code) for k, code in self.INT_COLS.items()}
+        self.tables = {k: [] for k in ('sample', 'profile', 'split', 'contig', 'ref')}
+        self._index = {k: {} for k in self.tables}
+        self.n = 0
+
+
+    def code(self, table, value):
+        """The integer code of `value` in string table `table` (added if new)."""
+
+        index = self._index[table]
+        c = index.get(value)
+        if c is None:
+            c = index[value] = len(self.tables[table])
+            self.tables[table].append(value)
+
+        return c
+
+
+    def _write_seq(self, seq):
+        b = seq.encode() if isinstance(seq, str) else seq
+        offset = self._end
+        self._fh.write(b)
+        self._end += len(b)
+
+        return offset, len(b)
+
+
+    def append(self, sample, profile, split, contig, pos, gene, ref, typ, seq, length, count, coverage):
+        c = self._cols
+        offset, seq_length = self._write_seq(seq)
+        c['sample'].append(self.code('sample', sample))
+        c['profile'].append(self.code('profile', profile))
+        c['split'].append(self.code('split', split))
+        c['contig'].append(self.code('contig', contig))
+        c['pos'].append(pos)
+        c['gene'].append(gene)
+        c['ref'].append(self.code('ref', ref))
+        c['type'].append(self.TYPES.index(typ))
+        c['length'].append(length)
+        c['count'].append(count)
+        c['coverage'].append(coverage)
+        c['seq_off'].append(offset)
+        c['seq_len'].append(seq_length)
+        self.n += 1
+
+
+    def finalize(self):
+        """Turn the append buffers into numpy arrays (call once, after the last `append`)."""
+
+        dtypes = {'i': np.int32, 'q': np.int64, 'b': np.int8}
+        for k, code in self.INT_COLS.items():
+            setattr(self, k, np.frombuffer(self._cols[k], dtype=dtypes[code]).copy())
+        self._cols = None
+        self._fh.flush()
+
+
+    def _map(self):
+        if self._mm is None or self._mm_size != self._end:
+            self._fh.flush()
+            if self._mm is not None:
+                self._mm.close()
+                self._mm = None
+            if self._end == 0:
+                return b''
+            with open(self.seq_path, 'rb') as f:
+                self._mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+            self._mm_size = self._end
+
+        return self._mm
+
+
+    def seq_bytes(self, i):
+        seq_length = int(self.seq_len[i])
+        if seq_length == 0:
+            return b''
+        offset = int(self.seq_off[i])
+
+        return self._map()[offset:offset + seq_length]
+
+
+    def set_seq(self, i, seq):
+        self.seq_off[i], self.seq_len[i] = self._write_seq(seq)
+
+
+    def take(self, order):
+        """Keep and reorder rows: every column becomes column[order]."""
+
+        for k in self.INT_COLS:
+            setattr(self, k, getattr(self, k)[order])
+        self.n = len(order)
+
+
+    def value(self, i, key):
+        if key == 'sample_id':
+            return self.tables['sample'][self.sample[i]]
+        if key == 'profile_db':
+            return self.tables['profile'][self.profile[i]]
+        if key == 'split_name':
+            return self.tables['split'][self.split[i]]
+        if key == 'contig_name':
+            return self.tables['contig'][self.contig[i]]
+        if key == 'pos_in_contig':
+            return int(self.pos[i])
+        if key == 'corresponding_gene_call':
+            return int(self.gene[i])
+        if key == 'reference':
+            return self.tables['ref'][self.ref[i]]
+        if key == 'type':
+            return self.TYPES[self.type[i]]
+        if key == 'sequence':
+            return self.seq_bytes(i).decode()
+        if key == 'length':
+            return int(self.length[i])
+        if key == 'count':
+            return int(self.count[i])
+        if key == 'coverage':
+            return int(self.coverage[i])
+
+        raise KeyError(key)
+
+
+    def ranks(self, table):
+        """rank[code] is the position of that code's string in sorted (Python string) order."""
+
+        values = self.tables[table]
+        order = sorted(range(len(values)), key=lambda j: values[j])
+        r = np.empty(len(values), dtype=np.int64)
+        r[order] = np.arange(len(values))
+
+        return r
+
+
+    def close(self):
+        if self._mm is not None:
+            self._mm.close()
+            self._mm = None
+        if not self._fh.closed:
+            self._fh.close()
+
+
+    def __len__(self):
+        return self.n
+
+
+    def __bool__(self):
+        return self.n > 0
+
+
+    def __getitem__(self, i):
+        return _IndelRow(self, i)
+
+
+    def __iter__(self):
+        for i in range(self.n):
+            yield _IndelRow(self, i)
+
+
 class Indels:
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
@@ -121,8 +323,8 @@ class Indels:
         self.matrix = {}                  # {locus_id: {sample: presence}}
         self.items_additional = {}        # {locus_id: {decoration_col: value, ...}}
         self.items_tree_newick = None
-        self.long_format_rows = []
-        self.edge_rows = []               # INS rows set aside by --exclude-contig-edges
+        self.n_edge_rows = 0              # INS rows set aside by --exclude-contig-edges
+        self.work_dir = None              # holds the indel sequences (and other large temporary files)
 
 
     def sanity_check(self):
@@ -208,6 +410,12 @@ class Indels:
         self.run.info('Min samples per locus', self.min_samples)
         self.run.info('Min reads per element', self.min_reads_per_element)
 
+        # the indel rows keep their sequences on disk, in a work directory inside the output directory
+        self.work_dir = os.path.join(self.output_dir, '.anvi-report-indels-tmp')
+        if os.path.exists(self.work_dir):
+            shutil.rmtree(self.work_dir)
+        os.makedirs(self.work_dir)
+
         self._init_contigs_super()
         self.collect_indels()
         self._set_aside_contig_edge_ins()
@@ -236,6 +444,9 @@ class Indels:
         self.build_items_tree()
         self.build_long_format()
         self.report()
+
+        self.indels.close()
+        shutil.rmtree(self.work_dir, ignore_errors=True)
 
 
     def _filter_clusters_by_occurrence(self):
@@ -348,7 +559,8 @@ class Indels:
 
 
     def collect_indels(self):
-        """Load indels rows from each profile-db, apply filters, store as list of dicts."""
+        """Load indels rows from each profile-db, apply filters, and keep them in a columnar store (sequences
+        on disk). Rows are then put in a canonical, content-only order."""
 
         self.progress.new('Collecting indels')
 
@@ -366,7 +578,7 @@ class Indels:
 
         splits_to_contigs = {s: info['parent'] for s, info in self.contigs_super.splits_basic_info.items()}
 
-        all_rows = []
+        store = _IndelStore(self.work_dir)
         sample_order = []
         sample_seen = set()
 
@@ -388,50 +600,68 @@ class Indels:
                     sample_order.append(s)
                 self.sample_to_profile_path[s] = path
 
+            db_basename = os.path.basename(path).replace('.db', '')
+
+            # rows are read in batches, so that a profile-db's indels table is never held in memory at once
             try:
-                rows = pdb.db._exec(f"SELECT {select_clause} FROM {t.indels_table_name} WHERE {where}").fetchall()
+                cursor = pdb.db._exec(f"SELECT {select_clause} FROM {t.indels_table_name} WHERE {where}")
+                while True:
+                    batch = cursor.fetchmany(100000)
+                    if not batch:
+                        break
+
+                    for row in batch:
+                        sample_id, split_name, pos_in_contig, gene_id, reference, ev_type, sequence, length, count, coverage = row
+                        contig = splits_to_contigs.get(split_name)
+                        if contig is None:
+                            # split is unknown to this contigs-db; skip
+                            continue
+
+                        store.append(sample_id, db_basename, split_name, contig, int(pos_in_contig),
+                                     int(gene_id) if gene_id is not None else -1, reference or '', ev_type,
+                                     sequence or '', int(length), int(count), int(coverage))
+
+                        if sample_id not in sample_seen:
+                            sample_seen.add(sample_id)
+                            sample_order.append(sample_id)
             finally:
                 pdb.db.disconnect()
 
-            db_basename = os.path.basename(path).replace('.db', '')
-
-            for row in rows:
-                sample_id, split_name, pos_in_contig, gene_id, reference, ev_type, sequence, length, count, coverage = row
-                contig = splits_to_contigs.get(split_name)
-                if contig is None:
-                    # split is unknown to this contigs-db; skip
-                    continue
-
-                entry = {
-                    'sample_id': sample_id,
-                    'profile_db': db_basename,
-                    'split_name': split_name,
-                    'contig_name': contig,
-                    'pos_in_contig': int(pos_in_contig),
-                    'corresponding_gene_call': int(gene_id) if gene_id is not None else -1,
-                    'reference': reference or '',
-                    'type': ev_type,
-                    'sequence': sequence or '',
-                    'length': int(length),
-                    'count': int(count),
-                    'coverage': int(coverage),
-                }
-                all_rows.append(entry)
-
-                if sample_id not in sample_seen:
-                    sample_seen.add(sample_id)
-                    sample_order.append(sample_id)
+        store.finalize()
 
         # Put rows in a canonical, content-only order. Row order in a profile-db's indels table is
         # whatever order the profiler's worker processes happened to finish contigs in, so it differs
         # between two runs on the same BAM. Every later step (row indices, mmseqs2 input order and
         # representatives, cluster and locus numbering, the running-mean locus merge) depends on this
         # order, so without sorting the report is not reproducible.
-        all_rows.sort(key=lambda e: (e['contig_name'], e['pos_in_contig'], e['type'], e['length'], e['sequence'],
-                                     e['sample_id'], e['split_name'], e['count'], e['coverage'],
-                                     e['corresponding_gene_call'], e['reference'], e['profile_db']))
+        # The key is (contig_name, pos_in_contig, type, length, sequence, sample_id, split_name, count, coverage,
+        # corresponding_gene_call, reference, profile_db), with strings compared as strings: the string columns are
+        # sorted through the ranks of their codes, and sequences are ranked only among the rows that tie on
+        # (contig_name, pos_in_contig, type, length), where they are needed.
+        self.progress.update(f"Putting {pp(len(store))} rows in canonical order ...")
+        if len(store):
+            contig_rank = store.ranks('contig')[store.contig]
+            seq_rank = np.zeros(len(store), dtype=np.int64)
+            pre = np.lexsort((store.length, store.type, store.pos, contig_rank))
+            keys = np.stack([contig_rank[pre], store.pos[pre], store.type[pre], store.length[pre]])
+            new_group = np.ones(len(pre), dtype=bool)
+            new_group[1:] = np.any(keys[:, 1:] != keys[:, :-1], axis=0)
+            starts = np.nonzero(new_group)[0]
+            ends = np.append(starts[1:], len(pre))
+            for start, end in zip(starts[(ends - starts) > 1], ends[(ends - starts) > 1]):
+                members = pre[start:end]
+                seqs = [store.seq_bytes(i) for i in members]
+                rank_of = {b: r for r, b in enumerate(sorted(set(seqs)))}
+                for i, b in zip(members, seqs):
+                    seq_rank[i] = rank_of[b]
 
-        self.indels = all_rows
+            order = np.lexsort((store.ranks('profile')[store.profile], store.ranks('ref')[store.ref], store.gene,
+                                store.coverage, store.count, store.ranks('split')[store.split],
+                                store.ranks('sample')[store.sample], seq_rank, store.length, store.type,
+                                store.pos, contig_rank))
+            store.take(order)
+
+        self.indels = store
         self.samples = sample_order
         self.progress.end()
 
@@ -444,25 +674,31 @@ class Indels:
 
     Notes
     =====
-    - The rows set aside are kept in `self.edge_rows` and written to INDELS-CONTIG-EDGE-INS.txt by `report`.
+    - The rows set aside are written to INDELS-CONTIG-EDGE-INS.txt in the work directory, and `report` moves
+      that file into the output directory.
     """
 
         if self.exclude_contig_edges <= 0:
             return
 
         n = self.exclude_contig_edges
-        lengths = {contig: info['length'] for contig, info in self.contigs_super.contigs_basic_info.items()}
+        store = self.indels
+        lengths_by_name = {contig: info['length'] for contig, info in self.contigs_super.contigs_basic_info.items()}
+        contig_lengths = np.array([lengths_by_name.get(c, -1) for c in store.tables['contig']], dtype=np.int64)[store.contig]
 
-        kept = []
-        for e in self.indels:
-            contig_length = lengths.get(e['contig_name'])
-            if e['type'] == 'INS' and contig_length is not None and (e['pos_in_contig'] < n or e['pos_in_contig'] >= contig_length - n):
-                self.edge_rows.append(e)
-            else:
-                kept.append(e)
+        is_edge = ((store.type == store.TYPES.index('INS')) & (contig_lengths >= 0) &
+                   ((store.pos < n) | (store.pos >= contig_lengths - n)))
 
-        self.indels = kept
-        self.run.info(f'INS rows within {n} bp of a contig end (set aside)', pp(len(self.edge_rows)))
+        self.n_edge_rows = int(is_edge.sum())
+        if self.n_edge_rows:
+            edge_cols = ['sample_id', 'profile_db', 'contig_name', 'split_name', 'pos_in_contig', 'type', 'length', 'count', 'coverage']
+            with open(os.path.join(self.work_dir, 'INDELS-CONTIG-EDGE-INS.txt'), 'w') as f:
+                f.write('\t'.join(edge_cols) + '\n')
+                for i in np.nonzero(is_edge)[0]:
+                    f.write('\t'.join(str(store.value(i, c)) for c in edge_cols) + '\n')
+
+        store.take(np.nonzero(~is_edge)[0])
+        self.run.info(f'INS rows within {n} bp of a contig end (set aside)', pp(self.n_edge_rows))
 
 
     def reconstruct_del_sequences(self):
@@ -470,7 +706,9 @@ class Indels:
 
         # contig sequences are needed only here, and only for the contigs that carry DEL rows: loading every
         # contig instead takes about as much memory as the contigs-db is large (~150 GB for 141 Gbp)
-        del_contigs = set(e['contig_name'] for e in self.indels if e['type'] == 'DEL')
+        store = self.indels
+        del_idxs = np.nonzero(store.type == store.TYPES.index('DEL'))[0]
+        del_contigs = set(store.tables['contig'][c] for c in np.unique(store.contig[del_idxs]))
         if del_contigs:
             self.progress.new('Loading contig sequences')
             self.progress.update(f"for {pp(len(del_contigs))} contigs with DEL events ...")
@@ -480,38 +718,37 @@ class Indels:
         n_reconstructed = 0
         n_skipped_mismatch = 0
         n_skipped_oob = 0
-        kept = []
+        keep = np.ones(len(store), dtype=bool)
 
-        for entry in self.indels:
-            if entry['type'] != 'DEL':
-                kept.append(entry)
-                continue
-
-            contig = entry['contig_name']
-            pos = entry['pos_in_contig']
-            length = entry['length']
+        for i in del_idxs:
+            contig = store.value(i, 'contig_name')
+            pos = store.value(i, 'pos_in_contig')
+            length = store.value(i, 'length')
+            reference = store.value(i, 'reference')
 
             contig_seq = self.contigs_super.contig_sequences.get(contig, {}).get('sequence')
             if not contig_seq:
                 n_skipped_oob += 1
+                keep[i] = False
                 continue
 
             if pos < 0 or pos + length > len(contig_seq):
                 n_skipped_oob += 1
+                keep[i] = False
                 continue
 
             del_seq = contig_seq[pos:pos + length].upper()
 
-            if entry['reference'] and del_seq[:1].upper() != entry['reference'].upper():
+            if reference and del_seq[:1].upper() != reference.upper():
                 # reference mismatch — likely a position-semantics edge case; warn and skip
                 n_skipped_mismatch += 1
+                keep[i] = False
                 continue
 
-            entry['sequence'] = del_seq
-            kept.append(entry)
+            store.set_seq(i, del_seq)
             n_reconstructed += 1
 
-        self.indels = kept
+        store.take(np.nonzero(keep)[0])
 
         if n_reconstructed:
             self.run.info('Reconstructed DEL sequences', pp(n_reconstructed))
@@ -534,15 +771,15 @@ class Indels:
         else:
             tiers = DEFAULT_LENGTH_TIERS
 
-        # bin indels by tier
-        bins = defaultdict(list)
-        for idx, entry in enumerate(self.indels):
-            for label, max_excl, min_id in tiers:
-                if entry['length'] < max_excl:
-                    bins[(label, min_id)].append(idx)
-                    break
-            else:
-                bins[(tiers[-1][0], tiers[-1][2])].append(idx)
+        # bin indels by tier: the first tier whose max_length_exclusive is above the length, else the last one
+        lengths = self.indels.length
+        tier_of = np.full(len(self.indels), len(tiers) - 1, dtype=np.int64)
+        assigned = np.zeros(len(self.indels), dtype=bool)
+        for k, (label, max_excl, min_id) in enumerate(tiers):
+            hit = (~assigned) & (lengths < max_excl)
+            tier_of[hit] = k
+            assigned |= hit
+        bins = {(label, min_id): [int(i) for i in np.nonzero(tier_of == k)[0]] for k, (label, _, min_id) in enumerate(tiers)}
 
         self.run.warning(None, header="CLUSTERING (length-tiered)", lc="green")
 
@@ -1077,31 +1314,13 @@ class Indels:
 
 
     def build_long_format(self):
-        """Per-event audit trail."""
-        # locus lookup: idx -> locus_id
-        idx_to_locus = {}
+        """Map every indel row to its locus for the per-event audit trail, which `report` writes row by row
+        straight from the indel store (one dict per row does not fit in memory for very large inputs)."""
+
+        self._idx_to_locus = {}
         for locus_id, info in self.loci.items():
             for idx in info['members']:
-                idx_to_locus[idx] = locus_id
-
-        n_events = len(self.indels)
-        self.progress.new('Building per-event audit trail', progress_total_items=n_events)
-        self.progress.update('...')
-        update_every = max(1, n_events // 200)
-
-        for idx, e in enumerate(self.indels):
-            if idx % update_every == 0:
-                self.progress.increment(increment_to=idx)
-                self.progress.update(f"event {pp(idx)} of {pp(n_events)} ...")
-            row = dict(e)
-            row.pop('sequence', None)  # sequence is too big for the audit file
-            row['indel_index'] = idx
-            row['cluster_id'] = self._cluster_id_for_indel(idx)
-            row['locus_id'] = idx_to_locus.get(idx, '')
-            row['allele_frequency'] = (e['count'] / e['coverage']) if e['coverage'] > 0 else 0.0
-            self.long_format_rows.append(row)
-
-        self.progress.end()
+                self._idx_to_locus[idx] = locus_id
 
 
     def _cluster_id_for_indel(self, idx):
@@ -1162,18 +1381,22 @@ class Indels:
                      'corresponding_gene_call', 'reference']
         with open(long_path, 'w') as f:
             f.write('\t'.join(long_cols) + '\n')
-            for r in self.long_format_rows:
-                f.write('\t'.join(str(r.get(c, '')) for c in long_cols) + '\n')
+            n_events = len(self.indels)
+            self.progress.update('long-format audit ...')
+            for idx in range(n_events):
+                e = self.indels[idx]
+                row = {c: e[c] for c in long_cols if c in _IndelRow.KEYS}
+                row['indel_index'] = idx
+                row['cluster_id'] = self._cluster_id_for_indel(idx)
+                row['locus_id'] = self._idx_to_locus.get(idx, '')
+                row['allele_frequency'] = (row['count'] / row['coverage']) if row['coverage'] > 0 else 0.0
+                f.write('\t'.join(str(row.get(c, '')) for c in long_cols) + '\n')
 
         # INS rows set aside by --exclude-contig-edges
         edge_path = None
-        if self.edge_rows:
+        if self.n_edge_rows:
             edge_path = os.path.join(self.output_dir, 'INDELS-CONTIG-EDGE-INS.txt')
-            edge_cols = ['sample_id', 'profile_db', 'contig_name', 'split_name', 'pos_in_contig', 'type', 'length', 'count', 'coverage']
-            with open(edge_path, 'w') as f:
-                f.write('\t'.join(edge_cols) + '\n')
-                for e in self.edge_rows:
-                    f.write('\t'.join(str(e.get(c, '')) for c in edge_cols) + '\n')
+            shutil.move(os.path.join(self.work_dir, 'INDELS-CONTIG-EDGE-INS.txt'), edge_path)
 
         # cluster-representative FASTA — one entry per final cluster (i.e. clusters that have at
         # least one locus surviving every filter). Header carries metadata for downstream BLAST /

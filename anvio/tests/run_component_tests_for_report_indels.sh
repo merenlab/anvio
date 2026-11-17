@@ -84,6 +84,12 @@ anvi-report-indels -c 02_CONTIGS/CONTIGS.db \
                    -o INDELS_DEFAULT \
                    $thread_controller
 
+if [ -e INDELS_DEFAULT/.anvi-report-indels-tmp ]
+then
+    echo "anvi-report-indels left its work directory (the on-disk indel sequences) behind after a successful run"
+    exit 1
+fi
+
 SHOW_FILE INDELS_DEFAULT/INDELS-VIEW-DATA.txt
 SHOW_FILE INDELS_DEFAULT/INDELS-ITEMS-ADDITIONAL.txt
 SHOW_FILE INDELS_DEFAULT/INDELS-LOCI-LONG.txt
