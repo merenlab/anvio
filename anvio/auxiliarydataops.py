@@ -91,6 +91,35 @@ class AuxiliaryDataForSplitCoverages(object):
         return set(self.db.get_single_column_from_table(t.split_coverages_table_name, 'split_name'))
 
 
+    def get_samples_with_nonzero_coverage(self, split_names=None):
+        """Find, for each split, the samples whose coverage of that split is not all zeros.
+
+    Parameters
+    ==========
+    split_names : set, optional
+        Only report these splits.
+
+    Returns
+    =======
+    samples : dict
+        {split_name: {sample_name, ...}}. A split missing from the dictionary has no coverage in any sample.
+
+    Notes
+    =====
+    - No coverage array is read: an all-zero array is stored as the length of the split (see `append`), so the
+      type of the stored value is enough.
+    """
+
+        samples = {}
+        cursor = self.db._exec(f"SELECT split_name, sample_name FROM {t.split_coverages_table_name} "
+                               f"WHERE typeof(coverages) = 'blob'")
+        for split_name, sample_name in cursor:
+            if split_names is None or split_name in split_names:
+                samples.setdefault(split_name, set()).add(sample_name)
+
+        return samples
+
+
     def get_all(self, split_names=None):
         if split_names and not isinstance(split_names, set):
             raise AuxiliaryDataError("Split names for auxiliarydataops::get_all must be of type `set`.`")

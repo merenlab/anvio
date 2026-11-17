@@ -80,6 +80,7 @@ def get_args():
         "by default, and the default output does not change.")
     groupE.add_argument(*anvio.A('report-indels-exclude-contig-edges'), **anvio.K('report-indels-exclude-contig-edges'))
     groupE.add_argument(*anvio.A('report-indels-max-loci-for-tree'), **anvio.K('report-indels-max-loci-for-tree'))
+    groupE.add_argument(*anvio.A('report-indels-sparse-matrix'), **anvio.K('report-indels-sparse-matrix'))
 
     groupD = parser.add_argument_group('OUTPUT', "Where the matrix + decoration files will be written.")
     groupD.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))

@@ -668,6 +668,14 @@ D = {
                      "needs memory that grows with the square of the number of loci. Default: %(default)s (always "
                      "compute the tree)."}
                 ),
+    'report-indels-sparse-matrix': (
+            ['--sparse-matrix'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Write the presence matrix as INDELS-VIEW-DATA-SPARSE.txt, with one line per non-zero locus and "
+                     "sample cell (item, sample, presence), instead of the dense INDELS-VIEW-DATA.txt. With millions "
+                     "of loci and hundreds of samples the dense matrix is mostly zeros and too large to be useful."}
+                ),
     'skip-INDEL-profiling': (
             ['--skip-INDEL-profiling'],
             {'default': False,

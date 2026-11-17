@@ -303,6 +303,7 @@ class Indels:
         # scale
         self.exclude_contig_edges = A('exclude_contig_edges', 0) or 0
         self.max_loci_for_tree = A('max_loci_for_tree', 0) or 0
+        self.sparse_matrix = A('sparse_matrix', False)
 
         # output
         self.output_dir = A('output_dir')
@@ -1081,6 +1082,36 @@ class Indels:
         self.progress.end()
 
 
+    def _samples_with_coverage_on_del_splits(self):
+        """Find the samples with coverage on the splits that hold a DEL locus.
+
+    Returns
+    =======
+    covered : dict
+        {split_name: {sample_name, ...}} for the splits that contain the representative position of a DEL-dominant
+        locus, listing the samples whose auxiliary data hold coverage (not all zeros) for that split.
+    """
+
+        needed = set()
+        for locus_id, info in self.loci.items():
+            if self.locus_event_types[locus_id] == 'DEL':
+                split_name, _ = self._split_at(info['contig_name'], info['mean_pos'])
+                if split_name:
+                    needed.add(split_name)
+
+        covered = defaultdict(set)
+        if not needed:
+            return covered
+
+        for aux in self.aux_data_caches.values():
+            if aux is None:
+                continue
+            for split_name, samples in aux.get_samples_with_nonzero_coverage(split_names=needed).items():
+                covered[split_name] |= samples
+
+        return covered
+
+
     def build_matrix(self):
         """For each (sample, locus) cell, report the fraction of reads carrying the MGE *element*
         at this locus -- i.e., element presence -- on a consistent 0..1 scale, regardless of
@@ -1118,6 +1149,12 @@ class Indels:
             self._open_aux_data_caches()
             self._split_index = self._build_split_index()
 
+        # Rows are sparse: a sample that cannot be non-zero at a locus is left out, and reads as 0.0 everywhere
+        # downstream. At an INS locus only the samples with events can be non-zero. At a DEL locus a sample without
+        # events can be non-zero only if its auxiliary data hold coverage for the split of the locus, so only those
+        # samples are visited, instead of every sample for every DEL locus.
+        covered_samples = self._samples_with_coverage_on_del_splits() if any_del_locus else {}
+
         # aux-coverage lookups for DEL-locus cells without events, answered after the loop grouped by
         # (profile-db, split): {(profile_path, split_name): [(locus_id, sample, rel_start, length), ...]}
         del_detection_queries = defaultdict(list)
@@ -1149,12 +1186,14 @@ class Indels:
                 rep_length = int(statistics.median(del_lengths)) if del_lengths else 0
                 rep_pos = info['mean_pos']
                 split_name, split_start = self._split_at(info['contig_name'], rep_pos)
+                candidates = set(per_sample_per_pos) | covered_samples.get(split_name, set())
             else:
                 rep_length = 0
                 rep_pos = info['mean_pos']
+                candidates = set(per_sample_per_pos)
 
             row = {}
-            for sample in self.samples:
+            for sample in [s for s in self.samples if s in candidates]:
                 positions = per_sample_per_pos.get(sample)
 
                 if positions:
@@ -1309,7 +1348,8 @@ class Indels:
         self.progress.new('Computing items-order tree')
         self.progress.update(f"hierarchical clustering of {pp(len(self.matrix))} loci × {pp(len(self.samples))} samples ...")
         self.items_tree_newick = clustering.get_newick_tree_data_for_dict(
-            self.matrix, distance='euclidean', linkage='ward', zero_fill_missing=True)
+            {locus_id: {s: row.get(s, 0.0) for s in self.samples} for locus_id, row in self.matrix.items()},
+            distance='euclidean', linkage='ward', zero_fill_missing=True)
         self.progress.end()
 
 
@@ -1345,13 +1385,24 @@ class Indels:
 
         self.progress.new('Writing outputs')
 
-        # view-data matrix: rows=loci, columns=samples
+        # view-data matrix: rows=loci, columns=samples (dense), or one line per non-zero cell (--sparse-matrix)
         self.progress.update('view-data matrix ...')
-        with open(view_path, 'w') as f:
-            f.write('item\t' + '\t'.join(self.samples) + '\n')
-            for locus_id in sorted(self.matrix.keys()):
-                row = self.matrix[locus_id]
-                f.write(locus_id + '\t' + '\t'.join(f"{row[s]:.6f}" for s in self.samples) + '\n')
+        if self.sparse_matrix:
+            view_path = os.path.join(self.output_dir, 'INDELS-VIEW-DATA-SPARSE.txt')
+            with open(view_path, 'w') as f:
+                f.write('item\tsample\tpresence\n')
+                for locus_id in sorted(self.matrix.keys()):
+                    row = self.matrix[locus_id]
+                    for s in self.samples:
+                        v = row.get(s, 0.0)
+                        if v > 0:
+                            f.write(f"{locus_id}\t{s}\t{v:.6f}\n")
+        else:
+            with open(view_path, 'w') as f:
+                f.write('item\t' + '\t'.join(self.samples) + '\n')
+                for locus_id in sorted(self.matrix.keys()):
+                    row = self.matrix[locus_id]
+                    f.write(locus_id + '\t' + '\t'.join(f"{row.get(s, 0.0):.6f}" for s in self.samples) + '\n')
 
         # items-additional-data
         decoration_cols = [
@@ -1470,6 +1521,11 @@ class Indels:
             self.run.info('Contig-edge INS rows (set aside)', edge_path, mc='green')
         self.run.info('Cluster representatives (FASTA)', clusters_fa_path, mc='green')
         self.run.info('Cluster representatives (metadata)', clusters_txt_path, mc='green')
+
+        if self.sparse_matrix:
+            self.run.info_single("The presence matrix is sparse (--sparse-matrix), so it is not a view-data file for "
+                                 "anvi-interactive; run without --sparse-matrix to get one.", nl_before=1)
+            return
 
         manual_profile = os.path.join(self.output_dir, 'manual-profile.db')
         invocation = [

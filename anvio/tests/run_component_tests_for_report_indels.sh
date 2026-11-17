@@ -248,3 +248,35 @@ if errors:
 print(f'{len(edge_rows)} contig-edge INS rows set aside, {len(kept_rows)} rows kept')
 PYEOF
 INFO "Scale option checks passed"
+
+INFO "Scale options: --sparse-matrix holds exactly the non-zero cells of the dense matrix"
+anvi-report-indels -c 02_CONTIGS/CONTIGS.db \
+                   -p 04_PROFILE/MERGED/PROFILE.db \
+                   --min-samples 1 \
+                   --min-length 400 \
+                   --sparse-matrix \
+                   -o INDELS_SPARSE \
+                   $thread_controller
+
+python3 - <<'PYEOF'
+import csv, sys
+dense = list(csv.reader(open('INDELS_DEFAULT/INDELS-VIEW-DATA.txt'), delimiter='\t'))
+samples = dense[0][1:]
+expected = sorted((r[0], s, v) for r in dense[1:] for s, v in zip(samples, r[1:]) if float(v) > 0)
+sparse = list(csv.reader(open('INDELS_SPARSE/INDELS-VIEW-DATA-SPARSE.txt'), delimiter='\t'))
+if sparse[0] != ['item', 'sample', 'presence']:
+    sys.exit(f'unexpected header of the sparse matrix: {sparse[0]}')
+observed = sorted(tuple(r) for r in sparse[1:])
+if observed != expected:
+    sys.exit(f'the sparse matrix ({len(observed)} cells) differs from the non-zero cells of the dense matrix ({len(expected)})')
+print(f'{len(observed)} non-zero cells, identical in the sparse and the dense matrix')
+PYEOF
+for f in INDELS-ITEMS-ADDITIONAL.txt INDELS-LOCI-LONG.txt INDELS-CLUSTERS.fa INDELS-CLUSTERS.txt INDELS-ITEMS-ORDER.newick
+do
+    if ! cmp -s INDELS_DEFAULT/$f INDELS_SPARSE/$f
+    then
+        echo "--sparse-matrix changed $f, but it must only change how the matrix is written"
+        exit 1
+    fi
+done
+INFO "Sparse matrix checks passed"
