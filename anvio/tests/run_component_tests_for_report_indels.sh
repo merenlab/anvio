@@ -334,3 +334,93 @@ do
     fi
 done
 INFO "FASTA writer checks passed"
+
+INFO "--resume: a run resumed from its checkpoints gives the same report"
+compare_to_default () {
+    for f in INDELS-VIEW-DATA.txt INDELS-ITEMS-ADDITIONAL.txt INDELS-LOCI-LONG.txt INDELS-CLUSTERS.fa INDELS-CLUSTERS.txt INDELS-ITEMS-ORDER.newick
+    do
+        if ! cmp -s INDELS_DEFAULT/$f $1/$f
+        then
+            echo "$2 changed $f"
+            exit 1
+        fi
+    done
+}
+
+# a first run with --resume and no checkpoint starts from scratch; its work directory is kept for the next run
+ANVIO_INDELS_KEEP_WORK_DIR=1 \
+anvi-report-indels -c 02_CONTIGS/CONTIGS.db \
+                   -p 04_PROFILE/MERGED/PROFILE.db \
+                   --min-samples 1 \
+                   --min-length 400 \
+                   --resume \
+                   -o INDELS_RESUME \
+                   $thread_controller
+compare_to_default INDELS_RESUME "--resume without a checkpoint"
+
+# the second run reuses the indel rows and the clustering of every tier
+anvi-report-indels -c 02_CONTIGS/CONTIGS.db \
+                   -p 04_PROFILE/MERGED/PROFILE.db \
+                   --min-samples 1 \
+                   --min-length 400 \
+                   --resume \
+                   -o INDELS_RESUME \
+                   $thread_controller > INDELS_RESUME.log 2>&1
+for expected in "Indel rows loaded from checkpoint" "mmseqs2 result .*loaded from checkpoint"
+do
+    if ! grep -q "$expected" INDELS_RESUME.log
+    then
+        echo "the resumed run did not report '$expected'"
+        exit 1
+    fi
+done
+compare_to_default INDELS_RESUME "resuming from the row and tier checkpoints"
+
+INFO "--resume: a run interrupted during clustering resumes from its indel rows"
+if anvi-report-indels -c 02_CONTIGS/CONTIGS.db \
+                      -p 04_PROFILE/MERGED/PROFILE.db \
+                      --min-samples 1 \
+                      --min-length 400 \
+                      --mmseqs-extra-params "--not-an-mmseqs-parameter 1" \
+                      --resume \
+                      -o INDELS_INTERRUPTED \
+                      $thread_controller > /dev/null 2>&1
+then
+    echo "the run meant to fail during clustering did not fail"
+    exit 1
+fi
+anvi-report-indels -c 02_CONTIGS/CONTIGS.db \
+                   -p 04_PROFILE/MERGED/PROFILE.db \
+                   --min-samples 1 \
+                   --min-length 400 \
+                   --resume \
+                   -o INDELS_INTERRUPTED \
+                   $thread_controller > INDELS_INTERRUPTED.log 2>&1
+if ! grep -q "Indel rows loaded from checkpoint" INDELS_INTERRUPTED.log
+then
+    echo "the run after the interrupted one did not reuse its indel rows"
+    exit 1
+fi
+compare_to_default INDELS_INTERRUPTED "resuming after a failure during clustering"
+
+INFO "--resume: a checkpoint made with other filters is refused"
+ANVIO_INDELS_KEEP_WORK_DIR=1 \
+anvi-report-indels -c 02_CONTIGS/CONTIGS.db \
+                   -p 04_PROFILE/MERGED/PROFILE.db \
+                   --min-samples 1 \
+                   --min-length 400 \
+                   --resume \
+                   -o INDELS_RESUME_OTHER \
+                   $thread_controller > /dev/null 2>&1
+if anvi-report-indels -c 02_CONTIGS/CONTIGS.db \
+                      -p 04_PROFILE/MERGED/PROFILE.db \
+                      --min-samples 1 \
+                      --min-length 300 \
+                      --resume \
+                      -o INDELS_RESUME_OTHER \
+                      $thread_controller > /dev/null 2>&1
+then
+    echo "--resume reused a checkpoint made with another --min-length"
+    exit 1
+fi
+INFO "Resume checks passed"

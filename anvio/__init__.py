@@ -691,6 +691,15 @@ D = {
              'help': "Additional parameters appended to every `mmseqs easy-cluster` call, in quotes (for instance "
                      "\"--linclust-version 1\"). These change how sequences are clustered, so use them with care."}
                 ),
+    'report-indels-resume': (
+            ['--resume'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Continue an interrupted run in the same output directory. Its indel rows (after DEL sequences "
+                     "were reconstructed) and every clustering tier that finished are reused, if they were made with "
+                     "the same inputs and parameters (otherwise anvi'o stops and tells you). Without this flag, a "
+                     "previous run's work directory in the output directory is removed and everything starts over."}
+                ),
     'skip-INDEL-profiling': (
             ['--skip-INDEL-profiling'],
             {'default': False,

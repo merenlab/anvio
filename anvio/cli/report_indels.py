@@ -83,6 +83,7 @@ def get_args():
     groupE.add_argument(*anvio.A('report-indels-sparse-matrix'), **anvio.K('report-indels-sparse-matrix'))
     groupE.add_argument(*anvio.A('report-indels-mmseqs-split-memory-limit'), **anvio.K('report-indels-mmseqs-split-memory-limit'))
     groupE.add_argument(*anvio.A('report-indels-mmseqs-extra-params'), **anvio.K('report-indels-mmseqs-extra-params'))
+    groupE.add_argument(*anvio.A('report-indels-resume'), **anvio.K('report-indels-resume'))
 
     groupD = parser.add_argument_group('OUTPUT', "Where the matrix + decoration files will be written.")
     groupD.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))

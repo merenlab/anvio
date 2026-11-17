@@ -18,6 +18,7 @@ The pipeline:
 """
 
 import os
+import json
 import time
 import struct
 import mmap
@@ -364,6 +365,47 @@ class _IndelStore:
             fh.close()
 
 
+    def save(self, path, extra):
+        """Checkpoint the store: its arrays in `path` (npz) and its string tables, with `extra`, in `path`.json. The
+        sequence file stays where it is."""
+
+        self._fh.flush()
+        np.savez(path, **{k: getattr(self, k) for k in self.INT_COLS})
+        with open(path + '.json', 'w') as f:
+            json.dump(dict(extra, n=self.n, seq_end=self._end, tables=self.tables), f)
+
+
+    @classmethod
+    def load(cls, work_dir, path):
+        """Restore a store saved with `save`. Returns (store, the `extra` dict given to `save`)."""
+
+        with open(path + '.json') as f:
+            meta = json.load(f)
+
+        store = cls.__new__(cls)
+        store.seq_path = os.path.join(work_dir, 'indel_sequences.bin')
+        if not os.path.exists(store.seq_path) or os.path.getsize(store.seq_path) < meta['seq_end']:
+            raise ConfigError(f"The indel sequences in '{store.seq_path}' are shorter than their checkpoint says, "
+                              f"so this run cannot be resumed. Please run again without --resume.")
+
+        # sequences written after the checkpoint (an interrupted later step) are dropped
+        store._fh = open(store.seq_path, 'r+b')
+        store._fh.truncate(meta['seq_end'])
+        store._fh.seek(meta['seq_end'])
+        store._end = meta['seq_end']
+        store._mm = None
+        store._mm_size = 0
+        store._cols = None
+        store.tables = meta['tables']
+        store._index = {k: {v: i for i, v in enumerate(values)} for k, values in store.tables.items()}
+        arrays = np.load(path)
+        for k in cls.INT_COLS:
+            setattr(store, k, arrays[k])
+        store.n = meta['n']
+
+        return store, meta
+
+
     def close(self):
         if self._mm is not None:
             self._mm.close()
@@ -420,6 +462,7 @@ class Indels:
         self.sparse_matrix = A('sparse_matrix', False)
         self.mmseqs_split_memory_limit = A('mmseqs_split_memory_limit')
         self.mmseqs_extra_params = A('mmseqs_extra_params') or ''
+        self.resume = A('resume', False)
 
         # output
         self.output_dir = A('output_dir')
@@ -532,19 +575,26 @@ class Indels:
             self.run.info('MMseqs2 extra parameters', self.mmseqs_extra_params)
 
         # the indel rows keep their sequences on disk, in a work directory inside the output directory
+        # (with --resume it also holds the checkpoints of an interrupted run)
         self.work_dir = os.path.join(self.output_dir, '.anvi-report-indels-tmp')
-        if os.path.exists(self.work_dir):
+        if os.path.exists(self.work_dir) and not self.resume:
             shutil.rmtree(self.work_dir)
-        os.makedirs(self.work_dir)
+        os.makedirs(self.work_dir, exist_ok=True)
 
         self._init_contigs_super()
-        self.collect_indels()
-        self._set_aside_contig_edge_ins()
+        rows_from_checkpoint = self.resume and self._load_rows_checkpoint()
+        if not rows_from_checkpoint:
+            self.collect_indels()
+            self._set_aside_contig_edge_ins()
+
         if not self.indels:
             raise ConfigError(f"No indels passed --min-length {self.min_length} (and other filters) "
                               f"across the supplied profile-db(s). Nothing to report.")
 
-        self.reconstruct_del_sequences()
+        if not rows_from_checkpoint:
+            self.reconstruct_del_sequences()
+            self._save_rows_checkpoint()
+
         self.cluster_sequences()
         self._filter_clusters_by_occurrence()
         self.define_loci()
@@ -566,8 +616,11 @@ class Indels:
         self.build_long_format()
         self.report()
 
+        # the work directory (indel sequences, checkpoints) is removed after a successful run, unless the
+        # environment variable ANVIO_INDELS_KEEP_WORK_DIR is set (for tests and debugging)
         self.indels.close()
-        shutil.rmtree(self.work_dir, ignore_errors=True)
+        if not os.environ.get('ANVIO_INDELS_KEEP_WORK_DIR'):
+            shutil.rmtree(self.work_dir, ignore_errors=True)
 
 
     def _filter_clusters_by_occurrence(self):
@@ -690,6 +743,57 @@ class Indels:
                 return gene_id
             idx -= 1
         return -1
+
+
+    def _fingerprint(self):
+        """Everything the collected rows depend on: a run resumed from them must match it."""
+
+        return {'profile_db_paths': list(self.profile_db_paths),
+                'contigs_db_hash': dbi.DBInfo(self.contigs_db_path).hash,
+                'min_length': self.min_length,
+                'max_length': self.max_length,
+                'event_type': self.event_type,
+                'exclude_contig_edges': self.exclude_contig_edges}
+
+
+    def _save_rows_checkpoint(self):
+        extra = {'fingerprint': self._fingerprint(),
+                 'samples': self.samples,
+                 'sample_to_profile_path': self.sample_to_profile_path,
+                 'n_edge_rows': self.n_edge_rows}
+        self.indels.save(os.path.join(self.work_dir, 'rows_checkpoint.npz'), extra)
+
+
+    def _load_rows_checkpoint(self):
+        """Reuse the rows of an interrupted run in the same output directory (--resume).
+
+    Returns
+    =======
+    loaded : bool
+        True if the rows were loaded, False if there is no checkpoint (the run then starts from scratch).
+    """
+
+        path = os.path.join(self.work_dir, 'rows_checkpoint.npz')
+        if not os.path.exists(path + '.json'):
+            self.run.warning("--resume: there is no checkpoint of indel rows in the output directory, so this run "
+                             "starts from scratch.")
+            return False
+
+        store, meta = _IndelStore.load(self.work_dir, path)
+        fingerprint = json.loads(json.dumps(self._fingerprint()))
+        if meta['fingerprint'] != fingerprint:
+            store.close()
+            raise ConfigError(f"--resume: the checkpoint in '{self.work_dir}' was made with different inputs or "
+                              f"filters ({meta['fingerprint']}, while this run has {fingerprint}). Please run again "
+                              f"without --resume.")
+
+        self.indels = store
+        self.samples = meta['samples']
+        self.sample_to_profile_path = meta['sample_to_profile_path']
+        self.n_edge_rows = meta['n_edge_rows']
+        self.run.info('Indel rows loaded from checkpoint (--resume)', pp(len(self.indels)))
+
+        return True
 
 
     def collect_indels(self):
@@ -932,7 +1036,7 @@ class Indels:
         fasta_outputs = []
         for label, _, min_id in tiers:
             idxs = bins.get((label, min_id), [])
-            if len(idxs) > 1 and int(store.length[idxs].min()) >= MMSEQS_MIN_LEN:
+            if len(idxs) > 1 and int(store.length[idxs].min()) >= MMSEQS_MIN_LEN and self._tier_checkpoint(label, min_id, idxs) is None:
                 fasta_outputs.append((os.path.join(work_dir, f"indels_{label}.fa"), idxs))
 
         if fasta_outputs:
@@ -966,7 +1070,14 @@ class Indels:
                     reps.append(members[0])
                 continue
 
-            rep_rows, member_rows = self._run_mmseqs_tier(label, min_id, idxs, work_dir)
+            checkpoint = self._tier_checkpoint(label, min_id, idxs)
+            if checkpoint is not None:
+                rep_rows, member_rows = checkpoint
+                self.run.info(f"Tier '{label}' mmseqs2 result", "loaded from checkpoint (--resume)")
+            else:
+                rep_rows, member_rows = self._run_mmseqs_tier(label, min_id, idxs, work_dir)
+                np.savez(os.path.join(work_dir, f"tier_{label}_clusters.npz"), rep=rep_rows, member=member_rows,
+                         params=self._tier_params(min_id, idxs))
 
             # number clusters by their smallest member index (canonical once rows are sorted), instead of relying
             # on the order mmseqs2 reported them in
@@ -984,6 +1095,26 @@ class Indels:
         self.n_clusters = cluster_counter
 
         self.run.info('Total clusters', pp(self.n_clusters))
+
+
+    def _tier_params(self, min_id, idxs):
+        """Everything the clustering of one tier depends on besides its (checkpointed) rows."""
+
+        return np.array(f"{min_id}|{self.min_coverage}|{self.mmseqs_extra_params}|{len(idxs)}")
+
+
+    def _tier_checkpoint(self, label, min_id, idxs):
+        """(representative rows, member rows) of a tier clustered by an interrupted run (--resume), or None."""
+
+        path = os.path.join(self.work_dir, f"tier_{label}_clusters.npz")
+        if not self.resume or not os.path.exists(path):
+            return None
+
+        checkpoint = np.load(path)
+        if str(checkpoint['params']) != str(self._tier_params(min_id, idxs)):
+            return None
+
+        return checkpoint['rep'], checkpoint['member']
 
 
     def _run_mmseqs_tier(self, label, min_id, idxs, work_dir):
