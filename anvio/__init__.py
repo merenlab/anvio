@@ -676,6 +676,21 @@ D = {
                      "sample cell (item, sample, presence), instead of the dense INDELS-VIEW-DATA.txt. With millions "
                      "of loci and hundreds of samples the dense matrix is mostly zeros and too large to be useful."}
                 ),
+    'report-indels-mmseqs-split-memory-limit': (
+            ['--mmseqs-split-memory-limit'],
+            {'default': None,
+             'metavar': "SIZE",
+             'help': "Passed to mmseqs2 as --split-memory-limit (for instance 150G), so that clustering very large "
+                     "inputs splits its work to fit in this much memory. Default: mmseqs2's own default (all available "
+                     "memory)."}
+                ),
+    'report-indels-mmseqs-extra-params': (
+            ['--mmseqs-extra-params'],
+            {'default': None,
+             'metavar': "\"PARAMS\"",
+             'help': "Additional parameters appended to every `mmseqs easy-cluster` call, in quotes (for instance "
+                     "\"--linclust-version 1\"). These change how sequences are clustered, so use them with care."}
+                ),
     'skip-INDEL-profiling': (
             ['--skip-INDEL-profiling'],
             {'default': False,

@@ -280,3 +280,36 @@ do
     fi
 done
 INFO "Sparse matrix checks passed"
+
+INFO "Scale options: --mmseqs-split-memory-limit and --mmseqs-extra-params reach mmseqs2"
+anvi-report-indels -c 02_CONTIGS/CONTIGS.db \
+                   -p 04_PROFILE/MERGED/PROFILE.db \
+                   --min-samples 1 \
+                   --min-length 400 \
+                   --mmseqs-split-memory-limit 30G \
+                   --mmseqs-extra-params "--cluster-reassign 0" \
+                   -o INDELS_MMSEQS_PARAMS \
+                   $thread_controller
+
+for f in INDELS-VIEW-DATA.txt INDELS-ITEMS-ADDITIONAL.txt INDELS-LOCI-LONG.txt INDELS-CLUSTERS.fa INDELS-CLUSTERS.txt INDELS-ITEMS-ORDER.newick
+do
+    if ! cmp -s INDELS_DEFAULT/$f INDELS_MMSEQS_PARAMS/$f
+    then
+        echo "a memory limit and a parameter set to its default value changed $f"
+        exit 1
+    fi
+done
+
+# a parameter mmseqs2 does not know must make the run fail, which shows that the parameters are passed on
+if anvi-report-indels -c 02_CONTIGS/CONTIGS.db \
+                      -p 04_PROFILE/MERGED/PROFILE.db \
+                      --min-samples 1 \
+                      --min-length 400 \
+                      --mmseqs-extra-params "--not-an-mmseqs-parameter 1" \
+                      -o INDELS_MMSEQS_BAD_PARAM \
+                      $thread_controller > /dev/null 2>&1
+then
+    echo "anvi-report-indels ran although --mmseqs-extra-params held a parameter mmseqs2 does not know"
+    exit 1
+fi
+INFO "MMseqs2 parameter checks passed"

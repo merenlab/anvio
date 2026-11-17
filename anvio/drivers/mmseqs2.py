@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import tempfile
 
 import anvio
 import anvio.utils as utils
@@ -31,7 +32,7 @@ class MMseqs2:
     Call `get_clusters_dict()` to run clustering and parse the output.
     """
 
-    def __init__(self, input_fasta_path, run=run, progress=progress, num_threads=1):
+    def __init__(self, input_fasta_path, run=run, progress=progress, num_threads=1, work_dir=None):
         self.run = run
         self.progress = progress
 
@@ -52,7 +53,9 @@ class MMseqs2:
         # output goes into a working directory that we manage internally so we can
         # clean up after ourselves. callers can override after instantiation if they
         # want to keep the files around.
-        self.work_dir = filesnpaths.get_temp_directory_path()
+        # `work_dir`: the directory to make it in (default: the system temporary directory), for inputs whose
+        # temporary files do not fit there
+        self.work_dir = tempfile.mkdtemp(dir=work_dir) if work_dir else filesnpaths.get_temp_directory_path()
         self.output_prefix = os.path.join(self.work_dir, 'mmseqs')
         self.tmp_dir = os.path.join(self.work_dir, 'tmp')
         self.cluster_tsv_path = self.output_prefix + '_cluster.tsv'

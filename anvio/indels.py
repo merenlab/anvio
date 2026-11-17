@@ -304,6 +304,8 @@ class Indels:
         self.exclude_contig_edges = A('exclude_contig_edges', 0) or 0
         self.max_loci_for_tree = A('max_loci_for_tree', 0) or 0
         self.sparse_matrix = A('sparse_matrix', False)
+        self.mmseqs_split_memory_limit = A('mmseqs_split_memory_limit')
+        self.mmseqs_extra_params = A('mmseqs_extra_params') or ''
 
         # output
         self.output_dir = A('output_dir')
@@ -410,6 +412,10 @@ class Indels:
         self.run.info('Position tolerance', f"{self.position_tolerance} bp")
         self.run.info('Min samples per locus', self.min_samples)
         self.run.info('Min reads per element', self.min_reads_per_element)
+        if self.mmseqs_split_memory_limit:
+            self.run.info('MMseqs2 split memory limit', self.mmseqs_split_memory_limit)
+        if self.mmseqs_extra_params:
+            self.run.info('MMseqs2 extra parameters', self.mmseqs_extra_params)
 
         # the indel rows keep their sequences on disk, in a work directory inside the output directory
         self.work_dir = os.path.join(self.output_dir, '.anvi-report-indels-tmp')
@@ -787,7 +793,7 @@ class Indels:
         all_clusters = {}
         all_reps = {}
         cluster_counter = 0
-        work_dir = filesnpaths.get_temp_directory_path()
+        work_dir = self.work_dir
 
         MMSEQS_MIN_LEN = 15  # default nucleotide k-mer size in mmseqs2
 
@@ -828,10 +834,12 @@ class Indels:
                     fa.write(f">{seq_id}\n{e['sequence']}\n")
 
             m = MMseqs2(fasta_path, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False),
-                        num_threads=self.num_threads)
+                        num_threads=self.num_threads, work_dir=work_dir)
             m.min_seq_id = min_id
             m.coverage = self.min_coverage
             m.cov_mode = 0   # bidirectional coverage
+            m.additional_params = ' '.join(p for p in [f"--split-memory-limit {self.mmseqs_split_memory_limit}" if self.mmseqs_split_memory_limit else '',
+                                                       self.mmseqs_extra_params] if p)
 
             sub_clusters = m.get_clusters_dict(name_prefix=f"TIER{label.upper()}")
 
