@@ -19,6 +19,7 @@ The pipeline:
 
 import os
 import time
+import struct
 import mmap
 import array
 import bisect
@@ -250,6 +251,117 @@ class _IndelStore:
         r[order] = np.arange(len(values))
 
         return r
+
+
+
+
+    def write_fastas_in_index_order(self, outputs, work_dir, bucket_bytes=4 * 1024 ** 3, read_span=256 * 1024 ** 2):
+        """Write FASTA files ('>row index' and sequence, rows ascending) for several sets of rows at once.
+
+    Parameters
+    ==========
+    outputs : list
+        [(fasta_path, idxs), ...], with each `idxs` in ascending order.
+    work_dir : str
+        Where the temporary bucket files go.
+    bucket_bytes : int
+        Sequence bytes per bucket (at most ~500 buckets are made).
+    read_span : int
+        Bytes read from the sequence file at once.
+
+    Notes
+    =====
+    - Writing in row order reads the sequence file (which is in collection order) at random. On a compressed
+      filesystem every small read decompresses a whole record, and a 172.9M-sequence tier was written at ~1.4 MB/s.
+      Instead, pass 1 reads the sequence file sequentially and spills each needed sequence, tagged with its row,
+      into bucket files by row range; pass 2 sorts one bucket at a time in memory and appends it to the outputs.
+      The output is identical to writing in row order directly.
+    """
+
+        need = np.full(self.n, -1, dtype=np.int64)    # row -> number of its output
+        for k, (_, idxs) in enumerate(outputs):
+            need[idxs] = k
+
+        rows = np.nonzero(need >= 0)[0]
+        if not len(rows):
+            for path, _ in outputs:
+                open(path, 'wb').close()
+            return
+
+        # buckets: consecutive row ranges holding about `bucket_bytes` of sequence each
+        cumulative = np.cumsum(self.seq_len[rows].astype(np.int64))
+        bucket_bytes = max(int(bucket_bytes), int(cumulative[-1]) // 500 + 1)
+        bucket_of = np.zeros(self.n, dtype=np.int64)
+        bucket_of[rows] = cumulative // bucket_bytes
+        n_buckets = int(bucket_of[rows].max()) + 1
+        bucket_paths = [os.path.join(work_dir, f'fasta_bucket_{b:05d}.bin') for b in range(n_buckets)]
+        bucket_fhs = [open(path, 'wb', buffering=8 * 1024 * 1024) for path in bucket_paths]
+
+        # pass 1: sequentially over the sequence file, in spans of at most `read_span` bytes (a single read() of
+        # more than ~2 GB returns short on Linux)
+        self._fh.flush()
+        header = struct.Struct('<qi')
+        by_offset = rows[np.argsort(self.seq_off[rows], kind='stable')]
+        offsets = self.seq_off[by_offset]
+        ends = offsets + self.seq_len[by_offset].astype(np.int64)
+        with open(self.seq_path, 'rb', buffering=0) as source:
+            start = 0
+            while start < len(by_offset):
+                lo = int(offsets[start])
+                stop = max(start + 1, int(np.searchsorted(ends, lo + read_span, side='right')))
+                hi = int(ends[stop - 1])
+                source.seek(lo)
+                buf = bytearray(hi - lo)
+                view = memoryview(buf)
+                got = 0
+                while got < len(buf):
+                    n = source.readinto(view[got:])
+                    if not n:
+                        raise ConfigError(f"Unexpected end of the indel sequence store '{self.seq_path}' at byte {lo + got}.")
+                    got += n
+
+                for i in by_offset[start:stop]:
+                    offset = int(self.seq_off[i]) - lo
+                    seq_length = int(self.seq_len[i])
+                    fh = bucket_fhs[bucket_of[i]]
+                    fh.write(header.pack(int(i), seq_length))
+                    fh.write(view[offset:offset + seq_length])
+
+                del view, buf
+                start = stop
+
+        for fh in bucket_fhs:
+            fh.close()
+
+        # pass 2: one bucket at a time, sorted by row, appended to the outputs
+        out_fhs = [open(path, 'wb', buffering=8 * 1024 * 1024) for path, _ in outputs]
+        for path in bucket_paths:
+            with open(path, 'rb') as f:
+                data = f.read()
+
+            records = []
+            pos = 0
+            while pos < len(data):
+                i, seq_length = header.unpack_from(data, pos)
+                pos += header.size
+                if not (0 <= i < self.n) or pos + seq_length > len(data):
+                    raise ConfigError(f"The temporary FASTA bucket '{path}' is corrupt at byte {pos - header.size} "
+                                      f"(row {i}, length {seq_length}).")
+                records.append((i, pos, seq_length))
+                pos += seq_length
+
+            records.sort()
+            for i, p0, seq_length in records:
+                fh = out_fhs[need[i]]
+                fh.write(b'>%d\n' % i)
+                fh.write(data[p0:p0 + seq_length])
+                fh.write(b'\n')
+
+            del data, records
+            os.remove(path)
+
+        for fh in out_fhs:
+            fh.close()
 
 
     def close(self):
@@ -814,6 +926,23 @@ class Indels:
 
         MMSEQS_MIN_LEN = 15  # default nucleotide k-mer size in mmseqs2
 
+        # write the mmseqs2 inputs of every tier in one sequential pass over the indel sequences (see
+        # _IndelStore.write_fastas_in_index_order); the bucket and read sizes can be changed through the environment
+        # variables ANVIO_INDELS_FASTA_BUCKET_BYTES and ANVIO_INDELS_FASTA_READ_SPAN, for tests
+        fasta_outputs = []
+        for label, _, min_id in tiers:
+            idxs = bins.get((label, min_id), [])
+            if len(idxs) > 1 and int(store.length[idxs].min()) >= MMSEQS_MIN_LEN:
+                fasta_outputs.append((os.path.join(work_dir, f"indels_{label}.fa"), idxs))
+
+        if fasta_outputs:
+            self.progress.new('Writing mmseqs2 input FASTAs')
+            self.progress.update(f"{len(fasta_outputs)} tier(s), one sequential pass over the indel sequences ...")
+            store.write_fastas_in_index_order(fasta_outputs, work_dir,
+                                              bucket_bytes=int(os.environ.get('ANVIO_INDELS_FASTA_BUCKET_BYTES', 4 * 1024 ** 3)),
+                                              read_span=int(os.environ.get('ANVIO_INDELS_FASTA_READ_SPAN', 256 * 1024 ** 2)))
+            self.progress.end()
+
         # iterate tiers in their defined order (not dict insertion order) so cluster numbering is canonical
         for label, _, min_id in tiers:
             idxs = bins.get((label, min_id), [])
@@ -858,7 +987,7 @@ class Indels:
 
 
     def _run_mmseqs_tier(self, label, min_id, idxs, work_dir):
-        """Cluster the sequences of one length tier with mmseqs2 easy-cluster.
+        """Cluster the sequences of one length tier (FASTA already written) with mmseqs2 easy-cluster.
 
     Returns
     =======
@@ -867,12 +996,8 @@ class Indels:
         the row indices, so its cluster table is read straight into arrays.
     """
 
+        # the input FASTA was written by cluster_sequences
         fasta_path = os.path.join(work_dir, f"indels_{label}.fa")
-        with open(fasta_path, 'wb') as fa:
-            for idx in idxs:
-                fa.write(b'>%d\n' % idx)
-                fa.write(self.indels.seq_bytes(idx))
-                fa.write(b'\n')
 
         m = MMseqs2(fasta_path, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False),
                     num_threads=self.num_threads, work_dir=work_dir)

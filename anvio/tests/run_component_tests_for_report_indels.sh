@@ -313,3 +313,24 @@ then
     exit 1
 fi
 INFO "MMseqs2 parameter checks passed"
+
+INFO "The mmseqs2 inputs written through many buckets and short reads give the same report"
+# the one-pass FASTA writer sorts the sequences through bucket files; the smallest bucket and read sizes force its
+# most fragmented path (hundreds of buckets, one sequence per read)
+ANVIO_INDELS_FASTA_BUCKET_BYTES=1 ANVIO_INDELS_FASTA_READ_SPAN=1 \
+anvi-report-indels -c 02_CONTIGS/CONTIGS.db \
+                   -p 04_PROFILE/MERGED/PROFILE.db \
+                   --min-samples 1 \
+                   --min-length 400 \
+                   -o INDELS_SMALL_BUCKETS \
+                   $thread_controller
+
+for f in INDELS-VIEW-DATA.txt INDELS-ITEMS-ADDITIONAL.txt INDELS-LOCI-LONG.txt INDELS-CLUSTERS.fa INDELS-CLUSTERS.txt INDELS-ITEMS-ORDER.newick
+do
+    if ! cmp -s INDELS_DEFAULT/$f INDELS_SMALL_BUCKETS/$f
+    then
+        echo "writing the mmseqs2 inputs through small buckets changed $f"
+        exit 1
+    fi
+done
+INFO "FASTA writer checks passed"
