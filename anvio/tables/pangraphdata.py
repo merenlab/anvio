@@ -102,7 +102,8 @@ class TableForRegions(Table):
        with `region_type` set to either 'backbone' (single-context core regions) or
        'variable' (regions with rearrangements / accessory content). The table also stores
        per-region statistics computed by `PangenomeGraphManager.summarize()`, including
-       the composite variability score (CVS) and its scaled components.
+       the composite variability score (CVS), the mean of the four 0-to-1 metrics
+       complexity, diversity, expansion_log and weight of the region.
     """
 
     def __init__(self, db_path, run=run, progress=progress):
