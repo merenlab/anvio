@@ -580,6 +580,131 @@ D = {
                      "will instruct profiler to skip that step. Please remember that parameters and flags must be "
                      "identical between different profiles using the same contigs database for them to merge properly."}
                 ),
+    'profile-dbs-file': (
+            ['--profile-dbs-file'],
+            {'metavar': "FILE",
+             'help': "Alternative to repeating -p: a plain-text file with one profile-db path per line (blank lines and "
+                     "lines starting with '#' are ignored). Mutually exclusive with -p."}
+                ),
+    'report-indels-min-length': (
+            ['--min-length'],
+            {'type': int,
+             'default': 500,
+             'metavar': "INT",
+             'help': "Minimum indel length (in bp) to consider. Default: %(default)s. Drop this to also report shorter "
+                     "structural variants; raise it to focus on really big elements."}
+                ),
+    'report-indels-max-length': (
+            ['--max-length'],
+            {'type': int,
+             'default': None,
+             'metavar': "INT",
+             'help': "Optional upper bound on indel length (in bp). Default: no upper bound."}
+                ),
+    'report-indels-event-type': (
+            ['--event-type'],
+            {'choices': ['INS', 'DEL', 'both'],
+             'default': 'both',
+             'help': "Which event types to include. INS = insertion (extra sequence in reads), DEL = deletion (missing "
+                     "reference sequence in reads). Default: %(default)s. Note that DEL sequences are reconstructed on "
+                     "the fly from the contigs-db, since they are not stored in the indels table."}
+                ),
+    'report-indels-min-identity': (
+            ['--min-identity'],
+            {'type': float,
+             'default': None,
+             'metavar': "FLOAT",
+             'help': "Override the default length-tiered identity thresholds with a single global value (e.g. 0.9). Must "
+                     "be in (0, 1]. Default: tiered (0.95 for 500 bp-1 kb, 0.90 for 1-5 kb, 0.85 for >5 kb)."}
+                ),
+    'report-indels-min-coverage': (
+            ['--min-coverage'],
+            {'type': float,
+             'default': 0.8,
+             'metavar': "FLOAT",
+             'help': "mmseqs2 -c / coverage threshold (bidirectional). Default: %(default)s."}
+                ),
+    'report-indels-position-tolerance': (
+            ['--position-tolerance'],
+            {'type': int,
+             'default': 50,
+             'metavar': "INT",
+             'help': "When collapsing events within a cluster into a single locus, two events on the same contig are "
+                     "merged if their positions are within this many bp of the running mean. Default: %(default)s."}
+                ),
+    'report-indels-min-samples': (
+            ['--min-samples'],
+            {'type': int,
+             'default': 2,
+             'metavar': "INT",
+             'help': "Drop loci where fewer than this many distinct samples carry the element with presence > 0 in the "
+                     "final matrix. This counts samples on the presence side (non-zero matrix cells) regardless of "
+                     "whether the signal came from an INS event, a DEL event with partial allele frequency, or an "
+                     "auxiliary-coverage detection at a DEL locus. INS-dominant and DEL-dominant loci are treated "
+                     "symmetrically. Default: %(default)s. Set to 1 to keep loci where the element appears in only one "
+                     "sample (useful for very small test datasets)."}
+                ),
+    'report-indels-min-reads-per-element': (
+            ['--min-reads-per-element'],
+            {'type': int,
+             'default': 5,
+             'metavar': "INT",
+             'help': "Minimum number of reads (summed across all events and samples) that must support a clustered "
+                     "element (= MGE family) for it to be reported. Counts both INS-supporting and DEL-supporting reads "
+                     "from any sample. Use this to suppress low-occurrence elements that the data doesn't really see. "
+                     "Default: %(default)s. Set to 1 to disable this filter."}
+                ),
+    'report-indels-exclude-contig-edges': (
+            ['--exclude-contig-edges'],
+            {'type': int,
+             'default': 0,
+             'metavar': "INT",
+             'help': "Set aside INS rows within INT bp of either end of their contig before clustering. With long "
+                     "reads, an INS at a contig end is usually reads running past the end of the contig (contig "
+                     "adjacency), not an insertion. The rows set aside are written to INDELS-CONTIG-EDGE-INS.txt. "
+                     "Default: %(default)s (keep every row)."}
+                ),
+    'report-indels-max-loci-for-tree': (
+            ['--max-loci-for-tree'],
+            {'type': int,
+             'default': 0,
+             'metavar': "INT",
+             'help': "Skip the items-order tree when there are more than INT loci: its hierarchical clustering "
+                     "needs memory that grows with the square of the number of loci. Default: %(default)s (always "
+                     "compute the tree)."}
+                ),
+    'report-indels-sparse-matrix': (
+            ['--sparse-matrix'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Write the presence matrix as INDELS-VIEW-DATA-SPARSE.txt, with one line per non-zero locus and "
+                     "sample cell (item, sample, presence), instead of the dense INDELS-VIEW-DATA.txt. With millions "
+                     "of loci and hundreds of samples the dense matrix is mostly zeros and too large to be useful."}
+                ),
+    'report-indels-mmseqs-split-memory-limit': (
+            ['--mmseqs-split-memory-limit'],
+            {'default': None,
+             'metavar': "SIZE",
+             'help': "Passed to mmseqs2 as --split-memory-limit (for instance 150G), so that clustering very large "
+                     "inputs splits its work to fit in this much memory. Default: mmseqs2's own default (all available "
+                     "memory)."}
+                ),
+    'report-indels-mmseqs-extra-params': (
+            ['--mmseqs-extra-params'],
+            {'default': None,
+             'metavar': "\"PARAMS\"",
+             'help': "Additional parameters appended to every `mmseqs easy-cluster` call, in quotes (for instance "
+                     "\"--linclust-version 1\"). These change how sequences are clustered, so use them with care."}
+                ),
+    'report-indels-resume': (
+            ['--resume'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Continue an interrupted run in the same output directory. Its indel rows (after DEL sequences "
+                     "were reconstructed) and every clustering tier that finished are reused, if they were made with "
+                     "the same inputs and parameters (otherwise anvi'o stops and tells you). Without this flag, a "
+                     "previous run's work directory in the output directory is removed and everything starts over."}
+                ),
     'skip-INDEL-profiling': (
             ['--skip-INDEL-profiling'],
             {'default': False,
