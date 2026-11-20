@@ -69,7 +69,10 @@ $(document).ready(function() {
         {
             samples_new_order = get_newick_leaf_order(samplesClusteringData['newick']);
         }
-        $.map(samples_new_order, $.trim);
+        // an order can name samples that are not layers in this display (e.g., layer additional
+        // data in the profile db covering more samples than the data file), so we keep only
+        // names that resolve to a layer
+        samples_new_order = samples_new_order.map($.trim).filter(name => getLayerId(name) != -1);
 
         var new_order = [];
 
