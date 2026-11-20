@@ -4,6 +4,8 @@ This workflow is extremely useful if you have one or more %(fasta)s files that d
 {:.warning}
 If you have not yet run anvi'o programs %(anvi-setup-ncbi-cogs)s and %(anvi-setup-scg-taxonomy)s on your system yet, you will get a cryptic error from this workflow if you run it with the default %(workflow-config)s. You can avoid this by first running these two anvi'o programs to setup the necessary databases (which is done only once for every anvi'o installation), **or** set the rules for COG functions and/or SCG taxonomy to `run=false` explicitly.
 
+Some annotation rules are turned off by default. You can turn them on by setting `run` to `true` in your %(workflow-config)s. Other rules may only be effective if you already have set up their databases prior.
+
 To start things going with this workflow, first ask anvi'o to give you a default %(workflow-config)s file for the contigs workflow:
 
 ```bash
