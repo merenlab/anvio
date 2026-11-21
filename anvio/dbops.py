@@ -4603,12 +4603,6 @@ class ProfileSuperclass(object):
           nothing is computed or stored, and a warning is emitted.
         """
 
-        if not self.num_mapped_reads_per_sample:
-            raise ConfigError("Anvi'o needs the number of reads mapped per sample to compute CPM-based "
-                              "normalizations, but this information is not available for your profile "
-                              "database. This can happen with blank profile databases or very old anvi'o "
-                              "databases that pre-date storage of this value.")
-
         sample_names = self.p_meta['samples']
 
         # learn the number of reads mapped to each sample from the layer additional data of the profile
